@@ -449,8 +449,9 @@ def seed_representative_profile() -> None:
             ),
         )
         connection.execute(
-            "INSERT INTO import_source_records VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO import_source_records VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
+                "extra_place",
                 "Extra Places",
                 "SOURCE-EP-001",
                 "profile-portable-test",
@@ -839,7 +840,7 @@ def test_sheet_and_aggregate_checksums_are_stable_for_unchanged_profile(tmp_path
     first_sheets = workbook_rows(first.content, "Sheet Manifest")
     second_sheets = workbook_rows(second.content, "Sheet Manifest")
     assert first_sheets == second_sheets
-    assert len(first_sheets) == 25
+    assert len(first_sheets) == 26
     assert all(len(row["logical_checksum"]) == 64 for row in first_sheets)
     assert {row["sheet_name"] for row in first_sheets} >= {
         "Accounts",

@@ -127,12 +127,12 @@ def test_casino_offer_workflow_create_update_and_isolation(tmp_path: Path) -> No
     delete_response = client.delete(
         f"/profiles/profile-demo-001/casino-offers/{created['casino_offer_id']}"
     )
-    assert delete_response.status_code == 204
+    assert delete_response.status_code == 409
 
     deleted_lookup = client.get(
         f"/profiles/profile-demo-001/casino-offers/{created['casino_offer_id']}"
     )
-    assert deleted_lookup.status_code == 404
+    assert deleted_lookup.status_code == 200
 
 
 def test_seed_rows_load_into_dedicated_casino_offer_table(tmp_path: Path) -> None:

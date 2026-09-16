@@ -82,6 +82,43 @@ def concurrent_worker(dsn, runtime, payload, ready, release, results):
         raise
 
 
+def cp012_identity_worker(dsn, runtime, ready, release, results):
+    try:
+        db = configure(dsn, runtime)
+        ready.put(True)
+        assert release.wait(30), "Concurrent identity barrier timeout"
+        record = db.register_import_source_record(
+            profile_id="cp012-a", source_namespace="sportsbook",
+            source_sheet="Concurrent Sheet", source_record_id="CONCURRENT-X",
+            source_hash="concurrent-hash", import_batch_id="BATCH-cp012-a",
+            entity_type="sportsbook_bet", entity_id="SB-CONCURRENT",
+        )
+        results.put((200, record.entity_id))
+    except Exception as error:
+        results.put((599, repr(error)))
+        raise
+
+
+def cp012_history_worker(dsn, runtime, ready, release, results):
+    try:
+        db = configure(dsn, runtime)
+        from openforge_api.financial_history import append_history_event
+        ready.put(True)
+        assert release.wait(30), "Concurrent history barrier timeout"
+        with db.connect() as connection:
+            event = append_history_event(
+                connection, profile_id="cp012-a", ledger_type="cash_adjustment",
+                activity_id="CA-CP012", operation="edited",
+                recorded_at="2026-09-16T15:30:00.000000Z",
+                before={"amount": "5.00"}, after={"amount": "5.00"},
+                operation_id="cp012-concurrent-history",
+            )
+        results.put((200, event.history_id))
+    except Exception as error:
+        results.put((599, repr(error)))
+        raise
+
+
 def snapshot(label):
     from test_calculator_conversions import blackjack_snapshot
     s = blackjack_snapshot()
@@ -492,6 +529,160 @@ def offer_metadata_cases(dsn, runtime):
     }
 
 
+def import_history_cases(dsn, runtime):
+    """CP-012 scoped PostgreSQL identity/history evidence only."""
+    import psycopg
+    from openforge_api import db
+    from openforge_api.financial_history import append_history_event
+
+    configure(dsn, runtime)
+    for profile_id in ("cp012-a", "cp012-b"):
+        db.create_profile_with_onboarding({
+            "profile_id": profile_id,
+            "display_name": f"Synthetic {profile_id}",
+            "profile_code": profile_id,
+            "tracking_start_date": "2026-09-16",
+            "current_cash_snapshot": "0.00",
+            "enabled_modules": [],
+            "accounts": [],
+            "quick_actions": [],
+            "exchange_commissions": [],
+        })
+        with db.connect() as connection:
+            connection.execute("UPDATE profiles SET status='Active' WHERE profile_id=?", (profile_id,))
+        db.create_import_batch(profile_id, {
+            "import_batch_id": f"BATCH-{profile_id}",
+            "source_filename": "synthetic.xlsx", "source_type": "xlsx",
+            "mapping_version": "cp012-v1", "status": "confirmed", "row_count": 0,
+            "error_count": 0, "warning_count": 0, "summary_json": "{}",
+        }, [])
+
+    first = db.register_import_source_record(
+        profile_id="cp012-a", source_namespace="sportsbook", source_sheet="Renamed Tab",
+        source_record_id="EXTERNAL-X", source_hash="hash-a", import_batch_id="BATCH-cp012-a",
+        entity_type="sportsbook_bet", entity_id="SB-A",
+    )
+    retry = db.register_import_source_record(
+        profile_id="cp012-a", source_namespace="sportsbook", source_sheet="Another Tab",
+        source_record_id="EXTERNAL-X", source_hash="hash-a", import_batch_id="BATCH-cp012-a",
+        entity_type="sportsbook_bet", entity_id="SB-A",
+    )
+    other = db.register_import_source_record(
+        profile_id="cp012-b", source_namespace="sportsbook", source_sheet="Sportsbook",
+        source_record_id="EXTERNAL-X", source_hash="hash-b", import_batch_id="BATCH-cp012-b",
+        entity_type="sportsbook_bet", entity_id="SB-B",
+    )
+    assert retry == first and other.profile_id == "cp012-b"
+    try:
+        db.register_import_source_record(
+            profile_id="cp012-a", source_namespace="sportsbook", source_sheet="Sportsbook",
+            source_record_id="EXTERNAL-X", source_hash="changed", import_batch_id="BATCH-cp012-a",
+            entity_type="sportsbook_bet", entity_id="SB-A",
+        )
+    except ValueError as error:
+        assert "changed contents" in str(error)
+    else:
+        raise AssertionError("Changed retry was not rejected")
+
+    def run_pair(worker):
+        context = multiprocessing.get_context("spawn")
+        ready = context.Queue()
+        release = context.Event()
+        results = context.Queue()
+        processes = [
+            context.Process(target=worker, args=(dsn, runtime, ready, release, results))
+            for _ in range(2)
+        ]
+        for process in processes:
+            process.start()
+        for _ in processes:
+            assert ready.get(timeout=30) is True
+        release.set()
+        received = [results.get(timeout=30) for _ in processes]
+        for process in processes:
+            process.join(timeout=30)
+            assert process.exitcode == 0
+        return received
+
+    identity_results = run_pair(cp012_identity_worker)
+    assert [status for status, _ in identity_results] == [200, 200]
+    assert len({entity_id for _, entity_id in identity_results}) == 1
+
+    created = db.create_cash_adjustment("cp012-a", {
+        "cash_adjustment_id": "CA-CP012", "adjustment_date": "2026-09-16",
+        "direction": "In", "amount": "6.00", "adjustment_type": "Correction",
+        "affects_investment": True, "affects_cash_snapshot": True,
+        "linked_account": "", "description": "Synthetic original",
+        "_history_operation_id": "cp012-create",
+    })
+    corrected = db.update_cash_adjustment("cp012-a", created.cash_adjustment_id, {
+        "adjustment_date": "2026-09-16", "direction": "In", "amount": "5.00",
+        "adjustment_type": "Correction", "affects_investment": True,
+        "affects_cash_snapshot": True, "linked_account": "",
+        "description": "Corrected synthetic result", "_history_operation": "corrected",
+        "_history_operation_id": "cp012-correct",
+    })
+    assert corrected is not None
+    events = db.get_financial_history("cp012-a", "cash_adjustment", "CA-CP012")
+    assert [event.operation for event in events] == ["created", "corrected"]
+    with db.connect() as connection:
+        same = append_history_event(
+            connection, profile_id="cp012-a", ledger_type="cash_adjustment",
+            activity_id="CA-CP012", operation="corrected", recorded_at=events[-1].recorded_at,
+            before=json.loads(events[-1].before_snapshot_json),
+            after=json.loads(events[-1].after_snapshot_json), operation_id="cp012-correct",
+            source_identity=json.loads(events[-1].source_identity_json),
+            provenance=json.loads(events[-1].provenance_json), reason=events[-1].reason,
+            actor_type=events[-1].actor_type, actor_id=events[-1].actor_id,
+        )
+        assert same.history_id == events[-1].history_id
+    history_results = run_pair(cp012_history_worker)
+    assert [status for status, _ in history_results] == [200, 200]
+    assert len({history_id for _, history_id in history_results}) == 1
+    from openforge_api.financial_history import FinancialHistoryConflictError
+    with db.connect() as connection:
+        try:
+            append_history_event(
+                connection, profile_id="cp012-a", ledger_type="cash_adjustment",
+                activity_id="CA-CP012", operation="edited",
+                recorded_at="2026-09-16T15:31:00.000000Z",
+                before={"amount": "5.00"}, after={"amount": "999.00"},
+                operation_id="cp012-concurrent-history",
+            )
+        except FinancialHistoryConflictError:
+            pass
+        else:
+            raise AssertionError("Changed history mutation reused an operation identity")
+    with psycopg.connect(dsn) as connection:
+        amount = connection.execute(
+            "SELECT amount FROM cash_adjustments WHERE cash_adjustment_id='CA-CP012'"
+        ).fetchone()[0]
+        history_count = connection.execute(
+            "SELECT count(*) FROM financial_activity_history WHERE activity_id='CA-CP012'"
+        ).fetchone()[0]
+        assert str(amount) == "5.00" and history_count == 3
+        try:
+            connection.execute(
+                "UPDATE financial_activity_history SET reason='changed' WHERE activity_id='CA-CP012'"
+            )
+        except psycopg.errors.RaiseException as error:
+            assert "append-only" in str(error)
+            connection.rollback()
+        else:
+            raise AssertionError("PostgreSQL history UPDATE was not rejected")
+    from openforge_api.postgres_migrations import apply_postgres_migrations
+    apply_postgres_migrations(dsn)
+    return {
+        "status": "PASS",
+        "passed": [
+            "Profile-scoped logical source identity, identical retry and changed retry",
+            "Separate-process duplicate source and history operations reuse one identity/event",
+            "Current £5 value remains separate from append-only lifecycle evidence",
+            "PostgreSQL UPDATE rejection and repeat migration",
+        ],
+    }
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--pg-bin", required=True, type=Path, help="Explicit local server-tool directory; no inherited DSN")
@@ -502,6 +693,11 @@ def main():
         "--offer-metadata-only",
         action="store_true",
         help="Approved additive Profit Boost/Cashback metadata only",
+    )
+    parser.add_argument(
+        "--import-history-only",
+        action="store_true",
+        help="CP-012 Profile-scoped import identity and append-only history only",
     )
     args = parser.parse_args()
     pg_bin = args.pg_bin.resolve()
@@ -543,6 +739,9 @@ def main():
             return
         if args.offer_metadata_only:
             record.update(offer_metadata_cases(primary, root))
+            return
+        if args.import_history_only:
+            record.update(import_history_cases(primary, root))
             return
         if args.awards_only:
             from verify_award_integrity_91 import award_cases

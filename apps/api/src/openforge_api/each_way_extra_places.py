@@ -309,7 +309,7 @@ def delete_profile_each_way_extra_place(
         deleted = delete_each_way_extra_place(
             profile_id,
             each_way_extra_place_id,
-            payload.deletion_reason if payload else "",
+            payload.deletion_reason if payload else "User removed non-financial draft",
         )
     except ValueError as error:
         raise HTTPException(status_code=409, detail=str(error)) from error

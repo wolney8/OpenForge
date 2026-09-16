@@ -87,6 +87,7 @@ COMMON_TIMESTAMPS = frozenset(
         "follow_up_reminder_due_at",
         "follow_up_reminder_resolved_at",
         "expiry_datetime",
+        "recorded_at",
     }
 )
 
@@ -229,6 +230,9 @@ SHEET_SPECS = (
             "offer_name fixture_type status result retention_mode free_bet_value back_odds "
             "match_strategy lay_odds_1 lay_actual lay_matched_stake_1 lay_commission_1 "
             "exchange_name expiry_datetime date_settled origin_qual_bet_id offer_group_id "
+            "origin_qual_bet_source_namespace origin_qual_bet_native_id "
+            "origin_qual_bet_resolution_state origin_qual_bet_resolution_json "
+            "origin_qual_bet_import_run_id "
             "source_award_group_id source_award_split_index source_award_split_total "
             "source_award_expected_value source_award_variance_reason follow_up_reminder_state "
             "follow_up_reminder_due_at follow_up_reminder_reason "
@@ -237,7 +241,7 @@ SHEET_SPECS = (
             "manual_override_reason created_at updated_at lay_plan_json"
         ),
         ("free_bet_id",),
-        json_fields=frozenset({"lay_plan_json"}),
+        json_fields=frozenset({"lay_plan_json", "origin_qual_bet_resolution_json"}),
         decimal_fields=frozenset(
             {
                 "free_bet_value",
@@ -457,11 +461,27 @@ SHEET_SPECS = (
         "Source Identities",
         "import_source_records",
         _fields(
-            "source_sheet source_record_id profile_id source_hash entity_type entity_id imported_at"
+            "source_namespace source_sheet source_record_id profile_id source_hash "
+            "entity_type entity_id imported_at"
         ),
-        ("source_sheet", "source_record_id"),
+        ("source_namespace", "source_record_id"),
         timestamp_fields=COMMON_TIMESTAMPS,
         authority_role="business_provenance",
+    ),
+    SheetSpec(
+        "Financial History",
+        "financial_activity_history",
+        _fields(
+            "history_id profile_id ledger_type activity_id operation recorded_at schema_version "
+            "before_snapshot_json after_snapshot_json source_identity_json provenance_json "
+            "reason actor_type actor_id operation_id mutation_hash"
+        ),
+        ("recorded_at", "history_id"),
+        json_fields=frozenset(
+            {"before_snapshot_json", "after_snapshot_json", "source_identity_json", "provenance_json"}
+        ),
+        timestamp_fields=COMMON_TIMESTAMPS,
+        authority_role="immutable_financial_evidence",
     ),
     SheetSpec(
         "Workbook Lineage",

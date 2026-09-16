@@ -13,7 +13,7 @@ from openforge_api.postgres_schema import (
     sqlite_type_to_postgres,
 )
 
-MIGRATION_ID = "20260915_004_sportsbook_offer_metadata"
+MIGRATION_ID = "20260916_005_import_identity_financial_history"
 
 RUNTIME_EXTENSION_STATEMENTS = (
     """
@@ -178,6 +178,9 @@ def apply_postgres_migrations(connection_url: str) -> str:
                     "SELECT pg_advisory_xact_lock(hashtext('plum_duff_schema_migrations'))"
                 )
                 cursor.execute(
+                    "SELECT set_config('openforge.schema_capability', 'import-history-v1', true)"
+                )
+                cursor.execute(
                     """
                     CREATE TABLE IF NOT EXISTS schema_migrations (
                       migration_id TEXT PRIMARY KEY,
@@ -217,6 +220,155 @@ def apply_postgres_migrations(connection_url: str) -> str:
                     cursor.execute(statement)
                 for statement in RUNTIME_EXTENSION_STATEMENTS:
                     cursor.execute(statement)
+
+                # Physical workbook labels are provenance only. The durable source identity
+                # is Profile + logical namespace + external record ID.
+                cursor.execute(
+                    """
+                    UPDATE import_source_records
+                    SET source_namespace = CASE source_sheet
+                      WHEN 'Accounts' THEN 'account'
+                      WHEN 'Sportsbook Bets' THEN 'sportsbook'
+                      WHEN 'Sportsbook' THEN 'sportsbook'
+                      WHEN 'Free Bets' THEN 'free_bet'
+                      WHEN 'Casino Offers' THEN 'casino'
+                      WHEN 'Casino' THEN 'casino'
+                      WHEN 'Each Way / Extra Places' THEN 'extra_place'
+                      WHEN 'Extra Places' THEN 'extra_place'
+                      WHEN 'Cash Adjustments' THEN 'cash_adjustment'
+                      ELSE 'legacy_' || lower(regexp_replace(source_sheet, '[^a-zA-Z0-9]+', '_', 'g'))
+                    END
+                    WHERE source_namespace = ''
+                    """
+                )
+                cursor.execute(
+                    "ALTER TABLE import_source_records DROP CONSTRAINT IF EXISTS import_source_records_pkey"
+                )
+                cursor.execute(
+                    "ALTER TABLE import_source_records ADD CONSTRAINT import_source_records_pkey "
+                    "PRIMARY KEY (profile_id, source_namespace, source_record_id)"
+                )
+                cursor.execute(
+                    """
+                    UPDATE free_bets
+                    SET origin_qual_bet_resolution_state = 'not_applicable',
+                        origin_qual_bet_resolution_json = '{"schema_version":1,"basis":"no_parent"}'
+                    WHERE trim(origin_qual_bet_id) = ''
+                    """
+                )
+                cursor.execute(
+                    """
+                    UPDATE free_bets
+                    SET origin_qual_bet_source_namespace = 'sportsbook',
+                        origin_qual_bet_resolution_state = 'legacy_unresolved',
+                        origin_qual_bet_resolution_json =
+                          '{"schema_version":1,"basis":"legacy_unknown_relationship"}'
+                    WHERE trim(origin_qual_bet_id) <> ''
+                      AND origin_qual_bet_resolution_state = 'legacy_unresolved'
+                    """
+                )
+                cursor.execute(
+                    """
+                    CREATE OR REPLACE FUNCTION enforce_profile_parent_resolution()
+                    RETURNS trigger LANGUAGE plpgsql AS $$
+                    BEGIN
+                      IF NEW.origin_qual_bet_resolution_state NOT IN (
+                           'resolved', 'missing', 'ambiguous', 'legacy_unresolved',
+                           'not_applicable'
+                         ) THEN
+                        RAISE EXCEPTION 'invalid imported-parent resolution state';
+                      END IF;
+                      IF NEW.origin_qual_bet_resolution_state = 'resolved' THEN
+                        IF trim(NEW.origin_qual_bet_id) = ''
+                           OR trim(NEW.origin_qual_bet_native_id) = ''
+                           OR NOT EXISTS (
+                             SELECT 1 FROM sportsbook_bets
+                             WHERE profile_id = NEW.profile_id
+                               AND sportsbook_bet_id = NEW.origin_qual_bet_native_id
+                           ) THEN
+                          RAISE EXCEPTION 'invalid Profile-scoped imported-parent resolution';
+                        END IF;
+                      ELSIF trim(NEW.origin_qual_bet_native_id) <> '' THEN
+                        RAISE EXCEPTION 'unresolved parent cannot carry a native identity';
+                      END IF;
+                      RETURN NEW;
+                    END;
+                    $$
+                    """
+                )
+                cursor.execute(
+                    "DROP TRIGGER IF EXISTS free_bet_parent_resolution_guard ON free_bets"
+                )
+                cursor.execute(
+                    """
+                    CREATE TRIGGER free_bet_parent_resolution_guard
+                    BEFORE INSERT OR UPDATE OF profile_id, origin_qual_bet_id,
+                      origin_qual_bet_native_id, origin_qual_bet_resolution_state
+                    ON free_bets FOR EACH ROW
+                    EXECUTE FUNCTION enforce_profile_parent_resolution()
+                    """
+                )
+                cursor.execute(
+                    """
+                    CREATE OR REPLACE FUNCTION reject_financial_history_mutation()
+                    RETURNS trigger LANGUAGE plpgsql AS $$
+                    BEGIN
+                      IF TG_OP = 'DELETE' AND EXISTS (
+                        SELECT 1 FROM profile_portable_restore_attempts
+                        WHERE target_profile_id = OLD.profile_id
+                          AND status IN ('RUNNING', 'RECONCILING')
+                      ) THEN
+                        RETURN OLD;
+                      END IF;
+                      RAISE EXCEPTION 'financial history is append-only';
+                    END;
+                    $$
+                    """
+                )
+                cursor.execute(
+                    "DROP TRIGGER IF EXISTS financial_activity_history_no_mutation "
+                    "ON financial_activity_history"
+                )
+                cursor.execute(
+                    """
+                    CREATE TRIGGER financial_activity_history_no_mutation
+                    BEFORE UPDATE OR DELETE ON financial_activity_history
+                    FOR EACH ROW EXECUTE FUNCTION reject_financial_history_mutation()
+                    """
+                )
+                cursor.execute(
+                    """
+                    CREATE OR REPLACE FUNCTION require_import_history_capability()
+                    RETURNS trigger LANGUAGE plpgsql AS $$
+                    BEGIN
+                      IF current_setting('openforge.schema_capability', true)
+                           IS DISTINCT FROM 'import-history-v1' THEN
+                        RAISE EXCEPTION 'application schema upgrade required';
+                      END IF;
+                      IF TG_OP = 'DELETE' THEN
+                        RETURN OLD;
+                      END IF;
+                      RETURN NEW;
+                    END;
+                    $$
+                    """
+                )
+                for table_name in (
+                    "cash_adjustments",
+                    "each_way_extra_places",
+                    "casino_offers",
+                    "sportsbook_bets",
+                    "free_bets",
+                ):
+                    trigger_name = f"{table_name}_schema_capability_guard"
+                    cursor.execute(
+                        f'DROP TRIGGER IF EXISTS "{trigger_name}" ON "{table_name}"'
+                    )
+                    cursor.execute(
+                        f'CREATE TRIGGER "{trigger_name}" BEFORE INSERT OR UPDATE OR DELETE '
+                        f'ON "{table_name}" FOR EACH ROW '
+                        "EXECUTE FUNCTION require_import_history_capability()"
+                    )
 
                 # The former schema retained only one mutable execution/checkpoint/audit
                 # set per ImportRun. Preserve that evidence as one explicitly ambiguous
@@ -305,6 +457,6 @@ def apply_postgres_migrations(connection_url: str) -> str:
                     """,
                     (MIGRATION_ID, plan.schema_signature, checksum),
                 )
-        return plan.schema_signature
+        return str(plan.schema_signature)
     finally:
         blueprint.close()

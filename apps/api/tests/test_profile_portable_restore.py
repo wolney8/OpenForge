@@ -137,8 +137,14 @@ def test_portable_restore_round_trip_remaps_ids_and_passes_both_gates(tmp_path: 
     )
     with connect() as connection:
         connection.execute(
-            "UPDATE free_bets SET origin_qual_bet_id = 'SPORTSBOOK-CASHBACK' "
+            "UPDATE free_bets SET origin_qual_bet_id = 'SOURCE-CASHBACK', "
+            "origin_qual_bet_source_namespace='sportsbook', "
+            "origin_qual_bet_native_id='SPORTSBOOK-CASHBACK', "
+            "origin_qual_bet_resolution_state='resolved', "
+            "origin_qual_bet_resolution_json=? "
             "WHERE free_bet_id = 'FREE-BET-CASHBACK'"
+            ,
+            ('{"schema_version":1,"basis":"synthetic_test"}',),
         )
         connection.execute(
             "UPDATE sportsbook_bets SET conditional_benefit_json = ? "
@@ -232,12 +238,13 @@ def test_portable_restore_round_trip_remaps_ids_and_passes_both_gates(tmp_path: 
 
     with connect() as connection:
         restored_cashback = connection.execute(
-            "SELECT conditional_benefit_json FROM sportsbook_bets "
+            "SELECT sportsbook_bet_id, conditional_benefit_json FROM sportsbook_bets "
             "WHERE profile_id = ? AND event_name = 'Synthetic conditional cashback'",
             (completed["target_profile_id"],),
         ).fetchone()
         restored_credit = connection.execute(
-            "SELECT free_bet_id FROM free_bets WHERE profile_id = ? "
+            "SELECT free_bet_id, origin_qual_bet_id, origin_qual_bet_native_id, "
+            "origin_qual_bet_resolution_state FROM free_bets WHERE profile_id = ? "
             "AND event_name = 'Synthetic cashback credit'",
             (completed["target_profile_id"],),
         ).fetchone()
@@ -246,6 +253,9 @@ def test_portable_restore_round_trip_remaps_ids_and_passes_both_gates(tmp_path: 
     restored_benefit = json.loads(restored_cashback["conditional_benefit_json"])
     assert restored_benefit["linked_awarded_credit_id"] == restored_credit["free_bet_id"]
     assert restored_benefit["linked_awarded_credit_id"] != "FREE-BET-CASHBACK"
+    assert restored_credit["origin_qual_bet_id"] == "SOURCE-CASHBACK"
+    assert restored_credit["origin_qual_bet_native_id"] == restored_cashback["sportsbook_bet_id"]
+    assert restored_credit["origin_qual_bet_resolution_state"] == "resolved"
 
     re_export = build_profile_portable_export(
         completed["target_profile_id"], exported_at="2026-09-05T09:00:00Z"

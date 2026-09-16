@@ -121,7 +121,9 @@ def connect_postgres(connection_url: str) -> PostgresConnectionAdapter:
         raise RuntimeError("PostgreSQL runtime requires OPENFORGE_NEON_DATABASE_URL")
     ensure_postgres_schema(connection_url)
     connection = psycopg.connect(connection_url, connect_timeout=10)
-    return PostgresConnectionAdapter(connection)
+    adapter = PostgresConnectionAdapter(connection)
+    adapter.execute("SELECT set_config('openforge.schema_capability', 'import-history-v1', false)")
+    return adapter
 
 
 def connect_postgres_read_only(connection_url: str) -> PostgresConnectionAdapter:

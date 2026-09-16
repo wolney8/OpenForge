@@ -17,7 +17,14 @@ from xml.etree import ElementTree as ET
 from zipfile import ZipFile
 
 from openforge_api.config import settings
+from openforge_api.financial_history import (
+    FinancialHistoryEvent,
+    append_history_event,
+    ensure_baseline_event,
+    list_history_events,
+)
 from openforge_api.postgres_runtime import connect_postgres, connect_postgres_read_only
+from openforge_api.source_identity import logical_source_namespace, validate_source_namespace
 
 database_operation_lock = threading.RLock()
 _mutation_connection: ContextVar[Any | None] = ContextVar("explicit_mutation_connection", default=None)
@@ -53,6 +60,88 @@ class ProfileDeletionResult:
 
 def utc_now() -> str:
     return datetime.now(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
+
+
+def _history_operation_id(payload: dict[str, Any], *, ledger: str, activity_id: str) -> str:
+    supplied = str(payload.get("_history_operation_id") or "").strip()
+    return supplied or f"{ledger}:{activity_id}:{uuid4().hex}"
+
+
+def _history_reason(payload: dict[str, Any]) -> str:
+    return str(
+        payload.get("_history_reason")
+        or payload.get("manual_override_reason")
+        or payload.get("user_notes")
+        or payload.get("description")
+        or ""
+    ).strip()
+
+
+def _append_financial_history(
+    connection: Any,
+    *,
+    profile_id: str,
+    ledger_type: str,
+    activity_id: str,
+    operation: str,
+    before: Any | None,
+    after: Any | None,
+    payload: dict[str, Any],
+) -> FinancialHistoryEvent:
+    before_map = None if before is None else dict(before)
+    after_map = None if after is None else dict(after)
+    if before_map is not None:
+        baseline_recorded_at = datetime.now(UTC).isoformat(timespec="microseconds").replace(
+            "+00:00", "Z"
+        )
+        ensure_baseline_event(
+            connection,
+            profile_id=profile_id,
+            ledger_type=ledger_type,
+            activity_id=activity_id,
+            current=before_map,
+            recorded_at=baseline_recorded_at,
+        )
+    history_timestamp = datetime.now(UTC).isoformat(timespec="microseconds").replace(
+        "+00:00", "Z"
+    )
+    return append_history_event(
+        connection,
+        profile_id=profile_id,
+        ledger_type=ledger_type,
+        activity_id=activity_id,
+        operation=operation,
+        recorded_at=history_timestamp,
+        before=before_map,
+        after=after_map,
+        operation_id=_history_operation_id(
+            payload, ledger=ledger_type, activity_id=activity_id
+        ),
+        source_identity={
+            "profile_id": profile_id,
+            "ledger_type": ledger_type,
+            "activity_id": activity_id,
+        },
+        provenance={
+            "snapshot_schema": f"{ledger_type}-row-v1",
+            "reporting_semantics": "current-ledger-state-only",
+        },
+        reason=_history_reason(payload),
+        actor_type=str(payload.get("_history_actor_type") or "local_user"),
+        actor_id=str(payload.get("_history_actor_id") or ""),
+    )
+
+
+def get_financial_history(
+    profile_id: str, ledger_type: str, activity_id: str
+) -> list[FinancialHistoryEvent]:
+    with connect() as connection:
+        return list_history_events(
+            connection,
+            profile_id=profile_id,
+            ledger_type=ledger_type,
+            activity_id=activity_id,
+        )
 
 
 def postgres_runtime_enabled() -> bool:
@@ -715,6 +804,9 @@ def connect_read_only() -> Iterator[Any]:
 
 
 def initialize_database(connection: sqlite3.Connection) -> None:
+    connection.create_function(
+        "openforge_schema_capability", 0, lambda: "import-history-v1"
+    )
     connection.executescript(
         """
         CREATE TABLE IF NOT EXISTS profiles (
@@ -1044,6 +1136,7 @@ def initialize_database(connection: sqlite3.Connection) -> None:
         );
 
         CREATE TABLE IF NOT EXISTS import_source_records (
+          source_namespace TEXT NOT NULL DEFAULT '',
           source_sheet TEXT NOT NULL,
           source_record_id TEXT NOT NULL,
           profile_id TEXT NOT NULL,
@@ -1052,7 +1145,7 @@ def initialize_database(connection: sqlite3.Connection) -> None:
           entity_type TEXT NOT NULL DEFAULT '',
           entity_id TEXT NOT NULL DEFAULT '',
           imported_at TEXT NOT NULL,
-          PRIMARY KEY (source_sheet, source_record_id),
+          PRIMARY KEY (profile_id, source_namespace, source_record_id),
           FOREIGN KEY (profile_id) REFERENCES profiles(profile_id) ON DELETE CASCADE,
           FOREIGN KEY (import_batch_id) REFERENCES import_batches(import_batch_id)
         );
@@ -1643,6 +1736,11 @@ def initialize_database(connection: sqlite3.Connection) -> None:
           expiry_datetime TEXT NOT NULL,
           date_settled TEXT NOT NULL,
           origin_qual_bet_id TEXT NOT NULL DEFAULT '',
+          origin_qual_bet_source_namespace TEXT NOT NULL DEFAULT '',
+          origin_qual_bet_native_id TEXT NOT NULL DEFAULT '',
+          origin_qual_bet_resolution_state TEXT NOT NULL DEFAULT 'not_applicable',
+          origin_qual_bet_resolution_json TEXT NOT NULL DEFAULT '{}',
+          origin_qual_bet_import_run_id TEXT NOT NULL DEFAULT '',
           offer_group_id TEXT NOT NULL DEFAULT '',
           source_award_group_id TEXT NOT NULL DEFAULT '',
           source_award_split_index INTEGER NOT NULL DEFAULT 0,
@@ -1889,6 +1987,114 @@ def initialize_database(connection: sqlite3.Connection) -> None:
             ON DELETE CASCADE,
           FOREIGN KEY (profile_id) REFERENCES profiles(profile_id) ON DELETE CASCADE
         );
+
+        CREATE TABLE IF NOT EXISTS financial_activity_history (
+          history_id TEXT PRIMARY KEY,
+          profile_id TEXT NOT NULL,
+          ledger_type TEXT NOT NULL,
+          activity_id TEXT NOT NULL,
+          operation TEXT NOT NULL,
+          recorded_at TEXT NOT NULL,
+          schema_version INTEGER NOT NULL,
+          before_snapshot_json TEXT NOT NULL,
+          after_snapshot_json TEXT NOT NULL,
+          source_identity_json TEXT NOT NULL,
+          provenance_json TEXT NOT NULL,
+          reason TEXT NOT NULL DEFAULT '',
+          actor_type TEXT NOT NULL,
+          actor_id TEXT NOT NULL DEFAULT '',
+          operation_id TEXT NOT NULL,
+          mutation_hash TEXT NOT NULL,
+          UNIQUE (profile_id, operation_id),
+          FOREIGN KEY (profile_id) REFERENCES profiles(profile_id) ON DELETE CASCADE
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_financial_history_activity
+          ON financial_activity_history(profile_id, ledger_type, activity_id, recorded_at);
+        CREATE INDEX IF NOT EXISTS idx_financial_history_profile_time
+          ON financial_activity_history(profile_id, recorded_at);
+
+        CREATE TRIGGER IF NOT EXISTS financial_activity_history_no_update
+        BEFORE UPDATE ON financial_activity_history
+        BEGIN
+          SELECT RAISE(ABORT, 'financial history is append-only');
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS financial_activity_history_no_delete
+        BEFORE DELETE ON financial_activity_history
+        WHEN NOT EXISTS (
+          SELECT 1 FROM profile_portable_restore_attempts
+          WHERE target_profile_id = OLD.profile_id
+            AND status IN ('RUNNING', 'RECONCILING')
+        )
+        BEGIN
+          SELECT RAISE(ABORT, 'financial history is append-only');
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS sportsbook_schema_capability_guard
+        BEFORE INSERT ON sportsbook_bets
+        WHEN openforge_schema_capability() != 'import-history-v1'
+        BEGIN SELECT RAISE(ABORT, 'application schema upgrade required'); END;
+        CREATE TRIGGER IF NOT EXISTS sportsbook_update_schema_capability_guard
+        BEFORE UPDATE ON sportsbook_bets
+        WHEN openforge_schema_capability() != 'import-history-v1'
+        BEGIN SELECT RAISE(ABORT, 'application schema upgrade required'); END;
+        CREATE TRIGGER IF NOT EXISTS sportsbook_delete_schema_capability_guard
+        BEFORE DELETE ON sportsbook_bets
+        WHEN openforge_schema_capability() != 'import-history-v1'
+        BEGIN SELECT RAISE(ABORT, 'application schema upgrade required'); END;
+
+        CREATE TRIGGER IF NOT EXISTS free_bet_schema_capability_guard
+        BEFORE INSERT ON free_bets
+        WHEN openforge_schema_capability() != 'import-history-v1'
+        BEGIN SELECT RAISE(ABORT, 'application schema upgrade required'); END;
+        CREATE TRIGGER IF NOT EXISTS free_bet_update_schema_capability_guard
+        BEFORE UPDATE ON free_bets
+        WHEN openforge_schema_capability() != 'import-history-v1'
+        BEGIN SELECT RAISE(ABORT, 'application schema upgrade required'); END;
+        CREATE TRIGGER IF NOT EXISTS free_bet_delete_schema_capability_guard
+        BEFORE DELETE ON free_bets
+        WHEN openforge_schema_capability() != 'import-history-v1'
+        BEGIN SELECT RAISE(ABORT, 'application schema upgrade required'); END;
+
+        CREATE TRIGGER IF NOT EXISTS cash_adjustment_schema_capability_guard
+        BEFORE INSERT ON cash_adjustments
+        WHEN openforge_schema_capability() != 'import-history-v1'
+        BEGIN SELECT RAISE(ABORT, 'application schema upgrade required'); END;
+        CREATE TRIGGER IF NOT EXISTS cash_adjustment_update_schema_capability_guard
+        BEFORE UPDATE ON cash_adjustments
+        WHEN openforge_schema_capability() != 'import-history-v1'
+        BEGIN SELECT RAISE(ABORT, 'application schema upgrade required'); END;
+        CREATE TRIGGER IF NOT EXISTS cash_adjustment_delete_schema_capability_guard
+        BEFORE DELETE ON cash_adjustments
+        WHEN openforge_schema_capability() != 'import-history-v1'
+        BEGIN SELECT RAISE(ABORT, 'application schema upgrade required'); END;
+
+        CREATE TRIGGER IF NOT EXISTS extra_place_schema_capability_guard
+        BEFORE INSERT ON each_way_extra_places
+        WHEN openforge_schema_capability() != 'import-history-v1'
+        BEGIN SELECT RAISE(ABORT, 'application schema upgrade required'); END;
+        CREATE TRIGGER IF NOT EXISTS extra_place_update_schema_capability_guard
+        BEFORE UPDATE ON each_way_extra_places
+        WHEN openforge_schema_capability() != 'import-history-v1'
+        BEGIN SELECT RAISE(ABORT, 'application schema upgrade required'); END;
+        CREATE TRIGGER IF NOT EXISTS extra_place_delete_schema_capability_guard
+        BEFORE DELETE ON each_way_extra_places
+        WHEN openforge_schema_capability() != 'import-history-v1'
+        BEGIN SELECT RAISE(ABORT, 'application schema upgrade required'); END;
+
+        CREATE TRIGGER IF NOT EXISTS casino_schema_capability_guard
+        BEFORE INSERT ON casino_offers
+        WHEN openforge_schema_capability() != 'import-history-v1'
+        BEGIN SELECT RAISE(ABORT, 'application schema upgrade required'); END;
+        CREATE TRIGGER IF NOT EXISTS casino_update_schema_capability_guard
+        BEFORE UPDATE ON casino_offers
+        WHEN openforge_schema_capability() != 'import-history-v1'
+        BEGIN SELECT RAISE(ABORT, 'application schema upgrade required'); END;
+        CREATE TRIGGER IF NOT EXISTS casino_delete_schema_capability_guard
+        BEFORE DELETE ON casino_offers
+        WHEN openforge_schema_capability() != 'import-history-v1'
+        BEGIN SELECT RAISE(ABORT, 'application schema upgrade required'); END;
         """
     )
     ensure_column(
@@ -2094,6 +2300,33 @@ def initialize_database(connection: sqlite3.Connection) -> None:
     ensure_column(connection, "free_bets", "offer_name", "TEXT NOT NULL DEFAULT ''")
     ensure_column(connection, "free_bets", "fixture_type", "TEXT NOT NULL DEFAULT ''")
     ensure_column(connection, "free_bets", "origin_qual_bet_id", "TEXT NOT NULL DEFAULT ''")
+    ensure_column(
+        connection,
+        "free_bets",
+        "origin_qual_bet_source_namespace",
+        "TEXT NOT NULL DEFAULT ''",
+    )
+    ensure_column(
+        connection, "free_bets", "origin_qual_bet_native_id", "TEXT NOT NULL DEFAULT ''"
+    )
+    ensure_column(
+        connection,
+        "free_bets",
+        "origin_qual_bet_resolution_state",
+        "TEXT NOT NULL DEFAULT 'legacy_unresolved'",
+    )
+    ensure_column(
+        connection,
+        "free_bets",
+        "origin_qual_bet_resolution_json",
+        "TEXT NOT NULL DEFAULT '{}'",
+    )
+    ensure_column(
+        connection,
+        "free_bets",
+        "origin_qual_bet_import_run_id",
+        "TEXT NOT NULL DEFAULT ''",
+    )
     ensure_column(connection, "free_bets", "offer_group_id", "TEXT NOT NULL DEFAULT ''")
     ensure_column(connection, "free_bets", "source_award_group_id", "TEXT NOT NULL DEFAULT ''")
     ensure_column(connection, "free_bets", "source_award_split_index", "INTEGER NOT NULL DEFAULT 0")
@@ -2293,6 +2526,7 @@ def initialize_database(connection: sqlite3.Connection) -> None:
         "settlement_other_costs",
     ):
         ensure_column(connection, "casino_offers", column_name, "TEXT NOT NULL DEFAULT ''")
+    migrate_import_source_identity(connection)
     migrate_legacy_import_attempt_history(connection)
     seed_database(connection)
     seed_bookmaker_catalogue_from_existing(connection)
@@ -2552,6 +2786,124 @@ def migrate_multi_profile_opportunity_targets(connection: sqlite3.Connection) ->
         DROP TABLE multi_profile_opportunity_targets;
         ALTER TABLE multi_profile_opportunity_targets_v2
           RENAME TO multi_profile_opportunity_targets;
+        """
+    )
+
+
+def migrate_import_source_identity(connection: sqlite3.Connection) -> None:
+    """Replace the former global sheet key with a Profile-scoped logical identity."""
+
+    columns = connection.execute("PRAGMA table_info(import_source_records)").fetchall()
+    if not columns:
+        return
+    primary_key = [
+        str(row["name"])
+        for row in sorted((row for row in columns if int(row["pk"])), key=lambda row: row["pk"])
+    ]
+    has_namespace = any(str(row["name"]) == "source_namespace" for row in columns)
+    expected_key = ["profile_id", "source_namespace", "source_record_id"]
+    if not has_namespace or primary_key != expected_key:
+        namespace_expression = (
+            "CASE source_sheet "
+            "WHEN 'Accounts' THEN 'account' "
+            "WHEN 'Sportsbook Bets' THEN 'sportsbook' "
+            "WHEN 'Sportsbook' THEN 'sportsbook' "
+            "WHEN 'Free Bets' THEN 'free_bet' "
+            "WHEN 'Casino Offers' THEN 'casino' "
+            "WHEN 'Casino' THEN 'casino' "
+            "WHEN 'Each Way / Extra Places' THEN 'extra_place' "
+            "WHEN 'Extra Places' THEN 'extra_place' "
+            "WHEN 'Cash Adjustments' THEN 'cash_adjustment' "
+            "ELSE 'legacy_' || lower(replace(trim(source_sheet), ' ', '_')) END"
+        )
+        source_namespace_select = (
+            "source_namespace" if has_namespace else namespace_expression
+        )
+        connection.executescript(
+            f"""
+            CREATE TABLE import_source_records_v2 (
+              source_namespace TEXT NOT NULL DEFAULT '',
+              source_sheet TEXT NOT NULL,
+              source_record_id TEXT NOT NULL,
+              profile_id TEXT NOT NULL,
+              source_hash TEXT NOT NULL,
+              import_batch_id TEXT NOT NULL,
+              entity_type TEXT NOT NULL DEFAULT '',
+              entity_id TEXT NOT NULL DEFAULT '',
+              imported_at TEXT NOT NULL,
+              PRIMARY KEY (profile_id, source_namespace, source_record_id),
+              FOREIGN KEY (profile_id) REFERENCES profiles(profile_id) ON DELETE CASCADE,
+              FOREIGN KEY (import_batch_id) REFERENCES import_batches(import_batch_id)
+            );
+            INSERT INTO import_source_records_v2 (
+              source_namespace, source_sheet, source_record_id, profile_id, source_hash,
+              import_batch_id, entity_type, entity_id, imported_at
+            )
+            SELECT {source_namespace_select}, source_sheet, source_record_id, profile_id,
+                   source_hash, import_batch_id, entity_type, entity_id, imported_at
+            FROM import_source_records;
+            DROP TABLE import_source_records;
+            ALTER TABLE import_source_records_v2 RENAME TO import_source_records;
+            """
+        )
+
+    connection.execute(
+        """
+        UPDATE free_bets
+        SET origin_qual_bet_resolution_state = 'not_applicable',
+            origin_qual_bet_resolution_json = '{"schema_version":1,"basis":"no_parent"}'
+        WHERE TRIM(origin_qual_bet_id) = ''
+        """
+    )
+    connection.executescript(
+        """
+        CREATE TRIGGER IF NOT EXISTS free_bet_parent_resolution_guard_insert
+        BEFORE INSERT ON free_bets
+        WHEN NEW.origin_qual_bet_resolution_state NOT IN (
+               'resolved', 'missing', 'ambiguous', 'legacy_unresolved', 'not_applicable'
+             )
+          OR (NEW.origin_qual_bet_resolution_state = 'resolved' AND (
+                trim(NEW.origin_qual_bet_id) = ''
+                OR trim(NEW.origin_qual_bet_native_id) = ''
+                OR NOT EXISTS (
+                  SELECT 1 FROM sportsbook_bets
+                  WHERE profile_id = NEW.profile_id
+                    AND sportsbook_bet_id = NEW.origin_qual_bet_native_id
+                )
+             ))
+          OR (NEW.origin_qual_bet_resolution_state <> 'resolved'
+              AND trim(NEW.origin_qual_bet_native_id) <> '')
+        BEGIN SELECT RAISE(ABORT, 'invalid Profile-scoped imported-parent resolution'); END;
+
+        CREATE TRIGGER IF NOT EXISTS free_bet_parent_resolution_guard_update
+        BEFORE UPDATE OF profile_id, origin_qual_bet_id, origin_qual_bet_native_id,
+                         origin_qual_bet_resolution_state ON free_bets
+        WHEN NEW.origin_qual_bet_resolution_state NOT IN (
+               'resolved', 'missing', 'ambiguous', 'legacy_unresolved', 'not_applicable'
+             )
+          OR (NEW.origin_qual_bet_resolution_state = 'resolved' AND (
+                trim(NEW.origin_qual_bet_id) = ''
+                OR trim(NEW.origin_qual_bet_native_id) = ''
+                OR NOT EXISTS (
+                  SELECT 1 FROM sportsbook_bets
+                  WHERE profile_id = NEW.profile_id
+                    AND sportsbook_bet_id = NEW.origin_qual_bet_native_id
+                )
+             ))
+          OR (NEW.origin_qual_bet_resolution_state <> 'resolved'
+              AND trim(NEW.origin_qual_bet_native_id) <> '')
+        BEGIN SELECT RAISE(ABORT, 'invalid Profile-scoped imported-parent resolution'); END;
+        """
+    )
+    connection.execute(
+        """
+        UPDATE free_bets
+        SET origin_qual_bet_source_namespace = 'sportsbook',
+            origin_qual_bet_resolution_state = 'legacy_unresolved',
+            origin_qual_bet_resolution_json =
+              '{"schema_version":1,"basis":"historical_relationship_not_reconstructed"}'
+        WHERE TRIM(origin_qual_bet_id) <> ''
+          AND origin_qual_bet_resolution_state = 'legacy_unresolved'
         """
     )
 
@@ -3441,6 +3793,11 @@ class FreeBetRecord:
     expiry_datetime: str
     date_settled: str
     origin_qual_bet_id: str
+    origin_qual_bet_source_namespace: str
+    origin_qual_bet_native_id: str
+    origin_qual_bet_resolution_state: str
+    origin_qual_bet_resolution_json: str
+    origin_qual_bet_import_run_id: str
     offer_group_id: str
     source_award_group_id: str
     source_award_split_index: int
@@ -3766,7 +4123,11 @@ def get_casino_offer_by_id(casino_offer_id: str) -> CasinoOfferRecord | None:
 def create_sportsbook_bet(profile_id: str, payload: dict[str, Any], *,
                          prepare_response: Callable[[SportsbookBetRecord, dict[str, str]], object] | None = None) -> SportsbookBetRecord:
     from openforge_api.sportsbook import validate_write_payload, prepare_write_response
+    history_metadata = {
+        key: value for key, value in payload.items() if key.startswith("_history_")
+    }
     payload = validate_write_payload(profile_id, payload)
+    payload.update(history_metadata)
     commissions = get_profile_exchange_commission_map(profile_id)
     record = {
         "sportsbook_bet_id": payload.get("sportsbook_bet_id") or f"SB-{uuid4().hex[:8].upper()}",
@@ -3889,6 +4250,11 @@ def create_sportsbook_bet(profile_id: str, payload: dict[str, Any], *,
         stored = connection.execute("SELECT * FROM sportsbook_bets WHERE profile_id=? AND sportsbook_bet_id=?",
                                     (profile_id, record["sportsbook_bet_id"])).fetchone()
         assert stored is not None
+        _append_financial_history(
+            connection, profile_id=profile_id, ledger_type="sportsbook",
+            activity_id=record["sportsbook_bet_id"], operation="created",
+            before=None, after=stored, payload=payload,
+        )
         created = map_row(stored)
         (prepare_response or prepare_write_response)(created, commissions)
     return created
@@ -3907,8 +4273,12 @@ def update_sportsbook_bet(
 
     from openforge_api.sportsbook import validate_write_payload, prepare_write_response
     from openforge_api.lay_plan import capture_first_placement_commission
+    history_metadata = {
+        key: value for key, value in payload.items() if key.startswith("_history_")
+    }
     payload = capture_first_placement_commission(existing, payload)
     payload = validate_write_payload(profile_id, {**existing.__dict__, **payload})
+    payload.update(history_metadata)
     commissions = get_profile_exchange_commission_map(profile_id)
 
     updated = {
@@ -4070,6 +4440,16 @@ def update_sportsbook_bet(
         stored = connection.execute("SELECT * FROM sportsbook_bets WHERE profile_id=? AND sportsbook_bet_id=?",
                                     (profile_id, sportsbook_bet_id)).fetchone()
         assert stored is not None
+        operation = str(payload.get("_history_operation") or (
+            "settled" if current["status"] != "Settled" and updated["status"] == "Settled"
+            else "placement_recorded" if not str(current["lay_actual"] or current["lay_matched_stake_1"]).strip() and str(updated["lay_actual"] or updated["lay_matched_stake_1"]).strip()
+            else "edited"
+        ))
+        _append_financial_history(
+            connection, profile_id=profile_id, ledger_type="sportsbook",
+            activity_id=sportsbook_bet_id, operation=operation,
+            before=current, after=stored, payload=payload,
+        )
         saved = map_row(stored)
         (prepare_response or prepare_write_response)(saved, commissions)
     return saved
@@ -4234,7 +4614,9 @@ def list_partial_lay_notifications() -> list[dict[str, Any]]:
     return [dict(row) for row in rows]
 
 
-def delete_sportsbook_bet(profile_id: str, sportsbook_bet_id: str) -> bool:
+def delete_sportsbook_bet(
+    profile_id: str, sportsbook_bet_id: str, deletion_reason: str = ""
+) -> bool:
     existing = get_sportsbook_bet(profile_id, sportsbook_bet_id)
     if existing is None:
         return False
@@ -4247,6 +4629,12 @@ def delete_sportsbook_bet(profile_id: str, sportsbook_bet_id: str) -> bool:
         ).fetchone()
         if current_source is None:
             return False
+        if current_source["status"] not in {"Prospecting", "Not Placed", "Pending"}:
+            from fastapi import HTTPException
+            raise HTTPException(status_code=409, detail="Placed or settled Sportsbook activity cannot be physically deleted; correct, void or archive it.")
+        if not deletion_reason.strip():
+            from fastapi import HTTPException
+            raise HTTPException(status_code=422, detail="A reason is required to remove a Sportsbook draft.")
         if current_source["offer_type"] in {"Bet & Get", "Sign up / Welcome", "Reload", "Refund", "Cashback"} and current_source["status"] in {"Placed", "Settled", "Free Bet Awarded"}:
             from fastapi import HTTPException
             raise HTTPException(status_code=409, detail="This qualifying source has recorded activity. Retain its financial history; do not delete it while issuing or reviewing awards.")
@@ -4259,6 +4647,12 @@ def delete_sportsbook_bet(profile_id: str, sportsbook_bet_id: str) -> bool:
             profile_id=profile_id,
             action="deleted",
             payload={"sportsbook_bet_id": sportsbook_bet_id, "profile_id": profile_id},
+        )
+        _append_financial_history(
+            connection, profile_id=profile_id, ledger_type="sportsbook",
+            activity_id=sportsbook_bet_id, operation="removed",
+            before=existing.__dict__, after=None,
+            payload={"_history_reason": deletion_reason},
         )
         connection.execute(
             """
@@ -4917,12 +5311,17 @@ def create_free_bet(
 ) -> FreeBetRecord:
     from openforge_api.free_bets import prepare_write_response, validate_write_payload
 
+    history_metadata = {
+        key: value for key, value in payload.items() if key.startswith("_history_")
+    }
     payload = validate_write_payload(profile_id, payload)
+    payload.update(history_metadata)
     if any(payload.get(f) for f in ("origin_qual_bet_id","source_award_group_id","source_award_split_index","source_award_split_total")) and transaction is None:
         from fastapi import HTTPException
         raise HTTPException(status_code=409, detail="Use the reviewed server award operation to create linked free bets.")
     tracker_settings = get_profile_tracker_settings(profile_id)
     commission_cache = get_profile_exchange_commission_map(profile_id)
+    origin_id = str(payload.get("origin_qual_bet_id") or "")
     record = {
         "free_bet_id": payload.get("free_bet_id") or f"FB-{uuid4().hex[:8].upper()}",
         "profile_id": profile_id,
@@ -4948,7 +5347,18 @@ def create_free_bet(
         "exchange_name": payload["exchange_name"],
         "expiry_datetime": payload["expiry_datetime"],
         "date_settled": payload["date_settled"],
-        "origin_qual_bet_id": payload.get("origin_qual_bet_id", ""),
+        "origin_qual_bet_id": origin_id,
+        "origin_qual_bet_source_namespace": "sportsbook" if origin_id else "",
+        "origin_qual_bet_native_id": origin_id,
+        "origin_qual_bet_resolution_state": "resolved" if origin_id else "not_applicable",
+        "origin_qual_bet_resolution_json": json.dumps(
+            {
+                "schema_version": 1,
+                "basis": "native_reviewed_award" if origin_id else "no_parent",
+            },
+            sort_keys=True,
+        ),
+        "origin_qual_bet_import_run_id": "",
         "offer_group_id": payload.get("offer_group_id", ""),
         "source_award_group_id": payload.get("source_award_group_id", ""),
         "source_award_split_index": payload.get("source_award_split_index", 0),
@@ -4994,6 +5404,11 @@ def create_free_bet(
               expiry_datetime,
               date_settled,
               origin_qual_bet_id,
+              origin_qual_bet_source_namespace,
+              origin_qual_bet_native_id,
+              origin_qual_bet_resolution_state,
+              origin_qual_bet_resolution_json,
+              origin_qual_bet_import_run_id,
               offer_group_id,
               source_award_group_id,
               source_award_split_index,
@@ -5014,7 +5429,7 @@ def create_free_bet(
             ) VALUES (
               ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
               ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-              ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+              ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
             )
             """,
             tuple(record.values()),
@@ -5040,6 +5455,11 @@ def create_free_bet(
             (profile_id, created_free_bet_id),
         ).fetchone()
         assert stored is not None
+        _append_financial_history(
+            connection, profile_id=profile_id, ledger_type="free_bet",
+            activity_id=created_free_bet_id, operation="created",
+            before=None, after=stored, payload=payload,
+        )
         created = map_free_bet_row(stored)
         # Calculation, response validation and serialization must finish before commit.
         (prepare_response or prepare_write_response)(created, tracker_settings, commission_cache)
@@ -5061,8 +5481,12 @@ def update_free_bet(
     from openforge_api.free_bets import prepare_write_response, validate_write_payload
 
     from openforge_api.lay_plan import capture_first_placement_commission
+    history_metadata = {
+        key: value for key, value in payload.items() if key.startswith("_history_")
+    }
     payload = capture_first_placement_commission(existing, payload)
     payload = validate_write_payload(profile_id, {**existing.__dict__, **payload})
+    payload.update(history_metadata)
     tracker_settings = get_profile_tracker_settings(profile_id)
     commission_cache = get_profile_exchange_commission_map(profile_id)
 
@@ -5214,6 +5638,16 @@ def update_free_bet(
             (profile_id, free_bet_id),
         ).fetchone()
         assert stored is not None
+        operation = str(payload.get("_history_operation") or (
+            "settled" if current["status"] != "Settled" and updated["status"] == "Settled"
+            else "placement_recorded" if not str(current["lay_actual"] or current["lay_matched_stake_1"]).strip() and str(updated["lay_actual"] or updated["lay_matched_stake_1"]).strip()
+            else "edited"
+        ))
+        _append_financial_history(
+            connection, profile_id=profile_id, ledger_type="free_bet",
+            activity_id=free_bet_id, operation=operation,
+            before=current, after=stored, payload=payload,
+        )
         saved = map_free_bet_row(stored)
         (prepare_response or prepare_write_response)(saved, tracker_settings, commission_cache)
     return saved
@@ -5392,7 +5826,11 @@ def lock_award_profile(connection: Any, profile_id: str) -> None:
 
 def linked_free_bet_removal_block_reason(connection: Any, current: Any) -> str:
     from decimal import Decimal, InvalidOperation
-    if not current["origin_qual_bet_id"]:
+    current_map = dict(current)
+    native_parent_id = str(current_map.get("origin_qual_bet_native_id") or "")
+    if not native_parent_id and current_map.get("origin_qual_bet_resolution_state") == "not_applicable":
+        native_parent_id = str(current_map.get("origin_qual_bet_id") or "")
+    if not current_map.get("origin_qual_bet_id"):
         return ""
     def protected(record: Any) -> bool:
         if record.get("status", "") in {"Placed", "Settled"} or record.get("result", "Pending") != "Pending":
@@ -5410,12 +5848,18 @@ def linked_free_bet_removal_block_reason(connection: Any, current: Any) -> str:
     audits = connection.execute("SELECT payload_json FROM free_bet_audit WHERE profile_id=? AND free_bet_id=?", (current["profile_id"],current["free_bet_id"])).fetchall()
     if any(protected(json.loads(a["payload_json"])) for a in audits):
         return "This linked free bet retains protected placement/settlement history."
-    if not connection.execute("SELECT 1 FROM sportsbook_bets WHERE profile_id=? AND sportsbook_bet_id=?", (current["profile_id"],current["origin_qual_bet_id"])).fetchone():
-        return "Legacy award source requires review before removal."
+    if not native_parent_id or not connection.execute(
+        "SELECT 1 FROM sportsbook_bets WHERE profile_id=? AND sportsbook_bet_id=?",
+        (current["profile_id"], native_parent_id),
+    ).fetchone():
+        state = current_map.get("origin_qual_bet_resolution_state") or "legacy_unresolved"
+        return f"Imported award source is {state}; review its parent identity before removal."
     return ""
 
 
-def delete_free_bet(profile_id: str, free_bet_id: str) -> bool:
+def delete_free_bet(
+    profile_id: str, free_bet_id: str, deletion_reason: str = ""
+) -> bool:
     existing = get_free_bet(profile_id, free_bet_id)
     if existing is None:
         return False
@@ -5425,19 +5869,51 @@ def delete_free_bet(profile_id: str, free_bet_id: str) -> bool:
         current = connection.execute("SELECT * FROM free_bets WHERE profile_id=? AND free_bet_id=?", (profile_id, free_bet_id)).fetchone()
         if current is None:
             return False
+        protected_actual_fields = (
+            str(current["lay_actual"] or "").strip(),
+            str(current["lay_matched_stake_1"] or "").strip(),
+            str(current["manual_override_value"] or "").strip(),
+        )
+        if (
+            current["status"] in {"Placed", "Settled"}
+            or current["result"] != "Pending"
+            or any(value not in {"", "0", "0.00"} for value in protected_actual_fields)
+        ):
+            from fastapi import HTTPException
+
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    "Placed or settled Free Bet activity cannot be physically deleted; "
+                    "correct, void or archive it."
+                ),
+            )
+        if not deletion_reason.strip():
+            from fastapi import HTTPException
+            raise HTTPException(status_code=422, detail="A reason is required to remove a Free Bet draft.")
         if current["origin_qual_bet_id"]:
             from fastapi import HTTPException
             reason = linked_free_bet_removal_block_reason(connection,current)
             if reason:
                 raise HTTPException(status_code=409, detail=reason)
             child_audits = [dict(r) for r in connection.execute("SELECT * FROM free_bet_audit WHERE profile_id=? AND free_bet_id=?", (profile_id, free_bet_id)).fetchall()]
-            write_audit_entry(connection, current["origin_qual_bet_id"], profile_id, "award_child_removed", {"child":dict(current), "child_audit":child_audits})
+            native_parent_id = str(current["origin_qual_bet_native_id"] or "")
+            if not native_parent_id and current["origin_qual_bet_resolution_state"] == "not_applicable":
+                native_parent_id = str(current["origin_qual_bet_id"] or "")
+            if native_parent_id:
+                write_audit_entry(connection, native_parent_id, profile_id, "award_child_removed", {"child":dict(current), "child_audit":child_audits})
         write_free_bet_audit_entry(
             connection=connection,
             free_bet_id=free_bet_id,
             profile_id=profile_id,
             action="deleted",
             payload={"free_bet_id": free_bet_id, "profile_id": profile_id},
+        )
+        _append_financial_history(
+            connection, profile_id=profile_id, ledger_type="free_bet",
+            activity_id=free_bet_id, operation="removed",
+            before=current, after=None,
+            payload={"_history_reason": deletion_reason},
         )
         connection.execute(
             """
@@ -5513,6 +5989,11 @@ def create_cash_adjustment(
             profile_id=profile_id,
             action="created",
             payload=record,
+        )
+        _append_financial_history(
+            connection, profile_id=profile_id, ledger_type="cash_adjustment",
+            activity_id=record["cash_adjustment_id"], operation="created",
+            before=None, after=record, payload=payload,
         )
     created = get_cash_adjustment(profile_id, record["cash_adjustment_id"])
     assert created is not None
@@ -5590,6 +6071,16 @@ def update_cash_adjustment(
                 **updated,
             },
         )
+        stored = connection.execute(
+            "SELECT * FROM cash_adjustments WHERE profile_id=? AND cash_adjustment_id=?",
+            (profile_id, cash_adjustment_id),
+        ).fetchone()
+        _append_financial_history(
+            connection, profile_id=profile_id, ledger_type="cash_adjustment",
+            activity_id=cash_adjustment_id,
+            operation=str(payload.get("_history_operation") or "corrected"),
+            before=existing.__dict__, after=stored, payload=payload,
+        )
     return get_cash_adjustment(profile_id, cash_adjustment_id)
 
 
@@ -5598,39 +6089,7 @@ def delete_cash_adjustment(profile_id: str, cash_adjustment_id: str) -> bool:
     if existing is None:
         return False
 
-    with connect() as connection:
-        linked_fee_withdrawal = connection.execute(
-            """
-            SELECT 1 FROM fee_withdrawal_links
-            WHERE profile_id = ? AND cash_adjustment_id = ?
-            LIMIT 1
-            """,
-            (profile_id, cash_adjustment_id),
-        ).fetchone()
-        if linked_fee_withdrawal is not None:
-            raise ValueError("fee_withdrawal_adjustment_locked")
-        write_cash_adjustment_audit_entry(
-            connection=connection,
-            cash_adjustment_id=cash_adjustment_id,
-            profile_id=profile_id,
-            action="deleted",
-            payload={"cash_adjustment_id": cash_adjustment_id, "profile_id": profile_id},
-        )
-        connection.execute(
-            """
-            DELETE FROM cash_adjustment_audit
-            WHERE profile_id = ? AND cash_adjustment_id = ?
-            """,
-            (profile_id, cash_adjustment_id),
-        )
-        deleted = connection.execute(
-            """
-            DELETE FROM cash_adjustments
-            WHERE profile_id = ? AND cash_adjustment_id = ?
-            """,
-            (profile_id, cash_adjustment_id),
-        )
-    return deleted.rowcount > 0
+    raise ValueError("financial_cash_adjustment_requires_correction_or_reversal")
 
 
 def count_cash_adjustment_audit_rows(profile_id: str, cash_adjustment_id: str) -> int:
@@ -5702,6 +6161,11 @@ def create_each_way_extra_place(
             "created",
             record,
         )
+        _append_financial_history(
+            connection, profile_id=profile_id, ledger_type="extra_place",
+            activity_id=record["each_way_extra_place_id"], operation="created",
+            before=None, after=record, payload=payload,
+        )
     created = get_each_way_extra_place(profile_id, record["each_way_extra_place_id"])
     assert created is not None
     return created
@@ -5737,6 +6201,18 @@ def update_each_way_extra_place(
                 **updated,
             },
         )
+        stored = connection.execute(
+            "SELECT * FROM each_way_extra_places WHERE profile_id=? AND each_way_extra_place_id=?",
+            (profile_id, each_way_extra_place_id),
+        ).fetchone()
+        history_operation = str(payload.get("_history_operation") or (
+            "settled" if existing.status != "Settled" and updated["status"] == "Settled" else "edited"
+        ))
+        _append_financial_history(
+            connection, profile_id=profile_id, ledger_type="extra_place",
+            activity_id=each_way_extra_place_id, operation=history_operation,
+            before=existing.__dict__, after=stored, payload=payload,
+        )
     return get_each_way_extra_place(profile_id, each_way_extra_place_id)
 
 
@@ -5748,8 +6224,10 @@ def delete_each_way_extra_place(
     existing = get_each_way_extra_place(profile_id, each_way_extra_place_id)
     if existing is None:
         return False
-    if existing.status == "Settled" and not deletion_reason.strip():
-        raise ValueError("settled_each_way_extra_place_requires_deletion_reason")
+    if existing.status not in {"Prospecting", "Pending", "Not Placed"}:
+        raise ValueError("financial_extra_place_cannot_be_physically_deleted")
+    if not deletion_reason.strip():
+        raise ValueError("extra_place_removal_requires_reason")
     with connect() as connection:
         write_each_way_extra_place_audit_entry(
             connection,
@@ -5761,6 +6239,12 @@ def delete_each_way_extra_place(
                 "profile_id": profile_id,
                 "deletion_reason": deletion_reason.strip(),
             },
+        )
+        _append_financial_history(
+            connection, profile_id=profile_id, ledger_type="extra_place",
+            activity_id=each_way_extra_place_id, operation="removed",
+            before=existing.__dict__, after=None,
+            payload={"_history_reason": deletion_reason},
         )
         deleted = connection.execute(
             "DELETE FROM each_way_extra_places WHERE profile_id = ? "
@@ -5882,6 +6366,11 @@ def create_casino_offer(
             profile_id=profile_id,
             action="created",
             payload=record,
+        )
+        _append_financial_history(
+            connection, profile_id=profile_id, ledger_type="casino",
+            activity_id=record["casino_offer_id"], operation="created",
+            before=None, after=record, payload=dict(payload),
         )
         if prepare_response is not None:
             prepared_created = CasinoOfferRecord(**record)
@@ -6045,14 +6534,36 @@ def update_casino_offer(
             action="updated",
             payload={"casino_offer_id": casino_offer_id, "profile_id": profile_id, **updated},
         )
+        stored = connection.execute(
+            "SELECT * FROM casino_offers WHERE profile_id=? AND casino_offer_id=?",
+            (profile_id, casino_offer_id),
+        ).fetchone()
+        operation = str(payload.get("_history_operation") or (
+            "settled" if existing.status != "Settled" and updated["status"] == "Settled" else "edited"
+        ))
+        _append_financial_history(
+            connection, profile_id=profile_id, ledger_type="casino",
+            activity_id=casino_offer_id, operation=operation,
+            before=existing.__dict__, after=stored, payload=dict(payload),
+        )
     return get_casino_offer(profile_id, casino_offer_id)
 
 
-def delete_casino_offer(profile_id: str, casino_offer_id: str) -> bool:
+def delete_casino_offer(
+    profile_id: str, casino_offer_id: str, deletion_reason: str = ""
+) -> bool:
     existing = get_casino_offer(profile_id, casino_offer_id)
     if existing is None:
         return False
 
+    if existing.status not in {"Prospecting", "Pending", "Not Started"}:
+        raise ValueError("financial_casino_activity_cannot_be_physically_deleted")
+    if any(str(value).strip() not in {"", "0", "0.00"} for value in (
+        existing.own_cash_committed, existing.cash_returned, existing.final_net_pnl
+    )):
+        raise ValueError("financial_casino_activity_cannot_be_physically_deleted")
+    if not deletion_reason.strip():
+        raise ValueError("casino_removal_requires_reason")
     with connect() as connection:
         write_casino_offer_audit_entry(
             connection=connection,
@@ -6060,6 +6571,12 @@ def delete_casino_offer(profile_id: str, casino_offer_id: str) -> bool:
             profile_id=profile_id,
             action="deleted",
             payload={"casino_offer_id": casino_offer_id, "profile_id": profile_id},
+        )
+        _append_financial_history(
+            connection, profile_id=profile_id, ledger_type="casino",
+            activity_id=casino_offer_id, operation="removed",
+            before=existing.__dict__, after=None,
+            payload={"_history_reason": deletion_reason},
         )
         connection.execute(
             """
@@ -6352,6 +6869,7 @@ class ImportSourceRecord:
     entity_type: str
     entity_id: str
     imported_at: str
+    source_namespace: str = ""
 
 
 @dataclass(frozen=True)
@@ -8373,17 +8891,95 @@ def delete_unconfirmed_import_batch(profile_id: str, import_batch_id: str) -> bo
     return True
 
 
-def get_import_source_record(source_sheet: str, source_record_id: str) -> ImportSourceRecord | None:
+def get_import_source_record(
+    profile_id: str, source_namespace: str, source_record_id: str
+) -> ImportSourceRecord | None:
+    namespace = validate_source_namespace(source_namespace)
     with connect() as connection:
         row = connection.execute(
             """
             SELECT *
             FROM import_source_records
-            WHERE source_sheet = ? AND source_record_id = ?
+            WHERE profile_id = ? AND source_namespace = ? AND source_record_id = ?
             """,
-            (source_sheet, source_record_id),
+            (profile_id, namespace, source_record_id),
         ).fetchone()
     return None if row is None else map_import_source_row(row)
+
+
+def reresolve_imported_free_bet_parent(
+    profile_id: str,
+    free_bet_id: str,
+    *,
+    operation_id: str,
+    actor_id: str = "fund-manager-local",
+) -> FreeBetRecord | None:
+    """Explicitly resolve an imported parent without guessing or rewriting source identity."""
+    with connect() as connection:
+        lock_award_profile(connection, profile_id)
+        current = connection.execute(
+            "SELECT * FROM free_bets WHERE profile_id=? AND free_bet_id=?",
+            (profile_id, free_bet_id),
+        ).fetchone()
+        if current is None:
+            return None
+        external_id = str(current["origin_qual_bet_id"] or "").strip()
+        namespace = str(current["origin_qual_bet_source_namespace"] or "sportsbook")
+        if not external_id:
+            raise ValueError("This Free Bet has no supplied parent source identity")
+        prior_evidence = json.loads(str(current["origin_qual_bet_resolution_json"] or "{}"))
+        if prior_evidence.get("last_operation_id") == operation_id:
+            return map_free_bet_row(current)
+        source_rows = connection.execute(
+            """
+            SELECT entity_id FROM import_source_records
+            WHERE profile_id=? AND source_namespace=? AND source_record_id=?
+              AND entity_type='sportsbook_bet'
+            """,
+            (profile_id, namespace, external_id),
+        ).fetchall()
+        candidates = [
+            str(row["entity_id"])
+            for row in source_rows
+            if connection.execute(
+                "SELECT 1 FROM sportsbook_bets WHERE profile_id=? AND sportsbook_bet_id=?",
+                (profile_id, row["entity_id"]),
+            ).fetchone()
+        ]
+        if len(candidates) == 1:
+            state, native_id = "resolved", candidates[0]
+        elif not candidates:
+            state, native_id = "missing", ""
+        else:
+            state, native_id = "ambiguous", ""
+        evidence = {
+            "schema_version": 1,
+            "basis": "explicit_reresolution",
+            "source_namespace": namespace,
+            "source_external_id": external_id,
+            "candidate_native_ids": candidates,
+            "last_operation_id": operation_id,
+            "resolved_at": utc_now(),
+            "resolved_by": actor_id,
+        }
+        connection.execute(
+            """
+            UPDATE free_bets
+            SET origin_qual_bet_native_id=?, origin_qual_bet_resolution_state=?,
+                origin_qual_bet_resolution_json=?, updated_at=?
+            WHERE profile_id=? AND free_bet_id=?
+            """,
+            (native_id, state, json.dumps(evidence, sort_keys=True), utc_now(), profile_id, free_bet_id),
+        )
+        write_free_bet_audit_entry(
+            connection, free_bet_id, profile_id, "import_parent_reresolved", evidence
+        )
+        stored = connection.execute(
+            "SELECT * FROM free_bets WHERE profile_id=? AND free_bet_id=?",
+            (profile_id, free_bet_id),
+        ).fetchone()
+        assert stored is not None
+        return map_free_bet_row(stored)
 
 
 def register_import_source_record(
@@ -8395,8 +8991,13 @@ def register_import_source_record(
     import_batch_id: str,
     entity_type: str = "",
     entity_id: str = "",
+    source_namespace: str = "",
 ) -> ImportSourceRecord:
+    namespace = validate_source_namespace(
+        source_namespace or logical_source_namespace(source_sheet)
+    )
     record = {
+        "source_namespace": namespace,
         "source_sheet": source_sheet,
         "source_record_id": source_record_id,
         "profile_id": profile_id,
@@ -8407,22 +9008,47 @@ def register_import_source_record(
         "imported_at": utc_now(),
     }
     with connect() as connection:
+        existing = connection.execute(
+            "SELECT * FROM import_source_records WHERE profile_id=? "
+            "AND source_namespace=? AND source_record_id=?",
+            (profile_id, namespace, source_record_id),
+        ).fetchone()
+        if existing is not None:
+            same_result = (
+                str(existing["source_hash"]) == source_hash
+                and str(existing["entity_type"]) == entity_type
+                and str(existing["entity_id"]) == entity_id
+            )
+            if not same_result:
+                raise ValueError(
+                    "Source identity already exists with changed contents or a different result"
+                )
+            return map_import_source_row(existing)
         connection.execute(
             """
             INSERT INTO import_source_records (
-              source_sheet,
-              source_record_id,
-              profile_id,
-              source_hash,
-              import_batch_id,
-              entity_type,
-              entity_id,
-              imported_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+              source_namespace, source_sheet, source_record_id, profile_id, source_hash,
+              import_batch_id, entity_type, entity_id, imported_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(profile_id, source_namespace, source_record_id) DO NOTHING
             """,
             tuple(record.values()),
         )
-    return ImportSourceRecord(**record)
+        stored = connection.execute(
+            "SELECT * FROM import_source_records WHERE profile_id=? "
+            "AND source_namespace=? AND source_record_id=?",
+            (profile_id, namespace, source_record_id),
+        ).fetchone()
+        assert stored is not None
+        if (
+            str(stored["source_hash"]) != source_hash
+            or str(stored["entity_type"]) != entity_type
+            or str(stored["entity_id"]) != entity_id
+        ):
+            raise ValueError(
+                "Source identity already exists with changed contents or a different result"
+            )
+    return map_import_source_row(stored)
 
 
 def get_import_source_record_for_entity(
@@ -8561,11 +9187,12 @@ def confirm_sportsbook_import_batch(
             connection.execute(
                 """
                 INSERT INTO import_source_records (
-                  source_sheet, source_record_id, profile_id, source_hash,
+                  source_namespace, source_sheet, source_record_id, profile_id, source_hash,
                   import_batch_id, entity_type, entity_id, imported_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
+                    logical_source_namespace(staged_row["source_sheet"]),
                     staged_row["source_sheet"],
                     staged_row["source_record_id"],
                     profile_id,
@@ -8591,6 +9218,20 @@ def confirm_sportsbook_import_batch(
                 (profile_id, record["sportsbook_bet_id"]),
             ).fetchone()
             assert stored is not None
+            _append_financial_history(
+                connection,
+                profile_id=profile_id,
+                ledger_type="sportsbook",
+                activity_id=record["sportsbook_bet_id"],
+                operation="baseline_observed",
+                before=None,
+                after=stored,
+                payload={
+                    "_history_operation_id": (
+                        f"import:{import_batch_id}:{staged_row['source_record_id']}"
+                    )
+                },
+            )
             # Import keeps approved source precision/lifecycle; strict read preparation
             # rejects corrupt finances before row, audit, provenance and batch commit.
             prepare_write_response(map_row(stored), commissions)
@@ -8706,6 +9347,47 @@ def confirm_free_bet_import_batch(
             for field in ("date_settled", "expiry_datetime"):
                 validate_free_bet_date(payload.get(field, ""))
             timestamp = utc_now()
+            parent_external_id = str(payload.get("origin_qual_bet_id") or "").strip()
+            parent_native_id = ""
+            parent_state = "not_applicable"
+            parent_evidence: dict[str, Any] = {
+                "schema_version": 1,
+                "basis": "no_parent",
+                "candidate_native_ids": [],
+            }
+            if parent_external_id:
+                parent_source = connection.execute(
+                    """
+                    SELECT entity_type, entity_id, source_hash, import_batch_id
+                    FROM import_source_records
+                    WHERE profile_id = ? AND source_namespace = 'sportsbook'
+                      AND source_record_id = ?
+                    """,
+                    (profile_id, parent_external_id),
+                ).fetchone()
+                parent_exists = None
+                if parent_source is not None and parent_source["entity_type"] == "sportsbook_bet":
+                    parent_exists = connection.execute(
+                        "SELECT 1 FROM sportsbook_bets "
+                        "WHERE profile_id = ? AND sportsbook_bet_id = ?",
+                        (profile_id, parent_source["entity_id"]),
+                    ).fetchone()
+                if parent_source is not None and parent_exists is not None:
+                    parent_native_id = str(parent_source["entity_id"])
+                    parent_state = "resolved"
+                    parent_evidence = {
+                        "schema_version": 1,
+                        "basis": "profile_scoped_import_source",
+                        "candidate_native_ids": [parent_native_id],
+                        "source_hash": str(parent_source["source_hash"]),
+                    }
+                else:
+                    parent_state = "missing"
+                    parent_evidence = {
+                        "schema_version": 1,
+                        "basis": "no_profile_scoped_parent_at_import",
+                        "candidate_native_ids": [],
+                    }
             record = {
                 "free_bet_id": f"FB-{uuid4().hex[:8].upper()}",
                 "profile_id": profile_id,
@@ -8729,7 +9411,16 @@ def confirm_free_bet_import_batch(
                 "exchange_name": payload["exchange_name"],
                 "expiry_datetime": payload["expiry_datetime"],
                 "date_settled": payload["date_settled"],
-                "origin_qual_bet_id": payload["origin_qual_bet_id"],
+                "origin_qual_bet_id": parent_external_id,
+                "origin_qual_bet_source_namespace": (
+                    "sportsbook" if parent_external_id else ""
+                ),
+                "origin_qual_bet_native_id": parent_native_id,
+                "origin_qual_bet_resolution_state": parent_state,
+                "origin_qual_bet_resolution_json": json.dumps(
+                    parent_evidence, sort_keys=True
+                ),
+                "origin_qual_bet_import_run_id": import_batch_id,
                 "offer_group_id": payload["offer_group_id"],
                 "user_notes": payload["user_notes"],
                 "manual_override_value": payload["manual_override_value"],
@@ -8744,12 +9435,15 @@ def confirm_free_bet_import_batch(
                   offer_type, bet_type, offer_name, fixture_type, status, result,
                   retention_mode, free_bet_value, back_odds, match_strategy, lay_odds_1,
                   lay_actual, lay_matched_stake_1, lay_commission_1, exchange_name,
-                  expiry_datetime, date_settled, origin_qual_bet_id, offer_group_id,
+                  expiry_datetime, date_settled, origin_qual_bet_id,
+                  origin_qual_bet_source_namespace, origin_qual_bet_native_id,
+                  origin_qual_bet_resolution_state, origin_qual_bet_resolution_json,
+                  origin_qual_bet_import_run_id, offer_group_id,
                   user_notes, manual_override_value, manual_override_reason, created_at,
                   updated_at
                 ) VALUES (
                   ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                  ?, ?, ?, ?, ?, ?
+                  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
                 )
                 """,
                 tuple(record.values()),
@@ -8770,15 +9464,31 @@ def confirm_free_bet_import_batch(
                 "SELECT * FROM free_bets WHERE profile_id = ? AND free_bet_id = ?",
                 (profile_id, record["free_bet_id"]),
             ).fetchone()
+            assert inserted is not None
+            _append_financial_history(
+                connection,
+                profile_id=profile_id,
+                ledger_type="free_bet",
+                activity_id=record["free_bet_id"],
+                operation="baseline_observed",
+                before=None,
+                after=inserted,
+                payload={
+                    "_history_operation_id": (
+                        f"import:{import_batch_id}:{staged_row['source_record_id']}"
+                    )
+                },
+            )
             prepare_write_response(map_free_bet_row(inserted), tracker_settings, commission_cache)
             connection.execute(
                 """
                 INSERT INTO import_source_records (
-                  source_sheet, source_record_id, profile_id, source_hash,
+                  source_namespace, source_sheet, source_record_id, profile_id, source_hash,
                   import_batch_id, entity_type, entity_id, imported_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
+                    logical_source_namespace(staged_row["source_sheet"]),
                     staged_row["source_sheet"],
                     staged_row["source_record_id"],
                     profile_id,
@@ -8937,14 +9647,34 @@ def confirm_casino_offer_import_batch(
                     "backup_snapshot_id": backup_snapshot_id,
                 },
             )
+            stored = connection.execute(
+                "SELECT * FROM casino_offers WHERE profile_id=? AND casino_offer_id=?",
+                (profile_id, record["casino_offer_id"]),
+            ).fetchone()
+            assert stored is not None
+            _append_financial_history(
+                connection,
+                profile_id=profile_id,
+                ledger_type="casino",
+                activity_id=record["casino_offer_id"],
+                operation="baseline_observed",
+                before=None,
+                after=stored,
+                payload={
+                    "_history_operation_id": (
+                        f"import:{import_batch_id}:{staged_row['source_record_id']}"
+                    )
+                },
+            )
             connection.execute(
                 """
                 INSERT INTO import_source_records (
-                  source_sheet, source_record_id, profile_id, source_hash,
+                  source_namespace, source_sheet, source_record_id, profile_id, source_hash,
                   import_batch_id, entity_type, entity_id, imported_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
+                    logical_source_namespace(staged_row["source_sheet"]),
                     staged_row["source_sheet"],
                     staged_row["source_record_id"],
                     profile_id,
@@ -9080,14 +9810,34 @@ def confirm_cash_adjustment_import_batch(
                     "backup_snapshot_id": backup_snapshot_id,
                 },
             )
+            stored = connection.execute(
+                "SELECT * FROM cash_adjustments WHERE profile_id=? AND cash_adjustment_id=?",
+                (profile_id, record["cash_adjustment_id"]),
+            ).fetchone()
+            assert stored is not None
+            _append_financial_history(
+                connection,
+                profile_id=profile_id,
+                ledger_type="cash_adjustment",
+                activity_id=record["cash_adjustment_id"],
+                operation="baseline_observed",
+                before=None,
+                after=stored,
+                payload={
+                    "_history_operation_id": (
+                        f"import:{import_batch_id}:{staged_row['source_record_id']}"
+                    )
+                },
+            )
             connection.execute(
                 """
                 INSERT INTO import_source_records (
-                  source_sheet, source_record_id, profile_id, source_hash,
+                  source_namespace, source_sheet, source_record_id, profile_id, source_hash,
                   import_batch_id, entity_type, entity_id, imported_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
+                    logical_source_namespace(staged_row["source_sheet"]),
                     staged_row["source_sheet"],
                     staged_row["source_record_id"],
                     profile_id,
@@ -9198,9 +9948,13 @@ def confirm_account_import_batch(
             source = connection.execute(
                 """
                 SELECT * FROM import_source_records
-                WHERE source_sheet = ? AND source_record_id = ?
+                WHERE profile_id = ? AND source_namespace = ? AND source_record_id = ?
                 """,
-                (staged_row["source_sheet"], staged_row["source_record_id"]),
+                (
+                    profile_id,
+                    logical_source_namespace(staged_row["source_sheet"]),
+                    staged_row["source_record_id"],
+                ),
             ).fetchone()
             target_account_id = (
                 str(source["entity_id"])
@@ -9292,11 +10046,12 @@ def confirm_account_import_batch(
                 connection.execute(
                     """
                     INSERT INTO import_source_records (
-                      source_sheet, source_record_id, profile_id, source_hash,
+                      source_namespace, source_sheet, source_record_id, profile_id, source_hash,
                       import_batch_id, entity_type, entity_id, imported_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
+                        logical_source_namespace(staged_row["source_sheet"]),
                         staged_row["source_sheet"],
                         staged_row["source_record_id"],
                         profile_id,
@@ -9312,8 +10067,8 @@ def confirm_account_import_batch(
                     """
                     UPDATE import_source_records
                     SET source_hash = ?, import_batch_id = ?, entity_type = 'account',
-                        entity_id = ?, imported_at = ?
-                    WHERE source_sheet = ? AND source_record_id = ? AND profile_id = ?
+                        entity_id = ?, imported_at = ?, source_sheet = ?
+                    WHERE profile_id = ? AND source_namespace = ? AND source_record_id = ?
                     """,
                     (
                         staged_row["source_hash"],
@@ -9321,8 +10076,9 @@ def confirm_account_import_batch(
                         record["account_id"],
                         timestamp,
                         staged_row["source_sheet"],
-                        staged_row["source_record_id"],
                         profile_id,
+                        logical_source_namespace(staged_row["source_sheet"]),
+                        staged_row["source_record_id"],
                     ),
                 )
             connection.execute(

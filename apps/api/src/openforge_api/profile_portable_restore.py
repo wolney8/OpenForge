@@ -6,6 +6,7 @@ import json
 import re
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from decimal import Decimal
 from io import BytesIO
 from pathlib import PurePath
 from typing import Any, Mapping, Sequence
@@ -27,6 +28,7 @@ from openforge_api.casino_offers import CasinoOfferPayload
 from openforge_api.db import connect, postgres_runtime_enabled
 from openforge_api.each_way_extra_places import EachWayExtraPlacePayload
 from openforge_api.free_bets import FreeBetPayload
+from openforge_api.financial_history import mutation_hash
 from openforge_api.profile_portable_export import (
     EXPORT_FORMAT_VERSION,
     NULL_FIELDS_COLUMN,
@@ -40,6 +42,10 @@ from openforge_api.profile_portable_export import (
     _logical_checksum,
     _sha256,
     build_profile_portable_export,
+)
+from openforge_api.source_identity import (
+    validate_parent_resolution_state,
+    validate_source_namespace,
 )
 from openforge_api.profile_workbook_cutover import generate_post_import_operational_health
 from openforge_api.sportsbook import SportsbookBetPayload
@@ -135,11 +141,12 @@ PRIMARY_IDENTITIES: dict[str, tuple[str, str]] = {
     "Profile Lookups": ("lookup_value_id", "profile_lookup"),
     "Quick Actions": ("action_id", "quick_action"),
     "Opportunity Links": ("target_id", "opportunity_target"),
+    "Financial History": ("history_id", "financial_history"),
 }
 
 FOREIGN_ID_FIELDS: dict[tuple[str, str], str] = {
     ("Balance Snapshots", "account_id"): "account",
-    ("Free Bets", "origin_qual_bet_id"): "sportsbook_bet",
+    ("Free Bets", "origin_qual_bet_native_id"): "sportsbook_bet",
     ("Fee Revisions", "fee_period_id"): "fee_period",
     ("Fee Corrections", "source_fee_period_id"): "fee_period",
     ("Fee Corrections", "target_fee_period_id"): "fee_period",
@@ -160,10 +167,17 @@ ENTITY_IDENTITY_DOMAINS = {
 }
 
 PROVENANCE_SHEETS = {
-    "Source Identities",
     "Workbook Lineage",
     "Review Decisions",
     "Reconciliation",
+}
+
+HISTORY_ACTIVITY_DOMAINS = {
+    "sportsbook": "sportsbook_bet",
+    "free_bet": "free_bet",
+    "casino": "casino_offer",
+    "extra_place": "extra_place",
+    "cash_adjustment": "cash_adjustment",
 }
 
 FINANCIAL_SHEETS = {
@@ -628,13 +642,41 @@ def _validate_domain_rows(parsed: ParsedPortableBackup) -> None:
         SportsbookBetPayload.model_validate(row)
     for row in parsed.sheets["Free Bets"]:
         FreeBetPayload.model_validate(row)
+        state = validate_parent_resolution_state(
+            str(row.get("origin_qual_bet_resolution_state") or "not_applicable")
+        )
+        external_id = str(row.get("origin_qual_bet_id") or "").strip()
+        native_id = str(row.get("origin_qual_bet_native_id") or "").strip()
+        if state == "resolved" and (not external_id or not native_id):
+            raise PortableRestoreError(
+                "Resolved Free Bet parent evidence requires external and native identities"
+            )
+        if state != "resolved" and native_id:
+            raise PortableRestoreError(
+                "An unresolved Free Bet parent must not carry a native identity"
+            )
+        evidence = json.loads(str(row.get("origin_qual_bet_resolution_json") or "{}"))
+        legacy_empty_not_applicable = state == "not_applicable" and evidence == {}
+        if (
+            not isinstance(evidence, dict)
+            or not legacy_empty_not_applicable
+            and int(evidence.get("schema_version", 0)) != 1
+        ):
+            raise PortableRestoreError("Free Bet parent evidence has an unsupported version")
     for row in parsed.sheets["Casino"]:
         CasinoOfferPayload.model_validate(row)
     for row in parsed.sheets["Cash Adjustments"]:
-        CashAdjustmentPayload.model_validate(row)
+        # Portable recovery preserves valid historical precision. New-write validation
+        # still receives a two-decimal representative value without rewriting the row.
+        amount = Decimal(str(row.get("amount") or "0"))
+        if not amount.is_finite():
+            raise PortableRestoreError("Cash Adjustment amount must be finite")
+        CashAdjustmentPayload.model_validate({**row, "amount": format(amount, ".2f")})
     for row in parsed.sheets["Extra Places"]:
         if row.get("calculation_provenance") in {"native", "imported_historical"}:
             EachWayExtraPlacePayload.model_validate(row)
+    for row in parsed.sheets["Source Identities"]:
+        validate_source_namespace(str(row.get("source_namespace") or ""))
 
 
 def _serialize_parsed(parsed: ParsedPortableBackup) -> str:
@@ -884,6 +926,7 @@ def _new_runtime_id(domain: str) -> str:
         "profile_lookup": "lookup",
         "quick_action": "quick-action",
         "opportunity_target": "opportunity-target",
+        "financial_history": "financial-history",
     }[domain]
     return f"{prefix}-{uuid4().hex}"
 
@@ -1002,6 +1045,46 @@ def _resolved_rows(
                 row["entity_id"] = identity_maps.get(identity_domain, {}).get(
                     portable_entity_id, portable_entity_id
                 )
+            if spec.name == "Financial History":
+                ledger_type = str(row.get("ledger_type") or "")
+                history_domain = HISTORY_ACTIVITY_DOMAINS.get(ledger_type)
+                portable_activity_id = str(row.get("activity_id") or "")
+                if history_domain:
+                    row["activity_id"] = identity_maps.get(history_domain, {}).get(
+                        portable_activity_id, portable_activity_id
+                    )
+                for field in ("before_snapshot_json", "after_snapshot_json", "source_identity_json"):
+                    raw = row.get(field)
+                    if not raw:
+                        continue
+                    value = json.loads(str(raw))
+                    if isinstance(value, dict):
+                        value["profile_id"] = target_profile_id
+                        for id_field, id_domain in (
+                            ("sportsbook_bet_id", "sportsbook_bet"),
+                            ("free_bet_id", "free_bet"),
+                            ("casino_offer_id", "casino_offer"),
+                            ("each_way_extra_place_id", "extra_place"),
+                            ("cash_adjustment_id", "cash_adjustment"),
+                            ("activity_id", history_domain or ""),
+                        ):
+                            if value.get(id_field) and id_domain:
+                                value[id_field] = identity_maps.get(id_domain, {}).get(
+                                    str(value[id_field]), value[id_field]
+                                )
+                        row[field] = _canonical_json(value)
+                provenance = json.loads(str(row.get("provenance_json") or "{}"))
+                row["mutation_hash"] = mutation_hash(
+                    profile_id=target_profile_id,
+                    ledger_type=ledger_type,
+                    activity_id=str(row["activity_id"]),
+                    operation=str(row["operation"]),
+                    before=json.loads(str(row["before_snapshot_json"])) if row.get("before_snapshot_json") else None,
+                    after=json.loads(str(row["after_snapshot_json"])) if row.get("after_snapshot_json") else None,
+                    source_identity=json.loads(str(row["source_identity_json"] or "{}")),
+                    provenance=provenance,
+                    reason=str(row.get("reason") or ""),
+                )
             rows.append(row)
         result[spec.name] = rows
     if source_profile_id == target_profile_id:
@@ -1073,8 +1156,27 @@ def _write_restore_rows(
 ) -> int:
     write_count = 0
     now = _now()
+    source_import_batch_id = f"IMPORT-RESTORE-{execution_id[-12:]}"
     for spec in PORTABLE_PAYLOAD_SPECS:
         rows = rows_by_sheet[spec.name]
+        if spec.name == "Source Identities" and rows:
+            connection.execute(
+                """
+                INSERT INTO import_batches (
+                  import_batch_id, profile_id, source_filename, source_type, mapping_version,
+                  status, row_count, error_count, warning_count, summary_json,
+                  backup_snapshot_id, started_at, completed_at
+                ) VALUES (?, ?, ?, 'portable_restore', 'portable-v1', 'completed', ?, 0, 0, '{}', '', ?, ?)
+                """,
+                (
+                    source_import_batch_id,
+                    target_profile_id,
+                    "portable-profile-restore.xlsx",
+                    len(rows),
+                    now,
+                    now,
+                ),
+            )
         if spec.name in PROVENANCE_SHEETS:
             for index, row in enumerate(rows):
                 row_id = _row_identifier(spec, row, index)
@@ -1105,7 +1207,22 @@ def _write_restore_rows(
             continue
         for index, row in enumerate(rows):
             row_id = _row_identifier(spec, row, index)
-            _insert_row(connection, spec, row)
+            if spec.name == "Source Identities":
+                connection.execute(
+                    """
+                    INSERT INTO import_source_records (
+                      source_namespace, source_sheet, source_record_id, profile_id,
+                      source_hash, import_batch_id, entity_type, entity_id, imported_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        row["source_namespace"], row["source_sheet"], row["source_record_id"],
+                        row["profile_id"], row["source_hash"], source_import_batch_id,
+                        row["entity_type"], row["entity_id"], row["imported_at"],
+                    ),
+                )
+            else:
+                _insert_row(connection, spec, row)
             _audit_insert(
                 connection,
                 execution_id=execution_id,
@@ -1187,6 +1304,37 @@ def _normalized_projection(
                 row["entity_id"] = inverse.get(identity_domain, {}).get(
                     str(row["entity_id"]), row["entity_id"]
                 )
+            if spec.name == "Financial History":
+                ledger_type = str(row.get("ledger_type") or "")
+                history_domain = HISTORY_ACTIVITY_DOMAINS.get(ledger_type)
+                if history_domain and row.get("activity_id"):
+                    row["activity_id"] = inverse.get(history_domain, {}).get(
+                        str(row["activity_id"]), row["activity_id"]
+                    )
+                for field in ("before_snapshot_json", "after_snapshot_json", "source_identity_json"):
+                    raw = row.get(field)
+                    if not raw:
+                        continue
+                    value = json.loads(str(raw))
+                    if isinstance(value, dict):
+                        if value.get("profile_id") == target_profile_id:
+                            value["profile_id"] = source_profile_id
+                        for id_field, id_domain in (
+                            ("sportsbook_bet_id", "sportsbook_bet"),
+                            ("free_bet_id", "free_bet"),
+                            ("casino_offer_id", "casino_offer"),
+                            ("each_way_extra_place_id", "extra_place"),
+                            ("cash_adjustment_id", "cash_adjustment"),
+                            ("activity_id", history_domain or ""),
+                        ):
+                            if value.get(id_field) and id_domain:
+                                value[id_field] = inverse.get(id_domain, {}).get(
+                                    str(value[id_field]), value[id_field]
+                                )
+                        row[field] = _canonical_json(value)
+                # The content hash is necessarily runtime-identity-specific. The identity map
+                # and remapped snapshots are compared instead of treating it as portable data.
+                row["mutation_hash"] = "<runtime-derived>"
             if spec.name == "Profile":
                 row.pop("profile_code", None)
             normalized_rows.append(row)

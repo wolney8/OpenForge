@@ -1390,7 +1390,9 @@ def create_profile_free_bet_award(profile_id: str, sportsbook_bet_id: str, paylo
 
 @router.delete("/{sportsbook_bet_id}", status_code=204)
 def remove_profile_sportsbook_bet(profile_id: str, sportsbook_bet_id: str) -> Response:
-    deleted = delete_sportsbook_bet(profile_id, sportsbook_bet_id)
+    deleted = delete_sportsbook_bet(
+        profile_id, sportsbook_bet_id, "User removed non-financial draft"
+    )
     if not deleted:
         raise HTTPException(status_code=404, detail="Sportsbook bet not found for this profile")
     return Response(status_code=204)

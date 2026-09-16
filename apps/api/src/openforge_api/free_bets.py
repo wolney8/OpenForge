@@ -33,6 +33,7 @@ from openforge_api.db import (
     list_accounts,
     list_free_bet_follow_up_reminder_audit,
     list_free_bets,
+    reresolve_imported_free_bet_parent,
     update_free_bet,
     update_free_bet_follow_up_reminder,
 )
@@ -149,6 +150,11 @@ class FreeBetResponse(FreeBetFields):
     award_removal_block_reason: str = ""
     free_bet_id: str
     profile_id: str
+    origin_qual_bet_source_namespace: str
+    origin_qual_bet_native_id: str
+    origin_qual_bet_resolution_state: str
+    origin_qual_bet_resolution_json: str
+    origin_qual_bet_import_run_id: str
     created_at: str
     updated_at: str
     follow_up_reminder_state: str
@@ -192,6 +198,11 @@ class FreeBetFollowUpReminderPayload(BaseModel):
         if self.state in {"Resolved", "Dismissed"} and not self.resolution_note.strip():
             raise ValueError("resolution_note is required to resolve or dismiss a reminder")
         return self
+
+
+class ParentReresolutionPayload(BaseModel):
+    operation_id: str = Field(min_length=8, max_length=160)
+    actor_id: str = Field(default="fund-manager-local", max_length=120)
 
 
 class FreeBetFollowUpReminderAuditResponse(BaseModel):
@@ -393,12 +404,17 @@ def build_response(
         with connect() as connection:
             from openforge_api.db import linked_free_bet_removal_block_reason
             removal_reason = linked_free_bet_removal_block_reason(connection, record)
-            verified = connection.execute(
-                "SELECT audit_id FROM sportsbook_bet_audit WHERE profile_id=? "
-                "AND sportsbook_bet_id=? AND audit_id=? AND action='award_operation'",
-                (row.profile_id, row.origin_qual_bet_id, "award-operation-" + row.source_award_group_id),
-            ).fetchone()
-        award_review = verified is None
+            native_parent_id = row.origin_qual_bet_native_id
+            verified = None
+            if native_parent_id and row.source_award_group_id:
+                verified = connection.execute(
+                    "SELECT audit_id FROM sportsbook_bet_audit WHERE profile_id=? "
+                    "AND sportsbook_bet_id=? AND audit_id=? AND action='award_operation'",
+                    (row.profile_id, native_parent_id, "award-operation-" + row.source_award_group_id),
+                ).fetchone()
+        award_review = row.origin_qual_bet_resolution_state != "resolved" or (
+            bool(row.source_award_group_id) and verified is None
+        )
     return FreeBetResponse.model_validate(
         {
             **record,
@@ -406,7 +422,9 @@ def build_response(
             **serialized,
             "award_review_required": award_review,
             "award_removal_block_reason": removal_reason,
-            "award_review_notes": ["Legacy/partial award group needs explicit review before recovery."] if award_review else [],
+            "award_review_notes": [
+                f"Parent identity is {row.origin_qual_bet_resolution_state}; use explicit review before changing lineage."
+            ] if award_review else [],
         }
     )
 
@@ -436,10 +454,14 @@ def validate_write_payload(profile_id: str, payload: dict[str, object]) -> dict[
             )
         if account.lifecycle_status == "Archived" or account.status == "Archived":
             raise HTTPException(status_code=409, detail=f"{field}: Account is archived")
-    if (
+    resolution_state = str(payload.get("origin_qual_bet_resolution_state") or "")
+    native_parent_id = str(payload.get("origin_qual_bet_native_id") or "")
+    relationship_id = native_parent_id or (
         parsed.origin_qual_bet_id
-        and get_sportsbook_bet(profile_id, parsed.origin_qual_bet_id) is None
-    ):
+        if resolution_state in {"", "not_applicable", "resolved"}
+        else ""
+    )
+    if relationship_id and get_sportsbook_bet(profile_id, relationship_id) is None:
         raise HTTPException(
             status_code=422, detail="origin_qual_bet_id: source does not belong to this Profile"
         )
@@ -530,6 +552,26 @@ def get_profile_free_bet(profile_id: str, free_bet_id: str) -> FreeBetResponse:
         raise HTTPException(status_code=404, detail="Free bet not found for this profile")
     tracker_settings = get_profile_tracker_settings(profile_id)
     return build_response(record, tracker_settings=tracker_settings)
+
+
+@router.post("/{free_bet_id}/resolve-imported-parent", response_model=FreeBetResponse)
+def resolve_profile_free_bet_imported_parent(
+    profile_id: str,
+    free_bet_id: str,
+    payload: ParentReresolutionPayload,
+) -> FreeBetResponse:
+    try:
+        record = reresolve_imported_free_bet_parent(
+            profile_id,
+            free_bet_id,
+            operation_id=payload.operation_id,
+            actor_id=payload.actor_id,
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+    if record is None:
+        raise HTTPException(status_code=404, detail="Free bet not found for this profile")
+    return build_response(record, tracker_settings=get_profile_tracker_settings(profile_id))
 
 
 @router.post("", response_model=FreeBetResponse, status_code=201)
@@ -668,7 +710,7 @@ def get_profile_free_bet_follow_up_reminder_audit(
 
 @router.delete("/{free_bet_id}", status_code=204)
 def remove_profile_free_bet(profile_id: str, free_bet_id: str) -> Response:
-    deleted = delete_free_bet(profile_id, free_bet_id)
+    deleted = delete_free_bet(profile_id, free_bet_id, "User removed eligible unused credit")
     if not deleted:
         raise HTTPException(status_code=404, detail="Free bet not found for this profile")
     return Response(status_code=204)

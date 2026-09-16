@@ -113,7 +113,7 @@ def test_each_way_extra_place_crud_is_profile_scoped() -> None:
         f"/profiles/profile-demo-001/each-way-extra-places/{row['each_way_extra_place_id']}",
         json={"deletion_reason": "Synthetic regression cleanup"},
     )
-    assert deleted.status_code == 204
+    assert deleted.status_code == 409
 
 
 def test_historical_extra_place_preserves_imported_realised_value_without_modern_inputs() -> None:

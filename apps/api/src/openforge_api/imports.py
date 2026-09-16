@@ -72,6 +72,7 @@ from openforge_api.db import (
     list_import_batches,
     list_sportsbook_bets,
 )
+from openforge_api.source_identity import logical_source_namespace
 from openforge_api.free_bets import FreeBetPayload
 from openforge_api.free_bets import build_response as build_free_bet_response
 from openforge_api.sportsbook import SportsbookBetPayload, build_response
@@ -1651,7 +1652,7 @@ def stage_import_rows(
     profile_id: str,
     rows: list[ImportRowPayload],
     mapping_version: str = "draft-v1",
-    source_lookup: SourceLookup = get_import_source_record,
+    source_lookup: SourceLookup | None = None,
 ) -> list[dict[str, Any]]:
     staged_rows: list[dict[str, Any]] = []
     seen_in_batch: dict[tuple[str, str], str] = {}
@@ -1819,15 +1820,16 @@ def stage_import_rows(
                         )
                 else:
                     seen_in_batch[identity] = source_hash
-                    existing = source_lookup(source_sheet, source_record_id)
-                    if existing is not None and existing.profile_id != profile_id:
-                        errors.append(
-                            issue(
-                                "cross_profile_source_collision",
-                                "This source identity already belongs to another profile.",
-                            )
+                    existing = (
+                        source_lookup(source_sheet, source_record_id)
+                        if source_lookup is not None
+                        else get_import_source_record(
+                            profile_id,
+                            logical_source_namespace(source_sheet),
+                            source_record_id,
                         )
-                    elif existing is not None and existing.source_hash == source_hash:
+                    )
+                    if existing is not None and existing.source_hash == source_hash:
                         action = "no_op"
                     elif existing is not None:
                         if mapping_version == "accounts-v1":
@@ -2006,7 +2008,11 @@ def serialize_batch(
         staged = staged_row.__dict__
         existing_mapped_fields: dict[str, JsonScalar] = {}
         if staged["staged_action"] == "update" and staged["source_sheet"] == "Accounts":
-            source = get_import_source_record(staged["source_sheet"], staged["source_record_id"])
+            source = get_import_source_record(
+                batch.profile_id,
+                logical_source_namespace(staged["source_sheet"]),
+                staged["source_record_id"],
+            )
             existing = (
                 get_account(batch.profile_id, source.entity_id)
                 if source is not None and source.entity_type == "account"

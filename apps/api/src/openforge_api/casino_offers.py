@@ -170,7 +170,12 @@ def update_profile_casino_offer(
 
 @router.delete("/{casino_offer_id}", status_code=204)
 def remove_profile_casino_offer(profile_id: str, casino_offer_id: str) -> Response:
-    deleted = delete_casino_offer(profile_id, casino_offer_id)
+    try:
+        deleted = delete_casino_offer(
+            profile_id, casino_offer_id, "User removed non-financial draft"
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
     if not deleted:
         raise HTTPException(status_code=404, detail="Casino offer not found for this profile")
     return Response(status_code=204)

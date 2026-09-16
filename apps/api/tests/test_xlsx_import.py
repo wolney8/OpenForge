@@ -868,7 +868,7 @@ def test_account_xlsx_changed_row_requires_selection_and_updates_with_audit(
     assert updated.current_balance == "130.55"
     assert updated.pending_withdrawal_amount == ""
     assert count_account_audit_rows(profile_id, account_id) == 2
-    source = get_import_source_record("Accounts", "DEMO-ACCOUNT-XLSX-001")
+    source = get_import_source_record(profile_id, "account", "DEMO-ACCOUNT-XLSX-001")
     assert source is not None
     assert source.import_batch_id == changed_dry_run["import_batch_id"]
 
