@@ -157,11 +157,15 @@ export function CoreLayPlanner({ accounts, basis, defaultCommission, exchangeCom
     invalidate(); onPatch(values);
   }
   function selectStrategy(value: LayPlan["selected_strategy"]) {
+    const currentStrategy = strategyRef.current;
     strategyRef.current = value;
-    patch({ match_strategy:value });
+    if (currentStrategy === value && form.match_strategy === value) return;
+    invalidate();
+    onPatch({ match_strategy:value });
   }
   function editCustom(value: string) {
-    if (value === customDraft && strategy === "Custom") return;
+    if (value === customDraft && strategyRef.current === "Custom") return;
+    strategyRef.current = "Custom";
     invalidate(); setCustomDraft(value); onPatch({ match_strategy:"Custom" });
   }
   const references = preview?.strategy_references ?? [];
