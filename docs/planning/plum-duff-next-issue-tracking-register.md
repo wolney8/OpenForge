@@ -1,5 +1,20 @@
 # Plum Duff Next Issue Tracking Register
 
+## PD-AUDIT-CP011-20260916 — schema decisions and independent audit
+
+| ID | Requested outcome | Current state |
+|---|---|---|
+| PD-QA-018 | Resolve imported Free Bet parents only inside the correct Profile | OWNER DECISION READY / NOT IMPLEMENTED: the existing source map becomes Profile + namespace + external-ID scoped; the child retains external identity, explicit resolution state, optional native parent and versioned evidence without guessed backfill |
+| PD-QA-021 | Preserve financial lifecycle evidence after correction or permitted removal | OWNER DECISION READY / NOT IMPLEMENTED: a bounded append-only history table is recommended because current row-bound audits are erased with Sportsbook, standalone Free Bet, Cash Adjustment, Extra Place and Casino rows |
+| PD-AUDIT-LEDGER-HISTORY-001 | Establish which current ledgers retain correction/removal evidence | ASSESSED / FAIL PROVEN: Profiles and Accounts archive safely and fee revisions are durable; five financial-ledger families need PD-QA-021 for deletion evidence |
+| PD-AUDIT-REPORT-DRILLDOWN-001 | Separate current reporting capability from planned chart exploration | PARTIAL / PROVEN boundary: 38/38 focused tests pass for totals, periods, breakdowns and ledger links; focusable points, point inspection, record drilldown and metric/granularity controls remain absent under #111 |
+| PD-AUDIT-FIXTURES-002 | Keep older ledger regressions independent of private demo seeds | OPEN / PRECISE: 25 selected cases pass and 37 fail setup because they still assume removed `profile-demo-001` or catalogue rows; no product failure or pass is inferred from those setup failures |
+
+Reconciled in this package: #4 Profile architecture, #9 local application shell, #10 isolated Tracker
+modules, #11 Profile/combined reporting, #19 scaffold/database baseline, #22 the first Profile-scoped
+workflow slice, #24 multi-Profile entry planning and #107 synthetic-fixture isolation. Their original
+requests, later evidence, remaining gaps and local/hosted/accepted states remain distinct.
+
 ## PD-AUDIT-CP010-20260916 — engineering debt, recovery and schema decisions
 
 | ID | Requested outcome | Current state |

@@ -1,6 +1,6 @@
 # Engineering Learning — Plum Duff / OpenForge — Doc ID: EL-CODEX-001
 
-**Last updated:** 2026-09-16 15:22 BST
+**Last updated:** 2026-09-16 15:37 BST
 
 This is a compact notebook of transferable lessons from building Plum Duff. It is not the audit,
 roadmap, backlog or evidence record.
@@ -111,6 +111,28 @@ after the live row changes or disappears.
 
 **Remember:** Linkage answers “which record”; history answers “what happened”.
 
+### Composite identity and scoped uniqueness
+
+**What it means:** One value is not always a complete identity. A safe key combines the value with
+the boundary in which it is meaningful.
+
+**Why it mattered in Plum Duff:** External row `X` can legitimately exist in two Profiles. Import
+resolution must use Profile + source namespace + external ID so one Profile can never acquire the
+other Profile's parent.
+
+**Remember:** Uniqueness is only safe when its scope matches the business owner.
+
+### Append-only history
+
+**What it means:** Lifecycle evidence is added as immutable events; later corrections do not rewrite
+or erase the earlier evidence.
+
+**Why it mattered in Plum Duff:** Current ledger audits are owned by deletable rows. A separate
+history record can retain creation, settlement and correction evidence without becoming another
+amount for reports to sum.
+
+**Remember:** History explains current truth; it is not a second financial ledger.
+
 ## Things I should personally inspect when AI changes code
 
 - Does the test prove behaviour independently, or repeat the implementation's own answer?
@@ -168,6 +190,7 @@ one documented, non-secret environment contract while retaining SQLite/PostgreSQ
 | CP-006 | 2026-09-16 14:02 BST | Current state versus event history; exposure-based dependency review | Notification history and dependency risk both required evidence beyond labels or current display state |
 | CP-009 | 2026-09-16 14:54 BST | Persistence boundary/state ownership; static analysis | Settings, sessions and financial responses need explicit owners and safe shapes beyond happy-path runtime evidence |
 | CP-010 | 2026-09-16 15:22 BST | Schema evolution; identity versus history | Two separate integrity gaps needed exact additive designs without guessed links, double-counted history or destructive rollback |
+| CP-011 | 2026-09-16 15:37 BST | Composite identity; append-only history | Owner decisions need scoped uniqueness and immutable evidence with an explicit no-double-counting rule |
 
 ## Where detailed evidence lives
 

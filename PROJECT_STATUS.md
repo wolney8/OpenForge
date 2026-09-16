@@ -1,18 +1,18 @@
 # Project Status — Plum Duff / OpenForge — Doc ID: PS-CODEX-001
 
-**Last updated:** 2026-09-16 15:22 BST · **Status:** 🟡 At risk
+**Last updated:** 2026-09-16 15:37 BST · **Status:** 🟡 At risk
 
 ## Right now
 
-- **Working on:** Continue #114 after closing the bounded typing, web-fixture and local database-health debt.
-- **Next:** Advance remaining ledger, history, competitor and requirement evidence; if approved, implement PD-QA-018 and PD-QA-021 first in isolated SQLite/PostgreSQL data.
-- **Blocked on:** none for independent audit work; the two schema repairs require owner approval before implementation
+- **Working on:** Continue #114 independently while PD-QA-018 imported identity and PD-QA-021 financial history await an owner decision.
+- **Next:** Repair the remaining synthetic ledger-fixture isolation, then advance the next executable reporting, ledger and recovery evidence.
+- **Blocked on:** none for independent audit work; only the two proposed schema implementations require owner approval
 
 ## Delivery state
 
 | Area | Evidence state |
 | --- | --- |
-| Local integrated build | CP-010 mypy/web suites are clean and local database-health recovery is repaired; two schema designs remain proposals only |
+| Local integrated build | CP-010 mypy/web suites remain clean; CP-011 adds source/evidence review only and leaves both schema proposals unimplemented |
 | Normal `localhost:3010` | Healthy with normal local sign-in and unchanged normal data |
 | Main / origin | Not updated by the local integration work |
 | Vercel | Not deployed or hosted-verified |
@@ -24,16 +24,16 @@ These figures measure **#114 audit coverage**, not the percentage of the product
 
 | Review area | Current coverage |
 | --- | ---: |
-| Assessments reviewed | 56 / 87 (64%) |
+| Assessments reviewed | 58 / 87 (67%) |
 | Complete tasks exercised and passing | 10 / 24 (42%) |
 | Competitor comparisons | 15 / 27 (56%) |
-| Requirements reconciled | 37 / 133 (28%) |
+| Requirements reconciled | 45 / 133 (34%) |
 
 ## Next 3 steps
 
-1. Continue the remaining populated-ledger, notification/history and accessibility evidence without treating automation as a screen reader.
-2. Reconcile the next coherent request and genuinely accessible competitor group.
-3. If separately approved, implement PD-QA-018 and PD-QA-021 in isolated databases before normal data.
+1. Remove the remaining private-seed assumptions from the selected ledger regression fixtures.
+2. Continue executable reporting, recovery, accessibility and requirement evidence without waiting for schema approval.
+3. If separately approved, implement PD-QA-018 and PD-QA-021 first in isolated databases.
 
 ## Checkpoint log
 
@@ -49,6 +49,7 @@ These figures measure **#114 audit coverage**, not the percentage of the product
 | CP-008 | 2026-09-16 14:27 BST | Extended precise London timestamps to project logs and backfilled verified recent events | — | [Rule](AGENTS.md#project-document-timestamp-rule) |
 | CP-009 | 2026-09-16 14:54 BST | Assessed settings/session recovery, reduced integrated-path mypy debt and completed two schema decisions without migrating data | [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-009-accessibility-persistence-and-recovery-package--2026-09-16) |
 | CP-010 | 2026-09-16 15:22 BST | Cleared bounded typing/web debt, repaired local database-health recovery and finalised two unimplemented schema decisions | [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-010-engineering-debt-recovery-and-schema-decision-package--2026-09-16) |
+| CP-011 | 2026-09-16 15:37 BST | Made two schema decisions owner-readable and proved remaining ledger-history/reporting boundaries | [#12](https://github.com/wolney8/OpenForge/issues/12), [#80](https://github.com/wolney8/OpenForge/issues/80), [#111](https://github.com/wolney8/OpenForge/issues/111), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Decision record](docs/planning/openforge-profile-decisions-to-confirm.md#cp-011-owner-schema-decisions) |
 
 ## Reference index
 

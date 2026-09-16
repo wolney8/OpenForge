@@ -1,5 +1,89 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
+## Current CP-011 schema-decision and independent audit package — 2026-09-16
+
+**Checkpoint timestamp:** 2026-09-16 15:37 BST
+
+PD-QA-018 and PD-QA-021 remain **PROPOSED — NOT IMPLEMENTED — OWNER APPROVAL REQUIRED**. Their
+owner-readable fields, examples, constraints, lifecycle, migration, export/restore and rollback
+semantics now live in the existing
+[Profile decisions record](../planning/openforge-profile-decisions-to-confirm.md#cp-011-owner-schema-decisions).
+No schema, application data or normal service configuration changed.
+
+### Remaining ledger traceability
+
+Source and current contract review now covers every present financial-ledger deletion boundary:
+
+| Area | Current correction/archive evidence | Current deletion evidence | Disposition |
+|---|---|---|---|
+| Profile | Archive keeps ledgers and audits readable; restore exists | Permanent owner deletion has a separate Profile deletion audit and explicitly erases Profile-scoped data | Adequate for current explicit Profile lifecycle; not a normal ledger-delete model |
+| Account | Archive updates the live row and writes `account_audit` | Normal UI/API does not physically delete the Account | Adequate traceability for the current archive workflow |
+| Fee periods | Immutable numbered revisions and withdrawal links survive correction/reopen and portable export | No ordinary destructive fee-period delete path | Adequate for the tested revision workflow |
+| Sportsbook | Updates and specialised reminder/award actions write row-bound audit | Ordinary unprotected deletion writes `deleted`, then removes the audit rows and live row | History loss; wait for PD-QA-021. Protected award sources are correctly denied |
+| Free Bet | Updates/reminders write row-bound audit; eligible linked-child removal copies evidence to its source audit | Standalone/unlinked deletion removes the child audit and live row | History loss; linked award handling is a useful special case, not a general solution |
+| Cash Adjustment | Edits write row-bound audit; linked fee withdrawals are protected | Delete explicitly removes audit and live row | History loss; wait for PD-QA-021 |
+| Extra Place | Updates write row-bound audit; settled delete requires a reason | Live-row deletion cascades the just-written deletion audit | History loss despite the reason; wait for PD-QA-021 |
+| Casino | Updates write row-bound audit | Delete explicitly removes audit and live row | History loss; wait for PD-QA-021 |
+
+No safe source-only repair can retain evidence after the owning row disappears: the necessary
+boundary is the unimplemented append-only store. This completes PQA-D11 as an **ASSESSED FAIL / PROVEN
+source boundary** rather than leaving it unexamined. It also broadens PD-QA-021's initial consumer
+list to Sportsbook and standalone/unlinked Free Bets; Accounts, Profiles and fee revisions do not
+need to be forced into the new table.
+
+A combined legacy-ledger test selection produced **25 passes / 37 fixture failures**. Every failure
+shown used the removed private `profile-demo-001` seed or dependent catalogue rows; this is retained
+PD-QA-006 test-infrastructure debt, not relabelled as 37 product failures. The already-independent
+CP-004 browser/API evidence remains valid. No assertion was skipped or weakened.
+
+### Reporting / #111 current boundary
+
+The current implementation has selected-date-range Profile and combined totals, module and bookmaker
+breakdowns, weekly/monthly/yearly formal report tables, period/result filters, readable loading/error
+cells, empty-table messages and links from summary values to the relevant ledger. The independently
+expected CP-005/006 arithmetic evidence remains valid, and the focused current summary, dashboard,
+cross-Profile and formal-filter suites pass **38/38**.
+
+The Selected Range chart is still a static `role=img` with a readable text summary. It has no
+focusable data points, point inspection/pinning, record-aware drilldown or selected-point state.
+Existing formal-report period filtering is not a chart module/dimension filter. Weekly/monthly/yearly
+tables exist, but the chart's financial metric and granularity are not selectable. Empty and failed
+tables have explicit text; the chart does not yet provide the complete interactive no-data/error
+model required by #111. The smallest later implementation slice remains one keyboard-focusable
+selected-range P&L series with text-equivalent point details and a governed link to the filtered
+records. No #111 feature was invented in this checkpoint.
+
+### Competitor recovery/history review
+
+Current public official sources were deliberately rechecked on 2026-09-16. Outplayed documents a
+member Profit Tracker with filters, graph, editable profits, calculator handoff and a separate
+Balance Sheet, but public material does not establish history restoration; member behaviour remains
+inaccessible. OddsMonkey documents an explicit destructive “Delete All Entries” reset that cannot
+be undone; it is documentation evidence, not a performed reset or restoration test. MBB's public
+calculator remains accessible, but an authoritative public financial-history/export/recovery
+equivalent remains unlocated. PQA-C06 is therefore now **ASSESSED; DOCUMENTED/BLOCKED**: the available
+evidence and exact inaccessible limits are known, while the two member/equivalent cells remain
+UNVERIFIED. No new capability×provider cell is promoted, so competitor coverage remains 15/27.
+Outplayed's current public Pro Data page additionally documents expected-versus-actual views and
+tool/bookmaker filters. That refresh strengthens the already-counted Outplayed C04 documentation
+cell; it is not relabelled as member interaction or counted a second time.
+
+### Requirement reconciliation
+
+The CP-011 coherent request group is recorded in the canonical register: #4, #9, #10, #11, #19,
+#22, #24 and #107. The implemented local shell, Profile isolation, reports and workflows are matched
+to their original requests; remaining hosted, interactive-report, fixture-isolation and durable
+history gaps stay explicit. Review remains distinct from implementation, local integration, hosted
+verification and owner acceptance.
+
+Current coverage is **58/87 assessments (67%), 10/24 complete journeys exercised/passing (42%),
+15/27 competitor cells (56%) and 45/133 requirements reconciled (34%)**. PQA-D11 and PQA-C06 are
+the two newly evidence-complete assessments; no journey is promoted.
+
+Live #12/#80/#111/#114 issue-comment synchronisation is pending because the repository's
+authenticated GitHub CLI is unavailable in this worktree. The canonical register and this section
+are the local authoritative handoff; no issue was closed or its status changed.
+
 ## Current CP-010 engineering debt, recovery and schema-decision package — 2026-09-16
 
 **Checkpoint timestamp:** 2026-09-16 15:22 BST
@@ -3182,7 +3266,7 @@ in the PD-QA-015 addendum still applies (PG, provider access, imported sources, 
 | PQA-D08 | Populated workbook import/award reconciliation | ASSESSED; FAIL / PROVEN | CP-004 genuine six-sheet browser import→reopen/report/export→portable restore/re-export passes; invalid mixed workbook rejects atomically/idempotently and cross-Profile IDs do not cross-link. Parent alias remains unresolved (PD-QA-018); #109 access vocabulary remains blocked |
 | PQA-D09 | Google/workbook fallback roundtrip | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
 | PQA-D10 | Immutable conversion source checksum | ASSESSED; PASS scoped | PD-QA-015 immutable SHA/source table |
-| PQA-D11 | Retention/deletion/privacy recovery | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
+| PQA-D11 | Retention/deletion/privacy recovery | ASSESSED; FAIL / PROVEN source boundary | CP-011 Profiles/Accounts archive and fee revisions retain evidence; Sportsbook, standalone Free Bet, Cash, Extra Place and Casino deletion can erase row-bound audits. PD-QA-021 remains unimplemented |
 | PQA-D12 | Crash/network-loss/concurrent browser recovery | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
 | PQA-M01 | Calculation/reference/actual single authority | ASSESSED; REVIEWED | C money authority source review |
 | PQA-M02 | Schema/version/legacy compatibility boundary | ASSESSED; REVIEWED | C v1/v2 and migration inspection |
@@ -3207,7 +3291,7 @@ in the PD-QA-015 addendum still applies (PG, provider access, imported sources, 
 | PQA-C03 | Activity-recording comparison | ASSESSED; DOCUMENTED comparison, not hands-on | Outplayed/OddsMonkey tracker documentation versus MBB limited offer-progress documentation; financial equivalence/member interactions unverified |
 | PQA-C04 | Expected vs actual performance comparison | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
 | PQA-C05 | Cash/balance workflow comparison | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
-| PQA-C06 | History/recovery comparison | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
+| PQA-C06 | History/recovery comparison | ASSESSED; DOCUMENTED / BLOCKED limits | CP-011 OddsMonkey destructive reset is documented; Outplayed member recovery is inaccessible and an authoritative MBB equivalent remains unlocated. No restoration interaction inferred |
 | PQA-C07 | Hands-on keyboard workflow | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
 | PQA-C08 | Hands-on mobile workflow | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
 | PQA-C09 | Hands-on evaluate→record→performance | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
@@ -3259,7 +3343,7 @@ A public URL/access failure is evidence of inaccessibility, never proof that the
 |C01 public configuration/guidance|U exact arrangement unresolved|D [public controls/guidance](https://matchedbettingblog.com/matched-betting-calculator/)|D [normal/SNR/SR/commission guidance](https://www.oddsmonkey.com/matched-betting/calculator/)|
 |C02 offer-review workflow documentation|D retained2026-09-13 features/calendar/offer guidance|D retained qualifying-bet terms/stake/odds/liability guidance|D retained Racing Matcher offer/terms/review guidance|
 |C03 activity recording documentation|D [Store in Profit Tracker / My Bets](https://outplayed.com/blog/matched-betting-spreadsheet)|D limited [offer progress](https://matchedbettingblog.com/); financial tracker equivalent remains unlocated, not declared absent|D [tool/manual/historical entry](https://help.oddsmonkey.com/hc/en-gb/articles/11151091597085-Keep-On-Track-With-Our-Profit-Tracker)|
-|C04 expected versus actual documentation|D [My Bets EV/profit graphs](https://outplayed.com/blog/outplayed-pro-tools-data)|U|D [expected/actual +tool/sport drilldown](https://www.oddsmonkey.com/matched-betting/profit-tracker/)|
+|C04 expected versus actual documentation|D [Pro Data expected/actual and filters](https://outplayed.com/pro-data-tool)|U|D [expected/actual +tool/sport drilldown](https://www.oddsmonkey.com/matched-betting/profit-tracker/)|
 |C05 cash/balance documentation|D [separate Balance Sheet, cosmetic cash transfers](https://outplayed.com/blog/matched-betting-spreadsheet)|U|U|
 |C06 recovery/history documentation|U|U|D retained public reset guide/Yes Delete confirmation; not an executed reset or restoration test|
 |C07 actual keyboard interaction|U full keyboard interaction partial; current numeric/slider evidence is not full certification|H retained public calculator1440/390 Tab/Space/field bounds plus fresh390 numeric entry|U|

@@ -1,6 +1,6 @@
 # Audit Register — Plum Duff / OpenForge — Doc ID: AR-CODEX-001
 
-**Last updated:** 2026-09-16 15:22 BST
+**Last updated:** 2026-09-16 15:37 BST
 
 This is the owner-facing index for audit evidence. The
 [platform quality audit](docs/audits/platform-quality-audit.md) remains the detailed authority.
@@ -11,20 +11,20 @@ These are coverage measures, not percentages of the product finished.
 
 | Area | Covered | Method note |
 | --- | ---: | --- |
-| Assessments reviewed | 56 / 87 (64%) | A documented defect can complete an assessment |
+| Assessments reviewed | 58 / 87 (67%) | A documented defect can complete an assessment |
 | Complete tasks exercised | 10 / 24 (42%) | All required steps must be exercised |
 | Complete tasks passing | 10 / 24 (42%) | Blocked or partial tasks are excluded |
 | Competitor comparisons | 15 / 27 (56%) | 12 documented, 3 hands-on |
-| Requirements reconciled | 37 / 133 (28%) | Original scope and clarifications both required |
+| Requirements reconciled | 45 / 133 (34%) | Original scope and clarifications both required |
 
 ## Current high-priority findings
 
 | ID | Plain-English problem | State | Repair / integration state | Issue |
 | --- | --- | --- | --- | --- |
-| PD-QA-006 | Some older broad tests still depend on private seed names/data | Partially repaired | The two calculator Account gaps are closed; the wider 20-test legacy fixture debt remains | [#113](https://github.com/wolney8/OpenForge/issues/113), [#114](https://github.com/wolney8/OpenForge/issues/114) |
+| PD-QA-006 | Some older broad tests still depend on private seed names/data | Partially repaired | The calculator Account gaps are closed; this checkpoint identified 37 selected ledger setup failures that still assume removed demo/catalogue rows | [#107](https://github.com/wolney8/OpenForge/issues/107), [#114](https://github.com/wolney8/OpenForge/issues/114) |
 | PD-QA-016 | Users cannot see a complete chronological row-change history | Open | Source notes exist; the full history view is not implemented | [#36](https://github.com/wolney8/OpenForge/issues/36), [#114](https://github.com/wolney8/OpenForge/issues/114) |
 | PD-QA-018 | Imported child records do not always resolve their native parent | Open; migration decision required | Profile-scoped external→native mapping is specified; no link is guessed | [#12](https://github.com/wolney8/OpenForge/issues/12), [#80](https://github.com/wolney8/OpenForge/issues/80) |
-| PD-QA-021 | Deleting some ledger rows also removes their audit history | Open; migration/policy decision required | A shared Profile-scoped deletion-history record is proposed; correction remains safe | [#80](https://github.com/wolney8/OpenForge/issues/80), [#90](https://github.com/wolney8/OpenForge/issues/90), [#114](https://github.com/wolney8/OpenForge/issues/114) |
+| PD-QA-021 | Deleting some ledger rows also removes their audit history | Open; migration/policy decision required | The exact append-only model now covers Sportsbook, standalone Free Bet, Cash Adjustment, Extra Place and Casino; it is not implemented | [#80](https://github.com/wolney8/OpenForge/issues/80), [#90](https://github.com/wolney8/OpenForge/issues/90), [#114](https://github.com/wolney8/OpenForge/issues/114) |
 | PD-QA-011 | Notification History loses the earlier event when its live source changes | Open; migration decision required | Clear/reload is reliable; durable event history is proposed, not implemented | [#90](https://github.com/wolney8/OpenForge/issues/90), [#99](https://github.com/wolney8/OpenForge/issues/99) |
 | #111 | The financial chart cannot be inspected or drilled into | Open feature gap | Totals, ranges, breakdowns and text summary pass; point interaction/filter/drilldown remain planned | [#111](https://github.com/wolney8/OpenForge/issues/111) |
 | C05 | Changed-odds and multiple-fill remaining hedges are not fully represented | Open | Same-odds core handling is integrated; richer operational handling is pending | [#35](https://github.com/wolney8/OpenForge/issues/35) |
