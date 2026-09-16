@@ -2,6 +2,8 @@
 
 ## Current CP-006 reporting, notification and security/reliability package — 2026-09-16
 
+**Checkpoint timestamp:** 2026-09-16 14:02 BST
+
 Application and reusable audit-harness checkpoint:
 **87d5e103b0c283d269ebd6cc78987433963433eb** on the local integration branch. The normal local
 application remained available at `localhost:3010`; synthetic CP-006 Profiles were removed by the
@@ -113,6 +115,8 @@ available; direct public issue bodies were read on 2026-09-16. No push or hosted
 
 ## Current CP-005 reporting, larger-data and evidence-boundary package — 2026-09-16
 
+**Checkpoint timestamp:** 2026-09-16 12:52 BST
+
 Application and reusable audit-harness checkpoint:
 **943583d9de0a149d311a81c020b03cc697b479ab** on the local integration branch. The final report
 checkpoint is documentation-only and is recorded in the CP-005 handoff.
@@ -169,6 +173,8 @@ GitHub synchronisation remains pending because `gh` is unavailable; no push or h
 
 ## Historical CP-004 import, populated-ledger and accessibility package — 2026-09-16
 
+**Checkpoint timestamp:** 2026-09-16 12:19 BST
+
 Application, fixture and reusable audit-harness checkpoint:
 **14ab674cec912ced8420f83790219f67d59ed844** on the local integration branch. The final report
 checkpoint is documentation-only and is recorded in the CP-004 handoff.
@@ -221,6 +227,8 @@ Vercel and owner acceptance remain separate. GitHub #12/#80/#88/#90/#91/#99/#109
 remain pending because `gh` is unavailable; no publication was attempted.
 
 ## Historical local integration milestone — 2026-09-16
+
+**Checkpoint timestamp:** 2026-09-16 11:07 BST
 
 Will's normal application at `http://localhost:3010` now serves frontend product
 **2ba999326c0c9389185e49517ef9f274afc05bd9** and unchanged API product

@@ -1,6 +1,6 @@
 # Engineering Learning — Plum Duff / OpenForge — Doc ID: EL-CODEX-001
 
-**Last updated:** 2026-09-16 14:10 BST
+**Last updated:** 2026-09-16 14:27 BST
 
 This is a compact notebook of transferable lessons from building Plum Duff. It is not the audit,
 roadmap, backlog or evidence record.
@@ -119,10 +119,10 @@ one documented, non-secret environment contract while retaining SQLite/PostgreSQ
 
 ## Learning log
 
-| CP | Date | Concept(s) | Why it mattered |
+| CP | Timestamp | Concept(s) | Why it mattered |
 | --- | --- | --- | --- |
-| CP-005 | 2026-09-16 | Planning versus actual; idempotency; failure atomicity and provenance | Reporting, imported parents and deletion history depend on keeping financial state and its source evidence distinct |
-| CP-006 | 2026-09-16 | Current state versus event history; exposure-based dependency review | Notification history and dependency risk both required evidence beyond labels or current display state |
+| CP-005 | 2026-09-16 12:52 BST | Planning versus actual; idempotency; failure atomicity and provenance | Reporting, imported parents and deletion history depend on keeping financial state and its source evidence distinct |
+| CP-006 | 2026-09-16 14:02 BST | Current state versus event history; exposure-based dependency review | Notification history and dependency risk both required evidence beyond labels or current display state |
 
 ## Where detailed evidence lives
 

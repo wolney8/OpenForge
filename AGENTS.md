@@ -235,7 +235,7 @@ At the end of every completed task or substantive checkpoint, before finishing:
 1. Append exactly one new row to `PROJECT_STATUS.md` → `Checkpoint log`.
 2. Use the next sequential checkpoint ID: `CP-XXX`.
 3. Record:
-   - today's date;
+   - the current Europe/London timestamp in `YYYY-MM-DD HH:mm GMT/BST` format;
    - one-line description of what changed;
    - linked GitHub issue/PR if applicable, otherwise `—`;
    - relevant changelog/document link if applicable, otherwise `—`.
@@ -291,18 +291,30 @@ Update these documents at their own boundary:
 Detailed audits, contracts and the canonical request register remain authoritative. Do not copy
 their detail into the owner-facing navigation files.
 
-### Owner-facing document timestamp rule
+### Project document timestamp rule
 
-For owner-facing documents with a `Last updated` field, record both the calendar date and the
-local time in Europe/London, using the correct GMT or BST designation for that date:
+Whenever an owner-facing or agent-maintained project document records when project work happened,
+use the Europe/London local date and time with the correct GMT or BST designation:
 
-`**Last updated:** YYYY-MM-DD HH:mm GMT/BST`
+`YYYY-MM-DD HH:mm GMT/BST`
 
-This applies at minimum to `PROJECT_STATUS.md` and `ENGINEERING_LEARNING.md`. Update the timestamp
-only when the document's current content changes materially, not when it is merely opened,
-checked or reformatted. The timestamp describes the document state, not the application build
-time. Keep checkpoint-log dates unchanged unless a separate requirement explicitly adds times to
-those rows.
+Apply this to document-level `Last updated` fields and individual checkpoint, learning, evidence,
+execution, finding-history, milestone, changelog and archived-status entries. This includes at
+minimum `PROJECT_STATUS.md`, `ENGINEERING_LEARNING.md`, `AUDIT_REGISTER.md`, `PROJECT_ROADMAP.md`,
+`CHANGELOG.md`, `docs/history/project-status-history.md`, detailed audit logs and future project
+logs. Rename a log's `Date` column to `Timestamp` where appropriate.
+
+Obtain the current Europe/London time for each substantive checkpoint. Documents updated for the
+same checkpoint use the same timestamp unless they were genuinely changed at different times.
+Update a document-level timestamp only when its current content changes materially, not when the
+file is merely opened, checked or reformatted. The timestamp describes the document state, not the
+application build time.
+
+Do not add times to domain dates such as deadlines, external publication dates, workbook or
+transaction dates, source-document dates or user-entered business data. Backfill a project-log
+time only from reliable evidence such as Git metadata or existing execution metadata. If an exact
+time cannot be verified, preserve the entry as `YYYY-MM-DD — time unavailable`; never invent a
+placeholder time.
 
 ### Portability review rule
 
