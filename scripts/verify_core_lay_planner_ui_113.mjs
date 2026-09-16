@@ -126,9 +126,9 @@ try {
   const underlay=await referenceFor('Underlay').boundingBox(),overlay=await referenceFor('Overlay').boundingBox();
   assert(Math.abs(underlay.width-overlay.width)<=1);
  }
- await expect(core.getByRole('button',{name:'Use '+chosen+' plan',exact:true})).toHaveCount(0);
- if(chosen==='Standard')await core.getByRole('button',{name:'Simple',exact:true}).click();
- selected=chosen==='Standard' ? referenceFor('Standard') : referenceFor(chosen);
+	 await expect(core.getByRole('button',{name:'Use '+chosen+' plan',exact:true})).toHaveCount(0);
+	 if(chosen==='Standard')await core.getByRole('button',{name:'Simple',exact:true}).click();
+	 selected=chosen==='Standard' ? core.locator('[data-pd-id$=".selected-reference"]') : referenceFor(chosen);
  await expect(selected.locator('dd').first()).toContainText(planned);
  if(basis==='SNR'&&width===1440) {
   for(const [percentage,ratio] of [['0','0'],['5','0.05'],['2.125','0.02125'],['2','0.02']]) {
