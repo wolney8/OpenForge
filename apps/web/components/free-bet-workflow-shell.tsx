@@ -2769,7 +2769,8 @@ export function FreeBetWorkflowShell({
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    await persistForm(formState);
+    queuedDropdownAutosaveRef.current = null;
+    await persistForm(formStateRef.current);
   }
 
   function canPersistForm(nextFormState: FreeBetFormState): boolean {
@@ -4449,7 +4450,7 @@ export function FreeBetWorkflowShell({
                 accounts={accountAuthorities} basis="SNR" defaultCommission={resolvedCommission} exchangeCommissions={exchangeSettings}
                 actualLiability={activePreviewCalculation?.calculated_liability_1 ?? (selectedRow?.lay_actual === formState.lay_actual && selectedRow?.lay_odds_1 === formState.lay_odds_1 && selectedRow?.lay_commission_1 === formState.lay_commission_1 ? selectedRow?.calculated_liability_1 : null)}
                 form={formState} inspectionId="free-bets.matching.core-planner" onValidity={handleCoreValidity}
-                readOnly={isSettledReadOnly} onPatch={patch => setFormState(current => ({...current, ...patch}))}
+                readOnly={isSettledReadOnly} onPatch={patch => setFormState(current => { const next = {...current, ...patch}; formStateRef.current = next; return next; })}
               /> : (
               <div className="calculator-shell">
                 <div className="calculator-band calculator-band-primary">

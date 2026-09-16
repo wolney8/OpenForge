@@ -5563,6 +5563,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    queuedCoreAutosaveRef.current = null;
     await persistForm(formStateRef.current);
   }
 
@@ -8263,7 +8264,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                     accounts={accountAuthorities} basis="Normal" defaultCommission={resolvedCommission} exchangeCommissions={exchangeSettings}
                     actualLiability={activePreviewCalculation?.calculated_liability_1 ?? (selectedSportsbookRow?.lay_actual === formState.lay_actual && selectedSportsbookRow?.lay_odds_1 === formState.lay_odds_1 && selectedSportsbookRow?.lay_commission_1 === formState.lay_commission_1 ? selectedSportsbookRow?.calculated_liability_1 : null)}
                     form={formState} inspectionId="sportsbook.matching.core-planner" onValidity={handleCoreValidity}
-                    readOnly={isSettledReadOnly} onPatch={patch => setFormState(current => ({...current, ...patch}))}
+                    readOnly={isSettledReadOnly} onPatch={patch => setFormState(current => { const next = {...current, ...patch}; formStateRef.current = next; return next; })}
                   /> : (
                   <div className="calculator-shell">
                     <div className="calculator-band calculator-band-primary">

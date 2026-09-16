@@ -112,7 +112,8 @@ try {
  if(chosen==='Standard')await core.getByRole('button',{name:'Advanced',exact:true}).click();
  const expected={Underlay:['6.25','20.00','10.00','6.13'],Overlay:['10.20','32.64','-2.64','10.00'],Custom:['28.80','1.20','8.82']};
  await core.getByLabel('Lay stake',{exact:true}).fill('9.00');
- await expect(core.locator('[data-pd-id$=".custom-input-copy"]')).toContainText('9.00');
+ await expect(core.getByLabel('Lay stake',{exact:true})).toHaveValue('9.00');
+ await expect(core.locator('[data-pd-id$=".custom-input-copy"] .financial-value')).toHaveAttribute('aria-label','Custom lay stake: £ 9.00');
  for(const name of (basis==='SNR'?['Underlay','Overlay','Custom']:[])) {
   const reference=core.locator(`[data-pd-id$=".${name.toLowerCase()}"]`);
   for(const [i,value] of expected[name].entries())await expect(reference.locator('dd').nth(i)).toContainText(value.replace('-',''));
@@ -161,14 +162,20 @@ try {
   const current=await core.getByLabel('Lay stake',{exact:true}).inputValue();
   assert.notEqual(current,'9.00');await customCopy.click();assert.equal(await page.evaluate(()=>navigator.clipboard.readText()),current);
   await expect(result).toHaveAttribute('data-test-identity','persistent');
- await core.getByRole('button',{name:'Simple',exact:true}).click();const simpleReference=core.locator('[data-pd-id$=".selected-reference"]');await expect(simpleReference.locator('dd').first()).toContainText('7.18');
+  await core.getByRole('button',{name:'Simple',exact:true}).click();const simpleReference=core.locator('[data-pd-id$=".selected-reference"]');await expect(simpleReference.locator('dd').first()).toContainText('7.18');await expect(core).toHaveAttribute('data-plan-strategy','Standard');await expect(core).toHaveAttribute('data-plan-reviewed','true');
+  await save.click();await expect(dialog).toBeHidden();const standardSaved=await(await api.get('/profiles/'+pid+'/'+ledger+'/'+id)).json();assert.equal(standardSaved.match_strategy,'Standard');assert.equal(JSON.parse(standardSaved.lay_plan_json).selected_strategy,'Standard');await page.goto(url);await dialog.waitFor();await dialog.getByRole('tab',{name:/Matching/}).first().click();
  await core.getByRole('button',{name:'Advanced',exact:true}).click();await expect(referenceFor('Underlay')).toBeVisible();
+ await expect(core).toHaveAttribute('data-plan-strategy','Standard');
  await expect(core.getByRole('button',{name:'Use Underlay plan',exact:true})).toHaveCount(0);selected=referenceFor('Underlay');await expect(selected.locator('dd').first()).toContainText('6.25');
+ await core.getByRole('button',{name:'Simple',exact:true}).click();await expect(core).toHaveAttribute('data-plan-strategy','Standard');await expect(core).toHaveAttribute('data-plan-reviewed','true');
  }
  const confirmedPlan=basis==='SNR'?'7.18':planned;
  await core.getByLabel('Actual matched stake',{exact:true}).fill('6.00');
+ await expect(core).toHaveAttribute('data-plan-strategy','Standard');
  await core.getByLabel('Actual lay odds',{exact:true}).fill('4.20');
+ await expect(core).toHaveAttribute('data-plan-strategy','Standard');
  await core.getByLabel('Actual exchange commission (%)',{exact:true}).fill('2');
+ await expect(core).toHaveAttribute('data-plan-strategy','Standard');
  await core.getByRole('button',{name:'Confirm actual placement',exact:true}).click();
  await expect(save).toBeEnabled();await save.click();await expect(dialog).toBeHidden();
  row=await(await api.get('/profiles/'+pid+'/'+ledger+'/'+id)).json();

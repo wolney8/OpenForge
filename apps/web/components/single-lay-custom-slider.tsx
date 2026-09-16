@@ -1,5 +1,7 @@
 "use client";
 
+import { useRef } from "react";
+
 const COMMIT_KEYS = new Set([
   "ArrowLeft",
   "ArrowRight",
@@ -36,6 +38,7 @@ export function SingleLayCustomSlider({
   onMinimumChange: (value: string) => void;
   unit?: "stake" | "multiplier";
 }) {
+  const interactionActive = useRef(false);
   const usesSplitScale = centre !== undefined && centre > minimum && centre < maximum;
   const toPosition = (value: number) => usesSplitScale
     ? value <= centre!
@@ -65,10 +68,12 @@ export function SingleLayCustomSlider({
         className="custom-slider-track"
         max={usesSplitScale ? 100 : maximum}
         min={usesSplitScale ? 0 : minimum}
-        onBlur={(event) => emit(onCommit, event.target.value)}
-        onChange={(event) => emit(onDraft, event.target.value)}
-        onKeyUp={(event) => { if (COMMIT_KEYS.has(event.key)) emit(onCommit, event.currentTarget.value); }}
-        onPointerUp={(event) => emit(onCommit, event.currentTarget.value)}
+        onChange={(event) => { if (interactionActive.current) emit(onDraft, event.target.value); }}
+        onKeyDown={(event) => { if (COMMIT_KEYS.has(event.key)) interactionActive.current = true; }}
+        onKeyUp={(event) => { if (COMMIT_KEYS.has(event.key) && interactionActive.current) { emit(onCommit, event.currentTarget.value); interactionActive.current = false; } }}
+        onPointerCancel={() => { interactionActive.current = false; }}
+        onPointerDown={() => { interactionActive.current = true; }}
+        onPointerUp={(event) => { if (interactionActive.current) { emit(onCommit, event.currentTarget.value); interactionActive.current = false; } }}
         step={usesSplitScale ? 0.25 : 0.01}
         type="range"
         value={toPosition(current)}

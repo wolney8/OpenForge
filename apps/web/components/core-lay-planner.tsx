@@ -54,7 +54,11 @@ export function CoreLayPlanner({ accounts, basis, defaultCommission, exchangeCom
   onValidity: (valid: boolean) => void; readOnly?: boolean;
 }) {
   const savedPlan = useMemo(() => readLayPlan(form.lay_plan_json), [form.lay_plan_json]);
+  const initialStrategy = savedPlan?.selected_strategy ?? ((["Standard", "Underlay", "Overlay", "Custom"].includes(form.match_strategy) ? form.match_strategy : "Standard") as LayPlan["selected_strategy"]);
   const [mode, setMode] = useState<"Simple" | "Advanced">(savedPlan && savedPlan.selected_strategy !== "Standard" ? "Advanced" : "Simple");
+  const [strategy, setStrategy] = useState<LayPlan["selected_strategy"]>(initialStrategy);
+  const modeRef = useRef(mode);
+  const modeVersionRef = useRef(0);
   const [commission, setCommission] = useState(savedPlan?.commission ?? defaultCommission);
   const [origin, setOrigin] = useState<LayPlan["commission_origin"]>(savedPlan?.commission_origin ?? "default");
   const [planningOdds, setPlanningOdds] = useState(savedPlan?.lay_odds ?? form.lay_odds_1);
@@ -78,7 +82,6 @@ export function CoreLayPlanner({ accounts, basis, defaultCommission, exchangeCom
   const stake = basis === "SNR" ? form.free_bet_value ?? "" : form.back_stake ?? "";
   const exchanges = accounts.filter(a => a.type === "Exchange" && a.status !== "Archived" && a.lifecycle_status !== "Archived");
   const exchange = exchanges.find(a => a.account_id === exchangeId) ?? exchanges.find(a => a.account === form.exchange_name);
-  const strategy = (["Standard", "Underlay", "Overlay", "Custom"].includes(form.match_strategy) ? form.match_strategy : "Standard") as LayPlan["selected_strategy"];
   const strategyRef = useRef<LayPlan["selected_strategy"]>(strategy);
   useEffect(() => { strategyRef.current = strategy; }, [strategy]);
   const requestKey = JSON.stringify({ stake, backOdds: form.back_odds, planningOdds, commission,
@@ -139,7 +142,7 @@ export function CoreLayPlanner({ accounts, basis, defaultCommission, exchangeCom
           source_identity:previous?.source_identity ?? "", source_checksum:previous?.source_checksum ?? "",
         };
         setPreview(result); setBusy(false);
-        callbacks.current.onPatch({ lay_plan_json:JSON.stringify(plan) });
+        callbacks.current.onPatch({ lay_plan_json:JSON.stringify(plan), match_strategy:strategy });
         callbacks.current.onValidity(true);
       } catch (failure) {
         if (version !== requestVersion.current || controller.signal.aborted) return;
@@ -160,13 +163,15 @@ export function CoreLayPlanner({ accounts, basis, defaultCommission, exchangeCom
     const currentStrategy = strategyRef.current;
     strategyRef.current = value;
     if (currentStrategy === value && form.match_strategy === value) return;
+    setStrategy(value);
     invalidate();
     onPatch({ match_strategy:value });
   }
-  function editCustom(value: string) {
-    if (value === customDraft && strategyRef.current === "Custom") return;
+  function editCustom(value: string, modeVersion = modeVersionRef.current) {
+    if (modeRef.current !== "Advanced" || modeVersion !== modeVersionRef.current) return;
+    if (value === customDraft) return;
     strategyRef.current = "Custom";
-    invalidate(); setCustomDraft(value); onPatch({ match_strategy:"Custom" });
+    setStrategy("Custom"); invalidate(); setCustomDraft(value); onPatch({ match_strategy:"Custom" });
   }
   const references = preview?.strategy_references ?? [];
   const custom = references.find(r => r.strategy === "Custom");
@@ -198,12 +203,13 @@ export function CoreLayPlanner({ accounts, basis, defaultCommission, exchangeCom
     !Object.keys(getMoneyInputErrors({ actualDraft }, ["actualDraft"])).length &&
     !getSportsbookOddsInputError(actualOdds || planningOdds, {required:true}) && actualCommission !== "" &&
     /^\d*(?:\.\d+)?$/.test(actualCommission) && Number(actualCommission) >= 0 && Number(actualCommission) <= 1;
-  return <div className="calculator-shell" data-pd-id={inspectionId}>
+  const renderedModeVersion = modeVersionRef.current;
+  return <div className="calculator-shell" data-pd-id={inspectionId} data-plan-reviewed={reviewedInputsUnchanged ? "true" : "false"} data-plan-strategy={strategy}>
     <div className="calculator-band calculator-band-primary">
       <div className="ledger-calculator-mode-bar">
         <label className="field-control ledger-calculator-mode-field"><span>Bet Type</span><input readOnly value={basis === "SNR" ? "Free Bet SNR" : "Normal"} /></label>
         <div className="field-control ledger-calculator-mode-field"><span>Presentation Mode</span><CalculatorSegmentedControl ariaLabel={`${basis} calculator presentation mode`}
-          onChange={next => { setMode(next); if (next === "Simple" && strategyRef.current !== "Standard") selectStrategy("Standard"); }}
+          onChange={next => { if (next === modeRef.current) return; modeVersionRef.current += 1; modeRef.current = next; setMode(next); if (next === "Simple") { if (strategyRef.current !== "Standard") selectStrategy("Standard"); else onPatch({ match_strategy:"Standard" }); } else onPatch({ match_strategy:strategyRef.current }); }}
           options={[{label:"Simple",value:"Simple"},{label:"Advanced",value:"Advanced"}]} value={mode} /></div>
       </div>
       <div className="form-grid calculator-paired-segments calculator-paired-rows-2" data-pd-id={`${inspectionId}.paired-segments`}>
@@ -235,11 +241,11 @@ export function CoreLayPlanner({ accounts, basis, defaultCommission, exchangeCom
           tone={name === "Underlay" ? "underlay" : name === "Overlay" ? "overlay" : "standard"} />; })}</div>
         <section className="calculator-custom-reference-group" data-pd-id={`${inspectionId}.custom-group`}><CalculatorReferenceSection busy={disabled} description="Custom lets you choose your own planned lay stake."
           inspectionId={`${inspectionId}.custom`} title="Custom" rows={custom ? rowsFor(custom).filter(row => row.label !== "Lay stake") : []} tone="custom"
-          action={<div className="calculator-custom-input-row"><PlannerField id={`${inspectionId}.custom-lay`} label="Lay stake" value={customDraft || custom?.lay_stake || ""} onChange={editCustom} error={draftErrors.customDraft} readOnly={readOnly} /><CopyableFinancialValue actionLabel="Copy and use Custom planned lay stake" dataPdId={`${inspectionId}.custom-input-copy`} disabled={disabled || !custom} label="Custom lay stake" onCopy={(value) => copyPlannedReference(value, "Custom")} value={customDraft || custom?.lay_stake} /></div>} />
+          action={<div className="calculator-custom-input-row"><PlannerField id={`${inspectionId}.custom-lay`} label="Lay stake" value={customDraft || custom?.lay_stake || ""} onChange={value => editCustom(value, renderedModeVersion)} error={draftErrors.customDraft} readOnly={readOnly} /><CopyableFinancialValue actionLabel="Copy and use Custom planned lay stake" dataPdId={`${inspectionId}.custom-input-copy`} disabled={disabled || !custom} label="Custom lay stake" onCopy={(value) => copyPlannedReference(value, "Custom")} value={customDraft || custom?.lay_stake} /></div>} />
         {Number.isFinite(minimum) && Number.isFinite(maximum) && maximum > minimum ? <SingleLayCustomSlider
           current={Math.min(maximum,Math.max(minimum,Number(customDraft || custom?.lay_stake || standard?.lay_stake || minimum)))}
           centre={Number(standard?.lay_stake)} minimum={minimum} maximum={maximum} minimumText={minimumText || String(minimum)} maximumText={maximumText || String(maximum)}
-          onDraft={editCustom} onCommit={editCustom} onMinimumChange={setMinimumText} onMaximumChange={setMaximumText} /> : <p className="field-hint">Enter valid minimum and maximum bounds to use the slider.</p>}</section>
+          onDraft={value => editCustom(value, renderedModeVersion)} onCommit={value => editCustom(value, renderedModeVersion)} onMinimumChange={setMinimumText} onMaximumChange={setMaximumText} /> : <p className="field-hint">Enter valid minimum and maximum bounds to use the slider.</p>}</section>
       </section> : null}
       {mode === "Simple" ? <CalculatorReferenceSection busy={disabled} description="Standard aims to equalise the outcomes."
         inspectionId={`${inspectionId}.selected-reference`} title="Standard" rows={standard ? rowsFor(standard) : []}
@@ -262,7 +268,7 @@ export function CoreLayPlanner({ accounts, basis, defaultCommission, exchangeCom
             : "The actual odds or commission differ from the plan. An additional hedge needs a reviewed changed-odds calculation; no unmatched order is assumed filled."}</p></> : <>
           <div className="form-grid"><PlannerField id={`${inspectionId}.actual-stake`} label="Actual matched stake" value={actualDraft} onChange={setActualDraft} readOnly={readOnly} /><PlannerField id={`${inspectionId}.actual-odds`} label="Actual lay odds" value={actualOdds || planningOdds} onChange={setActualOdds} readOnly={readOnly} />
             <label className="field-control"><span>Actual exchange commission (%)</span><CommissionInput aria-label="Actual exchange commission (%)" onRatioChange={setActualCommission} readOnly={readOnly} value={actualCommission} /></label></div>
-          <button className="button-link icon-text-action" disabled={disabled || !actualValid} onClick={() => onPatch({lay_actual:actualDraft,lay_matched_stake_1:actualDraft,
+          <button className="button-link icon-text-action" disabled={disabled || !reviewedInputsUnchanged || !actualValid} onClick={() => onPatch({lay_actual:actualDraft,lay_matched_stake_1:actualDraft,
             lay_odds_1:actualOdds || planningOdds,lay_commission_1:actualCommission,status:"Placed",
             date_settled:form.date_settled || toDateTimeLocalValue(new Date().toISOString())})} type="button"><span aria-hidden="true" className="material-symbols-outlined">check</span><span>Confirm actual placement</span></button>
         </>}
