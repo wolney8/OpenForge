@@ -79,6 +79,8 @@ export function CoreLayPlanner({ accounts, basis, defaultCommission, exchangeCom
   const exchanges = accounts.filter(a => a.type === "Exchange" && a.status !== "Archived" && a.lifecycle_status !== "Archived");
   const exchange = exchanges.find(a => a.account_id === exchangeId) ?? exchanges.find(a => a.account === form.exchange_name);
   const strategy = (["Standard", "Underlay", "Overlay", "Custom"].includes(form.match_strategy) ? form.match_strategy : "Standard") as LayPlan["selected_strategy"];
+  const strategyRef = useRef<LayPlan["selected_strategy"]>(strategy);
+  useEffect(() => { strategyRef.current = strategy; }, [strategy]);
   const requestKey = JSON.stringify({ stake, backOdds: form.back_odds, planningOdds, commission,
     strategy, customDraft, exchangeId: exchange?.account_id ?? "", basis, origin });
   const draftErrors: Record<string, string | null> = {
@@ -154,7 +156,10 @@ export function CoreLayPlanner({ accounts, basis, defaultCommission, exchangeCom
     if (Object.entries(values).every(([key,value]) => form[key as keyof CoreForm] === value)) return;
     invalidate(); onPatch(values);
   }
-  function selectStrategy(value: LayPlan["selected_strategy"]) { patch({ match_strategy:value }); }
+  function selectStrategy(value: LayPlan["selected_strategy"]) {
+    strategyRef.current = value;
+    patch({ match_strategy:value });
+  }
   function editCustom(value: string) {
     if (value === customDraft && strategy === "Custom") return;
     invalidate(); setCustomDraft(value); onPatch({ match_strategy:"Custom" });
@@ -194,7 +199,7 @@ export function CoreLayPlanner({ accounts, basis, defaultCommission, exchangeCom
       <div className="ledger-calculator-mode-bar">
         <label className="field-control ledger-calculator-mode-field"><span>Bet Type</span><input readOnly value={basis === "SNR" ? "Free Bet SNR" : "Normal"} /></label>
         <div className="field-control ledger-calculator-mode-field"><span>Presentation Mode</span><CalculatorSegmentedControl ariaLabel={`${basis} calculator presentation mode`}
-          onChange={next => { setMode(next); if (next === "Simple" && strategy !== "Standard") selectStrategy("Standard"); }}
+          onChange={next => { setMode(next); if (next === "Simple" && strategyRef.current !== "Standard") selectStrategy("Standard"); }}
           options={[{label:"Simple",value:"Simple"},{label:"Advanced",value:"Advanced"}]} value={mode} /></div>
       </div>
       <div className="form-grid calculator-paired-segments calculator-paired-rows-2" data-pd-id={`${inspectionId}.paired-segments`}>
