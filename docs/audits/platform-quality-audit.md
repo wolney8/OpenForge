@@ -2,6 +2,10 @@
 
 ## Current CP-004 import, populated-ledger and accessibility package — 2026-09-16
 
+Application, fixture and reusable audit-harness checkpoint:
+**14ab674cec912ced8420f83790219f67d59ed844** on the local integration branch. The final report
+checkpoint is documentation-only and is recorded in the CP-004 handoff.
+
 The integrated local application was exercised with a genuine synthetic six-sheet Profile workbook
 through browser file selection, review, approval, import, ledger reopen, Reports, export, portable
 restore, report reload and re-export. Two Profiles carrying the same external source identifier
