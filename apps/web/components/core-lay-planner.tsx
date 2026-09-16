@@ -176,6 +176,11 @@ export function CoreLayPlanner({ accounts, basis, defaultCommission, exchangeCom
     suggestedTargetLayStake: "",
     legs: recordedStake ? [{matchedStake:recordedStake}] : [],
   });
+  async function copyPlannedReference(value: string, selectedStrategy: LayPlan["selected_strategy"]) {
+    await navigator.clipboard.writeText(value);
+    selectStrategy(selectedStrategy);
+    return true;
+  }
   const rowsFor = (r: Reference) => [
     { label:"Lay stake", value:r.lay_stake, copyable:true }, { label:"Liability", value:r.liability },
     { label:"Bookmaker wins", value:r.back_wins_total }, { label:"Exchange wins", value:r.back_loses_total },
@@ -216,12 +221,12 @@ export function CoreLayPlanner({ accounts, basis, defaultCommission, exchangeCom
     <div className="calculator-band calculator-band-secondary" aria-busy={busy}>
       {mode === "Advanced" ? <section className="calculator-advanced-reference-group" data-pd-id={`${inspectionId}.advanced`}>
         <div className="calculator-reference-card-grid">{(["Underlay","Standard","Overlay"] as const).map(name => { const r = references.find(r => r.strategy === name); return <CalculatorReferenceSection key={name}
-          busy={disabled} description={r ? name === "Underlay" ? "Underlay favours the bookmaker-win side." : name === "Overlay" ? "Overlay favours the exchange-win side." : "Standard aims to equalise the outcomes." : "No valid non-negative endpoint exists for these inputs."}
-          inspectionId={`${inspectionId}.${name.toLowerCase()}`} title={name} rows={r ? rowsFor(r) : []}
+          busy={disabled} copyActionLabel={`Copy and use ${name} planned lay stake`} description={r ? name === "Underlay" ? "Underlay favours the bookmaker-win side." : name === "Overlay" ? "Overlay favours the exchange-win side." : "Standard aims to equalise the outcomes." : "No valid non-negative endpoint exists for these inputs."}
+          inspectionId={`${inspectionId}.${name.toLowerCase()}`} onCopy={(value) => copyPlannedReference(value, name)} title={name} rows={r ? rowsFor(r) : []}
           tone={name === "Underlay" ? "underlay" : name === "Overlay" ? "overlay" : "standard"} />; })}</div>
         <section className="calculator-custom-reference-group" data-pd-id={`${inspectionId}.custom-group`}><CalculatorReferenceSection busy={disabled} description="Custom lets you choose your own planned lay stake."
           inspectionId={`${inspectionId}.custom`} title="Custom" rows={custom ? rowsFor(custom).filter(row => row.label !== "Lay stake") : []} tone="custom"
-          action={<div className="calculator-custom-input-row"><PlannerField id={`${inspectionId}.custom-lay`} label="Lay stake" value={customDraft || custom?.lay_stake || ""} onChange={editCustom} error={draftErrors.customDraft} readOnly={readOnly} /><CopyableFinancialValue dataPdId={`${inspectionId}.custom-input-copy`} disabled={disabled || !custom} label="Custom lay stake" value={customDraft || custom?.lay_stake} /></div>} />
+          action={<div className="calculator-custom-input-row"><PlannerField id={`${inspectionId}.custom-lay`} label="Lay stake" value={customDraft || custom?.lay_stake || ""} onChange={editCustom} error={draftErrors.customDraft} readOnly={readOnly} /><CopyableFinancialValue actionLabel="Copy and use Custom planned lay stake" dataPdId={`${inspectionId}.custom-input-copy`} disabled={disabled || !custom} label="Custom lay stake" onCopy={(value) => copyPlannedReference(value, "Custom")} value={customDraft || custom?.lay_stake} /></div>} />
         {Number.isFinite(minimum) && Number.isFinite(maximum) && maximum > minimum ? <SingleLayCustomSlider
           current={Math.min(maximum,Math.max(minimum,Number(customDraft || custom?.lay_stake || standard?.lay_stake || minimum)))}
           centre={Number(standard?.lay_stake)} minimum={minimum} maximum={maximum} minimumText={minimumText || String(minimum)} maximumText={maximumText || String(maximum)}

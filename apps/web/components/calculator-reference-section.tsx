@@ -23,18 +23,22 @@ function referenceValue(value: string | null | undefined, label: string) {
 export function CalculatorReferenceSection({
   action,
   busy = false,
+  copyActionLabel,
   description,
   inspectionId,
   live = false,
+  onCopy,
   rows,
   title,
   tone = "standard",
 }: {
   action?: ReactNode;
   busy?: boolean;
+  copyActionLabel?: string;
   description: string;
   inspectionId: string;
   live?: boolean;
+  onCopy?: (value: string) => boolean | Promise<boolean>;
   rows: CalculatorReferenceRow[];
   title: string;
   tone?: "standard" | "underlay" | "overlay" | "custom";
@@ -54,7 +58,7 @@ export function CalculatorReferenceSection({
         <div className="calculator-reference-card-row">
           <dt>{row.label}</dt>
           <dd>{row.copyable
-            ? <CopyableFinancialValue disabled={busy} dataPdId={`${inspectionId}.${row.label.toLowerCase().replaceAll(" ", "-")}.copyable`} label={row.label} value={row.value} />
+            ? <CopyableFinancialValue actionLabel={copyActionLabel} disabled={busy} dataPdId={`${inspectionId}.${row.label.toLowerCase().replaceAll(" ", "-")}.copyable`} label={row.label} onCopy={onCopy} value={row.value} />
             : referenceValue(row.value, row.label)}</dd>
         </div>
       </FinancialValueReplayGroup>)}
