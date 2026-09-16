@@ -1,6 +1,6 @@
 # Project Status — Plum Duff / OpenForge — Doc ID: PS-CODEX-001
 
-**Last updated:** 2026-09-16 · **Status:** 🟡 At risk
+**Last updated:** 2026-09-16 14:10 BST · **Status:** 🟡 At risk
 
 ## Right now
 
@@ -45,6 +45,7 @@ These figures measure **#114 audit coverage**, not the percentage of the product
 | CP-004 | 2026-09-16 | Exercised full Profile import/recovery and populated ledgers; repaired import, Cash validation and shared dialog defects | [#12](https://github.com/wolney8/OpenForge/issues/12), [#91](https://github.com/wolney8/OpenForge/issues/91), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-004-import-populated-ledger-and-accessibility-package--2026-09-16) |
 | CP-005 | 2026-09-16 | Reconciled Profile/combined reports, measured 200 records, repaired report header semantics and bounded lineage decisions | [#109](https://github.com/wolney8/OpenForge/issues/109), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-005-reporting-larger-data-and-evidence-boundary-package--2026-09-16) |
 | CP-006 | 2026-09-16 | Proved report and notification-history boundaries, refreshed dependency exposure and restored worktree mypy execution | [#90](https://github.com/wolney8/OpenForge/issues/90), [#111](https://github.com/wolney8/OpenForge/issues/111), [#115](https://github.com/wolney8/OpenForge/issues/115) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-006-reporting-notification-and-securityreliability-package--2026-09-16) |
+| CP-007 | 2026-09-16 | Added London date-and-time metadata rules for owner-facing documents | — | [Rule](AGENTS.md#owner-facing-document-timestamp-rule) |
 
 ## Reference index
 

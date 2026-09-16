@@ -291,6 +291,19 @@ Update these documents at their own boundary:
 Detailed audits, contracts and the canonical request register remain authoritative. Do not copy
 their detail into the owner-facing navigation files.
 
+### Owner-facing document timestamp rule
+
+For owner-facing documents with a `Last updated` field, record both the calendar date and the
+local time in Europe/London, using the correct GMT or BST designation for that date:
+
+`**Last updated:** YYYY-MM-DD HH:mm GMT/BST`
+
+This applies at minimum to `PROJECT_STATUS.md` and `ENGINEERING_LEARNING.md`. Update the timestamp
+only when the document's current content changes materially, not when it is merely opened,
+checked or reformatted. The timestamp describes the document state, not the application build
+time. Keep checkpoint-log dates unchanged unless a separate requirement explicitly adds times to
+those rows.
+
 ### Portability review rule
 
 When a task materially affects architecture, runtime setup, storage, external services, test
