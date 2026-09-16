@@ -252,7 +252,7 @@ At the end of every completed task or substantive checkpoint, before finishing:
 When the Checkpoint Log exceeds 20 rows:
 
 - preserve the CP IDs;
-- move the oldest completed checkpoint rows into the existing `CHANGELOG.md`
+- move the oldest completed checkpoint rows into the root [`CHANGELOG.md`](CHANGELOG.md)
   under an appropriate dated/project-status section;
 - leave the newest 20 rows in `PROJECT_STATUS.md`;
 - this rollover is the only exception to the normal append-only checkpoint-log rule;
@@ -264,6 +264,33 @@ copying them.
 
 A checkpoint row is NOT proof that a feature is complete, tested, deployed or accepted. Continue
 using the repository's existing evidence labels and issue status rules.
+
+### Project document routing
+
+At the start of work, read `PROJECT_STATUS.md` first.
+
+When the task involves:
+
+- audit evidence, testing or findings: read `AUDIT_REGISTER.md`, then only the linked detailed audit
+  sections required;
+- roadmap, priorities or feature sequencing: read `PROJECT_ROADMAP.md`, then the linked canonical
+  planning documents required;
+- individual requirements: use the canonical request register and relevant GitHub issue;
+- implementation detail: use the relevant contract, fixture and source.
+
+Update rules:
+
+- `PROJECT_STATUS.md`: update at every substantive completed task or checkpoint;
+- `AUDIT_REGISTER.md`: update only when audit coverage, evidence state, findings or complete-workflow
+  status changes;
+- `PROJECT_ROADMAP.md`: update only when milestones, priorities, dependencies or deliberate deferrals
+  change;
+- `CHANGELOG.md`: append meaningful completed or integrated milestones and archive checkpoint rows
+  when `PROJECT_STATUS.md` exceeds 20;
+- detailed audits, contracts and registers remain authoritative; do not duplicate them into the
+  owner-facing files.
+
+Never allow `PROJECT_STATUS.md` to grow back into the detailed audit or backlog.
 
 ## Response style
 
