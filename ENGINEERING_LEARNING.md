@@ -1,14 +1,14 @@
 # Engineering Learning — Plum Duff / OpenForge — Doc ID: EL-CODEX-001
 
-**Last updated:** 2026-09-16 14:54 BST
+**Last updated:** 2026-09-16 15:22 BST
 
 This is a compact notebook of transferable lessons from building Plum Duff. It is not the audit,
 roadmap, backlog or evidence record.
 
 ## Current learning focus
 
-- Giving browser, Profile, account and server state explicit owners.
-- Using static analysis to find uncertain shapes that runtime happy paths may miss.
+- Evolving stored data without guessing historical facts or making rollback destructive.
+- Keeping identity/linkage separate from the history of changes to a financial record.
 
 ## Concepts worth remembering
 
@@ -89,6 +89,28 @@ cluster without changing money rules.
 
 **Remember:** Tests show exercised behaviour; static analysis challenges unexercised possibilities.
 
+### Schema evolution
+
+**What it means:** Stored data changes must define new fields, constraints, old-row behaviour,
+portable export and a safe rollback path before a migration runs.
+
+**Why it mattered in Plum Duff:** Imported-parent resolution needs explicit unresolved states, while
+financial history must survive deletion. Guessing a backfill or dropping new data on rollback would
+make either repair less trustworthy than the original gap.
+
+**Remember:** A safe schema change explains the past, the future and the way back.
+
+### Identity versus history
+
+**What it means:** Identity says what a record belongs to; history says what happened to it over
+time. The two may share identifiers but solve different integrity problems.
+
+**Why it mattered in Plum Duff:** PD-QA-018 links an imported Free Bet to the correct Profile-owned
+Sportsbook record. PD-QA-021 preserves create, settlement, correction and removal evidence even
+after the live row changes or disappears.
+
+**Remember:** Linkage answers “which record”; history answers “what happened”.
+
 ## Things I should personally inspect when AI changes code
 
 - Does the test prove behaviour independently, or repeat the implementation's own answer?
@@ -145,6 +167,7 @@ one documented, non-secret environment contract while retaining SQLite/PostgreSQ
 | CP-005 | 2026-09-16 12:52 BST | Planning versus actual; idempotency; failure atomicity and provenance | Reporting, imported parents and deletion history depend on keeping financial state and its source evidence distinct |
 | CP-006 | 2026-09-16 14:02 BST | Current state versus event history; exposure-based dependency review | Notification history and dependency risk both required evidence beyond labels or current display state |
 | CP-009 | 2026-09-16 14:54 BST | Persistence boundary/state ownership; static analysis | Settings, sessions and financial responses need explicit owners and safe shapes beyond happy-path runtime evidence |
+| CP-010 | 2026-09-16 15:22 BST | Schema evolution; identity versus history | Two separate integrity gaps needed exact additive designs without guessed links, double-counted history or destructive rollback |
 
 ## Where detailed evidence lives
 

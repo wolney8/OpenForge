@@ -1,6 +1,6 @@
 # Audit Register — Plum Duff / OpenForge — Doc ID: AR-CODEX-001
 
-**Last updated:** 2026-09-16 14:54 BST
+**Last updated:** 2026-09-16 15:22 BST
 
 This is the owner-facing index for audit evidence. The
 [platform quality audit](docs/audits/platform-quality-audit.md) remains the detailed authority.
@@ -15,7 +15,7 @@ These are coverage measures, not percentages of the product finished.
 | Complete tasks exercised | 10 / 24 (42%) | All required steps must be exercised |
 | Complete tasks passing | 10 / 24 (42%) | Blocked or partial tasks are excluded |
 | Competitor comparisons | 15 / 27 (56%) | 12 documented, 3 hands-on |
-| Requirements reconciled | 32 / 133 (24%) | Original scope and clarifications both required |
+| Requirements reconciled | 37 / 133 (28%) | Original scope and clarifications both required |
 
 ## Current high-priority findings
 
@@ -31,7 +31,7 @@ These are coverage measures, not percentages of the product finished.
 | PD-QA-001 | Affected Next/sharp versions serve the local image optimiser | Open / local route reachable; hosted exposure unverified | Exact supported minima recorded; no upgrade or hosted clearance inferred | [#115](https://github.com/wolney8/OpenForge/issues/115) |
 | #96 | Provider credentials still require owner/provider rotation | Owner action pending | No secret values are recorded in the audit | [#96](https://github.com/wolney8/OpenForge/issues/96) |
 | PQA-U08 | Actual screen-reader behaviour has not been verified | Open / UNVERIFIED | VoiceOver exists locally, but spoken-output evidence could not be captured reliably; automation is not substituted | [#114](https://github.com/wolney8/OpenForge/issues/114) |
-| PQA-M07 | API static analysis still reports Early Payout typing debt | Open / improved | Integrated paths reduced mypy from 39 errors in seven files to 22 in one pre-existing file | [#114](https://github.com/wolney8/OpenForge/issues/114) |
+| PQA-M07 | Static analysis and ordinary focused suites must remain clean | Passed for current scoped source | Mypy 0/78 files; relevant API 147/147 and web 420/420 | [#114](https://github.com/wolney8/OpenForge/issues/114) |
 
 ## Complete workflow status
 
@@ -51,7 +51,7 @@ These are coverage measures, not percentages of the product finished.
 | Native Casino activity | Partial | Actual/settle/correct/report passes; fee allocation and durable deletion history remain |
 | Profile and combined financial reporting | Partial | Arithmetic/range/breakdowns pass; point inspection, drilldown and module filter remain absent |
 | Notification clear and history | Partial | Clear/reload and safe source denial pass; prior event disappears when source state changes |
-| Settings and session recovery | Partial | Ownership/defaults, mutation rollback, inactivity and stale-session paths pass; fresh-browser and focus-revalidation evidence remains incomplete |
+| Settings and session recovery | Partial | Ownership/defaults, mutation rollback, inactivity and stale-session paths pass; frontend/API restart and unavailable-database recovery now pass, while genuine VoiceOver remains unverified |
 | Realistic 200-record Profile | Partial | Navigation, pagination, filter and search pass; chart/stale stress and hosted capacity remain |
 | SQLite backup restore and reopen | Passed for the isolated local copy | Operational/hosted disaster recovery remains separate |
 | Local PostgreSQL transaction, backup and restore | Passed for the isolated test scope | This is not hosted disaster-recovery proof |

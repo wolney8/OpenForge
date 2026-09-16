@@ -1,5 +1,21 @@
 # Plum Duff Next Issue Tracking Register
 
+## PD-AUDIT-CP010-20260916 — engineering debt, recovery and schema decisions
+
+| ID | Requested outcome | Current state |
+|---|---|---|
+| PD-AUDIT-TYPING-001 | Keep API static analysis executable and resolve correctness-significant typing debt | COMPLETE for the current source: 39 errors/7 files → 22/1 at CP-009 → 0/78 files; Early Payout equations unchanged and 10/10 focused tests pass |
+| PD-AUDIT-WEB-001 | Distinguish missing required money input from malformed supplied input | COMPLETE: the shared payout helper contract is explicit and the ordinary web suite passes 420/420 |
+| PD-AUDIT-RECOVERY-002 | Detect local database loss honestly and recover without corrupting data | COMPLETE / PROVEN scoped: frontend/API restart and SQLite clone checksums pass; health now probes the selected database and fails generically with 503 when unavailable |
+| PD-AUDIT-A11Y-001 | Establish genuine nonvisual reader evidence | UNVERIFIED: VoiceOver can start, but spoken application output cannot be captured or operated reliably in this environment; automation is not substituted |
+| PD-QA-018 | Resolve imported Free Bet parents only within the correct Profile | DECISION READY / NOT IMPLEMENTED: existing source mapping gets a Profile-scoped key; child gets explicit native parent, resolution state and versioned evidence; owner schema approval required |
+| PD-QA-021 | Preserve immutable financial correction/deletion history | DECISION READY / NOT IMPLEMENTED: a bounded append-only history table is safer than three cascade-bound audit rebuilds; owner schema approval required |
+
+Reconciled in this package: #20 local database/backup readiness, #38 Early Payout/advanced
+calculator scope, #81 in-app confirmation dialogs, #83 Profit Boost source/helper behaviour and
+#112 shared odds normalisation. Local implementation, hosted verification and owner acceptance
+remain separate states.
+
 ## PD-AUDIT-CP009-20260916 — accessibility, persistence and recovery
 
 | ID | Requested outcome | Current state |

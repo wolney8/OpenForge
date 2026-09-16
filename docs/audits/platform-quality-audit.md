@@ -1,5 +1,136 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
+## Current CP-010 engineering debt, recovery and schema-decision package — 2026-09-16
+
+**Checkpoint timestamp:** 2026-09-16 15:22 BST
+
+The integrated local application remains healthy at `localhost:3010`; the normal API remains on
+`localhost:8010`. Normal data was not edited. The local SQLite backup and its recovery clone both
+have SHA-256 `db31fa8c8434d3b13f9bc38d0cba34b1855ddcdffff07857b309ba544fa22f87`, and
+Profile identity and API-response checksums were unchanged across the isolated API restart.
+
+### Engineering debt and recovery evidence
+
+Early Payout mypy debt reduced from the original **39 errors in seven files**, through **22 errors
+in one file at CP-009**, to **0 errors in 78 source files**. The repaired annotations narrow
+validated optional odds, give heterogeneous outcome tuples their real shape and keep Decimal sums
+Decimal-valued. The equations and rounding policy did not change; 10/10 focused Early Payout tests
+and the final combined relevant API/calculator/health/authentication run passes 147/147.
+
+The web unit suite is now **420/420**. Its sole blank-input failure mixed two contracts: a missing
+required amount should produce a field-specific required message, while malformed non-empty text
+should produce an invalid-number message. The fixture and regression now test those states
+separately. Two fresh-database calculator failures were also test-fixture debt: they assumed the
+removed private demo Profile. They now use the canonical synthetic Profile/Account factory.
+
+Recovery was exercised against an SQLite backup clone. Frontend and API restarts retained the same
+data and identifiers. An isolated unavailable-database probe found that the local health endpoint
+could return healthy without opening its selected database. It now performs a real `SELECT 1` for
+every configured backend and returns a generic 503 when unavailable; the failed probe made no
+write, and the same clone reopened unchanged. This is local reliability evidence, not hosted
+disaster-recovery proof.
+
+VoiceOver is installed and accessibility UI scripting is available. VoiceOver could be started,
+but this environment exposes neither a reliable spoken-output stream nor an observable application
+reader session. **VOICEOVER — UNVERIFIED.** Automated semantics remain evidence for their own
+boundary and are not relabelled as a reader pass.
+
+### PD-QA-018 decision pack — PROPOSED / NOT IMPLEMENTED / OWNER APPROVAL REQUIRED
+
+**Current deficiency.** `import_source_records` is globally keyed by source sheet and external ID,
+while an imported Free Bet retains an external qualifying-bet ID but no Profile-scoped resolved
+Sportsbook identity. Thus `SB-001` in Profile A and Profile B cannot be represented safely, and a
+missing or ambiguous parent cannot be distinguished from an unattempted lookup.
+
+**Recommended smallest-safe model.** Rebuild the existing source-identity key rather than create a
+second mapping store, then add explicit resolution fields to imported Free Bets:
+
+| Field | Type / nullability | Purpose and scope | Constraint / index |
+|---|---|---|---|
+| `import_source_records.profile_id` | text, non-null | Owns the external identity | Composite primary/unique key member; Profile FK |
+| `source_sheet` | text, non-null | Source namespace/type | Composite primary/unique key member |
+| `source_record_id` | text, non-null | Original external ID | Composite primary/unique key member |
+| `import_run_id` | text, nullable | Modern retry/import provenance; legacy batch remains | Indexed with Profile where used for retry |
+| `free_bets.origin_qual_bet_source_namespace` | text, non-null, default empty | Namespace of the retained external parent ID | Validated with resolution state |
+| `origin_qual_bet_native_id` | text, nullable | Resolved native Sportsbook parent | Composite same-Profile FK; `ON DELETE RESTRICT` |
+| `origin_qual_bet_resolution_state` | constrained text, non-null | `resolved`, `missing`, `ambiguous`, `legacy_unresolved`, `not_applicable` | Check constraint and state index |
+| `origin_qual_bet_resolution_json` | versioned JSON text, non-null | Candidate IDs, evidence, mapping version and review reason | Server validated; never used as the native key |
+| `origin_qual_bet_import_run_id` | text, nullable | Links the resolution attempt to its retry/import operation | Profile-scoped lookup index |
+
+Source mappings are written first inside the import transaction. Lookup is strictly
+`profile_id + namespace + external ID`: one candidate resolves, none becomes `missing`, and several
+become `ambiguous` with null native ID. A retry uses the stable import/source identity and cannot
+duplicate or silently relink a resolved child. A parent appearing later requires an explicit
+re-resolution action; reads never guess. Existing rows become `legacy_unresolved`, with no invented
+backfill. Export retains the external identity and resolution evidence; restore remaps a native ID
+only when its parent is restored inside the same Profile. The UI shows the linked parent,
+“Parent not found”, or “Several possible parents — review required”. Rollback retains the new data;
+older write code must be read-only for this boundary or receive a forward fix rather than dropping
+columns.
+
+| Example | Result |
+|---|---|
+| One same-Profile parent | `resolved`; native and external IDs retained |
+| Same external ID in two Profiles | Two independent Profile-scoped mappings |
+| Missing parent | `missing`; null native ID; evidence retained |
+| Two candidate parents | `ambiguous`; null native ID; candidate IDs retained |
+| Portable restore | Profile/native IDs remapped together or state becomes explicitly unresolved |
+
+### PD-QA-021 decision pack — PROPOSED / NOT IMPLEMENTED / OWNER APPROVAL REQUIRED
+
+The current Cash Adjustment, Extra Place and Casino audit tables reference the live business row
+with cascading deletion; two delete paths also remove audit rows explicitly. Extending each table
+would require three divergent rebuilds and would still bind history to a deletable owner. The
+recommended bounded design is one append-only `financial_activity_history` table—not a general
+event platform:
+
+| Field | Type / nullability | Purpose / constraint |
+|---|---|---|
+| `history_id` | text UUID, non-null | Immutable primary key |
+| `profile_id` | text, non-null | Profile FK with restricted deletion; all reads Profile-scoped |
+| `ledger_type`, `activity_id` | constrained text, non-null | Stable ledger/entity identity; deliberately no FK to a deletable row |
+| `operation` | constrained text, non-null | `create`, `edit`, `settle`, `correct`, `void`, `archive`, `remove`, `reverse` |
+| `occurred_at` | UTC timestamp, non-null | Server-owned event time |
+| `schema_version` | integer, non-null | Snapshot contract version |
+| `before_snapshot_json`, `after_snapshot_json` | validated JSON, non-null | Immutable before/new state; JSON `null` where inapplicable |
+| `reporting_effect_before_json`, `reporting_effect_after_json` | validated JSON, non-null | Explicit governed financial effect, not a second ledger total |
+| `source_identity_json`, `provenance_json` | validated JSON, non-null | Source/import/relationship evidence |
+| `reason` | text, non-null, default empty | User/system reason where available |
+| `actor_type`, `actor_id` | constrained text non-null / text nullable | Known human/system origin without inventing identity |
+| `operation_id` | text, non-null | Retry identity; unique with Profile |
+
+Indexes cover `(profile_id, ledger_type, activity_id, occurred_at)` and
+`(profile_id, occurred_at)`; database rules reject updates/deletes. Create/edit/settle/correct each
+append before/after evidence while the current row and report use only current governed state.
+Correction changes current truth and preserves the prior value. Void/archive/removal hides or
+removes the current row only where policy allows and applies an explicit zero/reversal reporting
+effect; history survives and is never counted as another financial event. There is no guessed
+backfill for already deleted rows; an existing live row receives its first snapshot on its next
+governed mutation. Portable export/restore carries events, remaps the Profile and preserves event,
+activity and operation identities. Growth is one bounded record per mutation. Rollback retains the
+table and requires old code to be read-only for governed ledgers or a forward fix.
+
+PD-QA-018 answers **which external/native record this belongs to**. PD-QA-021 answers **what
+happened to a financial record over time**. They may share Profile, activity and import identifiers,
+but neither schema depends on the other.
+
+### Requirements and competitor evidence
+
+Five further requests are reconciled without confusing review with implementation: #20 local
+database/backup readiness, #38 Early Payout and advanced calculator scope, #81 in-app confirmation
+dialogs, #83 Profit Boost source/helper behaviour and #112 shared odds normalisation. Their current
+local evidence, remaining UI/ledger gaps and hosted/owner limits are recorded in the canonical
+register. Requirements coverage is now **37/133 (28%)**.
+
+Current official public Outplayed and OddsMonkey material was rechecked for reporting, tracker
+reset/history and account continuity. It clarifies documented behaviour but does not establish a
+new hands-on capability/provider cell or source-independent restore/history flow. MBB member-only
+behaviour remains inaccessible. Competitor coverage therefore remains honestly **15/27 (56%)**.
+
+Current coverage is **56/87 assessments (64%), 10/24 complete journeys exercised/passing (42%),
+15/27 competitor cells (56%) and 37/133 requirements reconciled (28%)**. These are audit-coverage
+figures, not product-completion percentages.
+
 ## Current CP-009 accessibility, persistence and recovery package — 2026-09-16
 
 **Checkpoint timestamp:** 2026-09-16 14:54 BST
@@ -3059,7 +3190,7 @@ in the PD-QA-015 addendum still applies (PG, provider access, imported sources, 
 | PQA-M04 | PostgreSQL deployment/rollback assumptions | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
 | PQA-M05 | Backup custody/encryption/retention | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
 | PQA-M06 | Test fixture isolation/readiness | ASSESSED; REVIEWED | B harness blockers + explicit synthetic factories |
-| PQA-M07 | Typing/lint/flakiness census | ASSESSED; FAIL / PROVEN | CP-006 runner fixed; mypy executes and reports 39 source errors/7 files. Broader API 55/65 and web 419/420 expose separate seed/blank-input failures |
+| PQA-M07 | Typing/lint/flakiness census | ASSESSED; PASS / PROVEN scoped | CP-010 mypy reports 0 errors/78 files; final relevant API 147/147 and web 420/420 pass. This does not infer every legacy broad fixture is modernised |
 | PQA-M08 | Large-table/chart performance | ASSESSED; PASS scoped local boundary | CP-005 200 records, source API169ms, routes0.93–2.28s, pagination/filter/search; not production CWV/capacity |
 | PQA-M09 | Request storms/stale-response census | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
 | PQA-M10 | Routed docs/instruction contradictions | ASSESSED; REVIEWED | A stale docs/orphan IDs; no bulk cleanup |

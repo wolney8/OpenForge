@@ -1,18 +1,18 @@
 # Project Status — Plum Duff / OpenForge — Doc ID: PS-CODEX-001
 
-**Last updated:** 2026-09-16 14:54 BST · **Status:** 🟡 At risk
+**Last updated:** 2026-09-16 15:22 BST · **Status:** 🟡 At risk
 
 ## Right now
 
-- **Working on:** Continue #114 with the next executable recovery, accessibility and requirement package after the CP-009 settings/session boundary.
-- **Next:** If approved, implement the exact imported-parent and durable financial-history schemas first in isolated SQLite/PostgreSQL data.
-- **Blocked on:** none; the two schema repairs require owner approval before implementation
+- **Working on:** Continue #114 after closing the bounded typing, web-fixture and local database-health debt.
+- **Next:** Advance remaining ledger, history, competitor and requirement evidence; if approved, implement PD-QA-018 and PD-QA-021 first in isolated SQLite/PostgreSQL data.
+- **Blocked on:** none for independent audit work; the two schema repairs require owner approval before implementation
 
 ## Delivery state
 
 | Area | Evidence state |
 | --- | --- |
-| Local integrated build | CP-009 settings/session evidence added; integrated-path mypy findings repaired; two schema designs remain proposals only |
+| Local integrated build | CP-010 mypy/web suites are clean and local database-health recovery is repaired; two schema designs remain proposals only |
 | Normal `localhost:3010` | Healthy with normal local sign-in and unchanged normal data |
 | Main / origin | Not updated by the local integration work |
 | Vercel | Not deployed or hosted-verified |
@@ -27,12 +27,12 @@ These figures measure **#114 audit coverage**, not the percentage of the product
 | Assessments reviewed | 56 / 87 (64%) |
 | Complete tasks exercised and passing | 10 / 24 (42%) |
 | Competitor comparisons | 15 / 27 (56%) |
-| Requirements reconciled | 32 / 133 (24%) |
+| Requirements reconciled | 37 / 133 (28%) |
 
 ## Next 3 steps
 
-1. Continue crash/network-loss, recovery and remaining accessibility evidence without treating automation as a screen reader.
-2. Reconcile the next coherent request/competitor group and close the remaining fixture-based evidence gaps.
+1. Continue the remaining populated-ledger, notification/history and accessibility evidence without treating automation as a screen reader.
+2. Reconcile the next coherent request and genuinely accessible competitor group.
 3. If separately approved, implement PD-QA-018 and PD-QA-021 in isolated databases before normal data.
 
 ## Checkpoint log
@@ -48,6 +48,7 @@ These figures measure **#114 audit coverage**, not the percentage of the product
 | CP-007 | 2026-09-16 14:10 BST | Added London date-and-time metadata rules for owner-facing documents | — | [Rule](AGENTS.md#project-document-timestamp-rule) |
 | CP-008 | 2026-09-16 14:27 BST | Extended precise London timestamps to project logs and backfilled verified recent events | — | [Rule](AGENTS.md#project-document-timestamp-rule) |
 | CP-009 | 2026-09-16 14:54 BST | Assessed settings/session recovery, reduced integrated-path mypy debt and completed two schema decisions without migrating data | [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-009-accessibility-persistence-and-recovery-package--2026-09-16) |
+| CP-010 | 2026-09-16 15:22 BST | Cleared bounded typing/web debt, repaired local database-health recovery and finalised two unimplemented schema decisions | [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-010-engineering-debt-recovery-and-schema-decision-package--2026-09-16) |
 
 ## Reference index
 
