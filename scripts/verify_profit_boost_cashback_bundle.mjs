@@ -5,9 +5,11 @@ import {execFileSync} from 'node:child_process';
 import {DatabaseSync} from 'node:sqlite';
 import {chromium, request, expect} from '@playwright/test';
 
-const runtime='/tmp/openforge-award-integrity-91-20260914';
+const runtime=process.env.OPENFORGE_BUNDLE_RUNTIME ?? '/tmp/openforge-award-integrity-91-20260914';
+const webBase=process.env.OPENFORGE_BUNDLE_WEB_BASE ?? 'http://localhost:3040';
+const apiBase=process.env.OPENFORGE_BUNDLE_API_BASE ?? 'http://127.0.0.1:8039';
 const token=fs.readFileSync(runtime+'/session-token','utf8').trim();
-const api=await request.newContext({baseURL:'http://127.0.0.1:8039',extraHTTPHeaders:{Cookie:'pd_session='+token}});
+const api=await request.newContext({baseURL:apiBase,extraHTTPHeaders:{Cookie:'pd_session='+token}});
 assert.equal((await(await api.get('/auth/session')).json()).authenticated,true);
 const made=await api.post('/profiles/onboarding',{data:{setup_path:'import',display_name:'Synthetic Boost Cashback',profile_code:'BOOST-'+Date.now(),tracking_start_date:'2026-09-01',enabled_modules:['sportsbook-bets','free-bets','cash-adjustments'],accounts:[],quick_actions:[]}});
 assert.equal(made.status(),201,await made.text());
@@ -24,11 +26,11 @@ assert.equal((await api.put('/profiles/'+pid+'/exchange-commissions',{data:{exch
 
 const browser=await chromium.launch({headless:true});
 const evidence={source:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(),date:new Date().toISOString(),profileId:pid,cases:[],screenshots:[]};
-const database=new DatabaseSync(runtime+'/acceptance.sqlite3',{readOnly:true});
+const database=new DatabaseSync(process.env.OPENFORGE_BUNDLE_DATABASE ?? runtime+'/acceptance.sqlite3',{readOnly:true});
 database.exec('PRAGMA busy_timeout=5000');
 
 async function openNew(page, offerType, eventName) {
-  await page.goto('http://localhost:3040/profiles/'+pid+'/tracker/sportsbook-bets');
+  await page.goto(webBase+'/profiles/'+pid+'/tracker/sportsbook-bets');
   await page.locator('[data-pd-id="ledger.toolbar.add-row"]').click();
   const dialog=page.locator('[data-pd-id="sportsbook.editor.dialog"]');
   await dialog.waitFor();
@@ -129,7 +131,7 @@ try {
     assert.equal(JSON.parse(profit.lay_plan_json).selected_strategy,'Custom');
     assert.equal(JSON.parse(profit.lay_plan_json).reviewed_planned_lay_stake,customCopied);
     assert.equal(profit.lay_actual,'');
-    await page.goto(`http://localhost:3040/profiles/${pid}/tracker/sportsbook-bets?record=${profit.sportsbook_bet_id}`);
+    await page.goto(`${webBase}/profiles/${pid}/tracker/sportsbook-bets?record=${profit.sportsbook_bet_id}`);
     dialog=page.locator('[data-pd-id="sportsbook.editor.dialog"]');await dialog.waitFor();
     await dialog.getByRole('tab',{name:/Matching/}).first().click();
     await expect(dialog.getByRole('slider',{name:'Custom lay stake slider'})).toHaveAttribute('aria-valuenow',String(Number(customCopied)));
@@ -162,7 +164,7 @@ try {
     const storedProfit=database.prepare('SELECT profit_boost_source_json,lay_actual FROM sportsbook_bets WHERE sportsbook_bet_id=?').get(profit.sportsbook_bet_id);
     assert.equal(JSON.parse(storedProfit.profit_boost_source_json).mode,'total_return');
     assert.equal(storedProfit.lay_actual,'');
-    await page.goto(`http://localhost:3040/profiles/${pid}/tracker/sportsbook-bets?record=${profit.sportsbook_bet_id}`);
+    await page.goto(`${webBase}/profiles/${pid}/tracker/sportsbook-bets?record=${profit.sportsbook_bet_id}`);
     dialog=page.locator('[data-pd-id="sportsbook.editor.dialog"]');await dialog.waitFor();
     await dialog.getByRole('tab',{name:/Matching/}).first().click();
     await expect(dialog.getByLabel('Profit Boost entry')).toHaveValue('total_return');
@@ -211,7 +213,7 @@ try {
     const pending=JSON.parse(cashback.conditional_benefit_json);
     assert.equal(pending.eligibility,'pending');assert.equal(pending.refund_cap,'8.00');
     assert.equal(cashback.final_net_pnl,null);
-    await page.goto(`http://localhost:3040/profiles/${pid}/tracker/sportsbook-bets?record=${cashback.sportsbook_bet_id}`);
+    await page.goto(`${webBase}/profiles/${pid}/tracker/sportsbook-bets?record=${cashback.sportsbook_bet_id}`);
     dialog=page.locator('[data-pd-id="sportsbook.editor.dialog"]');await dialog.waitFor();
     await dialog.getByRole('tab',{name:/Matching/}).first().click();
     await expect(dialog.getByLabel('Offer cap')).toHaveValue('8.00');
@@ -255,7 +257,7 @@ try {
         assert.equal(JSON.parse(saved.profit_boost_source_json).mode,source.mode);
         assert.equal(JSON.parse(saved.lay_plan_json).selected_strategy,'Standard');
         assert.equal(saved.lay_actual,'');
-        await page.goto(`http://localhost:3040/profiles/${pid}/tracker/sportsbook-bets?record=${saved.sportsbook_bet_id}`);
+        await page.goto(`${webBase}/profiles/${pid}/tracker/sportsbook-bets?record=${saved.sportsbook_bet_id}`);
         dialog=page.locator('[data-pd-id="sportsbook.editor.dialog"]');await dialog.waitFor();await dialog.getByRole('tab',{name:/Matching/}).first().click();
         await expect(dialog.getByLabel('Profit Boost entry')).toHaveValue(source.mode);
         await expect(dialog.getByLabel(source.label)).toHaveValue(source.reopenedValue??source.value);
@@ -270,7 +272,7 @@ try {
     const settledReportPence=reportRows.reduce((total,row)=>
       total+(row.final_net_pnl==null?0:Math.round(Number(row.final_net_pnl)*100)),0);
     const expectedReportValue=`£ ${(settledReportPence/100).toFixed(2)}`;
-    await page.goto(`http://localhost:3040/profiles/${pid}/tracker/reports`);
+    await page.goto(`${webBase}/profiles/${pid}/tracker/reports`);
     await page.getByRole('heading',{name:'Weekly reports',exact:true}).waitFor();
     await expect(page.locator(`[aria-label="${expectedReportValue}"]`).first()).toBeVisible();
     await page.reload();
@@ -278,7 +280,7 @@ try {
     await expect(page.locator(`[aria-label="${expectedReportValue}"]`).first()).toBeVisible();
     const converted={};
     if(width===1440){
-      await page.goto('http://localhost:3040/fund-manager/calculators');
+      await page.goto(webBase+'/fund-manager/calculators');
       await page.locator('[data-pd-id="calculators.matched-betting.calculator-offer"]').selectOption('profit_boost');
       await page.getByLabel('Boosted price source').selectOption('total_return');
       await page.getByLabel('Back stake',{exact:true}).fill('10.00');
@@ -290,7 +292,7 @@ try {
       const pbRow=await(await api.get(`/profiles/${pid}/sportsbook-bets/${pbTarget.record_id}`)).json();
       assert.equal(JSON.parse(pbRow.profit_boost_source_json).mode,'total_return');assert.equal(pbRow.lay_actual,'');
       assert.equal(JSON.parse(pbRow.lay_plan_json).reviewed_planned_lay_stake,pbRow.reference_lay_stake_standard);
-      await page.goto(`http://localhost:3040/profiles/${pid}/tracker/sportsbook-bets?record=${pbRow.sportsbook_bet_id}`);
+      await page.goto(`${webBase}/profiles/${pid}/tracker/sportsbook-bets?record=${pbRow.sportsbook_bet_id}`);
       dialog=page.locator('[data-pd-id="sportsbook.editor.dialog"]');await dialog.waitFor();
       await dialog.getByRole('tab',{name:/Matching/}).first().click();
       await expect(dialog.getByLabel('Total potential return, including stake')).toHaveValue('27.86');
@@ -310,7 +312,7 @@ try {
         {mode:'profit_only',label:'Potential profit / winnings',value:'22.00'},
         {mode:'percentage',label:'Original / base odds',value:'3.00',extra:['Profit Boost (%)','10']},
       ]){
-        await page.goto('http://localhost:3040/fund-manager/calculators');
+        await page.goto(webBase+'/fund-manager/calculators');
         await page.locator('[data-pd-id="calculators.matched-betting.calculator-offer"]').selectOption('profit_boost');
         await page.getByLabel('Boosted price source').selectOption(source.mode);
         await page.getByLabel('Back stake',{exact:true}).fill('10.00');
@@ -324,7 +326,7 @@ try {
         assert.equal(convertedMeta.mode,source.mode);
         assert.equal(JSON.parse(convertedRow.lay_plan_json).selected_strategy,'Standard');
         assert.equal(convertedRow.lay_actual,'');
-        await page.goto(`http://localhost:3040/profiles/${pid}/tracker/sportsbook-bets?record=${convertedRow.sportsbook_bet_id}`);
+        await page.goto(`${webBase}/profiles/${pid}/tracker/sportsbook-bets?record=${convertedRow.sportsbook_bet_id}`);
         dialog=page.locator('[data-pd-id="sportsbook.editor.dialog"]');await dialog.waitFor();
         await dialog.getByRole('tab',{name:/Matching/}).first().click();
         await expect(dialog.getByLabel('Profit Boost entry')).toHaveValue(source.mode);
@@ -335,7 +337,7 @@ try {
         await dialog.getByRole('button',{name:/Close/}).first().click();
       }
 
-      await page.goto('http://localhost:3040/fund-manager/calculators');
+      await page.goto(webBase+'/fund-manager/calculators');
       await page.locator('[data-pd-id="calculators.matched-betting.calculator-offer"]').selectOption('cashback');
       await page.getByLabel('Back stake',{exact:true}).fill('10.00');
       await page.getByLabel('Back odds',{exact:true}).fill('3.00');
@@ -348,7 +350,7 @@ try {
       const cbMeta=JSON.parse(cbRow.conditional_benefit_json);
       assert.equal(cbMeta.eligibility,'pending');assert.equal(cbMeta.actual_receipt_amount,'');assert.equal(cbRow.lay_actual,'');
       assert.equal(JSON.parse(cbRow.lay_plan_json).selected_strategy,'Standard');
-      await page.goto(`http://localhost:3040/profiles/${pid}/tracker/sportsbook-bets?record=${cbRow.sportsbook_bet_id}`);
+      await page.goto(`${webBase}/profiles/${pid}/tracker/sportsbook-bets?record=${cbRow.sportsbook_bet_id}`);
       dialog=page.locator('[data-pd-id="sportsbook.editor.dialog"]');await dialog.waitFor();
       await dialog.getByRole('tab',{name:/Matching/}).first().click();
       await dialog.getByLabel('Eligibility').selectOption('eligible');
@@ -364,7 +366,7 @@ try {
       const settledCb=await saveAndFind(page,dialog,'Synthetic converted Cashback');
       assert.equal(settledCb.lay_actual,'9.00');assert.equal(settledCb.final_net_pnl,'8.82');
       converted.cashback={id:cbRow.sportsbook_bet_id,eligibility:'eligible',receiptNotAssumed:false,final:'8.82'};
-      await page.goto('http://localhost:3040/fund-manager/calculators');
+      await page.goto(webBase+'/fund-manager/calculators');
       await page.locator('[data-pd-id="calculators.matched-betting.calculator-offer"]').selectOption('cashback');
       await page.getByLabel('Back stake',{exact:true}).fill('10.00');
       await page.getByLabel('Back odds',{exact:true}).fill('3.00');
@@ -382,7 +384,7 @@ try {
       const convertedReportPence=convertedReportRows.reduce((total,row)=>
         total+(row.final_net_pnl==null?0:Math.round(Number(row.final_net_pnl)*100)),0);
       const convertedReportValue=`£ ${(convertedReportPence/100).toFixed(2)}`;
-      await page.goto(`http://localhost:3040/profiles/${pid}/tracker/reports`);
+      await page.goto(`${webBase}/profiles/${pid}/tracker/reports`);
       await page.getByRole('heading',{name:'Weekly reports',exact:true}).waitFor();
       await expect(page.locator(`[aria-label="${convertedReportValue}"]`).first()).toBeVisible();
       await page.reload();
@@ -397,7 +399,7 @@ try {
   await enlargedContext.addCookies([{name:'pd_session',value:token,domain:'localhost',path:'/'}]);
   const enlargedPage=await enlargedContext.newPage();
   const enlargedRow=evidence.cases[0].profitBoost.id;
-  await enlargedPage.goto(`http://localhost:3040/profiles/${pid}/tracker/sportsbook-bets?record=${enlargedRow}`);
+  await enlargedPage.goto(`${webBase}/profiles/${pid}/tracker/sportsbook-bets?record=${enlargedRow}`);
   const enlargedDialog=enlargedPage.locator('[data-pd-id="sportsbook.editor.dialog"]');await enlargedDialog.waitFor();
   await enlargedPage.addStyleTag({content:'html { font-size: 200% !important; }'});
   await enlargedDialog.getByRole('tab',{name:/Matching/}).first().click();

@@ -10,7 +10,11 @@ const apiBase=process.env.OPENFORGE_CORE_API_BASE ?? 'http://127.0.0.1:8039';
 const tokenPath=runtime+'/session-token';
 const token=fs.existsSync(tokenPath)?fs.readFileSync(tokenPath,'utf8').trim():'';
 const api=await request.newContext({baseURL:apiBase,...(token?{extraHTTPHeaders:{Cookie:'pd_session='+token}}:{})});
-if(token) assert.equal((await(await api.get('/auth/session')).json()).email,'notification-acceptance@example.invalid');
+if(token) {
+ const session=await(await api.get('/auth/session')).json();
+ assert.equal(session.authenticated,true);
+ assert.equal(session.role,'fund_manager');
+}
 const made=await api.post('/profiles/onboarding',{data:{setup_path:'import',display_name:'Synthetic Core Planner',profile_code:'CORE-'+Date.now(),tracking_start_date:'2026-09-01',enabled_modules:['sportsbook-bets','free-bets','cash-adjustments'],accounts:[],quick_actions:[]}});
 assert.equal(made.status(),201,await made.text()); const pid=(await made.json()).profile.profile_id;
 assert.equal((await api.patch('/profiles/'+pid,{data:{status:'Active'}})).status(),200);
@@ -275,7 +279,8 @@ try {
   await editor.getByRole('tab',{name:/Matching/}).first().click();const core=editor.locator(`[data-pd-id="${prefix}.matching.core-planner"]`);
   if(strategy==='Standard')await core.getByRole('button',{name:'Simple',exact:true}).click();
   const selected=strategy==='Standard' ? core.locator('[data-pd-id$=".selected-reference"]') : core.locator(`[data-pd-id$=".${strategy.toLowerCase()}"]`);
-  await expect(selected.locator('dd').first()).toContainText(stake);
+  if(strategy==='Custom') await expect(core.getByLabel('Lay stake',{exact:true})).toHaveValue(stake);
+  else await expect(selected.locator('dd').first()).toContainText(stake);
   await expect(core.getByLabel('Planning exchange commission (%)')).toHaveValue('2');
   const embeddedCopy=strategy==='Custom'?core.locator('[data-pd-id$=".custom-input-copy"] button'):selected.locator('dd').first().getByRole('button');
   await expect(embeddedCopy).toBeEnabled();await embeddedCopy.click();assert.equal(await page.evaluate(()=>navigator.clipboard.readText()),stake);
