@@ -38,9 +38,11 @@ Current product is `8f5dc5876a2830947fbfb79a88a89b4da171858d`; GitHub #35/#92 co
 | PD-LOCAL-002 | Protect existing local records before additive planning migration | COMPLETE / PROVEN: verified backup, cloned migration twice, restored rollback copy, unchanged old-field fingerprints and null new metadata on historical rows |
 | PD-LOCAL-003 | Reconcile the repair stack and assembled Multi-Lay work without flattening unsupported modes | COMPLETE for the reviewed stack; richer Multi-Lay placement/reward modes remain explicitly PARTIAL under PD-FIX-114 |
 | PD-LOCAL-004 | Make worktree-served web code use the intended normal database rather than an empty worktree-relative database | COMPLETE at c73b0943 using an explicit local database path; default behaviour is unchanged |
+| PD-LOCAL-005 | Integrate the accepted calculator visual contract and resolve the three Multi-Lay ledger route tests | COMPLETE LOCALLY at 2ba9993/eba20ec; Multi-Lay 3/3 PASS and 3010 serves the integrated frontend/API |
+| PD-LOCAL-006 | Prevent an old Custom plan or queued autosave returning after Simple/Save | COMPLETE LOCALLY: plan/row strategy patch atomically, slider requires real interaction, manual Save clears older queued autosave |
 
 Normal local application: `http://localhost:3010`, integration head
-**c73b0943a711e37ec29070c8c421506e892e87fc**. Main, Vercel, frozen manual data and protected source
+**eba20ec00e1f88c6bd068a9485a5a132ceb80beb** (product **2ba999326c0c9389185e49517ef9f274afc05bd9**). Main, Vercel, frozen manual data and protected source
 branches remain unchanged. The verified pre-migration backup is retained under ignored
 `data/private/backups/`; rollback is stop services, restore that backup, and restart the previous
 local source. GitHub synchronisation remains pending because repository publication is forbidden in

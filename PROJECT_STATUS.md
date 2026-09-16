@@ -1,19 +1,25 @@
 # Project Status
 
-## Current calculator visual-contract repair — 2026-09-15 / LOCAL ONLY
+## Current normal local Plum Duff — 2026-09-16
 
-The earlier chevron-card design was rejected and is now historical. Product
-**8f5dc5876a2830947fbfb79a88a89b4da171858d** uses the required information order: Bet Type/Mode,
-Back/Lay, Underlay/Standard/Overlay, full-width Custom with direct Copy and slider, then Outcomes.
-Comparison cards are plain aligned summaries; only Outcomes keeps chevrons and rich columns.
-Repeated preambles, `Total`, strategy and Apply/Use-plan controls are absent from Standard-style
-cards. Multi-Lay uses the same surfaces but retains allocation controls because they recalculate all
-legs. Standalone, pop-out and Sportsbook/Free Bet editors pass focused rendering and modal checks at
-desktop, half-width, narrow and 200% text, both themes, keyboard and reduced motion. No maths or
-historical data changed. This repair is not in normal 3010, main or Vercel. GitHub #35/#92 received
-the local-only evidence; repository publication remains forbidden.
+`http://localhost:3010` now runs the reviewed integration branch with Will's ordinary local sign-in
+and normal local database. Frontend product **2ba999326c0c9389185e49517ef9f274afc05bd9** includes the
+plain Underlay/Standard/Overlay summaries, Custom/input/Copy/slider, Outcomes order and the accumulated
+financial-safety/calculator work. API source remains **1199af0af7cb51978794ac576755a0fe65460468** because
+this final correction was web-only. Main and Vercel are unchanged.
 
-## Current normal local Plum Duff — 2026-09-15
+Before restart, the normal database was backed up again and an earlier clone was migrated twice.
+Profiles (3), Accounts (76), Sportsbook (508), Free Bets (231), Casino (62) and Cash Adjustments (15)
+kept identical row hashes on the clone; the normal database retains those counts and passes integrity.
+Multi-Lay's three previously blocked ledger tests now pass 3/3. The frozen browser run completes native
+SNR and Normal plan/save/reopen/actual placement/settlement/report; its final conversion step was
+harness-blocked by the deliberately unauthenticated disposable API and remains covered by the existing
+focused conversion suite. Two broad geometry tests still need self-contained Account fixtures.
+
+Audit coverage remains 46/87 reviewed, 8/24 full tasks exercised/passing, 15/27 competitor cells and
+24/133 requests. These are review-coverage figures, not percentages of the application finished.
+
+## Historical local integration checkpoint — 2026-09-15
 
 `http://localhost:3010` now serves the assembled application from
 `integration/local-plum-duff-20260915` with the normal local sign-in and Will's normal local
@@ -39,7 +45,7 @@ linkage, changed-odds/multiple-fill handling, full screen-reader evidence and th
 import/recovery/security coverage. Main and Vercel are unchanged; this is the normal local runtime,
 not a published release.
 
-## Current exact Standard calculator screen — LOCAL ONLY
+## Historical exact Standard calculator screen — LOCAL ONLY
 
 The separate test version at `http://localhost:3040/fund-manager/calculators` now shows the requested
 order: Calculator and Bet Type, Mode, aligned Back/Lay inputs, paired Underlay/Overlay, one full-width
@@ -55,7 +61,7 @@ Bonus planning, Multi-Lay placement and Early Payout persistence remain queued.
 
 Launcher: `cd /Users/will_work/Scripts/Homelab/OpenForge/.worktrees/calculator-corrections-113 && node scripts/open_modal_repair_review.mjs --calculator-corrections`
 
-## Current calculator experience — LOCAL ONLY
+## Historical calculator experience — LOCAL ONLY
 
 The separate test version now serves the assembled calculator work at
 `http://localhost:3040/fund-manager/calculators`. Standard Normal/SNR, Profit Boost and conditional

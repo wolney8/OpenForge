@@ -1,6 +1,30 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
-## Current calculator visual-contract tranche — 2026-09-15 / LOCAL ONLY
+## Current local integration milestone — 2026-09-16
+
+Will's normal application at `http://localhost:3010` now serves frontend product
+**2ba999326c0c9389185e49517ef9f274afc05bd9** and unchanged API product
+**1199af0af7cb51978794ac576755a0fe65460468** from the local integration branch. This is locally
+integrated, not merged to main, hosted, or owner accepted. The final web correction keeps a reviewed
+plan's strategy and versioned plan consistent, prevents a remounted slider from selecting Custom
+without a real pointer/keyboard action, and prevents manual Save from draining an older queued
+calculator autosave afterwards.
+
+Data evidence: fresh backup `openforge-pre-integration-switch-20260916-100108.sqlite3` passes SQLite
+integrity with SHA-256 `efb197e0fcbede68a32eeb3b3a136f0be07ffe3ab2ac31088c4bdb0238d7f51c`.
+The prior clone/repeat/restore gate retained identical schema and row hashes for the six representative
+ledgers; the normal database still has 3/76/508/231/62/15 rows respectively and passes integrity.
+
+Frozen evidence: Multi-Lay ledger route/setup 3/3 PASS; calculator visual/family checks 11/13 PASS,
+with two setup failures caused by missing synthetic Account fixtures; native SNR desktop/light and
+Normal half-width/dark run through plan, save/reopen, explicit placement, settlement and report. The
+separate conversion tail was NOT TESTED on that fresh run because the disposable API lacked a Fund
+Manager session; existing unchanged conversion/API evidence is retained. Production web build and
+web TypeScript pass. Real PostgreSQL persistence evidence remains applicable because this milestone
+changed no backend persistence. Review totals remain 46/87, journeys 8/24 exercised and passing,
+competitors 15/27, requirements 24/133.
+
+## Historical calculator visual-contract tranche — 2026-09-15 / LOCAL ONLY
 
 The shortened-chevron reference-card checkpoint was an acceptance failure and is historical.
 Frozen product **8f5dc5876a2830947fbfb79a88a89b4da171858d** now renders Underlay, Standard and Overlay as
@@ -16,7 +40,7 @@ the rem-aware calculator container reflow fixed it and the frozen rerun passed. 
 Multi-Lay ledger tests remain harness-blocked by absent seeded routes in this disposable runtime;
 the focused Multi-Lay interaction test passed. Normal 3010, main and Vercel remain unchanged.
 
-## Current local integration gate — 2026-09-15
+## Historical local integration gate — 2026-09-15
 
 Will's normal application is now `http://localhost:3010`; it serves the reviewed integration stack
 at **c73b0943a711e37ec29070c8c421506e892e87fc** with the normal API, authentication settings and

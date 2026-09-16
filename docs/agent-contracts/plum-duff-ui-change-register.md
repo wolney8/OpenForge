@@ -1,5 +1,13 @@
 # Plum Duff UI Change Register
 
+## 2026-09-16 local integration evidence
+
+The accepted plain reference-card contract is now served by the normal local application at
+`http://localhost:3010` from product `2ba9993`. The three Multi-Lay ledger checks pass with their own
+synthetic routes. A reviewed Simple/Advanced plan must patch `match_strategy` and `lay_plan_json`
+together; a range control may not select Custom until a real pointer or keyboard interaction occurs;
+manual Save supersedes any older queued calculator autosave. Main and Vercel remain unchanged.
+
 ## PD-CALC-UI-PARITY-20260915 — compact shared calculator references
 
 Acceptance correction: product `8f5dc5876a2830947fbfb79a88a89b4da171858d` supersedes the
