@@ -62,6 +62,14 @@ Portable export carries both external identity and resolution evidence and remap
 native ID. Existing rows receive no guessed backfill. A code rollback must preserve the added data;
 dropping columns or the rebuilt key is not an acceptable rollback.
 
+| Import case | Stored result |
+|---|---|
+| One same-Profile Sportsbook parent | `resolved` plus that native ID and retained external ID |
+| Same external ID in two Profiles | Two independent Profile-scoped mappings; never a cross-link |
+| No same-Profile parent | `missing`, null native ID and retained provenance for review/retry |
+| Multiple same-Profile candidates | `ambiguous`, null native ID and candidate IDs in provenance |
+| Portable Profile restore | External identity retained; resolved native ID remapped only inside the restored Profile |
+
 **PD-QA-021 — durable financial activity history.** Existing ledger audit rows cannot safely own
 this because their foreign keys cascade and Cash/Casino deletion removes them. Add the previously
 specified append-only `financial_activity_history` record: Profile, ledger/type, record/source
@@ -71,6 +79,13 @@ operation ID. It deliberately has no foreign key to the deletable row. Current l
 current state; history shows the immutable sequence; reports use the governed current/reversal
 treatment and do not count the history snapshot as a second financial event. No backfill is
 invented. Code rollback disables new writes but retains stored history.
+
+| Stage | Current ledger | History | Report treatment |
+|---|---|---|---|
+| Create | Live row | Immutable create event | Current governed value only |
+| Settle | Settled row | Settle event with before/after | Settled P&L once |
+| Correct | Corrected row | Correction event preserves prior value | Corrected current P&L; prior value is evidence, not another total |
+| Archive/remove | Hidden or absent where policy permits | Archive/remove snapshot survives | Governed exclusion/reversal is explicit; history is never silently counted |
 
 Both designs are **PROPOSED — NOT IMPLEMENTED — OWNER APPROVAL REQUIRED**. No schema was changed.
 
