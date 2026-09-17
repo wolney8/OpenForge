@@ -7,6 +7,7 @@ def seed_synthetic_profile(
     profile_id: str = "profile-demo-001",
     *,
     display_name: str = "Subscriber Alpha",
+    profile_code: str = "ALPHA-001",
 ) -> None:
     with connect() as connection:
         connection.execute(
@@ -14,7 +15,7 @@ def seed_synthetic_profile(
             (
                 profile_id,
                 display_name,
-                "SYNTHETIC-001",
+                profile_code,
                 "Active",
                 "2026-09-01",
                 "0",

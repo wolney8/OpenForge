@@ -104,16 +104,22 @@ try {
       width,
       theme,
     );
-    await opened.page.getByRole("button", { name: `Edit ${createdCash.cash_adjustment_id}` }).click();
+    await opened.page.getByText("Loading cash-adjustment ledger").waitFor({ state: "hidden" });
+    await opened.page.getByLabel("Search cash-adjustment rows").fill(createdCash.cash_adjustment_id);
+    await opened.page.getByRole("row", { name: new RegExp(createdCash.cash_adjustment_id) }).dblclick();
     const dialog = opened.page.getByRole("dialog", { name: "Edit cash adjustment" });
+    const dismissGuide = dialog.getByRole("button", { name: "Dismiss cash-adjustment guided entry" });
+    if (await dismissGuide.count()) await dismissGuide.click();
     await dialog.getByRole("tab", { name: "Details" }).click();
     const historyPanel = dialog.locator('[data-pd-id="cash_adjustment.editor.history"]');
     await historyPanel.locator("summary").click();
     await historyPanel.getByText("Created", { exact: true }).waitFor();
     await historyPanel.getByText("Corrected", { exact: true }).waitFor();
     await historyPanel.getByText("Previous").waitFor();
-    await historyPanel.getByText("£ 6.00", { exact: true }).waitFor();
-    await historyPanel.getByText("£ 5.00", { exact: true }).waitFor();
+    await historyPanel.getByText("£ 6.00", { exact: true }).first().waitFor();
+    const currentValue = historyPanel.getByText("£ 5.00", { exact: true }).first();
+    await currentValue.waitFor();
+    await currentValue.evaluate((element) => element.scrollIntoView({ block: "center" }));
     assert.equal(await opened.page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1), true);
     await opened.page.screenshot({ path: `${runtime}/cp015-history-${width}-${theme}.png`, fullPage: true });
     await opened.context.close();
@@ -134,8 +140,10 @@ try {
       "dark",
     );
     const dialog = opened.page.getByRole("dialog", { name: "Edit free-bet row" });
-    await dialog.getByText("Historical link not established", { exact: true }).waitFor();
+    const lineageState = dialog.getByText("Historical link not established", { exact: true });
+    await lineageState.waitFor();
     await dialog.getByRole("button", { name: "Check for qualifying bet" }).waitFor();
+    await lineageState.evaluate((element) => element.scrollIntoView({ block: "center" }));
     await opened.page.screenshot({ path: `${runtime}/cp015-lineage-legacy-760-dark.png`, fullPage: true });
     await opened.context.close();
     legacyChecked = true;
@@ -144,12 +152,12 @@ try {
   assert.equal(legacyChecked, true, "No legacy-unresolved row was available for read-only UI evidence");
 
   const report = await openPage(`/profiles/${profile.profile_id}/tracker/reports`, 1440, "light");
-  await report.page.getByText("£ 5.00", { exact: true }).first().waitFor();
+  await report.page.getByRole("row", { name: /Cash Adjustments\s+1/ }).waitFor();
   assert.equal(await report.page.getByText("£ 11.00", { exact: true }).count(), 0, "History was double-counted in Reports");
   await report.context.close();
 
   evidence.result = "PASS";
-  evidence.history = { operations: ["created", "corrected"], currentReportValue: "5.00", doubleCounted: false };
+  evidence.history = { operations: ["created", "corrected"], currentLedgerValue: "5.00", reportRows: 1, doubleCounted: false };
   evidence.lineage = { legacyUnresolvedVisible: true, explicitRecheckVisible: true, existingRowReadOnly: true };
   evidence.rendering = { widths: [1440, 760, 390], themes: ["light", "dark"], reducedMotion: true };
 } finally {

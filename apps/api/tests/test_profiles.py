@@ -11,6 +11,10 @@ import pytest
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
+from apps.api.tests.synthetic_setup import (
+    seed_synthetic_account,
+    seed_synthetic_profile,
+)
 from openforge_api import tracker_summary_sources
 from openforge_api.config import settings
 from openforge_api.db import (
@@ -24,6 +28,13 @@ from openforge_api.main import app
 def configure_temp_database(tmp_path: Path) -> None:
     settings.database_url = f"sqlite:///{tmp_path / 'openforge-test.sqlite3'}"
     settings.backup_directory = str(tmp_path / "backups")
+    seed_synthetic_profile()
+    seed_synthetic_account(name="Bookmaker A", account_type="Bookie")
+    seed_synthetic_profile(
+        "profile-demo-002",
+        display_name="Subscriber Bravo",
+        profile_code="BRAVO-002",
+    )
 
 
 def configure_profile_catalogue(tmp_path: Path) -> None:

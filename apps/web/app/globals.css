@@ -16185,6 +16185,16 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
   min-height: 2.75rem;
 }
 
+.financial-history-panel[open] {
+  /* Reserve enough scroll room for the last event above the shared sticky
+     editor footer at narrow widths and enlarged text. */
+  margin-block-end: 5.5rem;
+}
+
+.imported-parent-lineage {
+  margin-block-end: 5.5rem;
+}
+
 .financial-history-list {
   display: grid;
   gap: 0.75rem;
