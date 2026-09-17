@@ -1,5 +1,23 @@
 # Plum Duff Next Issue Tracking Register
 
+## PD-AUDIT-CP017-20260917 — award, cash-reconciliation and Casino-fee journeys
+
+| ID | Requested outcome | Current state |
+|---|---|---|
+| PQA-J11 / PD-QA-017 | Fresh split award through child settlement, History, retry safety and portable lineage | PASS LOCALLY: £6 SNR + £4 SR issued once; lost/concurrent retries reuse, changed retry rejects, two settled children total £12.92, protected removal denies and restored native IDs reopen in the Sportsbook editor |
+| PQA-J10 | Reconcile Cash Adjustment, linked Account, History and Reports without inventing balance mutation | PASS LOCALLY: Bank A remains £200 while +25→+20 and −7 report net +13; exact retry creates one row and changed/malformed requests are rejected |
+| PQA-J08 | Allocate and correct Casino settlement costs once | PASS LOCALLY: £7 gross less £1 cost reports £6, correction to £2 reports £5 once, with Created/Corrected History and invalid-before-write validation |
+| PD-FIX-244 | Keep restored Free Bet children visible through portable native-ID remapping | COMPLETE LOCALLY: linked-row consumers prefer proven native parent identity and refuse guessed missing/ambiguous/legacy links |
+| PD-QA-006 | Remove private/demo fixture assumptions encountered in the active regression slice | COMPLETE for Casino workflow: four cases now create deterministic Profiles/rows; the broad API run still exposes 143 historical implicit-seed setup failures and remains tracked reproducibility debt |
+| ACCOUNTS-IMPORT-ACCESS-001 | Make #109 Stake/Promo vocabulary owner-decision-ready | PROPOSED / NOT IMPLEMENTED: controlled values, meanings, eligibility effect, import behaviour and separate restriction-detail ownership are recorded in the existing Account import contract |
+
+Reconciled in this package: #64 authoritative provider catalogue, #65 public branding with internal
+compatibility, #66 navigation drawer, #67 public-source ingestion contract, #68 manual-first offer
+catalogue and #69 signup-offer opportunity connection. Contract-only/planned work is not counted as
+implemented. Coverage is 63/87 assessments, 15/24 complete journeys, 18/27 competitor cells and
+64/133 reconciled requests. Live GitHub comments remain pending because this checkout has no callable
+`gh` client; no issue closure is inferred.
+
 ## PD-AUDIT-CP016-20260917 — journey closure and archive/report semantics
 
 | ID | Requested outcome | Current state |

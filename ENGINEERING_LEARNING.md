@@ -1,14 +1,14 @@
 # Engineering Learning — Plum Duff / OpenForge — Doc ID: EL-CODEX-001
 
-**Last updated:** 2026-09-17 14:46 BST
+**Last updated:** 2026-09-17 15:59 BST
 
 This is a compact notebook of transferable lessons from building Plum Duff. It is not the audit,
 roadmap, backlog or evidence record.
 
 ## Current learning focus
 
-- Closing a complete user journey rather than inferring success from its component tests.
-- Keeping lifecycle visibility separate from retained financial meaning.
+- Reconciling linked cash movement without silently rewriting an observed Account balance.
+- Recovering one business operation safely after lost or concurrent responses.
 
 ## Concepts worth remembering
 
@@ -33,6 +33,17 @@ sessions can be retried after an uncertain response. Stable operation identities
 credit, duplicate activities and cross-Profile reuse.
 
 **Remember:** A retry should recover an operation, not mint a second one.
+
+### Reconciliation
+
+**What it means:** Reconciliation compares related records and independently expected totals without
+assuming that one record automatically mutates the other.
+
+**Why it mattered in Plum Duff:** A Cash Adjustment records real cash movement and may identify the
+Account involved, while the Account balance remains a separately observed value. Reports can explain
+the movement without manufacturing an unobserved new balance.
+
+**Remember:** Link the evidence; do not invent the balancing entry.
 
 ### Failure atomicity and provenance
 
@@ -238,9 +249,10 @@ source checkout and safe database identity.
 
 **Portability status:** Concern
 
-**Reason:** SQLite/PostgreSQL test targets, source roots and endpoints now have an explicit
-fail-closed runtime contract, and the test suite copies a committed synthetic seed. Fixed local
-ports, macOS/Python architecture, Google authentication and hosted recovery remain environment-specific.
+**Reason:** SQLite/PostgreSQL test targets, source roots and endpoints have an explicit fail-closed
+runtime contract, and the current Casino slice now creates committed synthetic Profiles. A broad
+API run still found 143 historical implicit demo-seed setup failures; fixed local ports,
+macOS/Python architecture, Google authentication and hosted recovery also remain environment-specific.
 
 **Smallest improvement:** Make the hosted runtime role and database identity explicit in approved
 deployment configuration before any Vercel/Neon work.
@@ -259,6 +271,7 @@ deployment configuration before any Vercel/Neon work.
 | CP-014 | 2026-09-17 12:20 BST | Migration safety; schema compatibility | The normal cutover preserved every old row and current total while adding truthful unresolved identity and future append-only evidence |
 | CP-015 | 2026-09-17 13:33 BST | Audit trail versus user history; patch versus feature upgrades | Immutable evidence became understandable in five ledgers while supported patches reduced dependency exposure without changing product meaning |
 | CP-016 | 2026-09-17 14:46 BST | End-to-end journeys; lifecycle versus financial state | Full journeys exposed a mislabelled Void and proved that archive visibility can change without erasing retained P&L |
+| CP-017 | 2026-09-17 15:59 BST | Reconciliation; idempotent business operations | Cash movement stayed distinct from observed balances, while award and adjustment retries recovered one logical result without duplication |
 
 ## Where detailed evidence lives
 

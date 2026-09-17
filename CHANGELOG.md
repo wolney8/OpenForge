@@ -10,6 +10,8 @@ No published release is represented by the local milestones below.
 
 ## 2026-09-17
 
+- **2026-09-17 15:59 BST — CP-017:** Closed fresh award-lineage, Cash reconciliation and Casino-fee
+  journeys, repaired restored parent consumption and added bounded retry/money/export protections.
 - **2026-09-17 14:46 BST — CP-016:** Closed converted Free Bet and Extra Place complete journeys,
   corrected Void history semantics and made active-only reporting the owner default while preserving
   deliberate archived historical reporting.

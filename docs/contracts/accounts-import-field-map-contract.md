@@ -1,6 +1,6 @@
 # Accounts Import Field Map Contract
 
-Last updated: 2026-09-04
+**Last updated:** 2026-09-17 15:59 BST
 
 ## Status
 
@@ -74,6 +74,8 @@ boundary as the other issue #12 ledgers.
 
 ## Proposed #109 access vocabulary — decision required
 
+**PROPOSED — NOT IMPLEMENTED — OWNER DECISION REQUIRED**
+
 Read-only inspection of the approved 3 September workbook found these source values:
 
 - `Stake Access`: `Normal`, `Soft Limited`, `Heavily Limited`, `Minimum Only`, `Not Checked`,
@@ -86,6 +88,40 @@ plus source and observation date, without deriving lifecycle or catalogue author
 does not establish a supported value. Unknown text must stop review rather than coerce to either.
 `LastPromoUsed` remains ledger-derived and is not part of this proposal. This vocabulary is a
 proposal, not implementation approval; those two workbook columns remain blocked until accepted.
+
+### Stake Access
+
+| Value | Plain-English meaning | Typical example | Decision support | Import representation |
+|---|---|---|---|---|
+| `Normal` | Ordinary stakes are accepted with no known material limit | A normal qualifying stake is accepted | Eligible subject to normal Account and offer checks | Exact controlled value |
+| `Soft Limited` | Betting remains possible but useful stakes are reduced | Stakes are accepted below the usual intended amount | Warn and use separately recorded restriction detail | Exact controlled value |
+| `Heavily Limited` | Only materially small stakes are normally accepted | Most ordinary qualifying stakes are declined or sharply capped | Strong warning; do not assume the intended stake is available | Exact controlled value |
+| `Minimum Only` | Only a token/minimum stake is usable | A £1 maximum is observed | Treat as unavailable for ordinary staking unless the user deliberately accepts the limit | Exact controlled value; the £1 amount is separate detail |
+| `Not Checked` | No current stake-access observation has been made | A newly opened Account has not been tested | Prompt verification before relying on it | Exact controlled value |
+| `Unknown` | The source does not establish a supported state | Historic/imported text is blank or inconclusive | Do not infer eligibility | Exact controlled value; unknown source text blocks review |
+
+### Promo Access
+
+| Value | Plain-English meaning | Typical example | Decision support | Import representation |
+|---|---|---|---|---|
+| `Full` | The normal promotion range is available | Signup and recurring promotions are offered | Eligible subject to the individual offer rules | Exact controlled value |
+| `Some Promos` | Promotions are selectively restricted | Some recurring offers remain, others are absent | Require offer-specific confirmation | Exact controlled value |
+| `Boosts Only` | Boost-style offers remain but broader promotions do not | Price/profit boosts appear while ordinary bonuses do not | Eligible only for the confirmed boost category | Exact controlled value |
+| `No Promos` | Promotions are unavailable | The Account can bet but receives no promotional offers | Exclude from promotion-led opportunity suggestions | Exact controlled value |
+| `Unknown` | Promotion access has not been established | Historic/imported source has no reliable observation | Do not infer offer eligibility | Exact controlled value; unsupported source text blocks review |
+
+### Ownership boundaries
+
+- `Status` continues to own lifecycle and operational conditions such as Active, Pending Sign Up,
+  KYC, login/risk blocks and closure. An Account blocked from login is not described merely as
+  limited stake or promo access.
+- A precise cap such as £1 does not become an enum member. It belongs in separate nullable
+  restriction detail (recommended future fields: `maximum_stake_amount`, `restriction_notes`,
+  `access_observed_at` and `access_source`).
+- Stake and Promo Access guide eligibility; they do not mutate balances, settle activity or replace
+  a user decision about a particular offer.
+- Import accepts only the exact controlled values after normal whitespace/case normalisation.
+  Unsupported text remains visible as a blocking review item and is never silently coerced.
 
 ## Profile Snapshot Reconciliation
 

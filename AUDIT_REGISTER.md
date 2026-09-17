@@ -1,6 +1,6 @@
 # Audit Register — Plum Duff / OpenForge — Doc ID: AR-CODEX-001
 
-**Last updated:** 2026-09-17 14:46 BST
+**Last updated:** 2026-09-17 15:59 BST
 
 This is the owner-facing index for audit evidence. The
 [platform quality audit](docs/audits/platform-quality-audit.md) remains the detailed authority.
@@ -11,18 +11,18 @@ These are coverage measures, not percentages of the product finished.
 
 | Area | Covered | Method note |
 | --- | ---: | --- |
-| Assessments reviewed | 61 / 87 (70%) | A documented defect can complete an assessment |
-| Complete tasks exercised | 12 / 24 (50%) | All required steps must be exercised |
-| Complete tasks passing | 12 / 24 (50%) | Blocked or partial tasks are excluded |
+| Assessments reviewed | 63 / 87 (72%) | A documented defect can complete an assessment |
+| Complete tasks exercised | 15 / 24 (63%) | All required steps must be exercised |
+| Complete tasks passing | 15 / 24 (63%) | Blocked or partial tasks are excluded |
 | Competitor comparisons | 18 / 27 (67%) | Confirmed and reviewed-unverified states stay distinct |
-| Requirements reconciled | 58 / 133 (44%) | Original scope and clarifications both required |
+| Requirements reconciled | 64 / 133 (48%) | Original scope and clarifications both required |
 
 ## Current high-priority findings
 
 | ID | Plain-English problem | State | Repair / integration state | Issue |
 | --- | --- | --- | --- | --- |
 | PD-QA-022 | A disposable candidate could be pointed at the normal owner database | Repaired on isolated candidate | Source-rooted configuration, explicit runtime roles and connection-level ownership checks now fail closed; the CP-012 near-miss left no lasting data change | [#114](https://github.com/wolney8/OpenForge/issues/114) |
-| PD-QA-006 | Some older broad tests still depend on private seed names/data | Improved; wider audit remains | The CP-013 four plus seven Profile-suite assumptions now use committed synthetic factories; other suites remain subject to the same rule |
+| PD-QA-006 | Some older broad tests still depend on private seed names/data | Improved; wider audit remains | Current Casino workflow is deterministic; a deliberate broad API run still exposes 143 historical implicit-Profile/catalogue setup failures |
 | PD-QA-016 | Users could not see governed chronological row-change history | Integrated locally / browser-proven slice | One shared plain-English History panel is wired into five financial ledger editors; full notification history remains separate | [#36](https://github.com/wolney8/OpenForge/issues/36), [#114](https://github.com/wolney8/OpenForge/issues/114) |
 | PD-QA-018 | Imported child records did not always resolve their native parent | Integrated locally / engineering gate passed | Normal 3010 uses Profile + logical namespace + external ID; retry, collision, explicit re-resolution and portable remapping pass | [#12](https://github.com/wolney8/OpenForge/issues/12), [#80](https://github.com/wolney8/OpenForge/issues/80) |
 | PD-QA-021 | Deleting some ledger rows also removed their audit history | Integrated locally / engineering gate passed | Normal 3010 records append-only evidence across five ledgers; reports ignore evidence rows and protected financial deletion is denied; full history UI remains PD-QA-016 | [#80](https://github.com/wolney8/OpenForge/issues/80), [#90](https://github.com/wolney8/OpenForge/issues/90), [#114](https://github.com/wolney8/OpenForge/issues/114) |
@@ -41,15 +41,15 @@ These are coverage measures, not percentages of the product finished.
 | Account correction to truthful cash total | Passed locally | Main/origin and hosted builds are unchanged |
 | Native and converted Normal/SNR planning to settlement/report | Passed locally | Main/origin and hosted builds are unchanged |
 | Native Sportsbook save, placement, correction and report | Passed locally | Shared History is present; full correction UI breadth is still ledger-specific |
-| Generated Free Bet awards | Partial | Transaction integrity is repaired; complete visible lineage/history remains open |
+| Generated Free Bet awards | Passed locally | Fresh split award, lost/concurrent/changed retry, child settlement, History, protected removal and portable native-ID remapping pass |
 | Profit Boost and conditional Cashback | Passed on the integrated local application | Split award-group receipt linkage remains limited |
 | Multi-Lay create, save and reopen | Partial | Richer reward modes and per-leg actual placement are not complete |
 | Blackjack session to one Casino activity | Passed locally | Hosted and owner acceptance are not claimed |
 | Portable Profile restore, report, re-export and cleanup | Passed locally | Hosted recovery is not inferred |
 | Full Profile workbook import and recovery | Partial | Identity states and explicit same-Profile review are visible; #109 access vocabulary and a fresh combined award journey remain |
 | Extra Place actual placement and correction | Passed locally | Native actual lays, settlement, Void, readable immutable History, report and reload pass; hosted/owner acceptance is not inferred |
-| Cash Adjustment correction and reporting | Partial | Valid/invalid writes, correction/report and candidate append-only history pass; Account reconciliation remains |
-| Native Casino activity | Partial | Actual/settle/correct/report and candidate history protection pass; fee allocation remains |
+| Cash Adjustment correction and reporting | Passed locally | Linked Account remains an observation while +25→+20 and −7 cash movements report net +13 once; retry/History/validation pass |
+| Native Casino activity | Passed locally | £7 gross less current governed costs reports £6 then corrected £5 once; History and malformed-money rejection pass |
 | Converted Free Bet SNR and retained legacy SR | Passed locally | Conversion, copied reference, distinct actual placement, settlement, readable History, report and reload pass |
 | Profile and combined financial reporting | Partial | Active-only defaults, deliberate archived inclusion, arithmetic/range/breakdowns and point inspection pass; record drilldown and module/metric controls remain absent |
 | Notification clear and history | Partial | Clear/reload and safe source denial pass; prior event disappears when source state changes |
@@ -69,9 +69,9 @@ These are coverage measures, not percentages of the product finished.
 
 ## Outstanding audit areas
 
-- Complete award/import restore journeys using the new lineage review; Extra Place and converted
-  Free Bet journeys are now closed, while Casino fee and Cash Account reconciliation remain partial.
-- Account reconciliation, interactive report drilldown, #109 access vocabulary and Google
+- Complete the remaining onboarding, Profile lifecycle, notification, import and large-data journeys;
+  award lineage, Cash reconciliation and Casino fee allocation are now closed locally.
+- Interactive report drilldown, #109 access vocabulary and Google
   bound-script runtime.
 - Actual screen-reader testing, larger-than-200 datasets, delayed/stale chart recovery and hosted performance.
 - Central log retention/redaction policy, remaining development-only dependency advisories,

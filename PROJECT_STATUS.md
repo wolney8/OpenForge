@@ -1,18 +1,18 @@
 # Project Status — Plum Duff / OpenForge — Doc ID: PS-CODEX-001
 
-**Last updated:** 2026-09-17 14:46 BST · **Status:** 🟡 At risk
+**Last updated:** 2026-09-17 15:59 BST · **Status:** 🟡 At risk
 
 ## Right now
 
-- **Working on:** Complete the remaining award, Account-reconciliation and Casino-fee user journeys on the integrated local application.
-- **Next:** Continue #111 record drilldown, Profile lifecycle, stale-response and wider #114 evidence.
-- **Blocked on:** none for independent local work; #109 access vocabulary, provider-only checks and hosted changes remain separate decisions
+- **Working on:** Continue the remaining onboarding, Profile-lifecycle, notification-history and large-data complete journeys.
+- **Next:** Advance #111 record drilldown, stale-response recovery and wider #114 evidence.
+- **Blocked on:** none for independent local work; #109 access vocabulary, provider-only checks and hosted changes remain separate owner/external decisions
 
 ## Delivery state
 
 | Area | Evidence state |
 | --- | --- |
-| Local integrated build | CP-016 closes converted Free Bet and Extra Place journeys and separates active defaults from retained archived reporting |
+| Local integrated build | CP-017 closes fresh award lineage, Cash reconciliation and Casino fee journeys and repairs restored linked-award display |
 | Normal `localhost:3010` | Healthy on `import-history-v1`, normal authentication and the migrated normal local database; final source pairing is verified below |
 | Main / origin | Not updated by the local integration work |
 | Vercel | Not deployed or hosted-verified |
@@ -24,16 +24,16 @@ These figures measure **#114 audit coverage**, not the percentage of the product
 
 | Review area | Current coverage |
 | --- | ---: |
-| Assessments reviewed | 61 / 87 (70%) |
-| Complete tasks exercised and passing | 12 / 24 (50%) |
+| Assessments reviewed | 63 / 87 (72%) |
+| Complete tasks exercised and passing | 15 / 24 (63%) |
 | Competitor comparisons | 18 / 27 (67%) |
-| Requirements reconciled | 58 / 133 (44%) |
+| Requirements reconciled | 64 / 133 (48%) |
 
 ## Next 3 steps
 
-1. Complete the current award/lineage, Account-reconciliation and Casino-fee journey gaps.
-2. Continue #111 record drilldown and governed metric/granularity decisions.
-3. Exercise Profile lifecycle, stale-response and remaining recovery/security boundaries.
+1. Exercise guided onboarding and disposable Profile recover/delete journeys.
+2. Continue #111 record drilldown and durable notification-event design/work.
+3. Exercise larger-data delayed/stale-response recovery and remaining accessibility boundaries.
 
 ## Checkpoint log
 
@@ -55,6 +55,7 @@ These figures measure **#114 audit coverage**, not the percentage of the product
 | CP-014 | 2026-09-17 12:20 BST | Migrated the normal local database and cut 3010 over to Profile-scoped identity and append-only financial history | [#12](https://github.com/wolney8/OpenForge/issues/12), [#80](https://github.com/wolney8/OpenForge/issues/80), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-014-normal-local-migration-and-cutover--2026-09-17) |
 | CP-015 | 2026-09-17 13:33 BST | Added readable ledger History, imported-parent review, chart-point inspection and supported security patches | [#36](https://github.com/wolney8/OpenForge/issues/36), [#111](https://github.com/wolney8/OpenForge/issues/111), [#115](https://github.com/wolney8/OpenForge/issues/115) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-015-user-usable-history-lineage-and-reporting-slice--2026-09-17) |
 | CP-016 | 2026-09-17 14:46 BST | Closed two complete journeys, corrected Void history and separated active from archived reporting defaults | [#88](https://github.com/wolney8/OpenForge/issues/88), [#111](https://github.com/wolney8/OpenForge/issues/111), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-016-complete-journey-and-archive-reporting-package--2026-09-17) |
+| CP-017 | 2026-09-17 15:59 BST | Closed fresh award lineage, Cash reconciliation and Casino fee journeys and repaired four bounded safety/portability defects | [#49](https://github.com/wolney8/OpenForge/issues/49), [#80](https://github.com/wolney8/OpenForge/issues/80), [#91](https://github.com/wolney8/OpenForge/issues/91), [#109](https://github.com/wolney8/OpenForge/issues/109), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-017-award-cash-reconciliation-and-casino-fee-package--2026-09-17-1559-bst) |
 
 ## Reference index
 

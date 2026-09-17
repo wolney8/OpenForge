@@ -1,5 +1,18 @@
 # Plum Duff Known UI Pitfalls
 
+## 2026-09-17: Restored award lineage used a non-portable parent identifier
+
+- Area: Sportsbook editor linked Free Bet list after portable Profile restore.
+- Root cause: storage correctly remapped `origin_qual_bet_native_id`, but the editor filtered linked
+  rewards using the retained external/legacy `origin_qual_bet_id`; restored children therefore
+  appeared unlinked even though the API relationship was correct.
+- Prevention: consumer UI resolves a proven native parent first. The legacy direct-ID fallback is
+  permitted only for `not_applicable` native rows; missing, ambiguous and legacy-unresolved states
+  are never guessed from matching text or external IDs.
+- Regression: `free-bet-lineage.test.ts` covers restored remapping, native fallback and unresolved
+  rejection; `audit_cp017_financial_journeys_114.mjs` verifies two restored children in the actual
+  Sportsbook editor.
+
 ## 2026-09-15: Calculator reference cards drifted into miniature Outcomes tables
 
 Standard and Multi-Lay had family-local reference markup with repeated guidance, stretched chevrons,

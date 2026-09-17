@@ -24,8 +24,8 @@ isolated visual polish.
 
 ## Next
 
-- Complete remaining ledger journeys and the current #111 reporting boundary.
-- Exercise remaining notification, failure/retry and recovery paths.
+- Complete guided onboarding, disposable Profile lifecycle and the current #111 reporting boundary.
+- Exercise durable notification, larger-data stale-response and remaining recovery paths.
 - Complete actual screen-reader, larger-scale and expensive-request evidence.
 - Resolve or disposition dependency exposure and release prerequisites.
 - Reconcile the next request groups and select bounded implementation batches.
@@ -43,6 +43,7 @@ isolated visual polish.
 ## Deferred / decision required
 
 - The #113 bulk owner calculator comparison is deferred without a date; engineering verification continues.
+- #109 Stake/Promo Access vocabulary is decision-ready but remains unimplemented until owner approval.
 - Main, Neon and Vercel integration of the locally migrated identity/history work remains a later,
   separately approved release decision.
 - An owner smoke test may follow the engineering gate but does not block independent audit work.

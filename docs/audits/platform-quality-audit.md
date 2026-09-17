@@ -1,6 +1,57 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
-## Current CP-016 complete-journey and archive-reporting package — 2026-09-17
+## Current CP-017 award, cash-reconciliation and Casino-fee package — 2026-09-17 15:59 BST
+
+The three named normal-local journeys now pass on authenticated `localhost:3010`. PQA-J11 created
+a fresh £10 split award (£6 SNR and £4 SR), reused one logical result after a lost response and
+concurrent retry, rejected changed contents under the same identity, settled both children to a
+combined £12.92, retained protected history, exported/restored the Profile and reopened both
+children against the remapped native parent. A restored Sportsbook editor initially showed zero
+children because it filtered on the retained legacy identity. PD-FIX-244 now consumes the proven
+native parent first and never guesses missing, ambiguous or legacy-unresolved links.
+
+PQA-J10 proves that Cash Adjustment reconciliation is a linked cash-movement control, not an
+implicit Account-balance write: Bank A remains £200.00 while +£25 corrected to +£20 and a separate
+£7 withdrawal report as net +£13. Exact retry creates one row; changed retry conflicts; malformed
+money fails before write; History retains Created/Corrected. The prior duplicate create caused an
+SQLite integrity failure and is repaired with exact-content idempotency plus cross-Profile/content
+conflict rejection.
+
+PQA-J08 proves the existing Casino activity fee boundary: £10 committed and £17 returned gives £7
+gross; £1 costs gives £6 retained, then corrected £2 costs gives £5. Reports contain current £5
+once; History contains Created/Corrected. Malformed or negative settlement money now fails before
+write, and settled financial changes are labelled Corrected rather than Edited. Portable Casino
+export now preserves the valid categorical `CashStake` wagering base instead of parsing it as money.
+
+Focused API regressions pass 17/17, web unit tests pass 428/428, TypeScript and mypy pass, and the
+complete CP-017 browser evidence is PASS. A deliberate broad API run passed 922/1,077 with 12
+skips and exposed 143 historical setup failures still assuming implicit demo Profiles/catalogues.
+The four current Casino cases were converted to committed synthetic setup; the remaining broad
+fixture debt stays explicit and is not represented as product regression or a clean full suite.
+
+PQA-F13 and PQA-F16 become assessed PASS; PQA-F17 changes from demonstrated failure to PASS.
+PQA-J08/J10/J11 become PASS without changing their definitions. Coverage is **63/87 assessments
+(72%), 15/24 complete journeys passing (63%), 18/27 competitor cells reviewed (67%) and 64/133
+requirements reconciled (48%)**. Competitor coverage is unchanged because this package generated
+no new authoritative external evidence.
+
+Requirement reconciliation advances #64–#69 as one coherent platform/account-opportunity group:
+
+| Request | Original outcome and clarification | Current local state / evidence | Remaining gap |
+|---|---|---|---|
+| #64 | One authoritative provider catalogue and compact ledger identity | Master catalogue, stable Account relationship and shared provider identity are integrated and regression-covered | Hosted/owner acceptance not inferred |
+| #65 | Public product name Plum Duff while preserving compatibility safely | Public UI uses Plum Duff; internal OpenForge identifiers remain deliberately compatible | Any future rename beyond Plum Duff is deferred under #103 |
+| #66 | Material navigation drawer with stable destinations | Authenticated drawer, bounded recent Profiles and canonical destinations are integrated and browser-covered | Wider command-menu scope is #76 |
+| #67 | Govern public offer-source ingestion before implementation | Contract and fixtures define safe public-source provenance and prohibit unsafe scraping | Implementation remains planned; contract is not a live feed |
+| #68 | Manual-first offer intelligence catalogue | Existing offer/account metadata are usable building blocks | Full reviewed offer catalogue and freshness workflow remain unimplemented |
+| #69 | Connect welcome offers to Profile signup opportunity flow | Account signup-offer candidate rules exist with Profile-scoped eligibility | Complete guided first-action onboarding remains PQA-J13 PARTIAL |
+
+The #109 vocabulary is decision-ready but remains unimplemented. Stake Access preserves
+`Normal`, `Soft Limited`, `Heavily Limited`, `Minimum Only`, `Not Checked`, `Unknown`; Promo Access
+preserves `Full`, `Some Promos`, `Boosts Only`, `No Promos`, `Unknown`. Exact stake caps remain
+separate restriction detail, and lifecycle/login/KYC state remains Account Status.
+
+## Previous CP-016 complete-journey and archive-reporting package — 2026-09-17
 
 **Checkpoint timestamp:** 2026-09-17 14:46 BST
 
@@ -3482,11 +3533,11 @@ in the PD-QA-015 addendum still applies (PG, provider access, imported sources, 
 | PQA-F10 | Exploratory conversion retry/new intent | ASSESSED; PASS scoped | B2 conversion+PD-QA-015 exploratory intents |
 | PQA-F11 | Governed Free Bet conversion API | ASSESSED; PASS scoped | PD-QA-014 converted SNR/SR cases |
 | PQA-F12 | Completed Casino source global uniqueness | ASSESSED; PASS scoped | PD-QA-015 thread/process race+actual UI retry |
-| PQA-F13 | Other Casino fees/override lifecycle | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
+| PQA-F13 | Other Casino fees/override lifecycle | ASSESSED; PASS scoped | CP-017 £7 gross − £1/£2 costs = £6/£5 retained; correction History and report-once behaviour pass |
 | PQA-F14 | Sportsbook actual placement/settlement | ASSESSED; FAIL overall / PROVEN | Populated checkpoint: native copy9.65/actual9, Win2.20/correction−1.18/report; malformed500 commits and poisons reads; missing Profile500 |
 | PQA-F15 | Extra Places placement/settlement | ASSESSED; PASS scoped | CP-004 actual browser create, win/place actuals26.00/4.40, four independent outcomes, settle30.40, Void0.00 and report/reload; durable deletion history remains PD-QA-021 |
-| PQA-F16 | Cash movements and matching | OPEN; PARTIAL / FAIL safety repaired | CP-004 browser + API: +25 then correction−10/report; malformed money write fixed. Account reconciliation/fee matching and durable deletion history remain |
-| PQA-F17 | Award lineage/removal lifecycle | ASSESSED; FAIL / PROVEN scoped | Genuine single/split SNR/SR; child503/retry duplicate, removal UI blocker/API orphan; J11 remains PARTIAL |
+| PQA-F16 | Cash movements and matching | ASSESSED; PASS scoped | CP-017 +25→+20 correction and −7 withdrawal reconcile as cash movement without silently mutating the linked Account; retry/History/report pass |
+| PQA-F17 | Award lineage/removal lifecycle | ASSESSED; PASS scoped | CP-017 fresh split SNR/SR award, lost/concurrent/changed retries, protected removal, settlement, export/restore and remapped editor lineage pass |
 | PQA-F18 | Combined report reconciliation | ASSESSED; PASS / PROVEN scoped | CP-005 Profile £41.90/£37.90, Void £11.50/£7.50 and authorised two-Profile £14.60/£10.60; #111 interaction remains planned |
 | PQA-F19 | Search/filter/loadout/Quick Actions | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
 | PQA-F20 | Settings persistence/error recovery | ASSESSED; PARTIAL / PROVEN boundary | CP-009 inventory and 12/12 isolated browser checks; ownership/defaults, mutation rollback and focus revalidation evidenced, while full new-session/browser restart remains partial |
@@ -3573,10 +3624,10 @@ Shared width/theme variants are recorded in the modal addendum, not inflated int
 |PQA-J05|Blackjack UI→hand→Casino conversion→retry→history/report/reload|PASS|CP-003 one −£5 activity; duplicate/foreign Account denied|—|—|Retain regression|
 |PQA-J06|Converted SNR/legacy SR→actual placement→settlement→lineage/history/report|PASS|CP-016 `free-bet-converted-journey.json`: plans 6.49/9.74, actual 6.00, P&L 7.40/17.40; Created/Placement/Settled|—|—|Retain current SNR plus historical-SR compatibility regression|
 |PQA-J07|Sportsbook native→copy→actual placement→settle/correct→report|PASS|CP-003 integrated browser/API/SQLite/PostgreSQL evidence|—|—|Retain regression|
-|PQA-J08|Casino activity→fees/override→settle/reopen→report|PARTIAL|CP-016 rerun: calculated 2.40, settled 2.10, corrected 1.90, History/reload|Defined fee-allocation step|Unimplemented/connection gap|Wire and execute existing fee-allocation contract|
+|PQA-J08|Casino activity→fees/override→settle/reopen→report|PASS|CP-017 browser/API: £7 gross, £1 cost→£6 retained, corrected £2 cost→£5; History/report/reload and invalid-before-write pass|—|—|Retain regression|
 |PQA-J09|Extra Place native→actual win/place lays→settle→Void→History/report/reload|PASS|CP-016 browser: 26.00/4.40, settled 29.79, Void 0.00, Created/Settled/Voided|—|—|Retain regression|
-|PQA-J10|Cash movement→Account reconciliation→fees/matching→report|PARTIAL|CP-016 rerun: +25, −10 correction, readable History, invalid write rejected|Account reconciliation/fee step|Unimplemented/connection gap|Execute the existing reconciliation ownership path|
-|PQA-J11|Award group→SNR/SR descendants→settlement→safe removal/history|PARTIAL|Award integrity repairs plus prior browser evidence|One fresh visible issuance→lineage→History→removal run|Test coverage gap|Run current 3010 award-group journey|
+|PQA-J10|Cash movement→Account reconciliation→fees/matching→report|PASS|CP-017 browser/API: linked Bank A remains £200; +25→+20 correction and −7 withdrawal report net +13 once, with History/retry/invalid-write evidence|—|—|Retain cash-movement versus observed-balance boundary regression|
+|PQA-J11|Award group→SNR/SR descendants→settlement→safe removal/history|PASS|CP-017 fresh £6 SNR + £4 SR group; lost/concurrent retry reuse, changed retry rejection, settlement/history, protected removal, export/restore and remapped lineage UI pass|—|—|Retain native/logical identity and no-resurrection regressions|
 |PQA-J12|Multi-Profile conversion failure→retry→new intent→notifications|PASS|CP-003 browser/API/persistence counts 2/1|—|—|Retain regression|
 |PQA-J13|Onboarding→catalogue Accounts→permissions→first action/reopen|PARTIAL|API identity and Account creation|Guided browser onboarding through first saved tracker action|Test coverage gap|Execute one authenticated guided browser run|
 |PQA-J14|Profile archive/recover/delete→denied writes→directory/search isolation|PARTIAL|CP-016 active-only defaults, deliberate archived inclusion and exact-name deletion tests|One real API-backed recover/delete/denied-write sequence|Test coverage gap|Run disposable Profile lifecycle on normal auth|

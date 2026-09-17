@@ -1,5 +1,15 @@
 # Plum Duff UI Change Register
 
+## 2026-09-17 CP-017 restored award-lineage consumer repair
+
+PD-FIX-244 is COMPLETE locally. The Sportsbook editor's existing Linked Free Bets panel now uses
+the proven remapped native parent identity after portable restore, while retaining the direct-ID
+fallback only for native `not_applicable` rows. It never treats missing, ambiguous or
+legacy-unresolved external IDs as a relationship. The shared panel, editor structure, actions and
+styles are unchanged. Unit coverage and an authenticated 3010 browser import/export/restore run
+prove two split children remain visible after native IDs are remapped; the rendered panel was
+inspected in the established modal in light mode. No new UI primitive or CSS was introduced.
+
 ## 2026-09-16 CP-004 ledger-dialog evidence
 
 PD-FIX-243 is COMPLETE locally: Cash Adjustment and Extra Place use the shared native
