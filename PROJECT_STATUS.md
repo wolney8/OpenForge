@@ -1,6 +1,6 @@
 # Project Status — Plum Duff / OpenForge — Doc ID: PS-CODEX-001
 
-**Last updated:** 2026-09-17 15:59 BST · **Status:** 🟡 At risk
+**Last updated:** 2026-09-17 16:08 BST · **Status:** 🟡 At risk
 
 ## Right now
 
@@ -13,7 +13,7 @@
 | Area | Evidence state |
 | --- | --- |
 | Local integrated build | CP-017 closes fresh award lineage, Cash reconciliation and Casino fee journeys and repairs restored linked-award display |
-| Normal `localhost:3010` | Healthy on `import-history-v1`, normal authentication and the migrated normal local database; final source pairing is verified below |
+| Normal `localhost:3010` | Healthy on `import-history-v1`, normal authentication and the migrated normal local database; API source `b296310…+dirty` is verified, with only the preserved generated typecheck cache uncommitted |
 | Main / origin | Not updated by the local integration work |
 | Vercel | Not deployed or hosted-verified |
 | Owner smoke test | Optional short local check is available; not run and not a work blocker |
