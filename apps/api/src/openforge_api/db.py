@@ -6214,12 +6214,19 @@ def update_each_way_extra_place(
             (profile_id, each_way_extra_place_id),
         ).fetchone()
         history_operation = str(payload.get("_history_operation") or (
-            "settled" if existing.status != "Settled" and updated["status"] == "Settled" else "edited"
+            "voided"
+            if existing.status != "Void" and updated["status"] == "Void"
+            else "settled"
+            if existing.status != "Settled" and updated["status"] == "Settled"
+            else "edited"
         ))
+        history_payload = dict(payload)
+        if history_operation == "voided" and not _history_reason(history_payload):
+            history_payload["_history_reason"] = "Result recorded as Void / NR."
         _append_financial_history(
             connection, profile_id=profile_id, ledger_type="extra_place",
             activity_id=each_way_extra_place_id, operation=history_operation,
-            before=existing.__dict__, after=stored, payload=payload,
+            before=existing.__dict__, after=stored, payload=history_payload,
         )
     return get_each_way_extra_place(profile_id, each_way_extra_place_id)
 

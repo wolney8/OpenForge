@@ -549,6 +549,11 @@ def test_financial_ledgers_record_history_and_protect_settled_rows(tmp_path: Pat
         json={**extra_payload, "status": "Settled", "result": "Extra Place"},
     )
     assert settled_extra.status_code == 200, settled_extra.text
+    voided_extra = client.put(
+        f"/profiles/profile-demo-001/each-way-extra-places/{extra_id}",
+        json={**extra_payload, "status": "Void", "result": "Void/NR"},
+    )
+    assert voided_extra.status_code == 200, voided_extra.text
     assert client.request(
         "DELETE", f"/profiles/profile-demo-001/each-way-extra-places/{extra_id}",
         json={"reason": "Retain settled evidence"},
@@ -579,7 +584,14 @@ def test_financial_ledgers_record_history_and_protect_settled_rows(tmp_path: Pat
             f"/profiles/profile-demo-001/financial-history/{ledger}/{activity_id}"
         )
         assert response.status_code == 200, response.text
-        assert [event["operation"] for event in response.json()] == ["created", "settled"]
+        expected_operations = (
+            ["created", "settled", "voided"]
+            if ledger == "extra_place"
+            else ["created", "settled"]
+        )
+        assert [event["operation"] for event in response.json()] == expected_operations
+        if ledger == "extra_place":
+            assert response.json()[-1]["reason"] == "Result recorded as Void / NR."
     assert client.get(
         f"/profiles/profile-demo-002/financial-history/sportsbook/{sportsbook_id}"
     ).json() == []

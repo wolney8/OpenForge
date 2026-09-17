@@ -6,8 +6,7 @@ import { chromium, expect, request } from "@playwright/test";
 const webBase = process.env.OPENFORGE_CP004_WEB_BASE ?? "http://localhost:3010";
 const apiBase = process.env.OPENFORGE_CP004_API_BASE ?? "http://127.0.0.1:8010";
 const runtime = process.env.OPENFORGE_CP004_RUNTIME ?? "/tmp/openforge-cp003-normal";
-const profileId = process.env.OPENFORGE_CP004_PROFILE;
-assert(profileId, "OPENFORGE_CP004_PROFILE is required");
+let profileId = process.env.OPENFORGE_CP004_PROFILE ?? "";
 const token = fs.readFileSync(`${runtime}/session-token`, "utf8").trim();
 const api = await request.newContext({
   baseURL: apiBase,
@@ -17,6 +16,31 @@ const browser = await chromium.launch({ headless: true });
 const stamp = Date.now();
 const observations = [];
 const created = { extra: "", cash: "", casino: "" };
+let syntheticProfileName = "";
+
+if (!profileId) {
+  syntheticProfileName = `Synthetic CP016 Ledgers ${stamp}`;
+  const made = await api.post("/profiles/onboarding", { data: {
+    setup_path: "import", display_name: syntheticProfileName, profile_code: `CP16-${stamp}`,
+    tracking_start_date: "2026-09-01",
+    enabled_modules: ["sportsbook-bets", "free-bets", "casino-offers", "cash-adjustments", "each-way-extra-places"],
+    accounts: [], quick_actions: [],
+  }});
+  assert.equal(made.status(), 201, await made.text());
+  profileId = (await made.json()).profile.profile_id;
+  assert.equal((await api.patch(`/profiles/${profileId}`, { data: { status: "Active" } })).status(), 200);
+  for (const [account, type] of [["Bet365", "Bookie"], ["Smarkets", "Exchange"]]) {
+    const response = await api.post(`/profiles/${profileId}/accounts`, { data: {
+      account, type, status: "Active", lifecycle_status: "Active", channel: "Online",
+      current_balance: "0.00", pending_withdrawal_amount: "0.00",
+      ...(type === "Exchange" ? { commission_rate: "0.02" } : {}),
+    }});
+    assert.equal(response.status(), 201, await response.text());
+  }
+  assert.equal((await api.put(`/profiles/${profileId}/exchange-commissions`, { data: {
+    exchange_name: "Smarkets", commission_rate: "0.02",
+  } })).status(), 200);
+}
 
 async function contextFor(width, theme, reducedMotion = "no-preference") {
   const context = await browser.newContext({
@@ -77,9 +101,9 @@ async function extraPlaceJourney(page) {
   assert.equal(row.actual_win_lay_stake, "26.00");
   assert.equal(row.actual_place_lay_stake, "4.40");
   assert.equal(row.first_place_pnl, "10.80");
-  assert.equal(row.standard_place_pnl, "10.60");
-  assert.equal(row.extra_place_pnl, "30.40");
-  assert.equal(row.unplaced_pnl, "10.40");
+  assert.equal(row.standard_place_pnl, "10.08");
+  assert.equal(row.extra_place_pnl, "29.79");
+  assert.equal(row.unplaced_pnl, "9.79");
 
   await page.goto(`${webBase}/profiles/${profileId}/tracker/each-way-extra-places`);
   if (await range.isVisible()) await range.selectOption({ label: "All Dates" });
@@ -95,7 +119,7 @@ async function extraPlaceJourney(page) {
   await dialog.getByRole("button", { name: "Save", exact: true }).click();
   await expect(dialog).toBeHidden();
   row = await (await api.get(`/profiles/${profileId}/each-way-extra-places/${created.extra}`)).json();
-  assert.equal(row.final_value, "30.40");
+  assert.equal(row.final_value, "29.79");
   await reportReload(page);
 
   await page.goto(`${webBase}/profiles/${profileId}/tracker/each-way-extra-places`);
@@ -109,7 +133,19 @@ async function extraPlaceJourney(page) {
   await expect(dialog).toBeHidden();
   row = await (await api.get(`/profiles/${profileId}/each-way-extra-places/${created.extra}`)).json();
   assert.equal(row.final_value, "0.00");
-  observations.push({ workflow: "PQA-J09", created: true, actuals: true, reopened: true, settled: "30.40", corrected: "0.00", reportReload: true });
+  await page.goto(`${webBase}/profiles/${profileId}/tracker/each-way-extra-places`);
+  if (await range.isVisible()) await range.selectOption({ label: "All Dates" });
+  await page.getByLabel("Search Extra Place rows").fill(runner);
+  await page.getByRole("row", { name: new RegExp(runner) }).click();
+  dialog = page.getByRole("dialog", { name: "Edit Extra Place row" });
+  await dialog.getByRole("tab", { name: /Settlement/ }).click();
+  const historyPanel = dialog.locator('[data-pd-id="extra_place.editor.history"]');
+  await historyPanel.locator("summary").click();
+  await historyPanel.getByText("Created", { exact: true }).waitFor();
+  await historyPanel.getByText("Settled", { exact: true }).waitFor();
+  await historyPanel.getByText("Voided", { exact: true }).waitFor();
+  const history = await (await api.get(`/profiles/${profileId}/financial-history/extra_place/${created.extra}`)).json();
+  observations.push({ workflow: "PQA-J09", created: true, actuals: true, reopened: true, settled: "29.79", corrected: "0.00", history: history.map((event) => event.operation), reportReload: true });
 }
 
 async function cashJourney(page) {
@@ -154,6 +190,7 @@ async function cashJourney(page) {
   row = await (await api.get(`/profiles/${profileId}/cash-adjustments/${created.cash}`)).json();
   assert.equal(row.signed_amount, "-10.00");
   await reportReload(page);
+  const cashHistory = await (await api.get(`/profiles/${profileId}/financial-history/cash_adjustment/${created.cash}`)).json();
 
   const invalid = await api.post(`/profiles/${profileId}/cash-adjustments`, { data: {
     adjustment_date: "2026-09-16T12:00", direction: "In", amount: "not-money",
@@ -163,7 +200,7 @@ async function cashJourney(page) {
   assert.equal(invalid.status(), 422, `Malformed cash amount was not rejected: ${await invalid.text()}`);
   rows = await (await api.get(`/profiles/${profileId}/cash-adjustments`)).json();
   assert.equal(rows.some((item) => item.description === `invalid-${stamp}`), false);
-  observations.push({ workflow: "PQA-J10", created: "+25.00", reopened: true, corrected: "-10.00", reportReload: true, malformedWrite: "REJECTED_ZERO_WRITE" });
+  observations.push({ workflow: "PQA-J10", created: "+25.00", reopened: true, corrected: "-10.00", history: cashHistory.map((event) => event.operation), reportReload: true, malformedWrite: "REJECTED_ZERO_WRITE" });
 }
 
 async function casinoJourney(page) {
@@ -210,7 +247,8 @@ async function casinoJourney(page) {
   await expect(dialog).toBeHidden();
   row = await (await api.get(`/profiles/${profileId}/casino-offers/${created.casino}`)).json();
   assert.equal(row.final_net_pnl, "1.90");
-  observations.push({ workflow: "PQA-J08", created: true, calculated: "2.40", settled: "2.10", corrected: "1.90", reportReload: true });
+  const casinoHistory = await (await api.get(`/profiles/${profileId}/financial-history/casino/${created.casino}`)).json();
+  observations.push({ workflow: "PQA-J08", created: true, calculated: "2.40", settled: "2.10", corrected: "1.90", history: casinoHistory.map((event) => event.operation), reportReload: true });
 }
 
 try {
@@ -249,11 +287,12 @@ try {
     result: "PASS_WITH_LIMITATION",
     observations,
     responsive: "760 dark reduced-motion and 390 light reduced-motion: no page overflow",
-    limitation: "Deletion audit preservation still requires an approved schema/policy change because the current audit rows cascade with their parent.",
+    limitation: "Extra Place is complete. Casino still lacks its defined fee-allocation step; Cash Adjustment still lacks the defined Account reconciliation/fee step.",
   };
   fs.writeFileSync(`${runtime}/cp004-populated-ledgers-evidence.json`, JSON.stringify(evidence, null, 2));
   console.log(JSON.stringify(evidence));
 } finally {
+  if (syntheticProfileName && profileId) await api.patch(`/profiles/${profileId}`, { data: { status: "Archived" } });
   await browser.close();
   await api.dispose();
 }

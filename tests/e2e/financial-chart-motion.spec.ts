@@ -2,11 +2,11 @@ import { expect, test, type Page } from "@playwright/test";
 
 const profileId = "profile-demo-001";
 
-test.beforeEach(async ({ page }) => {
+test.beforeEach(async ({ page, baseURL }) => {
   const sessionToken = process.env.OPENFORGE_E2E_SESSION_TOKEN;
-  if (!sessionToken) return;
+  if (!sessionToken || !baseURL) return;
   await page.context().addCookies([{
-    domain: "127.0.0.1", httpOnly: true, name: "pd_session", path: "/",
+    domain: new URL(baseURL).hostname, httpOnly: true, name: "pd_session", path: "/",
     sameSite: "Lax", secure: false, value: sessionToken,
   }]);
 });

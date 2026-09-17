@@ -3590,8 +3590,15 @@ html[data-theme="dark"] .notification-count-badge {
 
 .profile-picker-actions {
   display: flex;
-  justify-content: flex-end;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
   margin-bottom: 0.75rem;
+}
+
+.profile-picker-guidance {
+  max-width: 19rem;
+  margin: 0;
 }
 
 .profile-picker-options {

@@ -350,11 +350,19 @@ export function CrossProfileAnalytics({
 }) {
   const router = useRouter();
   const profileRecords = profiles;
+  const activeProfileIds = useMemo(
+    () => profiles
+      .filter((profile) => normalizeProfileStatus(profile.status) !== "Archived")
+      .map((profile) => profile.profileId),
+    [profiles]
+  );
   const [preset, setPreset] = useState<DatePreset>("Week (Mon-Sun)");
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
   const [selectedProfileIds, setSelectedProfileIds] = useState(() =>
-    profiles.map((profile) => profile.profileId)
+    profiles
+      .filter((profile) => normalizeProfileStatus(profile.status) !== "Archived")
+      .map((profile) => profile.profileId)
   );
   const [datasets, setDatasets] = useState<Map<string, TrackerSummaryDataset>>(new Map());
   const [feePeriods, setFeePeriods] = useState<Map<string, FeePeriodApiRecord[]>>(new Map());
@@ -611,9 +619,21 @@ export function CrossProfileAnalytics({
     () => aggregateCrossProfileReporting(allProfileSummaries),
     [allProfileSummaries]
   );
+  const activeProfilesCombined = useMemo(
+    () => aggregateCrossProfileReporting(
+      allProfileSummaries.filter((profile) => activeProfileIds.includes(profile.profileId))
+    ),
+    [activeProfileIds, allProfileSummaries]
+  );
   const trackerRangeAllProfilesCombined = useMemo(
     () => aggregateCrossProfileReporting(trackerRangeProfileSummaries),
     [trackerRangeProfileSummaries]
+  );
+  const trackerRangeActiveProfilesCombined = useMemo(
+    () => aggregateCrossProfileReporting(
+      trackerRangeProfileSummaries.filter((profile) => activeProfileIds.includes(profile.profileId))
+    ),
+    [activeProfileIds, trackerRangeProfileSummaries]
   );
 
   const feePositionByProfile = useMemo(
@@ -634,6 +654,15 @@ export function CrossProfileAnalytics({
   const allProfilesFeePosition = useMemo(
     () => combineFeePositions([...feePositionByProfile.values()]),
     [feePositionByProfile]
+  );
+  const activeProfilesFeePosition = useMemo(
+    () => combineFeePositions(
+      activeProfileIds.flatMap((profileId) => {
+        const position = feePositionByProfile.get(profileId);
+        return position ? [position] : [];
+      })
+    ),
+    [activeProfileIds, feePositionByProfile]
   );
   const allTimeFeePositionByProfile = useMemo(
     () =>
@@ -952,12 +981,15 @@ export function CrossProfileAnalytics({
         <fieldset>
           <legend>Profiles included in combined analytics</legend>
           <div className="profile-picker-actions">
+            <p className="field-hint profile-picker-guidance">
+              Active Profiles are included by default. Select an archived Profile deliberately to include its retained history.
+            </p>
             <button
               className="button-link"
-              onClick={() => setSelectedProfileIds(profileRecords.map((profile) => profile.profileId))}
+              onClick={() => setSelectedProfileIds(activeProfileIds)}
               type="button"
             >
-              Select all
+              Select active
             </button>
           </div>
           <div className="profile-picker-options">
@@ -971,7 +1003,7 @@ export function CrossProfileAnalytics({
                     onChange={() => toggleProfile(profile.profileId)}
                     type="checkbox"
                   />
-                  <span>{profile.displayName}</span>
+                  <span>{profile.displayName}{normalizeProfileStatus(profile.status) === "Archived" ? " (Archived)" : ""}</span>
                   <small>{profile.profileCode}</small>
                 </label>
               );
@@ -1082,15 +1114,15 @@ export function CrossProfileAnalytics({
       </div>
 
       {blockingReportingLoad ? <LedgerLoadingIndicator label="Loading combined profile reporting" /> : null}
-      {!blockingReportingLoad ? <AccountMoneyStatus issues={trackerRangeAllProfilesCombined.cashIssues} /> : null}
-      {!blockingReportingLoad && trackerRangeAllProfilesCombined.sportsbookFinancialIssues?.length ? (
+      {!blockingReportingLoad ? <AccountMoneyStatus issues={trackerRangeActiveProfilesCombined.cashIssues} /> : null}
+      {!blockingReportingLoad && trackerRangeActiveProfilesCombined.sportsbookFinancialIssues?.length ? (
         <p className="error-text" role="status" data-pd-id="sportsbook-money.incomplete">
-          Sportsbook P&amp;L incomplete. {trackerRangeAllProfilesCombined.sportsbookFinancialIssues.join(" · ")}
+          Sportsbook P&amp;L incomplete. {trackerRangeActiveProfilesCombined.sportsbookFinancialIssues.join(" · ")}
         </p>
       ) : null}
-      {!blockingReportingLoad && trackerRangeAllProfilesCombined.freeBetFinancialIssues?.length ? (
+      {!blockingReportingLoad && trackerRangeActiveProfilesCombined.freeBetFinancialIssues?.length ? (
         <p className="error-text" role="status" data-pd-id="free-bet-money.incomplete">
-          Free Bet P&amp;L incomplete. {trackerRangeAllProfilesCombined.freeBetFinancialIssues.join(" · ")}
+          Free Bet P&amp;L incomplete. {trackerRangeActiveProfilesCombined.freeBetFinancialIssues.join(" · ")}
         </p>
       ) : null}
 
@@ -1138,11 +1170,11 @@ export function CrossProfileAnalytics({
               </span>
               <span>
                 <small>Cash Snapshot</small>
-                <FinancialValue value={trackerRangeAllProfilesCombined.totals.cashSnapshot} />
+                <FinancialValue value={trackerRangeActiveProfilesCombined.totals.cashSnapshot} />
               </span>
               <span>
                 <small>Fee Position</small>
-                <FinancialValue value={allProfilesFeePosition.availableToWithdraw} />
+                <FinancialValue value={activeProfilesFeePosition.availableToWithdraw} />
               </span>
             </div>
           </article>
@@ -1562,27 +1594,27 @@ export function CrossProfileAnalytics({
         >
           <article className="stat-card">
             <span className="eyebrow">Gross P&amp;L</span>
-            <strong>{isLoading ? <ReportingCellLoading label="Loading gross profit and loss" /> : <FinancialValue value={allProfilesCombined.totals.grossBettingPnl} />}</strong>
+            <strong>{isLoading ? <ReportingCellLoading label="Loading gross profit and loss" /> : <FinancialValue value={activeProfilesCombined.totals.grossBettingPnl} />}</strong>
             <span>Sportsbook + Free Bets + Casino</span>
           </article>
           <article className="stat-card">
             <span className="eyebrow">Retained profit</span>
-            <strong>{isLoading ? <ReportingCellLoading label="Loading retained profit" /> : <FinancialValue value={allProfilesCombined.totals.retainedProfit} />}</strong>
+            <strong>{isLoading ? <ReportingCellLoading label="Loading retained profit" /> : <FinancialValue value={activeProfilesCombined.totals.retainedProfit} />}</strong>
             <span>Gross P&amp;L after signed withdrawals and costs</span>
           </article>
           <article className="stat-card">
             <span className="eyebrow">Current Account Cash</span>
-            <strong>{isLoading ? <ReportingCellLoading label="Loading current Account cash" /> : <FinancialValue value={trackerRangeAllProfilesCombined.totals.cashSnapshot} />}</strong>
+            <strong>{isLoading ? <ReportingCellLoading label="Loading current Account cash" /> : <FinancialValue value={trackerRangeActiveProfilesCombined.totals.cashSnapshot} />}</strong>
             <span>Current bookmaker, exchange, and bank balances</span>
           </article>
           <article className="stat-card" data-pd-id="profiles.fees.available-to-withdraw">
             <span className="eyebrow">Available to Withdraw</span>
-            <strong>{isLoading ? <ReportingCellLoading label="Loading available fees" /> : <FinancialValue value={allProfilesFeePosition.availableToWithdraw} />}</strong>
+            <strong>{isLoading ? <ReportingCellLoading label="Loading available fees" /> : <FinancialValue value={activeProfilesFeePosition.availableToWithdraw} />}</strong>
             <span>
               {isLoading
                 ? "Loading fee position"
-                : allProfilesFeePosition.crystallisedPeriodCount > 0
-                ? <><FinancialValue value={allProfilesFeePosition.feesEarned} /> earned · <FinancialValue value={allProfilesFeePosition.feesWithdrawn} /> withdrawn</>
+                : activeProfilesFeePosition.crystallisedPeriodCount > 0
+                ? <><FinancialValue value={activeProfilesFeePosition.feesEarned} /> earned · <FinancialValue value={activeProfilesFeePosition.feesWithdrawn} /> withdrawn</>
                 : "No crystallised fee periods in this range"}
             </span>
           </article>
