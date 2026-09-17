@@ -5,7 +5,7 @@ from decimal import Decimal
 from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Response
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
 from openforge_api.calculations.casino_offer_values import (
     CasinoOfferCalculationInput,
@@ -20,6 +20,7 @@ from openforge_api.db import (
     profile_module_enabled,
     update_casino_offer,
 )
+from openforge_api.money_input import AccountMoneyError, normalize_money_input
 
 router = APIRouter(prefix="/profiles/{profile_id}/casino-offers", tags=["casino-offers"])
 
@@ -69,6 +70,18 @@ class CasinoOfferPayload(BaseModel):
     calc_net_pnl: str = Field(default="", max_length=40)
     final_net_pnl: str = Field(default="", max_length=40)
     user_notes: str = Field(default="", max_length=2000)
+
+    @field_validator("own_cash_committed", "cash_returned", "settlement_other_costs")
+    @classmethod
+    def validate_settlement_money(cls, value: str, info: ValidationInfo) -> str:
+        field = info.field_name or "settlement amount"
+        try:
+            normalized = normalize_money_input(value, field)
+        except AccountMoneyError as error:
+            raise ValueError(str(error)) from error
+        if normalized and Decimal(normalized) < 0:
+            raise ValueError(f"{field}: enter a non-negative amount")
+        return normalized
 
 
 class CasinoOfferResponse(CasinoOfferPayload):

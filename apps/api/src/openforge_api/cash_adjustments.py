@@ -161,7 +161,10 @@ def create_profile_cash_adjustment(
     profile_id: str,
     payload: CashAdjustmentPayload,
 ) -> CashAdjustmentResponse:
-    created = create_cash_adjustment(profile_id, payload.model_dump())
+    try:
+        created = create_cash_adjustment(profile_id, payload.model_dump())
+    except ValueError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
     return build_response(created)
 
 

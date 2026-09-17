@@ -625,6 +625,7 @@ def seed_representative_profile() -> None:
             "spin_stake": "1.00",
             "free_spins_awarded": "0",
             "free_spins_value": "0.00",
+            "wagering_base": "CashStake",
             "status": "Settled",
             "result": "Complete",
             "calc_net_pnl": "4.1250",
@@ -812,6 +813,7 @@ def test_portable_export_preserves_values_ordering_and_reference_only_authoritie
     assert free_bet["manual_override_value"] == ""
     casino = workbook_rows(export.content, "Casino")[0]
     assert casino["final_net_pnl"] == "4.1250"
+    assert casino["wagering_base"] == "CashStake"
 
     loadout = workbook_rows(export.content, "Loadout Overrides")[0]
     assert loadout["defaults_json"] == '{"a":1,"z":2}'

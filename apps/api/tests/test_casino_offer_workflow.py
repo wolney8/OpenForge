@@ -4,6 +4,7 @@ import sqlite3
 from pathlib import Path
 
 from fastapi.testclient import TestClient
+from synthetic_setup import seed_synthetic_profile
 
 from openforge_api.config import settings
 from openforge_api.db import count_casino_offer_audit_rows
@@ -11,8 +12,14 @@ from openforge_api.main import app
 
 
 def configure_temp_database(tmp_path: Path) -> None:
+    settings.environment = "local"
+    settings.auth_required = False
     settings.database_url = f"sqlite:///{tmp_path / 'openforge-test.sqlite3'}"
     settings.backup_directory = str(tmp_path / "backups")
+    seed_synthetic_profile()
+    seed_synthetic_profile(
+        "profile-demo-002", display_name="Subscriber Beta", profile_code="BETA-002"
+    )
 
 
 def test_casino_offer_workflow_create_update_and_isolation(tmp_path: Path) -> None:
@@ -135,9 +142,22 @@ def test_casino_offer_workflow_create_update_and_isolation(tmp_path: Path) -> No
     assert deleted_lookup.status_code == 200
 
 
-def test_seed_rows_load_into_dedicated_casino_offer_table(tmp_path: Path) -> None:
+def test_synthetic_row_loads_into_dedicated_casino_offer_table(tmp_path: Path) -> None:
     configure_temp_database(tmp_path)
     client = TestClient(app)
+
+    created = client.post(
+        "/profiles/profile-demo-001/casino-offers",
+        json={
+            "date_started": "2026-07-10 00:00:00",
+            "bookmaker": "Bookmaker A",
+            "offer_type": "Free Spins",
+            "offer_name": "Committed synthetic Casino row",
+            "status": "Prospecting",
+            "result": "Pending",
+        },
+    )
+    assert created.status_code == 201
 
     response = client.get("/profiles/profile-demo-001/casino-offers")
     assert response.status_code == 200
@@ -202,3 +222,33 @@ def test_prospecting_casino_offer_can_be_saved_without_current_or_final_value(
     assert created["campaign_ev"] == ""
     assert created["calculation_state"] == "resolved"
     assert created["counts_as_open"] is True
+
+
+def test_casino_settlement_money_rejects_malformed_and_negative_values(
+    tmp_path: Path,
+) -> None:
+    configure_temp_database(tmp_path)
+    client = TestClient(app)
+    base = {
+        "date_started": "2026-09-17 09:00:00",
+        "bookmaker": "Sky Bet",
+        "offer_type": "Free Spins",
+        "offer_name": "Synthetic settlement validation",
+        "status": "Settled",
+        "result": "Win",
+        "final_net_pnl": "5.00",
+    }
+
+    for field, value in (
+        ("own_cash_committed", "not-money"),
+        ("cash_returned", "1.234"),
+        ("settlement_other_costs", "-0.01"),
+    ):
+        response = client.post(
+            "/profiles/profile-demo-001/casino-offers",
+            json={**base, field: value},
+        )
+        assert response.status_code == 422
+
+    rows = client.get("/profiles/profile-demo-001/casino-offers").json()
+    assert all(row["offer_name"] != base["offer_name"] for row in rows)

@@ -169,7 +169,6 @@ def test_append_only_history_is_idempotent_and_not_a_report_transaction(
         "profile-demo-001", "cash_adjustment", created.cash_adjustment_id
     )
     assert [event.operation for event in events] == ["created", "corrected"]
-
     with connect() as connection:
         same = append_history_event(
             connection,
@@ -219,6 +218,42 @@ def test_append_only_history_is_idempotent_and_not_a_report_transaction(
     assert len(current) == 1
     assert current[0]["signed_amount"] == "5.00"
     assert "financial_history" not in response.json()
+
+
+def test_cash_adjustment_create_retry_reuses_exact_identity_and_rejects_changes(
+    tmp_path: Path,
+) -> None:
+    configure_database(tmp_path)
+    payload = {
+        "cash_adjustment_id": "CA-RETRY-001",
+        "adjustment_date": "2026-09-17",
+        "direction": "In",
+        "amount": "25.00",
+        "adjustment_type": "TopUp",
+        "affects_investment": True,
+        "affects_cash_snapshot": True,
+        "linked_account": "Bookmaker A",
+        "description": "Synthetic retry fixture",
+        "_history_operation_id": "cash-create-retry-001",
+    }
+
+    created = create_cash_adjustment("profile-demo-001", payload)
+    retried = create_cash_adjustment("profile-demo-001", payload)
+
+    assert retried == created
+    assert [
+        event.operation
+        for event in get_financial_history(
+            "profile-demo-001", "cash_adjustment", created.cash_adjustment_id
+        )
+    ] == ["created"]
+
+    with pytest.raises(ValueError, match="different contents"):
+        create_cash_adjustment(
+            "profile-demo-001", {**payload, "amount": "24.00"}
+        )
+    with pytest.raises(ValueError, match="different contents"):
+        create_cash_adjustment("profile-demo-002", payload)
 
 
 def test_imported_parent_requires_explicit_same_profile_resolution(tmp_path: Path) -> None:
@@ -574,6 +609,13 @@ def test_financial_ledgers_record_history_and_protect_settled_rows(tmp_path: Pat
               "cash_returned": "11.00", "final_net_pnl": "6.00"},
     )
     assert settled_casino.status_code == 200, settled_casino.text
+    corrected_casino = client.put(
+        f"/profiles/profile-demo-001/casino-offers/{casino_id}",
+        json={**casino_payload, "status": "Settled", "result": "Win",
+              "cash_returned": "11.00", "settlement_other_costs": "1.00",
+              "final_net_pnl": "5.00", "user_notes": "Corrected settlement costs"},
+    )
+    assert corrected_casino.status_code == 200, corrected_casino.text
     assert client.delete(f"/profiles/profile-demo-001/casino-offers/{casino_id}").status_code == 409
 
     for ledger, activity_id in (
@@ -587,6 +629,8 @@ def test_financial_ledgers_record_history_and_protect_settled_rows(tmp_path: Pat
         expected_operations = (
             ["created", "settled", "voided"]
             if ledger == "extra_place"
+            else ["created", "settled", "corrected"]
+            if ledger == "casino"
             else ["created", "settled"]
         )
         assert [event["operation"] for event in response.json()] == expected_operations

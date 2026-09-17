@@ -281,7 +281,6 @@ SHEET_SPECS = (
                 "wager_target",
                 "spin_stake",
                 "free_spins_value",
-                "wagering_base",
                 "custom_wager_base",
                 "wagering_completed",
                 "rtp_percent",

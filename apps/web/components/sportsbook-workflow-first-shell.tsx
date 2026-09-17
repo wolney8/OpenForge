@@ -2,6 +2,7 @@
 
 import { ModalBoundary } from "@/components/modal-boundary";
 import { formatApiErrorBody } from "@/lib/api-error";
+import { isFreeBetLinkedToSportsbook } from "@/lib/free-bet-lineage";
 import { CoreLayPlanner, CoreLayPlannerUpgrade } from "@/components/core-lay-planner";
 import { readLayPlan, type LayPlan } from "@/lib/lay-plan";
 import { getMoneyInputErrors } from "@/lib/decimal-input";
@@ -290,6 +291,8 @@ type LinkedFreeBetRecord = {
   free_bet_value: string;
   expiry_datetime: string;
   origin_qual_bet_id: string;
+  origin_qual_bet_native_id: string;
+  origin_qual_bet_resolution_state: string;
   source_award_split_index: number;
   source_award_split_total: number;
 };
@@ -3251,13 +3254,13 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
         );
         if (cachedRows) {
           setLinkedFreeBetRows(
-            cachedRows.filter((row) => row.origin_qual_bet_id === sourceRowId)
+            cachedRows.filter((row) => isFreeBetLinkedToSportsbook(row, sourceRowId))
           );
         }
 
         const rowsFromApi = await fetchJsonAndCache<LinkedFreeBetRecord[]>(url);
         setLinkedFreeBetRows(
-          rowsFromApi.filter((row) => row.origin_qual_bet_id === sourceRowId)
+          rowsFromApi.filter((row) => isFreeBetLinkedToSportsbook(row, sourceRowId))
         );
       } catch (error) {
         setErrorMessage(

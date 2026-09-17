@@ -5972,7 +5972,7 @@ def create_cash_adjustment(
         "updated_at": utc_now(),
     }
     with connect() as connection:
-        connection.execute(
+        inserted = connection.execute(
             """
             INSERT INTO cash_adjustments (
               cash_adjustment_id,
@@ -5988,9 +5988,36 @@ def create_cash_adjustment(
               created_at,
               updated_at
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(cash_adjustment_id) DO NOTHING
             """,
             tuple(record.values()),
         )
+        if inserted.rowcount == 0:
+            existing = connection.execute(
+                "SELECT * FROM cash_adjustments WHERE cash_adjustment_id = ?",
+                (record["cash_adjustment_id"],),
+            ).fetchone()
+            assert existing is not None
+            comparable_fields = (
+                "profile_id",
+                "adjustment_date",
+                "direction",
+                "amount",
+                "adjustment_type",
+                "affects_investment",
+                "affects_cash_snapshot",
+                "linked_account",
+                "description",
+            )
+            existing_values = dict(existing)
+            if any(
+                existing_values[field] != record[field]
+                for field in comparable_fields
+            ):
+                raise ValueError(
+                    "This Cash Adjustment identity is already bound to different contents"
+                )
+            return map_cash_adjustment_row(existing)
         write_cash_adjustment_audit_entry(
             connection=connection,
             cash_adjustment_id=record["cash_adjustment_id"],
@@ -6003,9 +6030,12 @@ def create_cash_adjustment(
             activity_id=record["cash_adjustment_id"], operation="created",
             before=None, after=record, payload=payload,
         )
-    created = get_cash_adjustment(profile_id, record["cash_adjustment_id"])
-    assert created is not None
-    return created
+        stored = connection.execute(
+            "SELECT * FROM cash_adjustments WHERE cash_adjustment_id = ?",
+            (record["cash_adjustment_id"],),
+        ).fetchone()
+        assert stored is not None
+        return map_cash_adjustment_row(stored)
 
 
 def update_cash_adjustment(
@@ -6553,8 +6583,23 @@ def update_casino_offer(
             "SELECT * FROM casino_offers WHERE profile_id=? AND casino_offer_id=?",
             (profile_id, casino_offer_id),
         ).fetchone()
+        settled_financial_fields = (
+            "own_cash_committed",
+            "cash_returned",
+            "settlement_other_costs",
+            "final_net_pnl",
+        )
         operation = str(payload.get("_history_operation") or (
-            "settled" if existing.status != "Settled" and updated["status"] == "Settled" else "edited"
+            "settled"
+            if existing.status != "Settled" and updated["status"] == "Settled"
+            else "corrected"
+            if existing.status == "Settled"
+            and updated["status"] == "Settled"
+            and any(
+                str(getattr(existing, field)) != str(updated[field])
+                for field in settled_financial_fields
+            )
+            else "edited"
         ))
         _append_financial_history(
             connection, profile_id=profile_id, ledger_type="casino",
