@@ -13,6 +13,7 @@ import {
 import { dispatchTrackerDataUpdated } from "@/lib/tracker-data-events";
 import { getAllAccountNames, type AccountAuthorityRecord } from "@/lib/account-authorities";
 import { FinancialValue, FinancialValueReplayRow } from "@/components/financial-value";
+import { FinancialHistoryPanel } from "@/components/financial-history-panel";
 import { StatusToast } from "@/components/status-toast";
 import { EditorSection } from "@/components/editor-section";
 import { EditorValidationBanner } from "@/components/editor-validation-banner";
@@ -2447,6 +2448,13 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
             </div>
             </fieldset>
           </EditorSection>
+          {selectedRow ? (
+            <FinancialHistoryPanel
+              activityId={selectedRow.cash_adjustment_id}
+              ledger="cash_adjustment"
+              profileId={profileId}
+            />
+          ) : null}
           </LedgerEditorTabPanel>
           <LedgerEditorTabPanel activeTabId={safeActiveEditorTabId} tabId="scope">
           <EditorSection title="Reporting scope">

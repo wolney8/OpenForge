@@ -8921,6 +8921,7 @@ def reresolve_imported_free_bet_parent(
     *,
     operation_id: str,
     actor_id: str = "fund-manager-local",
+    selected_native_parent_id: str = "",
 ) -> FreeBetRecord | None:
     """Explicitly resolve an imported parent without guessing or rewriting source identity."""
     with connect() as connection:
@@ -8954,7 +8955,25 @@ def reresolve_imported_free_bet_parent(
                 (profile_id, row["entity_id"]),
             ).fetchone()
         ]
-        if len(candidates) == 1:
+        for candidate in prior_evidence.get("candidate_native_ids", []):
+            candidate_id = str(candidate).strip()
+            if (
+                candidate_id
+                and candidate_id not in candidates
+                and connection.execute(
+                    "SELECT 1 FROM sportsbook_bets WHERE profile_id=? AND sportsbook_bet_id=?",
+                    (profile_id, candidate_id),
+                ).fetchone()
+            ):
+                candidates.append(candidate_id)
+        selected_parent = selected_native_parent_id.strip()
+        if selected_parent and selected_parent not in candidates:
+            raise ValueError(
+                "The selected qualifying bet is not an eligible same-Profile source"
+            )
+        if selected_parent:
+            state, native_id = "resolved", selected_parent
+        elif len(candidates) == 1:
             state, native_id = "resolved", candidates[0]
         elif not candidates:
             state, native_id = "missing", ""
@@ -8966,6 +8985,7 @@ def reresolve_imported_free_bet_parent(
             "source_namespace": namespace,
             "source_external_id": external_id,
             "candidate_native_ids": candidates,
+            "selected_native_parent_id": native_id,
             "last_operation_id": operation_id,
             "resolved_at": utc_now(),
             "resolved_by": actor_id,
@@ -8988,6 +9008,55 @@ def reresolve_imported_free_bet_parent(
         ).fetchone()
         assert stored is not None
         return map_free_bet_row(stored)
+
+
+def list_imported_free_bet_parent_candidates(
+    profile_id: str, free_bet_id: str
+) -> tuple[FreeBetRecord | None, list[dict[str, str]]]:
+    """Return only eligible same-Profile Sportsbook parents for explicit review."""
+    with connect() as connection:
+        current = connection.execute(
+            "SELECT * FROM free_bets WHERE profile_id=? AND free_bet_id=?",
+            (profile_id, free_bet_id),
+        ).fetchone()
+        if current is None:
+            return None, []
+        external_id = str(current["origin_qual_bet_id"] or "").strip()
+        namespace = str(current["origin_qual_bet_source_namespace"] or "sportsbook")
+        if not external_id or namespace != "sportsbook":
+            return map_free_bet_row(current), []
+        rows = connection.execute(
+            """
+            SELECT DISTINCT b.sportsbook_bet_id, b.event_name, b.bookmaker,
+                            b.date_settled, b.status, b.result
+            FROM import_source_records s
+            JOIN sportsbook_bets b
+              ON b.profile_id=s.profile_id AND b.sportsbook_bet_id=s.entity_id
+            WHERE s.profile_id=? AND s.source_namespace=? AND s.source_record_id=?
+              AND s.entity_type='sportsbook_bet'
+            ORDER BY b.date_settled, b.sportsbook_bet_id
+            """,
+            (profile_id, namespace, external_id),
+        ).fetchall()
+        candidate_ids = {str(row["sportsbook_bet_id"]) for row in rows}
+        try:
+            evidence = json.loads(str(current["origin_qual_bet_resolution_json"] or "{}"))
+        except json.JSONDecodeError:
+            evidence = {}
+        for candidate in evidence.get("candidate_native_ids", []):
+            candidate_id = str(candidate).strip()
+            if candidate_id and candidate_id not in candidate_ids:
+                row = connection.execute(
+                    """
+                    SELECT sportsbook_bet_id, event_name, bookmaker, date_settled, status, result
+                    FROM sportsbook_bets WHERE profile_id=? AND sportsbook_bet_id=?
+                    """,
+                    (profile_id, candidate_id),
+                ).fetchone()
+                if row is not None:
+                    rows.append(row)
+                    candidate_ids.add(candidate_id)
+        return map_free_bet_row(current), [dict(row) for row in rows]
 
 
 def register_import_source_record(

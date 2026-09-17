@@ -48,6 +48,7 @@ import {
 import { EditorSection } from "@/components/editor-section";
 import { EditorValidationBanner } from "@/components/editor-validation-banner";
 import { FinancialValue, FinancialValueReplayRow } from "@/components/financial-value";
+import { FinancialHistoryPanel } from "@/components/financial-history-panel";
 import { LedgerEditorTabPanel, LedgerEditorTabRail } from "@/components/ledger-editor-tabs";
 import { LedgerValueCell } from "@/components/ledger-value-cell";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
@@ -2936,10 +2937,14 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   const [corePlanPending, setCorePlanPending] = useState(false);
   const handleCoreValidity = useCallback((valid: boolean) => { corePlanPendingRef.current = !valid; setCorePlanPending(!valid); }, []);
   useEffect(() => {
-    if (["Profit Boost", "Bonus Lock-In", "Cashback", "2UP", "Early Payout"].includes(formState.offer_type)) {
+    const doesNotUseCorePlan = ["Profit Boost", "Bonus Lock-In", "Cashback", "2UP", "Early Payout"].includes(formState.offer_type);
+    if (doesNotUseCorePlan) {
       corePlanPendingRef.current = false;
-      setCorePlanPending(false);
     }
+    const update = window.setTimeout(() => {
+      if (doesNotUseCorePlan) setCorePlanPending(false);
+    }, 0);
+    return () => window.clearTimeout(update);
   }, [formState.offer_type]);
   const [pristineFormState, setPristineFormState] = useState<SportsbookFormState>(() =>
     createBlankForm()
@@ -10181,6 +10186,13 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                 </details>
               </fieldset>
             </EditorSection>
+            {selectedSportsbookRow ? (
+              <FinancialHistoryPanel
+                activityId={selectedSportsbookRow.sportsbook_bet_id}
+                ledger="sportsbook"
+                profileId={profileId}
+              />
+            ) : null}
             </LedgerEditorTabPanel>
             <LedgerEditorTabPanel activeTabId={safeActiveEditorTabId} tabId="free_bet">
               <EditorSection

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { FinancialValue, FinancialValueReplayGroup } from "@/components/financial-value";
+import { FinancialHistoryPanel } from "@/components/financial-history-panel";
 import {
   EachWayBackBetSection,
   EachWayColourSchemeToggle,
@@ -1331,6 +1332,13 @@ export function EachWayExtraPlaceWorkflowShell({
                         preview={preview}
                         results={resultOptions}
                       />
+                      {selectedRow ? (
+                        <FinancialHistoryPanel
+                          activityId={selectedRow.each_way_extra_place_id}
+                          ledger="extra_place"
+                          profileId={profileId}
+                        />
+                      ) : null}
                     </LedgerEditorTabPanel>
                   </div>
                 </div>

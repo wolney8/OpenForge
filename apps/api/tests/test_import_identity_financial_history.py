@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sqlite3
+import json
 from pathlib import Path
 
 import pytest
@@ -323,6 +324,75 @@ def test_imported_parent_requires_explicit_same_profile_resolution(tmp_path: Pat
         operation_id="resolve-parent-found-001",
     )
     assert retry == resolved
+
+
+def test_ambiguous_imported_parent_requires_explicit_same_profile_choice(tmp_path: Path) -> None:
+    configure_database(tmp_path)
+    timestamp = "2026-09-17T12:00:00Z"
+    with connect() as connection:
+        for sportsbook_id, event_name in (("SB-A-ONE", "Synthetic one"), ("SB-A-TWO", "Synthetic two")):
+            connection.execute(
+                """
+                INSERT INTO sportsbook_bets (
+                  sportsbook_bet_id, profile_id, event_name, offer_text, bookmaker,
+                  offer_type, status, result, back_stake, back_odds, match_strategy,
+                  lay_odds_1, exchange_name, date_settled, user_notes,
+                  manual_override_value, manual_override_reason, created_at, updated_at
+                ) VALUES (?, 'profile-demo-001', ?, '', 'Bookmaker A', '', 'Settled',
+                          'Back Won', '10.00', '4.00', 'Standard', '4.20',
+                          'Exchange A', '2026-09-17', '', '', '', ?, ?)
+                """,
+                (sportsbook_id, event_name, timestamp, timestamp),
+            )
+        connection.execute(
+            """
+            INSERT INTO free_bets (
+              free_bet_id, profile_id, event_name, offer_text, bookmaker, status, result,
+              retention_mode, free_bet_value, back_odds, match_strategy, lay_odds_1,
+              exchange_name, expiry_datetime, date_settled, origin_qual_bet_id,
+              origin_qual_bet_source_namespace, origin_qual_bet_resolution_state,
+              origin_qual_bet_resolution_json, user_notes, manual_override_value,
+              manual_override_reason, created_at, updated_at
+            ) VALUES ('FB-AMBIGUOUS', 'profile-demo-001', '', '', 'Bookmaker A',
+                      'Available', 'Pending', 'SNR', '10.00', '', 'Standard', '', '',
+                      '', '', 'SOURCE-AMBIGUOUS', 'sportsbook', 'ambiguous', ?, '', '', '', ?, ?)
+            """,
+            (
+                json.dumps({"schema_version": 1, "candidate_native_ids": ["SB-A-ONE", "SB-A-TWO"]}),
+                timestamp,
+                timestamp,
+            ),
+        )
+
+    client = TestClient(app)
+    review = client.get(
+        "/profiles/profile-demo-001/free-bets/FB-AMBIGUOUS/imported-parent-review"
+    )
+    assert review.status_code == 200, review.text
+    assert review.json()["resolution_state"] == "ambiguous"
+    assert {item["sportsbook_bet_id"] for item in review.json()["candidates"]} == {
+        "SB-A-ONE", "SB-A-TWO"
+    }
+
+    chosen = client.post(
+        "/profiles/profile-demo-001/free-bets/FB-AMBIGUOUS/resolve-imported-parent",
+        json={
+            "operation_id": "choose-parent-ambiguous-001",
+            "selected_native_parent_id": "SB-A-TWO",
+        },
+    )
+    assert chosen.status_code == 200, chosen.text
+    assert chosen.json()["origin_qual_bet_resolution_state"] == "resolved"
+    assert chosen.json()["origin_qual_bet_native_id"] == "SB-A-TWO"
+
+    invalid = client.post(
+        "/profiles/profile-demo-001/free-bets/FB-AMBIGUOUS/resolve-imported-parent",
+        json={
+            "operation_id": "choose-parent-cross-profile-001",
+            "selected_native_parent_id": "SB-OTHER-PROFILE",
+        },
+    )
+    assert invalid.status_code == 409
 
 
 def test_upgraded_sqlite_rejects_older_writer_without_schema_capability(

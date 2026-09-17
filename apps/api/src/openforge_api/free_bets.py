@@ -33,6 +33,7 @@ from openforge_api.db import (
     list_accounts,
     list_free_bet_follow_up_reminder_audit,
     list_free_bets,
+    list_imported_free_bet_parent_candidates,
     reresolve_imported_free_bet_parent,
     update_free_bet,
     update_free_bet_follow_up_reminder,
@@ -203,6 +204,25 @@ class FreeBetFollowUpReminderPayload(BaseModel):
 class ParentReresolutionPayload(BaseModel):
     operation_id: str = Field(min_length=8, max_length=160)
     actor_id: str = Field(default="fund-manager-local", max_length=120)
+    selected_native_parent_id: str = Field(default="", max_length=64)
+
+
+class ParentCandidateResponse(BaseModel):
+    sportsbook_bet_id: str
+    event_name: str
+    bookmaker: str
+    date_settled: str
+    status: str
+    result: str
+
+
+class ParentResolutionReviewResponse(BaseModel):
+    free_bet_id: str
+    source_namespace: str
+    source_external_id: str
+    resolution_state: str
+    resolved_native_parent_id: str
+    candidates: list[ParentCandidateResponse]
 
 
 class FreeBetFollowUpReminderAuditResponse(BaseModel):
@@ -566,12 +586,33 @@ def resolve_profile_free_bet_imported_parent(
             free_bet_id,
             operation_id=payload.operation_id,
             actor_id=payload.actor_id,
+            selected_native_parent_id=payload.selected_native_parent_id,
         )
     except ValueError as error:
         raise HTTPException(status_code=409, detail=str(error)) from error
     if record is None:
         raise HTTPException(status_code=404, detail="Free bet not found for this profile")
     return build_response(record, tracker_settings=get_profile_tracker_settings(profile_id))
+
+
+@router.get(
+    "/{free_bet_id}/imported-parent-review",
+    response_model=ParentResolutionReviewResponse,
+)
+def get_profile_free_bet_imported_parent_review(
+    profile_id: str, free_bet_id: str
+) -> ParentResolutionReviewResponse:
+    record, candidates = list_imported_free_bet_parent_candidates(profile_id, free_bet_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="Free bet not found for this profile")
+    return ParentResolutionReviewResponse(
+        free_bet_id=record.free_bet_id,
+        source_namespace=record.origin_qual_bet_source_namespace,
+        source_external_id=record.origin_qual_bet_id,
+        resolution_state=record.origin_qual_bet_resolution_state,
+        resolved_native_parent_id=record.origin_qual_bet_native_id,
+        candidates=[ParentCandidateResponse.model_validate(item) for item in candidates],
+    )
 
 
 @router.post("", response_model=FreeBetResponse, status_code=201)

@@ -29,6 +29,8 @@ import {
 import { EditorSection } from "@/components/editor-section";
 import { EditorValidationBanner } from "@/components/editor-validation-banner";
 import { FinancialValue, FinancialValueReplayRow } from "@/components/financial-value";
+import { FinancialHistoryPanel } from "@/components/financial-history-panel";
+import { ImportedParentLineagePanel } from "@/components/imported-parent-lineage-panel";
 import { formatFinancialValue } from "@/lib/financial-display";
 import { LedgerEditorTabPanel, LedgerEditorTabRail } from "@/components/ledger-editor-tabs";
 import { LedgerValueCell } from "@/components/ledger-value-cell";
@@ -193,6 +195,11 @@ type FreeBetRecord = {
   expiry_datetime: string;
   date_settled: string;
   origin_qual_bet_id: string;
+  origin_qual_bet_source_namespace: string;
+  origin_qual_bet_native_id: string;
+  origin_qual_bet_resolution_state: string;
+  origin_qual_bet_resolution_json: string;
+  origin_qual_bet_import_run_id: string;
   offer_group_id: string;
   source_award_group_id: string;
   source_award_split_index: number;
@@ -4410,6 +4417,13 @@ export function FreeBetWorkflowShell({
             </div>
             </fieldset>
           </EditorSection>
+          {selectedRow && selectedRow.origin_qual_bet_resolution_state !== "not_applicable" ? (
+            <ImportedParentLineagePanel
+              freeBetId={selectedRow.free_bet_id}
+              onResolved={() => loadRows(selectedRow.free_bet_id)}
+              profileId={profileId}
+            />
+          ) : null}
           </LedgerEditorTabPanel>
           <LedgerEditorTabPanel activeTabId={safeActiveEditorTabId} tabId="matching">
           <EditorSection
@@ -5208,6 +5222,13 @@ export function FreeBetWorkflowShell({
             </div>
             </fieldset>
           </EditorSection>
+          {selectedRow ? (
+            <FinancialHistoryPanel
+              activityId={selectedRow.free_bet_id}
+              ledger="free_bet"
+              profileId={profileId}
+            />
+          ) : null}
           </LedgerEditorTabPanel>
           <div className="field-span-2 workflow-editor-footer" data-pd-id="free-bets.editor.actions">
             {errorMessage ? (

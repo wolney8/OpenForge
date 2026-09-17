@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { FinancialValue, FinancialValueReplayGroup } from "@/components/financial-value";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { ReplayableGraph, ReplayableProgressFill, ReplayableProgressRing } from "@/components/replayable-progress";
@@ -618,6 +618,12 @@ function DashboardChartSurface({
   line: string;
   points: Array<{ label: string; cumulativeValue?: number; value: number }>;
 }) {
+  const [selectedPointIndex, setSelectedPointIndex] = useState(Math.max(0, points.length - 1));
+  const coordinates = line.split(" ").map((coordinate) => {
+    const [x, y] = coordinate.split(",").map(Number);
+    return { x, y };
+  });
+  const selectedPoint = points[selectedPointIndex] ?? points.at(-1);
   const accessibleSummary =
     points.length === 0
       ? "No trend points available."
@@ -625,16 +631,47 @@ function DashboardChartSurface({
   return (
     <figure className="dashboard-chart-figure">
       <ReplayableGraph
-        aria-label={`${label}. ${accessibleSummary}`}
+        aria-label={label}
         className="dashboard-sparkline"
         preserveAspectRatio="none"
-        role="img"
+        role="group"
         valueKey={`${area}|${line}`}
         viewBox="0 0 100 42"
       >
         <polygon className="dashboard-sparkline-area" points={area} />
         <polyline className="dashboard-sparkline-line" pathLength="1" points={line} />
+        {points.map((point, index) => {
+          const coordinate = coordinates[index];
+          if (!coordinate || !Number.isFinite(coordinate.x) || !Number.isFinite(coordinate.y)) return null;
+          const value = point.cumulativeValue ?? point.value;
+          return (
+            <circle
+              aria-label={`${point.label}: ${formatMoney(value)}`}
+              className={`dashboard-sparkline-point${selectedPointIndex === index ? " is-selected" : ""}`}
+              cx={coordinate.x}
+              cy={coordinate.y}
+              key={`${point.label}-${index}`}
+              onClick={() => setSelectedPointIndex(index)}
+              onFocus={() => setSelectedPointIndex(index)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  setSelectedPointIndex(index);
+                }
+              }}
+              r="2.5"
+              role="button"
+              tabIndex={0}
+            />
+          );
+        })}
       </ReplayableGraph>
+      <figcaption className="dashboard-chart-point-detail" aria-live="polite">
+        {selectedPoint ? (
+          <><span>{selectedPoint.label}</span><FinancialValue animate={false} value={selectedPoint.cumulativeValue ?? selectedPoint.value} /></>
+        ) : "No trend points available."}
+      </figcaption>
+      <span className="visually-hidden">{accessibleSummary}</span>
     </figure>
   );
 }

@@ -122,6 +122,17 @@ test("dashboard containers coordinate financial, bar, and ring replay without la
   );
   expect(Number(await performanceValue.getAttribute("data-money-motion-cycle"))).toBeGreaterThan(0);
 
+  const trendPoints = performanceGraph.getByRole("button");
+  expect(await trendPoints.count()).toBeGreaterThan(0);
+  const firstPoint = trendPoints.first();
+  const firstPointName = await firstPoint.getAttribute("aria-label");
+  await firstPoint.focus();
+  await expect(performanceCard.locator(".dashboard-chart-point-detail")).toContainText(
+    firstPointName?.split(":")[0] ?? "",
+  );
+  await firstPoint.press("Enter");
+  await expect(firstPoint).toHaveClass(/is-selected/);
+
   const uncoveredMotionCards = await page.locator("article.dashboard-visual-card").evaluateAll((cards) =>
     cards
       .filter((card) => card.querySelector(".financial-value, [data-progress-motion], [data-chart-motion]"))

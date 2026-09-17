@@ -21,6 +21,7 @@ import {
 import { EditorSection } from "@/components/editor-section";
 import { EditorValidationBanner } from "@/components/editor-validation-banner";
 import { FinancialValue, FinancialValueReplayRow } from "@/components/financial-value";
+import { FinancialHistoryPanel } from "@/components/financial-history-panel";
 import { LedgerEditorTabPanel, LedgerEditorTabRail } from "@/components/ledger-editor-tabs";
 import { LedgerValueCell } from "@/components/ledger-value-cell";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
@@ -5618,6 +5619,13 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
             </div>
             </fieldset>
           </EditorSection>
+          {selectedRow ? (
+            <FinancialHistoryPanel
+              activityId={selectedRow.casino_offer_id}
+              ledger="casino"
+              profileId={profileId}
+            />
+          ) : null}
           </LedgerEditorTabPanel>
           {showsAdvancedEditorTab ? (
           <LedgerEditorTabPanel activeTabId={safeActiveEditorTabId} tabId="advanced">
