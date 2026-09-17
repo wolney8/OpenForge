@@ -513,7 +513,6 @@ def test_financial_ledgers_record_history_and_protect_settled_rows(tmp_path: Pat
     )
     assert settled_sportsbook.status_code == 200, settled_sportsbook.text
     assert client.delete(f"/profiles/profile-demo-001/sportsbook-bets/{sportsbook_id}").status_code == 409
-
     free_payload = {
         "event_name": "Synthetic free bet", "bookmaker": "Bookmaker A",
         "status": "Available", "result": "Pending", "retention_mode": "SNR",
@@ -620,3 +619,35 @@ def test_financial_ledgers_record_history_and_protect_settled_rows(tmp_path: Pat
             f"/profiles/profile-demo-001/financial-history/{ledger}/{activity_id}"
         )
         assert [event["operation"] for event in events.json()] == ["created", "removed"]
+
+
+def test_profile_with_financial_history_returns_governed_delete_refusal(tmp_path: Path) -> None:
+    configure_database(tmp_path)
+    client = TestClient(app, raise_server_exceptions=False)
+    created = client.post(
+        "/profiles/profile-demo-001/cash-adjustments",
+        json={
+            "adjustment_date": "2026-09-17T09:00",
+            "direction": "In",
+            "amount": "5.00",
+            "adjustment_type": "Correction",
+            "affects_investment": False,
+            "affects_cash_snapshot": True,
+            "linked_account": "",
+            "description": "Synthetic retention boundary",
+        },
+    )
+    assert created.status_code == 201, created.text
+    assert client.patch(
+        "/profiles/profile-demo-001", json={"status": "Archived"}
+    ).status_code == 200
+
+    deleted = client.request(
+        "DELETE",
+        "/profiles/profile-demo-001",
+        json={"confirmation_name": "profile-demo-001"},
+    )
+
+    assert deleted.status_code == 409
+    assert "retained financial history" in deleted.json()["detail"]
+    assert client.get("/profiles/profile-demo-001").status_code == 200

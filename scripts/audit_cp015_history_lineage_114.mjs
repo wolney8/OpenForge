@@ -34,43 +34,61 @@ async function openPage(path, width = 1440, theme = "light") {
 
 try {
   const health = await expectResponse(await api.get("/healthz"), 200, "health");
-  assert.equal(health.runtime.role, "normal-owner");
-  assert.equal(health.database.schema_version, "import-history-v1");
+  assert.equal(health.runtime_role, "normal-owner");
+  assert.equal(health.schema_version, "import-history-v1");
 
-  const suffix = Date.now();
-  const profileBody = await expectResponse(await api.post("/profiles/onboarding", { data: {
-    setup_path: "import",
-    display_name: `Synthetic CP015 History ${suffix}`,
-    profile_code: `CP15-${suffix}`,
-    tracking_start_date: "2026-09-17",
-    enabled_modules: ["cash-adjustments"],
-    accounts: [],
-    quick_actions: [],
-  }}), 201, "synthetic Profile");
-  const profile = profileBody.profile ?? profileBody;
-  createdProfiles.push({ id: profile.profile_id, name: profile.display_name });
-  await expectResponse(await api.patch(`/profiles/${profile.profile_id}`, { data: { status: "Active" } }), 200, "activate Profile");
-
-  const createdCash = await expectResponse(await api.post(`/profiles/${profile.profile_id}/cash-adjustments`, { data: {
-    adjustment_date: "2026-09-17T09:00",
-    direction: "In",
-    amount: "6.00",
-    adjustment_type: "Correction",
-    affects_investment: false,
-    affects_cash_snapshot: true,
-    linked_account: "",
-    description: "Synthetic CP015 original result",
-  }}), 201, "cash create");
-  const correctedCash = await expectResponse(await api.put(`/profiles/${profile.profile_id}/cash-adjustments/${createdCash.cash_adjustment_id}`, { data: {
-    adjustment_date: "2026-09-17T09:00",
-    direction: "In",
-    amount: "5.00",
-    adjustment_type: "Correction",
-    affects_investment: false,
-    affects_cash_snapshot: true,
-    linked_account: "",
-    description: "Corrected synthetic result",
-  }}), 200, "cash correction");
+  const profilesBefore = await expectResponse(await api.get("/profiles"), 200, "Profiles");
+  let profile = profilesBefore.find((item) => item.display_name.startsWith("Synthetic CP015 History"));
+  let createdCash;
+  let correctedCash;
+  if (profile) {
+    if (profile.status === "Archived") {
+      profile = await expectResponse(
+        await api.patch(`/profiles/${profile.profile_id}`, { data: { status: "Active" } }),
+        200,
+        "restore retained synthetic Profile",
+      );
+    }
+    createdProfiles.push({ id: profile.profile_id, name: profile.display_name });
+    const rows = await expectResponse(await api.get(`/profiles/${profile.profile_id}/cash-adjustments`), 200, "retained synthetic cash rows");
+    createdCash = rows.find((row) => row.description === "Corrected synthetic result");
+    assert(createdCash, "Retained CP015 Profile did not contain its synthetic correction");
+    correctedCash = createdCash;
+  } else {
+    const suffix = Date.now();
+    const profileBody = await expectResponse(await api.post("/profiles/onboarding", { data: {
+      setup_path: "import",
+      display_name: `Synthetic CP015 History ${suffix}`,
+      profile_code: `CP15-${suffix}`,
+      tracking_start_date: "2026-09-17",
+      enabled_modules: ["sportsbook-bets", "free-bets", "cash-adjustments"],
+      accounts: [],
+      quick_actions: [],
+    }}), 201, "synthetic Profile");
+    profile = profileBody.profile ?? profileBody;
+    createdProfiles.push({ id: profile.profile_id, name: profile.display_name });
+    await expectResponse(await api.patch(`/profiles/${profile.profile_id}`, { data: { status: "Active" } }), 200, "activate Profile");
+    createdCash = await expectResponse(await api.post(`/profiles/${profile.profile_id}/cash-adjustments`, { data: {
+      adjustment_date: "2026-09-17T09:00",
+      direction: "In",
+      amount: "6.00",
+      adjustment_type: "Correction",
+      affects_investment: false,
+      affects_cash_snapshot: true,
+      linked_account: "",
+      description: "Synthetic CP015 original result",
+    }}), 201, "cash create");
+    correctedCash = await expectResponse(await api.put(`/profiles/${profile.profile_id}/cash-adjustments/${createdCash.cash_adjustment_id}`, { data: {
+      adjustment_date: "2026-09-17T09:00",
+      direction: "In",
+      amount: "5.00",
+      adjustment_type: "Correction",
+      affects_investment: false,
+      affects_cash_snapshot: true,
+      linked_account: "",
+      description: "Corrected synthetic result",
+    }}), 200, "cash correction");
+  }
   assert.equal(correctedCash.signed_amount, "5.00");
 
   const history = await expectResponse(
@@ -82,10 +100,11 @@ try {
 
   for (const [width, theme] of [[1440, "light"], [760, "dark"], [390, "light"]]) {
     const opened = await openPage(
-      `/profiles/${profile.profile_id}/tracker/cash-adjustments?record=${createdCash.cash_adjustment_id}`,
+      `/profiles/${profile.profile_id}/tracker/cash-adjustments`,
       width,
       theme,
     );
+    await opened.page.getByRole("button", { name: `Edit ${createdCash.cash_adjustment_id}` }).click();
     const dialog = opened.page.getByRole("dialog", { name: "Edit cash adjustment" });
     await dialog.getByRole("tab", { name: "Details" }).click();
     const historyPanel = dialog.locator('[data-pd-id="cash_adjustment.editor.history"]');
@@ -137,7 +156,8 @@ try {
   for (const profile of createdProfiles.reverse()) {
     await api.patch(`/profiles/${profile.id}`, { data: { status: "Archived" } });
     const removed = await api.delete(`/profiles/${profile.id}`, { data: { confirmation_name: profile.name } });
-    if (removed.status() !== 200) evidence.cleanup = `archived-and-retained:${removed.status()}`;
+    assert.equal(removed.status(), 409, "Retained financial evidence must prevent ordinary Profile deletion");
+    evidence.cleanup = "archived-and-retained-by-policy";
   }
   fs.mkdirSync(runtime, { recursive: true });
   fs.writeFileSync(`${runtime}/cp015-history-lineage-evidence.json`, JSON.stringify(evidence, null, 2));

@@ -7329,6 +7329,15 @@ def delete_archived_profile(
             return None
         if str(profile["status"]).casefold() != "archived":
             raise ValueError("Only an Archived Profile can be permanently deleted")
+        retained_history = connection.execute(
+            "SELECT COUNT(*) AS count FROM financial_activity_history WHERE profile_id = ?",
+            (profile_id,),
+        ).fetchone()
+        if retained_history is not None and int(retained_history["count"]) > 0:
+            raise ValueError(
+                "Archived Profile contains retained financial history and cannot be "
+                "permanently deleted without a governed retention/erasure process"
+            )
 
         counts = {
             domain: sum(
