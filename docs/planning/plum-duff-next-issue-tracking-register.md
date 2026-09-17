@@ -1,5 +1,19 @@
 # Plum Duff Next Issue Tracking Register
 
+## PD-AUDIT-CP013-20260917 — runtime isolation safety gate
+
+| ID | Requested outcome | Current state |
+|---|---|---|
+| PD-QA-022 | Prevent disposable candidate/test code from selecting the normal owner database | COMPLETE ON ISOLATED CANDIDATE: source-rooted configuration, explicit role/database identity and startup/direct-connection checks fail closed; the CP-012 near-miss was recovered with no lasting data change |
+| PD-QA-006 | Remove private operational seed dependence from the CP-012 regression gate | COMPLETE FOR THIS GATE: four previously failing cases now use committed synthetic Account/catalogue setup; the 344-case selection passes without private inputs |
+| PD-AUDIT-RUNTIME-001 | Make running source/database identity safe and observable | COMPLETE ON ISOLATED CANDIDATE: health reports safe revision/role/engine/identity/fingerprint/schema/endpoints and returns unavailable for an unreachable or mismatched database |
+| PD-AUDIT-MIGRATION-004 | Re-prove CP-012 after runtime hardening without touching normal data | COMPLETE / ISOLATED: SQLite, PostgreSQL 18.6 and a fresh normal-data clone pass repeat migration/rollback with unchanged old-row projections; normal schema remains unmigrated |
+| PQA-S09 | Review diagnostic redaction and logging evidence | PARTIAL / ASSESSED: changed runtime diagnostics exclude credentials and target paths; central retention/redaction and hosted log behaviour remain unverified |
+
+Normal-local migration is **READY FOR APPROVAL**, not performed. Main, Neon, Vercel and owner
+acceptance remain unchanged. Requirements stay 45/133 because this gate adds implementation and
+audit evidence, not another reconciled historical request.
+
 ## PD-AUDIT-CP012-20260916 — isolated import identity and financial history
 
 | ID | Requested outcome | Current state |

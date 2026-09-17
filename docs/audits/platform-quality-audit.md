@@ -1,5 +1,69 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
+## Current CP-013 runtime-isolation safety gate — 2026-09-17
+
+**Checkpoint timestamp:** 2026-09-17 08:15 BST
+
+The CP-012 near-miss was reproduced as a configuration-ownership failure, not a lasting data
+incident. Pydantic settings gave explicit `OPENFORGE_*` process variables precedence over `.env`
+and defaults. The mistaken candidate restart supplied an absolute
+`OPENFORGE_DATABASE_URL` for the normal owner file; the API had no runtime role, source-revision or
+database-identity check before `connect()` initialised schema. `.env` discovery and relative paths
+also depended on process working directory. Recovery evidence remains unchanged: the process was
+stopped, additive objects were reversed and all old-table projections matched the safety copy.
+
+### Repaired boundary and observable identity
+
+Configuration now reads `.env` and relative database/backup/catalogue paths from the running source
+checkout, not the current directory. The role-bound launcher declares source revision, purpose,
+frontend/API endpoints, database engine/target, non-secret database identity and environment source.
+Candidate/test launches without an explicit isolated target fail before startup; owner-file targets
+are rejected. The same validation runs on direct read/write connections, covering scripts and
+workers that do not start FastAPI. Normal-owner use remains deliberate and is restricted to the
+canonical owner file; a non-primary checkout additionally needs its exact approved revision.
+
+`/healthz` now proves database reachability and returns safe role/revision/engine/identity,
+fingerprint, schema and endpoint data without credentials or sensitive target paths. Unavailable or
+mismatched storage returns 503. A fixed detached build at
+`c5ab904afb29487ebd03bc691f4f0ca8959602f8` reported candidate + isolated SQLite clone +
+`import-history-v1`; an attempted candidate launch against the owner file failed before connection.
+
+### Fixtures, database and regression evidence
+
+- The four CP-012 failures were setup debt: three notification cases and one Sportsbook odds case
+  lacked the Account/catalogue context previously supplied by private seed state. A committed
+  synthetic factory now creates only `example.invalid`/Bookmaker A/Matchbook/Smarkets data. The two
+  affected files pass 46/46; the combined financial/award/history selection passes **344/344**.
+- Every API test session starts from a disposable copy of the committed synthetic seed with an
+  explicit test role. Separate-process Blackjack workers carry the same contract; 19/19 pass.
+- CP-012 SQLite identity/history/portable coverage is included in the 96-case focused safety set,
+  which passes. Mypy reports **0 errors in 82 files**; changed/new files pass Ruff, while the existing
+  repository-wide style backlog is not relabelled as this repair.
+- Actual disposable PostgreSQL 18.6 at product `c5ab904…` again passes scoped identity retry,
+  separate-process operation reuse, append-only UPDATE denial, current-£5 reporting and repeat
+  migration. The cluster was stopped.
+- A fresh clone of the normal database migrated twice with integrity `ok`; all old-column row
+  projections and counts stayed unchanged (Profiles 3, Accounts 76, Sportsbook 508, Free Bets 231,
+  Casino 62, Cash 15, Extra Place 117). Restore rollback retained no CP-012 table.
+- The real normal database was inspected read-only at the end: the same counts, integrity `ok`, no
+  `financial_activity_history` table and no `source_namespace` column. Its common ledger projections
+  match the CP-012 safety copy. Fresh backup SHA-256 is
+  `816de071fbcc674961177dce89df8ca93c76b2a8d4d2d3cced9d15e4f20e76f5`.
+
+PQA-M06 is now **ASSESSED; PASS for the current migration/financial gate**. PQA-S09 becomes
+**ASSESSED; PARTIAL**: runtime diagnostics and reviewed authentication/import errors avoid secrets
+and raw database targets, but no central log retention/redaction policy or hosted log evidence
+exists. This adds one assessed package without promoting a complete journey. Coverage is **60/87
+assessments (69%), 10/24 complete journeys passing (42%), 15/27 competitor cells (56%) and 45/133
+requirements reconciled (34%)**.
+
+**Normal-local migration gate:** READY FOR APPROVAL. Current backup, runtime isolation, disposable
+SQLite/PostgreSQL, fresh-clone repeat migration, rollback, public synthetic fixtures and unchanged
+reporting-row projections all pass. The migration remains unperformed. Rollback is: stop the upgraded
+API, verify and atomically restore the pre-migration backup, restart the last compatible approved
+source, then verify runtime identity, integrity, counts and representative totals. Older source must
+not write an upgraded database because schema-capability triggers deliberately reject it.
+
 ## Current CP-012 isolated identity and financial-history implementation — 2026-09-16
 
 **Checkpoint timestamp:** 2026-09-16 16:50 BST
@@ -3320,7 +3384,7 @@ in the PD-QA-015 addendum still applies (PG, provider access, imported sources, 
 | PQA-S06 | ASVS broader request/session boundaries | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
 | PQA-S07 | Portable import malicious-container validation | ASSESSED; PASS scoped | B restore/security fixtures |
 | PQA-S08 | CSRF/cross-site request boundaries | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
-| PQA-S09 | Logging/redaction/retention inspection | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
+| PQA-S09 | Logging/redaction/retention inspection | ASSESSED; PARTIAL / PROVEN local boundary | CP-013 runtime diagnostics exclude secrets/target paths and reviewed error logs use bounded IDs/types; central retention/redaction and hosted log evidence remain absent |
 | PQA-S10 | Actual hosted OS/input/exposure | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
 | PQA-S11 | Future subscriber isolation design | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
 | PQA-S12 | AI/billing/data-provider threat/cost boundary | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
@@ -3339,9 +3403,9 @@ in the PD-QA-015 addendum still applies (PG, provider access, imported sources, 
 | PQA-M01 | Calculation/reference/actual single authority | ASSESSED; REVIEWED | C money authority source review |
 | PQA-M02 | Schema/version/legacy compatibility boundary | ASSESSED; REVIEWED | C v1/v2 and migration inspection |
 | PQA-M03 | SQLite connection/initialisation architecture | ASSESSED; REVIEWED | C RLock/schema-init inspection; measured cost unknown |
-| PQA-M04 | PostgreSQL deployment/rollback assumptions | ASSESSED; PASS ISOLATED / PARTIAL | CP-012 actual PostgreSQL 18.6, SQLite, repeat migration, old-schema upgrade, cloned-normal compatibility and restore rollback pass. Normal/Neon migration and hosted rollback remain untested and unauthorised |
+| PQA-M04 | PostgreSQL deployment/rollback assumptions | ASSESSED; PASS ISOLATED / PARTIAL | CP-013 re-proves CP-012 on actual PostgreSQL 18.6, SQLite, repeat migration, fresh normal clone and restore rollback behind a fail-closed runtime contract. Normal/Neon migration and hosted rollback remain untested and unauthorised |
 | PQA-M05 | Backup custody/encryption/retention | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
-| PQA-M06 | Test fixture isolation/readiness | ASSESSED; REVIEWED | B harness blockers + explicit synthetic factories |
+| PQA-M06 | Test fixture isolation/readiness | ASSESSED; PASS scoped migration/financial gate | CP-013 replaces the final four selected private-seed assumptions; 344/344 combined cases and separate-process workers use committed/disposable synthetic state. This does not certify every historical test file |
 | PQA-M07 | Typing/lint/flakiness census | ASSESSED; PASS / PROVEN scoped | CP-010 mypy reports 0 errors/78 files; final relevant API 147/147 and web 420/420 pass. This does not infer every legacy broad fixture is modernised |
 | PQA-M08 | Large-table/chart performance | ASSESSED; PASS scoped local boundary | CP-005 200 records, source API169ms, routes0.93–2.28s, pagination/filter/search; not production CWV/capacity |
 | PQA-M09 | Request storms/stale-response census | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
@@ -3389,7 +3453,7 @@ Shared width/theme variants are recorded in the modal addendum, not inflated int
 |PQA-J15|Login→session expiry→denial→re-authenticate→state recovery|NOT TESTED; real callback/provider prerequisites unavailable |
 |PQA-J16|Global search→filter/loadout→Quick Action→correct Profile record|NOT TESTED; actual keyboard/stale-response journey next |
 |PQA-J17|Notification create→clear/reload/new context→source lifecycle/history|PARTIAL: CP-006 real source creation/link, duplicate409, foreign Profile404, clear/reload and placed-delete denial pass; source resolve replaces the event and erases prior cleared history while tombstone survives (#90 FAIL boundary) |
-|PQA-J18|Workbook import→mapping/approval→write→reopen/reconciliation/export|PARTIAL: CP-004 actual six-sheet Profile workbook passes browser review/import, Accounts+Sportsbook+linked Free Bet+Casino+Cash reopen, report, export, portable restore/reload/re-export; invalid mixed batch rejects atomically and repeat is idempotent; same external source ID in two Profiles does not cross-link. Native parent resolution remains absent (PD-QA-018) and #109 Stake/Promo Access vocabulary remains undecided |
+|PQA-J18|Workbook import→mapping/approval→write→reopen/reconciliation/export|PARTIAL: CP-004 browser six-sheet workflow remains valid; CP-012/013 isolated candidate adds same-Profile native parent resolution, collision isolation and portable remapping. Normal browser integration/migration and #109 Stake/Promo Access vocabulary remain open |
 |PQA-J19|Portable restore→reopen tracker→report/export→undo/recovery|FULLY EXERCISED; PASS / PROVEN on 3010: authenticated file analyse/restore, 2 Accounts+1 Sportsbook+3 Free Bets, independent SQLite values/counts, three reconciliation gates, report reload, re-export and API-owned archive/delete cleanup |
 |PQA-J20|Backup→actual SQLite restore→read/reconcile→rollback|FULLY EXERCISED; PASS / PROVEN scoped local: verified backup restored to separate copy, repeated migration, six-ledger hashes/reopen and retained rollback copy; operational/hosted disaster recovery is not inferred |
 |PQA-J21|Isolated PostgreSQL writes/concurrency→backup/restore→read/rollback|FULLY EXERCISED; PASS / PROVEN scoped backend journey, real18.6 port60936, dump/SECOND DB restore/exact values/counts/source IDs, restart and injected post-restore rollback. No hosted/browser disaster-recovery certification |

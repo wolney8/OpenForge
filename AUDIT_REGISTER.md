@@ -1,6 +1,6 @@
 # Audit Register — Plum Duff / OpenForge — Doc ID: AR-CODEX-001
 
-**Last updated:** 2026-09-16 21:04 BST
+**Last updated:** 2026-09-17 08:15 BST
 
 This is the owner-facing index for audit evidence. The
 [platform quality audit](docs/audits/platform-quality-audit.md) remains the detailed authority.
@@ -11,7 +11,7 @@ These are coverage measures, not percentages of the product finished.
 
 | Area | Covered | Method note |
 | --- | ---: | --- |
-| Assessments reviewed | 59 / 87 (68%) | A documented defect can complete an assessment |
+| Assessments reviewed | 60 / 87 (69%) | A documented defect can complete an assessment |
 | Complete tasks exercised | 10 / 24 (42%) | All required steps must be exercised |
 | Complete tasks passing | 10 / 24 (42%) | Blocked or partial tasks are excluded |
 | Competitor comparisons | 15 / 27 (56%) | 12 documented, 3 hands-on |
@@ -21,7 +21,8 @@ These are coverage measures, not percentages of the product finished.
 
 | ID | Plain-English problem | State | Repair / integration state | Issue |
 | --- | --- | --- | --- | --- |
-| PD-QA-006 | Some older broad tests still depend on private seed names/data | Partially repaired | The calculator Account gaps are closed; this checkpoint identified 37 selected ledger setup failures that still assume removed demo/catalogue rows | [#107](https://github.com/wolney8/OpenForge/issues/107), [#114](https://github.com/wolney8/OpenForge/issues/114) |
+| PD-QA-022 | A disposable candidate could be pointed at the normal owner database | Repaired on isolated candidate | Source-rooted configuration, explicit runtime roles and connection-level ownership checks now fail closed; the CP-012 near-miss left no lasting data change | [#114](https://github.com/wolney8/OpenForge/issues/114) |
+| PD-QA-006 | Some older broad tests still depend on private seed names/data | Repaired for the CP-012/013 gate | The four remaining Account/catalogue setup failures now use committed synthetic factories; the 344-case financial regression selection passes |
 | PD-QA-016 | Users cannot see a complete chronological row-change history | Open | Source notes exist; the full history view is not implemented | [#36](https://github.com/wolney8/OpenForge/issues/36), [#114](https://github.com/wolney8/OpenForge/issues/114) |
 | PD-QA-018 | Imported child records do not always resolve their native parent | Repaired on isolated candidate; normal migration pending | Stable logical identities, explicit resolution and portable remapping pass SQLite/PostgreSQL/clone tests; 3010 remains on CP-011 | [#12](https://github.com/wolney8/OpenForge/issues/12), [#80](https://github.com/wolney8/OpenForge/issues/80) |
 | PD-QA-021 | Deleting some ledger rows also removes their audit history | Repaired on isolated candidate; normal migration pending | Append-only history covers five ledgers, reports ignore evidence rows and financial deletion is denied; full history UI remains PD-QA-016 | [#80](https://github.com/wolney8/OpenForge/issues/80), [#90](https://github.com/wolney8/OpenForge/issues/90), [#114](https://github.com/wolney8/OpenForge/issues/114) |
@@ -55,6 +56,7 @@ These are coverage measures, not percentages of the product finished.
 | Realistic 200-record Profile | Partial | Navigation, pagination, filter and search pass; chart/stale stress and hosted capacity remain |
 | SQLite backup restore and reopen | Passed for the isolated local copy | Operational/hosted disaster recovery remains separate |
 | Local PostgreSQL transaction, backup and restore | Passed for the isolated test scope | This is not hosted disaster-recovery proof |
+| Runtime/database isolation | Passed on the CP-013 candidate | Normal 3010 remains deliberately on the prior unmigrated API until separately approved |
 
 ## Competitor review
 
@@ -71,7 +73,8 @@ These are coverage measures, not percentages of the product finished.
 - Account reconciliation, interactive report drilldown, #109 access vocabulary and Google
   bound-script runtime.
 - Actual screen-reader testing, larger-than-200 datasets, chart interaction and hosted performance.
-- Security exposure, credential rotation and Vercel publication prerequisites.
+- Central log retention/redaction policy, dependency exposure, credential rotation and Vercel
+  publication prerequisites. Runtime diagnostics themselves now expose only safe identities/fingerprints.
 - Competitor member workflows and the unreconciled request backlog.
 
 ## Detailed evidence

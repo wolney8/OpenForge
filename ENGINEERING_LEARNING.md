@@ -1,14 +1,14 @@
 # Engineering Learning — Plum Duff / OpenForge — Doc ID: EL-CODEX-001
 
-**Last updated:** 2026-09-16 21:04 BST
+**Last updated:** 2026-09-17 08:15 BST
 
 This is a compact notebook of transferable lessons from building Plum Duff. It is not the audit,
 roadmap, backlog or evidence record.
 
 ## Current learning focus
 
-- Evolving stored data without guessing historical facts or making rollback destructive.
-- Keeping identity/linkage separate from the history of changes to a financial record.
+- Isolating each runtime so disposable engineering work cannot reach owner data.
+- Failing closed when source, purpose or database ownership cannot be proved.
 
 ## Concepts worth remembering
 
@@ -153,6 +153,18 @@ the row is archived. Only a governed correction, void or reversal may alter the 
 
 **Remember:** Hidden is not financially undone.
 
+### Environment isolation and failing closed
+
+**What it means:** A process must prove which source, purpose and database belong together before
+it may open storage. Missing or contradictory configuration stops work instead of selecting a
+convenient default.
+
+**Why it mattered in Plum Duff:** An explicit shell database URL overrode the candidate's intended
+worktree target during CP-012. CP-013 binds startup and every direct connection to a declared role,
+source checkout and safe database identity.
+
+**Remember:** A disposable runtime must never have an owner-data fallback.
+
 ## Things I should personally inspect when AI changes code
 
 - Does the test prove behaviour independently, or repeat the implementation's own answer?
@@ -194,14 +206,12 @@ the row is archived. Only a governed correction, void or reversal may alter the 
 
 **Portability status:** Concern
 
-**Reason:** Business calculations and synthetic fixtures are largely portable across SQLite and
-PostgreSQL, and portable Profile export/restore is proven locally. A worktree-relative database
-default briefly pointed a candidate process at the normal file during CP-012; recovery proved the
-data unchanged, but launchers still need stronger explicit source/database binding. Fixed ports,
-macOS paths, Google authentication and hosted recovery also remain environment-specific.
+**Reason:** SQLite/PostgreSQL test targets, source roots and endpoints now have an explicit
+fail-closed runtime contract, and the test suite copies a committed synthetic seed. Fixed local
+ports, macOS/Python architecture, Google authentication and hosted recovery remain environment-specific.
 
-**Smallest improvement:** Make the normal local launcher paths and endpoints configurable through
-one documented, non-secret environment contract while retaining SQLite/PostgreSQL test parity.
+**Smallest improvement:** Make the hosted runtime role and database identity explicit in approved
+deployment configuration before any Vercel/Neon work.
 
 ## Learning log
 
@@ -213,6 +223,7 @@ one documented, non-secret environment contract while retaining SQLite/PostgreSQ
 | CP-010 | 2026-09-16 15:22 BST | Schema evolution; identity versus history | Two separate integrity gaps needed exact additive designs without guessed links, double-counted history or destructive rollback |
 | CP-011 | 2026-09-16 15:37 BST | Composite identity; append-only history | Owner decisions need scoped uniqueness and immutable evidence with an explicit no-double-counting rule |
 | CP-012 | 2026-09-16 21:04 BST | Logical identity versus physical representation; archive versus reversal | The implemented source key survives workbook/restore changes, while lifecycle visibility stays separate from report meaning |
+| CP-013 | 2026-09-17 08:15 BST | Environment isolation; fail closed | Runtime purpose, source and database ownership now have to agree before any connection or migration |
 
 ## Where detailed evidence lives
 
