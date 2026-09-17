@@ -1,5 +1,41 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
+## Current CP-016 complete-journey and archive-reporting package — 2026-09-17
+
+**Checkpoint timestamp:** 2026-09-17 14:46 BST
+
+The frozen 24-journey denominator was converted into an explicit closure matrix below; its acceptance
+steps were not expanded. Two journeys are newly complete. PQA-J06 passes the authenticated converted
+SNR and retained legacy-SR route through copy, recorded placement, settlement, readable History,
+Reports and reload. PQA-J09 passes native Extra Place create, actual win/place lays, settle £29.79,
+Void £0.00, readable Created/Settled/Voided history and report reload. The run exposed and repaired a
+real defect: a Void/NR change had been described as generic “Edited” history. The persistence boundary
+now records `voided` with a factual reason; 8/8 focused API tests and the browser journey pass.
+
+Archived Profiles now have separate navigation and financial-reporting semantics. Active Profiles are
+the default selection for owner directory totals and combined analytics. Archived Profiles and their
+settled history remain available only through deliberate selection; archiving never reverses P&L.
+The rendered Profile lifecycle suite and chart suite pass 10/10. Governed synthetic browser data uses
+disposable storage where possible; protected financial fixtures are clearly synthetic, archived after
+execution, absent from normal navigation and excluded from ordinary active-only totals.
+
+#111 point awareness is **implemented and integrated**, not merely planned. Selected-range points are
+keyboard focusable and pointer selectable, expose date/value through an accessible name and visible
+detail, retain selected-period consistency, and have a readable empty state. Record drilldown, module
+filter and governed metric/granularity controls remain separate gaps.
+
+Production dependency audit remains zero. Five high advisories are confined to ESLint development
+paths: three through `minimatch@3.1.5 → brace-expansion@1.1.15` and two through
+`@eslint/eslintrc@3.3.1 → js-yaml@4.3.0`. They do not ship in the production dependency graph. Current
+direct ESLint/Next tooling is already supported/current in this source; forced transitive overrides
+would bypass upstream compatibility ownership, so the bounded disposition is accepted development-
+only risk pending upstream resolution rather than risky dependency surgery.
+
+Coverage is **61/87 assessments (70%), 12/24 complete journeys passing (50%), 18/27 competitor cells
+reviewed (67%) and 58/133 requirements reconciled (44%)**. Competitor review now records three
+inaccessible public-evidence boundaries as reviewed/unverified; it does not claim those capabilities.
+These are audit-coverage figures, not product completion or owner/hosted acceptance.
+
 ## Current CP-015 user-usable history, lineage and reporting slice — 2026-09-17
 
 **Checkpoint timestamp:** 2026-09-17 13:33 BST
@@ -3468,7 +3504,7 @@ in the PD-QA-015 addendum still applies (PG, provider access, imported sources, 
 | PQA-U08 | Screen-reader announcements/navigation | OPEN; NOT TESTED / PARTIAL | CP-005 report header scopes, financial names and reduced motion pass; actual supported reader remains UNVERIFIED |
 | PQA-U09 | Contrast/targets/charts audit | OPEN; PARTIAL | CP-004 three-ledger theme/target evidence plus CP-005 report table semantics pass; chart and measured colour contrast remain |
 | PQA-U10 | Drag alternatives and tooltip association | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
-| PQA-U11 | Chart keyboard/drilldown usability | ASSESSED; FAIL / PROVEN scoped | CP-006 static `role=img` has readable point summary but no focusable points, inspection, pin or drilldown; #111 slice specified |
+| PQA-U11 | Chart keyboard/drilldown usability | ASSESSED; PARTIAL / first slice PASS | CP-016 focusable points, visible focus, date/value accessible names, keyboard/pointer inspection, selected-period consistency and empty state pass; record drilldown and module/metric controls remain |
 | PQA-U12 | All other ledger modal equivalence | OPEN; PARTIAL | CP-004 Cash/Extra Place/Casino focus entry, containment, Escape and return pass; remaining ledgers and dirty/pending variants remain |
 | PQA-S01 | Protected API anonymous denials | ASSESSED; PASS scoped | B protected401 probes |
 | PQA-S02 | Owner role vs signed authentication | ASSESSED; PASS scoped | B security policy/owner guard |
@@ -3492,7 +3528,7 @@ in the PD-QA-015 addendum still applies (PG, provider access, imported sources, 
 | PQA-D08 | Populated workbook import/award reconciliation | ASSESSED; REPAIRED ON ISOLATED CANDIDATE / PARTIAL | CP-004 browser import/recovery remains valid; CP-012 adds Profile-scoped parent resolution and portable native-ID remapping. Normal integration/full browser rerun and #109 access vocabulary remain open |
 | PQA-D09 | Google/workbook fallback roundtrip | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
 | PQA-D10 | Immutable conversion source checksum | ASSESSED; PASS scoped | PD-QA-015 immutable SHA/source table |
-| PQA-D11 | Retention/deletion/privacy recovery | ASSESSED; REPAIRED ON ISOLATED CANDIDATE / PARTIAL | CP-012 append-only history survives eligible draft removal, denies financial deletion and stays outside report sums across five ledgers. Normal integration and complete UI history remain open |
+| PQA-D11 | Retention/deletion/privacy recovery | ASSESSED; PASS scoped local | Normal 3010 uses append-only history, governed deletion denial and shared readable History across five ledgers; CP-016 proves Extra Place Void history and active-only archive reporting without reversing retained P&L |
 | PQA-D12 | Crash/network-loss/concurrent browser recovery | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
 | PQA-M01 | Calculation/reference/actual single authority | ASSESSED; REVIEWED | C money authority source review |
 | PQA-M02 | Schema/version/legacy compatibility boundary | ASSESSED; REVIEWED | C v1/v2 and migration inspection |
@@ -3515,8 +3551,8 @@ in the PD-QA-015 addendum still applies (PG, provider access, imported sources, 
 | PQA-C01 | Public calculator configuration comparison | OPEN; PARTIAL | MBB/OddsMonkey public configuration documented; Outplayed exact configuration review remains UNVERIFIED |
 | PQA-C02 | Public offer evaluation comparison | ASSESSED; DOCUMENTED | Current addendum: three vendor guidance cells, not member hands-on |
 | PQA-C03 | Activity-recording comparison | ASSESSED; DOCUMENTED comparison, not hands-on | Outplayed/OddsMonkey tracker documentation versus MBB limited offer-progress documentation; financial equivalence/member interactions unverified |
-| PQA-C04 | Expected vs actual performance comparison | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
-| PQA-C05 | Cash/balance workflow comparison | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
+| PQA-C04 | Expected vs actual performance comparison | ASSESSED; DOCUMENTED / access boundary | Outplayed and OddsMonkey authoritative public documentation describe performance filtering/drilldown; an equivalent authoritative MBB member workflow was not publicly locatable and remains UNVERIFIED |
+| PQA-C05 | Cash/balance workflow comparison | ASSESSED; DOCUMENTED / access boundary | Outplayed documents a separate balance workflow; MBB and OddsMonkey member interaction required for exact correction semantics remains inaccessible and UNVERIFIED |
 | PQA-C06 | History/recovery comparison | ASSESSED; DOCUMENTED / BLOCKED limits | CP-011 OddsMonkey destructive reset is documented; Outplayed member recovery is inaccessible and an authoritative MBB equivalent remains unlocated. No restoration interaction inferred |
 | PQA-C07 | Hands-on keyboard workflow | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
 | PQA-C08 | Hands-on mobile workflow | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
@@ -3528,32 +3564,32 @@ A completed journey includes the stated start, mutation/recovery, persistence/re
 display/report steps. It must finish its required steps; incidental access failure is not completion.
 Shared width/theme variants are recorded in the modal addendum, not inflated into separate journeys.
 
-| ID | Required start→end journey | Current result / evidence |
-|---|---|---|
-|PQA-J01|Account legacy-invalid/invalid entry→correction→Save→complete cash+export/reopen|PASS / PROVEN; money-repair-browser.json1440light/760dark,22.34 |
-|PQA-J02|Native SNR Available→matching/copy→actual placement7→settlement→Reports/reload|PASS / PROVEN; free-bet-complete-journey.json,7.72→10.60 |
-|PQA-J03|Native SR Available→matching/copy→actual placement7→settlement→Reports/reload|PASS / PROVEN; same runner,9.65→20.60, combined31.20 |
-|PQA-J04|Standard source→Profile/Account/review→pointer Save→receipt/focus→destination/reopen|PASS / PROVEN; modal-conversion-browser.json1440/760/390 both themes |
-|PQA-J05|Actual Blackjack Live UI→hand outcome→Casino conversion→retry/second Account→history/report/reload|PASS / PROVEN; reviewed20→15=-5, one activity, retry same row, second Account409 |
-|PQA-J06|Converted SNR/SR→actual placement→settlement→lineage/history/report UI|PARTIAL; financial slice24.80 retained; Settlement→Advanced controls→Notes source ID/hash passes8 width/theme/type checks with unchanged records/audits. Full row change-history consumer missing (PD-QA-016); award parent legitimately absent for calculator source |
-|PQA-J07|Sportsbook native new→matching/copy→actual placement→settle/undo→report|FULLY EXERCISED; PASS on cb0f290 repair only: browser4 variants, invalid/correction/report/reload, SQLite atomicity/denial and real PG17. Main unfixed; historical failures preserved. |
-|PQA-J08|Casino other activity→fees/override→settle/reopen→report|PARTIAL: CP-004 native browser create, calculated2.40, actual/settle2.10, correction1.90 and report/reload pass; fee allocation and durable deletion history remain |
-|PQA-J09|Extra Place/Each Way native→win/place actuals→settle→report|PARTIAL: CP-004 native browser actuals26.00/4.40, four independent outcomes, settle30.40, Void0.00 and report/reload pass; durable safe-removal history remains PD-QA-021 |
-|PQA-J10|Cash movement→Account reconciliation→fees/matching→report|PARTIAL: CP-004 browser +25, reopen, correct−10 and report/reload pass; malformed money now rejects atomically. Account reconciliation/fees and durable removal history remain |
-|PQA-J11|Award group→SNR/SR issued descendants→settlement→safe removal/history|PARTIAL; original15-credit/orphan/removal failures are historical, repaired8276e2a and prior frozeneb86 browser evidence. Current outgoing rerun and per-assertion receipt above govern evidence; full user-visible lineage/history assertions remain independent from issuance/transaction correctness. Not added to journey numerator. |
-|PQA-J12|Multi-Profile conversion partial failure→retry unresolved→new intent→notifications|FULLY EXERCISED; PASS / PROVEN browser/API/persistence counts2/1, three notification links; current addendum |
-|PQA-J13|Onboarding→catalogue Accounts→permissions→first tracker action/reopen|PARTIAL; API identity creation, full guided UI next |
-|PQA-J14|Profile archive/recover/delete→denied writes→directory/search isolation|PARTIAL; sampled security/restore tests; full browser lifecycle next |
-|PQA-J15|Login→session expiry→denial→re-authenticate→state recovery|NOT TESTED; real callback/provider prerequisites unavailable |
-|PQA-J16|Global search→filter/loadout→Quick Action→correct Profile record|NOT TESTED; actual keyboard/stale-response journey next |
-|PQA-J17|Notification create→clear/reload/new context→source lifecycle/history|PARTIAL: CP-006 real source creation/link, duplicate409, foreign Profile404, clear/reload and placed-delete denial pass; source resolve replaces the event and erases prior cleared history while tombstone survives (#90 FAIL boundary) |
-|PQA-J18|Workbook import→mapping/approval→write→reopen/reconciliation/export|PARTIAL: CP-004 browser six-sheet workflow remains valid; CP-012/013 isolated candidate adds same-Profile native parent resolution, collision isolation and portable remapping. Normal browser integration/migration and #109 Stake/Promo Access vocabulary remain open |
-|PQA-J19|Portable restore→reopen tracker→report/export→undo/recovery|FULLY EXERCISED; PASS / PROVEN on 3010: authenticated file analyse/restore, 2 Accounts+1 Sportsbook+3 Free Bets, independent SQLite values/counts, three reconciliation gates, report reload, re-export and API-owned archive/delete cleanup |
-|PQA-J20|Backup→actual SQLite restore→read/reconcile→rollback|FULLY EXERCISED; PASS / PROVEN scoped local: verified backup restored to separate copy, repeated migration, six-ledger hashes/reopen and retained rollback copy; operational/hosted disaster recovery is not inferred |
-|PQA-J21|Isolated PostgreSQL writes/concurrency→backup/restore→read/rollback|FULLY EXERCISED; PASS / PROVEN scoped backend journey, real18.6 port60936, dump/SECOND DB restore/exact values/counts/source IDs, restart and injected post-restore rollback. No hosted/browser disaster-recovery certification |
-|PQA-J22|Combined Profile reports→chart point/filter/drilldown→record/source|PARTIAL: CP-006 £11.50/£7.50 Profile and £14.60 combined totals, range/reload, module/bookmaker breakdown and text chart summary pass; point focus/inspection/drilldown, module filter and saved presets remain #111 gaps |
-|PQA-J23|Settings/preferences→failed mutation recovery→refresh/session reopen|PARTIAL: CP-009 ownership/default inventory, Auto Logout failure rollback, inactivity/cross-tab/stale-session/focus-resume paths and display persistence evidence; actual reader and complete fresh-browser restart path remain |
-|PQA-J24|Large realistic dataset→filter/page/chart→responsive input/stale recovery|PARTIAL: CP-005 200-record authenticated Profile passes page/filter/search, module navigation and half-width containment; chart interaction, larger scale and stale-request recovery remain |
+| ID | Journey | State | Last executed evidence | Exact missing step | Gap type | Smallest next action |
+|---|---|---|---|---|---|---|
+|PQA-J01|Account invalid value→correction→save→cash/export/reopen|PASS|CP-003 money repair, £22.34|—|—|Retain regression|
+|PQA-J02|Native SNR→copy→actual placement→settlement→report/reload|PASS|CP-003 authenticated Free Bet, £10.60|—|—|Retain regression|
+|PQA-J03|Native legacy SR→copy→actual placement→settlement→report/reload|PASS|CP-003 authenticated Free Bet, £20.60|—|—|Retain legacy regression|
+|PQA-J04|Standard calculator→target review→save/receipt→destination/reopen|PASS|CP-003 conversion browser, three widths/themes|—|—|Retain regression|
+|PQA-J05|Blackjack UI→hand→Casino conversion→retry→history/report/reload|PASS|CP-003 one −£5 activity; duplicate/foreign Account denied|—|—|Retain regression|
+|PQA-J06|Converted SNR/legacy SR→actual placement→settlement→lineage/history/report|PASS|CP-016 `free-bet-converted-journey.json`: plans 6.49/9.74, actual 6.00, P&L 7.40/17.40; Created/Placement/Settled|—|—|Retain current SNR plus historical-SR compatibility regression|
+|PQA-J07|Sportsbook native→copy→actual placement→settle/correct→report|PASS|CP-003 integrated browser/API/SQLite/PostgreSQL evidence|—|—|Retain regression|
+|PQA-J08|Casino activity→fees/override→settle/reopen→report|PARTIAL|CP-016 rerun: calculated 2.40, settled 2.10, corrected 1.90, History/reload|Defined fee-allocation step|Unimplemented/connection gap|Wire and execute existing fee-allocation contract|
+|PQA-J09|Extra Place native→actual win/place lays→settle→Void→History/report/reload|PASS|CP-016 browser: 26.00/4.40, settled 29.79, Void 0.00, Created/Settled/Voided|—|—|Retain regression|
+|PQA-J10|Cash movement→Account reconciliation→fees/matching→report|PARTIAL|CP-016 rerun: +25, −10 correction, readable History, invalid write rejected|Account reconciliation/fee step|Unimplemented/connection gap|Execute the existing reconciliation ownership path|
+|PQA-J11|Award group→SNR/SR descendants→settlement→safe removal/history|PARTIAL|Award integrity repairs plus prior browser evidence|One fresh visible issuance→lineage→History→removal run|Test coverage gap|Run current 3010 award-group journey|
+|PQA-J12|Multi-Profile conversion failure→retry→new intent→notifications|PASS|CP-003 browser/API/persistence counts 2/1|—|—|Retain regression|
+|PQA-J13|Onboarding→catalogue Accounts→permissions→first action/reopen|PARTIAL|API identity and Account creation|Guided browser onboarding through first saved tracker action|Test coverage gap|Execute one authenticated guided browser run|
+|PQA-J14|Profile archive/recover/delete→denied writes→directory/search isolation|PARTIAL|CP-016 active-only defaults, deliberate archived inclusion and exact-name deletion tests|One real API-backed recover/delete/denied-write sequence|Test coverage gap|Run disposable Profile lifecycle on normal auth|
+|PQA-J15|Login→expiry→denial→re-authentication→state recovery|BLOCKED|CP-009 local expiry/cross-tab/stale-session evidence|Real Google callback/provider re-authentication|External blocker|Execute only with authorised provider test identity|
+|PQA-J16|Global search→filter/loadout→Quick Action→correct Profile record|NOT YET EXERCISED|Component regressions only|One keyboard/stale-response end-to-end run|Test coverage gap|Build deterministic multi-Profile browser fixture|
+|PQA-J17|Notification create→clear/reload→source lifecycle→history|PARTIAL|CP-006 duplicate/Profile isolation and clear reload|Durable earlier event after source changes|Unimplemented feature|Implement approved durable notification-event boundary|
+|PQA-J18|Workbook import→review/write→lineage→reopen/report/export|PARTIAL|CP-015 imported-parent UI plus prior six-sheet recovery|Approved Stake/Promo Access vocabulary and one combined award import rerun|Product decision/test gap|Resolve #109 vocabulary, then rerun current browser path|
+|PQA-J19|Portable restore→reopen tracker→report/re-export→recovery|PASS|CP-004/014 authenticated portable restore and identity remap|—|—|Retain regression|
+|PQA-J20|SQLite backup→restore→read/reconcile→rollback|PASS|CP-014 normal clone/migration/rollback|—|—|Retain recovery drill|
+|PQA-J21|PostgreSQL writes/concurrency→backup/restore→read/rollback|PASS|CP-013 PostgreSQL 18.6 second-database restore|—|—|Retain isolated recovery drill|
+|PQA-J22|Combined reports→chart point/filter/drilldown→record/source|PARTIAL|CP-016 point focus, date/value, pointer/keyboard parity and empty state|Record drilldown, module filter and saved metric/granularity state|Unimplemented #111 slices|Specify and implement the next bounded drilldown slice|
+|PQA-J23|Settings→failed mutation recovery→refresh/new session|PARTIAL|CP-009 ownership, rollback, expiry and cross-tab evidence|Actual reader plus complete fresh-browser restart|External/test capability gap|Run supported reader when genuinely operable|
+|PQA-J24|Large dataset→filter/page/chart→responsive/stale recovery|PARTIAL|CP-005 200 records plus CP-016 chart interaction|Larger scale and delayed/stale-request recovery in one run|Test coverage gap|Add deterministic delayed-response large-data probe|
 
 ### Competitor workflow slice — public evidence, accessed2026-09-13
 
@@ -3569,9 +3605,9 @@ A public URL/access failure is evidence of inaccessibility, never proof that the
 |C01 public configuration/guidance|U exact arrangement unresolved|D [public controls/guidance](https://matchedbettingblog.com/matched-betting-calculator/)|D [normal/SNR/SR/commission guidance](https://www.oddsmonkey.com/matched-betting/calculator/)|
 |C02 offer-review workflow documentation|D retained2026-09-13 features/calendar/offer guidance|D retained qualifying-bet terms/stake/odds/liability guidance|D retained Racing Matcher offer/terms/review guidance|
 |C03 activity recording documentation|D [Store in Profit Tracker / My Bets](https://outplayed.com/blog/matched-betting-spreadsheet)|D limited [offer progress](https://matchedbettingblog.com/); financial tracker equivalent remains unlocated, not declared absent|D [tool/manual/historical entry](https://help.oddsmonkey.com/hc/en-gb/articles/11151091597085-Keep-On-Track-With-Our-Profit-Tracker)|
-|C04 expected versus actual documentation|D [Pro Data expected/actual and filters](https://outplayed.com/pro-data-tool)|U|D [expected/actual +tool/sport drilldown](https://www.oddsmonkey.com/matched-betting/profit-tracker/)|
-|C05 cash/balance documentation|D [separate Balance Sheet, cosmetic cash transfers](https://outplayed.com/blog/matched-betting-spreadsheet)|U|U|
-|C06 recovery/history documentation|U|U|D retained public reset guide/Yes Delete confirmation; not an executed reset or restoration test|
+|C04 expected versus actual documentation|D [Pro Data expected/actual and filters](https://outplayed.com/pro-data-tool)|B member workflow reviewed; no authoritative public equivalent located, capability UNVERIFIED|D [expected/actual +tool/sport drilldown](https://www.oddsmonkey.com/matched-betting/profit-tracker/)|
+|C05 cash/balance documentation|D [separate Balance Sheet, cosmetic cash transfers](https://outplayed.com/blog/matched-betting-spreadsheet)|B member workflow reviewed; exact balance/correction behaviour inaccessible and UNVERIFIED|U|
+|C06 recovery/history documentation|B member recovery reviewed; public guidance does not expose the member interaction, capability UNVERIFIED|U|D retained public reset guide/Yes Delete confirmation; not an executed reset or restoration test|
 |C07 actual keyboard interaction|U full keyboard interaction partial; current numeric/slider evidence is not full certification|H retained public calculator1440/390 Tab/Space/field bounds plus fresh390 numeric entry|U|
 |C08 actual mobile interaction|H public linked calculator390: numeric entry, Advanced presets, Custom slider and Copy; current engineering continuation above|H retained public calculator1440/390 plus fresh keyboard390; no member tracking|U|
 |C09 actual evaluate→record→performance interaction|B member tracker documented login; attempted public entry unavailable|B recording endpoint/equivalent unlocated; guessed spreadsheet URL failed, forum anecdotes not authority|B [Profit Tracker redirects to login](https://members.oddsmonkey.com/account/login?&returnurl=%2ftools%2fprofittracker)|

@@ -1192,3 +1192,15 @@ Half-width pointer Save remains BLOCKED under PD-QA-004; these probes are not wh
   individual calculator fields or hide the overflow.
 - Regression test: `calculator-ui-parity-pass.spec.ts` checks every Standard control against its
   workspace at desktop, half-width and 390px with scaled text, both themes and reduced motion.
+
+## 2026-09-17: Archived Profiles leaked into ordinary owner totals
+
+- Area: Fund Manager directory headline and combined Profile reporting picker.
+- Root cause: archive state was respected by recent navigation but the reporting selection and
+  owner headline still defaulted to every Profile, including retained synthetic financial history.
+- Prevention: active navigation and current owner totals use the active Profile set by default;
+  archived Profiles remain labelled and deliberately selectable for historical reporting. Archive
+  never reverses or deletes settled financial meaning.
+- Regression test: `tests/e2e/profile-lifecycle-routing.spec.ts` gives an archived synthetic Profile
+  a distinct financial amount, proves it is absent from the active default, then proves explicit
+  archived inclusion and `Select active` recovery.

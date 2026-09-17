@@ -1,19 +1,19 @@
 # Project Status — Plum Duff / OpenForge — Doc ID: PS-CODEX-001
 
-**Last updated:** 2026-09-17 13:33 BST · **Status:** 🟡 At risk
+**Last updated:** 2026-09-17 14:46 BST · **Status:** 🟡 At risk
 
 ## Right now
 
-- **Working on:** Rebaseline complete ledger journeys after integrating readable History, imported-parent review and the first inspectable report-chart slice.
-- **Next:** Complete the remaining award, Account-reconciliation, Casino-fee and report-drilldown gaps while continuing #114.
-- **Blocked on:** none for independent local work; main, hosted database and Vercel changes remain separately unauthorised
+- **Working on:** Complete the remaining award, Account-reconciliation and Casino-fee user journeys on the integrated local application.
+- **Next:** Continue #111 record drilldown, Profile lifecycle, stale-response and wider #114 evidence.
+- **Blocked on:** none for independent local work; #109 access vocabulary, provider-only checks and hosted changes remain separate decisions
 
 ## Delivery state
 
 | Area | Evidence state |
 | --- | --- |
-| Local integrated build | CP-015 adds shared readable History, imported-parent review and supported dependency patches |
-| Normal `localhost:3010` | Healthy on `import-history-v1`, normal authentication and the migrated normal local database |
+| Local integrated build | CP-016 closes converted Free Bet and Extra Place journeys and separates active defaults from retained archived reporting |
+| Normal `localhost:3010` | Healthy on `import-history-v1`, normal authentication and the migrated normal local database; final source pairing is verified below |
 | Main / origin | Not updated by the local integration work |
 | Vercel | Not deployed or hosted-verified |
 | Owner smoke test | Optional short local check is available; not run and not a work blocker |
@@ -25,15 +25,15 @@ These figures measure **#114 audit coverage**, not the percentage of the product
 | Review area | Current coverage |
 | --- | ---: |
 | Assessments reviewed | 61 / 87 (70%) |
-| Complete tasks exercised and passing | 10 / 24 (42%) |
-| Competitor comparisons | 15 / 27 (56%) |
-| Requirements reconciled | 51 / 133 (38%) |
+| Complete tasks exercised and passing | 12 / 24 (50%) |
+| Competitor comparisons | 18 / 27 (67%) |
+| Requirements reconciled | 58 / 133 (44%) |
 
 ## Next 3 steps
 
-1. Complete award/lineage, Account-reconciliation and Casino-fee journey gaps.
+1. Complete the current award/lineage, Account-reconciliation and Casino-fee journey gaps.
 2. Continue #111 record drilldown and governed metric/granularity decisions.
-3. Advance notification history, recovery/security and remaining requirement evidence.
+3. Exercise Profile lifecycle, stale-response and remaining recovery/security boundaries.
 
 ## Checkpoint log
 
@@ -54,6 +54,7 @@ These figures measure **#114 audit coverage**, not the percentage of the product
 | CP-013 | 2026-09-17 08:15 BST | Added fail-closed runtime/database ownership, removed four private-seed fixture gaps and re-proved the isolated migration candidate | [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-013-runtime-isolation-safety-gate--2026-09-17) |
 | CP-014 | 2026-09-17 12:20 BST | Migrated the normal local database and cut 3010 over to Profile-scoped identity and append-only financial history | [#12](https://github.com/wolney8/OpenForge/issues/12), [#80](https://github.com/wolney8/OpenForge/issues/80), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-014-normal-local-migration-and-cutover--2026-09-17) |
 | CP-015 | 2026-09-17 13:33 BST | Added readable ledger History, imported-parent review, chart-point inspection and supported security patches | [#36](https://github.com/wolney8/OpenForge/issues/36), [#111](https://github.com/wolney8/OpenForge/issues/111), [#115](https://github.com/wolney8/OpenForge/issues/115) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-015-user-usable-history-lineage-and-reporting-slice--2026-09-17) |
+| CP-016 | 2026-09-17 14:46 BST | Closed two complete journeys, corrected Void history and separated active from archived reporting defaults | [#88](https://github.com/wolney8/OpenForge/issues/88), [#111](https://github.com/wolney8/OpenForge/issues/111), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-016-complete-journey-and-archive-reporting-package--2026-09-17) |
 
 ## Reference index
 

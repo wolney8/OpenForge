@@ -10,6 +10,9 @@ No published release is represented by the local milestones below.
 
 ## 2026-09-17
 
+- **2026-09-17 14:46 BST — CP-016:** Closed converted Free Bet and Extra Place complete journeys,
+  corrected Void history semantics and made active-only reporting the owner default while preserving
+  deliberate archived historical reporting.
 - **2026-09-17 12:20 BST — CP-014:** Migrated the normal local database to Profile-scoped import
   identity and append-only financial history, verified unchanged existing financial meaning and
   cut normal `localhost:3010` over to the tested integrated source/schema pairing.

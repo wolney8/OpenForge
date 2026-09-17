@@ -1,5 +1,30 @@
 # Plum Duff Next Issue Tracking Register
 
+## PD-AUDIT-CP016-20260917 — journey closure and archive/report semantics
+
+| ID | Requested outcome | Current state |
+|---|---|---|
+| PQA-J06 | Complete converted Free Bet placement, settlement, lineage, History and report | PASS LOCALLY: current SNR and retained legacy-SR routes copy 6.49/9.74, record actual 6.00, settle 7.40/17.40 and reopen Created/Placement/Settled history |
+| PQA-J09 | Complete native Extra Place actual, settlement, correction/void, History and report | PASS LOCALLY: actual lays 26.00/4.40 settle at 29.79; Void reports 0.00 and now reads Created/Settled/Voided rather than generic Edited |
+| PD-AUDIT-PROFILE-ARCHIVE-001 | Keep archived financial history without polluting ordinary active-owner totals | COMPLETE LOCALLY: active Profiles are selected by default; archived Profiles are labelled and included only deliberately; archive does not reverse P&L |
+| PD-AUDIT-REPORT-DRILLDOWN-001 | Make #111 implementation state explicit | PARTIAL / FIRST SLICE PASS: chart points have keyboard/pointer inspection, visible focus, date/value accessible names and empty-state coverage; record drilldown and module/metric controls remain |
+| PD-QA-001 | Disposition remaining dependency advisories by actual shipped exposure | ACCEPTED DEVELOPMENT-ONLY RISK: production graph is clean; five high findings are transitive ESLint-tooling paths, with forced overrides rejected pending upstream compatibility ownership |
+| PD-AUDIT-TEST-DATA-001 | Prevent browser evidence leaving confusing owner-visible test data | COMPLETE AS GUIDANCE: disposable storage is preferred; normal-auth synthetic Profiles are governed/traceable and archived when protected history prevents deletion |
+
+| Issue | Original request → later clarification | Current local evidence | Remaining gap |
+|---|---|---|---|
+| #23 | Visible fee calculation and explicit withdrawal → fees remain distinct from report P&L | Fee positions render from active Profiles and retain deliberate historical selection | Casino fee allocation and full withdrawal journey remain partial |
+| #32 | Common Sportsbook/Casino entry controls → reuse shared controls without overriding ledger authority | Deterministic synthetic Account/catalogue tests and normal editors retain shared quick entry | Full first-action onboarding journey remains partial |
+| #33 | Animated outcomes and currency-first values → motion must respect accessibility preferences | Financial values, coordinated chart motion and reduced-motion tests pass | Actual reader evidence remains unverified |
+| #41 | Pending placed date-range triage → selected period must stay consistent across reports | Date range, report reload and point date/value evidence pass | Cross-module saved report filters remain #111 scope |
+| #42 | Sortable operational headers → semantic table headers and keyboard use are required | Current ledger/report header semantics and focused browser checks pass | Global search/loadout journey PQA-J16 is unexercised |
+| #43 | Highlight operational risk/workflow state → do not encode meaning by colour alone | Shared status text/tone and active/archive labels are locally integrated | Full contrast assessment remains partial |
+| #110 | Coordinated chart reveal/replay → reduced motion and stable layout are mandatory | Motion on/off, layout stability and point inspection pass | Record drilldown and metric/granularity policy remain #111 gaps |
+
+Coverage is 61/87 assessments, 12/24 complete journeys, 18/27 competitor cells and 58/133
+reconciled requests. Live GitHub comments remain pending because this checkout has no callable
+`gh` client; no issue state or closure is inferred from the local record.
+
 ## PD-AUDIT-CP015-20260917 — user-usable history, lineage and report inspection
 
 | ID | Requested outcome | Current state |

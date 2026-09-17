@@ -1,14 +1,14 @@
 # Engineering Learning — Plum Duff / OpenForge — Doc ID: EL-CODEX-001
 
-**Last updated:** 2026-09-17 13:33 BST
+**Last updated:** 2026-09-17 14:46 BST
 
 This is a compact notebook of transferable lessons from building Plum Duff. It is not the audit,
 roadmap, backlog or evidence record.
 
 ## Current learning focus
 
-- Turning an append-only audit trail into readable user history without changing report arithmetic.
-- Distinguishing a supported patch upgrade from a feature-bearing dependency change.
+- Closing a complete user journey rather than inferring success from its component tests.
+- Keeping lifecycle visibility separate from retained financial meaning.
 
 ## Concepts worth remembering
 
@@ -174,6 +174,17 @@ the row is archived. Only a governed correction, void or reversal may alter the 
 
 **Remember:** Hidden is not financially undone.
 
+### End-to-end journey testing
+
+**What it means:** A workflow passes only when one realistic user task crosses its UI, API,
+persistence, reload and final report boundaries successfully.
+
+**Why it mattered in Plum Duff:** Extra Place calculations and append-only storage already passed
+separately, yet the complete run exposed that a Void was described as a generic edit. Only the full
+create→settle→void→History→report sequence revealed the misleading user-facing meaning.
+
+**Remember:** Component passes are evidence inputs, not a completed user task.
+
 ### Environment isolation and failing closed
 
 **What it means:** A process must prove which source, purpose and database belong together before
@@ -247,6 +258,7 @@ deployment configuration before any Vercel/Neon work.
 | CP-013 | 2026-09-17 08:15 BST | Environment isolation; fail closed | Runtime purpose, source and database ownership now have to agree before any connection or migration |
 | CP-014 | 2026-09-17 12:20 BST | Migration safety; schema compatibility | The normal cutover preserved every old row and current total while adding truthful unresolved identity and future append-only evidence |
 | CP-015 | 2026-09-17 13:33 BST | Audit trail versus user history; patch versus feature upgrades | Immutable evidence became understandable in five ledgers while supported patches reduced dependency exposure without changing product meaning |
+| CP-016 | 2026-09-17 14:46 BST | End-to-end journeys; lifecycle versus financial state | Full journeys exposed a mislabelled Void and proved that archive visibility can change without erasing retained P&L |
 
 ## Where detailed evidence lives
 

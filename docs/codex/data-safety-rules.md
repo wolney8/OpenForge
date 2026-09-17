@@ -23,6 +23,18 @@ Use placeholders such as:
 - Do not preserve real names, emails, addresses, phone numbers, account identifiers, bet references, or transaction references.
 - Do not include raw session tokens, cookies, screenshots, or browser storage dumps.
 
+### Browser and integration-test Profile lifecycle
+
+- Prefer a disposable database for tests that create or mutate Profile-owned financial data.
+- When a normal authenticated runtime is required, create an unmistakably synthetic Profile and
+  never reuse or edit an owner record.
+- Clean up non-financial drafts through the governed API. If financial-history rules prohibit
+  physical deletion, archive the synthetic Profile instead of weakening retention.
+- Archived synthetic Profiles must stay out of normal active navigation and active-only owner
+  totals. Their retained history may be included only by deliberate historical selection.
+- Record the synthetic Profile identity in test evidence so residue is traceable; do not make it the
+  active owner Profile or depend on it as an undocumented seed for a later test.
+
 ## Credentials and secrets
 
 Never store:
