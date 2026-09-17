@@ -16,17 +16,15 @@ isolated visual polish.
 
 - Keep the reviewed integration available through normal `localhost:3010` sign-in and data.
 - Preserve completed Profile import, populated-ledger, combined-report and 200-record evidence.
-- Keep the tested import-identity and durable-history candidate isolated until normal-local
-  migration is separately authorised and the browser integration gate passes; the CP-013 runtime
-  isolation and clone-migration safety gate is complete.
+- Preserve the completed CP-014 normal-local identity/history migration, rollback checkpoint and
+  authenticated browser evidence while main and hosted environments remain unchanged.
 - Preserve the completed Account, ledger-write, award, Blackjack and calculator safeguards.
 - Continue #114 accessibility, recovery, competitor, requirements and security evidence without
   waiting for deferred calculator-owner comparison.
 
 ## Next
 
-- If authorised, migrate the newly backed-up normal-local database and complete source-relationship,
-  durable-history and browser integration checks.
+- Complete remaining ledger journeys and the current #111 reporting boundary.
 - Exercise remaining notification, failure/retry and recovery paths.
 - Complete actual screen-reader, larger-scale and expensive-request evidence.
 - Resolve or disposition dependency exposure and release prerequisites.
@@ -45,8 +43,8 @@ isolated visual polish.
 ## Deferred / decision required
 
 - The #113 bulk owner calculator comparison is deferred without a date; engineering verification continues.
-- CP-012/013 normal-local migration is ready for a separate owner decision; main, Neon and Vercel
-  migration remain outside that approval.
+- Main, Neon and Vercel integration of the locally migrated identity/history work remains a later,
+  separately approved release decision.
 - An owner smoke test may follow the engineering gate but does not block independent audit work.
 - Vercel Preview or release requires isolated data, genuine authentication, PostgreSQL evidence,
   dependency disposition and credential prerequisites.

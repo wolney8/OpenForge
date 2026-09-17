@@ -1,5 +1,57 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
+## Current CP-014 normal-local migration and cutover — 2026-09-17
+
+**Checkpoint timestamp:** 2026-09-17 12:20 BST
+
+The owner-approved PD-QA-018 and PD-QA-021 migrations are now applied to the normal local SQLite
+database. Writes were stopped first. A fresh readable rollback backup was taken at 12:02 BST with
+integrity `ok` and SHA-256
+`f9d0c6196bdd491e43bf63e3ffeb0e2b8f30272c69177746c178e0b5e62eab7e`. Before opening storage,
+the fixed source identified itself as `normal-owner`, selected the canonical owner database and
+reported source `279b1f9649d1a7ed280e51e70d7187df9f21ea4c`.
+
+### Migration and existing-data result
+
+- Health reports schema `import-history-v1`, normal-owner classification and the same safe database
+  fingerprint through both API 8010 and the 3010 frontend proxy.
+- Every old-column projection matched the stopped-write backup after migration. Original counts and
+  IDs remain Profiles 3, Accounts 76, Sportsbook 508, Free Bets 231, Casino 62, Cash Adjustments 15
+  and Extra Place 117; representative stored financial aggregates and all pre-existing summary
+  source fields are unchanged.
+- Migration created **zero** financial-history events. The 131 pre-existing Free Bets with supplied
+  parent references are `legacy_unresolved`; no historical parent was inferred.
+- Authenticated browser reads opened Dashboard, Accounts, Sportsbook, Free Bet, Casino, Cash
+  Adjustment, Extra Place and Reports, including four representative existing editors and reload.
+  No historical row was edited.
+
+### Live normal-schema feature evidence
+
+Three governed synthetic Profiles were created for the gate and archived afterwards; their
+financially meaningful records were retained rather than physically deleted. Profile-scoped source
+identity passed same-Profile resolution, identical retry, changed-retry rejection, cross-Profile
+collision isolation, missing and ambiguous retention, explicit later re-resolution and portable
+restore with remapped native IDs. The first restore attempt rolled itself back because the test
+Profile lacked normal onboarding metadata; completing the synthetic fixture made financial,
+operational and logical restore reconciliation pass. This was fixture setup debt, not an owner-data
+failure.
+
+Cash Adjustment, Sportsbook and Casino recorded append-only history. A synthetic Sportsbook result
+settled at £6 and corrected to £5; current reporting returned £5 once while history retained both
+states. A £10-out Cash Adjustment corrected to £5-in likewise reports current £5. Archive evidence
+did not change the current row or P&L. Ordinary SQL UPDATE and DELETE of a history event were rejected,
+the same operation identity produced one event, and settled Sportsbook deletion returned the
+governed conflict. `tracker-summary-sources` contains no history collection.
+
+The focused identity/history, portable-restore and health selection passes **16/16**. A final stopped-
+write migrated baseline at 12:19 BST has integrity `ok`, schema `import-history-v1` and SHA-256
+`b255c9aba6a9f51d5aa3bbb438a881e6ed0c94108d11e41ce33ce12d78293f02`; the pre-migration copy is the
+rollback checkpoint. Normal 3010/8010 were restarted on the exact tested source and health pairing.
+
+Coverage remains **60/87 assessments (69%), 10/24 complete journeys passing (42%), 15/27 competitor
+cells (56%) and 45/133 requirements reconciled (34%)**. This gate integrates already assessed work;
+it does not manufacture a new audit denominator or hosted/owner acceptance.
+
 ## Current CP-013 runtime-isolation safety gate — 2026-09-17
 
 **Checkpoint timestamp:** 2026-09-17 08:15 BST
@@ -1826,10 +1878,10 @@ precedence; these reference/placed fields are not represented as identical obser
 |ID / area|Expected vs actual / reproducible evidence|Severity / exposure / impact|Recommendation / acceptance / existing issue|
 |---|---|---|---|
 |PD-QA-017 Award transaction/lineage safety, main and candidate|J11-SPLIT-FAIL-001 retained first child/new retry group; UI safe unplaced removal blocked; J11-SOURCE-DELETE-001 source204/orphans, source audit removal boundary CODE-VERIFIED|High integrity; authorised award/retry/delete; inflated credit and financial history loss, not observed operational corruption|Bounded server-owned award attempt/group + transaction/idempotency; server child/source deletion guards aligned with #80, retained audit. Test child503 retry exactly2 children/10, concurrent retry, source/settled-child deny unchanged totals; safe Available removal. #49/#80/#91/#114. Extends previously recorded dangling-source failure rather than erasing it|
-|PD-QA-018 Imported parent identity/consumer gap, candidate|J18-LINK-001 source ID retained without native parent resolution|Medium–high lineage; linked imported rows; broken source context/safe removal assumptions|Explicit source→native parent resolution under existing import architecture; no rewriting historic source IDs. Test approved linked workbook save/reopen→parent/child consumer and export unchanged source identity. #12/#80; preserve separate #109 access/provenance blocker|
+|PD-QA-018 Imported parent identity/consumer gap, integrated locally|J18-LINK-001 now resolves through Profile + logical namespace + external ID on normal 3010; legacy uncertainty remains explicit|Local lineage repair proven; main/hosted integration and the separate #109 access vocabulary remain open|Retain collision/retry/portable-restore regressions and never reinterpret `legacy_unresolved` rows. #12/#80|
 |PD-QA-019 Free Bet autosave stale draft overwrite, candidate|Fast Back odds5→Exchange selection→Lay odds5.20: earlier Exchange PUT200 returns lay odds blank, subsequent preview200 has no plan; copy never appears. Source handler resets form from response. Later synchronised run waits for committed Exchange change before next input and passes; this does NOT repair race|Medium–high reliability; fast matching entry; erased draft, blank guidance “Complete calculator inputs: .”, copy unavailable|Latest-edit/response guard at existing shared state boundary, no second financial engine. Deterministic deferred PUT test must preserve5.20/newer input and latest copy. #91/#92/#114. Original race trace DOCUMENTED observable run + CODE-VERIFIED response reset; broader stale-request variants NOT TESTED|
 |PD-QA-020 Sportsbook monetary pre-commit/legacy reads, main and candidate|J07-INVALID-001500 after INSERT; same bad row poisons individual/list/export500|High financial integrity; authenticated native creation; persistent corruption blocks unrelated readable rows/export|First small repair: field-specific complete-decimal validation/effective record, calculation/response preparation inside existing transaction, useful legacy-invalid diagnostics. Reuse Account/Free Bet patterns, no formulas/migration. Regression invalid create/update/injected prepare fault zero writes, valid actual9 final2.20/−1.18 unchanged, readable incomplete report. #91/#114; missing-Profile500 extends PD-QA-003|
-|PD-QA-021 Ledger deletion-history loss, integrated local build|Cash Adjustment, Extra Place and Casino audit rows use cascading foreign keys and their delete paths remove the source row; the row and its audit evidence therefore disappear together|Medium financial/audit integrity; correction paths retain current values, but a permitted deletion cannot provide durable user-visible history|Define the smallest retained tombstone/audit policy shared by these ledgers, then prove deletion/reversal, reports and Profile isolation without rewriting historical records. Until approved, creation/correction/report slices pass but removal/history stays PARTIAL. #80/#90/#114|
+|PD-QA-021 Ledger deletion-history loss, integrated locally|Normal 3010 now writes Profile-scoped append-only evidence for five financial ledgers and denies physical deletion of meaningful activity|Durable storage/report semantics pass locally; full chronological history presentation remains PD-QA-016 and hosted state is unchanged|Retain append-only/idempotency/report-once regressions while completing the separate history viewer. #80/#90/#114|
 
 No destructive correction of historical/operational data. New unsafe-source deletion and malformed
 writes were deliberately executed only against this tranche's disposable synthetic records.
@@ -3403,7 +3455,7 @@ in the PD-QA-015 addendum still applies (PG, provider access, imported sources, 
 | PQA-M01 | Calculation/reference/actual single authority | ASSESSED; REVIEWED | C money authority source review |
 | PQA-M02 | Schema/version/legacy compatibility boundary | ASSESSED; REVIEWED | C v1/v2 and migration inspection |
 | PQA-M03 | SQLite connection/initialisation architecture | ASSESSED; REVIEWED | C RLock/schema-init inspection; measured cost unknown |
-| PQA-M04 | PostgreSQL deployment/rollback assumptions | ASSESSED; PASS ISOLATED / PARTIAL | CP-013 re-proves CP-012 on actual PostgreSQL 18.6, SQLite, repeat migration, fresh normal clone and restore rollback behind a fail-closed runtime contract. Normal/Neon migration and hosted rollback remain untested and unauthorised |
+| PQA-M04 | PostgreSQL deployment/rollback assumptions | ASSESSED; PASS LOCAL / PARTIAL HOSTED | CP-014 applies the proven SQLite migration to normal local data after a fresh verified backup; actual PostgreSQL 18.6 remains disposable evidence only, while Neon and hosted rollback remain untested and unauthorised |
 | PQA-M05 | Backup custody/encryption/retention | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
 | PQA-M06 | Test fixture isolation/readiness | ASSESSED; PASS scoped migration/financial gate | CP-013 replaces the final four selected private-seed assumptions; 344/344 combined cases and separate-process workers use committed/disposable synthetic state. This does not certify every historical test file |
 | PQA-M07 | Typing/lint/flakiness census | ASSESSED; PASS / PROVEN scoped | CP-010 mypy reports 0 errors/78 files; final relevant API 147/147 and web 420/420 pass. This does not infer every legacy broad fixture is modernised |

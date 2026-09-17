@@ -184,7 +184,8 @@ counts and financial results. An upgraded database deliberately rejects writes f
 rollback therefore means restoring the pre-migration database together with the older application,
 not dropping evidence columns or history.
 
-**State:** IMPLEMENTED AND TESTED ON ISOLATED CANDIDATE — NORMAL LOCAL MIGRATION NOT AUTHORISED.
+**State:** IMPLEMENTED, TESTED AND INTEGRATED INTO NORMAL LOCAL 3010 AT CP-014. Main, hosted
+database and Vercel integration remain separately unauthorised.
 
 ## CP-011 owner schema decisions (historical proposal)
 

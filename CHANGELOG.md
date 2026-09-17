@@ -10,6 +10,9 @@ No published release is represented by the local milestones below.
 
 ## 2026-09-17
 
+- **2026-09-17 12:20 BST — CP-014:** Migrated the normal local database to Profile-scoped import
+  identity and append-only financial history, verified unchanged existing financial meaning and
+  cut normal `localhost:3010` over to the tested integrated source/schema pairing.
 - **2026-09-17 08:15 BST — CP-013:** Added fail-closed runtime/database ownership, replaced four
   private-seed fixture assumptions and re-proved the CP-012 candidate on SQLite, PostgreSQL and a
   fresh normal-data clone without migrating the normal database.

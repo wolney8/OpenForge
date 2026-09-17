@@ -1,14 +1,14 @@
 # Engineering Learning — Plum Duff / OpenForge — Doc ID: EL-CODEX-001
 
-**Last updated:** 2026-09-17 08:15 BST
+**Last updated:** 2026-09-17 12:20 BST
 
 This is a compact notebook of transferable lessons from building Plum Duff. It is not the audit,
 roadmap, backlog or evidence record.
 
 ## Current learning focus
 
-- Isolating each runtime so disposable engineering work cannot reach owner data.
-- Failing closed when source, purpose or database ownership cannot be proved.
+- Migrating owner data from a verified stopped-write backup with an exact rollback point.
+- Keeping new schema meaning compatible with old rows without inventing historical evidence.
 
 ## Concepts worth remembering
 
@@ -224,6 +224,7 @@ deployment configuration before any Vercel/Neon work.
 | CP-011 | 2026-09-16 15:37 BST | Composite identity; append-only history | Owner decisions need scoped uniqueness and immutable evidence with an explicit no-double-counting rule |
 | CP-012 | 2026-09-16 21:04 BST | Logical identity versus physical representation; archive versus reversal | The implemented source key survives workbook/restore changes, while lifecycle visibility stays separate from report meaning |
 | CP-013 | 2026-09-17 08:15 BST | Environment isolation; fail closed | Runtime purpose, source and database ownership now have to agree before any connection or migration |
+| CP-014 | 2026-09-17 12:20 BST | Migration safety; schema compatibility | The normal cutover preserved every old row and current total while adding truthful unresolved identity and future append-only evidence |
 
 ## Where detailed evidence lives
 

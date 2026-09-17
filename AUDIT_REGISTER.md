@@ -1,6 +1,6 @@
 # Audit Register — Plum Duff / OpenForge — Doc ID: AR-CODEX-001
 
-**Last updated:** 2026-09-17 08:15 BST
+**Last updated:** 2026-09-17 12:20 BST
 
 This is the owner-facing index for audit evidence. The
 [platform quality audit](docs/audits/platform-quality-audit.md) remains the detailed authority.
@@ -24,8 +24,8 @@ These are coverage measures, not percentages of the product finished.
 | PD-QA-022 | A disposable candidate could be pointed at the normal owner database | Repaired on isolated candidate | Source-rooted configuration, explicit runtime roles and connection-level ownership checks now fail closed; the CP-012 near-miss left no lasting data change | [#114](https://github.com/wolney8/OpenForge/issues/114) |
 | PD-QA-006 | Some older broad tests still depend on private seed names/data | Repaired for the CP-012/013 gate | The four remaining Account/catalogue setup failures now use committed synthetic factories; the 344-case financial regression selection passes |
 | PD-QA-016 | Users cannot see a complete chronological row-change history | Open | Source notes exist; the full history view is not implemented | [#36](https://github.com/wolney8/OpenForge/issues/36), [#114](https://github.com/wolney8/OpenForge/issues/114) |
-| PD-QA-018 | Imported child records do not always resolve their native parent | Repaired on isolated candidate; normal migration pending | Stable logical identities, explicit resolution and portable remapping pass SQLite/PostgreSQL/clone tests; 3010 remains on CP-011 | [#12](https://github.com/wolney8/OpenForge/issues/12), [#80](https://github.com/wolney8/OpenForge/issues/80) |
-| PD-QA-021 | Deleting some ledger rows also removes their audit history | Repaired on isolated candidate; normal migration pending | Append-only history covers five ledgers, reports ignore evidence rows and financial deletion is denied; full history UI remains PD-QA-016 | [#80](https://github.com/wolney8/OpenForge/issues/80), [#90](https://github.com/wolney8/OpenForge/issues/90), [#114](https://github.com/wolney8/OpenForge/issues/114) |
+| PD-QA-018 | Imported child records did not always resolve their native parent | Integrated locally / engineering gate passed | Normal 3010 uses Profile + logical namespace + external ID; retry, collision, explicit re-resolution and portable remapping pass | [#12](https://github.com/wolney8/OpenForge/issues/12), [#80](https://github.com/wolney8/OpenForge/issues/80) |
+| PD-QA-021 | Deleting some ledger rows also removed their audit history | Integrated locally / engineering gate passed | Normal 3010 records append-only evidence across five ledgers; reports ignore evidence rows and protected financial deletion is denied; full history UI remains PD-QA-016 | [#80](https://github.com/wolney8/OpenForge/issues/80), [#90](https://github.com/wolney8/OpenForge/issues/90), [#114](https://github.com/wolney8/OpenForge/issues/114) |
 | PD-QA-011 | Notification History loses the earlier event when its live source changes | Open; migration decision required | Clear/reload is reliable; durable event history is proposed, not implemented | [#90](https://github.com/wolney8/OpenForge/issues/90), [#99](https://github.com/wolney8/OpenForge/issues/99) |
 | #111 | The financial chart cannot be inspected or drilled into | Open feature gap | Totals, ranges, breakdowns and text summary pass; point interaction/filter/drilldown remain planned | [#111](https://github.com/wolney8/OpenForge/issues/111) |
 | C05 | Changed-odds and multiple-fill remaining hedges are not fully represented | Open | Same-odds core handling is integrated; richer operational handling is pending | [#35](https://github.com/wolney8/OpenForge/issues/35) |
@@ -46,7 +46,7 @@ These are coverage measures, not percentages of the product finished.
 | Multi-Lay create, save and reopen | Partial | Richer reward modes and per-leg actual placement are not complete |
 | Blackjack session to one Casino activity | Passed locally | Hosted and owner acceptance are not claimed |
 | Portable Profile restore, report, re-export and cleanup | Passed locally | Hosted recovery is not inferred |
-| Full Profile workbook import and recovery | Partial | Six-sheet browser import/recovery passes; isolated candidate repairs PD-QA-018, but normal integration/browser rerun and #109 access vocabulary remain |
+| Full Profile workbook import and recovery | Partial | Six-sheet browser import/recovery plus normal-schema identity/export/restore pass; #109 access vocabulary remains |
 | Extra Place actual placement and correction | Partial | Financial create/settle/Void/report and candidate history protection pass; normal integration remains |
 | Cash Adjustment correction and reporting | Partial | Valid/invalid writes, correction/report and candidate append-only history pass; Account reconciliation remains |
 | Native Casino activity | Partial | Actual/settle/correct/report and candidate history protection pass; fee allocation remains |
@@ -56,7 +56,7 @@ These are coverage measures, not percentages of the product finished.
 | Realistic 200-record Profile | Partial | Navigation, pagination, filter and search pass; chart/stale stress and hosted capacity remain |
 | SQLite backup restore and reopen | Passed for the isolated local copy | Operational/hosted disaster recovery remains separate |
 | Local PostgreSQL transaction, backup and restore | Passed for the isolated test scope | This is not hosted disaster-recovery proof |
-| Runtime/database isolation | Passed on the CP-013 candidate | Normal 3010 remains deliberately on the prior unmigrated API until separately approved |
+| Runtime/database isolation | Passed locally | Normal 3010 now reports the approved source, `normal-owner` database identity and `import-history-v1` schema |
 
 ## Competitor review
 

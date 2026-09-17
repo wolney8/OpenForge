@@ -1,22 +1,22 @@
 # Project Status — Plum Duff / OpenForge — Doc ID: PS-CODEX-001
 
-**Last updated:** 2026-09-17 08:15 BST · **Status:** 🟡 At risk
+**Last updated:** 2026-09-17 12:20 BST · **Status:** 🟡 At risk
 
 ## Right now
 
-- **Working on:** Hold the runtime-isolated import-identity/history candidate outside the normal database and continue independent #114 evidence.
-- **Next:** If separately approved, migrate a fresh normal-data backup/clone path and run the authenticated browser integration gate; otherwise continue reporting, ledger and security evidence.
-- **Blocked on:** only normal-local migration requires explicit owner approval; independent audit work is not blocked
+- **Working on:** Continue #114 from the completed normal-local import-identity and financial-history migration gate.
+- **Next:** Complete remaining ledger journeys, #111 reporting gaps, requirement reconciliation and recovery/security evidence.
+- **Blocked on:** none for independent local work; main, hosted database and Vercel changes remain separately unauthorised
 
 ## Delivery state
 
 | Area | Evidence state |
 | --- | --- |
-| Local integrated build | CP-013 candidate adds fail-closed source/database ownership to the tested CP-012 identity/history work |
-| Normal `localhost:3010` | Healthy on the prior CP-011 API with normal sign-in and unchanged normal data; CP-012/013 schema and API are not applied |
+| Local integrated build | CP-014 integrates the reviewed identity/history work with the fail-closed runtime boundary |
+| Normal `localhost:3010` | Healthy on `import-history-v1`, normal authentication and the migrated normal local database |
 | Main / origin | Not updated by the local integration work |
 | Vercel | Not deployed or hosted-verified |
-| Owner smoke test | Available when convenient; not run and not a work blocker |
+| Owner smoke test | Optional short local check is available; not run and not a work blocker |
 
 ## Progress at a glance
 
@@ -31,9 +31,9 @@ These figures measure **#114 audit coverage**, not the percentage of the product
 
 ## Next 3 steps
 
-1. Obtain the separate normal-local migration decision; no further schema design is required.
-2. Continue #111 reporting, remaining ledger, recovery and requirement evidence independently.
-3. After any approved migration, run the authenticated import/history/browser/report gate and preserve rollback evidence.
+1. Continue #111 reporting and the remaining complete ledger journeys.
+2. Reconcile the next coherent requirement group and useful competitor evidence.
+3. Advance recovery, security and accessibility evidence without implying hosted acceptance.
 
 ## Checkpoint log
 
@@ -52,6 +52,7 @@ These figures measure **#114 audit coverage**, not the percentage of the product
 | CP-011 | 2026-09-16 15:37 BST | Made two schema decisions owner-readable and proved remaining ledger-history/reporting boundaries | [#12](https://github.com/wolney8/OpenForge/issues/12), [#80](https://github.com/wolney8/OpenForge/issues/80), [#111](https://github.com/wolney8/OpenForge/issues/111), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Decision record](docs/planning/openforge-profile-decisions-to-confirm.md#cp-011-owner-schema-decisions) |
 | CP-012 | 2026-09-16 21:04 BST | Implemented and tested Profile-scoped import identity and append-only financial history on an isolated candidate | [#12](https://github.com/wolney8/OpenForge/issues/12), [#80](https://github.com/wolney8/OpenForge/issues/80), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-012-isolated-identity-and-financial-history-implementation--2026-09-16) |
 | CP-013 | 2026-09-17 08:15 BST | Added fail-closed runtime/database ownership, removed four private-seed fixture gaps and re-proved the isolated migration candidate | [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-013-runtime-isolation-safety-gate--2026-09-17) |
+| CP-014 | 2026-09-17 12:20 BST | Migrated the normal local database and cut 3010 over to Profile-scoped identity and append-only financial history | [#12](https://github.com/wolney8/OpenForge/issues/12), [#80](https://github.com/wolney8/OpenForge/issues/80), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-014-normal-local-migration-and-cutover--2026-09-17) |
 
 ## Reference index
 

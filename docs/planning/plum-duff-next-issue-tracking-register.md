@@ -1,5 +1,18 @@
 # Plum Duff Next Issue Tracking Register
 
+## PD-AUDIT-CP014-20260917 — normal-local identity/history cutover
+
+| ID | Requested outcome | Current state |
+|---|---|---|
+| PD-QA-018 | Resolve imported Free Bet parents only inside the correct Profile | INTEGRATED LOCALLY / PROVEN: normal 3010 now uses Profile + logical namespace + external ID; collision, retry, missing/ambiguous, explicit re-resolution and portable remapping pass without guessed legacy links |
+| PD-QA-021 | Preserve financial lifecycle evidence without double-counting it | INTEGRATED LOCALLY / PROVEN: normal 3010 stores append-only evidence; corrected current values report once, archive does not reverse P&L and protected activity cannot be physically deleted |
+| PD-AUDIT-MIGRATION-005 | Migrate normal local data only after the CP-013 safety gate | COMPLETE LOCALLY: fresh stopped-write backup, unchanged old-row projections/counts/financial aggregates, authenticated browser reads and a verified migrated baseline pass |
+| PD-QA-016 | Present complete chronological row-change history | OPEN: durable evidence now exists locally, but the complete owner-facing history view remains a separate UI requirement |
+
+Main/origin, Neon, Vercel, hosted verification and owner acceptance remain unchanged. Coverage stays
+60/87 assessments, 10/24 complete journeys, 15/27 competitor cells and 45/133 reconciled requests
+because CP-014 integrates previously assessed work.
+
 ## PD-AUDIT-CP013-20260917 — runtime isolation safety gate
 
 | ID | Requested outcome | Current state |
