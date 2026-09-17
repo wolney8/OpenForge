@@ -29,7 +29,7 @@ def client_for(target, runtime):
     path = Path(target).resolve()
     assert path.parent == Path(runtime).resolve() and path.name == "award-test.sqlite3"
     assert path.parent.name.startswith("openforge-award-91-")
-    from openforge_api.config import settings
+    from openforge_api.config import SOURCE_ROOT, settings
     from openforge_api import db
 
     settings.database_mode = "local"
@@ -39,6 +39,14 @@ def client_for(target, runtime):
     settings.auth_required = True
     settings.auth_owner_emails = OWNER
     settings.auth_session_secret = "synthetic-pqa114-only-not-production"
+    settings.runtime_role = "test"
+    settings.runtime_database_identity = "award-integrity-91"
+    settings.runtime_source_root = str(SOURCE_ROOT)
+    settings.runtime_source_revision = "award-integrity-91-source"
+    settings.runtime_frontend_endpoint = "http://localhost:3040"
+    settings.runtime_api_endpoint = "http://127.0.0.1:8039"
+    settings.runtime_environment_source = "verify_award_integrity_91.py"
+    settings.runtime_database_target_explicit = True
     db.load_tracker_seed = lambda: None
     from fastapi.testclient import TestClient
     from openforge_api.main import app

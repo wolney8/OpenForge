@@ -43,6 +43,16 @@ def main() -> None:
             "OPENFORGE_CORS_ALLOW_ORIGINS": "http://127.0.0.1:3120",
             "OPENFORGE_DATABASE_MODE": "local",
             "OPENFORGE_DATABASE_URL": f"sqlite:///{runtime / 'acceptance.sqlite3'}",
+            "OPENFORGE_RUNTIME_ROLE": "test",
+            "OPENFORGE_RUNTIME_DATABASE_IDENTITY": "notification-acceptance",
+            "OPENFORGE_RUNTIME_SOURCE_ROOT": str(ROOT),
+            "OPENFORGE_RUNTIME_SOURCE_REVISION": "notification-acceptance-source",
+            "OPENFORGE_RUNTIME_FRONTEND_ENDPOINT": "http://127.0.0.1:3120",
+            "OPENFORGE_RUNTIME_API_ENDPOINT": f"http://127.0.0.1:{arguments.port}",
+            "OPENFORGE_RUNTIME_ENVIRONMENT_SOURCE": (
+                "run_notification_persistence_acceptance_api.py"
+            ),
+            "OPENFORGE_RUNTIME_DATABASE_TARGET_EXPLICIT": "true",
         }
     )
     sys.path.insert(0, str(API_SOURCE))

@@ -92,6 +92,16 @@ def main() -> None:
             "OPENFORGE_AUTH_REQUIRED": "false",
             "OPENFORGE_DATABASE_MODE": "local",
             "OPENFORGE_DATABASE_URL": f"sqlite:///{database}",
+            "OPENFORGE_RUNTIME_ROLE": "test",
+            "OPENFORGE_RUNTIME_DATABASE_IDENTITY": "workbook-export-verification",
+            "OPENFORGE_RUNTIME_SOURCE_ROOT": str(ROOT),
+            "OPENFORGE_RUNTIME_SOURCE_REVISION": "workbook-export-verification-source",
+            "OPENFORGE_RUNTIME_FRONTEND_ENDPOINT": "http://127.0.0.1:3110",
+            "OPENFORGE_RUNTIME_API_ENDPOINT": "http://127.0.0.1:8110",
+            "OPENFORGE_RUNTIME_ENVIRONMENT_SOURCE": (
+                "verify_workbook_template_export_acceptance.py"
+            ),
+            "OPENFORGE_RUNTIME_DATABASE_TARGET_EXPLICIT": "true",
             "OPENFORGE_WORKBOOK_TEMPLATE_FIELD_COVERAGE": str(
                 ROOT / "docs/contracts/workbook-template-export-v1-field-coverage.json"
             ),

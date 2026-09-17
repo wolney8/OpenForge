@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -39,10 +41,13 @@ from openforge_api.profile_workbook_imports import (
 from openforge_api.profile_workbook_imports import router as profile_workbook_imports_router
 from openforge_api.profiles import recovery_router as profile_recovery_router
 from openforge_api.profiles import router as profiles_router
+from openforge_api.runtime_safety import validate_runtime_contract
 from openforge_api.sportsbook import router as sportsbook_router
 from openforge_api.tracker_settings import router as tracker_settings_router
 from openforge_api.tracker_summary_sources import router as tracker_summary_sources_router
 from openforge_api.workbook_template_export import router as workbook_template_export_router
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title=settings.app_name)
 app.add_middleware(ProfileLifecycleMiddleware)
@@ -92,20 +97,70 @@ app.include_router(tracker_summary_sources_router)
 app.include_router(lookup_values_router)
 
 
+def _schema_version(connection: object) -> str:
+    try:
+        migration = connection.execute(  # type: ignore[attr-defined]
+            "SELECT migration_id FROM schema_migrations ORDER BY migration_id DESC LIMIT 1"
+        ).fetchone()
+        if migration is not None:
+            return str(migration[0])
+    except Exception:
+        pass
+    try:
+        history = connection.execute(  # type: ignore[attr-defined]
+            "SELECT 1 FROM financial_activity_history LIMIT 1"
+        )
+        history.fetchone()
+        return "import-history-v1"
+    except Exception:
+        return "legacy-local"
+
+
+@app.on_event("startup")
+def validate_startup_runtime() -> None:
+    identity = validate_runtime_contract(settings)
+    logger.info(
+        "runtime_ready role=%s source=%s database_engine=%s database_identity=%s "
+        "database_fingerprint=%s api=%s frontend=%s environment_source=%s",
+        identity.role,
+        identity.source_revision,
+        identity.database_engine,
+        identity.database_identity,
+        identity.database_fingerprint,
+        identity.api_endpoint,
+        identity.frontend_endpoint,
+        identity.environment_source,
+    )
+
+
 @app.get("/healthz", response_model=None)
 def healthcheck() -> dict[str, str] | JSONResponse:
     if not settings.hosted_persistence_ready:
         return JSONResponse({"status": "unavailable"}, status_code=503)
     try:
+        identity = validate_runtime_contract(settings)
         with connect() as connection:
             connection.execute("SELECT 1").fetchone()
+            schema_version = _schema_version(connection)
     except Exception:
         return JSONResponse({"status": "unavailable"}, status_code=503)
-    return {"status": "ok"}
+    return {
+        "status": "ok",
+        "runtime_role": identity.role,
+        "source_revision": identity.source_revision,
+        "database_engine": identity.database_engine,
+        "database_identity": identity.database_identity,
+        "database_fingerprint": identity.database_fingerprint,
+        "database_classification": identity.database_classification,
+        "schema_version": schema_version,
+        "api_endpoint": identity.api_endpoint,
+        "frontend_endpoint": identity.frontend_endpoint,
+    }
 
 
 @app.get("/config-summary")
 def config_summary() -> dict[str, str]:
+    identity = validate_runtime_contract(settings)
     database_mode = settings.database_mode.strip().lower() or "local"
     return {
         "environment": settings.environment,
@@ -121,4 +176,12 @@ def config_summary() -> dict[str, str]:
         "hosted_api_mount_prefix": "/api",
         "cors_origin_count": str(len(settings.cors_origins)),
         "cors_origin_regex_configured": str(bool(settings.cors_origin_regex)).lower(),
+        "runtime_role": identity.role,
+        "source_revision": identity.source_revision,
+        "database_identity": identity.database_identity,
+        "database_fingerprint": identity.database_fingerprint,
+        "database_classification": identity.database_classification,
+        "runtime_api_endpoint": identity.api_endpoint,
+        "runtime_frontend_endpoint": identity.frontend_endpoint,
+        "runtime_environment_source": identity.environment_source,
     }

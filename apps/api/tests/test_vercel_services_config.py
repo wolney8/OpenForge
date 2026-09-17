@@ -56,4 +56,8 @@ def test_vercel_wrapper_starts_and_mounts_api() -> None:
     client = TestClient(app)
 
     assert client.get("/healthz").json() == {"status": "ok"}
-    assert client.get("/api/healthz").json() == {"status": "ok"}
+    mounted_health = client.get("/api/healthz").json()
+    assert mounted_health["status"] == "ok"
+    assert mounted_health["runtime_role"] == "test"
+    assert mounted_health["database_classification"] == "isolated"
+    assert "database_url" not in mounted_health

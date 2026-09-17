@@ -21,7 +21,7 @@ def _independent_http_worker(database_url, catalogue, profile_id, ready, release
     from fastapi.testclient import TestClient
 
     from openforge_api.auth import SESSION_COOKIE_NAME, create_session_token
-    from openforge_api.config import settings
+    from openforge_api.config import SOURCE_ROOT, settings
     from openforge_api.main import app
 
     settings.environment = "local"
@@ -31,6 +31,14 @@ def _independent_http_worker(database_url, catalogue, profile_id, ready, release
     settings.auth_required = False
     settings.auth_owner_emails = "money-owner@example.invalid"
     settings.auth_session_secret = "synthetic-money-test-secret-not-production"
+    settings.runtime_role = "test"
+    settings.runtime_database_identity = "pytest-blackjack-process"
+    settings.runtime_source_root = str(SOURCE_ROOT)
+    settings.runtime_source_revision = "pytest-blackjack-process"
+    settings.runtime_frontend_endpoint = "http://localhost:3999"
+    settings.runtime_api_endpoint = "http://127.0.0.1:8999"
+    settings.runtime_environment_source = "pytest:blackjack-process"
+    settings.runtime_database_target_explicit = True
     db.load_tracker_seed = lambda: None
     client = TestClient(app, raise_server_exceptions=False)
     client.cookies.set(

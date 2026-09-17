@@ -35,7 +35,7 @@ def command(*args: str) -> str:
 def configure(dsn: str, runtime: str):
     runtime = str(Path(runtime).resolve())
     import psycopg
-    from openforge_api.config import settings
+    from openforge_api.config import SOURCE_ROOT, settings
     from openforge_api import db
     if not dsn.startswith("postgresql://pqa114_owner@127.0.0.1:") or ":5432/" in dsn:
         raise RuntimeError("Not a disposable test-only target")
@@ -55,6 +55,14 @@ def configure(dsn: str, runtime: str):
     settings.auth_required = True
     settings.auth_owner_emails = OWNER
     settings.auth_session_secret = "synthetic-pqa114-only-not-production"
+    settings.runtime_role = "test"
+    settings.runtime_database_identity = "pqa114-disposable-postgresql"
+    settings.runtime_source_root = str(SOURCE_ROOT)
+    settings.runtime_source_revision = "pqa114-postgresql-harness"
+    settings.runtime_frontend_endpoint = "http://localhost:3998"
+    settings.runtime_api_endpoint = "http://127.0.0.1:8998"
+    settings.runtime_environment_source = "verify_platform_postgres_114.py"
+    settings.runtime_database_target_explicit = True
     db.load_tracker_seed = lambda: None
     return db
 

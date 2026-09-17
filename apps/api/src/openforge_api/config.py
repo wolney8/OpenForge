@@ -3,6 +3,8 @@ from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+SOURCE_ROOT = Path(__file__).resolve().parents[4]
+
 
 class Settings(BaseSettings):
     app_name: str = "Plum Duff API"
@@ -30,24 +32,36 @@ class Settings(BaseSettings):
     auth_owner_emails: str = ""
     google_oauth_client_id: str = ""
     google_oauth_client_secret: str = ""
+    runtime_role: str = ""
+    runtime_database_identity: str = ""
+    runtime_source_root: str = ""
+    runtime_source_revision: str = ""
+    runtime_owner_approved_revision: str = ""
+    runtime_frontend_endpoint: str = ""
+    runtime_api_endpoint: str = ""
+    runtime_environment_source: str = ""
+    runtime_database_target_explicit: bool = False
 
     model_config = SettingsConfigDict(
         env_prefix="OPENFORGE_",
-        env_file=".env",
+        env_file=SOURCE_ROOT / ".env",
         env_file_encoding="utf-8",
     )
 
     @property
     def database_path(self) -> Path:
-        return Path(self.database_url.removeprefix("sqlite:///"))
+        path = Path(self.database_url.removeprefix("sqlite:///"))
+        return path if path.is_absolute() else SOURCE_ROOT / path
 
     @property
     def backup_path(self) -> Path:
-        return Path(self.backup_directory)
+        path = Path(self.backup_directory)
+        return path if path.is_absolute() else SOURCE_ROOT / path
 
     @property
     def account_catalogue_source_path(self) -> Path:
-        return Path(self.account_catalogue_source)
+        path = Path(self.account_catalogue_source)
+        return path if path.is_absolute() else SOURCE_ROOT / path
 
     @property
     def cors_origins(self) -> list[str]:

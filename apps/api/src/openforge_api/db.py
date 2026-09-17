@@ -730,6 +730,11 @@ def parse_seed_bool(value: Any) -> bool:
 
 @contextmanager
 def connect() -> Iterator[Any]:
+    # Validate on every outer connection as well as at process startup. This keeps
+    # scripts, workers and tests fail-closed even when they do not launch FastAPI.
+    from openforge_api.runtime_safety import validate_runtime_contract
+
+    validate_runtime_contract(settings)
     shared = _mutation_connection.get()
     if shared is not None:
         yield shared
@@ -772,6 +777,9 @@ def connect() -> Iterator[Any]:
 @contextmanager
 def connect_read_only() -> Iterator[Any]:
     """Open a snapshot-capable query connection without initialization or commit side effects."""
+    from openforge_api.runtime_safety import validate_runtime_contract
+
+    validate_runtime_contract(settings)
     database_mode = settings.database_mode.strip().lower() or "local"
     if database_mode in SUPPORTED_POSTGRES_RUNTIME_MODES:
         postgres_connection = connect_postgres_read_only(settings.neon_database_url)

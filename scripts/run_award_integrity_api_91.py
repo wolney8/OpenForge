@@ -23,6 +23,14 @@ os.environ.update(
     OPENFORGE_AUTH_SESSION_SECRET="synthetic-notification-acceptance-secret-not-used-in-production",
     OPENFORGE_DATABASE_MODE="local",
     OPENFORGE_DATABASE_URL="sqlite:///" + str(runtime / "acceptance.sqlite3"),
+    OPENFORGE_RUNTIME_ROLE="test",
+    OPENFORGE_RUNTIME_DATABASE_IDENTITY="award-integrity-91",
+    OPENFORGE_RUNTIME_SOURCE_ROOT=str(workspace),
+    OPENFORGE_RUNTIME_SOURCE_REVISION=checkout,
+    OPENFORGE_RUNTIME_FRONTEND_ENDPOINT="http://localhost:3040",
+    OPENFORGE_RUNTIME_API_ENDPOINT="http://127.0.0.1:8039",
+    OPENFORGE_RUNTIME_ENVIRONMENT_SOURCE="run_award_integrity_api_91.py",
+    OPENFORGE_RUNTIME_DATABASE_TARGET_EXPLICIT="true",
 )
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "apps/api/src"))
 from openforge_api.main import app  # noqa: E402 - test environment must precede app import

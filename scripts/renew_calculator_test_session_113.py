@@ -1,5 +1,4 @@
 """Renew only the owned disposable fixture session; never reset data or bypass auth."""
-import ast
 import os
 from pathlib import Path
 import sys
@@ -8,14 +7,22 @@ root = Path(__file__).resolve().parents[1]
 runtime = Path('/tmp/openforge-award-integrity-91-20260914').resolve()
 assert root.name == 'calculator-corrections-113' and root.parent.name == '.worktrees'
 assert (runtime / 'acceptance.sqlite3').is_file()
-# Reuse the existing test runner's exact private-environment configuration, not inherited DSNs.
-tree = ast.parse((root / 'scripts/run_award_integrity_api_91.py').read_text())
-setup = next(node for node in ast.walk(tree) if isinstance(node, ast.Call)
-             and isinstance(node.func, ast.Attribute) and node.func.attr == 'update'
-             and ast.unparse(node.func.value) == 'os.environ')
-configuration = {arg.arg: ast.literal_eval(arg.value) for arg in setup.keywords
-                 if arg.arg != 'OPENFORGE_DATABASE_URL'}
-configuration['OPENFORGE_DATABASE_URL'] = 'sqlite:///' + str(runtime / 'acceptance.sqlite3')
+# Reconstruct the owned test contract explicitly; never inherit a database target.
+configuration = {
+    'OPENFORGE_AUTH_REQUIRED': 'true',
+    'OPENFORGE_AUTH_OWNER_EMAILS': 'notification-acceptance@example.invalid',
+    'OPENFORGE_AUTH_SESSION_SECRET': 'synthetic-notification-acceptance-secret-not-used-in-production',
+    'OPENFORGE_DATABASE_MODE': 'local',
+    'OPENFORGE_DATABASE_URL': 'sqlite:///' + str(runtime / 'acceptance.sqlite3'),
+    'OPENFORGE_RUNTIME_ROLE': 'test',
+    'OPENFORGE_RUNTIME_DATABASE_IDENTITY': 'award-integrity-91',
+    'OPENFORGE_RUNTIME_SOURCE_ROOT': str(root),
+    'OPENFORGE_RUNTIME_SOURCE_REVISION': 'award-integrity-91-source',
+    'OPENFORGE_RUNTIME_FRONTEND_ENDPOINT': 'http://localhost:3040',
+    'OPENFORGE_RUNTIME_API_ENDPOINT': 'http://127.0.0.1:8039',
+    'OPENFORGE_RUNTIME_ENVIRONMENT_SOURCE': 'renew_calculator_test_session_113.py',
+    'OPENFORGE_RUNTIME_DATABASE_TARGET_EXPLICIT': 'true',
+}
 assert configuration['OPENFORGE_AUTH_REQUIRED'] == 'true'
 assert configuration['OPENFORGE_AUTH_OWNER_EMAILS'].endswith('@example.invalid')
 os.environ.update(configuration)
