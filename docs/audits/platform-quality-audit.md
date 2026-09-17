@@ -1,5 +1,47 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
+## Current CP-015 user-usable history, lineage and reporting slice — 2026-09-17
+
+**Checkpoint timestamp:** 2026-09-17 13:33 BST
+
+Normal `localhost:3010` was inspected through its authenticated frontend/API pairing before changes.
+PD-QA-021 history existed only as API/database evidence and PD-QA-018 states were not presented in a
+complete ordinary workflow. One shared read-only History panel now serves Sportsbook, Free Bet,
+Extra Place, Casino and Cash Adjustment editors. It translates immutable events into action, local
+time, reason and previous/current financial meaning without exposing raw JSON, hashes or IDs.
+
+Imported Free Bets now show linked, missing, ambiguous and historical-evidence-insufficient states
+in plain language. Explicit re-resolution lists only same-Profile Sportsbook candidates, requires a
+choice when ambiguous, retains evidence and is retry-safe. It never guesses legacy links. A real
+normal-schema browser run rendered the legacy state and explicit action, and a £6 Cash Adjustment
+corrected to £5 showed both events while Reports contained one current Cash Adjustment row and no
+£11 double count. Desktop 1440, half-width 760, narrow 390, light/dark, keyboard focus and reduced
+motion passed. The shared editor wiring covers all five ledgers; the canonical end-to-end journey
+count remains 10/24 because award-group, Cash Account reconciliation and Casino fee allocation gaps
+still prevent honest promotion of the affected complete tasks.
+
+The first approved #111 slice is integrated: selected-range chart points are keyboard-focusable and
+clickable, with selected date/value shown visually and announced non-visually. Record drilldown,
+module filters and governed metric/granularity controls remain planned. A lifecycle defect found
+during cleanup is fixed: an archived Profile with retained financial history now receives a clear
+409 refusal instead of an uncontrolled trigger error. Four retained synthetic Profiles remain
+archived, excluded from normal recent-Profile navigation and clearly named; permanent deletion is
+correctly blocked because their protected evidence must not be erased.
+
+Supported security patches move Next/eslint-config-next 16.3.2→16.3.3, Vitest 4.0.4→4.1.11 and
+sharp 0.35.3→0.35.4. Production dependency audit is zero; the full development graph retains five
+high transitive brace-expansion/js-yaml advisories through ESLint tooling. Web unit 423/423,
+typecheck, production build, API mypy 0/82 and the combined Profile/identity selection 31/31 pass.
+The browser acceptance script passes; the build retains the known dynamic-filesystem tracing warning.
+
+Official OddsMonkey documentation was rechecked for tracker logging and irreversible reset/history
+behaviour. It strengthens an already-reviewed documentation cell but does not prove member-only
+interaction, so competitor coverage remains 15/27. #13–#18 are now reconciled against their current
+contracts: the Profile/Fund Manager foundation exists locally, while subscriber roles, routes,
+invites and fee policy remain explicitly deferred. Coverage is **61/87 assessments (70%), 10/24
+complete journeys passing (42%), 15/27 competitor cells (56%) and 51/133 requirements reconciled
+(38%)**. These are audit-coverage figures, not product completion or owner/hosted acceptance.
+
 ## Current CP-014 normal-local migration and cutover — 2026-09-17
 
 **Checkpoint timestamp:** 2026-09-17 12:20 BST

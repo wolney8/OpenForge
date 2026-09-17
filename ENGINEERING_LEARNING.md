@@ -1,14 +1,14 @@
 # Engineering Learning — Plum Duff / OpenForge — Doc ID: EL-CODEX-001
 
-**Last updated:** 2026-09-17 12:20 BST
+**Last updated:** 2026-09-17 13:33 BST
 
 This is a compact notebook of transferable lessons from building Plum Duff. It is not the audit,
 roadmap, backlog or evidence record.
 
 ## Current learning focus
 
-- Migrating owner data from a verified stopped-write backup with an exact rollback point.
-- Keeping new schema meaning compatible with old rows without inventing historical evidence.
+- Turning an append-only audit trail into readable user history without changing report arithmetic.
+- Distinguishing a supported patch upgrade from a feature-bearing dependency change.
 
 ## Concepts worth remembering
 
@@ -133,6 +133,27 @@ amount for reports to sum.
 
 **Remember:** History explains current truth; it is not a second financial ledger.
 
+### Audit trail versus user-facing history
+
+**What it means:** An audit trail preserves exact evidence for integrity; a user-facing history
+translates the useful parts into actions, times, reasons and financial meaning.
+
+**Why it mattered in Plum Duff:** The database already retained immutable snapshots, but Will could
+not understand a correction until the shared History panel showed the previous and current result
+without exposing hashes, JSON or internal IDs.
+
+**Remember:** Preserve technical evidence underneath; explain business meaning on top.
+
+### Patch versus feature dependency upgrades
+
+**What it means:** A patch upgrade should repair supported behaviour without deliberately changing
+the product contract; a feature upgrade may require design and migration decisions.
+
+**Why it mattered in Plum Duff:** Supported Next, sharp and Vitest patches removed reachable and
+tooling advisories while the calculator, persistence and report contracts stayed unchanged.
+
+**Remember:** Upgrade the smallest supported surface, then rerun its real consumers.
+
 ### Logical identity versus physical representation
 
 **What it means:** A durable identity uses business meaning, while filenames, worksheet labels and
@@ -225,6 +246,7 @@ deployment configuration before any Vercel/Neon work.
 | CP-012 | 2026-09-16 21:04 BST | Logical identity versus physical representation; archive versus reversal | The implemented source key survives workbook/restore changes, while lifecycle visibility stays separate from report meaning |
 | CP-013 | 2026-09-17 08:15 BST | Environment isolation; fail closed | Runtime purpose, source and database ownership now have to agree before any connection or migration |
 | CP-014 | 2026-09-17 12:20 BST | Migration safety; schema compatibility | The normal cutover preserved every old row and current total while adding truthful unresolved identity and future append-only evidence |
+| CP-015 | 2026-09-17 13:33 BST | Audit trail versus user history; patch versus feature upgrades | Immutable evidence became understandable in five ledgers while supported patches reduced dependency exposure without changing product meaning |
 
 ## Where detailed evidence lives
 

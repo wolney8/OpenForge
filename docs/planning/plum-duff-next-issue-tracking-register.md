@@ -1,5 +1,21 @@
 # Plum Duff Next Issue Tracking Register
 
+## PD-AUDIT-CP015-20260917 — user-usable history, lineage and report inspection
+
+| ID | Requested outcome | Current state |
+|---|---|---|
+| PD-QA-016 | Present chronological financial changes in ordinary language | INTEGRATED LOCALLY / BROWSER PROVEN: one shared read-only History panel covers Sportsbook, Free Bet, Extra Place, Casino and Cash Adjustment; corrected £6→£5 is evidence while Reports retain one current row |
+| PD-QA-018-UI | Explain imported-parent state and permit governed review | INTEGRATED LOCALLY / BROWSER PROVEN: resolved, missing, ambiguous and legacy-unresolved states are plain language; candidate choice remains same-Profile and retry-safe |
+| PD-AUDIT-REPORT-DRILLDOWN-001 | Make selected-range chart points inspectable | PARTIAL / FIRST SLICE COMPLETE: keyboard/pointer point selection exposes date and value visually and non-visually; record drilldown, module filter and metric/granularity controls remain |
+| PD-QA-001 | Remove supported dependency exposure without changing product behaviour | LOCALLY REMEDIATED: Next 16.3.3, sharp 0.35.4 and Vitest 4.1.11 leave zero production advisories; five development-only transitive advisories remain and hosted exposure is unverified |
+| PD-QA-006 | Keep ordinary tests independent of private seed state | IMPROVED: seven Profile-suite assumptions now use the committed deterministic factory; the 31-case combined Profile/identity selection passes |
+
+Reconciled in this package: #13 Profiles/subscribers foundation and deferred #14–#18 subscriber
+role, visibility, fees, invitation and access-fixture scope. The current Profile isolation and Fund
+Manager shell are implemented locally; subscriber routes, identity links and fee policy remain
+deliberately deferred, not silently counted as features. Coverage is 61/87 assessments, 10/24
+complete journeys, 15/27 competitor cells and 51/133 reconciled requests.
+
 ## PD-AUDIT-CP014-20260917 — normal-local identity/history cutover
 
 | ID | Requested outcome | Current state |

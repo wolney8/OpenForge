@@ -1,18 +1,18 @@
 # Project Status — Plum Duff / OpenForge — Doc ID: PS-CODEX-001
 
-**Last updated:** 2026-09-17 12:20 BST · **Status:** 🟡 At risk
+**Last updated:** 2026-09-17 13:33 BST · **Status:** 🟡 At risk
 
 ## Right now
 
-- **Working on:** Continue #114 from the completed normal-local import-identity and financial-history migration gate.
-- **Next:** Complete remaining ledger journeys, #111 reporting gaps, requirement reconciliation and recovery/security evidence.
+- **Working on:** Rebaseline complete ledger journeys after integrating readable History, imported-parent review and the first inspectable report-chart slice.
+- **Next:** Complete the remaining award, Account-reconciliation, Casino-fee and report-drilldown gaps while continuing #114.
 - **Blocked on:** none for independent local work; main, hosted database and Vercel changes remain separately unauthorised
 
 ## Delivery state
 
 | Area | Evidence state |
 | --- | --- |
-| Local integrated build | CP-014 integrates the reviewed identity/history work with the fail-closed runtime boundary |
+| Local integrated build | CP-015 adds shared readable History, imported-parent review and supported dependency patches |
 | Normal `localhost:3010` | Healthy on `import-history-v1`, normal authentication and the migrated normal local database |
 | Main / origin | Not updated by the local integration work |
 | Vercel | Not deployed or hosted-verified |
@@ -24,16 +24,16 @@ These figures measure **#114 audit coverage**, not the percentage of the product
 
 | Review area | Current coverage |
 | --- | ---: |
-| Assessments reviewed | 60 / 87 (69%) |
+| Assessments reviewed | 61 / 87 (70%) |
 | Complete tasks exercised and passing | 10 / 24 (42%) |
 | Competitor comparisons | 15 / 27 (56%) |
-| Requirements reconciled | 45 / 133 (34%) |
+| Requirements reconciled | 51 / 133 (38%) |
 
 ## Next 3 steps
 
-1. Continue #111 reporting and the remaining complete ledger journeys.
-2. Reconcile the next coherent requirement group and useful competitor evidence.
-3. Advance recovery, security and accessibility evidence without implying hosted acceptance.
+1. Complete award/lineage, Account-reconciliation and Casino-fee journey gaps.
+2. Continue #111 record drilldown and governed metric/granularity decisions.
+3. Advance notification history, recovery/security and remaining requirement evidence.
 
 ## Checkpoint log
 
@@ -53,6 +53,7 @@ These figures measure **#114 audit coverage**, not the percentage of the product
 | CP-012 | 2026-09-16 21:04 BST | Implemented and tested Profile-scoped import identity and append-only financial history on an isolated candidate | [#12](https://github.com/wolney8/OpenForge/issues/12), [#80](https://github.com/wolney8/OpenForge/issues/80), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-012-isolated-identity-and-financial-history-implementation--2026-09-16) |
 | CP-013 | 2026-09-17 08:15 BST | Added fail-closed runtime/database ownership, removed four private-seed fixture gaps and re-proved the isolated migration candidate | [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-013-runtime-isolation-safety-gate--2026-09-17) |
 | CP-014 | 2026-09-17 12:20 BST | Migrated the normal local database and cut 3010 over to Profile-scoped identity and append-only financial history | [#12](https://github.com/wolney8/OpenForge/issues/12), [#80](https://github.com/wolney8/OpenForge/issues/80), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-014-normal-local-migration-and-cutover--2026-09-17) |
+| CP-015 | 2026-09-17 13:33 BST | Added readable ledger History, imported-parent review, chart-point inspection and supported security patches | [#36](https://github.com/wolney8/OpenForge/issues/36), [#111](https://github.com/wolney8/OpenForge/issues/111), [#115](https://github.com/wolney8/OpenForge/issues/115) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-015-user-usable-history-lineage-and-reporting-slice--2026-09-17) |
 
 ## Reference index
 
