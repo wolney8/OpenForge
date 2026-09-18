@@ -1217,3 +1217,18 @@ Half-width pointer Save remains BLOCKED under PD-QA-004; these probes are not wh
 - Regression test: `tests/e2e/profile-lifecycle-routing.spec.ts` gives an archived synthetic Profile
   a distinct financial amount, proves it is absent from the active default, then proves explicit
   archived inclusion and `Select active` recovery.
+
+## 2026-09-18: Hidden archived work amplified owner loads and warning volume
+
+- Area: Fund Manager Profiles, Dashboard and Reports.
+- Root cause: the browser requested a full reporting bundle for every retained Profile and the API
+  repeatedly initialised SQLite plus opened an additional connection for each linked Free Bet.
+  The Profiles page also rendered every missing cash observation as a critical inline error.
+- Prevention: default owner routes request only active/explicitly visible Profiles; archived data is
+  loaded only when deliberately selected. Read paths must not initialise schema per query. Unknown,
+  invalid and stale Account money are separate states, and repeated issues use one grouped,
+  keyboard-accessible disclosure rather than an unbounded paragraph.
+- Regression evidence: `scripts/audit_cp022_owner_stability_116.mjs` measures real authenticated
+  owner routes and asserts bounded summary requests, usable rendering, grouped warning semantics,
+  responsive containment, keyboard access, both themes and reduced motion. The deterministic
+  `cross-profile-load-scope` fixture models few active plus many archived Profiles.

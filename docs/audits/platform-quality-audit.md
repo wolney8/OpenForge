@@ -1,5 +1,68 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
+## Current CP-022 owner stability and data-health gate — 2026-09-18 14:48 BST
+
+GitHub #116 became owner-blocking after the normal Profiles page showed `3 / 66`, repeated Account
+cash warnings and Dashboard reporting remained globally loading. Untouched authenticated baseline
+measurement found Dashboard useful content at **10.448s** and reporting settled at **49.354s**;
+Reports settled at **34.012s**. Each route made **78 API requests**, including **66 per-Profile
+summary requests**, and transferred about **2.63 MB**.
+
+The delay was cumulative load amplification, not one cosmetic loader: the browser requested a full
+bundle for all 66 Profiles although only three were active; each summary fanned into nine readers;
+SQLite initialised the complete schema on ordinary reads; and linked Free Bet response construction
+opened another initialising connection per row. The UI then held the whole analytics surface inert
+and rendered every blank Account cash observation as a critical repeated sentence with an internal
+Account ID.
+
+The repaired boundary requests active or explicitly visible/selected Profiles only. Read-only API
+paths avoid schema initialisation, retain read-your-writes inside explicit mutations and remove the
+Free Bet initialisation N+1. Optional reporting has its own loading/error boundary, leaving the page
+shell usable. Account cash health now groups affected Accounts by user-facing name: malformed money
+is an error, blank/not-recorded money is an incomplete-information warning, and missing freshness
+evidence is not labelled stale without a governed threshold.
+
+The 66 Profiles classified as **3 active owner Profiles** and **63 explicitly labelled archived
+synthetic/test Profiles**. Of the archived set, 39 contain 167 financial rows and 305 immutable
+history events and remain archived/protected. Twenty-four contained no financial rows or history.
+The governed deletion plan was first executed on a fresh normal-data clone, preserving the owner
+projection and all financial/history counts with `PRAGMA integrity_check = ok` and zero foreign-key
+violations. After a fresh verified backup, the same 24 IDs were removed from normal-owner storage.
+The resulting database has 42 Profiles (3 active owner, 39 archived protected synthetic), 175
+Accounts, 538 Sportsbook rows, 291 Free Bets, 90 Casino rows, 58 Cash Adjustments, 123 Extra Place
+rows and 305 history events. Owner IDs, active counts and representative financial projections are
+unchanged.
+
+Active owner cash evidence contains 76 Accounts: current balance is known for 23 and unknown/not
+recorded for 53; pending withdrawal is known for 12 and unknown/not recorded for 64. There are zero
+malformed stored money values. Fifty-seven Accounts lack a balance-observation timestamp; that is
+missing freshness evidence, not automatically a stale value. The grouped default warning covers 15
+cash-counting Accounts and exposes no raw internal IDs.
+
+Three repeated authenticated post-repair runs produced:
+
+- Profiles: useful **1.130–1.399s**, settled **1.940–2.822s**;
+- Dashboard: useful **1.014–1.127s**, settled **1.825–2.433s**;
+- Reports: useful **1.044–1.092s**, settled **2.453–2.530s**;
+- every route: **15 requests**, **3 Profile summaries**, about **2.16 MB**;
+- Profile switch **0.799s** and Global Search **0.314s** in the final stability run.
+
+The byte reduction is deliberately modest because one populated active Profile owns most of the
+valid report payload; the decisive scaling change is 66 summaries to 3. The deterministic mature
+fixture represents three active plus 63 archived Profiles, 175 Accounts, 1,100 financial rows, 305
+history events, 91 lineage rows and 52 notifications. It proves default active scope, deliberate
+archived selection and visible-page loading without private data. Actual 3010 regression evidence
+also passes keyboard disclosure, dark theme, reduced motion, 390px layout and 200% text without
+page-level overflow.
+
+Final normal data health is `integrity_check = ok`, zero foreign-key issues, zero orphaned resolved
+lineage, zero duplicate history operation identities and both append-only history guard triggers
+present. Reports continue to read current ledger meaning rather than history evidence; cleanup
+removed no financial row and changed no owner financial projection. The audit coverage scorecard
+remains 87/87 reviewed assessments, 22/24 passing journeys, 27/27 reviewed competitor cells and
+133/133 reconciled requirements. Owner smoke is ready to resume; protected hosted Preview remains
+paused and no hosted work occurred.
+
 ## Current CP-021 local audit closure and pre-hosted readiness — 2026-09-18 13:10 BST
 
 The versioned local audit matrix is now fully reviewed: **87/87 assessments** have an explicit

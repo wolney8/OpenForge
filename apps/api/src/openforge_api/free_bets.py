@@ -420,8 +420,8 @@ def build_response(
     award_review = False
     removal_reason = ""
     if row.origin_qual_bet_id:
-        from openforge_api.db import connect
-        with connect() as connection:
+        from openforge_api.db import connect_read_only
+        with connect_read_only() as connection:
             from openforge_api.db import linked_free_bet_removal_block_reason
             removal_reason = linked_free_bet_removal_block_reason(connection, record)
             native_parent_id = row.origin_qual_bet_native_id

@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 
 from openforge_api.calculations.blackjack_strategy import calculate_blackjack_strategy
 from openforge_api.config import settings
-from openforge_api.db import list_sportsbook_bets
+from openforge_api.db import connect, list_sportsbook_bets
 from openforge_api.main import app
 
 
@@ -16,6 +16,9 @@ def configure_temp_database(tmp_path: Path) -> TestClient:
     settings.backup_directory = str(tmp_path / "backups")
     settings.environment = "local"
     settings.auth_required = False
+    # Read-only query paths do not initialise storage as a side effect.
+    with connect():
+        pass
     return TestClient(app)
 
 

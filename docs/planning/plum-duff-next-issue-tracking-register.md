@@ -1,5 +1,21 @@
 # Plum Duff Next Issue Tracking Register
 
+## PD-AUDIT-CP022-20260918 — owner-blocking local stability / data health
+
+GitHub #116 owns this bounded corrective batch. Owner smoke testing and protected hosted Preview
+work remain paused until the normal-owner load path is practically usable and the owner database
+has been checked without rewriting legitimate financial history.
+
+| ID | Requested outcome | Current state |
+|---|---|---|
+| PD-FIX-251 | Stop ordinary active-owner Dashboard, Profiles and Reports loads from reading every archived/test Profile | COMPLETE: default requests fell from 66 Profile summaries to 3; read paths no longer initialise schema and linked Free Bet construction no longer repeats that work |
+| PD-FIX-252 | Replace the unbounded Account-cash warning flood with grouped, severity-correct disclosure | COMPLETE: unknown/not-recorded amounts are a grouped warning, malformed values remain errors, and user-facing details use Account/provider names rather than internal IDs |
+| PD-FIX-253 | Keep the owner shell usable while optional combined reporting loads or fails | COMPLETE: combined reporting has an independent loading/error boundary and the shell remains interactive; actual normal-owner Dashboard settles in about 1.8–2.4 seconds |
+| PD-FIX-254 | Enforce synthetic Profile retention and performance-scale regression evidence | COMPLETE: 24 empty synthetic Profiles were clone-proven and governably removed after backup; 39 protected synthetic Profiles remain archived, with deterministic mature-data regression coverage |
+
+This batch changes no financial equation. Known subtotals and incompleteness remain truthful; an
+unknown amount is never replaced with zero.
+
 ## PD-AUDIT-CP021-20260918 — final local requirement reconciliation
 
 The preserved original titles in the

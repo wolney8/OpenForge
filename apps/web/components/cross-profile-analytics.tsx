@@ -10,6 +10,7 @@ import { AccessScopeBadge } from "./access-scope-badge";
 import { FinancialValue as PlatformFinancialValue, FinancialValueReplayGroup, FinancialValueReplayRow } from "./financial-value";
 import { JsonRequestError, readCachedJson } from "@/lib/client-json-cache";
 import { fetchTrackerSummarySources } from "@/lib/tracker-summary-sources";
+import { resolveCrossProfileSummaryLoadIds } from "@/lib/cross-profile-load-scope";
 import {
   aggregateCrossProfileReporting,
   type ProfileComparisonRow,
@@ -395,6 +396,34 @@ export function CrossProfileAnalytics({
   const [reportFilterAsOf] = useState(() => Date.now());
   const detailDialogRef = useRef<HTMLDialogElement>(null);
 
+  const requestedProfileIds = useMemo(() => {
+    return resolveCrossProfileSummaryLoadIds({
+      profiles: profileRecords.map((profile) => ({
+        ...profile,
+        status: normalizeProfileStatus(profile.status),
+      })),
+      selectedProfileIds,
+      includeDirectoryPage: activeTab === "profiles",
+      directoryStatus,
+      directoryQuery,
+      directoryPage,
+      directoryPageSize,
+      pinnedProfileIds,
+      explicitProfileIds: [detailProfileId, feeReviewProfileId, feeBreakdownProfileId],
+    });
+  }, [
+    activeTab,
+    detailProfileId,
+    directoryPage,
+    directoryQuery,
+    directoryStatus,
+    feeBreakdownProfileId,
+    feeReviewProfileId,
+    pinnedProfileIds,
+    profileRecords,
+    selectedProfileIds,
+  ]);
+
   useEffect(() => {
     const controller = new AbortController();
     let stateTimer: number | null = null;
@@ -402,7 +431,9 @@ export function CrossProfileAnalytics({
     const cachedFeePeriods = new Map<string, FeePeriodApiRecord[]>();
     const cachedTrackerSettings = new Map<string, TrackerSettingsRecord>();
 
-    for (const profile of profiles) {
+    const requestedProfiles = profiles.filter((profile) => requestedProfileIds.includes(profile.profileId));
+
+    for (const profile of requestedProfiles) {
       const base = `${apiBaseUrl}/profiles/${profile.profileId}`;
       const accounts = readCachedJson<AccountSummaryRecord[]>(`${base}/accounts`);
       const sportsbookBets = readCachedJson<SportsbookSummaryRecord[]>(`${base}/sportsbook-bets`);
@@ -430,8 +461,8 @@ export function CrossProfileAnalytics({
     }
 
     const hasCompleteCriticalCache =
-      cachedDatasets.size === profiles.length &&
-      cachedTrackerSettings.size === profiles.length;
+      cachedDatasets.size === requestedProfiles.length &&
+      cachedTrackerSettings.size === requestedProfiles.length;
 
     // React state updates from effects remain asynchronous, but the task is
     // cancelled if the request settles first. This prevents a delayed loading
@@ -450,7 +481,7 @@ export function CrossProfileAnalytics({
     if (!hasCompleteCriticalCache && initialTab !== "profiles") beginShellLoading();
 
     void Promise.allSettled(
-      profiles.map(async (profile) => {
+      requestedProfiles.map(async (profile) => {
         const sources = await fetchTrackerSummarySources(profile.profileId, {
           signal: controller.signal,
         });
@@ -483,7 +514,7 @@ export function CrossProfileAnalytics({
       const nextTrackerSettings = new Map<string, TrackerSettingsRecord>();
       const nextFailures: ProfileLoadFailure[] = [];
       results.forEach((result, index) => {
-        const profile = profiles[index];
+        const profile = requestedProfiles[index];
         if (result.status === "fulfilled") {
           nextDatasets.set(profile.profileId, result.value.dataset);
           nextFeePeriods.set(profile.profileId, result.value.periods);
@@ -511,7 +542,7 @@ export function CrossProfileAnalytics({
       if (stateTimer !== null) window.clearTimeout(stateTimer);
       if (!hasCompleteCriticalCache && initialTab !== "profiles") endShellLoading();
     };
-  }, [initialTab, profiles, loadRevision]);
+  }, [initialTab, profiles, requestedProfileIds, loadRevision]);
 
   useEffect(() => {
     const retryableFailures = failures.filter((failure) => failure.status !== 404);
@@ -953,19 +984,16 @@ export function CrossProfileAnalytics({
     setFeeReviewProfileId(profileId);
   }
 
-  const reportingIsCritical = activeTab !== "profiles";
-  const blockingReportingLoad = isLoading && reportingIsCritical;
+  const reportingIsLoading = isLoading && activeTab !== "profiles";
   const failedProfileIds = new Set(failures.map((failure) => failure.profileId));
 
   return (
     <section
-      aria-busy={blockingReportingLoad}
       className="content-panel stack cross-profile-analytics"
       aria-labelledby="combined-analytics-title"
     >
       <div
         className={`fund-manager-control-bar${activeTab === "profiles" ? " is-directory" : " is-analytics"}`}
-        inert={blockingReportingLoad ? true : undefined}
       >
         {activeTab !== "profiles" && activeTab !== "fees" ? (
         <details className="profile-report-picker fund-manager-control-slot-profile">
@@ -1113,14 +1141,22 @@ export function CrossProfileAnalytics({
         </div>
       </div>
 
-      {blockingReportingLoad ? <LedgerLoadingIndicator label="Loading combined profile reporting" /> : null}
-      {!blockingReportingLoad ? <AccountMoneyStatus issues={trackerRangeActiveProfilesCombined.cashIssues} /> : null}
-      {!blockingReportingLoad && trackerRangeActiveProfilesCombined.sportsbookFinancialIssues?.length ? (
+      {reportingIsLoading ? (
+        <section
+          aria-busy="true"
+          className="profile-reporting-secondary-loader"
+          data-pd-id="combined-reporting.loading"
+        >
+          <LedgerLoadingIndicator label="Loading combined profile reporting" />
+        </section>
+      ) : null}
+      {!isLoading ? <AccountMoneyStatus issues={trackerRangeActiveProfilesCombined.cashIssues} /> : null}
+      {!isLoading && trackerRangeActiveProfilesCombined.sportsbookFinancialIssues?.length ? (
         <p className="error-text" role="status" data-pd-id="sportsbook-money.incomplete">
           Sportsbook P&amp;L incomplete. {trackerRangeActiveProfilesCombined.sportsbookFinancialIssues.join(" · ")}
         </p>
       ) : null}
-      {!blockingReportingLoad && trackerRangeActiveProfilesCombined.freeBetFinancialIssues?.length ? (
+      {!isLoading && trackerRangeActiveProfilesCombined.freeBetFinancialIssues?.length ? (
         <p className="error-text" role="status" data-pd-id="free-bet-money.incomplete">
           Free Bet P&amp;L incomplete. {trackerRangeActiveProfilesCombined.freeBetFinancialIssues.join(" · ")}
         </p>
@@ -1220,7 +1256,6 @@ export function CrossProfileAnalytics({
         aria-label="Fund Manager profile and analytics sections"
         className="analytics-tab-list"
         data-pd-id="profiles.navigation.tabs"
-        inert={blockingReportingLoad ? true : undefined}
         role="tablist"
       >
         {analyticsTabs.map((tab) => (

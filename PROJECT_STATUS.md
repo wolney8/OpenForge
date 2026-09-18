@@ -1,22 +1,22 @@
 # Project Status — Plum Duff / OpenForge — Doc ID: PS-CODEX-001
 
-**Last updated:** 2026-09-18 13:10 BST · **Status:** 🟢 On track
+**Last updated:** 2026-09-18 14:48 BST · **Status:** 🟢 On track
 
 ## Right now
 
-- **Working on:** Local #114 audit review is closed; prepare the separately approved protected hosted Preview gate.
-- **Next:** Seek approval for one isolated Vercel Preview, then prove hosted identity, OAuth, recovery and financial smoke without touching Production.
-- **Blocked on:** none for local work; hosted deployment needs explicit approval, and Google/VoiceOver observations remain owner/manual
+- **Working on:** CP-022 local stability/data-health gate is green; normal `localhost:3010` is ready for the paused owner smoke test.
+- **Next:** Record the owner smoke result, then decide whether to resume the separately approval-gated protected Preview milestone.
+- **Blocked on:** none for ordinary local use; hosted work remains paused, and Google/VoiceOver observations remain owner/manual
 
 ## Delivery state
 
 | Area | Evidence state |
 | --- | --- |
-| Local integrated build | CP-021 closes review coverage at 87/87 assessments, 27/27 competitor cells and 133/133 reconciled requirements; 22/24 journeys pass |
-| Normal `localhost:3010` | Healthy as `normal-owner` on `account-access-v1`, normal authentication and the migrated normal local database |
+| Local integrated build | CP-022 removes archived-Profile load amplification, groups Account cash warnings and retains the closed #114 review baseline |
+| Normal `localhost:3010` | Healthy as `normal-owner`; 3 active owner Profiles load by default while 39 protected synthetic Profiles remain archived |
 | Main / origin | Not updated by the local integration work |
-| Vercel | Not deployed or hosted-verified; protected Preview gate is decision-ready |
-| Owner smoke test | One consolidated optional local check is available; result pending and not a work blocker |
+| Vercel | Not deployed or hosted-verified; protected Preview remains paused |
+| Owner smoke test | Ready to resume on the repaired local owner application; result pending |
 
 ## Progress at a glance
 
@@ -31,15 +31,14 @@ These figures measure **#114 audit coverage**, not the percentage of the product
 
 ## Next 3 steps
 
-1. Obtain explicit approval before creating one protected hosted Preview.
-2. Use isolated hosted data and prove revision/runtime/database/schema identity plus rollback.
-3. Keep the consolidated visual, Google and VoiceOver checks as the only owner/manual queue.
+1. Record the consolidated owner smoke result against stable `localhost:3010`.
+2. Continue bounded local defect work independently if the smoke result exposes anything.
+3. Resume the protected Preview decision only after the local owner baseline remains usable.
 
 ## Checkpoint log
 
 | ID | Timestamp | What changed | Issue | Document |
 | --- | --- | --- | --- | --- |
-| CP-002 | 2026-09-16 10:34 BST | Added the concise owner status, audit register, roadmap and history archive | [#114](https://github.com/wolney8/OpenForge/issues/114) | [Changelog](CHANGELOG.md) |
 | CP-003 | 2026-09-16 11:07 BST | Closed the local integration gate and completed browser portable-Profile recovery evidence | [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#current-local-integration-milestone--2026-09-16) |
 | CP-004 | 2026-09-16 12:19 BST | Exercised full Profile import/recovery and populated ledgers; repaired import, Cash validation and shared dialog defects | [#12](https://github.com/wolney8/OpenForge/issues/12), [#91](https://github.com/wolney8/OpenForge/issues/91), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-004-import-populated-ledger-and-accessibility-package--2026-09-16) |
 | CP-005 | 2026-09-16 12:52 BST | Reconciled Profile/combined reports, measured 200 records, repaired report header semantics and bounded lineage decisions | [#109](https://github.com/wolney8/OpenForge/issues/109), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-005-reporting-larger-data-and-evidence-boundary-package--2026-09-16) |
@@ -59,6 +58,7 @@ These figures measure **#114 audit coverage**, not the percentage of the product
 | CP-019 | 2026-09-18 11:20 BST | Integrated #109 Account access, cleared broad API failures and closed onboarding, report-drilldown and stale-response journeys | [#109](https://github.com/wolney8/OpenForge/issues/109), [#111](https://github.com/wolney8/OpenForge/issues/111), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-019-account-access-test-hermeticity-and-journey-closure--2026-09-18-1120-bst) |
 | CP-020 | 2026-09-18 12:56 BST | Closed combined Account/award and Search/Quick Action journeys and bounded Google/VoiceOver evidence truthfully | [#62](https://github.com/wolney8/OpenForge/issues/62), [#76](https://github.com/wolney8/OpenForge/issues/76), [#77](https://github.com/wolney8/OpenForge/issues/77), [#109](https://github.com/wolney8/OpenForge/issues/109), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-020-combined-accessaward-search-and-external-boundary-closure--2026-09-18-1256-bst) |
 | CP-021 | 2026-09-18 13:10 BST | Closed all local audit, competitor and requirement review coverage and defined the protected hosted Preview gate | [#111](https://github.com/wolney8/OpenForge/issues/111), [#114](https://github.com/wolney8/OpenForge/issues/114), [#115](https://github.com/wolney8/OpenForge/issues/115) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-021-local-audit-closure-and-pre-hosted-readiness--2026-09-18-1310-bst) |
+| CP-022 | 2026-09-18 14:48 BST | Restored practical owner performance, corrected cash-warning severity and governed synthetic Profile residue | [#116](https://github.com/wolney8/OpenForge/issues/116), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-022-owner-stability-and-data-health-gate--2026-09-18-1448-bst) |
 
 ## Reference index
 

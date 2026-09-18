@@ -10,6 +10,9 @@ No published release is represented by the local milestones below.
 
 ## 2026-09-18
 
+- **2026-09-18 14:48 BST — CP-022:** Removed archived-Profile load amplification from normal owner
+  routes, replaced warning floods with grouped severity-correct cash health and safely removed 24
+  empty synthetic Profiles after clone proof and a verified backup.
 - **2026-09-18 13:10 BST — CP-021:** Closed local review coverage across all assessments,
   competitor cells and canonical requests, retained the two manual/external journey boundaries and
   defined a fail-closed protected hosted Preview gate without deploying it.
@@ -60,3 +63,4 @@ their original IDs.
 | ID | Timestamp | What changed | Issue | Document |
 |---|---|---|---|---|
 | CP-001 | 2026-09-16 10:18 BST | Consolidated project status and checkpoint workflow | [#114](https://github.com/wolney8/OpenForge/issues/114) | [Rule](AGENTS.md#project-status-checkpoint-rule) |
+| CP-002 | 2026-09-16 10:34 BST | Added the concise owner status, audit register, roadmap and history archive | [#114](https://github.com/wolney8/OpenForge/issues/114) | [Changelog](CHANGELOG.md) |

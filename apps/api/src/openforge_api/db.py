@@ -843,6 +843,12 @@ def connect_read_only() -> Iterator[Any]:
     from openforge_api.runtime_safety import validate_runtime_contract
 
     validate_runtime_contract(settings)
+    shared = _mutation_connection.get()
+    if shared is not None:
+        # Preserve read-your-writes semantics inside an explicit mutation while
+        # keeping ordinary reads free from repeated schema initialisation.
+        yield shared
+        return
     database_mode = settings.database_mode.strip().lower() or "local"
     if database_mode in SUPPORTED_POSTGRES_RUNTIME_MODES:
         postgres_connection = connect_postgres_read_only(settings.neon_database_url)
@@ -4039,7 +4045,7 @@ def map_casino_offer_row(row: sqlite3.Row) -> CasinoOfferRecord:
 
 
 def list_sportsbook_bets(profile_id: str) -> list[SportsbookBetRecord]:
-    with connect() as connection:
+    with connect_read_only() as connection:
         rows = connection.execute(
             """
             SELECT *
@@ -4075,7 +4081,7 @@ def get_sportsbook_bet_by_id(sportsbook_bet_id: str) -> SportsbookBetRecord | No
 
 
 def list_free_bets(profile_id: str) -> list[FreeBetRecord]:
-    with connect() as connection:
+    with connect_read_only() as connection:
         rows = connection.execute(
             """
             SELECT *
@@ -4111,7 +4117,7 @@ def get_free_bet_by_id(free_bet_id: str) -> FreeBetRecord | None:
 
 
 def list_cash_adjustments(profile_id: str) -> list[CashAdjustmentRecord]:
-    with connect() as connection:
+    with connect_read_only() as connection:
         rows = connection.execute(
             """
             SELECT *
@@ -4152,7 +4158,7 @@ def get_cash_adjustment_by_id(
 
 
 def list_each_way_extra_places(profile_id: str) -> list[EachWayExtraPlaceRecord]:
-    with connect() as connection:
+    with connect_read_only() as connection:
         rows = connection.execute(
             """
             SELECT *
@@ -4182,7 +4188,7 @@ def get_each_way_extra_place(
 
 
 def list_casino_offers(profile_id: str) -> list[CasinoOfferRecord]:
-    with connect() as connection:
+    with connect_read_only() as connection:
         rows = connection.execute(
             """
             SELECT *
@@ -7365,7 +7371,7 @@ def list_profile_exchange_commissions(
 
 
 def list_profiles() -> list[ProfileRecord]:
-    with connect() as connection:
+    with connect_read_only() as connection:
         rows = connection.execute(
             """
             SELECT
@@ -7911,7 +7917,7 @@ def get_profile_exchange_commission(profile_id: str, exchange_name: str) -> str:
 
 def get_profile_exchange_commission_map(profile_id: str) -> dict[str, str]:
     """Return one profile's exchange defaults without opening a connection per row."""
-    with connect() as connection:
+    with connect_read_only() as connection:
         rows = connection.execute(
             """
             SELECT exchange_name, commission_rate
@@ -8869,7 +8875,7 @@ def delete_profile_lookup_value(profile_id: str, lookup_value_id: str) -> bool:
 
 
 def list_balance_snapshots(profile_id: str) -> list[BalanceSnapshotRecord]:
-    with connect() as connection:
+    with connect_read_only() as connection:
         rows = connection.execute(
             """
             SELECT *
@@ -10499,7 +10505,7 @@ def count_tracker_rows_created_after(created_after: str | None = None) -> int:
 
 
 def list_accounts(profile_id: str) -> list[AccountRecord]:
-    with connect() as connection:
+    with connect_read_only() as connection:
         rows = connection.execute(
             """
             SELECT *

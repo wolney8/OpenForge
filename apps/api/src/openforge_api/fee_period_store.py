@@ -15,6 +15,7 @@ from openforge_api.calculations.fund_manager_fees import (
 )
 from openforge_api.db import (
     connect,
+    connect_read_only,
     get_cash_adjustment,
     get_profile,
     utc_now,
@@ -166,7 +167,7 @@ def build_period_record(
 
 
 def list_fee_periods(profile_id: str) -> list[FeePeriodRecord]:
-    with connect() as connection:
+    with connect_read_only() as connection:
         rows = connection.execute(
             """
             SELECT * FROM fee_periods

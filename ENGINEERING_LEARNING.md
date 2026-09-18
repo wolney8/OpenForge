@@ -1,16 +1,37 @@
 # Engineering Learning — Plum Duff / OpenForge — Doc ID: EL-CODEX-001
 
-**Last updated:** 2026-09-18 13:10 BST
+**Last updated:** 2026-09-18 14:48 BST
 
 This is a compact notebook of transferable lessons from building Plum Duff. It is not the audit,
 roadmap, backlog or evidence record.
 
 ## Current learning focus
 
-- Keeping a verification claim inside the environment and behaviours the evidence actually covers.
-- Carrying residual hosted/manual risk explicitly after local audit closure.
+- Preventing archived/test data from amplifying ordinary owner work.
+- Keeping valid unknown data distinct from invalid data and test residue.
 
 ## Concepts worth remembering
+
+### Load amplification
+
+**What it means:** One visible request triggers work multiplied across many Profiles, Accounts,
+ledgers or connections, so growth outside the user's current scope slows ordinary work.
+
+**Why it mattered in Plum Duff:** Three active Profiles caused 66 summary requests and hundreds of
+database reads because archived Profiles and repeated schema initialisation were still on the
+default path.
+
+**Remember:** Hidden data is not cheap if every normal request still processes it.
+
+### Data hygiene
+
+**What it means:** Test data has explicit provenance, lifecycle and visibility rules so it remains
+useful evidence without contaminating an owner's normal workspace.
+
+**Why it mattered in Plum Duff:** Protected synthetic financial evidence had to remain archived,
+while 24 proven empty synthetic Profiles could be removed without touching owner IDs or money.
+
+**Remember:** Clean test residue by proof and policy, never by guessing from a name.
 
 ### Verification envelope
 
@@ -347,6 +368,7 @@ role/database/schema identity against isolated hosted storage.
 | CP-019 | 2026-09-18 11:20 BST | State precedence; test hermeticity | Account eligibility now has one governing order, while all ordinary API regressions run without owner data or hidden seeds |
 | CP-020 | 2026-09-18 12:56 BST | System boundary; acceptance boundary | OAuth and VoiceOver evidence now stop exactly where external-provider or human-observed behaviour begins |
 | CP-021 | 2026-09-18 13:10 BST | Verification envelope; residual risk | Local review closure now separates proven local behaviour from hosted, provider and owner/manual evidence |
+| CP-022 | 2026-09-18 14:48 BST | Load amplification; data hygiene | Active owner routes now scale with their selected scope, while synthetic residue is classified, retained or removed without rewriting financial history |
 
 ## Where detailed evidence lives
 

@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 import openforge_api.sportsbook as sportsbook_module
 from openforge_api.calculations.payout_odds import calculate_payout_odds
 from openforge_api.config import settings
-from openforge_api.db import list_sportsbook_bets
+from openforge_api.db import connect, list_sportsbook_bets
 from openforge_api.main import app
 from openforge_api.sportsbook import PAYOUT_AMOUNT_FORMAT_MESSAGE
 
@@ -116,6 +116,10 @@ def test_preview_is_read_only_and_blocks_minimum_and_accepted_precedence(
     tmp_path: Path,
 ) -> None:
     configure_temp_database(tmp_path)
+    # The read-only list path deliberately does not create or migrate storage.
+    # Initialise this isolated fixture explicitly, as application startup does.
+    with connect():
+        pass
     client = TestClient(app)
     before = list_sportsbook_bets("profile-demo-001")
 

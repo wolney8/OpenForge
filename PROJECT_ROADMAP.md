@@ -1,6 +1,6 @@
 # Project Roadmap — Plum Duff / OpenForge — Doc ID: PR-CODEX-001
 
-**Last updated:** 2026-09-18 13:10 BST
+**Last updated:** 2026-09-18 14:48 BST
 
 ## Product goal
 
@@ -10,12 +10,14 @@ reporting and recovery clearer and safer.
 
 ## Current milestone
 
-Prepare one protected hosted Preview without weakening the completed local runtime/database safety
-contract. Local audit review is closed; Preview remains separately approval-gated and uncreated.
+Restore and hold a practical normal-owner local baseline, then complete the pending owner smoke
+before resuming the protected hosted Preview decision. Preview remains paused and uncreated.
 
 ## Local defect / completeness
 
 - Keep the reviewed integration available through normal `localhost:3010` sign-in and data.
+- Preserve the CP-022 active-only query boundary, grouped cash-health disclosure and governed
+  synthetic-data retention so database growth cannot make ordinary owner work scale with archives.
 - Preserve completed Profile import, populated-ledger, combined-report and 200-record evidence.
 - Preserve the completed CP-014 normal-local identity/history migration, rollback checkpoint and
   authenticated browser evidence while main and hosted environments remain unchanged.
@@ -26,14 +28,15 @@ contract. Local audit review is closed; Preview remains separately approval-gate
 
 ## Hosted acceptance
 
-- Seek explicit approval for one protected Vercel Preview using an isolated PostgreSQL/Neon database.
+- Keep protected Preview work paused until the repaired local owner baseline completes its pending
+  smoke result; then seek explicit approval for one isolated Vercel Preview.
 - Prove hosted revision/runtime/database/schema identity, OAuth configuration, backup/rollback and
   authenticated financial/reporting behaviour before considering Production.
 - Keep #96 credential rotation and provider-owned configuration as explicit owner/provider actions.
 
 ## Owner / manual acceptance
 
-- One consolidated integrated visual smoke remains available; result pending.
+- One consolidated integrated visual smoke is ready to resume on the repaired local baseline; result pending.
 - One genuine Google-owned provider interaction remains pending.
 - One bounded VoiceOver spoken-output check remains pending.
 
@@ -77,7 +80,7 @@ contract. Local audit review is closed; Preview remains separately approval-gate
 
 `Integrated local build` → `Engineering gate` → `Owner smoke test when convenient`
 
-`Local audit closure` → `Approve protected Preview` → `Isolated hosted engineering gate`
+`Local stability gate` → `Owner smoke result` → `Approve protected Preview` → `Isolated hosted engineering gate`
 → `Hosted owner acceptance` → `Separate Production decision`
 
 The owner smoke test and continuing audit can proceed independently after the engineering gate.

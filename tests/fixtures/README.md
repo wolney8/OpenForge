@@ -13,6 +13,19 @@ Required expectations:
 
 Prefer concise fixture notes explaining what each fixture is proving.
 
+## Runtime and retention boundary
+
+- Browser and integration tests use a disposable database or an isolated clone by default.
+- The normal-owner database is an exceptional evidence target, never a convenient fixture store.
+- When normal-schema evidence is genuinely required, use an unmistakably synthetic Profile and
+  record its provenance. Physically remove it only when it is empty and non-financial under the
+  governed Profile lifecycle.
+- Archive and retain synthetic Profiles containing protected financial/history evidence. Exclude
+  archived/test data from ordinary owner navigation, reporting, search and health summaries unless
+  it is deliberately selected.
+- A test must initialise its own database explicitly; read-only queries do not create or migrate
+  storage as a side effect.
+
 ## Authorised private-source acceptance boundary
 
 The ordinary API regression suite is hermetic. Twelve workbook/template acceptance cases remain
