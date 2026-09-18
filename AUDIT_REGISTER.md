@@ -1,6 +1,6 @@
 # Audit Register — Plum Duff / OpenForge — Doc ID: AR-CODEX-001
 
-**Last updated:** 2026-09-17 15:59 BST
+**Last updated:** 2026-09-18 09:15 BST
 
 This is the owner-facing index for audit evidence. The
 [platform quality audit](docs/audits/platform-quality-audit.md) remains the detailed authority.
@@ -11,22 +11,22 @@ These are coverage measures, not percentages of the product finished.
 
 | Area | Covered | Method note |
 | --- | ---: | --- |
-| Assessments reviewed | 63 / 87 (72%) | A documented defect can complete an assessment |
-| Complete tasks exercised | 15 / 24 (63%) | All required steps must be exercised |
-| Complete tasks passing | 15 / 24 (63%) | Blocked or partial tasks are excluded |
+| Assessments reviewed | 65 / 87 (75%) | A documented defect can complete an assessment |
+| Complete tasks exercised | 17 / 24 (71%) | All required steps must be exercised |
+| Complete tasks passing | 17 / 24 (71%) | Blocked or partial tasks are excluded |
 | Competitor comparisons | 18 / 27 (67%) | Confirmed and reviewed-unverified states stay distinct |
-| Requirements reconciled | 64 / 133 (48%) | Original scope and clarifications both required |
+| Requirements reconciled | 69 / 133 (52%) | Original scope and clarifications both required |
 
 ## Current high-priority findings
 
 | ID | Plain-English problem | State | Repair / integration state | Issue |
 | --- | --- | --- | --- | --- |
 | PD-QA-022 | A disposable candidate could be pointed at the normal owner database | Repaired on isolated candidate | Source-rooted configuration, explicit runtime roles and connection-level ownership checks now fail closed; the CP-012 near-miss left no lasting data change | [#114](https://github.com/wolney8/OpenForge/issues/114) |
-| PD-QA-006 | Some older broad tests still depend on private seed names/data | Improved; wider audit remains | Current Casino workflow is deterministic; a deliberate broad API run still exposes 143 historical implicit-Profile/catalogue setup failures |
+| PD-QA-006 | Some broad tests still carry stale fixture/contract assumptions | Improved substantially; 21 failures remain | Explicit committed catalogue/tracker seeds and fresh per-test databases removed 122 failures; 1,044 pass and all 1,077 outcomes are classified |
 | PD-QA-016 | Users could not see governed chronological row-change history | Integrated locally / browser-proven slice | One shared plain-English History panel is wired into five financial ledger editors; full notification history remains separate | [#36](https://github.com/wolney8/OpenForge/issues/36), [#114](https://github.com/wolney8/OpenForge/issues/114) |
 | PD-QA-018 | Imported child records did not always resolve their native parent | Integrated locally / engineering gate passed | Normal 3010 uses Profile + logical namespace + external ID; retry, collision, explicit re-resolution and portable remapping pass | [#12](https://github.com/wolney8/OpenForge/issues/12), [#80](https://github.com/wolney8/OpenForge/issues/80) |
 | PD-QA-021 | Deleting some ledger rows also removed their audit history | Integrated locally / engineering gate passed | Normal 3010 records append-only evidence across five ledgers; reports ignore evidence rows and protected financial deletion is denied; full history UI remains PD-QA-016 | [#80](https://github.com/wolney8/OpenForge/issues/80), [#90](https://github.com/wolney8/OpenForge/issues/90), [#114](https://github.com/wolney8/OpenForge/issues/114) |
-| PD-QA-011 | Notification History loses the earlier event when its live source changes | Open; migration decision required | Clear/reload is reliable; durable event history is proposed, not implemented | [#90](https://github.com/wolney8/OpenForge/issues/90), [#99](https://github.com/wolney8/OpenForge/issues/99) |
+| PD-QA-011 | Notification History lost an earlier event when its live source changed | Integrated locally / focused lifecycle passed | A bounded Profile/user-scoped immutable event store retains readable history; current alert and dismissal state remain separate | [#90](https://github.com/wolney8/OpenForge/issues/90), [#99](https://github.com/wolney8/OpenForge/issues/99) |
 | #111 | Report chart exploration is incomplete | Partial / first slice integrated and browser-proven | Selected-range points have visible keyboard focus, pointer/keyboard inspection, date/value accessible names and empty-state coverage; record drilldown, module filter and governed metric/granularity controls remain | [#111](https://github.com/wolney8/OpenForge/issues/111) |
 | C05 | Changed-odds and multiple-fill remaining hedges are not fully represented | Open | Same-odds core handling is integrated; richer operational handling is pending | [#35](https://github.com/wolney8/OpenForge/issues/35) |
 | PD-QA-001 | Dependency advisories affected reachable or development paths | Production remediated locally; five development-only findings accepted pending upstream | Next 16.3.3, sharp 0.35.4 and Vitest 4.1.11 leave zero production advisories; remaining brace-expansion/js-yaml paths are confined to ESLint tooling and forced overrides are not justified | [#115](https://github.com/wolney8/OpenForge/issues/115) |
@@ -52,7 +52,8 @@ These are coverage measures, not percentages of the product finished.
 | Native Casino activity | Passed locally | £7 gross less current governed costs reports £6 then corrected £5 once; History and malformed-money rejection pass |
 | Converted Free Bet SNR and retained legacy SR | Passed locally | Conversion, copied reference, distinct actual placement, settlement, readable History, report and reload pass |
 | Profile and combined financial reporting | Partial | Active-only defaults, deliberate archived inclusion, arithmetic/range/breakdowns and point inspection pass; record drilldown and module/metric controls remain absent |
-| Notification clear and history | Partial | Clear/reload and safe source denial pass; prior event disappears when source state changes |
+| Notification clear and history | Passed locally | Current alert, dismissal and durable historical event remain distinct; retry and viewer isolation pass |
+| Profile lifecycle and recovery | Passed locally | Create, archive, active-navigation exclusion, historical-report retention, recover and empty-Profile deletion boundaries pass |
 | Settings and session recovery | Partial | Ownership/defaults, mutation rollback, inactivity and stale-session paths pass; frontend/API restart and unavailable-database recovery now pass, while genuine VoiceOver remains unverified |
 | Realistic 200-record Profile | Partial | Navigation, pagination, filter and search pass; chart/stale stress and hosted capacity remain |
 | SQLite backup restore and reopen | Passed for the isolated local copy | Operational/hosted disaster recovery remains separate |
@@ -69,8 +70,8 @@ These are coverage measures, not percentages of the product finished.
 
 ## Outstanding audit areas
 
-- Complete the remaining onboarding, Profile lifecycle, notification, import and large-data journeys;
-  award lineage, Cash reconciliation and Casino fee allocation are now closed locally.
+- Complete guided onboarding, import and large-data journeys; Profile lifecycle and durable
+  notifications are now closed locally alongside award, Cash reconciliation and Casino fees.
 - Interactive report drilldown, #109 access vocabulary and Google
   bound-script runtime.
 - Actual screen-reader testing, larger-than-200 datasets, delayed/stale chart recovery and hosted performance.

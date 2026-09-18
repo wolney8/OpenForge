@@ -1,16 +1,36 @@
 # Engineering Learning — Plum Duff / OpenForge — Doc ID: EL-CODEX-001
 
-**Last updated:** 2026-09-17 15:59 BST
+**Last updated:** 2026-09-18 09:15 BST
 
 This is a compact notebook of transferable lessons from building Plum Duff. It is not the audit,
 roadmap, backlog or evidence record.
 
 ## Current learning focus
 
-- Reconciling linked cash movement without silently rewriting an observed Account balance.
-- Recovering one business operation safely after lost or concurrent responses.
+- Building deterministic fixtures that do not inherit private owner state.
+- Separating a capability classification from time-bound evidence and restriction details.
 
 ## Concepts worth remembering
+
+### Deterministic test fixtures
+
+**What it means:** A test creates every identity, catalogue value and record it needs from committed
+synthetic inputs, so its result does not depend on a private workbook or an already-populated database.
+
+**Why it mattered in Plum Duff:** One explicit tracker seed and fresh per-test databases removed 122
+broad-suite failures while preserving the financial and isolation assertions.
+
+**Remember:** If a test needs yesterday's private database, it is not reproducible evidence.
+
+### Capability versus observation
+
+**What it means:** A small controlled state records what an Account can currently do; caps, affected
+promotion types, source notes and the time checked record the evidence behind that judgement.
+
+**Why it mattered in Plum Duff:** `Minimum Only` and `Boosts Only` describe restriction details, not
+separate top-level Stake or Promo capabilities, and stale evidence should not multiply enum values.
+
+**Remember:** Classify the capability; store the evidence separately.
 
 ### Planning state versus actual financial state
 
@@ -250,9 +270,9 @@ source checkout and safe database identity.
 **Portability status:** Concern
 
 **Reason:** SQLite/PostgreSQL test targets, source roots and endpoints have an explicit fail-closed
-runtime contract, and the current Casino slice now creates committed synthetic Profiles. A broad
-API run still found 143 historical implicit demo-seed setup failures; fixed local ports,
-macOS/Python architecture, Google authentication and hosted recovery also remain environment-specific.
+runtime contract, and committed synthetic seeds removed 122 hidden-state failures. The remaining 21
+fixture/contract failures, fixed local ports, macOS/Python architecture, Google authentication and
+hosted recovery remain environment-specific.
 
 **Smallest improvement:** Make the hosted runtime role and database identity explicit in approved
 deployment configuration before any Vercel/Neon work.
@@ -272,6 +292,7 @@ deployment configuration before any Vercel/Neon work.
 | CP-015 | 2026-09-17 13:33 BST | Audit trail versus user history; patch versus feature upgrades | Immutable evidence became understandable in five ledgers while supported patches reduced dependency exposure without changing product meaning |
 | CP-016 | 2026-09-17 14:46 BST | End-to-end journeys; lifecycle versus financial state | Full journeys exposed a mislabelled Void and proved that archive visibility can change without erasing retained P&L |
 | CP-017 | 2026-09-17 15:59 BST | Reconciliation; idempotent business operations | Cash movement stayed distinct from observed balances, while award and adjustment retries recovered one logical result without duplication |
+| CP-018 | 2026-09-18 09:15 BST | Deterministic fixtures; capability versus observation | Explicit synthetic seeds removed hidden-state failures, while #109 separates stable access classes from restriction evidence and freshness |
 
 ## Where detailed evidence lives
 

@@ -8,6 +8,12 @@ roadmap or detailed audit record.
 
 No published release is represented by the local milestones below.
 
+## 2026-09-18
+
+- **2026-09-18 09:15 BST — CP-018:** Added durable notification history, deterministic API seeds
+  and complete Profile lifecycle recovery evidence; reduced the broad API suite from 143 to 21
+  failures with every one of 1,077 outcomes classified.
+
 ## 2026-09-17
 
 - **2026-09-17 15:59 BST — CP-017:** Closed fresh award-lineage, Cash reconciliation and Casino-fee

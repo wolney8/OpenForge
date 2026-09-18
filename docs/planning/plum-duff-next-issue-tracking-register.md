@@ -1,5 +1,20 @@
 # Plum Duff Next Issue Tracking Register
 
+## PD-AUDIT-CP018-20260918 — reproducibility, Profile lifecycle and notification history
+
+| ID | Requested outcome | Current state |
+|---|---|---|
+| PD-QA-006 | Make the complete API suite deterministic and fully accounted for | IN PROGRESS: baseline 922 pass/143 fail/12 skip is now explicit; committed seeds and fresh databases produce 1,044 pass/21 fail/12 skip, with no errors or hidden outcomes |
+| PQA-J13 | Guided onboarding through first action/reopen | PARTIAL: 7/8 browser checks pass; shared drawer discard navigation and the saved first action/reopen remain exact gaps |
+| PQA-J14 | Profile archive/recover/delete with reporting and protection boundaries | PASS LOCALLY: archive/recovery, active-view exclusion, historical P&L retention and permitted empty-Profile deletion pass without erasing protected history |
+| PQA-J17 / NOTIFICATION-HISTORY-001 | Keep historical notification events after current source resolution | PASS LOCALLY: bounded durable events retain readable history; current/dismissal state stays separate; retry and viewer isolation pass |
+| ACCOUNTS-IMPORT-ACCESS-001 | Separate #109 capability from restriction evidence | PROPOSED / NOT IMPLEMENTED: five Stake states and four Promo states are defined; exact caps/categories/freshness remain structured details pending owner decision |
+
+Reconciled in this package: #90 durable history, #99 dismissal separation, #100 readable history,
+Profile lifecycle/recovery and deterministic test portability. Coverage is 65/87 assessments,
+17/24 journeys, 18/27 competitor cells and 69/133 requirements. No GitHub closure, main merge,
+push or hosted state is inferred.
+
 ## PD-AUDIT-CP017-20260917 — award, cash-reconciliation and Casino-fee journeys
 
 | ID | Requested outcome | Current state |

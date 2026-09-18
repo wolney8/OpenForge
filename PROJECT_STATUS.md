@@ -1,19 +1,19 @@
 # Project Status — Plum Duff / OpenForge — Doc ID: PS-CODEX-001
 
-**Last updated:** 2026-09-17 16:08 BST · **Status:** 🟡 At risk
+**Last updated:** 2026-09-18 09:15 BST · **Status:** 🟡 At risk
 
 ## Right now
 
-- **Working on:** Continue the remaining onboarding, Profile-lifecycle, notification-history and large-data complete journeys.
-- **Next:** Advance #111 record drilldown, stale-response recovery and wider #114 evidence.
-- **Blocked on:** none for independent local work; #109 access vocabulary, provider-only checks and hosted changes remain separate owner/external decisions
+- **Working on:** Remove the remaining 21 reproducibility failures and finish the guided-onboarding journey.
+- **Next:** Exercise larger-data stale-response recovery, #111 record drilldown and the remaining complete journeys.
+- **Blocked on:** none for independent local work; #109 access vocabulary needs an owner decision before implementation
 
 ## Delivery state
 
 | Area | Evidence state |
 | --- | --- |
-| Local integrated build | CP-017 closes fresh award lineage, Cash reconciliation and Casino fee journeys and repairs restored linked-award display |
-| Normal `localhost:3010` | Healthy on `import-history-v1`, normal authentication and the migrated normal local database; API source `b296310…+dirty` is verified, with only the preserved generated typecheck cache uncommitted |
+| Local integrated build | CP-018 adds durable notification events, deterministic API seeds and proven Profile lifecycle recovery |
+| Normal `localhost:3010` | Healthy on `import-history-v1`, normal authentication and the migrated normal local database; durable notification history is live locally |
 | Main / origin | Not updated by the local integration work |
 | Vercel | Not deployed or hosted-verified |
 | Owner smoke test | Optional short local check is available; not run and not a work blocker |
@@ -24,16 +24,16 @@ These figures measure **#114 audit coverage**, not the percentage of the product
 
 | Review area | Current coverage |
 | --- | ---: |
-| Assessments reviewed | 63 / 87 (72%) |
-| Complete tasks exercised and passing | 15 / 24 (63%) |
+| Assessments reviewed | 65 / 87 (75%) |
+| Complete tasks exercised and passing | 17 / 24 (71%) |
 | Competitor comparisons | 18 / 27 (67%) |
-| Requirements reconciled | 64 / 133 (48%) |
+| Requirements reconciled | 69 / 133 (52%) |
 
 ## Next 3 steps
 
-1. Exercise guided onboarding and disposable Profile recover/delete journeys.
-2. Continue #111 record drilldown and durable notification-event design/work.
-3. Exercise larger-data delayed/stale-response recovery and remaining accessibility boundaries.
+1. Repair the remaining fee/import/XLSX fixture-contract groups and rerun all API tests.
+2. Finish guided onboarding's saved first action/reopen and drawer navigation guard.
+3. Exercise larger-data stale recovery and the next #111 record-drilldown slice.
 
 ## Checkpoint log
 
@@ -56,6 +56,7 @@ These figures measure **#114 audit coverage**, not the percentage of the product
 | CP-015 | 2026-09-17 13:33 BST | Added readable ledger History, imported-parent review, chart-point inspection and supported security patches | [#36](https://github.com/wolney8/OpenForge/issues/36), [#111](https://github.com/wolney8/OpenForge/issues/111), [#115](https://github.com/wolney8/OpenForge/issues/115) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-015-user-usable-history-lineage-and-reporting-slice--2026-09-17) |
 | CP-016 | 2026-09-17 14:46 BST | Closed two complete journeys, corrected Void history and separated active from archived reporting defaults | [#88](https://github.com/wolney8/OpenForge/issues/88), [#111](https://github.com/wolney8/OpenForge/issues/111), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-016-complete-journey-and-archive-reporting-package--2026-09-17) |
 | CP-017 | 2026-09-17 15:59 BST | Closed fresh award lineage, Cash reconciliation and Casino fee journeys and repaired four bounded safety/portability defects | [#49](https://github.com/wolney8/OpenForge/issues/49), [#80](https://github.com/wolney8/OpenForge/issues/80), [#91](https://github.com/wolney8/OpenForge/issues/91), [#109](https://github.com/wolney8/OpenForge/issues/109), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-017-award-cash-reconciliation-and-casino-fee-package--2026-09-17-1559-bst) |
+| CP-018 | 2026-09-18 09:15 BST | Added durable notification history, deterministic API fixtures and complete Profile lifecycle evidence; reduced broad API failures from 143 to 21 | [#90](https://github.com/wolney8/OpenForge/issues/90), [#99](https://github.com/wolney8/OpenForge/issues/99), [#109](https://github.com/wolney8/OpenForge/issues/109), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-018-reproducibility-profile-lifecycle-and-notification-history--2026-09-18-0915-bst) |
 
 ## Reference index
 

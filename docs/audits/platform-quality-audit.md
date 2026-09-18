@@ -1,5 +1,36 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
+## Current CP-018 reproducibility, Profile lifecycle and notification history — 2026-09-18 09:15 BST
+
+The broad API baseline is now fully accounted for: **922 passed, 143 failed, 12 skipped,
+0 errors and 0 expected failures = 1,077**. The twelve skips are explicit private-workbook/template
+acceptance boundaries, not concealed failures. Explicit committed synthetic catalogue/tracker seeds,
+fresh function-scoped databases and shared Account/Profile factories removed the largest hidden-state
+family. The final broad run is **1,044 passed, 21 failed, 12 skipped, 0 errors and 0 expected
+failures = 1,077**. Remaining failures group into fee-period fixtures (6), import contract drift (6),
+XLSX round trips (2), independent SNR references (2), and five single catalogue/backup/calculator/
+lookup/dry-run cases. Assertions were not skipped or weakened.
+
+Profile lifecycle is PASS through create/populate, archive, active-navigation exclusion, retained
+historical reporting, recover and permitted empty-Profile deletion; protected financial history is
+not erased. Durable notification history is integrated locally using a bounded notification-event
+store, separate from financial history. Source active→dismiss/reload→resolved retains the readable
+event; exact retry creates one event and another viewer receives none. SQLite, PostgreSQL 18.6 and
+a fresh normal-data clone passed before the additive normal-local table was initialised. Normal
+3010 health, integrity and authenticated current/history endpoints pass.
+
+Guided onboarding remains PARTIAL: seven of eight browser checks pass, including creation stages,
+validation, catalogue authority, both themes, compact field geometry and cancel guard. Drawer
+navigation after confirming discard still remains on `/profiles/new`; the canonical saved first
+action/reopen step also remains unexercised. No PASS is claimed. #109 is revised but unimplemented:
+Stake Access = Normal/Limited/Severely Limited/Blocked/Not Checked; Promo Access = Full/Restricted/
+None/Not Checked; exact caps/categories, evidence source, notes and checked time are separate details.
+`Minimum Only` and `Boosts Only` are restriction details, not top-level capability states.
+
+Current coverage is **65/87 assessments (75%)**, **17/24 complete journeys (71%)**,
+**18/27 competitor cells (67%)** and **69/133 requirements (52%)**. These remain audit coverage,
+not product-completion percentages.
+
 ## Current CP-017 award, cash-reconciliation and Casino-fee package — 2026-09-17 15:59 BST
 
 The three named normal-local journeys now pass on authenticated `localhost:3010`. PQA-J11 created
@@ -3629,11 +3660,11 @@ Shared width/theme variants are recorded in the modal addendum, not inflated int
 |PQA-J10|Cash movement→Account reconciliation→fees/matching→report|PASS|CP-017 browser/API: linked Bank A remains £200; +25→+20 correction and −7 withdrawal report net +13 once, with History/retry/invalid-write evidence|—|—|Retain cash-movement versus observed-balance boundary regression|
 |PQA-J11|Award group→SNR/SR descendants→settlement→safe removal/history|PASS|CP-017 fresh £6 SNR + £4 SR group; lost/concurrent retry reuse, changed retry rejection, settlement/history, protected removal, export/restore and remapped lineage UI pass|—|—|Retain native/logical identity and no-resurrection regressions|
 |PQA-J12|Multi-Profile conversion failure→retry→new intent→notifications|PASS|CP-003 browser/API/persistence counts 2/1|—|—|Retain regression|
-|PQA-J13|Onboarding→catalogue Accounts→permissions→first action/reopen|PARTIAL|API identity and Account creation|Guided browser onboarding through first saved tracker action|Test coverage gap|Execute one authenticated guided browser run|
-|PQA-J14|Profile archive/recover/delete→denied writes→directory/search isolation|PARTIAL|CP-016 active-only defaults, deliberate archived inclusion and exact-name deletion tests|One real API-backed recover/delete/denied-write sequence|Test coverage gap|Run disposable Profile lifecycle on normal auth|
+|PQA-J13|Onboarding→catalogue Accounts→permissions→first action/reopen|PARTIAL|CP-018 browser 7/8 plus API persistence|Drawer discard navigation; first saved tracker action/reopen|Product defect/test gap|Repair shared drawer guard then run saved first action/reopen|
+|PQA-J14|Profile archive/recover/delete→denied writes→directory/search isolation|PASS|CP-018 23 API plus 3 authenticated browser lifecycle checks|—|—|Retain active/archive/report/delete-boundary regression|
 |PQA-J15|Login→expiry→denial→re-authentication→state recovery|BLOCKED|CP-009 local expiry/cross-tab/stale-session evidence|Real Google callback/provider re-authentication|External blocker|Execute only with authorised provider test identity|
 |PQA-J16|Global search→filter/loadout→Quick Action→correct Profile record|NOT YET EXERCISED|Component regressions only|One keyboard/stale-response end-to-end run|Test coverage gap|Build deterministic multi-Profile browser fixture|
-|PQA-J17|Notification create→clear/reload→source lifecycle→history|PARTIAL|CP-006 duplicate/Profile isolation and clear reload|Durable earlier event after source changes|Unimplemented feature|Implement approved durable notification-event boundary|
+|PQA-J17|Notification create→clear/reload→source lifecycle→history|PASS|CP-018 active→dismiss/reload→resolve durable event; retry and viewer isolation|—|—|Retain current/dismissed/history separation regression|
 |PQA-J18|Workbook import→review/write→lineage→reopen/report/export|PARTIAL|CP-015 imported-parent UI plus prior six-sheet recovery|Approved Stake/Promo Access vocabulary and one combined award import rerun|Product decision/test gap|Resolve #109 vocabulary, then rerun current browser path|
 |PQA-J19|Portable restore→reopen tracker→report/re-export→recovery|PASS|CP-004/014 authenticated portable restore and identity remap|—|—|Retain regression|
 |PQA-J20|SQLite backup→restore→read/reconcile→rollback|PASS|CP-014 normal clone/migration/rollback|—|—|Retain recovery drill|
@@ -3678,9 +3709,9 @@ This conservative baseline intentionally does not promote the indexed backlog in
 
 | Original request→outcome | Applicable clarification | Implementation/plans/evidence→remaining issue |
 |---|---|---|
-|#90 NOTIFICATION-HISTORY-001→history survives source disappearance|Original issue has no comments; current body reviewed2026-09-13|Source-derived history/clear tombstones are not durable events; C notification boundary review; keep#90 open, event-store design required |
-|#99 NOTIFICATION-FIX-001→clear-one/all stays cleared across refetch/reload/new context|5567517442 and5567729491 supersede login-only blocker with no reachable actionable fixture|Existing synthetic notification runtime now available separately; no owner recheck assigned. Automated clear evidence retained; normal/hosted/manual acceptance pending. Not merged into#90 |
-|#109 ACCOUNTS-IMPORT-ACCESS-001→preserve access/restrictions after September import|5570274337: Stake/Promo Access omitted; LastPromoUsed not recomputed|Current importer mapping gap CODE-VERIFIED; reviewed mapping/provenance first, not generic lifecycle reuse. Preserve#104 baseline/#82 capability authority and unknown-label review; no importer repair here |
+|#90 NOTIFICATION-HISTORY-001→history survives source disappearance|Original issue has no comments; current body reviewed2026-09-13|Bounded durable notification events are integrated locally; source resolution no longer erases readable history. Hosted and owner acceptance remain separate |
+|#99 NOTIFICATION-FIX-001→clear-one/all stays cleared across refetch/reload/new context|5567517442 and5567729491 supersede login-only blocker with no reachable actionable fixture|Clear/reload remains monotonic and is now explicitly separate from immutable event history; hosted/owner acceptance remains pending |
+|#109 ACCOUNTS-IMPORT-ACCESS-001→preserve access/restrictions after September import|5570274337: Stake/Promo Access omitted; LastPromoUsed not recomputed|Decision-ready capability/detail model recorded; enums remain NOT IMPLEMENTED pending owner decision, so combined import journey stays partial |
 |#114 PLATFORM-QUALITY-AUDIT-001→whole product evidence/priority handoff|5652511529/current authorised task|Stable scorecard+retained gaps, scoped safety repair; scope beyond current checks remains open |
 
 Next original+clarified source set: #70/#82 restriction intelligence, #85/#106 observation/freshness,
