@@ -221,8 +221,27 @@ def seed_representative_profile() -> None:
             ),
         ]
         connection.executemany(
-            "INSERT INTO accounts VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            """INSERT INTO accounts (
+              account_id, profile_id, catalogue_id, bookmaker_id, account, type,
+              counts_in_cash_total, channel, status, lifecycle_status, signup_offer_status,
+              restrictions_json, current_balance, pending_withdrawal_amount,
+              last_balance_update, group_name, platform, sign_up_date, notes, created_at, updated_at
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             account_rows,
+        )
+        connection.execute(
+            """UPDATE accounts SET
+              stake_access = 'Severely Limited', promo_access = 'Restricted',
+              restriction_details_json = ?, access_evidence_note = ?,
+              access_source = 'manual_check', access_observed_at = ?
+            WHERE account_id = 'ACCOUNT-A'""",
+            (
+                '{"available_promotion_types":["Boosts"],"fixed_maximum_stake":"1.00",'
+                '"promotion_restriction_note":"","stake_restriction_note":"Synthetic cap",'
+                '"stake_restriction_type":"fixed_maximum"}',
+                "Synthetic access evidence",
+                "2026-09-18T09:30:00Z",
+            ),
         )
         connection.execute(
             "INSERT INTO balance_snapshots VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
@@ -764,6 +783,11 @@ def test_portable_export_preserves_values_ordering_and_reference_only_authoritie
     assert accounts[0]["lifecycle_status"] == "Active"
     assert accounts[0]["status"] == "Bonus Restricted"
     assert accounts[0]["restrictions_json"] == '["Stake Restricted","Bonus Restricted"]'
+    assert accounts[0]["stake_access"] == "Severely Limited"
+    assert accounts[0]["promo_access"] == "Restricted"
+    assert json.loads(accounts[0]["restriction_details_json"])["fixed_maximum_stake"] == "1.00"
+    assert accounts[0]["access_source"] == "manual_check"
+    assert accounts[0]["access_observed_at"] == "2026-09-18T09:30:00Z"
     assert accounts[0]["current_balance"] == "10.2300"
     assert accounts[0]["pending_withdrawal_amount"] == "0.00"
     assert accounts[0]["catalogue_reference_version"] == "1.0"

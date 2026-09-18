@@ -7,6 +7,7 @@ import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { ReplayableGraph, ReplayableProgressFill, ReplayableProgressRing } from "@/components/replayable-progress";
 import {
   buildDashboardTargetProgress,
+  buildDashboardDrilldownRows,
   buildDashboardTrend,
   buildDashboardTrendFromDataset,
   buildSparklinePoints,
@@ -221,6 +222,9 @@ export function PortfolioDashboardView({
                 label="Selected range P&L trend"
                 line={dashboardSparkline.line}
                 points={dashboardTrend}
+                dataset={dataset}
+                profileId={profileId}
+                range={resolvedRange}
               />
               <div className="dashboard-point-rail" aria-label="Recent P&L movement points">
                 {dashboardTrend.slice(-5).map((point) => (
@@ -612,11 +616,17 @@ function DashboardChartSurface({
   label,
   line,
   points,
+  dataset,
+  profileId,
+  range,
 }: {
   area: string;
   label: string;
   line: string;
-  points: Array<{ label: string; cumulativeValue?: number; value: number }>;
+  points: DashboardTrendPoint[];
+  dataset?: TrackerSummaryDataset;
+  profileId: string;
+  range: ResolvedDateRange;
 }) {
   const [selectedPointIndex, setSelectedPointIndex] = useState(Math.max(0, points.length - 1));
   const coordinates = line.split(" ").map((coordinate) => {
@@ -624,6 +634,9 @@ function DashboardChartSurface({
     return { x, y };
   });
   const selectedPoint = points[selectedPointIndex] ?? points.at(-1);
+  const drilldownRows = dataset && selectedPoint
+    ? buildDashboardDrilldownRows({ dataset, pointKey: selectedPoint.key, range })
+    : [];
   const accessibleSummary =
     points.length === 0
       ? "No trend points available."
@@ -671,6 +684,10 @@ function DashboardChartSurface({
           <><span>{selectedPoint.label}</span><FinancialValue animate={false} value={selectedPoint.cumulativeValue ?? selectedPoint.value} /></>
         ) : "No trend points available."}
       </figcaption>
+      {selectedPoint ? <section aria-label={`Records for ${selectedPoint.label}`} className="dashboard-chart-drilldown" data-pd-id="dashboard.chart.drilldown">
+        <h4>Records in this point</h4>
+        {drilldownRows.length ? <ul>{drilldownRows.map((row) => <li key={`${row.module}-${row.id}`}><Link href={`/profiles/${profileId}/tracker/${row.module}?search=${encodeURIComponent(row.id)}&source=report-point`}><span>{row.label}</span><FinancialValue animate={false} value={row.value} /></Link></li>)}</ul> : <p className="muted-text">No underlying records in this point.</p>}
+      </section> : null}
       <span className="visually-hidden">{accessibleSummary}</span>
     </figure>
   );

@@ -203,7 +203,9 @@ def test_portable_restore_round_trip_remaps_ids_and_passes_both_gates(tmp_path: 
             "AND account_id = 'ACCOUNT-A'"
         ).fetchone()
         restored_account = connection.execute(
-            "SELECT account_id, lifecycle_status, restrictions_json FROM accounts "
+            "SELECT account_id, lifecycle_status, restrictions_json, stake_access, "
+            "promo_access, restriction_details_json, access_source, access_observed_at "
+            "FROM accounts "
             "WHERE profile_id = ? AND account = 'Bookmaker A'",
             (completed["target_profile_id"],),
         ).fetchone()
@@ -232,6 +234,11 @@ def test_portable_restore_round_trip_remaps_ids_and_passes_both_gates(tmp_path: 
         "Soft Limited",
         "Bonus Restricted",
     ]
+    assert restored_account["stake_access"] == "Severely Limited"
+    assert restored_account["promo_access"] == "Restricted"
+    assert json.loads(restored_account["restriction_details_json"])["fixed_maximum_stake"] == "1.00"
+    assert restored_account["access_source"] == "manual_check"
+    assert restored_account["access_observed_at"] == "2026-09-18T09:30:00Z"
     assert identity["runtime_id"] == restored_account["account_id"]
     assert dict(checkpoint) == {"pre_restore_state": "ABSENT", "status": "AVAILABLE"}
     assert audit_count > 0

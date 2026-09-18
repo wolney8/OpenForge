@@ -1063,6 +1063,8 @@ def _casino_eligibility(
         reasons.append(f"{account_name} account is not configured")
         return profile, reasons, warnings
     restrictions = get_account_restrictions(account)
+    stake_access = account.stake_access.strip().casefold()
+    promo_access = account.promo_access.strip().casefold()
     if account.lifecycle_status.casefold() in {
         "archived",
         "closed",
@@ -1085,10 +1087,16 @@ def _casino_eligibility(
             "sportsbook only",
         }
         reasons.append(f"{account_name} account is blocked: {', '.join(sorted(blocked))}")
-    if activity_source == "promotion" and "bonus restricted" in restrictions:
+    if stake_access == "blocked":
+        reasons.append(f"{account_name} stake access is Blocked")
+    if activity_source == "promotion" and (
+        "bonus restricted" in restrictions or promo_access == "none"
+    ):
         reasons.append(f"{account_name} account cannot use promotions")
-    if "soft limited" in restrictions:
-        warnings.append(f"{account_name} account is Soft Limited; confirm it can be used")
+    if stake_access in {"limited", "severely limited"} or "soft limited" in restrictions:
+        warnings.append(f"{account_name} stake access is {account.stake_access}; confirm it can be used")
+    if activity_source == "promotion" and promo_access == "restricted":
+        warnings.append(f"{account_name} promotion access is Restricted; confirm this offer is available")
     return profile, reasons, warnings
 
 

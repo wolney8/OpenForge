@@ -544,6 +544,7 @@ def import_history_cases(dsn, runtime):
     from openforge_api.financial_history import append_history_event
 
     configure(dsn, runtime)
+    from openforge_api.accounts import AccountPayload
     for profile_id in ("cp012-a", "cp012-b"):
         db.create_profile_with_onboarding({
             "profile_id": profile_id,
@@ -564,6 +565,23 @@ def import_history_cases(dsn, runtime):
             "mapping_version": "cp012-v1", "status": "confirmed", "row_count": 0,
             "error_count": 0, "warning_count": 0, "summary_json": "{}",
         }, [])
+
+    access_values = AccountPayload(
+        account="Synthetic Access Bookmaker", type="Bookie", status="Active",
+        lifecycle_status="Active", stake_access="Severely Limited",
+        promo_access="Restricted", restriction_details={
+            "fixed_maximum_stake": "1.00",
+            "stake_restriction_type": "fixed_maximum",
+            "available_promotion_types": ["Boosts"],
+        }, access_source="synthetic_postgres_check",
+        access_observed_at="2026-09-18T09:30:00Z", current_balance="0.00",
+    ).model_dump()
+    access_values["restriction_details_json"] = json.dumps(
+        access_values.pop("restriction_details"), sort_keys=True
+    )
+    access_values["restrictions_json"] = "[]"
+    account = db.create_account("cp012-a", access_values)
+    assert account.stake_access == "Severely Limited" and account.promo_access == "Restricted"
 
     first = db.register_import_source_record(
         profile_id="cp012-a", source_namespace="sportsbook", source_sheet="Renamed Tab",
@@ -680,6 +698,14 @@ def import_history_cases(dsn, runtime):
             raise AssertionError("PostgreSQL history UPDATE was not rejected")
     from openforge_api.postgres_migrations import apply_postgres_migrations
     apply_postgres_migrations(dsn)
+    with psycopg.connect(dsn) as connection:
+        stored_access = connection.execute(
+            "SELECT stake_access,promo_access,restriction_details_json,access_source "
+            "FROM accounts WHERE account_id=%s", (account.account_id,),
+        ).fetchone()
+        assert stored_access[:2] == ("Severely Limited", "Restricted")
+        assert json.loads(stored_access[2])["fixed_maximum_stake"] == "1.00"
+        assert stored_access[3] == "synthetic_postgres_check"
     return {
         "status": "PASS",
         "passed": [
@@ -687,6 +713,7 @@ def import_history_cases(dsn, runtime):
             "Separate-process duplicate source and history operations reuse one identity/event",
             "Current £5 value remains separate from append-only lifecycle evidence",
             "PostgreSQL UPDATE rejection and repeat migration",
+            "Approved #109 access capability and structured evidence round-trip",
         ],
     }
 

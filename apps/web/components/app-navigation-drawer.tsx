@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState, useSyncExternalStore, type RefObject } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type MouseEvent, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { BrandLogo } from "@/components/brand-logo";
 import { platformBrand } from "@/lib/brand";
 import { recordRecentProfile, resolveRecentProfiles } from "@/lib/recent-profiles";
+import { confirmUnsavedTrackerNavigation } from "@/lib/use-unsaved-changes-guard";
 
 type ProfileNavigationRecord = {
   profile_id: string;
@@ -138,6 +139,18 @@ export function AppNavigationDrawer({
     return false;
   };
 
+  const navigateFromDrawer = (
+    event: MouseEvent<HTMLAnchorElement>,
+    href: string,
+    beforeNavigate?: () => void,
+  ) => {
+    event.preventDefault();
+    confirmUnsavedTrackerNavigation(href, () => {
+      beforeNavigate?.();
+      onClose();
+    });
+  };
+
   return createPortal(
     <div
       aria-hidden={!isOpen}
@@ -190,9 +203,10 @@ export function AppNavigationDrawer({
                 aria-current={isActive ? "page" : undefined}
                 className={`app-navigation-drawer-link${isActive ? " is-active" : ""}`}
                 data-pd-id={`app-navigation.${item.id}`}
+                data-pd-managed-navigation="true"
                 href={item.href}
                 key={item.id}
-                onClick={onClose}
+                onClick={(event) => navigateFromDrawer(event, item.href)}
               >
                 <span aria-hidden="true" className="material-symbols-outlined">{item.icon}</span>
                 <span>{item.label}</span>
@@ -219,25 +233,25 @@ export function AppNavigationDrawer({
                   <Link
                     className="app-navigation-drawer-link app-navigation-drawer-sublink"
                     data-pd-id={`app-navigation.profile.${profile.profile_id}`}
+                    data-pd-managed-navigation="true"
                     href={`/profiles/${profile.profile_id}/tracker/dashboard`}
                     key={profile.profile_id}
-                    onClick={() => {
+                    onClick={(event) => navigateFromDrawer(event, `/profiles/${profile.profile_id}/tracker/dashboard`, () => {
                       recordRecentProfile(window.localStorage, {
                         profileId: profile.profile_id,
                         displayName: profile.display_name,
                       });
-                      onClose();
-                    }}
+                    })}
                   >
                     <span aria-hidden="true" className="material-symbols-outlined">person</span>
                     <span>{profile.display_name}</span>
                   </Link>
                 ))}
-                <Link className="app-navigation-drawer-link app-navigation-drawer-sublink" data-pd-id="app-navigation.profiles.view-all" href="/profiles" onClick={onClose}>
+                <Link className="app-navigation-drawer-link app-navigation-drawer-sublink" data-pd-id="app-navigation.profiles.view-all" data-pd-managed-navigation="true" href="/profiles" onClick={(event) => navigateFromDrawer(event, "/profiles")}>
                   <span aria-hidden="true" className="material-symbols-outlined">list</span>
                   <span>View all Profiles</span>
                 </Link>
-                <Link className="app-navigation-drawer-link app-navigation-drawer-sublink" data-pd-id="app-navigation.profiles.add" href="/profiles/new" onClick={onClose}>
+                <Link className="app-navigation-drawer-link app-navigation-drawer-sublink" data-pd-id="app-navigation.profiles.add" data-pd-managed-navigation="true" href="/profiles/new" onClick={(event) => navigateFromDrawer(event, "/profiles/new")}>
                   <span aria-hidden="true" className="material-symbols-outlined">person_add</span>
                   <span>Add Profile</span>
                 </Link>
@@ -251,9 +265,10 @@ export function AppNavigationDrawer({
                 aria-current={isActive ? "page" : undefined}
                 className={`app-navigation-drawer-link${isActive ? " is-active" : ""}`}
                 data-pd-id={`app-navigation.${item.id}`}
+                data-pd-managed-navigation="true"
                 href={item.href}
                 key={item.id}
-                onClick={onClose}
+                onClick={(event) => navigateFromDrawer(event, item.href)}
               >
                 <span aria-hidden="true" className="material-symbols-outlined">{item.icon}</span>
                 <span>{item.label}</span>
@@ -271,7 +286,7 @@ export function AppNavigationDrawer({
             <span>Current profile</span>
             <strong>{profileName}</strong>
             <small>{profileSubtitle}</small>
-            <Link href={`/profiles/${activeProfileId}/tracker/dashboard`} onClick={onClose}>
+            <Link data-pd-managed-navigation="true" href={`/profiles/${activeProfileId}/tracker/dashboard`} onClick={(event) => navigateFromDrawer(event, `/profiles/${activeProfileId}/tracker/dashboard`)}>
               Open dashboard
             </Link>
           </section>

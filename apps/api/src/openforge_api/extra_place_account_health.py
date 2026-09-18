@@ -21,6 +21,7 @@ def resolve_extra_place_account_health(
     status: str,
     lifecycle_status: str,
     restrictions_json: str,
+    stake_access: str = "Not Checked",
 ) -> ExtraPlaceAccountHealth:
     """Resolve safe Extra Places access without inventing capability evidence."""
     try:
@@ -34,10 +35,12 @@ def resolve_extra_place_account_health(
     } if isinstance(raw_restrictions, list) else set()
     normalized_status = status.strip().casefold()
     normalized_lifecycle = lifecycle_status.strip().casefold()
+    normalized_stake_access = stake_access.strip().casefold()
 
     hard_restrictions = {"kyc blocked", "risk blocked", "login restricted"}
     if (
         normalized_status == "blocked"
+        or normalized_stake_access == "blocked"
         or normalized_lifecycle in {"suspended", "closed", "archived"}
         or restrictions.intersection(hard_restrictions)
     ):
@@ -51,7 +54,7 @@ def resolve_extra_place_account_health(
                 )
                 if key in restrictions
             ),
-            lifecycle_status or status or "Account blocked",
+            "Stake access blocked" if normalized_stake_access == "blocked" else lifecycle_status or status or "Account blocked",
         )
         return ExtraPlaceAccountHealth(
             access_state="blocked",
@@ -77,7 +80,7 @@ def resolve_extra_place_account_health(
             allows_operational_use=False,
         )
 
-    if "soft limited" in restrictions or normalized_status in {
+    if normalized_stake_access in {"limited", "severely limited"} or "soft limited" in restrictions or normalized_status in {
         "limited",
         "stake restricted",
     }:
@@ -85,7 +88,7 @@ def resolve_extra_place_account_health(
             access_state="warning",
             capability_state="NotChecked",
             reason=(
-                "Stake restrictions recorded. Extra Places remains available, but "
+                f"{stake_access} stake access recorded. Extra Places remains available, but "
                 "check the accepted stake."
             ),
             allows_planning=True,

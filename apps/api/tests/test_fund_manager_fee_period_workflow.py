@@ -10,6 +10,7 @@ from apps.api.tests.synthetic_setup import seed_synthetic_betting_context
 from fastapi.testclient import TestClient
 
 from openforge_api.config import settings
+from openforge_api.db import connect
 from openforge_api.main import app
 
 
@@ -17,6 +18,11 @@ def configure_temp_database(tmp_path: Path) -> None:
     settings.database_url = f"sqlite:///{tmp_path / 'openforge-test.sqlite3'}"
     settings.backup_directory = str(tmp_path / "backups")
     seed_synthetic_betting_context()
+    with connect() as connection:
+        connection.execute(
+            "UPDATE profiles SET management_fee_percent = '40.00', investment_fee_percent = '0.00' WHERE profile_id = ?",
+            ("profile-demo-001",),
+        )
 
 
 def settled_sportsbook_payload(
@@ -490,7 +496,7 @@ def test_mark_as_withdrawn_atomically_creates_component_adjustments_and_links(
         f"/profiles/profile-demo-001/cash-adjustments/{management_adjustment['cash_adjustment_id']}"
     )
     assert delete_rejected.status_code == 409
-    assert delete_rejected.json()["detail"] == "fee_withdrawal_adjustment_locked"
+    assert delete_rejected.json()["detail"] == "financial_cash_adjustment_requires_correction_or_reversal"
 
 
 def test_mark_as_withdrawn_rejects_component_overdraw_without_partial_writes(

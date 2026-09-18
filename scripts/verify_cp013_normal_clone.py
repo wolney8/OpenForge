@@ -25,6 +25,14 @@ FINANCIAL_TABLES = (
     "each_way_extra_places",
 )
 NEW_TABLES = {"financial_activity_history"}
+ACCOUNT_ACCESS_COLUMNS = {
+    "stake_access",
+    "promo_access",
+    "restriction_details_json",
+    "access_evidence_note",
+    "access_source",
+    "access_observed_at",
+}
 
 
 def read_only(path: Path) -> sqlite3.Connection:
@@ -127,9 +135,11 @@ def main() -> None:
     migrated = snapshot(clone)
     if not NEW_TABLES.issubset(set(migrated["tables"])):
         raise SystemExit("Expected CP-012 history storage is absent")
+    if not ACCOUNT_ACCESS_COLUMNS.issubset(set(migrated["columns"]["accounts"])):
+        raise SystemExit("Expected #109 Account access storage is absent")
     rolled_back = snapshot(rollback)
-    if NEW_TABLES.intersection(rolled_back["tables"]):
-        raise SystemExit("Rollback copy unexpectedly contains CP-012 storage")
+    if ACCOUNT_ACCESS_COLUMNS.intersection(set(rolled_back["columns"].get("accounts", []))):
+        raise SystemExit("Rollback copy unexpectedly contains #109 Account access storage")
     if rolled_back["digests"] != before["digests"]:
         raise SystemExit("Rollback copy does not match its verified baseline")
 
@@ -141,6 +151,7 @@ def main() -> None:
                 "repeat_migration": "PASS",
                 "old_row_projection": "UNCHANGED",
                 "financial_row_counts": after["financial_row_counts"],
+                "account_access_columns": "PRESENT",
                 "integrity": migrated["integrity"],
                 "rollback_copy": "PASS",
                 "downgrade_guard": "covered by test_upgraded_sqlite_rejects_older_writer_without_schema_capability",

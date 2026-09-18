@@ -370,11 +370,11 @@ def test_calculator_exchange_default_uses_master_catalogue(tmp_path: Path) -> No
     client = TestClient(app)
     response = client.get("/fund-manager/calculators/exchanges")
     assert response.status_code == 200
-    smarkets = next(row for row in response.json() if row["catalogue_id"] == "EXCHANGE-SMARKETS")
+    smarkets = next(row for row in response.json() if row["catalogue_id"] == "EXCHANGE-DEMO-003")
     assert smarkets == {
-        "catalogue_id": "EXCHANGE-SMARKETS",
+        "catalogue_id": "EXCHANGE-DEMO-003",
         "name": "Smarkets",
-        "default_commission_rate": "0",
+        "default_commission_rate": "",
     }
 
 

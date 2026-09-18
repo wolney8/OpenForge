@@ -411,7 +411,7 @@ def get_notification_user_state(email: str) -> dict[str, list[str]]:
 
 
 def record_notification_events(email: str, notifications: list[dict[str, Any]]) -> None:
-    """Retain presentation-safe notification evidence without changing its source."""
+    """Retain one immutable event for each source-owned notification identity."""
 
     viewer_email = email.strip().casefold()
     if not viewer_email or not notifications:
@@ -424,7 +424,6 @@ def record_notification_events(email: str, notifications: list[dict[str, Any]]) 
             payload_json = json.dumps(
                 notification, sort_keys=True, separators=(",", ":")
             )
-            payload_fingerprint = hashlib.sha256(payload_json.encode("utf-8")).hexdigest()
             connection.execute(
                 """
                 INSERT INTO notification_events (
@@ -434,7 +433,7 @@ def record_notification_events(email: str, notifications: list[dict[str, Any]]) 
                 ON CONFLICT(event_id) DO NOTHING
                 """,
                 (
-                    f"notification-event:{viewer_email}:{notification_id}:{payload_fingerprint}",
+                    f"notification-event:{viewer_email}:{notification_id}",
                     viewer_email,
                     notification_id,
                     str(notification.get("profile_id") or ""),
@@ -1159,6 +1158,12 @@ def initialize_database(connection: sqlite3.Connection) -> None:
           lifecycle_status TEXT NOT NULL DEFAULT 'Active',
           signup_offer_status TEXT NOT NULL DEFAULT 'Unknown',
           restrictions_json TEXT NOT NULL DEFAULT '[]',
+          stake_access TEXT NOT NULL DEFAULT 'Not Checked',
+          promo_access TEXT NOT NULL DEFAULT 'Not Checked',
+          restriction_details_json TEXT NOT NULL DEFAULT '{}',
+          access_evidence_note TEXT NOT NULL DEFAULT '',
+          access_source TEXT NOT NULL DEFAULT '',
+          access_observed_at TEXT NOT NULL DEFAULT '',
           current_balance TEXT NOT NULL,
           pending_withdrawal_amount TEXT NOT NULL,
           last_balance_update TEXT NOT NULL,
@@ -2276,6 +2281,12 @@ def initialize_database(connection: sqlite3.Connection) -> None:
         "signup_offer_status",
         "TEXT NOT NULL DEFAULT 'Unknown'",
     )
+    ensure_column(connection, "accounts", "stake_access", "TEXT NOT NULL DEFAULT 'Not Checked'")
+    ensure_column(connection, "accounts", "promo_access", "TEXT NOT NULL DEFAULT 'Not Checked'")
+    ensure_column(connection, "accounts", "restriction_details_json", "TEXT NOT NULL DEFAULT '{}'")
+    ensure_column(connection, "accounts", "access_evidence_note", "TEXT NOT NULL DEFAULT ''")
+    ensure_column(connection, "accounts", "access_source", "TEXT NOT NULL DEFAULT ''")
+    ensure_column(connection, "accounts", "access_observed_at", "TEXT NOT NULL DEFAULT ''")
     ensure_column(
         connection,
         "multi_profile_opportunities",
@@ -3634,6 +3645,7 @@ def write_audit_entry(
     profile_id: str,
     action: str,
     payload: dict[str, Any],
+    changed_at: str | None = None,
 ) -> None:
     connection.execute(
         """
@@ -3651,7 +3663,7 @@ def write_audit_entry(
             sportsbook_bet_id,
             profile_id,
             action,
-            utc_now(),
+            changed_at or utc_now(),
             json.dumps(payload, sort_keys=True),
         ),
     )
@@ -4558,7 +4570,11 @@ def update_sportsbook_partial_lay_reminder(
     resolved = state in {"Resolved", "Dismissed"}
     resolved_at = utc_now() if resolved else ""
     resolved_by = actor_id if resolved else ""
-    updated_at = utc_now()
+    # Reminder revisions form the durable notification identity. Keep sub-second
+    # precision so a resolve/reopen sequence cannot collapse into one event.
+    updated_at = datetime.now(UTC).isoformat(timespec="microseconds").replace(
+        "+00:00", "Z"
+    )
 
     if state == "Active":
         if previous_state in {"Resolved", "Dismissed"}:
@@ -4615,6 +4631,7 @@ def update_sportsbook_partial_lay_reminder(
             profile_id=profile_id,
             action=action,
             payload=audit_payload,
+            changed_at=updated_at,
         )
 
     return get_sportsbook_bet(profile_id, sportsbook_bet_id)
@@ -6940,6 +6957,12 @@ class AccountRecord:
     lifecycle_status: str
     signup_offer_status: str
     restrictions_json: str
+    stake_access: str
+    promo_access: str
+    restriction_details_json: str
+    access_evidence_note: str
+    access_source: str
+    access_observed_at: str
     current_balance: str
     pending_withdrawal_amount: str
     last_balance_update: str
@@ -9513,7 +9536,7 @@ def confirm_free_bet_import_batch(
     tracker_settings = get_profile_tracker_settings(profile_id)
     commission_cache = get_profile_exchange_commission_map(profile_id)
     imported_ids: list[str] = []
-    with connect() as connection:
+    with connect() as connection, reuse_mutation_connection(connection):
         batch = connection.execute(
             """
             SELECT *
@@ -10188,11 +10211,21 @@ def confirm_account_import_batch(
                 "account_id": target_account_id if is_update else f"AC-{uuid4().hex[:8].upper()}",
                 "profile_id": profile_id,
                 "bookmaker_id": None,
+                "catalogue_id": payload.get("catalogue_id"),
                 "account": payload["account"],
                 "type": payload["type"],
                 "counts_in_cash_total": int(bool(payload["counts_in_cash_total"])),
                 "channel": payload["channel"],
                 "status": payload["status"],
+                "lifecycle_status": payload.get("lifecycle_status", "Active"),
+                "signup_offer_status": payload.get("signup_offer_status", "Unknown"),
+                "restrictions_json": json.dumps(payload.get("restrictions", [])),
+                "stake_access": payload.get("stake_access", "Not Checked"),
+                "promo_access": payload.get("promo_access", "Not Checked"),
+                "restriction_details_json": payload.get("restriction_details_json", "{}"),
+                "access_evidence_note": payload.get("access_evidence_note", ""),
+                "access_source": payload.get("access_source") or "workbook_import",
+                "access_observed_at": payload.get("access_observed_at", ""),
                 "current_balance": payload["current_balance"],
                 "pending_withdrawal_amount": payload["pending_withdrawal_amount"],
                 "last_balance_update": payload["last_balance_update"],
@@ -10207,19 +10240,32 @@ def confirm_account_import_batch(
                 connection.execute(
                     """
                     UPDATE accounts SET
-                      bookmaker_id = ?, account = ?, type = ?, counts_in_cash_total = ?,
-                      channel = ?, status = ?, current_balance = ?,
+                      bookmaker_id = ?, catalogue_id = ?, account = ?, type = ?, counts_in_cash_total = ?,
+                      channel = ?, status = ?, lifecycle_status = ?, signup_offer_status = ?,
+                      restrictions_json = ?, stake_access = ?, promo_access = ?,
+                      restriction_details_json = ?, access_evidence_note = ?, access_source = ?,
+                      access_observed_at = ?, current_balance = ?,
                       pending_withdrawal_amount = ?, last_balance_update = ?, group_name = ?,
                       platform = ?, sign_up_date = ?, notes = ?, updated_at = ?
                     WHERE profile_id = ? AND account_id = ?
                     """,
                     (
                         record["bookmaker_id"],
+                        record["catalogue_id"],
                         record["account"],
                         record["type"],
                         record["counts_in_cash_total"],
                         record["channel"],
                         record["status"],
+                        record["lifecycle_status"],
+                        record["signup_offer_status"],
+                        record["restrictions_json"],
+                        record["stake_access"],
+                        record["promo_access"],
+                        record["restriction_details_json"],
+                        record["access_evidence_note"],
+                        record["access_source"],
+                        record["access_observed_at"],
                         record["current_balance"],
                         record["pending_withdrawal_amount"],
                         record["last_balance_update"],
@@ -10236,11 +10282,14 @@ def confirm_account_import_batch(
                 connection.execute(
                     """
                     INSERT INTO accounts (
-                      account_id, profile_id, bookmaker_id, account, type,
-                      counts_in_cash_total, channel, status, current_balance,
+                      account_id, profile_id, bookmaker_id, catalogue_id, account, type,
+                      counts_in_cash_total, channel, status, lifecycle_status,
+                      signup_offer_status, restrictions_json, stake_access, promo_access,
+                      restriction_details_json, access_evidence_note, access_source,
+                      access_observed_at, current_balance,
                       pending_withdrawal_amount, last_balance_update, group_name,
                       platform, sign_up_date, notes, created_at, updated_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     tuple(record.values()),
                 )
@@ -10506,6 +10555,12 @@ def create_account_with_exchange_commission(
         "lifecycle_status": payload.get("lifecycle_status", "Active"),
         "signup_offer_status": payload.get("signup_offer_status", "Unknown"),
         "restrictions_json": payload.get("restrictions_json", "[]"),
+        "stake_access": payload.get("stake_access", "Not Checked"),
+        "promo_access": payload.get("promo_access", "Not Checked"),
+        "restriction_details_json": payload.get("restriction_details_json", "{}"),
+        "access_evidence_note": payload.get("access_evidence_note", ""),
+        "access_source": payload.get("access_source", ""),
+        "access_observed_at": payload.get("access_observed_at", ""),
         "current_balance": payload["current_balance"],
         "pending_withdrawal_amount": payload["pending_withdrawal_amount"],
         "last_balance_update": payload["last_balance_update"],
@@ -10532,6 +10587,12 @@ def create_account_with_exchange_commission(
               lifecycle_status,
               signup_offer_status,
               restrictions_json,
+              stake_access,
+              promo_access,
+              restriction_details_json,
+              access_evidence_note,
+              access_source,
+              access_observed_at,
               current_balance,
               pending_withdrawal_amount,
               last_balance_update,
@@ -10541,7 +10602,7 @@ def create_account_with_exchange_commission(
               notes,
               created_at,
               updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             tuple(record.values()),
         )
@@ -10608,6 +10669,12 @@ def update_account(
         "lifecycle_status": payload.get("lifecycle_status", "Active"),
         "signup_offer_status": payload.get("signup_offer_status", "Unknown"),
         "restrictions_json": payload.get("restrictions_json", "[]"),
+        "stake_access": payload.get("stake_access", existing.stake_access),
+        "promo_access": payload.get("promo_access", existing.promo_access),
+        "restriction_details_json": payload.get("restriction_details_json", existing.restriction_details_json),
+        "access_evidence_note": payload.get("access_evidence_note", existing.access_evidence_note),
+        "access_source": payload.get("access_source", existing.access_source),
+        "access_observed_at": payload.get("access_observed_at", existing.access_observed_at),
         "current_balance": payload.get("current_balance", existing.current_balance),
         "pending_withdrawal_amount": payload.get(
             "pending_withdrawal_amount", existing.pending_withdrawal_amount
@@ -10634,6 +10701,12 @@ def update_account(
               lifecycle_status = ?,
               signup_offer_status = ?,
               restrictions_json = ?,
+              stake_access = ?,
+              promo_access = ?,
+              restriction_details_json = ?,
+              access_evidence_note = ?,
+              access_source = ?,
+              access_observed_at = ?,
               current_balance = ?,
               pending_withdrawal_amount = ?,
               last_balance_update = ?,
@@ -10655,6 +10728,12 @@ def update_account(
                 updated["lifecycle_status"],
                 updated["signup_offer_status"],
                 updated["restrictions_json"],
+                updated["stake_access"],
+                updated["promo_access"],
+                updated["restriction_details_json"],
+                updated["access_evidence_note"],
+                updated["access_source"],
+                updated["access_observed_at"],
                 updated["current_balance"],
                 updated["pending_withdrawal_amount"],
                 updated["last_balance_update"],

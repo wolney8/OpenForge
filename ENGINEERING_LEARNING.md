@@ -1,16 +1,27 @@
 # Engineering Learning — Plum Duff / OpenForge — Doc ID: EL-CODEX-001
 
-**Last updated:** 2026-09-18 09:15 BST
+**Last updated:** 2026-09-18 11:20 BST
 
 This is a compact notebook of transferable lessons from building Plum Duff. It is not the audit,
 roadmap, backlog or evidence record.
 
 ## Current learning focus
 
-- Building deterministic fixtures that do not inherit private owner state.
-- Separating a capability classification from time-bound evidence and restriction details.
+- Applying deterministic state precedence when several fields influence one eligibility decision.
+- Keeping regression evidence hermetic and independent of private owner state.
 
 ## Concepts worth remembering
+
+### State precedence
+
+**What it means:** Related states have one explicit order of authority, so the same inputs always
+produce the same eligibility decision.
+
+**Why it mattered in Plum Duff:** A hard login, KYC or risk block makes an Account unavailable even
+when old Stake or Promo access values look permissive; the access fields then refine an operational
+Account without duplicating lifecycle status.
+
+**Remember:** Define which state wins before combining related classifications.
 
 ### Deterministic test fixtures
 
@@ -269,10 +280,9 @@ source checkout and safe database identity.
 
 **Portability status:** Concern
 
-**Reason:** SQLite/PostgreSQL test targets, source roots and endpoints have an explicit fail-closed
-runtime contract, and committed synthetic seeds removed 122 hidden-state failures. The remaining 21
-fixture/contract failures, fixed local ports, macOS/Python architecture, Google authentication and
-hosted recovery remain environment-specific.
+**Reason:** SQLite/PostgreSQL targets, source roots and endpoints have an explicit fail-closed runtime
+contract, and the broad API suite now has zero hidden-state failures. Fixed local ports,
+macOS/Python architecture, Google authentication and hosted recovery remain environment-specific.
 
 **Smallest improvement:** Make the hosted runtime role and database identity explicit in approved
 deployment configuration before any Vercel/Neon work.
@@ -293,6 +303,7 @@ deployment configuration before any Vercel/Neon work.
 | CP-016 | 2026-09-17 14:46 BST | End-to-end journeys; lifecycle versus financial state | Full journeys exposed a mislabelled Void and proved that archive visibility can change without erasing retained P&L |
 | CP-017 | 2026-09-17 15:59 BST | Reconciliation; idempotent business operations | Cash movement stayed distinct from observed balances, while award and adjustment retries recovered one logical result without duplication |
 | CP-018 | 2026-09-18 09:15 BST | Deterministic fixtures; capability versus observation | Explicit synthetic seeds removed hidden-state failures, while #109 separates stable access classes from restriction evidence and freshness |
+| CP-019 | 2026-09-18 11:20 BST | State precedence; test hermeticity | Account eligibility now has one governing order, while all ordinary API regressions run without owner data or hidden seeds |
 
 ## Where detailed evidence lives
 

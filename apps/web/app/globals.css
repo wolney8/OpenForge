@@ -2589,6 +2589,36 @@ html[data-theme="dark"] .notification-count-badge {
   padding: 0.5rem 0.75rem;
 }
 
+.dashboard-chart-drilldown {
+  margin-block-start: 0.5rem;
+  padding: 0.75rem;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--shape-medium);
+  background: var(--surface-container-low);
+}
+
+.dashboard-chart-drilldown h4,
+.dashboard-chart-drilldown p {
+  margin: 0;
+}
+
+.dashboard-chart-drilldown ul {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dashboard-chart-drilldown a {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: center;
+  min-block-size: 44px;
+  color: inherit;
+}
+
 .dashboard-chart-point-detail > span:first-child {
   color: var(--muted);
   font-weight: 750;
@@ -6932,6 +6962,99 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
   border: 1px solid var(--outline);
   border-radius: var(--shape-large);
   background: var(--surface-container);
+}
+
+[data-pd-id="accounts.editor.access"] {
+  box-sizing: border-box;
+  container-type: inline-size;
+  inline-size: 100%;
+  overflow-wrap: anywhere;
+}
+
+[data-pd-id="accounts.editor.access"] .form-grid,
+[data-pd-id="accounts.editor.access"] fieldset,
+[data-pd-id="accounts.editor.access"] .review-chip-row {
+  box-sizing: border-box;
+  inline-size: 100%;
+  min-width: 0;
+}
+
+[data-pd-id="accounts.editor.access"] .form-grid > *,
+[data-pd-id="accounts.editor.access"] .field-control,
+[data-pd-id="accounts.editor.access"] .field-control > span {
+  box-sizing: border-box;
+  max-inline-size: 100%;
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+
+@container (max-width: 36rem) {
+  [data-pd-id="accounts.editor.access"] .form-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  [data-pd-id="accounts.editor.access"] .field-span-2 {
+    grid-column: auto;
+  }
+
+  [data-pd-id="accounts.editor.access"] fieldset.account-editor-choice-section {
+    padding: 0.75rem;
+  }
+
+  [data-pd-id="accounts.editor.access"] .review-chip {
+    flex: 1 1 9rem;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+}
+
+@media (max-width: 720px) {
+  .page-shell {
+    width: calc(100% - 1rem);
+  }
+
+  .hero-panel,
+  .content-panel {
+    padding: min(1rem, 4vw);
+  }
+
+  .content-subpanel {
+    padding: min(0.8rem, 3.5vw);
+  }
+
+  .sportsbook-review-bar .extra-place-toolbar-actions {
+    inline-size: 100%;
+    max-inline-size: 100%;
+    min-inline-size: 0;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  [data-pd-id="accounts.editor.access"] .form-grid,
+  [data-pd-id="accounts.editor.access"] .material-date-time-field {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  [data-pd-id="accounts.editor.access"] .form-grid > *,
+  [data-pd-id="accounts.editor.access"] .field-control,
+  [data-pd-id="accounts.editor.access"] fieldset {
+    inline-size: 100%;
+    max-inline-size: 100%;
+  }
+
+  .accounts-editor-modal .quick-actions-ledger-header,
+  .accounts-editor-modal .quick-actions-ledger-header > *,
+  .accounts-editor-modal .field-hint,
+  .accounts-editor-modal .modal-primary-button,
+  .accounts-editor-modal .review-chip-row,
+  .accounts-editor-modal .review-chip {
+    inline-size: 100%;
+    max-inline-size: 100%;
+    min-inline-size: 0;
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
 }
 
 .account-editor-choice-section .field-label {

@@ -82,11 +82,10 @@ def test_catalogue_create_link_archive_and_legacy_backfill(tmp_path: Path) -> No
     account_response = client.post(
         "/profiles/profile-demo-001/accounts", json=account_payload
     )
-    assert account_response.status_code == 201
-    account = account_response.json()
-    assert account["account"] == "Bookmaker A Test"
-    assert account["group_name"] == "Demo Group"
-    assert account["platform"] == "Demo Platform"
+    # The legacy catalogue record is not automatically a master Account
+    # Catalogue authority. Linking requires an explicit committed provider.
+    assert account_response.status_code == 422
+    assert "account catalogue" in str(account_response.json()).casefold()
 
     archive_response = client.put(
         f"/bookmaker-catalogue/{created['bookmaker_id']}",

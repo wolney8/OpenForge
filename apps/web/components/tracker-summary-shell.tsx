@@ -269,8 +269,11 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
   const [errorMessage, setErrorMessage] = useState("");
   const [loadRevision, setLoadRevision] = useState(0);
   const trackerRangeMutationInFlight = useRef(false);
+  const loadRequestIdRef = useRef(0);
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (signal?: AbortSignal) => {
+    const requestId = ++loadRequestIdRef.current;
+    const isCurrentRequest = () => requestId === loadRequestIdRef.current && !signal?.aborted;
     const urls = {
       accounts: `${apiBaseUrl}/profiles/${profileId}/accounts`,
       sportsbookBets: `${apiBaseUrl}/profiles/${profileId}/sportsbook-bets`,
@@ -332,20 +335,23 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
       cachedData.balanceSnapshots &&
       cachedData.feePeriods
     ) {
-      setSettings(cachedSettings);
-      setData({
-        accounts: cachedData.accounts,
-        sportsbookBets: cachedData.sportsbookBets,
-        freeBets: cachedData.freeBets,
-        casinoOffers: cachedData.casinoOffers,
-        cashAdjustments: cachedData.cashAdjustments,
-        eachWayExtraPlaces: cachedData.eachWayExtraPlaces,
-        balanceSnapshots: cachedData.balanceSnapshots,
-      });
-      setFeePeriods(cachedData.feePeriods);
+      if (isCurrentRequest()) {
+        setSettings(cachedSettings);
+        setData({
+          accounts: cachedData.accounts,
+          sportsbookBets: cachedData.sportsbookBets,
+          freeBets: cachedData.freeBets,
+          casinoOffers: cachedData.casinoOffers,
+          cashAdjustments: cachedData.cashAdjustments,
+          eachWayExtraPlaces: cachedData.eachWayExtraPlaces,
+          balanceSnapshots: cachedData.balanceSnapshots,
+        });
+        setFeePeriods(cachedData.feePeriods);
+      }
     }
 
-    const sources = await fetchTrackerSummarySources(profileId);
+    const sources = await fetchTrackerSummarySources(profileId, { signal });
+    if (!isCurrentRequest()) return;
     setSettings(sources.trackerSettings as TrackerSettingsRecord);
     setFeePeriods(sources.feePeriods);
     setData({
@@ -360,17 +366,24 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
   }, [profileId]);
 
   useEffect(() => {
+    const controller = new AbortController();
     const timeoutId = window.setTimeout(() => {
-      void loadData()
+      void loadData(controller.signal)
         .then(() => {
-          setErrorMessage("");
+          if (!controller.signal.aborted) setErrorMessage("");
         })
         .catch((error: unknown) => {
-          setErrorMessage(readErrorMessage(error, "Unable to load tracker summaries"));
+          if (!controller.signal.aborted) {
+            setErrorMessage(readErrorMessage(error, "Unable to load tracker summaries"));
+          }
         });
     }, 0);
 
-    return () => window.clearTimeout(timeoutId);
+    return () => {
+      controller.abort();
+      loadRequestIdRef.current += 1;
+      window.clearTimeout(timeoutId);
+    };
   }, [loadData, loadRevision]);
 
   useEffect(() => {

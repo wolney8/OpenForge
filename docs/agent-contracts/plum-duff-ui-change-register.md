@@ -1,5 +1,14 @@
 # Plum Duff UI Change Register
 
+## CP-019 active batch
+
+| ID | Surface | Requested outcome | Signed-off equivalent | State |
+| --- | --- | --- | --- | --- |
+| PD-FIX-245 | Guided Profile onboarding | Confirmed drawer navigation leaves once, while saved Profiles land and reopen with persisted values | Shared unsaved-change guard and normal Profile dashboard | COMPLETE — full eight-check browser journey passes, including save/reopen, confirmed discard, narrow and 200% text |
+| PD-FIX-246 | Dashboard report chart | A selected keyboard/pointer point reveals its reconciled underlying records and Profile-scoped ledger destinations | Existing point-detail and compact dashboard list surfaces | COMPLETE — keyboard and pointer selection expose reconciled records, destinations and retained back context |
+| PD-FIX-247 | Populated async report/list state | Newer Profile/range/filter state survives a delayed older response and service recovery | Existing request-version and committed-range guards | COMPLETE — deterministic 200-record browser evidence covers delayed A/B reads, 503 recovery and reload |
+
+
 ## 2026-09-17 CP-017 restored award-lineage consumer repair
 
 PD-FIX-244 is COMPLETE locally. The Sportsbook editor's existing Linked Free Bets panel now uses

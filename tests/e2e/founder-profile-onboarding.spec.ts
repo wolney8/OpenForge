@@ -214,6 +214,35 @@ test("Profile onboarding uses catalogue authority and saves optional Quick Actio
       }),
     });
   });
+  await page.route(/\/profiles\/?(?:\?.*)?$/, async (route) => {
+    if (route.request().method() !== "GET" || route.request().resourceType() === "document") {
+      return route.fallback();
+    }
+    await route.fulfill({ json: [{
+      current_cash_snapshot: "150.00",
+      display_name: "Synthetic Profile",
+      investment_fee_percent: "20.00",
+      management_fee_percent: "30.00",
+      profile_code: "PROFILE-001",
+      profile_id: "profile-demo-001",
+      status: "Active",
+      tracking_start_date: "2026-09-18",
+    }] });
+  });
+  await page.route("**/profiles/profile-demo-001/**", async (route) => {
+    if (route.request().method() !== "GET" || route.request().resourceType() === "document") {
+      return route.fallback();
+    }
+    const pathname = new URL(route.request().url()).pathname;
+    await route.fulfill({ json: pathname.endsWith("/tracker-summary-sources") ? {
+      accounts: [], balance_snapshots: [], casino_offers: [], cash_adjustments: [],
+      each_way_extra_places: [], fee_periods: [], free_bets: [], sportsbook_bets: [],
+      tracker_settings: {
+        active_date_preset: "This Month", custom_end_date: "", custom_start_date: "",
+        range_back_days: 0, range_forward_days: 0,
+      },
+    } : [] });
+  });
 
   await page.goto("/profiles/new");
   await expect(page.getByRole("heading", { name: "Create Profile" })).toBeVisible();
@@ -277,6 +306,10 @@ test("Profile onboarding uses catalogue authority and saves optional Quick Actio
   await expect(page.getByText("£ 150.00")).toBeVisible();
   await page.getByRole("button", { name: "Create Profile" }).click();
   await expect(page).toHaveURL(/\/profiles\/profile-demo-001\/tracker\/dashboard$/);
+  await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
+  await page.reload();
+  await expect(page).toHaveURL(/\/profiles\/profile-demo-001\/tracker\/dashboard$/);
+  await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
 
   expect(submitted).toBeDefined();
   expect(submitted?.enabled_modules).not.toContain("casino-offers");
@@ -422,6 +455,8 @@ test("Profile onboarding drawer navigation uses one platform guard and closes th
     await route.fulfill({ contentType: "application/json", body: "[]" });
   });
   const nativeDialogs: string[] = [];
+  const runtimeErrors: string[] = [];
+  page.on("pageerror", (error) => runtimeErrors.push(error.message));
   page.on("dialog", async (dialog) => {
     nativeDialogs.push(dialog.type());
     await dialog.dismiss();
@@ -430,12 +465,16 @@ test("Profile onboarding drawer navigation uses one platform guard and closes th
 
   await page.getByLabel("Display Name").fill("Unsaved Profile");
   await page.locator('[data-pd-id="app-navigation.trigger"]').click();
-  await page.locator('[data-pd-id="app-navigation.dashboard"]').click();
+  const dashboardLink = page.locator('[data-pd-id="app-navigation.dashboard"]');
+  await expect(dashboardLink).toHaveAttribute("data-pd-managed-navigation", "true");
+  await dashboardLink.click();
 
   const guard = page.getByRole("dialog", { name: "Unsaved tracker changes" });
   await expect(guard).toBeVisible();
+  await expect(guard).toHaveAttribute("data-navigation-href", "/");
   await expect(page.getByRole("dialog", { name: "Plum Duff navigation" })).toBeHidden();
   await guard.getByRole("button", { name: "Discard Changes" }).click();
-  await expect(page).toHaveURL(/\/$/);
+  await expect.poll(() => runtimeErrors).toEqual([]);
   expect(nativeDialogs).toEqual([]);
+  await expect(page).toHaveURL(/\/$/);
 });

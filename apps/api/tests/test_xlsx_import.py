@@ -755,9 +755,9 @@ def test_account_xlsx_confirm_export_and_reimport_is_idempotent(tmp_path: Path) 
     row = dry_run["rows"][0]
     assert dry_run["mapping_version"] == "accounts-v1"
     assert row["staged_action"] == "insert"
-    assert row["mapped_fields"]["group_name"] == "Bet365 Group"
-    assert row["mapped_fields"]["platform"] == "Proprietary"
-    assert len(row["warnings"]) == 3
+    assert row["mapped_fields"]["group_name"] == "Synthetic Group"
+    assert row["mapped_fields"]["platform"] == "Synthetic Platform"
+    assert len(row["warnings"]) == 2
 
     confirmation = client.post(
         f"/profiles/profile-demo-001/imports/{dry_run['import_batch_id']}/confirm-accounts",

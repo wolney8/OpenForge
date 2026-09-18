@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildDashboardTrendFromDataset,
+  buildDashboardDrilldownRows,
   buildDashboardTargetProgress,
   getDashboardShortcutForPreset,
   mapDashboardShortcutToPreset,
@@ -211,6 +212,15 @@ describe("dashboard target progress", () => {
 });
 
 describe("dashboard range-aware trends", () => {
+  it("reconciles a selected point to its underlying records", () => {
+    const range = resolveDateRange({ preset: "Custom", customStart: "2026-07-06", customEnd: "2026-07-12" });
+    const dataset = emptyDataset();
+    dataset.sportsbookBets = [sportsbookRow({ id: "SB-001", date: "2026-07-06T12:00:00", value: "10.00" }), sportsbookRow({ id: "SB-002", date: "2026-07-08T12:00:00", value: "-2.50" })];
+    const trend = buildDashboardTrendFromDataset({ dataset, range, summary: summaryWithPnl(7.5) });
+    const rows = buildDashboardDrilldownRows({ dataset, range, pointKey: trend[0].key });
+    expect(rows).toEqual([{ id: "SB-001", module: "sportsbook-bets", label: "Synthetic match", value: 10 }]);
+    expect(rows.reduce((total, row) => total + row.value, 0)).toBe(trend[0].value);
+  });
   it("buckets week ranges by day and preserves the selected-range summary total", () => {
     const range = resolveDateRange({
       preset: "Custom",

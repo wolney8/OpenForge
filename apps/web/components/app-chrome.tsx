@@ -48,6 +48,7 @@ import {
 } from "@/lib/recent-profiles";
 import { beginRouteTransition } from "@/lib/shell-loading";
 import {
+  APP_CONFIRMED_NAVIGATION_EVENT,
   APP_CONFIRMATION_OPEN_EVENT,
   confirmUnsavedTrackerChanges,
   useUnsavedChangesPromptController,
@@ -254,6 +255,20 @@ function AppChromeContent({
       window.removeEventListener(APP_CONFIRMATION_OPEN_EVENT, closeShellDrawersForConfirmation);
     };
   }, []);
+
+  useEffect(() => {
+    const continueConfirmedNavigation = (event: Event) => {
+      const detail = (event as CustomEvent<{ handled: boolean; href: string }>).detail;
+      if (!detail?.href) return;
+      const destination = new URL(detail.href, window.location.href);
+      if (destination.origin !== window.location.origin) return;
+      detail.handled = true;
+      beginRouteTransition();
+      router.push(`${destination.pathname}${destination.search}${destination.hash}`);
+    };
+    window.addEventListener(APP_CONFIRMED_NAVIGATION_EVENT, continueConfirmedNavigation);
+    return () => window.removeEventListener(APP_CONFIRMED_NAVIGATION_EVENT, continueConfirmedNavigation);
+  }, [router]);
 
   useEffect(() => {
     if (isPublicAuthRoute) {
@@ -879,6 +894,7 @@ function AppChromeContent({
             aria-label={unsavedPrompt.request.accessibleName}
             aria-modal="true"
             className="modal-panel unsaved-changes-dialog"
+            data-navigation-href={unsavedPrompt.request.navigationHref}
             data-pd-id="unsaved-changes.dialog"
             onClick={(event) => event.stopPropagation()}
             role="dialog"
@@ -911,15 +927,34 @@ function AppChromeContent({
               >
                 {unsavedPrompt.request.cancelLabel}
               </button>
-              <button
-                className="icon-button icon-button-destructive"
-                data-pd-id="unsaved-changes.discard"
-                onClick={() => unsavedPrompt.respond(true)}
-                type="button"
-              >
-                <span aria-hidden="true" className="material-symbols-outlined">delete</span>
-                <span>{unsavedPrompt.request.confirmLabel}</span>
-              </button>
+              {unsavedPrompt.request.navigationHref ? (
+                <form action={unsavedPrompt.request.navigationHref} method="get">
+                  <button
+                    className="icon-button icon-button-destructive"
+                    data-pd-confirmed-navigation="true"
+                    data-pd-id="unsaved-changes.discard"
+                    onPointerDown={() => {
+                      const href = unsavedPrompt.request?.navigationHref;
+                      unsavedPrompt.respond(true);
+                      if (href) router.push(href);
+                    }}
+                    type="submit"
+                  >
+                    <span aria-hidden="true" className="material-symbols-outlined">delete</span>
+                    <span>{unsavedPrompt.request.confirmLabel}</span>
+                  </button>
+                </form>
+              ) : (
+                <button
+                  className="icon-button icon-button-destructive"
+                  data-pd-id="unsaved-changes.discard"
+                  onClick={() => unsavedPrompt.respond(true)}
+                  type="button"
+                >
+                  <span aria-hidden="true" className="material-symbols-outlined">delete</span>
+                  <span>{unsavedPrompt.request.confirmLabel}</span>
+                </button>
+              )}
             </footer>
           </section>
         </div>

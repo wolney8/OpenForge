@@ -99,6 +99,14 @@ app.include_router(lookup_values_router)
 
 def _schema_version(connection: object) -> str:
     try:
+        account_columns = connection.execute(  # type: ignore[attr-defined]
+            "SELECT stake_access, promo_access FROM accounts LIMIT 1"
+        )
+        account_columns.fetchone()
+        return "account-access-v1"
+    except Exception:
+        pass
+    try:
         migration = connection.execute(  # type: ignore[attr-defined]
             "SELECT migration_id FROM schema_migrations ORDER BY migration_id DESC LIMIT 1"
         ).fetchone()

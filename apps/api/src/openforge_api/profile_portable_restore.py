@@ -621,6 +621,7 @@ def _validate_domain_rows(parsed: ParsedPortableBackup) -> None:
     for row in parsed.sheets["Accounts"]:
         restrictions_value = row.get("restrictions_json") or "[]"
         restrictions = json.loads(str(restrictions_value))
+        restriction_details = json.loads(str(row.get("restriction_details_json") or "{}"))
         payload = AccountPayload.model_validate(
             {
                 **{
@@ -629,6 +630,7 @@ def _validate_domain_rows(parsed: ParsedPortableBackup) -> None:
                     if key not in REFERENCE_COLUMNS["Accounts"]
                 },
                 "restrictions": restrictions,
+                "restriction_details": restriction_details,
             }
         )
         lifecycle, _restrictions = resolve_account_lifecycle_and_restrictions(

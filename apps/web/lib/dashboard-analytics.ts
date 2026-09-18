@@ -33,6 +33,13 @@ export type DashboardTrendPoint = {
   cumulativeValue: number;
 };
 
+export type DashboardDrilldownRow = {
+  id: string;
+  module: "sportsbook-bets" | "free-bets" | "casino-offers" | "each-way-extra-places" | "cash-adjustments";
+  label: string;
+  value: number;
+};
+
 const dashboardDisplayModes: DashboardDisplayMode[] = [
   "Compact",
   "High-Density",
@@ -221,6 +228,10 @@ export function buildDashboardTrendFromDataset({
       date: parseDashboardDate(row.placed_at) ?? range.start,
       value: parseDashboardMoney(row.final_value ?? row.current_value),
     })),
+    ...dataset.cashAdjustments.map((row) => ({
+      date: parseDashboardDate(row.adjustment_date) ?? range.start,
+      value: parseDashboardMoney(row.signed_amount),
+    })),
   ].filter((row) => isDateInRange(row.date, range));
 
   const buckets = new Map<string, number>();
@@ -264,6 +275,28 @@ export function buildDashboardTrendFromDataset({
   }
 
   return points;
+}
+
+export function buildDashboardDrilldownRows({
+  dataset,
+  pointKey,
+  range,
+}: {
+  dataset: TrackerSummaryDataset;
+  pointKey: string;
+  range: ResolvedDateRange;
+}): DashboardDrilldownRow[] {
+  const bucket = getTrendBucket(range);
+  const rows: Array<DashboardDrilldownRow & { date: Date }> = [
+    ...dataset.sportsbookBets.map((row) => ({ id: row.sportsbook_bet_id, module: "sportsbook-bets" as const, label: row.event_name || row.offer_name || "Sportsbook activity", date: parseDashboardDate(row.date_settled) ?? parseDashboardDate(row.created_at) ?? range.start, value: parseDashboardMoney(row.reporting_value) })),
+    ...dataset.freeBets.map((row) => ({ id: row.free_bet_id, module: "free-bets" as const, label: row.event_name || "Free Bet activity", date: parseDashboardDate(row.date_settled) ?? parseDashboardDate(row.expiry_datetime) ?? parseDashboardDate(row.created_at) ?? range.start, value: parseDashboardMoney(row.reporting_value) })),
+    ...dataset.casinoOffers.map((row) => ({ id: row.casino_offer_id, module: "casino-offers" as const, label: row.offer_name || "Casino activity", date: parseDashboardDate(row.date_settling) ?? parseDashboardDate(row.date_started) ?? parseDashboardDate(row.expiry_datetime) ?? range.start, value: parseDashboardMoney(row.resolved_net_pnl) })),
+    ...(dataset.eachWayExtraPlaces ?? []).map((row) => ({ id: row.each_way_extra_place_id, module: "each-way-extra-places" as const, label: row.runner || row.race || "Each Way / Extra Place activity", date: parseDashboardDate(row.placed_at) ?? range.start, value: parseDashboardMoney(row.final_value ?? row.current_value) })),
+    ...dataset.cashAdjustments.map((row) => ({ id: row.cash_adjustment_id, module: "cash-adjustments" as const, label: row.description || row.adjustment_type || "Cash adjustment", date: parseDashboardDate(row.adjustment_date) ?? range.start, value: parseDashboardMoney(row.signed_amount) })),
+  ];
+  return rows
+    .filter((row) => isDateInRange(row.date, range) && getBucketKey(row.date, bucket) === pointKey)
+    .map(({ date: _date, ...row }) => row);
 }
 
 export function buildSparklinePoints(points: Array<{ value: number }>): { line: string; area: string } {

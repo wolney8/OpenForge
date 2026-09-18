@@ -164,12 +164,14 @@ SHEET_SPECS = (
         _fields(
             "account_id profile_id catalogue_id bookmaker_id account type counts_in_cash_total "
             "channel status lifecycle_status signup_offer_status restrictions_json "
+            "stake_access promo_access restriction_details_json access_evidence_note "
+            "access_source access_observed_at "
             "current_balance pending_withdrawal_amount last_balance_update group_name platform "
             "sign_up_date notes created_at updated_at"
         ),
         ("account_id",),
         decimal_fields=frozenset({"current_balance", "pending_withdrawal_amount"}),
-        json_fields=frozenset({"restrictions_json"}),
+        json_fields=frozenset({"restrictions_json", "restriction_details_json"}),
         boolean_fields=frozenset({"counts_in_cash_total"}),
         timestamp_fields=COMMON_TIMESTAMPS | frozenset({"last_balance_update"}),
     ),

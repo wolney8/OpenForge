@@ -132,6 +132,20 @@ test("dashboard containers coordinate financial, bar, and ring replay without la
   );
   await firstPoint.press("Enter");
   await expect(firstPoint).toHaveClass(/is-selected/);
+  const pointRecords = performanceCard.locator('[data-pd-id="dashboard.chart.drilldown"]');
+  await expect(pointRecords).toBeVisible();
+  await expect(pointRecords.getByRole("heading", { name: "Records in this point" })).toBeVisible();
+  const underlyingRecord = pointRecords.getByRole("link", { name: /Synthetic event/ });
+  await expect(underlyingRecord).toContainText("£ 100.00");
+  await expect(underlyingRecord).toHaveAttribute(
+    "href",
+    `/profiles/${profileId}/tracker/sportsbook-bets?search=MOTION-SB-001&source=report-point`,
+  );
+  await underlyingRecord.click();
+  await expect(page).toHaveURL(/sportsbook-bets\?search=MOTION-SB-001&source=report-point$/);
+  await expect(page.getByRole("heading", { name: "Sportsbook Bets" })).toBeVisible();
+  await page.goBack();
+  await expect(performanceCard.locator('[data-pd-id="dashboard.chart.drilldown"]')).toBeVisible();
 
   const uncoveredMotionCards = await page.locator("article.dashboard-visual-card").evaluateAll((cards) =>
     cards
@@ -144,15 +158,18 @@ test("dashboard containers coordinate financial, bar, and ring replay without la
   const miniCard = page.locator(".dashboard-mini-card", { hasText: "Open Current Value" });
   const miniValue = miniCard.locator('.financial-value[aria-label="£ 100.00"]');
   const miniCycle = Number(await miniValue.getAttribute("data-money-motion-cycle"));
-  await miniCard.hover();
-  expect(Number(await miniValue.getAttribute("data-money-motion-cycle"))).toBeGreaterThan(miniCycle);
+  await page.mouse.move(0, 0);
+  await page.waitForTimeout(1_000);
+  await miniCard.click({ position: { x: 18, y: 18 } });
+  await expect.poll(async () => Number(await miniValue.getAttribute("data-money-motion-cycle")))
+    .toBeGreaterThan(miniCycle);
 
-  await moduleCard.hover();
+  await moduleCard.click({ position: { x: 18, y: 18 } });
   await expect(moduleBars.first()).toHaveAttribute("data-progress-motion", "running");
   expect(await moduleBars.count()).toBeGreaterThan(1);
   const delays = await moduleBars.evaluateAll((bars) => bars.map((bar) => getComputedStyle(bar).animationDelay));
   expect(new Set(delays).size).toBeGreaterThan(1);
-  await focusCard.hover();
+  await focusCard.click({ position: { x: 18, y: 18 } });
   await expect(focusRing).toHaveCSS("animation-name", "dashboard-ring-reveal");
 
   const beforeTheme = await Promise.all([targetCard.boundingBox(), moduleCard.boundingBox(), focusCard.boundingBox()]);
@@ -212,4 +229,91 @@ test("financial motion preference off keeps chart progress at its exact final st
   await card.click({ position: { x: 18, y: 18 } });
   await expect(bar).toHaveAttribute("data-progress-motion-cycle", "0");
   expect(await bar.evaluate((element) => getComputedStyle(element).width)).not.toBe("0px");
+});
+
+test("a delayed large-data response cannot repaint a newer report surface and recovery keeps the newer state", async ({ page }) => {
+  const staleProfileId = profileId;
+  let releaseProfileA: (() => void) | undefined;
+  let profileAStarted: (() => void) | undefined;
+  const profileARequest = new Promise<void>((resolve) => { profileAStarted = resolve; });
+  const profileARelease = new Promise<void>((resolve) => { releaseProfileA = resolve; });
+  let interruptProfileB = false;
+  let summaryRequestCount = 0;
+
+  const source = (profileId: string, amount: string) => ({
+    accounts: [], balance_snapshots: [], casino_offers: [], cash_adjustments: [],
+    each_way_extra_places: [], fee_periods: [], free_bets: [],
+    sportsbook_bets: Array.from({ length: 200 }, (_, index) => ({
+      bookmaker: `Bookmaker ${index + 1}`, calculated_liability_1: "0.00", counts_as_open: false,
+      created_at: `2026-09-${String((index % 18) + 1).padStart(2, "0")}T08:00:00Z`,
+      date_settled: `2026-09-${String((index % 18) + 1).padStart(2, "0")}T09:00:00Z`,
+      event_name: `${profileId} record ${index + 1}`, exchange_name: "Exchange A",
+      final_net_pnl: index === 0 ? amount : "0.00", is_overdue: false,
+      lay_status: "Fully Laid", match_strategy: "Standard", offer_name: "Synthetic large-data offer",
+      offer_type: "Qualifying Bet", projected_current_pnl: index === 0 ? amount : "0.00",
+      reporting_value: index === 0 ? amount : "0.00", result: "Win",
+      sportsbook_bet_id: `${profileId}-SB-${index + 1}`, status: "Settled",
+    })),
+    tracker_settings: {
+      active_date_preset: "This Month", annual_profit_target: "1000.00",
+      custom_end_date: "", custom_start_date: "", range_back_days: 0, range_forward_days: 0,
+    },
+  });
+
+  await page.route("**/auth/session**", (route) => route.fulfill({ json: {
+    authenticated: true, auth_provider: "local", email: "stale@example.invalid",
+    linked_profile_ids: [staleProfileId], name: "Stale Response Tester", role: "fund_manager",
+  }}));
+  await page.route("**/auth/activity", (route) => route.fulfill({ status: 204 }));
+  await page.route("**/auth/security-preference", (route) => route.fulfill({ json: { configured: false } }));
+  await page.route("**/fund-manager/preferences/financial-motion", (route) => route.fulfill({ json: {
+    duration_ms: 0, enabled: false, replay_delay_ms: 0, stagger_ms: 0,
+  }}));
+  await page.route("**/fund-manager/import-executions", (route) => route.fulfill({ json: [] }));
+  await page.route("**/fund-manager/notifications**", (route) => route.fulfill({ json: [] }));
+  await page.route(/\/profiles\/?(?:\?.*)?$/, (route) => route.fulfill({ json: [
+    { current_cash_snapshot: "0.00", display_name: "Large Data Profile", profile_code: "LARGE", profile_id: staleProfileId, status: "Active", tracking_start_date: "2026-09-01" },
+  ] }));
+  await page.route("**/profiles/*/tracker-summary-sources", async (route) => {
+    summaryRequestCount += 1;
+    if (summaryRequestCount === 1) {
+      profileAStarted?.();
+      await profileARelease;
+      await route.fulfill({ json: source(staleProfileId, "-111.00") }).catch(() => undefined);
+      return;
+    }
+    if (interruptProfileB) {
+      await route.fulfill({ status: 503, json: { detail: "Synthetic API interruption" } });
+      return;
+    }
+    await route.fulfill({ json: source(staleProfileId, "222.00") });
+  });
+  await page.route("**/profiles/*/**", (route) => {
+    if (route.request().resourceType() === "document") return route.fallback();
+    if (new URL(route.request().url()).pathname.endsWith("/tracker-summary-sources")) {
+      return route.fallback();
+    }
+    return route.fulfill({ json: [] });
+  });
+
+  await page.goto(`/profiles/${staleProfileId}/tracker/dashboard`);
+  await profileARequest;
+  await page.goto(`/profiles/${staleProfileId}/tracker/reports`);
+  await expect(page.getByText("Loading tracker summaries")).toBeHidden({ timeout: 60_000 });
+  await expect(page.getByRole("heading", { name: "Reports", exact: true })).toBeVisible();
+  await expect(page.locator("main")).toContainText("£ 222.00");
+  releaseProfileA?.();
+  await page.waitForTimeout(250);
+  await expect(page.locator("main")).toContainText("£ 222.00");
+  await expect(page.locator("body")).not.toContainText("£ (111.00)");
+
+  interruptProfileB = true;
+  await page.reload();
+  await expect.poll(() => summaryRequestCount).toBeGreaterThan(2);
+  const recoveryError = page.getByText(/Request failed with status 503|Synthetic API interruption|Unable to load tracker summaries/);
+  await expect(recoveryError).toBeVisible();
+  interruptProfileB = false;
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await expect(page.locator("main")).toContainText("£ 222.00", { timeout: 60_000 });
+  await expect(recoveryError).toBeHidden();
 });

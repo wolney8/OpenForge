@@ -12,7 +12,7 @@ import type { BlackjackSessionSourceSnapshot } from "@/lib/blackjack-session";
 import { fixtureTypeOptions, getAllowedBetTypesForOfferType, getDefaultBetTypeForOfferType, getOfferTypeOptions } from "@/lib/workbook-options";
 
 type Profile = { profile_id: string; display_name: string; profile_code: string; status: string };
-type Account = { account_id: string; account: string; type: string; status: string; lifecycle_status: string; restrictions: string[] };
+type Account = { account_id: string; account: string; type: string; status: string; lifecycle_status: string; restrictions: string[]; stake_access?: string; promo_access?: string };
 type TargetResult = { profile_id: string; account: string; state: "succeeded" | "failed" | "already_succeeded"; record_id: string; href: string; reasons: string[] };
 export type CalculatorFinancialSource = {
   kind: "standard" | "multi-lay" | "each-way-extra-place";
@@ -53,6 +53,11 @@ function accountReview(account: Account, isBlackjack: boolean, promotional: bool
     || blockedLifecycles.has(account.lifecycle_status.toLowerCase())
     || hardRestrictions.length > 0;
   if (blocked) return { blocked, message: hardRestrictions.length ? `Blocked: ${hardRestrictions.join(", ")}.` : `Unavailable: ${account.lifecycle_status || account.status}.` };
+  if (account.stake_access === "Blocked") return { blocked: true, message: "Unavailable: stake access is blocked." };
+  if (promotional && account.promo_access === "None") return { blocked: true, message: "Unavailable: promotions are not available." };
+  if (["Limited", "Severely Limited"].includes(account.stake_access || "")) return { blocked: false, message: `${account.stake_access} stake access: confirm the permitted stake.` };
+  if (promotional && account.promo_access === "Restricted") return { blocked: false, message: "Restricted promo access: confirm this offer remains available." };
+  if (account.stake_access === "Not Checked" || (promotional && account.promo_access === "Not Checked")) return { blocked: false, message: "Access has not been checked; confirm eligibility before placement." };
   if (restrictions.has("soft limited") || ["pending sign up", "verification pending"].includes(account.lifecycle_status.toLowerCase())) {
     return { blocked: false, message: `${account.lifecycle_status || account.status}: confirm this Account can be used.` };
   }

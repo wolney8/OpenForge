@@ -261,6 +261,21 @@
       "source": "Committed synthetic test fixture"
     },
     {
+      "catalogue_id": "BOOKMAKER-DEMO-ARCHIVED",
+      "account_type": "Bookmaker",
+      "operating_jurisdictions": ["GB"],
+      "operating_subdivisions": [],
+      "operating_channels": ["web"],
+      "brand_name": "Betzone",
+      "short_display_name": "Betzone",
+      "operator_group": "Synthetic Group",
+      "platform": "Synthetic Platform",
+      "foreground_colour": "#FFFFFF",
+      "background_colour": "#455A64",
+      "status": "Archived",
+      "source": "Committed synthetic archived test fixture"
+    },
+    {
       "catalogue_id": "BANK-DEMO-001",
       "account_type": "Bank",
       "operating_jurisdictions": ["GB"],

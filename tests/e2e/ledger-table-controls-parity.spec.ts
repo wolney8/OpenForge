@@ -2,6 +2,15 @@ import { expect, test } from "@playwright/test";
 
 test.setTimeout(90_000);
 
+test.beforeEach(async ({ page }) => {
+  await page.route("**/auth/session**", (route) => route.fulfill({ json: {
+    authenticated: true, auth_provider: "local", email: "ledger-ui@example.invalid",
+    linked_profile_ids: ["profile-demo-001"], name: "Ledger UI Tester", role: "fund_manager",
+  }}));
+  await page.route("**/auth/activity", (route) => route.fulfill({ status: 204 }));
+  await page.route("**/auth/security-preference", (route) => route.fulfill({ json: { configured: false } }));
+});
+
 function rgbChannels(value: string) {
   const match = value.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
   if (!match) throw new Error(`Could not parse rgb colour: ${value}`);
@@ -125,6 +134,26 @@ test("Cash Adjustments exposes consistent filter controls and actions column", a
 });
 
 test("Accounts ignores stale collapsed state and keeps canonical table controls visible", async ({ page }) => {
+  await page.route("**/account-catalogue/source", (route) => route.fulfill({ json: {
+    catalogue_name: "Synthetic account controls catalogue", records: [], schema_version: "1.0", updated_at: "2026-09-18",
+  } }));
+  await page.route("**/bookmaker-catalogue", (route) => route.fulfill({ json: [] }));
+  await page.route("**/profiles/profile-demo-001/**", (route) => {
+    if (!new URL(route.request().url()).pathname.startsWith("/api/profiles/")) {
+      return route.fallback();
+    }
+    return route.fulfill({ json: [] });
+  });
+  await page.route("**/profiles/profile-demo-001/accounts", (route) => route.fulfill({ json: [{
+    account_id: "AC-CONTROLS-001", profile_id: "profile-demo-001", account_name: "Bookmaker A",
+    account_type: "Bookmaker", bookmaker_id: "BM-A", status: "Active", restrictions: [],
+    stake_access: "Normal", promo_access: "Full", restriction_details: {},
+    access_evidence_note: "Synthetic control fixture", access_source: "Test fixture",
+    access_observed_at: "2026-09-18T09:00:00Z", current_balance: "100.00",
+    pending_withdrawal_amount: "0.00", last_balance_update: "2026-09-18T09:00:00Z",
+    sign_up_date: "2026-09-01", notes: "", created_at: "2026-09-01T09:00:00Z",
+    updated_at: "2026-09-18T09:00:00Z",
+  }] }));
   await page.setViewportSize({ width: 2048, height: 900 });
   await page.addInitScript(() => {
     window.localStorage.setItem("openforge-ledger-collapsed:profile-demo-001:accounts", "true");
@@ -352,6 +381,44 @@ test("Accounts Add Account uses the global catalogue for every provider type", a
     "Canonical Bank",
   ]);
   await expect(accountSelect.locator("option", { hasText: "Old Test Bookmaker" })).toHaveCount(0);
+
+  await accountSelect.selectOption("BOOKMAKER-CANONICAL-A");
+  const accountAccess = editor.locator('[data-pd-id="accounts.editor.access"]');
+  await expect(accountAccess).toBeVisible();
+  await expect(accountAccess.getByLabel("Stake access")).toHaveValue("Not Checked");
+  await expect(accountAccess.getByLabel("Promo access")).toHaveValue("Not Checked");
+  await accountAccess.getByLabel("Stake access").selectOption("Severely Limited");
+  await accountAccess.getByLabel("Promo access").selectOption("Restricted");
+  await accountAccess.getByLabel("Stake restriction type").selectOption("fixed_maximum");
+  await accountAccess.getByLabel("Fixed maximum stake").fill("1");
+  await accountAccess.getByRole("button", { name: "Boosts" }).click();
+  await expect(accountAccess.getByRole("button", { name: "Boosts" })).toHaveAttribute("aria-pressed", "true");
+  expect(await accountAccess.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBeTruthy();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addStyleTag({ content: "html { font-size: 200%; }" });
+  await expect(accountAccess.getByLabel("Stake access")).toBeVisible();
+  await expect(accountAccess.getByLabel("Promo access")).toBeVisible();
+  expect(await accountAccess.locator(".field-control, fieldset, .review-chip-row").evaluateAll((elements) => {
+    const container = elements[0]?.closest('[data-pd-id="accounts.editor.access"]')?.getBoundingClientRect();
+    if (!container) return ["missing access container"];
+    return elements
+      .filter((element) => {
+        const box = element.getBoundingClientRect();
+        return box.width > 0 && (box.left < container.left - 1 || box.right > container.right + 1);
+      })
+      .map((element) => `${element.tagName}.${element.className}`);
+  })).toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1)).toBeTruthy();
+  await editor.getByRole("button", { name: "Close account editor" }).click();
+  await page.getByRole("dialog", { name: "Unsaved tracker changes" }).getByRole("button", { name: "Discard Changes" }).click();
+  await expect(editor).toBeHidden();
+  await page.getByRole("button", { name: "Switch to light mode" }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await page.setViewportSize({ width: 1280, height: 844 });
+  await page.getByRole("button", { name: "Add Account" }).click();
+  await expect(editor).toBeVisible();
+  await accountSelect.selectOption("BOOKMAKER-CANONICAL-A");
+  await expect(accountAccess.getByLabel("Stake access")).toBeVisible();
 
   await accountSelect.selectOption("EXCHANGE-CANONICAL-A");
   await expect(editor.locator("label").filter({ hasText: /^Type/ }).locator("input")).toHaveValue(

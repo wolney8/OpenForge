@@ -1,6 +1,6 @@
 # Accounts Import Field Map Contract
 
-**Last updated:** 2026-09-18 08:32 BST
+**Last updated:** 2026-09-18 10:21 BST
 
 ## Status
 
@@ -27,8 +27,8 @@ boundary as the other issue #12 ledgers.
 | `Counts In Cash Total` | `counts_in_cash_total` | Entered | Controls dashboard cash totals |
 | `Channel` | `channel` | Entered | Controlled `Online`, `Retail`, or `Unknown` |
 | `Status` | `status` | Entered | Controlled profile account-health status |
-| `Stake Access` | not mapped in `accounts-v1` | Decision required | Must not alter lifecycle; target separate stake-access/restriction evidence after source vocabulary and provenance are approved |
-| `Promo Access` | not mapped in `accounts-v1` | Decision required | Must not alter lifecycle; target separate promotion-access/restriction evidence after source vocabulary and provenance are approved |
+| `Stake Access` | `stake_access` | Entered capability | Controlled `Normal`, `Limited`, `Severely Limited`, `Blocked`, `Not Checked`; never alters lifecycle |
+| `Promo Access` | `promo_access` | Entered capability | Controlled `Full`, `Restricted`, `None`, `Not Checked`; never alters lifecycle |
 | `CurrentBalance` | `current_balance` | Entered financial authority | Blank means not recorded; otherwise require a valid decimal and preserve precision/sign without rounding |
 | `PendingWithdrawalAmount` | `pending_withdrawal_amount` | Entered financial authority | Optional valid decimal; preserve precision and sign without rounding |
 | `LastBalanceUpdate` | `last_balance_update` | Entered audit value | Optional date/date-time text from workbook |
@@ -62,19 +62,20 @@ boundary as the other issue #12 ledgers.
 - `PendingWithdrawalAmount` is not converted into a cash adjustment.
 - No silent rounding, currency conversion, or sign correction.
 - `LastPromoUsed` is never persisted from the workbook.
-- The current September Accounts shape includes `Stake Access` and `Promo Access`, but
-  `ACCOUNT_SOURCE_MAP` does not consume them. Until the focused #109 mapping decision is approved,
-  import must not collapse either value into `Status`/`lifecycle_status` or silently claim it was
-  preserved.
+- The September Accounts shape maps Stake and Promo Access independently of Status. Historical
+  `Soft Limited`/`Heavily Limited`/`Minimum Only` and `Some Promos`/`Boosts Only`/`No Promos`
+  spellings map to the approved broad capability with an import-review warning; the source row
+  remains provenance. Any other value blocks confirmation.
 - Notes must remain profile-scoped and must not contain passwords, tokens, bank credentials or card
   details.
 - Existing unchanged source identities are no-ops; changed rows remain blocked until the separate
   explicit-update workflow is approved.
-- Cross-profile source or native account identity collisions block.
+- Import source identity is Profile-scoped. The same external record ID may exist in another
+  Profile and must remain isolated; a native identity must never cross Profile boundaries.
 
-## Proposed #109 access vocabulary — decision required
+## #109 access vocabulary and precedence
 
-**PROPOSED — NOT IMPLEMENTED — OWNER DECISION REQUIRED**
+**APPROVED — IMPLEMENTED IN THE LOCAL INTEGRATION CANDIDATE**
 
 Read-only inspection of the approved 3 September workbook found these source values:
 
@@ -124,8 +125,9 @@ records `Not Checked`. `LastPromoUsed` remains ledger-derived and is not part of
 - Freshness belongs to `access_observed_at`, source and notes. It never creates another enum value.
 - Stake and Promo Access guide eligibility; they do not mutate balances, settle activity or replace
   a user decision about a particular offer.
-- Import accepts only the exact controlled values after normal whitespace/case normalisation.
-  Unsupported text remains visible as a blocking review item and is never silently coerced.
+- Import accepts the controlled values after normal whitespace/case normalisation and the listed
+  historical aliases. Unsupported text remains a blocking review item and is never silently
+  coerced.
 
 ## Profile Snapshot Reconciliation
 
@@ -141,9 +143,12 @@ platform, risk, colour, or identity metadata; those remain Account Catalogue aut
 
 ## Export
 
-Export the workbook-compatible fifteen-column `Accounts` shape. `LastPromoUsed` is exported as a
+Export the workbook-compatible `Accounts` shape including canonical Stake and Promo Access.
+`LastPromoUsed` is exported as a
 derived display value only when Plum Duff can compute it; otherwise it remains blank. Group,
 Platform, and RiskTeam use current catalogue metadata and are non-authoritative on re-import.
+The portable Profile export additionally retains structured restrictions, evidence source/notes
+and the last-checked timestamp; a fresh restore validates and reopens them unchanged.
 
 ## Acceptance
 
@@ -153,5 +158,9 @@ Platform, and RiskTeam use current catalogue metadata and are non-authoritative 
 - unknown catalogue account blocks; archived historical account warns and remains importable
 - `LastPromoUsed` cannot override derived state
 - sign-up date and notes round-trip
+- approved capability values and structured evidence survive save/reopen and portable restore
+- unsupported access text blocks rather than becoming `Unknown`
+- hard Account Status blocks take precedence; Stake and Promo capability are evaluated only for an
+  otherwise operational Account
 - unchanged export/re-import is a no-op
 - selected rows import only after verified backup; unselected rows remain audited as skipped

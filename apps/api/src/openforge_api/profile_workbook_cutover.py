@@ -241,6 +241,12 @@ ACCOUNT_WRITE_COLUMNS = (
     "status",
     "lifecycle_status",
     "restrictions_json",
+    "stake_access",
+    "promo_access",
+    "restriction_details_json",
+    "access_evidence_note",
+    "access_source",
+    "access_observed_at",
     "current_balance",
     "pending_withdrawal_amount",
     "last_balance_update",
@@ -1106,6 +1112,12 @@ def _account_write_state(
             "lifecycle_status": lifecycle_status,
             "current_balance": current_balance,
             "restrictions_json": _json(restrictions),
+            "stake_access": source_state.get("stake_access") or "Not Checked",
+            "promo_access": source_state.get("promo_access") or "Not Checked",
+            "restriction_details_json": source_state.get("restriction_details_json") or "{}",
+            "access_evidence_note": source_state.get("access_evidence_note") or "",
+            "access_source": source_state.get("access_source") or "workbook_import",
+            "access_observed_at": source_state.get("access_observed_at") or "",
         }
     )
     return state

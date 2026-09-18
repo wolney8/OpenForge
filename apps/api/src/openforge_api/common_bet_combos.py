@@ -626,6 +626,7 @@ def _loadout_status_for_account(
     status: str,
     lifecycle_status: str,
     restrictions_json: str,
+    stake_access: str = "Not Checked",
     ledger_type: str = "",
 ) -> tuple[Literal["eligible", "limited", "blocked"], str]:
     if ledger_type == "Extra Place":
@@ -633,6 +634,7 @@ def _loadout_status_for_account(
             status=status,
             lifecycle_status=lifecycle_status,
             restrictions_json=restrictions_json,
+            stake_access=stake_access,
         )
         if health.access_state == "blocked":
             return "blocked", health.reason
@@ -643,6 +645,10 @@ def _loadout_status_for_account(
     normalized = f"{status} {lifecycle_status} {restrictions_json}".casefold()
     if any(value in normalized for value in ("blocked", "gubbed", "closed", "kyc blocked", "risk blocked", "bonus restricted")):
         return "blocked", "This account is not eligible for this quick add loadout."
+    if stake_access.casefold() == "blocked":
+        return "blocked", "Stake access is blocked for this Account."
+    if stake_access.casefold() in {"limited", "severely limited", "not checked"}:
+        return "limited", f"Stake access is {stake_access}; confirm the accepted stake."
     if any(value in normalized for value in ("limited", "pending", "not signed up", "verification")):
         return "limited", "This account is available with an account-status warning."
     return "eligible", ""
@@ -741,6 +747,7 @@ def list_profile_quick_add_loadouts(
                     account.status,
                     account.lifecycle_status,
                     account.restrictions_json,
+                    account.stake_access,
                     ledger,
                 )
                 ledger_reason = reason or account_reason
@@ -823,6 +830,7 @@ def update_profile_quick_add_loadout(
             account.status,
             account.lifecycle_status,
             account.restrictions_json,
+            account.stake_access,
             ledger_type,
         )
         if availability == "blocked":

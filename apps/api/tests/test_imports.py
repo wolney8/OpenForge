@@ -324,7 +324,7 @@ def test_unchanged_source_is_idempotent_no_op() -> None:
     assert staged[0]["staged_action"] == "no_op"
 
 
-def test_cross_profile_source_collision_is_blocked() -> None:
+def test_same_external_source_id_in_another_profile_is_isolated() -> None:
     inputs = fixture("IO-003")["inputs"]
     assert isinstance(inputs, dict)
     fields = {"status": "Placed"}
@@ -343,8 +343,8 @@ def test_cross_profile_source_collision_is_blocked() -> None:
         ),
     )
 
-    assert staged[0]["staged_action"] == "blocked"
-    assert staged[0]["errors"][0]["code"] == "cross_profile_source_collision"
+    assert staged[0]["staged_action"] == "insert"
+    assert staged[0]["errors"] == []
 
 
 def test_invalid_status_reports_source_row() -> None:
@@ -1080,6 +1080,35 @@ def test_accounts_v1_maps_catalogue_authority_and_preserves_money() -> None:
     assert staged[0]["mapped_fields"]["current_balance"] == "125.40"
     assert staged[0]["mapped_fields"]["pending_withdrawal_amount"] == "10.00"
     assert "last_promo_used" not in staged[0]["mapped_fields"]
+
+
+def test_accounts_v1_maps_approved_access_values_and_rejects_unknown_values() -> None:
+    case = account_fixture("AI-001")
+    fields = dict(case["fields"])
+    fields.update({"Stake Access": "Severely Limited", "Promo Access": "Restricted"})
+    mapped = stage_import_rows(
+        profile_id="PROFILE-001",
+        rows=[ImportRowPayload(
+            sheet="Accounts", source_record_id="DEMO-ACCESS-001", fields=fields,
+        )],
+        mapping_version="accounts-v1",
+        source_lookup=no_existing_source,
+    )[0]
+    assert mapped["staged_action"] == "insert"
+    assert mapped["mapped_fields"]["stake_access"] == "Severely Limited"
+    assert mapped["mapped_fields"]["promo_access"] == "Restricted"
+
+    fields["Stake Access"] = "Unknown"
+    rejected = stage_import_rows(
+        profile_id="PROFILE-001",
+        rows=[ImportRowPayload(
+            sheet="Accounts", source_record_id="DEMO-ACCESS-002", fields=fields,
+        )],
+        mapping_version="accounts-v1",
+        source_lookup=no_existing_source,
+    )[0]
+    assert rejected["staged_action"] == "blocked"
+    assert any(item["code"] == "invalid_stake_access" for item in rejected["errors"])
 
 
 def test_accounts_v1_blocks_invalid_money_and_unknown_authority() -> None:

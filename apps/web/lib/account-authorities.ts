@@ -9,6 +9,8 @@ export type AccountAuthorityRecord = {
   lifecycle_status?: string;
   restrictions_json?: string;
   restrictions?: string[];
+  stake_access?: "Normal" | "Limited" | "Severely Limited" | "Blocked" | "Not Checked";
+  promo_access?: "Full" | "Restricted" | "None" | "Not Checked";
   extra_places_access_state?: "not_checked" | "warning" | "planning" | "blocked";
   extra_places_capability_state?: "NotChecked";
   extra_places_access_reason?: string;

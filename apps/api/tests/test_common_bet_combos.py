@@ -17,19 +17,29 @@ def configure_temp_database(tmp_path: Path) -> None:
 def test_extra_place_loadout_uses_ledger_specific_account_health() -> None:
     bonus_restricted = '["Bonus Restricted"]'
     assert _loadout_status_for_account(
-        "Bonus Restricted", "Active", bonus_restricted, "Casino"
+        "Bonus Restricted", "Active", bonus_restricted, ledger_type="Casino"
     )[0] == "blocked"
     extra_place = _loadout_status_for_account(
-        "Bonus Restricted", "Active", bonus_restricted, "Extra Place"
+        "Bonus Restricted", "Active", bonus_restricted, ledger_type="Extra Place"
     )
     assert extra_place[0] == "limited"
     assert "not been checked" in extra_place[1]
 
     soft_limited = _loadout_status_for_account(
-        "Stake Restricted", "Active", '["Soft Limited"]', "Extra Place"
+        "Stake Restricted", "Active", '["Soft Limited"]', ledger_type="Extra Place"
     )
     assert soft_limited[0] == "limited"
     assert "accepted stake" in soft_limited[1]
+
+    blocked_access = _loadout_status_for_account(
+        "Active", "Active", "[]", stake_access="Blocked", ledger_type="Sportsbook"
+    )
+    assert blocked_access == ("blocked", "Stake access is blocked for this Account.")
+
+    unchecked_access = _loadout_status_for_account(
+        "Active", "Active", "[]", stake_access="Not Checked", ledger_type="Sportsbook"
+    )
+    assert unchecked_access[0] == "limited"
 
 
 def test_common_bet_combos_are_seeded_and_versioned(tmp_path: Path) -> None:

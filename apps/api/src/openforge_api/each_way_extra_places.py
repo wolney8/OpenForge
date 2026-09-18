@@ -126,6 +126,7 @@ def _extra_place_account_health(
         status=account.status,
         lifecycle_status=account.lifecycle_status,
         restrictions_json=account.restrictions_json,
+        stake_access=account.stake_access,
     )
 
 

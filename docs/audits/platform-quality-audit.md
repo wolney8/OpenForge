@@ -1,5 +1,44 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
+## Current CP-019 Account access, test hermeticity and journey closure — 2026-09-18 11:20 BST
+
+#109 is integrated locally with separate Account Status, Stake Access and Promo Access ownership.
+Stake uses Normal/Limited/Severely Limited/Blocked/Not Checked; Promo uses Full/Restricted/None/Not
+Checked. Hard lifecycle, login, KYC and risk blocks win before access classifications. Structured
+caps, restriction kind, promotion categories, evidence source/note and last-checked time remain
+separate from the enums. Unknown import vocabulary is rejected for review; old workbooks remain
+compatible. SQLite migration/repeat/rollback, PostgreSQL 18.6 and clone projections pass, and
+import→reopen→export→portable restore retains the governed states and evidence.
+
+The broad API suite is now hermetic and fully classified: the CP-018 result of **1,044 passed,
+21 failed, 0 errors, 12 skipped = 1,077** becomes **1,070 passed, 0 failed, 0 errors, 12 skipped =
+1,082** after five new regressions. The twelve skips are authorised opt-in private workbook/template
+acceptance boundaries with documented inputs and commands; they are not ordinary CI dependencies.
+The repaired families were fee-period setup, import contracts, XLSX round trips, SNR independent
+references and isolated catalogue/backup/lookup cases. No private source was committed.
+
+Guided onboarding now passes its canonical browser journey, including saved landing/reopen and one
+shared confirmed-discard route from the navigation drawer. The deterministic 200-record browser run
+proves request B survives delayed request A, a 503 is shown, focus recovery reloads B and old data
+never repaints. #111 selected points now expose reconciled underlying records, Profile-scoped ledger
+links and useful back-navigation context with keyboard/pointer parity. Module/metric/granularity
+controls remain separately tracked future slices, not invisible additions to this journey.
+
+Requirement reconciliation advances four further requests using current evidence:
+
+| Request | Original outcome and later clarification | Current integrated state and evidence | Remaining gap |
+|---|---|---|---|
+| #78 | Govern the Casino wagering/EV calculator through its approved financial contract | Native Casino settlement, fee correction, History and reporting are exercised; this does not substitute for the separate full wagering/EV calculator | The approved calculator implementation and complete browser journey remain planned |
+| #79 | Accept source-created offer intelligence with durable provenance and safe ingestion boundaries | Source namespace/provenance contracts and Profile-scoped imported identity are integrated and portable | No approved live source-ingestion workflow is implemented; unsafe scraping remains prohibited |
+| #81 | Replace disruptive browser route guards with an in-application confirmation | Guided onboarding now uses the shared confirmation boundary and proves confirmed discard navigation in the browser | Other independently implemented browser-native guards, if found, remain separate consumers to migrate |
+| #84 | Support multi-fixture and outright sportsbook offers without confusing them with Multi-Lay | Existing records and calculations were checked against the request boundary; Multi-Lay remains a distinct exchange allocation workflow | Dedicated multi-fixture/outright offer entry and settlement remain unimplemented |
+
+PQA-J13, J22 and J24 move to PASS. PQA-J18 remains PARTIAL only because the newly approved #109
+fields still need one combined authenticated multi-sheet browser import/award rerun. Coverage is
+**66/87 assessments (76%)**, **20/24 complete journeys (83%)**, **18/27 competitor cells (67%)**
+and **73/133 requirements reconciled (55%)**. Competitor coverage is unchanged because no new
+authoritative public evidence was found. These are audit-coverage figures, not product completion.
+
 ## Current CP-018 reproducibility, Profile lifecycle and notification history — 2026-09-18 09:15 BST
 
 The broad API baseline is now fully accounted for: **922 passed, 143 failed, 12 skipped,
@@ -3660,18 +3699,18 @@ Shared width/theme variants are recorded in the modal addendum, not inflated int
 |PQA-J10|Cash movement→Account reconciliation→fees/matching→report|PASS|CP-017 browser/API: linked Bank A remains £200; +25→+20 correction and −7 withdrawal report net +13 once, with History/retry/invalid-write evidence|—|—|Retain cash-movement versus observed-balance boundary regression|
 |PQA-J11|Award group→SNR/SR descendants→settlement→safe removal/history|PASS|CP-017 fresh £6 SNR + £4 SR group; lost/concurrent retry reuse, changed retry rejection, settlement/history, protected removal, export/restore and remapped lineage UI pass|—|—|Retain native/logical identity and no-resurrection regressions|
 |PQA-J12|Multi-Profile conversion failure→retry→new intent→notifications|PASS|CP-003 browser/API/persistence counts 2/1|—|—|Retain regression|
-|PQA-J13|Onboarding→catalogue Accounts→permissions→first action/reopen|PARTIAL|CP-018 browser 7/8 plus API persistence|Drawer discard navigation; first saved tracker action/reopen|Product defect/test gap|Repair shared drawer guard then run saved first action/reopen|
+|PQA-J13|Onboarding→catalogue Accounts→permissions→first action/reopen|PASS|CP-019 complete browser onboarding, saved landing/reopen and shared drawer discard navigation|—|—|Retain deterministic catalogue, validation, focus, narrow and 200% regressions|
 |PQA-J14|Profile archive/recover/delete→denied writes→directory/search isolation|PASS|CP-018 23 API plus 3 authenticated browser lifecycle checks|—|—|Retain active/archive/report/delete-boundary regression|
 |PQA-J15|Login→expiry→denial→re-authentication→state recovery|BLOCKED|CP-009 local expiry/cross-tab/stale-session evidence|Real Google callback/provider re-authentication|External blocker|Execute only with authorised provider test identity|
 |PQA-J16|Global search→filter/loadout→Quick Action→correct Profile record|NOT YET EXERCISED|Component regressions only|One keyboard/stale-response end-to-end run|Test coverage gap|Build deterministic multi-Profile browser fixture|
 |PQA-J17|Notification create→clear/reload→source lifecycle→history|PASS|CP-018 active→dismiss/reload→resolve durable event; retry and viewer isolation|—|—|Retain current/dismissed/history separation regression|
-|PQA-J18|Workbook import→review/write→lineage→reopen/report/export|PARTIAL|CP-015 imported-parent UI plus prior six-sheet recovery|Approved Stake/Promo Access vocabulary and one combined award import rerun|Product decision/test gap|Resolve #109 vocabulary, then rerun current browser path|
+|PQA-J18|Workbook import→review/write→lineage→reopen/report/export|PARTIAL|CP-019 #109 API import/reopen/export/restore plus prior six-sheet browser recovery|One authenticated combined multi-sheet Account-access and award import browser rerun|Test coverage gap|Run the existing browser import path with canonical #109 fields|
 |PQA-J19|Portable restore→reopen tracker→report/re-export→recovery|PASS|CP-004/014 authenticated portable restore and identity remap|—|—|Retain regression|
 |PQA-J20|SQLite backup→restore→read/reconcile→rollback|PASS|CP-014 normal clone/migration/rollback|—|—|Retain recovery drill|
 |PQA-J21|PostgreSQL writes/concurrency→backup/restore→read/rollback|PASS|CP-013 PostgreSQL 18.6 second-database restore|—|—|Retain isolated recovery drill|
-|PQA-J22|Combined reports→chart point/filter/drilldown→record/source|PARTIAL|CP-016 point focus, date/value, pointer/keyboard parity and empty state|Record drilldown, module filter and saved metric/granularity state|Unimplemented #111 slices|Specify and implement the next bounded drilldown slice|
+|PQA-J22|Combined reports→chart point/filter/drilldown→record/source|PASS|CP-019 point selection→reconciled records→Profile ledger search link→back context; keyboard/pointer/no-data covered|—|—|Retain regression; module/metric/granularity controls remain separate #111 roadmap items|
 |PQA-J23|Settings→failed mutation recovery→refresh/new session|PARTIAL|CP-009 ownership, rollback, expiry and cross-tab evidence|Actual reader plus complete fresh-browser restart|External/test capability gap|Run supported reader when genuinely operable|
-|PQA-J24|Large dataset→filter/page/chart→responsive/stale recovery|PARTIAL|CP-005 200 records plus CP-016 chart interaction|Larger scale and delayed/stale-request recovery in one run|Test coverage gap|Add deterministic delayed-response large-data probe|
+|PQA-J24|Large dataset→filter/page/chart→responsive/stale recovery|PASS|CP-019 deterministic 200-record browser: delayed A cannot overwrite B; 503, focus recovery and reload retain B|—|—|Retain abort/request-version and recovery regression|
 
 ### Competitor workflow slice — public evidence, accessed2026-09-13
 

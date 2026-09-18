@@ -236,11 +236,25 @@ ACCOUNT_SOURCE_MAP = {
     "Counts In Cash Total": "counts_in_cash_total",
     "Channel": "channel",
     "Status": "status",
+    "Stake Access": "stake_access",
+    "Promo Access": "promo_access",
     "CurrentBalance": "current_balance",
     "PendingWithdrawalAmount": "pending_withdrawal_amount",
     "LastBalanceUpdate": "last_balance_update",
     "SignUpDate": "sign_up_date",
     "Notes": "notes",
+}
+
+STAKE_ACCESS_IMPORT_MAP = {
+    "normal": "Normal", "limited": "Limited", "soft limited": "Limited",
+    "severely limited": "Severely Limited", "heavily limited": "Severely Limited",
+    "minimum only": "Severely Limited", "blocked": "Blocked",
+    "not checked": "Not Checked",
+}
+PROMO_ACCESS_IMPORT_MAP = {
+    "full": "Full", "restricted": "Restricted", "some promos": "Restricted",
+    "boosts only": "Restricted", "none": "None", "no promos": "None",
+    "not checked": "Not Checked",
 }
 
 # Type-scoped workbook spellings that have an established canonical catalogue identity.
@@ -402,6 +416,8 @@ def account_mapped_fields(row: AccountRecord) -> dict[str, JsonScalar]:
         "status": record["status"],
         "lifecycle_status": record["lifecycle_status"],
         "restrictions": restrictions if isinstance(restrictions, list) else [],
+        "stake_access": record["stake_access"],
+        "promo_access": record["promo_access"],
         "current_balance": record["current_balance"],
         "pending_withdrawal_amount": record["pending_withdrawal_amount"],
         "last_balance_update": record["last_balance_update"],
@@ -602,6 +618,8 @@ def account_export_row(profile_id: str, row: AccountRecord) -> dict[str, object]
         "Counts In Cash Total": record["counts_in_cash_total"],
         "Channel": record["channel"],
         "Status": record["status"],
+        "Stake Access": record["stake_access"],
+        "Promo Access": record["promo_access"],
         "CurrentBalance": record["current_balance"],
         "PendingWithdrawalAmount": record["pending_withdrawal_amount"],
         "LastBalanceUpdate": record["last_balance_update"],
@@ -1420,6 +1438,17 @@ def map_sportsbook_import_fields(
         )
         return mapped, errors
 
+    # Imported terminal/branch-preserving history is evidence, not a request to
+    # calculate a new placement. Preserve it even when the old workbook did not
+    # retain every input now required for a new native row.
+    terminal_historical = (
+        status in {"Void", "Cancelled", "Free Bet Awarded"}
+        or result == "Void"
+        or is_historical_void_zero_import(normalized_fields)
+    )
+    if terminal_historical or has_branch_preserving_payload:
+        return mapped, errors
+
     try:
         SportsbookBetPayload.model_validate(mapped)
     except ValidationError as error:
@@ -1549,6 +1578,31 @@ def map_account_import_fields(
     warnings: list[dict[str, str]] = []
     account_name = field_text(mapped, "account")
     account_type = field_text(mapped, "type")
+    for field_name, value_map in (
+        ("stake_access", STAKE_ACCESS_IMPORT_MAP),
+        ("promo_access", PROMO_ACCESS_IMPORT_MAP),
+    ):
+        raw_value = field_text(mapped, field_name)
+        if not raw_value:
+            mapped[field_name] = "Not Checked"
+            continue
+        canonical = value_map.get(raw_value.casefold())
+        if canonical is None:
+            errors.append(
+                issue(
+                    f"invalid_{field_name}",
+                    f"Unsupported {field_name.replace('_', ' ')} value: {raw_value}",
+                )
+            )
+        else:
+            mapped[field_name] = canonical
+            if canonical.casefold() != raw_value.casefold():
+                warnings.append(
+                    issue(
+                        f"normalized_{field_name}",
+                        f"{raw_value} is retained as import evidence and mapped to {canonical}.",
+                    )
+                )
     try:
         lifecycle_status, restrictions = resolve_account_lifecycle_and_restrictions(
             status=field_text(mapped, "status"),
@@ -1636,6 +1690,9 @@ def map_account_import_fields(
 
     try:
         validated = AccountPayload.model_validate(mapped).model_dump()
+        validated["restriction_details_json"] = json.dumps(
+            validated.pop("restriction_details"), sort_keys=True
+        )
         mapped = {key: validated[key] for key in validated}
     except ValidationError as error:
         errors.append(
@@ -1829,6 +1886,11 @@ def stage_import_rows(
                             source_record_id,
                         )
                     )
+                    # Source identity is Profile-scoped. A lookup implementation must
+                    # never turn another Profile's same external ID into this Profile's
+                    # retry or linkage result.
+                    if existing is not None and existing.profile_id != profile_id:
+                        existing = None
                     if existing is not None and existing.source_hash == source_hash:
                         action = "no_op"
                     elif existing is not None:

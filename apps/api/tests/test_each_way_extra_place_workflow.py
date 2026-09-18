@@ -186,6 +186,26 @@ def test_extra_place_account_health_does_not_invent_capability(
     assert health.allows_operational_use is operational
 
 
+def test_extra_place_stake_access_block_and_warning_precedence() -> None:
+    blocked = resolve_extra_place_account_health(
+        status="Active",
+        lifecycle_status="Active",
+        restrictions_json="[]",
+        stake_access="Blocked",
+    )
+    assert blocked.access_state == "blocked"
+    assert blocked.allows_planning is False
+
+    limited = resolve_extra_place_account_health(
+        status="Active",
+        lifecycle_status="Active",
+        restrictions_json="[]",
+        stake_access="Severely Limited",
+    )
+    assert limited.access_state == "warning"
+    assert limited.allows_operational_use is True
+
+
 @pytest.mark.parametrize(
     ("status", "lifecycle", "restrictions"),
     [

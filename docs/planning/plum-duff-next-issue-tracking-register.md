@@ -1,5 +1,20 @@
 # Plum Duff Next Issue Tracking Register
 
+## PD-AUDIT-CP019-20260918 — Account access, hermetic regression and journey closure
+
+| ID | Requested outcome | Current state |
+|---|---|---|
+| ACCOUNTS-IMPORT-ACCESS-001 / #109 | Persist capability separately from restrictions and evidence | INTEGRATED LOCALLY: canonical five/four-state enums, precedence, structured detail, import/export/restore and eligibility consumers pass; unknown vocabulary is reviewed, not coerced |
+| PD-QA-006 | Remove remaining broad-suite hidden-state debt | COMPLETE LOCALLY: 1,070 pass, 0 fail, 0 error and 12 documented opt-in private-source skips = 1,082 classified outcomes |
+| PQA-J13 / PD-FIX-245 | Complete guided onboarding save/reopen and confirmed discard navigation | PASS LOCALLY: the full browser path passes validation, landing/reopen, shared guard, narrow and 200% checks |
+| PQA-J22 / PD-FIX-246 | Drill from a selected report point to reconciled source records | PASS LOCALLY: keyboard/pointer selection shows matching records, Profile ledger links and retained back context; later analytics controls remain separate |
+| PQA-J24 / PD-FIX-247 | Prevent delayed large-data responses repainting newer state | PASS LOCALLY: deterministic 200-record A/B delay, 503, focus recovery and reload preserve the newer state |
+| PQA-J18 | Complete combined workbook/access/award evidence | PARTIAL: #109 persistence passes API/export/restore; one authenticated combined multi-sheet browser rerun remains |
+
+Reconciled in this package: #78, #79, #81 and #84, alongside implemented-state updates for #109
+and #111. Coverage is 66/87 assessments, 20/24 journeys, 18/27 competitor cells and 73/133
+requirements. No GitHub closure, main merge, push or hosted state is inferred.
+
 ## PD-AUDIT-CP018-20260918 — reproducibility, Profile lifecycle and notification history
 
 | ID | Requested outcome | Current state |
@@ -8,7 +23,10 @@
 | PQA-J13 | Guided onboarding through first action/reopen | PARTIAL: 7/8 browser checks pass; shared drawer discard navigation and the saved first action/reopen remain exact gaps |
 | PQA-J14 | Profile archive/recover/delete with reporting and protection boundaries | PASS LOCALLY: archive/recovery, active-view exclusion, historical P&L retention and permitted empty-Profile deletion pass without erasing protected history |
 | PQA-J17 / NOTIFICATION-HISTORY-001 | Keep historical notification events after current source resolution | PASS LOCALLY: bounded durable events retain readable history; current/dismissal state stays separate; retry and viewer isolation pass |
-| ACCOUNTS-IMPORT-ACCESS-001 | Separate #109 capability from restriction evidence | PROPOSED / NOT IMPLEMENTED: five Stake states and four Promo states are defined; exact caps/categories/freshness remain structured details pending owner decision |
+| ACCOUNTS-IMPORT-ACCESS-001 | Separate #109 capability from restriction evidence | IN PROGRESS locally: the approved five Stake states and four Promo states are persisted separately from structured restrictions and evidence; migration, browser and export/restore gates remain |
+| PD-FIX-245 | Guided onboarding discard and saved reopen | IN PROGRESS: retain the shared guard while allowing the confirmed Next navigation and prove saved first-action/reopen behaviour |
+| PD-FIX-246 | #111 selected-point record drilldown | IN PROGRESS: expose reconciled underlying records below the existing focusable point without adding metric policy |
+| PD-FIX-247 | Larger-data stale-response recovery | IN PROGRESS: prove delayed older responses cannot repaint newer Profile/range/filter state through the browser |
 
 Reconciled in this package: #90 durable history, #99 dismissal separation, #100 readable history,
 Profile lifecycle/recovery and deterministic test portability. Coverage is 65/87 assessments,

@@ -128,6 +128,8 @@ def test_accounts_workflow_create_update_and_isolation(tmp_path: Path) -> None:
     assert created["profile_id"] == "profile-demo-001"
     assert created["account_id"]
     assert created["account"] == "Midnite"
+    assert created["stake_access"] == "Not Checked"
+    assert created["promo_access"] == "Not Checked"
     assert created["signup_offer_status"] == "Unknown"
 
     list_profile_one = client.get("/profiles/profile-demo-001/accounts")
@@ -529,3 +531,49 @@ def test_profile_catalogue_selection_requires_exchange_commission_and_retains_on
     assert archived.status_code == 200
     assert archived.json()["status"] == "Archived"
     assert archived.json()["lifecycle_status"] == "Archived"
+
+
+def test_account_access_capability_and_restriction_evidence_round_trip(tmp_path: Path) -> None:
+    configure_temp_database(tmp_path)
+    client = TestClient(app)
+    add_master_provider("Bookmaker", "Access Test Bookmaker", "BOOKMAKER-ACCESS-001")
+    payload = {
+        "catalogue_id": "BOOKMAKER-ACCESS-001",
+        "account": "Access Test Bookmaker",
+        "type": "Bookie",
+        "counts_in_cash_total": True,
+        "channel": "Online",
+        "status": "Active",
+        "stake_access": "Severely Limited",
+        "promo_access": "Restricted",
+        "restriction_details": {
+            "fixed_maximum_stake": "1.00",
+            "stake_restriction_type": "fixed_maximum",
+            "stake_restriction_note": "Synthetic observed cap",
+            "available_promotion_types": ["Boosts"],
+            "promotion_restriction_note": "Only synthetic boosts observed",
+        },
+        "access_evidence_note": "Synthetic account check",
+        "access_source": "manual_check",
+        "access_observed_at": "2026-09-18T09:30:00Z",
+        "current_balance": "25.00",
+        "pending_withdrawal_amount": "0.00",
+        "last_balance_update": "2026-09-18T09:30:00Z",
+        "group_name": "ignored",
+        "platform": "ignored",
+    }
+    created = client.post("/profiles/profile-demo-001/accounts", json=payload)
+    assert created.status_code == 201, created.text
+    saved = created.json()
+    assert saved["stake_access"] == "Severely Limited"
+    assert saved["promo_access"] == "Restricted"
+    assert saved["restriction_details"]["fixed_maximum_stake"] == "1.00"
+    reopened = client.get(f"/profiles/profile-demo-001/accounts/{saved['account_id']}")
+    assert reopened.status_code == 200
+    assert reopened.json()["access_source"] == "manual_check"
+
+    invalid = client.put(
+        f"/profiles/profile-demo-001/accounts/{saved['account_id']}",
+        json={**payload, "stake_access": "Minimum Only"},
+    )
+    assert invalid.status_code == 422

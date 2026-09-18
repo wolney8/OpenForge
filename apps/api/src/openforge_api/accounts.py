@@ -56,6 +56,8 @@ LifecycleValue = Literal[
     "Archived",
 ]
 SignupOfferStatusValue = Literal["Unknown", "Yes", "No"]
+StakeAccessValue = Literal["Normal", "Limited", "Severely Limited", "Blocked", "Not Checked"]
+PromoAccessValue = Literal["Full", "Restricted", "None", "Not Checked"]
 RestrictionValue = Literal[
     "Bonus Restricted",
     "Soft Limited",
@@ -115,6 +117,23 @@ _RESTRICTION_ALIASES = {
 }
 
 
+class AccountRestrictionDetails(BaseModel):
+    fixed_maximum_stake: str = Field(default="", max_length=40)
+    stake_restriction_type: Literal[
+        "", "fixed_maximum", "odds_dependent", "market_specific", "bookmaker_selected"
+    ] = ""
+    stake_restriction_note: str = Field(default="", max_length=500)
+    available_promotion_types: list[
+        Literal["Boosts", "Free Bets", "Reloads", "Selected promotions"]
+    ] = Field(default_factory=list)
+    promotion_restriction_note: str = Field(default="", max_length=500)
+
+    @field_validator("fixed_maximum_stake")
+    @classmethod
+    def validate_fixed_maximum_stake(cls, value: str) -> str:
+        return normalize_money_input(value, "fixed maximum stake") if value.strip() else ""
+
+
 class AccountPayload(BaseModel):
     account_id: str | None = Field(default=None, max_length=64)
     catalogue_id: str | None = Field(default=None, max_length=64)
@@ -127,6 +146,12 @@ class AccountPayload(BaseModel):
     lifecycle_status: LifecycleValue | None = None
     signup_offer_status: SignupOfferStatusValue = "Unknown"
     restrictions: list[RestrictionValue] = Field(default_factory=list)
+    stake_access: StakeAccessValue = "Not Checked"
+    promo_access: PromoAccessValue = "Not Checked"
+    restriction_details: AccountRestrictionDetails = Field(default_factory=AccountRestrictionDetails)
+    access_evidence_note: str = Field(default="", max_length=1000)
+    access_source: str = Field(default="", max_length=120)
+    access_observed_at: str = Field(default="", max_length=60)
     current_balance: str = Field(default="", max_length=40)
     pending_withdrawal_amount: str = Field(default="", max_length=40)
     last_balance_update: str = Field(default="", max_length=60)
@@ -221,7 +246,9 @@ def resolve_catalogue_fields(payload: AccountPayload) -> dict[str, object]:
     )
     values["lifecycle_status"] = lifecycle_status
     values["restrictions_json"] = json.dumps(restrictions)
+    values["restriction_details_json"] = payload.restriction_details.model_dump_json()
     values.pop("restrictions", None)
+    values.pop("restriction_details", None)
     master_catalogue = load_master_account_catalogue()
     expected_master_type = "Bookmaker" if payload.type == "Bookie" else payload.type
     master_entry = next(
@@ -279,10 +306,18 @@ def build_account_response(record: object) -> AccountResponse:
     except json.JSONDecodeError:
         restrictions = []
     values["restrictions"] = restrictions if isinstance(restrictions, list) else []
+    try:
+        restriction_details = json.loads(values.pop("restriction_details_json", "{}"))
+    except json.JSONDecodeError:
+        restriction_details = {}
+    values["restriction_details"] = (
+        restriction_details if isinstance(restriction_details, dict) else {}
+    )
     extra_places_health = resolve_extra_place_account_health(
         status=str(values.get("status", "")),
         lifecycle_status=str(values.get("lifecycle_status", "")),
         restrictions_json=json.dumps(values["restrictions"]),
+        stake_access=str(values.get("stake_access", "Not Checked")),
     )
     values.update(
         extra_places_access_state=extra_places_health.access_state,
@@ -533,6 +568,12 @@ def archive_profile_account(profile_id: str, account_id: str) -> AccountResponse
             "status": "Archived",
             "lifecycle_status": "Archived",
             "restrictions_json": existing.restrictions_json,
+            "stake_access": existing.stake_access,
+            "promo_access": existing.promo_access,
+            "restriction_details_json": existing.restriction_details_json,
+            "access_evidence_note": existing.access_evidence_note,
+            "access_source": existing.access_source,
+            "access_observed_at": existing.access_observed_at,
             "current_balance": existing.current_balance,
             "pending_withdrawal_amount": existing.pending_withdrawal_amount,
             "last_balance_update": existing.last_balance_update,

@@ -14,6 +14,7 @@ from openforge_api.backups import (
 from openforge_api.config import settings
 from openforge_api.db import connect, list_backup_snapshot_records
 from openforge_api.main import app
+from openforge_api.auth import SESSION_COOKIE_NAME, create_session_token
 from apps.api.tests.synthetic_setup import seed_committed_test_database
 
 
@@ -154,7 +155,13 @@ def test_backup_delete_keeps_latest_three_verified_backups(tmp_path: Path) -> No
 
 def test_fund_manager_notification_prompts_first_verified_backup(tmp_path: Path) -> None:
     configure_temp_database(tmp_path)
+    settings.auth_owner_emails = "backup-test@example.invalid"
+    settings.auth_session_secret = "synthetic-backup-test-secret-at-least-32-bytes"
     client = TestClient(app)
+    client.cookies.set(
+        SESSION_COOKIE_NAME,
+        create_session_token(subject="backup-test", email="backup-test@example.invalid", name="Backup Tester"),
+    )
 
     response = client.get("/fund-manager/notifications")
 

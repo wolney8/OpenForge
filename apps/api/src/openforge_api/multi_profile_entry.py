@@ -103,6 +103,8 @@ def evaluate_multi_profile_target(
         normalized_status = bookmaker_account.status.strip().casefold()
         lifecycle = bookmaker_account.lifecycle_status.strip().casefold()
         restrictions = get_account_restrictions(bookmaker_account)
+        stake_access = bookmaker_account.stake_access.strip().casefold()
+        promo_access = bookmaker_account.promo_access.strip().casefold()
         if normalized_status in UNAVAILABLE_ACCOUNT_STATUSES or lifecycle in UNAVAILABLE_LIFECYCLES:
             reasons.append(f"{bookmaker} account is {bookmaker_account.status}")
         elif restrictions & BLOCKING_RESTRICTIONS:
@@ -110,6 +112,8 @@ def evaluate_multi_profile_target(
                 f"{bookmaker} account is blocked: "
                 + ", ".join(sorted(restrictions & BLOCKING_RESTRICTIONS))
             )
+        elif stake_access == "blocked":
+            reasons.append(f"{bookmaker} stake access is Blocked")
         elif "sportsbook only" not in restrictions and "casino only" in restrictions:
             reasons.append(f"{bookmaker} account is Casino Only")
         elif normalized_status in ACCOUNT_WARNING_STATUSES or lifecycle in WARNING_LIFECYCLES:
@@ -128,8 +132,16 @@ def evaluate_multi_profile_target(
                 f"{bookmaker} account is {bookmaker_account.status} "
                 "and cannot use promotional offers"
             )
-        elif "soft limited" in restrictions:
-            warnings.append(f"{bookmaker} account is Soft Limited; confirm the stake is accepted")
+        elif offer_requires_promotional_access(offer_type) and promo_access == "none":
+            reasons.append(f"{bookmaker} promotion access is None")
+        elif stake_access in {"limited", "severely limited"} or "soft limited" in restrictions:
+            warnings.append(f"{bookmaker} stake access is {bookmaker_account.stake_access}; confirm the accepted stake")
+        elif offer_requires_promotional_access(offer_type) and promo_access == "restricted":
+            warnings.append(f"{bookmaker} promotion access is Restricted; confirm this offer is available")
+        elif stake_access == "not checked" or (
+            offer_requires_promotional_access(offer_type) and promo_access == "not checked"
+        ):
+            warnings.append(f"{bookmaker} access has not been checked")
         elif normalized_status != "active" and lifecycle != "active":
             reasons.append(
                 f"{bookmaker} account status requires review: {bookmaker_account.status}"

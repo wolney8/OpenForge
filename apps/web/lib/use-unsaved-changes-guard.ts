@@ -7,6 +7,7 @@ const defaultMessage =
 
 const activeUnsavedGuards = new Map<symbol, string>();
 export const APP_CONFIRMATION_OPEN_EVENT = "plum-duff:app-confirmation-open";
+export const APP_CONFIRMED_NAVIGATION_EVENT = "plum-duff:confirmed-navigation";
 
 let allowNextDocumentNavigation = false;
 
@@ -16,14 +17,16 @@ type UnsavedChangesPromptRequest = {
   confirmLabel: string;
   eyebrow: string;
   message: string;
+  navigationHref?: string;
   title: string;
   variant: "discard" | "destructive";
+  onConfirmed?: () => void;
   resolve: (confirmed: boolean) => void;
 };
 
 let promptHandler: ((request: UnsavedChangesPromptRequest) => void) | null = null;
 
-function requestUnsavedChangesConfirmation(message: string): Promise<boolean> {
+function requestUnsavedChangesConfirmation(message: string, onConfirmed?: () => void): Promise<boolean> {
   return requestAppConfirmation({
     accessibleName: "Unsaved tracker changes",
     cancelLabel: "Keep Editing",
@@ -32,6 +35,7 @@ function requestUnsavedChangesConfirmation(message: string): Promise<boolean> {
     message,
     title: "Leave this tracker form?",
     variant: "discard",
+    onConfirmed,
   });
 }
 
@@ -79,6 +83,29 @@ export async function confirmUnsavedTrackerChanges(): Promise<boolean> {
   return message ? requestUnsavedChangesConfirmation(message) : true;
 }
 
+export function confirmUnsavedTrackerNavigation(
+  navigationHref: string,
+  onConfirmed?: () => void,
+): void {
+  const message = activeUnsavedGuards.values().next().value as string | undefined;
+  if (!message) {
+    onConfirmed?.();
+    window.location.assign(navigationHref);
+    return;
+  }
+  void requestAppConfirmation({
+    accessibleName: "Unsaved tracker changes",
+    cancelLabel: "Keep Editing",
+    confirmLabel: "Discard Changes",
+    eyebrow: "",
+    message,
+    navigationHref,
+    onConfirmed,
+    title: "Leave this tracker form?",
+    variant: "discard",
+  });
+}
+
 export function useUnsavedChangesPromptController() {
   const [request, setRequest] = useState<UnsavedChangesPromptRequest | null>(null);
 
@@ -97,6 +124,7 @@ export function useUnsavedChangesPromptController() {
 
   const respond = useCallback(
     (confirmed: boolean) => {
+      if (confirmed && !request?.navigationHref) request?.onConfirmed?.();
       request?.resolve(confirmed);
       setRequest(null);
     },
@@ -128,12 +156,20 @@ export function useUnsavedChangesGuard(
     activeUnsavedGuards.set(activeGuardId, message);
 
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (
+        document.activeElement instanceof HTMLElement &&
+        document.activeElement.dataset.pdConfirmedNavigation === "true"
+      ) return;
       if (allowNextDocumentNavigation) return;
       event.preventDefault();
       event.returnValue = message;
     };
 
     const handleDocumentClick = (event: MouseEvent) => {
+      if (allowNextDocumentNavigation) {
+        allowNextDocumentNavigation = false;
+        return;
+      }
       if (event.defaultPrevented || event.button !== 0) {
         return;
       }
@@ -148,6 +184,9 @@ export function useUnsavedChangesGuard(
 
       const anchor = target.closest("a[href]");
       if (!(anchor instanceof HTMLAnchorElement)) {
+        return;
+      }
+      if (anchor.dataset.pdManagedNavigation === "true") {
         return;
       }
       if (anchor.target && anchor.target !== "_self") {
@@ -169,10 +208,17 @@ export function useUnsavedChangesGuard(
       void requestUnsavedChangesConfirmation(message).then((confirmed) => {
         if (confirmed) {
           allowNextDocumentNavigation = true;
-          window.setTimeout(() => {
-            allowNextDocumentNavigation = false;
-          }, 1_000);
-          window.location.assign(destination.href);
+          // The drawer closes when the app confirmation opens, so its Link may
+          // already be detached by the time the user confirms. Navigate using
+          // the captured destination after retiring this confirmed guard.
+          activeUnsavedGuards.delete(activeGuardId);
+          window.removeEventListener("beforeunload", handleBeforeUnload);
+          document.removeEventListener("click", handleDocumentClick, true);
+          const navigationDetail = { handled: false, href: destination.href };
+          window.dispatchEvent(new CustomEvent(APP_CONFIRMED_NAVIGATION_EVENT, {
+            detail: navigationDetail,
+          }));
+          if (!navigationDetail.handled) window.location.assign(destination.href);
         }
       });
     };

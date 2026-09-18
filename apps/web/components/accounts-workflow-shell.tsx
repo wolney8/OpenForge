@@ -61,6 +61,18 @@ type AccountRecord = {
   lifecycle_status: string;
   signup_offer_status: "Unknown" | "Yes" | "No";
   restrictions: string[];
+  stake_access: "Normal" | "Limited" | "Severely Limited" | "Blocked" | "Not Checked";
+  promo_access: "Full" | "Restricted" | "None" | "Not Checked";
+  restriction_details: {
+    fixed_maximum_stake: string;
+    stake_restriction_type: "" | "fixed_maximum" | "odds_dependent" | "market_specific" | "bookmaker_selected";
+    stake_restriction_note: string;
+    available_promotion_types: string[];
+    promotion_restriction_note: string;
+  };
+  access_evidence_note: string;
+  access_source: string;
+  access_observed_at: string;
   current_balance: string;
   pending_withdrawal_amount: string;
   last_balance_update: string;
@@ -84,6 +96,12 @@ type AccountFormState = {
   lifecycle_status: string;
   signup_offer_status: "Unknown" | "Yes" | "No";
   restrictions: string[];
+  stake_access: AccountRecord["stake_access"];
+  promo_access: AccountRecord["promo_access"];
+  restriction_details: AccountRecord["restriction_details"];
+  access_evidence_note: string;
+  access_source: string;
+  access_observed_at: string;
   current_balance: string;
   pending_withdrawal_amount: string;
   last_balance_update: string;
@@ -243,6 +261,12 @@ function createBlankForm(): AccountFormState {
     lifecycle_status: "Not Signed Up",
     signup_offer_status: "Unknown",
     restrictions: [],
+    stake_access: "Not Checked",
+    promo_access: "Not Checked",
+    restriction_details: { fixed_maximum_stake: "", stake_restriction_type: "", stake_restriction_note: "", available_promotion_types: [], promotion_restriction_note: "" },
+    access_evidence_note: "",
+    access_source: "",
+    access_observed_at: "",
     current_balance: "",
     pending_withdrawal_amount: "",
     last_balance_update: "",
@@ -267,6 +291,12 @@ function recordToForm(record: AccountRecord, commissionRate = ""): AccountFormSt
     lifecycle_status: record.lifecycle_status,
     signup_offer_status: record.signup_offer_status,
     restrictions: record.restrictions,
+    stake_access: record.stake_access ?? "Not Checked",
+    promo_access: record.promo_access ?? "Not Checked",
+    restriction_details: record.restriction_details ?? { fixed_maximum_stake: "", stake_restriction_type: "", stake_restriction_note: "", available_promotion_types: [], promotion_restriction_note: "" },
+    access_evidence_note: record.access_evidence_note ?? "",
+    access_source: record.access_source ?? "",
+    access_observed_at: toDateTimeLocalValue(record.access_observed_at ?? ""),
     current_balance: record.current_balance,
     pending_withdrawal_amount: record.pending_withdrawal_amount,
     last_balance_update: toDateTimeLocalValue(record.last_balance_update),
@@ -931,6 +961,7 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
               : undefined,
           status: formState.lifecycle_status,
           last_balance_update: fromDateTimeLocalValue(formState.last_balance_update),
+          access_observed_at: fromDateTimeLocalValue(formState.access_observed_at),
         }),
       });
 
@@ -1579,6 +1610,29 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
                   {option}
                 </button>
               ))}
+            </div>
+          </section> : null}
+          {!isBankAccount ? <section className="field-span-2 account-editor-choice-section" aria-labelledby="account-access-title" data-pd-id="accounts.editor.access">
+            <span className="field-label" id="account-access-title">Account access</span>
+            <div className="form-grid">
+              <label className="field-control"><span>Stake access</span><select onChange={(event) => setFormState((current) => ({ ...current, stake_access: event.target.value as AccountFormState["stake_access"] }))} value={formState.stake_access}>{["Normal", "Limited", "Severely Limited", "Blocked", "Not Checked"].map((value) => <option key={value}>{value}</option>)}</select></label>
+              <label className="field-control"><span>Promo access</span><select onChange={(event) => setFormState((current) => ({ ...current, promo_access: event.target.value as AccountFormState["promo_access"] }))} value={formState.promo_access}>{["Full", "Restricted", "None", "Not Checked"].map((value) => <option key={value}>{value}</option>)}</select></label>
+              <label className="field-control"><span>Stake restriction type</span><select onChange={(event) => setFormState((current) => ({ ...current, restriction_details: { ...current.restriction_details, stake_restriction_type: event.target.value as AccountFormState["restriction_details"]["stake_restriction_type"] } }))} value={formState.restriction_details.stake_restriction_type}><option value="">None recorded</option><option value="fixed_maximum">Fixed maximum</option><option value="odds_dependent">Odds-dependent</option><option value="market_specific">Market-specific</option><option value="bookmaker_selected">Bookmaker-selected amount</option></select></label>
+              <label className="field-control"><span>Fixed maximum stake</span><FinancialTextInput allowNegative={false} ariaLabel="Fixed maximum stake" dataPdId="accounts.editor.fixed-maximum-stake" id="account-fixed-maximum-stake" onBlur={() => setFormState((current) => ({ ...current, restriction_details: { ...current.restriction_details, fixed_maximum_stake: normalizeAccountMoney(current.restriction_details.fixed_maximum_stake) } }))} onChange={(value) => setFormState((current) => ({ ...current, restriction_details: { ...current.restriction_details, fixed_maximum_stake: value } }))} value={formState.restriction_details.fixed_maximum_stake} /></label>
+              <label className="field-control"><span>Evidence source</span><input maxLength={120} onChange={(event) => setFormState((current) => ({ ...current, access_source: event.target.value }))} value={formState.access_source} /></label>
+              <MaterialDateTimeField dataPdId="accounts.editor.access-observed-at" label="Last checked" onChange={(value) => setFormState((current) => ({ ...current, access_observed_at: value }))} value={formState.access_observed_at} />
+              <fieldset className="field-span-2 account-editor-choice-section">
+                <legend className="field-label">Promotion availability</legend>
+                <div className="review-chip-row">
+                  {["Boosts", "Free Bets", "Reloads", "Selected promotions"].map((promotionType) => {
+                    const selected = formState.restriction_details.available_promotion_types.includes(promotionType);
+                    return <button aria-pressed={selected} className={`review-chip${selected ? " is-active" : ""}`} key={promotionType} onClick={() => setFormState((current) => ({ ...current, restriction_details: { ...current.restriction_details, available_promotion_types: selected ? current.restriction_details.available_promotion_types.filter((value) => value !== promotionType) : [...current.restriction_details.available_promotion_types, promotionType] } }))} type="button">{promotionType}</button>;
+                  })}
+                </div>
+              </fieldset>
+              <label className="field-control"><span>Stake restriction notes</span><textarea maxLength={500} onChange={(event) => setFormState((current) => ({ ...current, restriction_details: { ...current.restriction_details, stake_restriction_note: event.target.value } }))} rows={2} value={formState.restriction_details.stake_restriction_note} /></label>
+              <label className="field-control"><span>Promotion restriction notes</span><textarea maxLength={500} onChange={(event) => setFormState((current) => ({ ...current, restriction_details: { ...current.restriction_details, promotion_restriction_note: event.target.value } }))} rows={2} value={formState.restriction_details.promotion_restriction_note} /></label>
+              <label className="field-control field-span-2"><span>Access evidence notes</span><textarea maxLength={1000} onChange={(event) => setFormState((current) => ({ ...current, access_evidence_note: event.target.value }))} rows={2} value={formState.access_evidence_note} /></label>
             </div>
           </section> : null}
           {!isBankAccount ? <section className="field-span-2 account-editor-choice-section" aria-labelledby="account-offers-title">
