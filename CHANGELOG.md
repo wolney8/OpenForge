@@ -10,6 +10,9 @@ No published release is represented by the local milestones below.
 
 ## 2026-09-18
 
+- **2026-09-18 13:10 BST — CP-021:** Closed local review coverage across all assessments,
+  competitor cells and canonical requests, retained the two manual/external journey boundaries and
+  defined a fail-closed protected hosted Preview gate without deploying it.
 - **2026-09-18 12:56 BST — CP-020:** Closed the authenticated combined Account-access/award and
   Global Search/Quick Action journeys, repaired three bounded import/restore/search defects and
   separated engineering OAuth/accessibility evidence from provider/manual boundaries.
@@ -46,11 +49,14 @@ No published release is represented by the local milestones below.
   completed authenticated portable Profile restore, report, re-export and synthetic cleanup evidence.
 - **2026-09-16 10:34 BST — CP-002:** Added concise owner-facing status, audit and roadmap navigation; moved unique detailed
   status history to `docs/history/project-status-history.md`.
-- **2026-09-16 10:18 BST — CP-001:** Established the persistent Project Status checkpoint workflow.
 - **2026-09-16 10:03 BST — Local integration milestone:** `localhost:3010` serves the reviewed local integration build with
   normal local sign-in and data. Main/origin and Vercel remain unchanged.
 
 ## Archived Project Status checkpoints
 
 Checkpoint rows older than the newest 20 in `PROJECT_STATUS.md` are appended here without changing
-their original IDs. No rows have rolled over yet.
+their original IDs.
+
+| ID | Timestamp | What changed | Issue | Document |
+|---|---|---|---|---|
+| CP-001 | 2026-09-16 10:18 BST | Consolidated project status and checkpoint workflow | [#114](https://github.com/wolney8/OpenForge/issues/114) | [Rule](AGENTS.md#project-status-checkpoint-rule) |

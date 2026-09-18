@@ -1,5 +1,7 @@
 # Project Roadmap — Plum Duff / OpenForge — Doc ID: PR-CODEX-001
 
+**Last updated:** 2026-09-18 13:10 BST
+
 ## Product goal
 
 Plum Duff is a local-first, profile-isolated matched-betting tracker based on Will's workbook.
@@ -8,11 +10,10 @@ reporting and recovery clearer and safer.
 
 ## Current milestone
 
-Continue the evidence-led platform audit from the completed local integration gate so the next
-implementation batches are prioritised by financial, security and user impact rather than by
-isolated visual polish.
+Prepare one protected hosted Preview without weakening the completed local runtime/database safety
+contract. Local audit review is closed; Preview remains separately approval-gated and uncreated.
 
-## Now
+## Local defect / completeness
 
 - Keep the reviewed integration available through normal `localhost:3010` sign-in and data.
 - Preserve completed Profile import, populated-ledger, combined-report and 200-record evidence.
@@ -20,16 +21,34 @@ isolated visual polish.
   authenticated browser evidence while main and hosted environments remain unchanged.
 - Preserve the completed Account, ledger-write, award, Blackjack and calculator safeguards.
 - Preserve the complete authenticated #109 workbook/award and Global Search/Quick Action journeys.
-- Continue #114 accessibility, recovery, competitor, requirements and security evidence without
-  waiting for deferred calculator-owner comparison.
+- Keep bounded local gaps visible: richer Multi-Lay placement/reward modes, changed-odds fills,
+  later #111 controls and other explicitly planned features are not audit failures.
 
-## Next
+## Hosted acceptance
 
-- Complete the remaining audit assessments and coherent requirement reconciliation.
-- Keep genuine Google re-authentication and VoiceOver speech as bounded owner/manual evidence.
-- Advance later #111 module/metric/granularity controls only through an approved bounded slice.
-- Resolve or disposition dependency exposure and release prerequisites.
-- Select the next bounded implementation batch from the remaining evidence-led gaps.
+- Seek explicit approval for one protected Vercel Preview using an isolated PostgreSQL/Neon database.
+- Prove hosted revision/runtime/database/schema identity, OAuth configuration, backup/rollback and
+  authenticated financial/reporting behaviour before considering Production.
+- Keep #96 credential rotation and provider-owned configuration as explicit owner/provider actions.
+
+## Owner / manual acceptance
+
+- One consolidated integrated visual smoke remains available; result pending.
+- One genuine Google-owned provider interaction remains pending.
+- One bounded VoiceOver spoken-output check remains pending.
+
+## Planned product features
+
+- #111 one period-P&L Reports preset is the next approved bounded reporting slice; the general
+  metric/granularity/filter model and saved explorer presets need later design.
+- Account freshness/trend reporting, decision-support tasks, richer Multi-Lay and approved source
+  ingestion remain separately planned.
+
+## Security / operations
+
+- Retain zero known production advisories, fail-closed database ownership and verified local backup.
+- Resolve hosted log retention/redaction, Preview teardown, Neon recovery and credential ownership
+  inside the protected Preview gate, not by inference from local evidence.
 
 ## Later
 
@@ -49,8 +68,8 @@ isolated visual polish.
 - Main, Neon and Vercel integration of the locally migrated identity/history work remains a later,
   separately approved release decision.
 - An owner smoke test may follow the engineering gate but does not block independent audit work.
-- Vercel Preview or release requires isolated data, genuine authentication, PostgreSQL evidence,
-  dependency disposition and credential prerequisites.
+- Vercel Preview requires explicit approval and the protected gate in
+  `docs/deployment/vercel-neon-local-first-readiness.md`; Production is a later decision.
 - OddsForge, live scraping and autonomous wagering remain outside the current Plum Duff scope.
 - Historical SR and bonus-on-win records remain compatible but are not everyday new-calculation priorities.
 
@@ -58,8 +77,8 @@ isolated visual polish.
 
 `Integrated local build` → `Engineering gate` → `Owner smoke test when convenient`
 
-`Engineering gate` → `Continue platform audit` → `Prioritised feature batches`
-→ `Approved Vercel Preview` → `Hosted acceptance`
+`Local audit closure` → `Approve protected Preview` → `Isolated hosted engineering gate`
+→ `Hosted owner acceptance` → `Separate Production decision`
 
 The owner smoke test and continuing audit can proceed independently after the engineering gate.
 

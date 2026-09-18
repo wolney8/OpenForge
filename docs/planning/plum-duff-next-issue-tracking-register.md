@@ -1,5 +1,69 @@
 # Plum Duff Next Issue Tracking Register
 
+## PD-AUDIT-CP021-20260918 — final local requirement reconciliation
+
+The preserved original titles in the
+[issue scope index](../audits/platform-quality-audit.md#original-issue-scope-index--identities-preserved-not-completion-claims)
+remain the original-request authority. The table below gives every canonical request a final local
+audit disposition without repeating or rewriting that source text. “Reconciled” means the original,
+available clarifications, present implementation/evidence and remaining gap have been compared; it
+does not mean implemented, hosted, accepted or closed.
+
+| Request(s) | Clarification / current implementation and evidence | Final local disposition / remaining gap |
+|---|---|---|
+| #1–#13 | Source pack, workbook maps, cash-first contracts, fixtures, shell, Profile isolation, reporting and import/export authorities are present; CP-003–020 exercise their principal local workflows | IMPLEMENTED/DOCUMENTED AND LOCALLY PROVEN in bounded workflows; hosted and owner acceptance remain separate |
+| #14–#18 | Later decisions explicitly defer subscriber roles, visibility, fees, invitations and access fixtures | DEFERRED by product decision; not a local product failure |
+| #19–#22 | Local shell, backup-ready storage, pure calculations and first Profile-scoped workflow are the integrated baseline | IMPLEMENTED AND LOCALLY PROVEN; hosted evidence pending |
+| #23 | Fee visibility and withdrawal remain distinct from settled P&L; Casino costs and Cash reconciliation are proven | PARTIAL: governed local fee/cash meaning exists; broader withdrawal operations remain planned |
+| #24 | Multi-Profile entry must retain Profile/Account eligibility; CP-020 proves the bounded Quick Action path | PARTIAL: bounded eligibility/action flow passes; broader multi-Profile opportunity workflow remains #77 scope |
+| #25–#31 | Target engine, cadence, recommendation, recycling and optional AI are governed planning work | PLANNED/DEFERRED; no advisory AI runtime is claimed |
+| #32–#34 | Shared entry controls, financial presentation and Profile-aware suggestion foundations are integrated and exercised | IMPLEMENTED LOCALLY; richer offer intelligence remains later scope |
+| #35–#37 | Standalone calculators, conversion bridge, contracts and deterministic fixtures are integrated; canonical calculator journeys pass | IMPLEMENTED LOCALLY for approved families; later calculator breadth stays explicit |
+| #38–#40 | Each-way/Dutch/sequential-lay and Casino utility backlog is only partially delivered | PARTIAL/PLANNED; existing Multi-Lay and Blackjack do not silently complete every backlog item |
+| #41–#44 | Date triage, sorting, risk states and placement lifecycle are integrated and evidenced | IMPLEMENTED LOCALLY; owner/hosted acceptance pending |
+| #45 | Partial-lay prompts exist only in bounded current flows | PARTIAL; richer changed-odds/multiple-fill follow-up remains planned |
+| #46–#49 | Taxonomy, match rating, bookmaker guidance and Sportsbook→Free Bet conversion/award lineage are integrated | IMPLEMENTED LOCALLY; broader source intelligence remains separate |
+| #50 | Multi-Lay structure and persistence are integrated | PARTIAL: richer reward modes and per-leg actual placement remain planned |
+| #51 | Editable Custom lay and synchronised slider/copy are integrated | IMPLEMENTED LOCALLY and accessibility-tested |
+| #52–#57 | Oddsmatcher contracts, fixtures, shell and modal work remain an explicitly deferred product | DEFERRED; Plum Duff tracker work does not authorise OddsMatcher implementation |
+| #58–#61 | FinancialValue, shared motion rules, Material/WCAG review and deterministic focus patterns are integrated | IMPLEMENTED LOCALLY; actual VoiceOver speech remains owner/manual evidence |
+| #62 | Google initiation, state/callback/denial/session recovery pass locally | IMPLEMENTED ENGINEERING SIDE; fresh Google-owned interaction remains owner/manual and hosted callback remains unverified |
+| #63 | Verified local backup/restore passes; off-device encryption/custody is not locally completed | PARTIAL: local recovery proven, cloud custody/retention pending |
+| #64–#66 | Catalogue identity, Plum Duff presentation and Material navigation are integrated | IMPLEMENTED LOCALLY |
+| #67 | Public source-ingestion safety/provenance contract exists | DOCUMENTED CONTRACT; not a live ingestion claim |
+| #68–#69 | Manual offer catalogue and signup-opportunity connection exist in current bounded workflows | IMPLEMENTED/PARTIAL locally; source automation remains separate |
+| #70–#71 | Account restriction/access and linked operator/risk context are modelled with explicit precedence | IMPLEMENTED LOCALLY for current consumers; future profitability intelligence remains #82/#106 |
+| #72–#74 | Reload/task and subscriber preference/registration work remains planned or deferred | PLANNED/DEFERRED; no subscriber runtime is claimed |
+| #75 | SQLite/PostgreSQL adapters, isolation and recovery are locally evidenced | IMPLEMENTED LOCALLY / HOSTED PENDING: Neon cutover and rollback require a protected hosted gate |
+| #76 | Bounded Profile-aware Global Search/navigation passes | PARTIAL against the wider command-menu roadmap; approved current journey passes |
+| #77 | Profile Quick Actions preserve context and eligibility | PARTIAL against the full multi-Profile opportunity workflow |
+| #78 | Native Casino financial lifecycle passes | PARTIAL against the separate full wagering/EV calculator contract |
+| #79 | Imported logical identity and provenance are implemented | PARTIAL: approved source-created/live ingestion is not implemented; scraping remains prohibited |
+| #80–#83 | Award lineage/removal, route guards, Account capability and Profit Boost are locally integrated and proven | IMPLEMENTED LOCALLY in canonical journeys |
+| #84–#87 | Multi-fixture/outright, quick Account intelligence, task deck and source/Discord intake remain mixed roadmap work | PARTIAL/PLANNED; implemented fragments do not complete these feature requests |
+| #88–#93 | Extra Place, validation, notification/history, UI drift and document-routing audit work is integrated or governed | IMPLEMENTED/REVIEWED LOCALLY; hosted/owner acceptance remains separate |
+| #94 | Google bound-script and hosted workbook acceptance has not been exercised | BLOCKED by external/hosted boundary; local workbook portability passes |
+| #95 | Three-way workbook synchronisation remains design scope | PLANNED; no merge-write behaviour is inferred |
+| #96 | Credential rotation belongs to Will/provider operations | OWNER/PROVIDER ACTION REQUIRED; no secret is recorded here |
+| #97–#101 | Workbook decision review, status entry point, notification clear/layout and local-service continuity are implemented/reviewed | IMPLEMENTED OR DOCUMENTED LOCALLY; hosted notification acceptance remains separate |
+| #102 | Original text for `PD-FUTURE-001`–`018` cannot be recovered | BLOCKED SOURCE; no intent is fabricated |
+| #103 | Future product-name/compatibility decision remains separate from current Plum Duff branding | DEFERRED / DECISION REQUIRED |
+| #104–#105 | Founder import baseline and shared signed-money animation are integrated | IMPLEMENTED LOCALLY |
+| #106 | Account freshness/evidence fields exist, but balance-history trend reporting remains later | PARTIAL / PLANNED remainder |
+| #107–#109 | Synthetic authority isolation and #109 access/restriction import/export/restore pass | IMPLEMENTED LOCALLY |
+| #110 | Coordinated chart/reduced-motion behaviour is integrated | IMPLEMENTED LOCALLY for current charts; future explorer motion follows #111 |
+| #111 | Point inspection and reconciled-record drilldown pass with retained context | PARTIAL ROADMAP: one period-P&L preset is approved next; general metric/granularity/preset semantics remain future design |
+| #112 | Canonical odds input normalisation is integrated in approved surfaces | IMPLEMENTED LOCALLY; remaining form adoption is bounded maintenance |
+| #113 | Independent calculator comparison evidence is preserved | DEFERRED owner numerical comparison; no date and no automated parity claim |
+| #114 | Whole-platform local audit matrices are fully reviewed | LOCALLY REVIEWED: 87/87 assessments, 22/24 journeys, 27/27 competitors and 133/133 requests; owner/hosted acceptance is not inferred |
+| #115 | Supported patches leave zero known production dependency advisories | REMEDIATED LOCALLY; five ESLint-only transitives accepted pending safe upstream releases and hosted exposure remains unverified |
+| `PD-FUTURE-001`, `PD-FUTURE-002`, `PD-FUTURE-003`, `PD-FUTURE-004`, `PD-FUTURE-005`, `PD-FUTURE-006`, `PD-FUTURE-007`, `PD-FUTURE-008`, `PD-FUTURE-009`, `PD-FUTURE-010`, `PD-FUTURE-011`, `PD-FUTURE-012`, `PD-FUTURE-013`, `PD-FUTURE-014`, `PD-FUTURE-015`, `PD-FUTURE-016`, `PD-FUTURE-017`, `PD-FUTURE-018` | No authoritative original text was found; #102 owns source recovery | RECONCILED AS SOURCE-UNRESOLVED, not implemented, rejected or reconstructed |
+
+This closes **133/133 reconciliation coverage**: 115 numbered issues plus 18 preserved future-request
+identities. It does not alter GitHub issue state, approve deferred work or imply product completion.
+External CP-021 summary sync remains pending for #114, #111 and #115; CP-020's already-synchronised
+#114/#109 comments must not be duplicated.
+
 ## PD-AUDIT-CP020-20260918 — combined access/award, search and external boundaries
 
 | ID | Requested outcome | Current state |

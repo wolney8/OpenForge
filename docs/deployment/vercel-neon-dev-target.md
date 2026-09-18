@@ -1,6 +1,11 @@
 # Vercel, Neon, and Cloudflare R2 Development Target
 
-Last updated: 2026-08-20
+Last updated: 2026-09-18 13:10 BST
+
+The current hosted runtime identity and protected Preview gate are authoritative in
+[`vercel-neon-local-first-readiness.md`](vercel-neon-local-first-readiness.md). This older target
+description retains architecture history; where its SQLite-only statements conflict with the
+current readiness contract and tested PostgreSQL adapter, the current readiness contract wins.
 
 This is the preferred hosted-development direction for Plum Duff.
 

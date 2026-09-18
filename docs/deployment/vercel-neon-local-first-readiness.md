@@ -1,11 +1,66 @@
 # Vercel and Neon Local-First Readiness
 
+**Last updated:** 2026-09-18 13:10 BST
+
 This note records the Vercel-to-Neon activation boundary.
+
+No hosted deployment, migration or secret change is authorised by this document.
+
+## Hosted runtime identity contract
+
+Hosted environments must use explicit roles; a missing or conflicting role/database target fails
+startup rather than falling back:
+
+| Runtime | Source/config identity | Data owner | Required isolation |
+|---|---|---|---|
+| Vercel Preview web/API | Exact Preview revision, `preview` role, Preview base/API URLs and Preview environment source | Dedicated disposable/Preview PostgreSQL branch or database | Must reject Production, normal-owner, clone and test database identities |
+| Hosted Production web/API | Exact approved release revision, `production` role, Production base/API URLs and Production environment source | Dedicated Production PostgreSQL/Neon database | Must reject Preview, normal-owner, clone and test identities |
+| Local normal owner | Exact local revision and `normal-owner` role | Canonical normal local SQLite database | Existing fail-closed local contract remains authoritative |
+| Candidate/test | Exact candidate revision and candidate/test role | Explicit clone or disposable SQLite/PostgreSQL | Must never inherit normal-owner, Preview or Production storage |
+
+Every hosted health/readiness response must safely identify, without credentials:
+
+- source revision;
+- runtime role;
+- frontend and API/base endpoint classification;
+- database engine and non-secret identity/fingerprint;
+- schema version;
+- OAuth callback/base URL classification;
+- environment/config source classification;
+- process health separately from expected-database/schema readiness.
+
+Preview and Production must use different database identities and separately scoped credentials.
+Port numbers, working directories and Vercel branch names are not database-ownership controls.
+Preview must never fall back to Production storage when configuration is missing or unreachable.
+
+## Protected Preview approval gate
+
+This checklist is decision-ready but **not executed or authorised**:
+
+- [ ] Will authorises one protected Preview and the intended source revision.
+- [ ] Preview has an isolated PostgreSQL/Neon database with a verified non-Production identity.
+- [ ] Preview role and all endpoints are explicit; missing config fails closed.
+- [ ] Preview OAuth uses a stable approved callback/base URL and separately governed credentials.
+- [ ] Only approved additive migrations run against the isolated Preview database.
+- [ ] A pre-migration backup/restore point and exact rollback/teardown procedure are verified.
+- [ ] Health/readiness exposes safe revision, role, database and schema identity.
+- [ ] The deployment revision is visible and matches frontend/API assets.
+- [ ] #115 remains zero known production advisories; accepted dev-only transitives do not ship.
+- [ ] #96 credential rotation is dispositioned by Will/provider before any affected credential is used.
+- [ ] Preview test data is synthetic, unmistakable and removable through governed teardown.
+- [ ] Preview cannot reach Production aliases, storage, secrets or data.
+- [ ] Authenticated import, core financial journeys, report-once and recovery smoke passes.
+- [ ] Teardown removes Preview resources without touching Production or normal-local data.
+
+Codex can later prepare/configure the isolated runtime, run migrations/tests, verify identity and
+recovery, and produce the evidence bundle after explicit approval and access. Will/provider action
+is required for hosted account permissions, stable OAuth redirect registration, #96 secret rotation
+and the fresh provider-owned sign-in observation. Production cutover remains a separate decision.
 
 ## Current State
 
-- Vercel can be used for web/API deployment testing only after environment variables are configured
-  deliberately for the target environment.
+- Vercel can be used for web/API deployment testing only after the protected Preview gate above is
+  explicitly authorised and environment variables are configured deliberately for that target.
 - Local development remains SQLite by default.
 - Vercel Production becomes Neon authoritative only when `OPENFORGE_DATABASE_MODE=neon` is set.
 - The PostgreSQL runtime adapter and transactional migrations are implemented.
@@ -38,8 +93,9 @@ Latest local check on 2026-08-20:
 - runtime adapter: verified against Neon with synthetic data
 - hosted runtime activation: awaiting Vercel environment switch and authenticated smoke
 
-Current blocker: the deployed Production environment must run the current commit with
-`OPENFORGE_DATABASE_MODE=neon`, followed by the authenticated persistence smoke.
+Current boundary: local adapters and isolated PostgreSQL recovery are proven, but no current Vercel
+Preview/Production revision, hosted database identity, OAuth callback or rollback has been accepted.
+The next hosted step is a protected Preview, not a Production environment switch.
 
 ## Runtime Rules
 
@@ -65,4 +121,5 @@ Profile-specific ledgers and reports belong in the profile summary menu once ins
 
 ## Next implementation slice
 
-The next safe database slice is documented in `docs/deployment/neon-runtime-tranche-01.md`.
+After explicit owner approval, create one protected Preview against an isolated database and execute
+the checklist above. Production remains out of scope until Preview evidence is accepted.

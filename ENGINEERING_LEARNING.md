@@ -1,16 +1,35 @@
 # Engineering Learning — Plum Duff / OpenForge — Doc ID: EL-CODEX-001
 
-**Last updated:** 2026-09-18 12:56 BST
+**Last updated:** 2026-09-18 13:10 BST
 
 This is a compact notebook of transferable lessons from building Plum Duff. It is not the audit,
 roadmap, backlog or evidence record.
 
 ## Current learning focus
 
-- Defining the boundary between application-owned behaviour and an external provider.
-- Closing only the acceptance steps for which the evidence owner can provide truthful proof.
+- Keeping a verification claim inside the environment and behaviours the evidence actually covers.
+- Carrying residual hosted/manual risk explicitly after local audit closure.
 
 ## Concepts worth remembering
+
+### Verification envelope
+
+**What it means:** The exact environments, data and behaviours that a body of evidence proves.
+
+**Why it mattered in Plum Duff:** Local OAuth, PostgreSQL recovery and financial journeys pass, but
+that evidence does not automatically prove Vercel configuration, Neon recovery or Google's hosted
+interaction.
+
+**Remember:** Say where the proof stops as clearly as where it starts.
+
+### Residual risk
+
+**What it means:** The known uncertainty that remains after completed checks and repairs.
+
+**Why it mattered in Plum Duff:** VoiceOver speech, provider interaction, hosted rollback and later
+analytics policy remain explicit boundaries instead of being hidden behind 100% review coverage.
+
+**Remember:** Full review can coexist with open risk; classify it rather than erasing it.
 
 ### System boundary
 
@@ -300,14 +319,14 @@ source checkout and safe database identity.
 
 ## Portability pulse
 
-**Portability status:** Concern
+**Portability status:** On track
 
 **Reason:** SQLite/PostgreSQL targets, source roots and endpoints have an explicit fail-closed runtime
-contract, and the broad API suite now has zero hidden-state failures. Fixed local ports,
-macOS/Python architecture, Google authentication and hosted recovery remain environment-specific.
+contract; the broad tests are private-data-free; and Preview/Production now have separate documented
+roles and database ownership. Google/provider setup and hosted recovery are still unverified.
 
-**Smallest improvement:** Make the hosted runtime role and database identity explicit in approved
-deployment configuration before any Vercel/Neon work.
+**Smallest improvement:** On approval, instantiate one protected Preview and prove the documented
+role/database/schema identity against isolated hosted storage.
 
 ## Learning log
 
@@ -327,6 +346,7 @@ deployment configuration before any Vercel/Neon work.
 | CP-018 | 2026-09-18 09:15 BST | Deterministic fixtures; capability versus observation | Explicit synthetic seeds removed hidden-state failures, while #109 separates stable access classes from restriction evidence and freshness |
 | CP-019 | 2026-09-18 11:20 BST | State precedence; test hermeticity | Account eligibility now has one governing order, while all ordinary API regressions run without owner data or hidden seeds |
 | CP-020 | 2026-09-18 12:56 BST | System boundary; acceptance boundary | OAuth and VoiceOver evidence now stop exactly where external-provider or human-observed behaviour begins |
+| CP-021 | 2026-09-18 13:10 BST | Verification envelope; residual risk | Local review closure now separates proven local behaviour from hosted, provider and owner/manual evidence |
 
 ## Where detailed evidence lives
 
