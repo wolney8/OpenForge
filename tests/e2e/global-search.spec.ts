@@ -1,6 +1,31 @@
 import { expect, test } from "@playwright/test";
 
 test.describe("Founder global search", () => {
+  test("keeps the newest result when an older search response completes later", async ({ page }) => {
+    await page.route("**/search?query=*", async (route) => {
+      const query = new URL(route.request().url()).searchParams.get("query");
+      if (query === "older query") {
+        await new Promise((resolve) => setTimeout(resolve, 700));
+        await route.fulfill({
+          json: [{ result_id: "profile-old", group: "Profiles", title: "Older result", subtitle: "OLD · Active", href: "/profiles/profile-old/tracker/dashboard", icon: "person" }],
+        }).catch(() => undefined);
+        return;
+      }
+      await route.fulfill({
+        json: [{ result_id: "profile-new", group: "Profiles", title: "Newest result", subtitle: "NEW · Active", href: "/profiles/profile-new/tracker/dashboard", icon: "person" }],
+      });
+    });
+    await page.goto("/profiles");
+    const search = page.locator('[data-pd-id="global-search.input"]');
+    await search.fill("older query");
+    await page.waitForTimeout(250);
+    await search.fill("newer query");
+    await expect(page.getByText("Newest result", { exact: true })).toBeVisible();
+    await page.waitForTimeout(800);
+    await expect(page.getByText("Newest result", { exact: true })).toBeVisible();
+    await expect(page.getByText("Older result", { exact: true })).toHaveCount(0);
+  });
+
   test("supports grouped keyboard navigation without exposing an unbounded index", async ({ page }) => {
     await page.setViewportSize({ width: 1180, height: 820 });
     await page.goto("/profiles/profile-demo-001/tracker/dashboard");

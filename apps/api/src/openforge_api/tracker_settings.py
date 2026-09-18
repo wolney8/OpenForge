@@ -9,6 +9,22 @@ from openforge_api.db import get_profile_tracker_settings, upsert_profile_tracke
 
 router = APIRouter(prefix="/profiles/{profile_id}/tracker-settings", tags=["tracker-settings"])
 
+DATE_PRESET_VALUES = (
+    "Today",
+    "Yesterday",
+    "This Week",
+    "Week (Mon-Sun)",
+    "Last Week",
+    "Past 7 Days",
+    "Past 8 Days",
+    "Fortnight",
+    "This Month",
+    "Last Month",
+    "This Year",
+    "All Dates",
+    "Custom",
+)
+
 DatePresetValue = Literal[
     "Today",
     "Yesterday",

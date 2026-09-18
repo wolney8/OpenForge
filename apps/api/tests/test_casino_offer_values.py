@@ -95,3 +95,21 @@ def test_prospecting_casino_offer_without_values_resolves_as_zero_placeholder() 
         "values stay at 0.00 until the campaign is active."
         in result.calculation_notes
     )
+
+
+def test_timezone_aware_portable_expiry_compares_with_local_as_of() -> None:
+    result = calculate_casino_offer_values(
+        CasinoOfferCalculationInput(
+            profile_id="profile-demo-001",
+            record_id="CO-TIMEZONE",
+            date_started="2026-09-18T09:00:00+00:00",
+            date_settling="2026-09-18T12:00:00+00:00",
+            expiry_datetime="2026-09-17T23:59:00+00:00",
+            status="In Progress",
+            calc_net_pnl="0.00",
+            final_net_pnl="",
+        ),
+        as_of_datetime=datetime(2026, 9, 18, 12, 0),
+    )
+
+    assert result.is_overdue is True

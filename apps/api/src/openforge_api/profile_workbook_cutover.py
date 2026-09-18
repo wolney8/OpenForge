@@ -41,6 +41,7 @@ from openforge_api.free_bets import FreeBetPayload
 from openforge_api.postgres_schema import sqlite_type_to_postgres
 from openforge_api.sportsbook import SportsbookBetPayload, list_profile_sportsbook_bets
 from openforge_api.sportsbook import build_response as build_sportsbook_response
+from openforge_api.tracker_settings import DATE_PRESET_VALUES
 from openforge_api.tracker_summary_sources import get_profile_tracker_summary_sources
 
 PROFILE_TABLES = (
@@ -1014,6 +1015,17 @@ def _audit_write(
 def _apply_profile_settings(
     connection: Any, *, profile_id: str, import_run_id: str, settings: list[dict[str, Any]]
 ) -> int:
+    invalid_date_presets = [
+        item.get("parsed_value")
+        for item in settings
+        if item.get("target") == "tracker_settings.active_date_preset"
+        and item.get("classification") == "IMPORT"
+        and item.get("parsed_value") not in DATE_PRESET_VALUES
+    ]
+    if invalid_date_presets:
+        raise ImportCutoverError(
+            "Workbook active date preset is not one of the supported tracker date ranges"
+        )
     count = 0
     for item in settings:
         parsed_value = item.get("parsed_value")

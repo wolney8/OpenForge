@@ -19,6 +19,7 @@ from openforge_api.profile_workbook_cutover import (
     _account_write_state,
     _apply_decision,
     _apply_formal_report_date,
+    _apply_profile_settings,
     _checkpoint_state_checksum,
     _checksum,
     _historical_extra_place_date,
@@ -36,6 +37,20 @@ from openforge_api.profile_workbook_cutover import (
     validate_import_approval_preflight,
     validate_import_preflight,
 )
+
+
+def test_profile_import_rejects_unsupported_date_preset_before_write() -> None:
+    with pytest.raises(ImportCutoverError, match="supported tracker date ranges"):
+        _apply_profile_settings(
+            None,
+            profile_id=PROFILE_ID,
+            import_run_id=RUN_ID,
+            settings=[{
+                "target": "tracker_settings.active_date_preset",
+                "classification": "IMPORT",
+                "parsed_value": "2026-09-18",
+            }],
+        )
 
 PROFILE_ID = "profile-cutover-test"
 RUN_ID = "import-run-cutover-test"

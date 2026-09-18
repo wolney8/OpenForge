@@ -1085,7 +1085,18 @@ def test_accounts_v1_maps_catalogue_authority_and_preserves_money() -> None:
 def test_accounts_v1_maps_approved_access_values_and_rejects_unknown_values() -> None:
     case = account_fixture("AI-001")
     fields = dict(case["fields"])
-    fields.update({"Stake Access": "Severely Limited", "Promo Access": "Restricted"})
+    fields.update({
+        "Stake Access": "Severely Limited",
+        "Promo Access": "Restricted",
+        "Fixed Maximum Stake": "1.00",
+        "Stake Restriction Type": "fixed_maximum",
+        "Stake Restriction Note": "Observed on a qualifying bet",
+        "Available Promotion Types": "Boosts, Selected promotions",
+        "Promotion Restriction Note": "Free Bets unavailable",
+        "Access Evidence Note": "Checked in the Account",
+        "Access Source": "manual_check",
+        "Access Observed At": "2026-09-18T09:30:00Z",
+    })
     mapped = stage_import_rows(
         profile_id="PROFILE-001",
         rows=[ImportRowPayload(
@@ -1097,6 +1108,17 @@ def test_accounts_v1_maps_approved_access_values_and_rejects_unknown_values() ->
     assert mapped["staged_action"] == "insert"
     assert mapped["mapped_fields"]["stake_access"] == "Severely Limited"
     assert mapped["mapped_fields"]["promo_access"] == "Restricted"
+    assert mapped["mapped_fields"]["access_evidence_note"] == "Checked in the Account"
+    assert mapped["mapped_fields"]["access_source"] == "manual_check"
+    assert mapped["mapped_fields"]["access_observed_at"] == "2026-09-18T09:30:00Z"
+    restriction_details = json.loads(mapped["mapped_fields"]["restriction_details_json"])
+    assert restriction_details == {
+        "available_promotion_types": ["Boosts", "Selected promotions"],
+        "fixed_maximum_stake": "1.00",
+        "promotion_restriction_note": "Free Bets unavailable",
+        "stake_restriction_note": "Observed on a qualifying bet",
+        "stake_restriction_type": "fixed_maximum",
+    }
 
     fields["Stake Access"] = "Unknown"
     rejected = stage_import_rows(

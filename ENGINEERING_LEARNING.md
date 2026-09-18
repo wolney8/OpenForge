@@ -1,16 +1,38 @@
 # Engineering Learning — Plum Duff / OpenForge — Doc ID: EL-CODEX-001
 
-**Last updated:** 2026-09-18 11:20 BST
+**Last updated:** 2026-09-18 12:56 BST
 
 This is a compact notebook of transferable lessons from building Plum Duff. It is not the audit,
 roadmap, backlog or evidence record.
 
 ## Current learning focus
 
-- Applying deterministic state precedence when several fields influence one eligibility decision.
-- Keeping regression evidence hermetic and independent of private owner state.
+- Defining the boundary between application-owned behaviour and an external provider.
+- Closing only the acceptance steps for which the evidence owner can provide truthful proof.
 
 ## Concepts worth remembering
+
+### System boundary
+
+**What it means:** A system is responsible for the requests, validation and recovery it owns, while
+an external provider remains responsible for its own secure interaction.
+
+**Why it mattered in Plum Duff:** Google initiation, state validation, callback handling and local
+session recovery are testable here; a genuine Google sign-in is not something Plum Duff can safely
+simulate or bypass.
+
+**Remember:** Test both sides of your boundary, but never claim control of the other system.
+
+### Acceptance boundary
+
+**What it means:** An acceptance result states exactly which evidence completes a journey and which
+step still belongs to a different person, device or service.
+
+**Why it mattered in Plum Duff:** Search and workbook/award journeys now pass end to end, while
+VoiceOver speech and fresh Google interaction remain explicit owner/manual evidence rather than
+being hidden inside a broad engineering PASS.
+
+**Remember:** A precise partial result is stronger than an invented complete one.
 
 ### State precedence
 
@@ -304,6 +326,7 @@ deployment configuration before any Vercel/Neon work.
 | CP-017 | 2026-09-17 15:59 BST | Reconciliation; idempotent business operations | Cash movement stayed distinct from observed balances, while award and adjustment retries recovered one logical result without duplication |
 | CP-018 | 2026-09-18 09:15 BST | Deterministic fixtures; capability versus observation | Explicit synthetic seeds removed hidden-state failures, while #109 separates stable access classes from restriction evidence and freshness |
 | CP-019 | 2026-09-18 11:20 BST | State precedence; test hermeticity | Account eligibility now has one governing order, while all ordinary API regressions run without owner data or hidden seeds |
+| CP-020 | 2026-09-18 12:56 BST | System boundary; acceptance boundary | OAuth and VoiceOver evidence now stop exactly where external-provider or human-observed behaviour begins |
 
 ## Where detailed evidence lives
 

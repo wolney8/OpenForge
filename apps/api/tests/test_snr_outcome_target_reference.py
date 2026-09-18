@@ -1,9 +1,9 @@
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal
 
 import pytest
+from fastapi import HTTPException
 
 from openforge_api.calculators import MatchedBettingPayload, _calculate
-from fastapi import HTTPException
 
 
 @pytest.mark.parametrize('strategy,stake,liability,back,lay', [
@@ -22,12 +22,20 @@ def test_will_snr_observation_independent_fixture(strategy, stake, liability, ba
 @pytest.mark.parametrize('f,b,o,c', [('10','3','3.1','0'),('7.13','8.21','9.02','0.05'),('1','2','2.5','0.02'),('10','4','4.2','0.025')])
 @pytest.mark.parametrize('strategy',['Standard','Underlay','Overlay'])
 def test_independent_equations_and_penny_placement(f,b,o,c,strategy):
-    F,B,O,C=map(Decimal,(f,b,o,c))
-    raw={'Standard':F*(B-1)/(O-C),'Underlay':F*(B-2)/(O-1),'Overlay':F/(1-C)}[strategy]
+    free_bet, back_odds, lay_odds, commission = map(Decimal, (f, b, o, c))
+    raw = {
+        'Standard': free_bet * (back_odds - 1) / (lay_odds - commission),
+        'Underlay': free_bet * (back_odds - 2) / (lay_odds - 1),
+        'Overlay': free_bet / (1 - commission),
+    }[strategy]
     placed=raw.quantize(Decimal('.01'),rounding=ROUND_HALF_UP)
-    liability=(placed*(O-1)).quantize(Decimal('.01'),rounding=ROUND_HALF_UP)
-    expected_back=(F*(B-1)-liability).quantize(Decimal('.01'),rounding=ROUND_HALF_UP)
-    expected_lay=(placed*(1-C)).quantize(Decimal('.01'),rounding=ROUND_HALF_UP)
+    liability=(placed*(lay_odds-1)).quantize(Decimal('.01'),rounding=ROUND_HALF_UP)
+    expected_back = (free_bet * (back_odds - 1) - liability).quantize(
+        Decimal('.01'), rounding=ROUND_HALF_UP
+    )
+    expected_lay = (placed * (1 - commission)).quantize(
+        Decimal('.01'), rounding=ROUND_HALF_UP
+    )
     r=_calculate(MatchedBettingPayload(bet_type='free_bet',strategy=strategy,back_stake=f,back_odds=b,lay_odds=o,exchange_commission=c))
     assert Decimal(r.selected_lay_stake)==placed
     assert Decimal(r.liability)==liability

@@ -61,6 +61,16 @@ def format_week_label(value: datetime) -> str:
     return f"W/C {week_start.strftime('%d/%m/%Y')}"
 
 
+def comparable_datetimes(left: datetime, right: datetime) -> tuple[datetime, datetime]:
+    """Use the known timezone when a workbook/local value has no explicit offset."""
+
+    if left.tzinfo is None and right.tzinfo is not None:
+        left = left.replace(tzinfo=right.tzinfo)
+    elif right.tzinfo is None and left.tzinfo is not None:
+        right = right.replace(tzinfo=left.tzinfo)
+    return left, right
+
+
 def calculate_casino_offer_values(
     calculation_input: CasinoOfferCalculationInput,
     *,
@@ -84,6 +94,10 @@ def calculate_casino_offer_values(
     started_datetime = parse_datetime(calculation_input.date_started)
     effective_datetime = settling_datetime or started_datetime
     expiry_datetime = parse_datetime(calculation_input.expiry_datetime)
+    if expiry_datetime is not None:
+        expiry_datetime, as_of_datetime = comparable_datetimes(
+            expiry_datetime, as_of_datetime
+        )
     counts_as_open = calculation_input.status in OPEN_STATUSES
     is_overdue = counts_as_open and expiry_datetime is not None and expiry_datetime < as_of_datetime
     week_label = format_week_label(effective_datetime) if effective_datetime else ""

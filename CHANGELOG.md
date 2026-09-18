@@ -10,6 +10,9 @@ No published release is represented by the local milestones below.
 
 ## 2026-09-18
 
+- **2026-09-18 12:56 BST — CP-020:** Closed the authenticated combined Account-access/award and
+  Global Search/Quick Action journeys, repaired three bounded import/restore/search defects and
+  separated engineering OAuth/accessibility evidence from provider/manual boundaries.
 - **2026-09-18 11:20 BST — CP-019:** Integrated canonical Account Stake/Promo access and evidence,
   cleared all ordinary broad API failures, and closed guided onboarding, bounded report drilldown
   and larger-data stale-response journeys locally.

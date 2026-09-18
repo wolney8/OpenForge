@@ -16,12 +16,12 @@
     "Accounts": {
       "table_name": "Accounts",
       "id_prefix": "AC",
-      "authoritative_input_headers": ["Account", "Type", "Counts In Cash Total", "Channel", "Status", "Stake Access", "Promo Access", "CurrentBalance", "PendingWithdrawalAmount", "Group", "Platform", "RiskTeam", "SignUpDate", "Notes"],
+      "authoritative_input_headers": ["Account", "Type", "Counts In Cash Total", "Channel", "Status", "Stake Access", "Promo Access", "Fixed Maximum Stake", "Stake Restriction Type", "Stake Restriction Note", "Available Promotion Types", "Promotion Restriction Note", "Access Evidence Note", "Access Source", "Access Observed At", "CurrentBalance", "PendingWithdrawalAmount", "Group", "Platform", "RiskTeam", "SignUpDate", "Notes"],
       "id_system_headers": ["AccountID", "LastBalanceUpdate"],
       "formula_helper_headers": ["LastPromoUsed"],
       "script_owned_headers": ["AccountID", "LastBalanceUpdate"],
       "protected_headers": ["AccountID", "LastBalanceUpdate", "LastPromoUsed"],
-      "required_headers": ["AccountID", "Account", "Type", "Counts In Cash Total", "Channel", "Status", "Stake Access", "Promo Access", "CurrentBalance", "PendingWithdrawalAmount", "LastBalanceUpdate", "LastPromoUsed", "Group", "Platform", "RiskTeam", "SignUpDate", "Notes"],
+      "required_headers": ["AccountID", "Account", "Type", "Counts In Cash Total", "Channel", "Status", "Stake Access", "Promo Access", "Fixed Maximum Stake", "Stake Restriction Type", "Stake Restriction Note", "Available Promotion Types", "Promotion Restriction Note", "Access Evidence Note", "Access Source", "Access Observed At", "CurrentBalance", "PendingWithdrawalAmount", "LastBalanceUpdate", "LastPromoUsed", "Group", "Platform", "RiskTeam", "SignUpDate", "Notes"],
       "growth_defined_names": [{"name": "_xlnm._FilterDatabase", "local_sheet_id": "7", "source_reference": "Accounts!$A$1:$Q$125"}, {"name": "Z_FF6E07D2_D981_42E8_AB46_8FA8E5669783_.wvu.FilterData", "local_sheet_id": "7", "source_reference": "Accounts!$A$1:$Q$125"}],
       "template_strategy": "nearest-structurally-complete-formula-row"
     },

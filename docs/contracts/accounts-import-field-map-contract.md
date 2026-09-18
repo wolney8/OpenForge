@@ -29,6 +29,14 @@ boundary as the other issue #12 ledgers.
 | `Status` | `status` | Entered | Controlled profile account-health status |
 | `Stake Access` | `stake_access` | Entered capability | Controlled `Normal`, `Limited`, `Severely Limited`, `Blocked`, `Not Checked`; never alters lifecycle |
 | `Promo Access` | `promo_access` | Entered capability | Controlled `Full`, `Restricted`, `None`, `Not Checked`; never alters lifecycle |
+| `Fixed Maximum Stake` | `restriction_details.fixed_maximum_stake` | Entered restriction evidence | Optional finite money value; separate from capability state |
+| `Stake Restriction Type` | `restriction_details.stake_restriction_type` | Entered restriction evidence | Controlled `fixed_maximum`, `odds_dependent`, `market_specific`, `bookmaker_selected`, or blank |
+| `Stake Restriction Note` | `restriction_details.stake_restriction_note` | Entered restriction evidence | Optional concise evidence |
+| `Available Promotion Types` | `restriction_details.available_promotion_types` | Entered restriction evidence | Optional comma-separated approved promotion categories |
+| `Promotion Restriction Note` | `restriction_details.promotion_restriction_note` | Entered restriction evidence | Optional concise evidence |
+| `Access Evidence Note` | `access_evidence_note` | Entered provenance | Optional plain-language observation |
+| `Access Source` | `access_source` | Entered provenance | Optional source label |
+| `Access Observed At` | `access_observed_at` | Entered provenance | Optional ISO date-time |
 | `CurrentBalance` | `current_balance` | Entered financial authority | Blank means not recorded; otherwise require a valid decimal and preserve precision/sign without rounding |
 | `PendingWithdrawalAmount` | `pending_withdrawal_amount` | Entered financial authority | Optional valid decimal; preserve precision and sign without rounding |
 | `LastBalanceUpdate` | `last_balance_update` | Entered audit value | Optional date/date-time text from workbook |

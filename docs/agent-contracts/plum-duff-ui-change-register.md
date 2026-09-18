@@ -1,5 +1,13 @@
 # Plum Duff UI Change Register
 
+## CP-020 active batch
+
+| ID | Surface | Requested outcome | Signed-off equivalent | State |
+| --- | --- | --- | --- | --- |
+| PD-FIX-248 | Account access + reward journey | Prove imported Status/Stake/Promo precedence through award, report, export and restore | Existing Account access, native award and portable Profile workflows | COMPLETE — authenticated six-sheet import, award retry/settlement and portable restore pass |
+| PD-FIX-249 | Global Search / loadout / Quick Action | Prove the existing Profile-scoped keyboard journey without adding a new search product | Canonical global search field and existing Quick Add loadout/editor | COMPLETE — authenticated save/reopen/prefill plus keyboard, narrow and stale-response search pass |
+| PD-FIX-250 | Promotional Quick Action eligibility | Promo Access None blocks, Restricted/Not Checked warns, and hard Status still wins | Shared Account eligibility and loadout availability resolver | COMPLETE — API regressions and rendered normal-3010 warning/blocked states pass across shared consumers |
+
 ## CP-019 active batch
 
 | ID | Surface | Requested outcome | Signed-off equivalent | State |

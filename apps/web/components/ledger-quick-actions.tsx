@@ -49,7 +49,10 @@ export function LedgerQuickActions({ profileId, ledgerType, onSelect }: Props) {
 
   return <div className="extra-place-table-heading-controls ledger-quick-actions" data-pd-id={`ledger-quick-actions.${ledgerType.toLowerCase().replaceAll(" ", "-")}`}>
     <div aria-label={`${ledgerType} Quick Actions`} className="tracker-nav extra-place-loadouts" role="group">
-      {visible.map((action) => <button aria-label={action.label} className="review-chip" key={`${action.source}:${action.preset_id}:${action.ledger_type}`} onClick={() => void onSelect(action)} title={action.label} type="button"><span className="ledger-quick-action-label">{action.label}</span></button>)}
+      {visible.map((action) => {
+        const warning = action.availability === "limited" ? action.availability_reason : "";
+        return <button aria-label={warning ? `${action.label}: ${warning}` : action.label} className={`review-chip${warning ? " table-chip-warning" : ""}`} key={`${action.source}:${action.preset_id}:${action.ledger_type}`} onClick={() => void onSelect(action)} title={warning || action.label} type="button"><span className="ledger-quick-action-label">{action.label}{warning ? " (Check access)" : ""}</span></button>;
+      })}
       {blocked.map((action) => <span aria-label={`${action.label} unavailable: ${action.availability_reason}`} className="review-chip ledger-quick-action-blocked" key={`blocked:${action.source}:${action.preset_id}:${action.ledger_type}`} title={action.availability_reason}>{action.label} unavailable</span>)}
     </div>
     {pages.length > 1 ? <div aria-label="Quick Action carousel pages" className="ledger-quick-actions-navigation" role="group"><button aria-label="Previous Quick Actions" className="icon-button" disabled={page === 0} onClick={() => setPage((current) => Math.max(0, current - 1))} type="button"><span aria-hidden="true" className="material-symbols-outlined">chevron_left</span></button><button aria-label="Next Quick Actions" className="icon-button" disabled={page >= pages.length - 1} onClick={() => setPage((current) => Math.min(pages.length - 1, current + 1))} type="button"><span aria-hidden="true" className="material-symbols-outlined">chevron_right</span></button></div> : null}

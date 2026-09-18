@@ -1,11 +1,11 @@
 from pathlib import Path
 
+from apps.api.tests.synthetic_setup import seed_synthetic_betting_context
 from fastapi.testclient import TestClient
 
 from openforge_api.common_bet_combos import _loadout_status_for_account
 from openforge_api.config import settings
 from openforge_api.main import app
-from apps.api.tests.synthetic_setup import seed_synthetic_betting_context
 
 
 def configure_temp_database(tmp_path: Path) -> None:
@@ -40,6 +40,42 @@ def test_extra_place_loadout_uses_ledger_specific_account_health() -> None:
         "Active", "Active", "[]", stake_access="Not Checked", ledger_type="Sportsbook"
     )
     assert unchecked_access[0] == "limited"
+
+    no_promo_access = _loadout_status_for_account(
+        "Active",
+        "Active",
+        "[]",
+        stake_access="Normal",
+        promo_access="None",
+        ledger_type="Casino",
+    )
+    assert no_promo_access == (
+        "blocked",
+        "Promo access is None; this promotional Quick Action is unavailable.",
+    )
+
+    restricted_promo_access = _loadout_status_for_account(
+        "Active",
+        "Active",
+        "[]",
+        stake_access="Normal",
+        promo_access="Restricted",
+        restriction_details_json='{"promotion_restriction_note":"Boosts only"}',
+        ledger_type="Free Bets",
+    )
+    assert restricted_promo_access[0] == "limited"
+    assert "confirm this promotion" in restricted_promo_access[1]
+    assert "Boosts only" in restricted_promo_access[1]
+
+    hard_status_still_wins = _loadout_status_for_account(
+        "KYC Blocked",
+        "Active",
+        "[]",
+        stake_access="Normal",
+        promo_access="Full",
+        ledger_type="Casino",
+    )
+    assert hard_status_still_wins[0] == "blocked"
 
 
 def test_common_bet_combos_are_seeded_and_versioned(tmp_path: Path) -> None:
@@ -458,3 +494,44 @@ def test_profile_quick_actions_are_typed_and_profile_scoped(tmp_path: Path) -> N
         "/fund-manager/common-bet-combos/profile-overrides/profile-demo-002?include_hidden=true"
     )
     assert not any(row["preset_id"] == action_id for row in other_rows.json())
+
+
+def test_profile_quick_action_inherits_promotional_account_access(tmp_path: Path) -> None:
+    configure_temp_database(tmp_path)
+    client = TestClient(app)
+    account = client.post(
+        "/profiles/profile-demo-001/accounts",
+        json={
+            "account": "10Bet",
+            "type": "Bookie",
+            "status": "Active",
+            "lifecycle_status": "Active",
+            "channel": "Online",
+            "stake_access": "Normal",
+            "promo_access": "Restricted",
+            "restriction_details": {
+                "available_promotion_types": ["Boosts"],
+                "promotion_restriction_note": "Free Bets unavailable",
+            },
+            "current_balance": "0.00",
+            "pending_withdrawal_amount": "0.00",
+        },
+    )
+    assert account.status_code == 201, account.text
+    created = client.post(
+        "/fund-manager/common-bet-combos/profile-actions/profile-demo-001",
+        json={
+            "ledger_type": "Casino",
+            "label": "10Bet promotional action",
+            "enabled_fields": ["bookmaker", "spinCount", "spinStake"],
+            "defaults": {"bookmaker": "10Bet", "spinCount": "10", "spinStake": "0.10"},
+        },
+    )
+    assert created.status_code == 201, created.text
+
+    rows = client.get(
+        "/fund-manager/common-bet-combos/profile-overrides/profile-demo-001?include_hidden=true"
+    )
+    action = next(row for row in rows.json() if row["preset_id"] == created.json()["preset_id"])
+    assert action["availability"] == "limited"
+    assert "Free Bets unavailable" in action["availability_reason"]

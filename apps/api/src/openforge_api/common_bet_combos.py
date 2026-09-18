@@ -627,6 +627,8 @@ def _loadout_status_for_account(
     lifecycle_status: str,
     restrictions_json: str,
     stake_access: str = "Not Checked",
+    promo_access: str = "Not Checked",
+    restriction_details_json: str = "{}",
     ledger_type: str = "",
 ) -> tuple[Literal["eligible", "limited", "blocked"], str]:
     if ledger_type == "Extra Place":
@@ -647,10 +649,34 @@ def _loadout_status_for_account(
         return "blocked", "This account is not eligible for this quick add loadout."
     if stake_access.casefold() == "blocked":
         return "blocked", "Stake access is blocked for this Account."
+    warnings: list[str] = []
     if stake_access.casefold() in {"limited", "severely limited", "not checked"}:
-        return "limited", f"Stake access is {stake_access}; confirm the accepted stake."
+        warnings.append(f"Stake access is {stake_access}; confirm the accepted stake.")
     if any(value in normalized for value in ("limited", "pending", "not signed up", "verification")):
-        return "limited", "This account is available with an account-status warning."
+        warnings.append("This account is available with an account-status warning.")
+    if ledger_type in {"Sportsbook", "Free Bets", "Casino"}:
+        if promo_access.casefold() == "none":
+            return (
+                "blocked",
+                "Promo access is None; this promotional Quick Action is unavailable.",
+            )
+        if promo_access.casefold() in {"restricted", "not checked"}:
+            detail = ""
+            try:
+                restriction_details = json.loads(restriction_details_json or "{}")
+                note = restriction_details.get("promotion_restriction_note", "")
+                available = restriction_details.get("available_promotion_types", [])
+                if isinstance(note, str) and note.strip():
+                    detail = f" {note.strip()}"
+                elif isinstance(available, list) and available:
+                    detail = f" Recorded availability: {', '.join(str(item) for item in available)}."
+            except json.JSONDecodeError:
+                pass
+            warnings.append(
+                f"Promo access is {promo_access}; confirm this promotion is available.{detail}"
+            )
+    if warnings:
+        return "limited", " ".join(warnings)
     return "eligible", ""
 
 
@@ -748,6 +774,8 @@ def list_profile_quick_add_loadouts(
                     account.lifecycle_status,
                     account.restrictions_json,
                     account.stake_access,
+                    account.promo_access,
+                    account.restriction_details_json,
                     ledger,
                 )
                 ledger_reason = reason or account_reason
@@ -772,6 +800,41 @@ def list_profile_quick_add_loadouts(
             ))
     for action in list_profile_quick_actions(profile_id):
         resolved = _profile_action_response(action)
+        if resolved.bookmaker:
+            account = next(
+                (
+                    item
+                    for item in accounts
+                    if item.type == "Bookie"
+                    and item.account.casefold() == resolved.bookmaker.casefold()
+                ),
+                None,
+            )
+            if account is None:
+                resolved = resolved.model_copy(
+                    update={
+                        "availability": "blocked",
+                        "availability_reason": (
+                            "This profile has not configured the selected bookmaker."
+                        ),
+                    }
+                )
+            else:
+                action_availability, action_reason = _loadout_status_for_account(
+                    account.status,
+                    account.lifecycle_status,
+                    account.restrictions_json,
+                    account.stake_access,
+                    account.promo_access,
+                    account.restriction_details_json,
+                    resolved.ledger_type,
+                )
+                resolved = resolved.model_copy(
+                    update={
+                        "availability": action_availability,
+                        "availability_reason": action_reason,
+                    }
+                )
         if resolved.enabled and not resolved.archived:
             response.append(resolved)
         elif include_hidden:
@@ -831,6 +894,8 @@ def update_profile_quick_add_loadout(
             account.lifecycle_status,
             account.restrictions_json,
             account.stake_access,
+            account.promo_access,
+            account.restriction_details_json,
             ledger_type,
         )
         if availability == "blocked":

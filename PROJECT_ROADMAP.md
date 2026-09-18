@@ -19,16 +19,17 @@ isolated visual polish.
 - Preserve the completed CP-014 normal-local identity/history migration, rollback checkpoint and
   authenticated browser evidence while main and hosted environments remain unchanged.
 - Preserve the completed Account, ledger-write, award, Blackjack and calculator safeguards.
+- Preserve the complete authenticated #109 workbook/award and Global Search/Quick Action journeys.
 - Continue #114 accessibility, recovery, competitor, requirements and security evidence without
   waiting for deferred calculator-owner comparison.
 
 ## Next
 
-- Complete guided onboarding, disposable Profile lifecycle and the current #111 reporting boundary.
-- Exercise durable notification, larger-data stale-response and remaining recovery paths.
-- Complete actual screen-reader, larger-scale and expensive-request evidence.
+- Complete the remaining audit assessments and coherent requirement reconciliation.
+- Keep genuine Google re-authentication and VoiceOver speech as bounded owner/manual evidence.
+- Advance later #111 module/metric/granularity controls only through an approved bounded slice.
 - Resolve or disposition dependency exposure and release prerequisites.
-- Reconcile the next request groups and select bounded implementation batches.
+- Select the next bounded implementation batch from the remaining evidence-led gaps.
 
 ## Later
 
@@ -43,7 +44,8 @@ isolated visual polish.
 ## Deferred / decision required
 
 - The #113 bulk owner calculator comparison is deferred without a date; engineering verification continues.
-- #109 Stake/Promo Access vocabulary is decision-ready but remains unimplemented until owner approval.
+- Fresh Google provider interaction and VoiceOver spoken output require owner/manual evidence; the
+  application-owned authentication and accessibility engineering boundaries are complete.
 - Main, Neon and Vercel integration of the locally migrated identity/history work remains a later,
   separately approved release decision.
 - An owner smoke test may follow the engineering gate but does not block independent audit work.

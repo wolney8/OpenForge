@@ -1,22 +1,22 @@
 # Project Status — Plum Duff / OpenForge — Doc ID: PS-CODEX-001
 
-**Last updated:** 2026-09-18 11:20 BST · **Status:** 🟢 On track
+**Last updated:** 2026-09-18 12:56 BST · **Status:** 🟢 On track
 
 ## Right now
 
-- **Working on:** Complete the authenticated combined #109 workbook/award import journey and remaining local journey evidence.
-- **Next:** Exercise global search/loadout/Quick Action, then continue #111 controls and security/recovery reconciliation.
-- **Blocked on:** none for independent local work; real provider re-authentication and VoiceOver evidence remain external
+- **Working on:** Continue the remaining #114 assessments and coherent requirement reconciliation.
+- **Next:** Select a bounded #111 controls or security/recovery slice from the remaining evidence-led gaps.
+- **Blocked on:** none for independent local work; fresh Google interaction and VoiceOver speech require Will/manual evidence
 
 ## Delivery state
 
 | Area | Evidence state |
 | --- | --- |
-| Local integrated build | CP-019 adds approved Account access semantics, hermetic fixtures, complete onboarding, stale-response recovery and report record drilldown |
+| Local integrated build | CP-020 closes combined #109 workbook/award and Global Search/Quick Action journeys and hardens import/restore/search boundaries |
 | Normal `localhost:3010` | Healthy as `normal-owner` on `account-access-v1`, normal authentication and the migrated normal local database |
 | Main / origin | Not updated by the local integration work |
 | Vercel | Not deployed or hosted-verified |
-| Owner smoke test | Optional short local check is available; not run and not a work blocker |
+| Owner smoke test | One consolidated optional local check is available; result pending and not a work blocker |
 
 ## Progress at a glance
 
@@ -24,16 +24,16 @@ These figures measure **#114 audit coverage**, not the percentage of the product
 
 | Review area | Current coverage |
 | --- | ---: |
-| Assessments reviewed | 66 / 87 (76%) |
-| Complete tasks exercised and passing | 20 / 24 (83%) |
+| Assessments reviewed | 68 / 87 (78%) |
+| Complete tasks exercised and passing | 22 / 24 (92%) |
 | Competitor comparisons | 18 / 27 (67%) |
-| Requirements reconciled | 73 / 133 (55%) |
+| Requirements reconciled | 77 / 133 (58%) |
 
 ## Next 3 steps
 
-1. Run the authenticated combined Account-access workbook/award import journey.
-2. Exercise global search, saved loadout and Quick Action against deterministic multi-Profile data.
-3. Continue #111 module/metric controls and the remaining security/recovery evidence.
+1. Reconcile the next coherent unreconciled requirement group and remaining audit assessments.
+2. Bound the next #111 module/metric/granularity slice without expanding analytics policy.
+3. Retain Google and VoiceOver as optional owner/manual checks while engineering continues.
 
 ## Checkpoint log
 
@@ -58,6 +58,7 @@ These figures measure **#114 audit coverage**, not the percentage of the product
 | CP-017 | 2026-09-17 15:59 BST | Closed fresh award lineage, Cash reconciliation and Casino fee journeys and repaired four bounded safety/portability defects | [#49](https://github.com/wolney8/OpenForge/issues/49), [#80](https://github.com/wolney8/OpenForge/issues/80), [#91](https://github.com/wolney8/OpenForge/issues/91), [#109](https://github.com/wolney8/OpenForge/issues/109), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-017-award-cash-reconciliation-and-casino-fee-package--2026-09-17-1559-bst) |
 | CP-018 | 2026-09-18 09:15 BST | Added durable notification history, deterministic API fixtures and complete Profile lifecycle evidence; reduced broad API failures from 143 to 21 | [#90](https://github.com/wolney8/OpenForge/issues/90), [#99](https://github.com/wolney8/OpenForge/issues/99), [#109](https://github.com/wolney8/OpenForge/issues/109), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-018-reproducibility-profile-lifecycle-and-notification-history--2026-09-18-0915-bst) |
 | CP-019 | 2026-09-18 11:20 BST | Integrated #109 Account access, cleared broad API failures and closed onboarding, report-drilldown and stale-response journeys | [#109](https://github.com/wolney8/OpenForge/issues/109), [#111](https://github.com/wolney8/OpenForge/issues/111), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-019-account-access-test-hermeticity-and-journey-closure--2026-09-18-1120-bst) |
+| CP-020 | 2026-09-18 12:56 BST | Closed combined Account/award and Search/Quick Action journeys and bounded Google/VoiceOver evidence truthfully | [#62](https://github.com/wolney8/OpenForge/issues/62), [#76](https://github.com/wolney8/OpenForge/issues/76), [#77](https://github.com/wolney8/OpenForge/issues/77), [#109](https://github.com/wolney8/OpenForge/issues/109), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-020-combined-accessaward-search-and-external-boundary-closure--2026-09-18-1256-bst) |
 
 ## Reference index
 

@@ -101,7 +101,8 @@ def global_search(query: str = Query(min_length=2, max_length=80)) -> list[Globa
             icon="person",
         )
         for profile in list_profiles()
-        if normalized_query
+        if profile.status.casefold() != "archived"
+        and normalized_query
         in f"{profile.display_name} {profile.profile_code} {profile.status}".casefold()
     )
     results.extend(

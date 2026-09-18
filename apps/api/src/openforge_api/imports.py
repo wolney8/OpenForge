@@ -72,9 +72,9 @@ from openforge_api.db import (
     list_import_batches,
     list_sportsbook_bets,
 )
-from openforge_api.source_identity import logical_source_namespace
 from openforge_api.free_bets import FreeBetPayload
 from openforge_api.free_bets import build_response as build_free_bet_response
+from openforge_api.source_identity import logical_source_namespace
 from openforge_api.sportsbook import SportsbookBetPayload, build_response
 from openforge_api.xlsx_export import (
     build_account_export,
@@ -238,6 +238,14 @@ ACCOUNT_SOURCE_MAP = {
     "Status": "status",
     "Stake Access": "stake_access",
     "Promo Access": "promo_access",
+    "Fixed Maximum Stake": "fixed_maximum_stake",
+    "Stake Restriction Type": "stake_restriction_type",
+    "Stake Restriction Note": "stake_restriction_note",
+    "Available Promotion Types": "available_promotion_types",
+    "Promotion Restriction Note": "promotion_restriction_note",
+    "Access Evidence Note": "access_evidence_note",
+    "Access Source": "access_source",
+    "Access Observed At": "access_observed_at",
     "CurrentBalance": "current_balance",
     "PendingWithdrawalAmount": "pending_withdrawal_amount",
     "LastBalanceUpdate": "last_balance_update",
@@ -611,6 +619,10 @@ def account_export_row(profile_id: str, row: AccountRecord) -> dict[str, object]
         record["account_id"],
     )
     catalogue = resolve_account_catalogue_record(record["account"], record["type"])
+    try:
+        restriction_details = json.loads(record["restriction_details_json"] or "{}")
+    except json.JSONDecodeError:
+        restriction_details = {}
     return {
         "AccountID": source.source_record_id if source else record["account_id"],
         "Account": record["account"],
@@ -620,6 +632,20 @@ def account_export_row(profile_id: str, row: AccountRecord) -> dict[str, object]
         "Status": record["status"],
         "Stake Access": record["stake_access"],
         "Promo Access": record["promo_access"],
+        "Fixed Maximum Stake": restriction_details.get("fixed_maximum_stake", ""),
+        "Stake Restriction Type": restriction_details.get("stake_restriction_type", ""),
+        "Stake Restriction Note": restriction_details.get("stake_restriction_note", ""),
+        "Available Promotion Types": ", ".join(
+            restriction_details.get("available_promotion_types", [])
+            if isinstance(restriction_details.get("available_promotion_types", []), list)
+            else []
+        ),
+        "Promotion Restriction Note": restriction_details.get(
+            "promotion_restriction_note", ""
+        ),
+        "Access Evidence Note": record["access_evidence_note"],
+        "Access Source": record["access_source"],
+        "Access Observed At": record["access_observed_at"],
         "CurrentBalance": record["current_balance"],
         "PendingWithdrawalAmount": record["pending_withdrawal_amount"],
         "LastBalanceUpdate": record["last_balance_update"],
@@ -1576,6 +1602,27 @@ def map_account_import_fields(
     }
     errors: list[dict[str, str]] = []
     warnings: list[dict[str, str]] = []
+    promotion_types_raw = field_text(mapped, "available_promotion_types")
+    promotion_types = [
+        value.strip()
+        for value in promotion_types_raw.replace(";", ",").split(",")
+        if value.strip()
+    ]
+    restriction_details = {
+        "fixed_maximum_stake": field_text(mapped, "fixed_maximum_stake"),
+        "stake_restriction_type": field_text(mapped, "stake_restriction_type"),
+        "stake_restriction_note": field_text(mapped, "stake_restriction_note"),
+        "available_promotion_types": promotion_types,
+        "promotion_restriction_note": field_text(mapped, "promotion_restriction_note"),
+    }
+    for transient_field in (
+        "fixed_maximum_stake",
+        "stake_restriction_type",
+        "stake_restriction_note",
+        "available_promotion_types",
+        "promotion_restriction_note",
+    ):
+        mapped.pop(transient_field, None)
     account_name = field_text(mapped, "account")
     account_type = field_text(mapped, "type")
     for field_name, value_map in (
@@ -1689,7 +1736,9 @@ def map_account_import_fields(
             errors.append(issue("invalid_account_sign_up_date", "SignUpDate must be a valid date."))
 
     try:
-        validated = AccountPayload.model_validate(mapped).model_dump()
+        validated = AccountPayload.model_validate(
+            {**mapped, "restriction_details": restriction_details}
+        ).model_dump()
         validated["restriction_details_json"] = json.dumps(
             validated.pop("restriction_details"), sort_keys=True
         )

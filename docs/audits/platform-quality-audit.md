@@ -1,5 +1,51 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
+## Current CP-020 combined access/award, search and external-boundary closure — 2026-09-18 12:56 BST
+
+PQA-J18 now passes through the real authenticated 3010 browser. A fresh six-sheet synthetic Profile
+workbook imported #109 Status, Stake Access, Promo Access, structured restriction evidence and the
+source activity; the restricted Account remained selectable with its warning, one award operation
+created its child once across lost/concurrent retries, changed content conflicted, £7.18 settled P&L
+reported once, and export→portable restore remapped native IDs while retaining logical lineage.
+Two bounded defects found by this journey are repaired: unsupported imported report presets now fail
+before writes, and timezone-aware Casino dates no longer break portable restore.
+
+PQA-J16 also passes through the normal authenticated UI. A Profile Quick Action was saved, reopened,
+used to prefill the existing Casino editor, validated, saved and removed; Profile ownership and the
+combined Severely Limited/Promo Restricted explanation survived navigation. Global Search passes
+exact/partial/no-result, keyboard selection, narrow layout and delayed-old-response ordering. Ordinary
+search had exposed archived synthetic Profiles; it now excludes them at the API boundary and has a
+focused regression. The protected synthetic Profiles were governed-archived after evidence.
+
+Google OIDC initiation on the configured normal runtime targets Google with the expected callback,
+minimal scopes and state cookie. Twelve auth tests cover callback success, allowlist denial, invalid
+state, expiry, logout and local session recovery. A fresh provider-owned Google interaction is not
+fabricated: PQA-J15 remains an external/owner boundary. VoiceOver is installed, but this environment
+cannot capture or verify spoken output reliably; engineering keyboard/semantic evidence is complete,
+while actual assistive-technology output remains owner/manual evidence under PQA-J23.
+
+Ruff produced 208 findings at the CP-020 measurement point: 170 line-length, 25 import-order,
+12 test-fixture shadowing and one ambiguous test variable. Eight bounded touched/test findings were
+repaired; 200 remain (168 line-length, 20 import-order and 12 test-only fixture-shadow findings), with
+no undefined-name or other demonstrated runtime-correctness finding. This is classified debt, not a
+mass-formatting tranche.
+
+The final ordinary regression gate is **1,074 API tests passed, 0 failed, 0 errors and 12 authorised
+private-source skips = 1,086 outcomes**; web tests pass **429/429**, the new real-browser stale-search
+regression passes, mypy reports 0 errors across 82 files and TypeScript passes.
+
+Requirement reconciliation adds #48, #71, #76 and #77: current Quick Actions now surface Account
+capability context, but the broader special-offer suggestion and linked risk-team/operator warning
+scope remains partial; Global Search is the approved bounded navigation/Profile/catalogue surface,
+not the full #76 command-menu roadmap; Profile Quick Actions preserve context but do not substitute
+for the complete #77 multi-Profile opportunity workflow. #109 and award/import state are refreshed
+from the combined evidence without being counted twice.
+
+PQA-D09 and PQA-M09 are now assessed; PQA-J16 and PQA-J18 move to PASS. Coverage is **68/87
+assessments (78%)**, **22/24 complete journeys (92%)**, **18/27 competitor cells (67%)** and
+**77/133 requirements reconciled (58%)**. Competitor coverage is unchanged because no new qualifying
+public evidence was established. These are audit-coverage figures, not product completion.
+
 ## Current CP-019 Account access, test hermeticity and journey closure — 2026-09-18 11:20 BST
 
 #109 is integrated locally with separate Account Status, Stake Access and Promo Access ownership.
@@ -3647,7 +3693,7 @@ in the PD-QA-015 addendum still applies (PG, provider access, imported sources, 
 | PQA-D06 | Actual isolated PostgreSQL transactions | ASSESSED; PASS / PROVEN scoped | Real PostgreSQL18.6 Account/Free Bet preflight/rollback, independent persisted values and separate-process Blackjack retry/races; current A–D evidence |
 | PQA-D07 | PostgreSQL disaster recovery | ASSESSED; PASS / PROVEN scoped local database recovery | Actual dump/second-database restore, exact counts/financial/source claims, restart, post-restore read/rollback/duplicate protection; cloud/deployment/import recovery separate |
 | PQA-D08 | Populated workbook import/award reconciliation | ASSESSED; REPAIRED ON ISOLATED CANDIDATE / PARTIAL | CP-004 browser import/recovery remains valid; CP-012 adds Profile-scoped parent resolution and portable native-ID remapping. Normal integration/full browser rerun and #109 access vocabulary remain open |
-| PQA-D09 | Google/workbook fallback roundtrip | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
+| PQA-D09 | Google/workbook fallback roundtrip | ASSESSED; PARTIAL / EXTERNAL BOUNDARY | CP-020 normal Google initiation/callback/session responsibilities and authenticated workbook portability pass; live Google interaction and hosted acceptance remain external/unverified |
 | PQA-D10 | Immutable conversion source checksum | ASSESSED; PASS scoped | PD-QA-015 immutable SHA/source table |
 | PQA-D11 | Retention/deletion/privacy recovery | ASSESSED; PASS scoped local | Normal 3010 uses append-only history, governed deletion denial and shared readable History across five ledgers; CP-016 proves Extra Place Void history and active-only archive reporting without reversing retained P&L |
 | PQA-D12 | Crash/network-loss/concurrent browser recovery | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
@@ -3659,7 +3705,7 @@ in the PD-QA-015 addendum still applies (PG, provider access, imported sources, 
 | PQA-M06 | Test fixture isolation/readiness | ASSESSED; PASS scoped migration/financial gate | CP-013 replaces the final four selected private-seed assumptions; 344/344 combined cases and separate-process workers use committed/disposable synthetic state. This does not certify every historical test file |
 | PQA-M07 | Typing/lint/flakiness census | ASSESSED; PASS / PROVEN scoped | CP-010 mypy reports 0 errors/78 files; final relevant API 147/147 and web 420/420 pass. This does not infer every legacy broad fixture is modernised |
 | PQA-M08 | Large-table/chart performance | ASSESSED; PASS scoped local boundary | CP-005 200 records, source API169ms, routes0.93–2.28s, pagination/filter/search; not production CWV/capacity |
-| PQA-M09 | Request storms/stale-response census | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
+| PQA-M09 | Request storms/stale-response census | ASSESSED; PASS scoped local | CP-019 200-record report A/B delay and CP-020 Global Search delayed-old-response browser evidence retain the newest state; hosted capacity remains separate |
 | PQA-M10 | Routed docs/instruction contradictions | ASSESSED; REVIEWED | A stale docs/orphan IDs; no bulk cleanup |
 | PQA-M11 | Dependency/provider maintenance disposition | ASSESSED; RISK / PROVEN lock and local reachability | CP-006 current audit: Next16.3.2/sharp0.35.3/Vitest4.0.4 affected; optimiser200, no Vitest server; hosted exposure unknown; exact minima retained |
 | PQA-M12 | Subscriber/hosting/AI sustainability decision | OPEN; NOT TESTED / PARTIAL | Next: execute/review this named boundary; retained gap table below supplies blocker |
@@ -3701,15 +3747,15 @@ Shared width/theme variants are recorded in the modal addendum, not inflated int
 |PQA-J12|Multi-Profile conversion failure→retry→new intent→notifications|PASS|CP-003 browser/API/persistence counts 2/1|—|—|Retain regression|
 |PQA-J13|Onboarding→catalogue Accounts→permissions→first action/reopen|PASS|CP-019 complete browser onboarding, saved landing/reopen and shared drawer discard navigation|—|—|Retain deterministic catalogue, validation, focus, narrow and 200% regressions|
 |PQA-J14|Profile archive/recover/delete→denied writes→directory/search isolation|PASS|CP-018 23 API plus 3 authenticated browser lifecycle checks|—|—|Retain active/archive/report/delete-boundary regression|
-|PQA-J15|Login→expiry→denial→re-authentication→state recovery|BLOCKED|CP-009 local expiry/cross-tab/stale-session evidence|Real Google callback/provider re-authentication|External blocker|Execute only with authorised provider test identity|
-|PQA-J16|Global search→filter/loadout→Quick Action→correct Profile record|NOT YET EXERCISED|Component regressions only|One keyboard/stale-response end-to-end run|Test coverage gap|Build deterministic multi-Profile browser fixture|
+|PQA-J15|Login→expiry→denial→re-authentication→state recovery|PARTIAL|CP-020 configured initiation/state/callback tests plus CP-009 expiry/cross-tab/stale-session evidence|One genuine fresh Google interaction|External provider / owner-manual boundary|Optional owner smoke with the authorised Google identity|
+|PQA-J16|Global search→filter/loadout→Quick Action→correct Profile record|PASS|CP-020 authenticated browser: restricted Profile action save/reopen/prefill/validation/record, Profile isolation, exact/partial/no-result search, keyboard/narrow and delayed-response ordering|—|—|Retain access-precedence, archived-search and stale-response regressions|
 |PQA-J17|Notification create→clear/reload→source lifecycle→history|PASS|CP-018 active→dismiss/reload→resolve durable event; retry and viewer isolation|—|—|Retain current/dismissed/history separation regression|
-|PQA-J18|Workbook import→review/write→lineage→reopen/report/export|PARTIAL|CP-019 #109 API import/reopen/export/restore plus prior six-sheet browser recovery|One authenticated combined multi-sheet Account-access and award import browser rerun|Test coverage gap|Run the existing browser import path with canonical #109 fields|
+|PQA-J18|Workbook import→review/write→lineage→reopen/report/export|PASS|CP-020 authenticated six-sheet #109 import→award retry/settlement→History/report→export/portable restore with native-ID remap and £7.18 counted once|—|—|Retain report-preset preflight, timezone restore and scoped-lineage regressions|
 |PQA-J19|Portable restore→reopen tracker→report/re-export→recovery|PASS|CP-004/014 authenticated portable restore and identity remap|—|—|Retain regression|
 |PQA-J20|SQLite backup→restore→read/reconcile→rollback|PASS|CP-014 normal clone/migration/rollback|—|—|Retain recovery drill|
 |PQA-J21|PostgreSQL writes/concurrency→backup/restore→read/rollback|PASS|CP-013 PostgreSQL 18.6 second-database restore|—|—|Retain isolated recovery drill|
 |PQA-J22|Combined reports→chart point/filter/drilldown→record/source|PASS|CP-019 point selection→reconciled records→Profile ledger search link→back context; keyboard/pointer/no-data covered|—|—|Retain regression; module/metric/granularity controls remain separate #111 roadmap items|
-|PQA-J23|Settings→failed mutation recovery→refresh/new session|PARTIAL|CP-009 ownership, rollback, expiry and cross-tab evidence|Actual reader plus complete fresh-browser restart|External/test capability gap|Run supported reader when genuinely operable|
+|PQA-J23|Settings→failed mutation recovery→refresh/new session|PARTIAL|CP-009 ownership, rollback, expiry/cross-tab/restart plus current semantic/keyboard evidence|Actual VoiceOver spoken-output pass|Owner/manual assistive-technology boundary|Run one bounded VoiceOver check when a human can verify speech; do not substitute automation|
 |PQA-J24|Large dataset→filter/page/chart→responsive/stale recovery|PASS|CP-019 deterministic 200-record browser: delayed A cannot overwrite B; 503, focus recovery and reload retain B|—|—|Retain abort/request-version and recovery regression|
 
 ### Competitor workflow slice — public evidence, accessed2026-09-13
