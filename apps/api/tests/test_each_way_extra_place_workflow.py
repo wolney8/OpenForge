@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import pytest
+from apps.api.tests.synthetic_setup import seed_synthetic_profile
 from fastapi.testclient import TestClient
 
 from openforge_api.config import settings
@@ -18,6 +19,12 @@ def isolated_database(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         settings,
         "database_url",
         f"sqlite:///{tmp_path / 'extra-place-workflow.sqlite3'}",
+    )
+    seed_synthetic_profile()
+    seed_synthetic_profile(
+        "profile-demo-002",
+        display_name="Subscriber Bravo",
+        profile_code="BRAVO-002",
     )
 
 

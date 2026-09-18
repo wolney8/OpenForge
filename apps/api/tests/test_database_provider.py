@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
+from apps.api.tests.synthetic_setup import seed_committed_test_database
 from fastapi.testclient import TestClient
 
 from openforge_api.backups import create_verified_local_backup
@@ -137,7 +138,7 @@ def test_neon_runtime_requires_explicit_connection_url(tmp_path: Path) -> None:
         with connect():
             pass
     except RuntimeError as error:
-        assert "OPENFORGE_NEON_DATABASE_URL" in str(error)
+        assert "PostgreSQL runtime requires an explicit database target" in str(error)
     else:
         raise AssertionError("SQLite connect should block Neon mode without adapter")
 
@@ -338,6 +339,7 @@ def test_migration_control_totals_are_profile_scoped_preview_values(
     tmp_path: Path,
 ) -> None:
     configure_temp_settings(tmp_path)
+    seed_committed_test_database()
 
     totals = build_migration_control_totals()
 
@@ -359,6 +361,7 @@ def test_migration_control_totals_endpoint_is_preview_only_and_secret_safe(
     tmp_path: Path,
 ) -> None:
     configure_temp_settings(tmp_path)
+    seed_committed_test_database()
     settings.neon_database_url = (
         "postgresql://neondb_owner:secret@example.neon.tech/plum-duff-app-db?sslmode=require"
     )

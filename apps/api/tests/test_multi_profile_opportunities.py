@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from apps.api.tests.synthetic_setup import seed_synthetic_profile
 from fastapi.testclient import TestClient
 
 from openforge_api.config import settings
@@ -11,6 +12,8 @@ from openforge_api.main import app
 def configure_temp_database(tmp_path: Path) -> None:
     settings.database_url = f"sqlite:///{tmp_path / 'opportunity-first.sqlite3'}"
     settings.backup_directory = str(tmp_path / "backups")
+    seed_synthetic_profile()
+    seed_synthetic_profile("profile-demo-002", display_name="Subscriber Bravo", profile_code="BRAVO-002")
 
 
 def add_authorities(
@@ -43,6 +46,7 @@ def add_authorities(
                 "type": "Exchange",
                 "status": "Active",
                 "channel": "Online",
+                "commission_rate": "0.02",
             },
         ).status_code
         == 201
@@ -224,6 +228,7 @@ def test_profile_default_exchange_wins_opportunity_resolution(tmp_path: Path) ->
                 "type": "Exchange",
                 "status": "Active",
                 "channel": "Online",
+                "commission_rate": "0.03",
             },
         ).status_code
         == 201

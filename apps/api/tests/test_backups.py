@@ -14,11 +14,13 @@ from openforge_api.backups import (
 from openforge_api.config import settings
 from openforge_api.db import connect, list_backup_snapshot_records
 from openforge_api.main import app
+from apps.api.tests.synthetic_setup import seed_committed_test_database
 
 
 def configure_temp_database(tmp_path: Path) -> None:
     settings.database_url = f"sqlite:///{tmp_path / 'openforge-test.sqlite3'}"
     settings.backup_directory = str(tmp_path / "backups")
+    seed_committed_test_database()
 
 
 def test_verified_backup_has_integrity_checksum_manifest_and_audit_record(

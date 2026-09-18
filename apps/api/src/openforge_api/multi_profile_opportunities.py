@@ -662,7 +662,11 @@ def remove_opportunity(opportunity_id: str) -> OpportunityDeleteResponse:
         if sportsbook.status in PLACED_STATES:
             retained_placed_rows += 1
             continue
-        if delete_sportsbook_bet(profile_id, sportsbook.sportsbook_bet_id):
+        if delete_sportsbook_bet(
+            profile_id,
+            sportsbook.sportsbook_bet_id,
+            deletion_reason="Removed with its unplaced multi-Profile opportunity.",
+        ):
             removed_draft_rows += 1
             update_multi_profile_opportunity_target(
                 opportunity_id=opportunity_id,
@@ -925,5 +929,9 @@ def remove_opportunity_target(
         opportunity_id=opportunity_id, target_id=str(target["target_id"])
     )
     if sportsbook_bet_id:
-        delete_sportsbook_bet(profile_id, sportsbook_bet_id)
+        delete_sportsbook_bet(
+            profile_id,
+            sportsbook_bet_id,
+            deletion_reason="Removed from its unplaced multi-Profile opportunity.",
+        )
     return serialize_opportunity(opportunity_id)

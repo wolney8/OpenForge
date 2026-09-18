@@ -64,7 +64,7 @@ export function NotificationHistoryPage() {
       const stateRequestVersion = stateRequestVersionRef.current;
       setNow(new Date());
       try {
-        const [response, persistedState, persistedPreferences] = await Promise.all([
+        const [currentResponse, persistedState, persistedPreferences] = await Promise.all([
           fetch(`${apiBaseUrl}/fund-manager/notifications`, {
             cache: "no-store",
             credentials: "include",
@@ -72,8 +72,13 @@ export function NotificationHistoryPage() {
           loadPersistedNotificationState(),
           loadPersistedNotificationPreferences(),
         ]);
-        if (!response.ok) throw new Error("Unable to load notifications");
-        const remote = (await response.json()) as FundManagerNotification[];
+        if (!currentResponse.ok) throw new Error("Unable to load notifications");
+        const historyResponse = await fetch(`${apiBaseUrl}/fund-manager/notifications/history`, {
+          cache: "no-store",
+          credentials: "include",
+        });
+        if (!historyResponse.ok) throw new Error("Unable to load notification history");
+        const remote = (await historyResponse.json()) as FundManagerNotification[];
         if (!active) return;
         if (
           persistedState &&

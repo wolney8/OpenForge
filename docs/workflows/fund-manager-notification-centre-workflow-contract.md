@@ -1,6 +1,6 @@
 # Workflow Contract: Fund Manager Notification Centre
 
-_Last updated: 2026-09-06_
+_Last updated: 2026-09-18 08:32 BST_
 
 ## 1. Workflow name
 
@@ -27,8 +27,9 @@ entry point to the same audited reminder resolution used in the sportsbook ledge
   notifications have been read
 - unread badge: exact count from `1` to `9`, then `9+`
 - panel: bounded non-modal popover with a fixed header and independently scrollable notification list
-- notification history: `/notifications` retains current source-derived read, cleared and completed
-  cards; it supports filtering by notification type/state and search across notification context
+- notification history: `/notifications` combines immutable presentation-safe event snapshots with
+  durable per-viewer read/clear state; it supports filtering by notification type/state and search
+  across notification context even after the current source stops emitting the event
 - profile context: notifications may span all profiles managed by the local Fund Manager
 
 ## 4. Notification lifecycle
@@ -53,9 +54,11 @@ Read and cleared state is persisted Fund Manager view state, scoped by authentic
 stable notification identity in both SQLite and PostgreSQL runtimes. Resolving or dismissing the
 source reminder remains a profile-scoped, audited sportsbook action.
 
-The current history route can show a cleared item only while its source generator still returns
-that stable notification identity. A complete durable history after a source lifecycle cutoff needs
-an explicit event store and migration; that separate extension must not invent missing past events.
+Each authorised feed observation records the presentation-safe event once under its stable
+notification identity. A retry is idempotent. Later source resolution, removal or lifecycle cutoff
+does not delete that event snapshot. No events are fabricated for notifications that disappeared
+before this boundary was introduced. Read and clear remain viewer state; neither mutates the event
+or its source record.
 
 Notification source preferences are also local-first Fund Manager view state in the MVP. The global
 Fund Manager settings route must expose an enabled/disabled control for each approved notification
@@ -90,6 +93,10 @@ the audited reminder state returned by the server. `Resolved` tasks remain under
   sportsbook completion for other ledger sources
 - reopening or materially updating a reminder creates a new notification identity
 - local read/dismissed state must not contain credentials, financial inputs or workbook data
+- durable event snapshots contain only the existing presentation-safe response fields and the
+  authenticated Fund Manager viewer identity; they are not a financial or source-of-truth ledger
+- notification events are separate from `financial_activity_history` because an alert is attention
+  evidence, not a financial lifecycle event
 
 ## 5.1 Approved source matrix
 
@@ -167,12 +174,12 @@ overdue settlement, account-health, cash-adjustment, and fee-review notification
 - each approved source exposes its trigger/timing and Fund Manager-only delivery scope in Settings
 - client-side Fund Manager filtering rejects a subscriber-scoped item if a malformed response reaches
   the shared Fund Manager feed
+- a source event remains on `/notifications` after the source stops emitting it
+- repeated feed reads store one event for one stable notification identity
+- two Fund Manager viewers have isolated history and read/clear state
+- source links and presentation context remain readable without exposing raw snapshots or provenance
 
 ## 9. Deferred extensions
-
-A durable notification event store is deferred. It would retain read, cleared and completed events
-after their source generator stops emitting them, with user/Profile authorization and migration
-rules defined before implementation.
 
 Future approved Fund Manager notification sources may include automatic free-bet expiry, overdue
 settlement, account-health actions, cash-adjustment follow-ups and fee-review blockers. Each source

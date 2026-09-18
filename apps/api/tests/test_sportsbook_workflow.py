@@ -4,6 +4,10 @@ import json
 import sqlite3
 from pathlib import Path
 
+from apps.api.tests.synthetic_setup import (
+    seed_committed_test_database,
+    seed_synthetic_betting_context,
+)
 from fastapi.testclient import TestClient
 
 from openforge_api.config import settings
@@ -14,6 +18,7 @@ from openforge_api.main import app
 def configure_temp_database(tmp_path: Path) -> None:
     settings.database_url = f"sqlite:///{tmp_path / 'openforge-test.sqlite3'}"
     settings.backup_directory = str(tmp_path / "backups")
+    seed_synthetic_betting_context()
 
 
 def test_sportsbook_workflow_create_update_and_isolation(tmp_path: Path) -> None:
@@ -106,12 +111,12 @@ def test_sportsbook_workflow_create_update_and_isolation(tmp_path: Path) -> None
     delete_response = client.delete(
         f"/profiles/profile-demo-001/sportsbook-bets/{created['sportsbook_bet_id']}"
     )
-    assert delete_response.status_code == 204
+    assert delete_response.status_code == 409
 
     deleted_lookup = client.get(
         f"/profiles/profile-demo-001/sportsbook-bets/{created['sportsbook_bet_id']}"
     )
-    assert deleted_lookup.status_code == 404
+    assert deleted_lookup.status_code == 200
 
 
 def test_override_reason_is_required(tmp_path: Path) -> None:
@@ -149,6 +154,7 @@ def test_override_reason_is_required(tmp_path: Path) -> None:
 
 def test_seed_rows_load_into_dedicated_sportsbook_table(tmp_path: Path) -> None:
     configure_temp_database(tmp_path)
+    seed_committed_test_database()
     client = TestClient(app)
 
     response = client.get("/profiles/profile-demo-001/sportsbook-bets")
@@ -380,7 +386,9 @@ def test_multilay_saved_row_uses_branch_placement_state_for_part_laid_status(
     assert created["lay_actual"] == "9.65"
     assert created["lay_status"] == "Part Laid"
     assert created["multi_lay_outcome_1_name"] == "Score 1-0"
-    assert created["multi_lay_outcomes_json"] == payload["multi_lay_outcomes_json"]
+    assert json.loads(created["multi_lay_outcomes_json"]) == json.loads(
+        payload["multi_lay_outcomes_json"]
+    )
 
     list_response = client.get("/profiles/profile-demo-001/sportsbook-bets")
     assert list_response.status_code == 200
@@ -392,7 +400,9 @@ def test_multilay_saved_row_uses_branch_placement_state_for_part_laid_status(
     assert saved_row["lay_actual"] == "9.65"
     assert saved_row["lay_status"] == "Part Laid"
     assert saved_row["multi_lay_outcome_1_name"] == "Score 1-0"
-    assert saved_row["multi_lay_outcomes_json"] == payload["multi_lay_outcomes_json"]
+    assert json.loads(saved_row["multi_lay_outcomes_json"]) == json.loads(
+        payload["multi_lay_outcomes_json"]
+    )
 
 
 def test_multilay_saved_row_becomes_fully_laid_when_all_branches_are_placed(

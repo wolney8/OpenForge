@@ -6,11 +6,13 @@ from fastapi.testclient import TestClient
 
 from openforge_api.config import settings
 from openforge_api.main import app
+from apps.api.tests.synthetic_setup import seed_synthetic_betting_context
 
 
 def configure_temp_database(tmp_path: Path) -> None:
     settings.database_url = f"sqlite:///{tmp_path / 'openforge-test.sqlite3'}"
     settings.backup_directory = str(tmp_path / "backups")
+    seed_synthetic_betting_context()
 
 
 def test_balance_snapshots_are_profile_scoped(tmp_path: Path) -> None:

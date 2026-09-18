@@ -410,6 +410,65 @@ def get_notification_user_state(email: str) -> dict[str, list[str]]:
     }
 
 
+def record_notification_events(email: str, notifications: list[dict[str, Any]]) -> None:
+    """Retain presentation-safe notification evidence without changing its source."""
+
+    viewer_email = email.strip().casefold()
+    if not viewer_email or not notifications:
+        return
+    with connect() as connection:
+        for notification in notifications:
+            notification_id = str(notification.get("notification_id") or "").strip()
+            if not notification_id:
+                continue
+            payload_json = json.dumps(
+                notification, sort_keys=True, separators=(",", ":")
+            )
+            payload_fingerprint = hashlib.sha256(payload_json.encode("utf-8")).hexdigest()
+            connection.execute(
+                """
+                INSERT INTO notification_events (
+                  event_id, viewer_email, notification_id, profile_id,
+                  notification_type, payload_json, recorded_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(event_id) DO NOTHING
+                """,
+                (
+                    f"notification-event:{viewer_email}:{notification_id}:{payload_fingerprint}",
+                    viewer_email,
+                    notification_id,
+                    str(notification.get("profile_id") or ""),
+                    str(notification.get("notification_type") or ""),
+                    payload_json,
+                    utc_now(),
+                ),
+            )
+
+
+def list_notification_events(email: str) -> list[dict[str, Any]]:
+    """Return retained notification events for one authenticated viewer."""
+
+    with connect() as connection:
+        rows = connection.execute(
+            """
+            SELECT payload_json
+            FROM notification_events
+            WHERE viewer_email = ?
+            ORDER BY recorded_at DESC, event_id DESC
+            """,
+            (email.strip().casefold(),),
+        ).fetchall()
+    events: list[dict[str, Any]] = []
+    for row in rows:
+        try:
+            payload = json.loads(str(row["payload_json"]))
+        except (TypeError, ValueError):
+            continue
+        if isinstance(payload, dict):
+            events.append(payload)
+    return events
+
+
 def replace_notification_user_state(
     *, email: str, read_keys: list[str], dismissed_ids: list[str]
 ) -> dict[str, list[str]]:
@@ -514,6 +573,11 @@ def replace_notification_preferences(
 
 def load_tracker_seed() -> dict[str, Any] | None:
     root = Path(__file__).resolve().parents[4]
+    explicit_source = settings.tracker_seed_source_path
+    if explicit_source is not None:
+        if not explicit_source.is_file():
+            raise FileNotFoundError(f"Configured tracker seed does not exist: {explicit_source}")
+        return json.loads(explicit_source.read_text())
     candidate_paths = [
         root / "data" / "private" / "local-seed" / "openforge-tracker-seed.json",
         root / "apps" / "web" / "data" / "private" / "local-seed" / "openforge-tracker-seed.json",
@@ -908,6 +972,19 @@ def initialize_database(connection: sqlite3.Connection) -> None:
           updated_at TEXT NOT NULL,
           PRIMARY KEY (email, notification_id)
         );
+
+        CREATE TABLE IF NOT EXISTS notification_events (
+          event_id TEXT PRIMARY KEY,
+          viewer_email TEXT NOT NULL,
+          notification_id TEXT NOT NULL,
+          profile_id TEXT NOT NULL,
+          notification_type TEXT NOT NULL,
+          payload_json TEXT NOT NULL,
+          recorded_at TEXT NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_notification_events_viewer_recorded
+          ON notification_events(viewer_email, recorded_at DESC);
 
         CREATE TABLE IF NOT EXISTS fund_manager_profile_links (
           email TEXT NOT NULL,
@@ -5019,7 +5096,7 @@ def create_multi_profile_opportunity(
     targets: list[dict[str, Any]],
 ) -> str:
     opportunity_id = f"MPO-{uuid4().hex[:10].upper()}"
-    timestamp = utc_now()
+    timestamp = datetime.now(UTC).isoformat(timespec="microseconds").replace("+00:00", "Z")
     with connect() as connection:
         connection.execute(
             """
@@ -5085,7 +5162,7 @@ def update_multi_profile_opportunity_target(
     workflow_reasons: list[str] | None = None,
     bookmaker: str | None = None,
 ) -> None:
-    timestamp = utc_now()
+    timestamp = datetime.now(UTC).isoformat(timespec="microseconds").replace("+00:00", "Z")
     with connect() as connection:
         connection.execute(
             """

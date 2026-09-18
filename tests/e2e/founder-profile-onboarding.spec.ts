@@ -84,8 +84,20 @@ const quickActions = [
   },
 ];
 
-test.beforeEach(async ({ page }) => {
-  await page.route("**/api/auth/session", (route) => route.fulfill({
+test.beforeEach(async ({ page, baseURL }) => {
+  const sessionToken = process.env.OPENFORGE_E2E_SESSION_TOKEN;
+  if (sessionToken && baseURL) {
+    await page.context().addCookies([{
+      domain: new URL(baseURL).hostname,
+      httpOnly: true,
+      name: "pd_session",
+      path: "/",
+      sameSite: "Lax",
+      secure: false,
+      value: sessionToken,
+    }]);
+  }
+  await page.route("**/auth/session", (route) => route.fulfill({
     json: {
       authenticated: true,
       email: "founder@example.invalid",
@@ -94,7 +106,7 @@ test.beforeEach(async ({ page }) => {
       role: "fund_manager",
     },
   }));
-  await page.route("**/api/auth/activity", (route) => route.fulfill({ status: 204 }));
+  await page.route("**/auth/activity", (route) => route.fulfill({ status: 204 }));
   await page.route("**/api/fund-manager/import-executions", (route) =>
     route.fulfill({ json: [] })
   );
@@ -148,6 +160,7 @@ test("Profile onboarding reuses canonical input geometry in both themes", async 
   await page.goto("/profiles/new");
   const profileCode = page.getByLabel("Profile Code");
   const bankrollSurface = page.getByLabel("Starting Bankroll").locator("..");
+  await expect(profileCode).toBeVisible();
 
   for (const theme of ["light", "dark"] as const) {
     await page.evaluate((nextTheme) => {
@@ -155,8 +168,8 @@ test("Profile onboarding reuses canonical input geometry in both themes", async 
     }, theme);
     const geometry = await page.evaluate(() => {
       const textInput = document.querySelector<HTMLInputElement>("label[data-guided-field='profile-code'] input");
-      const moneyInput = document.querySelector<HTMLElement>("[data-pd-id='profile-onboarding.starting-bankroll']")?.parentElement;
-      const percentageInput = document.querySelector<HTMLElement>("[data-pd-id='profile-onboarding.management-fee']")?.parentElement;
+      const moneyInput = document.querySelector<HTMLElement>("[aria-label='Starting Bankroll']")?.parentElement;
+      const percentageInput = document.querySelector<HTMLElement>("[aria-label='Management Fee']")?.parentElement;
       if (!textInput || !moneyInput || !percentageInput) throw new Error("Expected onboarding controls were not rendered");
       const textStyles = getComputedStyle(textInput);
       const moneyStyles = getComputedStyle(moneyInput);

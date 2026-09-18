@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import shutil
+from pathlib import Path
 from typing import Iterator
 
 import pytest
@@ -8,9 +8,9 @@ import pytest
 from openforge_api.config import SOURCE_ROOT, settings
 
 
-@pytest.fixture(scope="session", autouse=True)
-def isolated_test_runtime(tmp_path_factory: pytest.TempPathFactory) -> Iterator[None]:
-    """Bind the API suite to a disposable copy of the committed synthetic seed."""
+@pytest.fixture(autouse=True)
+def isolated_test_runtime(tmp_path: Path) -> Iterator[None]:
+    """Give every API test fresh storage and committed synthetic source data."""
 
     previous = {
         name: getattr(settings, name)
@@ -18,6 +18,13 @@ def isolated_test_runtime(tmp_path_factory: pytest.TempPathFactory) -> Iterator[
             "database_mode",
             "database_url",
             "neon_database_url",
+            "backup_directory",
+            "account_catalogue_source",
+            "tracker_seed_source",
+            "environment",
+            "auth_required",
+            "auth_owner_emails",
+            "auth_session_secret",
             "runtime_role",
             "runtime_database_identity",
             "runtime_source_root",
@@ -29,12 +36,19 @@ def isolated_test_runtime(tmp_path_factory: pytest.TempPathFactory) -> Iterator[
             "runtime_database_target_explicit",
         )
     }
-    runtime = tmp_path_factory.mktemp("openforge-api-suite")
-    database_path = (runtime / "api-test.sqlite3").resolve()
-    shutil.copy2(SOURCE_ROOT / "data/private/db/openforge.sqlite3", database_path)
+    database_path = (tmp_path / "api-test.sqlite3").resolve()
     settings.database_mode = "local"
     settings.database_url = f"sqlite:///{database_path}"
     settings.neon_database_url = ""
+    settings.backup_directory = str(tmp_path / "backups")
+    settings.account_catalogue_source = str(
+        SOURCE_ROOT / "tests/fixtures/openforge-api-master-catalogue.synthetic.json"
+    )
+    settings.tracker_seed_source = ""
+    settings.environment = "test"
+    settings.auth_required = False
+    settings.auth_owner_emails = ""
+    settings.auth_session_secret = ""
     settings.runtime_role = "test"
     settings.runtime_database_identity = "pytest-committed-synthetic-seed"
     settings.runtime_source_root = str(SOURCE_ROOT)

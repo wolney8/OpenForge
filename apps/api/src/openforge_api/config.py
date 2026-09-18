@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     backup_directory: str = "data/private/backups"
     source_instance_id: str = "local-fund-manager"
     account_catalogue_source: str = "data/reference/master-account-catalogue.json"
+    tracker_seed_source: str = ""
     workbook_template_source: str = "_input/WO_MB_Tracker_3Sept2026_1013AM.xlsx"
     workbook_template_helper_source: str = "_input/MB Helpers.gs"
     workbook_template_structure_manifest: str = (
@@ -61,6 +62,13 @@ class Settings(BaseSettings):
     @property
     def account_catalogue_source_path(self) -> Path:
         path = Path(self.account_catalogue_source)
+        return path if path.is_absolute() else SOURCE_ROOT / path
+
+    @property
+    def tracker_seed_source_path(self) -> Path | None:
+        if not self.tracker_seed_source.strip():
+            return None
+        path = Path(self.tracker_seed_source)
         return path if path.is_absolute() else SOURCE_ROOT / path
 
     @property

@@ -1,0 +1,48 @@
+{
+  "schemaVersion": "1.0",
+  "sourceWorkbook": "",
+  "profiles": [
+    {
+      "profileId": "profile-demo-001",
+      "displayName": "Subscriber Alpha",
+      "profileCode": "ALPHA-001",
+      "status": "Active",
+      "trackingStartDate": "2026-01-01",
+      "managementFeePercent": "0",
+      "investmentFeePercent": "0",
+      "currentCashSnapshot": "175.00",
+      "trackerData": {
+        "accounts": [
+          {"id":"ACC-BOOK-A","account":"Bookmaker A","type":"Bookie","countsInCashTotal":true,"channel":"Online","status":"Active","currentBalance":"50.00","pendingWithdrawalAmount":"0.00","group":"Synthetic Group","platform":"Synthetic Platform"},
+          {"id":"ACC-EXCHANGE-A","account":"Exchange A","type":"Exchange","countsInCashTotal":true,"channel":"Online","status":"Active","currentBalance":"50.00","pendingWithdrawalAmount":"0.00","group":"Synthetic Group","platform":"Synthetic Platform"},
+          {"id":"ACC-MATCHBOOK","account":"Matchbook","type":"Exchange","countsInCashTotal":true,"channel":"Online","status":"Active","currentBalance":"25.00","pendingWithdrawalAmount":"0.00","group":"Synthetic Group","platform":"Synthetic Platform"},
+          {"id":"ACC-SMARKETS","account":"Smarkets","type":"Exchange","countsInCashTotal":true,"channel":"Online","status":"Active","currentBalance":"25.00","pendingWithdrawalAmount":"0.00","group":"Synthetic Group","platform":"Synthetic Platform"},
+          {"id":"ACC-BANK-A","account":"Bank A","type":"Bank","countsInCashTotal":true,"channel":"Online","status":"Active","currentBalance":"25.00","pendingWithdrawalAmount":"0.00","group":"Synthetic Group","platform":"Synthetic Platform"}
+        ],
+        "sportsbook-bets": [
+          {"id":"SB-SEED-001","eventName":"Synthetic seeded match","offer":"Synthetic qualifying offer","bookmaker":"Bookmaker A","offerType":"Bet & Get","betType":"Single","offerName":"Demo Offer","fixtureType":"Football","market":"Match Odds","status":"Settled","result":"Win","backStake":"10.00","backOdds":"2.00","matchStrategy":"Standard","layOdds1":"2.10","layActual":"9.62","layMatchedStake1":"9.62","layCommission1":"0.02","exchange":"Matchbook","dateSettling":"2026-01-02T12:00:00Z"}
+        ],
+        "free-bets": [
+          {"id":"FB-SEED-001","eventName":"Synthetic free bet","offer":"Synthetic reward","bookmaker":"Bookmaker A","offerType":"Free Bet","betType":"Single","offerName":"Demo Free Bet","fixtureType":"Football","status":"Settled","result":"Win","retentionMode":"SNR","freeBetValue":"10.00","backOdds":"4.00","matchStrategy":"Standard","layOdds1":"4.20","layActual":"7.18","layMatchedStake1":"7.18","layCommission1":"0.02","exchange":"Matchbook","expiryDateTime":"2026-01-31T12:00:00Z","dateSettling":"2026-01-03T12:00:00Z","originQualBetID":"SB-SEED-001","offerGroupID":"GROUP-SEED-001"}
+        ],
+        "cash-adjustments": [
+          {"id":"CA-SEED-001","adjustmentDate":"2026-01-04T12:00:00Z","direction":"In","amount":"5.00","adjustmentType":"TopUp","affectsInvestment":true,"affectsCashSnapshot":true,"linkedAccount":"Bank A","description":"Synthetic opening adjustment"}
+        ],
+        "casino-offers": [
+          {"id":"CO-SEED-001","offerGroupId":"CASINO-GROUP-001","dateStarted":"2026-01-05T12:00:00Z","dateSettling":"2026-01-05T13:00:00Z","bookmaker":"Bookmaker A","offerType":"Free Spins","offerName":"Synthetic casino offer","game":"Synthetic Game","cashStake":"10.00","freeSpinsAwarded":"10","freeSpinsValue":"2.00","status":"Settled","result":"Win","calcNetPnL":"2.00","finalNetPnL":"2.00","userNotes":"Committed synthetic fixture"}
+        ]
+      }
+    },
+    {
+      "profileId": "profile-demo-002",
+      "displayName": "Subscriber Bravo",
+      "profileCode": "BRAVO-002",
+      "status": "Active",
+      "trackingStartDate": "2026-01-01",
+      "managementFeePercent": "0",
+      "investmentFeePercent": "0",
+      "currentCashSnapshot": "0.00",
+      "trackerData": {"accounts":[],"sportsbook-bets":[],"free-bets":[],"cash-adjustments":[],"casino-offers":[]}
+    }
+  ]
+}

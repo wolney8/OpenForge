@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from apps.api.tests.synthetic_setup import seed_synthetic_account, seed_synthetic_profile
 from fastapi.testclient import TestClient
 
 from openforge_api.config import settings
@@ -12,6 +13,16 @@ from openforge_api.main import app
 def configure_temp_database(tmp_path: Path) -> None:
     settings.database_url = f"sqlite:///{tmp_path / 'multi-profile-entry.sqlite3'}"
     settings.backup_directory = str(tmp_path / "backups")
+    seed_synthetic_profile()
+    seed_synthetic_profile("profile-demo-002", display_name="Subscriber Bravo", profile_code="BRAVO-002")
+    seed_synthetic_account(
+        profile_id="profile-demo-001", name="Exchange A", account_type="Exchange"
+    )
+    seed_synthetic_account(
+        profile_id="profile-demo-001",
+        name="Bookmaker Copy Demo",
+        account_type="Bookie",
+    )
 
 
 def sportsbook_payload(**overrides: str) -> dict[str, str]:
@@ -76,6 +87,7 @@ def create_target_authorities(
             "type": "Exchange",
             "status": "Active",
             "channel": "Online",
+            "commission_rate": "0.02",
         },
     )
     assert exchange_response.status_code == 201

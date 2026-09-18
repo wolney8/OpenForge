@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 from openforge_api.config import settings
 from openforge_api.db import connect, count_account_audit_rows
 from openforge_api.main import app
+from apps.api.tests.synthetic_setup import seed_synthetic_account, seed_synthetic_profile
 
 
 def configure_temp_database(tmp_path: Path) -> None:
@@ -30,6 +31,12 @@ def configure_temp_database(tmp_path: Path) -> None:
             }
         ),
         encoding="utf-8",
+    )
+    seed_synthetic_profile()
+    seed_synthetic_profile(
+        "profile-demo-002",
+        display_name="Subscriber Bravo",
+        profile_code="BRAVO-002",
     )
 
 
@@ -234,6 +241,8 @@ def test_signup_offer_status_controls_account_opportunity_candidate(tmp_path: Pa
 
 def test_seed_rows_load_into_dedicated_accounts_table(tmp_path: Path) -> None:
     configure_temp_database(tmp_path)
+    create_catalogue_bookmaker(TestClient(app), "Bookmaker A")
+    seed_synthetic_account(name="Bookmaker A", account_type="Bookie")
     client = TestClient(app)
 
     response = client.get("/profiles/profile-demo-001/accounts")

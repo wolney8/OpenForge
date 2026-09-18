@@ -5,7 +5,11 @@ from fastapi.testclient import TestClient
 
 from openforge_api.auth import SESSION_COOKIE_NAME, create_session_token
 from openforge_api.config import settings
-from openforge_api.db import get_notification_user_state, replace_notification_user_state
+from openforge_api.db import (
+    get_notification_user_state,
+    list_notification_events,
+    replace_notification_user_state,
+)
 from openforge_api.main import app
 
 
@@ -188,6 +192,21 @@ def test_active_partial_lay_reminders_feed_fund_manager_notifications(tmp_path: 
     assert sportsbook_bet_id not in {
         item["record_id"] for item in dismissed_feed.json()
     }
+
+    history_response = client.get("/fund-manager/notifications/history")
+    assert history_response.status_code == 200
+    retained = [
+        item for item in history_response.json() if item["record_id"] == sportsbook_bet_id
+    ]
+    assert retained
+    assert {item["task_state"] for item in retained} == {"new", "done"}
+
+    # Repeated reads are idempotent and another viewer cannot see this viewer's history.
+    persisted_before_retry = list_notification_events("notification-test@example.invalid")
+    assert client.get("/fund-manager/notifications").status_code == 200
+    persisted = list_notification_events("notification-test@example.invalid")
+    assert len(persisted) == len(persisted_before_retry)
+    assert list_notification_events("other-viewer@example.invalid") == []
 
 
 def test_resolved_partial_lay_notification_expires_after_settlement(tmp_path: Path) -> None:

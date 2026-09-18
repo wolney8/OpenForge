@@ -8,11 +8,16 @@ from fastapi.testclient import TestClient
 from openforge_api.config import settings
 from openforge_api.db import count_cash_adjustment_audit_rows
 from openforge_api.main import app
+from apps.api.tests.synthetic_setup import (
+    seed_committed_test_database,
+    seed_synthetic_betting_context,
+)
 
 
 def configure_temp_database(tmp_path: Path) -> None:
     settings.database_url = f"sqlite:///{tmp_path / 'openforge-test.sqlite3'}"
     settings.backup_directory = str(tmp_path / "backups")
+    seed_synthetic_betting_context()
 
 
 def test_cash_adjustment_workflow_create_update_and_isolation(tmp_path: Path) -> None:
@@ -90,6 +95,7 @@ def test_cash_adjustment_workflow_create_update_and_isolation(tmp_path: Path) ->
 
 def test_seed_rows_load_into_dedicated_cash_adjustment_table(tmp_path: Path) -> None:
     configure_temp_database(tmp_path)
+    seed_committed_test_database()
     client = TestClient(app)
 
     response = client.get("/profiles/profile-demo-001/cash-adjustments")

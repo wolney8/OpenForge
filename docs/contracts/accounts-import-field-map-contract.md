@@ -1,6 +1,6 @@
 # Accounts Import Field Map Contract
 
-**Last updated:** 2026-09-17 15:59 BST
+**Last updated:** 2026-09-18 08:32 BST
 
 ## Status
 
@@ -82,42 +82,46 @@ Read-only inspection of the approved 3 September workbook found these source val
   `Unknown`.
 - `Promo Access`: `Full`, `Some Promos`, `Boosts Only`, `No Promos`, `Unknown`.
 
-The smallest recommended contract is to preserve those values as two separate controlled fields,
-plus source and observation date, without deriving lifecycle or catalogue authority from them.
-`Not Checked` means no stake-access observation has been made; `Unknown` means the imported source
-does not establish a supported value. Unknown text must stop review rather than coerce to either.
-`LastPromoUsed` remains ledger-derived and is not part of this proposal. This vocabulary is a
-proposal, not implementation approval; those two workbook columns remain blocked until accepted.
+The revised recommendation separates broad capability from restriction evidence. Store one
+controlled capability state for each access area, with structured restriction details and evidence
+alongside it. Use `Not Checked` for no reliable observation. Do not add a second `Unknown` state:
+blank or unsupported import text remains a review error/provenance fact until the user deliberately
+records `Not Checked`. `LastPromoUsed` remains ledger-derived and is not part of this proposal.
 
 ### Stake Access
 
 | Value | Plain-English meaning | Typical example | Decision support | Import representation |
 |---|---|---|---|---|
 | `Normal` | Ordinary stakes are accepted with no known material limit | A normal qualifying stake is accepted | Eligible subject to normal Account and offer checks | Exact controlled value |
-| `Soft Limited` | Betting remains possible but useful stakes are reduced | Stakes are accepted below the usual intended amount | Warn and use separately recorded restriction detail | Exact controlled value |
-| `Heavily Limited` | Only materially small stakes are normally accepted | Most ordinary qualifying stakes are declined or sharply capped | Strong warning; do not assume the intended stake is available | Exact controlled value |
-| `Minimum Only` | Only a token/minimum stake is usable | A £1 maximum is observed | Treat as unavailable for ordinary staking unless the user deliberately accepts the limit | Exact controlled value; the £1 amount is separate detail |
+| `Limited` | Betting remains possible but useful stakes are reduced | Stakes are accepted below the intended amount | Warn and use separately recorded restriction detail | Canonical value; map approved `Soft Limited` source text here |
+| `Severely Limited` | Only materially small stakes are normally accepted | Most qualifying stakes are declined or a £1 cap is observed | Strong warning; do not assume the intended stake is available | Canonical value; map approved `Heavily Limited` and `Minimum Only` source text here while preserving the exact source value |
+| `Blocked` | The Account is reachable but will not accept a bet | A bookmaker rejects all attempted stakes without a separate login/KYC lifecycle block | Exclude from stake-led opportunities | Exact controlled value |
 | `Not Checked` | No current stake-access observation has been made | A newly opened Account has not been tested | Prompt verification before relying on it | Exact controlled value |
-| `Unknown` | The source does not establish a supported state | Historic/imported text is blank or inconclusive | Do not infer eligibility | Exact controlled value; unknown source text blocks review |
 
 ### Promo Access
 
 | Value | Plain-English meaning | Typical example | Decision support | Import representation |
 |---|---|---|---|---|
 | `Full` | The normal promotion range is available | Signup and recurring promotions are offered | Eligible subject to the individual offer rules | Exact controlled value |
-| `Some Promos` | Promotions are selectively restricted | Some recurring offers remain, others are absent | Require offer-specific confirmation | Exact controlled value |
-| `Boosts Only` | Boost-style offers remain but broader promotions do not | Price/profit boosts appear while ordinary bonuses do not | Eligible only for the confirmed boost category | Exact controlled value |
-| `No Promos` | Promotions are unavailable | The Account can bet but receives no promotional offers | Exclude from promotion-led opportunity suggestions | Exact controlled value |
-| `Unknown` | Promotion access has not been established | Historic/imported source has no reliable observation | Do not infer offer eligibility | Exact controlled value; unsupported source text blocks review |
+| `Restricted` | Promotions are selectively available | Boosts remain but Free Bets or reload offers are unavailable | Require offer-specific confirmation using separate restriction details | Canonical value; map approved `Some Promos` and `Boosts Only` source text here while preserving the exact source value |
+| `None` | Promotions are unavailable | The Account can bet but receives no promotional offers | Exclude from promotion-led opportunity suggestions | Canonical value; map approved `No Promos` source text here |
+| `Not Checked` | No reliable current promotion observation exists | A new or stale Account has not been checked | Do not infer offer eligibility | Exact controlled value |
 
 ### Ownership boundaries
 
 - `Status` continues to own lifecycle and operational conditions such as Active, Pending Sign Up,
   KYC, login/risk blocks and closure. An Account blocked from login is not described merely as
   limited stake or promo access.
-- A precise cap such as £1 does not become an enum member. It belongs in separate nullable
-  restriction detail (recommended future fields: `maximum_stake_amount`, `restriction_notes`,
-  `access_observed_at` and `access_source`).
+- A precise cap such as £1, odds-dependent/market-dependent cap or bookmaker-selected amount does
+  not become an enum member. It belongs in separate nullable restriction detail: restriction kind,
+  maximum amount where fixed, evidence notes, `access_observed_at` and `access_source`.
+- Promo details separately record which categories remain available (for example boosts, Free Bets,
+  reloads or selected promotions). `Boosts Only` is evidence beneath `Restricted`, not a top-level
+  capability state.
+- `Status` wins for lifecycle blocks: closed, suspended, KYC-blocked or login-blocked Accounts are
+  unusable regardless of their last observed access capability. Stake `Blocked` is reserved for an
+  otherwise operational Account that refuses wagers; the observation does not overwrite Status.
+- Freshness belongs to `access_observed_at`, source and notes. It never creates another enum value.
 - Stake and Promo Access guide eligibility; they do not mutate balances, settle activity or replace
   a user decision about a particular offer.
 - Import accepts only the exact controlled values after normal whitespace/case normalisation.

@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Callable
 
 import pytest
+from apps.api.tests.synthetic_setup import seed_synthetic_betting_context
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
@@ -100,6 +101,7 @@ def configure_temp_database(tmp_path: Path) -> None:
     settings.database_url = f"sqlite:///{tmp_path / 'openforge-test.sqlite3'}"
     settings.backup_directory = str(tmp_path / "backups")
     settings.auth_required = False
+    seed_synthetic_betting_context()
 
 
 def fixture(case_id: str) -> dict[str, object]:

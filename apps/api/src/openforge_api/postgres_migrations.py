@@ -102,6 +102,21 @@ RUNTIME_EXTENSION_STATEMENTS = (
         FOREIGN KEY (email) REFERENCES fund_manager_users(email) ON DELETE CASCADE
     )
     """,
+    """
+    CREATE TABLE IF NOT EXISTS notification_events (
+      event_id TEXT PRIMARY KEY,
+      viewer_email TEXT NOT NULL,
+      notification_id TEXT NOT NULL,
+      profile_id TEXT NOT NULL,
+      notification_type TEXT NOT NULL,
+      payload_json TEXT NOT NULL,
+      recorded_at TEXT NOT NULL
+    )
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS idx_notification_events_viewer_recorded
+      ON notification_events(viewer_email, recorded_at DESC)
+    """,
 )
 
 

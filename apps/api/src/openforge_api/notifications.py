@@ -16,8 +16,10 @@ from openforge_api.db import (
     list_backup_snapshot_records,
     list_calculator_conversion_notifications,
     list_free_bet_follow_up_notifications,
+    list_notification_events,
     list_partial_lay_notifications,
     postgres_runtime_enabled,
+    record_notification_events,
     replace_notification_preferences,
     replace_notification_user_state,
 )
@@ -497,7 +499,7 @@ def list_fund_manager_notifications(
         for notification in notifications
         if preferences.get(notification.notification_type, True)
     ]
-    return sorted(
+    sorted_notifications = sorted(
         permitted,
         key=lambda notification: (
             notification.task_state == "done",
@@ -505,6 +507,26 @@ def list_fund_manager_notifications(
             notification.profile_name.casefold(),
         ),
     )
+    record_notification_events(
+        session.email,
+        [notification.model_dump(mode="json") for notification in sorted_notifications],
+    )
+    return sorted_notifications
+
+
+@router.get("/history", response_model=list[FundManagerNotificationResponse])
+def notification_history(request: Request) -> list[FundManagerNotificationResponse]:
+    session = require_request_session(request)
+    preferences = get_notification_preferences(session.email)
+    history: list[FundManagerNotificationResponse] = []
+    for payload in list_notification_events(session.email):
+        try:
+            event = FundManagerNotificationResponse.model_validate(payload)
+        except ValueError:
+            continue
+        if preferences.get(event.notification_type, True):
+            history.append(event)
+    return history
 
 
 @router.get("/state", response_model=NotificationStatePayload)

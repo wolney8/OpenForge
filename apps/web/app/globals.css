@@ -1276,9 +1276,11 @@ html[data-theme="dark"] .fund-manager-avatar {
 }
 
 .adorned-text-input {
+  box-sizing: border-box;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
+  height: var(--field-control-min-height, 3.55rem);
   min-height: var(--field-control-min-height, 3.55rem);
   /* The shared surface owns focus so its ring includes the currency prefix. */
   overflow: visible;
