@@ -43,6 +43,11 @@ def runtime_settings(tmp_path: Path, *, role: str = "candidate", **updates: obje
         "runtime_database_target_explicit": True,
         "database_mode": "local",
         "database_url": f"sqlite:///{tmp_path / 'isolated.sqlite3'}",
+        "auth_required": True,
+        "auth_owner_emails": "owner@example.invalid",
+        "auth_session_secret": "synthetic-session-secret-at-least-32-bytes",
+        "google_oauth_client_id": "synthetic-client-id",
+        "google_oauth_client_secret": "synthetic-client-secret",
     }
     values.update(updates)
     return Settings(_env_file=None, **values)
@@ -124,6 +129,20 @@ def test_normal_runtime_accepts_only_approved_source_and_owner_database(tmp_path
     )
     identity = validate_runtime_contract(settings)
     assert identity.database_classification == "normal-owner"
+
+
+def test_normal_runtime_fails_closed_without_complete_authentication(tmp_path: Path) -> None:
+    settings = runtime_settings(
+        tmp_path,
+        role="normal-owner",
+        runtime_database_identity="normal-owner",
+        runtime_owner_approved_revision=revision(),
+        database_url=f"sqlite:///{owner_database()}",
+        google_oauth_client_secret="",
+    )
+
+    with pytest.raises(RuntimeSafetyError, match="complete owner and Google authentication"):
+        validate_runtime_contract(settings)
 
 
 def test_relative_database_resolution_does_not_follow_current_directory(

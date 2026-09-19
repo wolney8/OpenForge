@@ -214,12 +214,19 @@ def _callback_uri() -> str:
     return f"{settings.auth_origin}/api/auth/google/callback"
 
 
+def _login_error_response(error: str) -> RedirectResponse:
+    return RedirectResponse(f"/login?error={error}", status_code=302)
+
+
 @router.get("/google/login")
 def google_login(next: str | None = None) -> RedirectResponse:
     if not settings.google_oauth_client_id or not settings.google_oauth_client_secret:
         logger.error("Google OAuth client configuration is incomplete")
-        raise HTTPException(status_code=503, detail="Unable to continue")
-    _require_session_secret()
+        return _login_error_response("oauth_configuration_unavailable")
+    try:
+        _require_session_secret()
+    except HTTPException:
+        return _login_error_response("oauth_configuration_unavailable")
     state = secrets.token_urlsafe(32)
     verifier = secrets.token_urlsafe(64)
     challenge = _base64url_encode(hashlib.sha256(verifier.encode("ascii")).digest())
@@ -258,12 +265,24 @@ def google_login(next: str | None = None) -> RedirectResponse:
 
 @router.get("/google/callback")
 async def google_callback(
-    request: Request, code: str | None = None, state: str | None = None
+    request: Request,
+    code: str | None = None,
+    state: str | None = None,
+    error: str | None = None,
 ) -> RedirectResponse:
     state_token = request.cookies.get(OAUTH_STATE_COOKIE_NAME, "")
     state_payload = _verify_payload(state_token)
-    if state_payload is None or not state or state_payload.get("state") != state or not code:
+    if state_payload is None or not state or state_payload.get("state") != state:
         response = RedirectResponse("/login?error=invalid_oauth_state", status_code=302)
+        response.delete_cookie(OAUTH_STATE_COOKIE_NAME, path="/")
+        return response
+    if error:
+        logger.info("Google OAuth callback returned provider denial/error")
+        response = _login_error_response("oauth_provider_denied")
+        response.delete_cookie(OAUTH_STATE_COOKIE_NAME, path="/")
+        return response
+    if not code:
+        response = _login_error_response("invalid_oauth_state")
         response.delete_cookie(OAUTH_STATE_COOKIE_NAME, path="/")
         return response
 
@@ -318,17 +337,22 @@ async def google_callback(
         response.delete_cookie(OAUTH_STATE_COOKIE_NAME, path="/")
         return response
 
-    upsert_fund_manager_user(
-        email=email,
-        google_subject=subject,
-        display_name=str(identity.get("name", email)),
-    )
-
-    session_token = create_session_token(
-        subject=subject,
-        email=email,
-        name=str(identity.get("name", email)),
-    )
+    try:
+        upsert_fund_manager_user(
+            email=email,
+            google_subject=subject,
+            display_name=str(identity.get("name", email)),
+        )
+        session_token = create_session_token(
+            subject=subject,
+            email=email,
+            name=str(identity.get("name", email)),
+        )
+    except Exception:
+        logger.exception("Google OAuth callback could not persist the local session")
+        response = _login_error_response("oauth_session_failed")
+        response.delete_cookie(OAUTH_STATE_COOKIE_NAME, path="/")
+        return response
     response = RedirectResponse(
         _safe_next_path(str(state_payload.get("next", ""))), status_code=302
     )

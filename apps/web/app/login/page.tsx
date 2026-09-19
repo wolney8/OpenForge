@@ -4,9 +4,12 @@ import { normalizePostAuthDestination } from "@/lib/auth-redirect";
 import Link from "next/link";
 
 const errorMessages: Record<string, string> = {
-  invalid_oauth_state: "Unable to continue. Please try again.",
-  oauth_exchange_failed: "Unable to continue. Please try again.",
-  oauth_identity_failed: "Unable to continue. Please try again.",
+  invalid_oauth_state: "Sign-in couldn't be completed. Please try again.",
+  oauth_configuration_unavailable: "Sign-in isn't available right now. Please try again.",
+  oauth_exchange_failed: "Sign-in couldn't be completed. Please try again.",
+  oauth_identity_failed: "Sign-in couldn't be completed. Please try again.",
+  oauth_provider_denied: "Sign-in wasn't completed. Please try again.",
+  oauth_session_failed: "Sign-in couldn't be completed. Please try again.",
   not_authorized: "Access unavailable. Contact the administrator.",
   session_expired: "Your session ended. Sign in to continue.",
 };

@@ -10,6 +10,9 @@ No published release is represented by the local milestones below.
 
 ## 2026-09-19
 
+- **2026-09-19 07:57 BST — CP-025:** Repaired normal-owner Google OAuth environment selection,
+  made incomplete owner authentication fail closed and replaced raw initiation/callback failures
+  with the branded retry experience.
 - **2026-09-19 06:48 BST — CP-024:** Unified Multi-Lay input/result section geometry, moved
   secondary explanations into accessible help and aligned compact Result values with canonical
   odds and financial semantics.
@@ -75,3 +78,4 @@ their original IDs.
 | CP-002 | 2026-09-16 10:34 BST | Added the concise owner status, audit register, roadmap and history archive | [#114](https://github.com/wolney8/OpenForge/issues/114) | [Changelog](CHANGELOG.md) |
 | CP-003 | 2026-09-16 11:07 BST | Closed the local integration gate and completed browser portable-Profile recovery evidence | [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#current-local-integration-milestone--2026-09-16) |
 | CP-004 | 2026-09-16 12:19 BST | Exercised full Profile import/recovery and populated ledgers; repaired import, Cash validation and shared dialog defects | [#12](https://github.com/wolney8/OpenForge/issues/12), [#91](https://github.com/wolney8/OpenForge/issues/91), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-004-import-populated-ledger-and-accessibility-package--2026-09-16) |
+| CP-005 | 2026-09-16 12:52 BST | Reconciled Profile/combined reports, measured 200 records, repaired report header semantics and bounded lineage decisions | [#109](https://github.com/wolney8/OpenForge/issues/109), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-005-reporting-larger-data-and-evidence-boundary-package--2026-09-16) |

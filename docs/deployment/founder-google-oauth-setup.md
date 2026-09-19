@@ -35,13 +35,21 @@ uses the role-bound launcher. Candidate and test launchers must name their sourc
 role, endpoints and isolated database explicitly. Missing or owner-database settings
 stop startup and direct database access before schema initialisation.
 
-Configuration is resolved in this order: explicit process environment, the running
-source checkout's repository-root `.env`, then code defaults. Before
+Configuration is resolved in this order: explicit process environment, the explicitly selected
+runtime environment file, then code defaults. The normal-owner launcher selects the running source
+checkout's `.env` when present; an approved worktree normal-owner runtime otherwise selects the
+primary checkout's private owner `.env`. Candidate and test roles never inherit that owner file and
+must name any alternative with `--environment-file`. Before
 CP-013, an explicit inherited `OPENFORGE_DATABASE_URL` could therefore override a
 candidate's intended worktree database and reach the owner file; `.env` lookup also
 depended on the process working directory. The `.env` location is now source-rooted and
 runtime role/database ownership validation applies after configuration resolution, so
 changing the working directory cannot change an accepted database target.
+
+Normal-owner startup also fails closed unless owner authentication, a 32-byte session secret and
+both Google client values are present. `/healthz` exposes only the safe configuration result:
+authentication required/configured, callback URL and environment-source classification; it never
+returns a credential or absolute private environment path.
 
 The non-secret configuration boundary is:
 

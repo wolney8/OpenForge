@@ -163,6 +163,16 @@ def healthcheck() -> dict[str, str] | JSONResponse:
         "schema_version": schema_version,
         "api_endpoint": identity.api_endpoint,
         "frontend_endpoint": identity.frontend_endpoint,
+        "environment_source": identity.environment_source,
+        "auth_required": str(settings.authentication_required).lower(),
+        "oauth_configured": str(
+            bool(
+                settings.google_oauth_client_id.strip()
+                and settings.google_oauth_client_secret.strip()
+                and len(settings.auth_session_secret.encode("utf-8")) >= 32
+            )
+        ).lower(),
+        "oauth_callback_url": f"{settings.auth_origin}/api/auth/google/callback",
     }
 
 

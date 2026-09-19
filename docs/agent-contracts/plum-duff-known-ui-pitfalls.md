@@ -1,5 +1,12 @@
 # Plum Duff Known UI Pitfalls
 
+## Public authentication failures must return to the auth shell
+
+- A browser-facing OAuth initiation/callback endpoint must not expose FastAPI/JSON error bodies.
+- Map safe failure categories to the existing branded `/login?error=…` presentation and retain a
+  visible keyboard-accessible retry action; detailed provider/persistence diagnostics stay in logs.
+- Test missing configuration as well as invalid state, provider denial and callback persistence.
+
 ## 2026-09-18: Repeated display labels were used as React collection identity
 
 - Area: Account cash-health disclosure and tracker summary rows.

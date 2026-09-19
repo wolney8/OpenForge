@@ -86,7 +86,12 @@ test.describe("pre-auth privacy and session controls", () => {
     expect(await page.locator("body").innerText()).not.toMatch(forbiddenPublicTerms);
 
     await page.goto("/login?error=invalid_oauth_state");
-    await expect(page.getByText("Unable to continue. Please try again.")).toBeVisible();
+    await expect(page.getByText("Sign-in couldn't be completed. Please try again.")).toBeVisible();
+    expect(await page.locator("body").innerText()).not.toMatch(forbiddenPublicTerms);
+
+    await page.goto("/login?error=oauth_configuration_unavailable");
+    await expect(page.getByText("Sign-in isn't available right now. Please try again.")).toBeVisible();
+    await expect(page.getByRole("link", { name: "Sign in with Google" })).toBeVisible();
     expect(await page.locator("body").innerText()).not.toMatch(forbiddenPublicTerms);
 
     await page.goto("/route-that-does-not-exist");

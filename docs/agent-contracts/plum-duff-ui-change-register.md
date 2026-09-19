@@ -1,5 +1,14 @@
 # Plum Duff UI Change Register
 
+## CP-025 local Google sign-in correction
+
+| ID | Surface | Requested outcome | Signed-off equivalent | Status |
+|---|---|---|---|---|
+| PD-FIX-261 | Normal-owner runtime / Google sign-in initiation | Resolve the explicit normal-owner environment source so the local API can initiate the configured Google flow without weakening candidate/test isolation | Role-bound runtime contract and founder Google OAuth setup | COMPLETE — normal-owner startup loads the classified owner environment and fails closed if authentication is incomplete; candidate/test inheritance regressions pass |
+| PD-FIX-262 | Public authentication failure | Return every application-owned OAuth failure to the branded Plum Duff login shell with a safe retry action rather than raw API JSON | Existing public login error panel | COMPLETE — configuration, state, provider, exchange, identity and persistence failures redirect to branded safe messages; desktop/narrow and keyboard regression pass |
+
+Issue coverage: GitHub #62 and #116 (externally synced by ChatGPT). Hosted Preview remains paused.
+
 ## CP-024 Multi-Lay visual consistency correction
 
 | ID | Surface | Requested outcome | Signed-off equivalent | State |

@@ -150,6 +150,18 @@ def validate_runtime_contract(settings: Settings) -> RuntimeIdentity:
                     "A normal-owner runtime outside the primary checkout requires its exact "
                     "source revision to be explicitly approved"
                 )
+        if not settings.authentication_required:
+            raise RuntimeSafetyError("The normal owner runtime requires authentication")
+        if (
+            not settings.owner_emails
+            or len(settings.auth_session_secret.encode("utf-8")) < 32
+            or not settings.google_oauth_client_id.strip()
+            or not settings.google_oauth_client_secret.strip()
+        ):
+            raise RuntimeSafetyError(
+                "The normal owner runtime requires complete owner and Google "
+                "authentication configuration"
+            )
         classification = "normal-owner"
 
     fingerprint = hashlib.sha256(f"{engine}:{target}".encode()).hexdigest()[:16]

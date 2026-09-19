@@ -1,22 +1,22 @@
 # Project Status — Plum Duff / OpenForge — Doc ID: PS-CODEX-001
 
-**Last updated:** 2026-09-19 06:48 BST · **Status:** 🟢 On track
+**Last updated:** 2026-09-19 07:57 BST · **Status:** 🟡 Owner sign-in retest required
 
 ## Right now
 
-- **Working on:** CP-024 Multi-Lay visual consistency corrections are integrated locally and the CP-023/024 owner-smoke batch is checkpointed.
-- **Next:** Continue the consolidated owner smoke test, then resolve any further local acceptance findings before reconsidering Preview.
-- **Blocked on:** none for continued local smoke testing; hosted work remains paused, and Google/VoiceOver observations remain owner/manual
+- **Working on:** CP-025 repaired the normal-owner Google sign-in initiation/configuration regression and replaced raw OAuth failures with the branded auth shell.
+- **Next:** Will clicks **Sign in with Google** once; a successful return to Plum Duff reopens the remaining consolidated owner smoke checks.
+- **Blocked on:** the fresh owner/provider callback observation only; hosted Preview remains paused and VoiceOver output remains owner/manual
 
 ## Delivery state
 
 | Area | Evidence state |
 | --- | --- |
-| Local integrated build | CP-024 gives Multi-Lay shared table geometry, canonical odds display and semantic Result values without changing calculation behaviour |
-| Normal `localhost:3010` | Healthy as `normal-owner`; CP-022 performance/data-health repairs and the CP-023/024 owner-smoke corrections are live |
+| Local integrated build | CP-025 makes normal-owner authentication configuration explicit/fail-closed and routes safe failures through the branded login shell |
+| Normal `localhost:3010` | Healthy as `normal-owner`; 3010 now initiates Google with the exact local callback and no raw API failure |
 | Main / origin | Not updated by the local integration work |
 | Vercel | Not deployed or hosted-verified; protected Preview remains paused |
-| Owner smoke test | Ready to continue from the CP-024 corrected Multi-Lay surface; result pending |
+| Owner smoke test | Paused pending one fresh Google sign-in retest; do not resume the remaining checks until that succeeds |
 
 ## Progress at a glance
 
@@ -31,15 +31,14 @@ These figures measure **#114 audit coverage**, not the percentage of the product
 
 ## Next 3 steps
 
-1. Continue the consolidated owner smoke test against corrected `localhost:3010`.
-2. Repair and regression-test any further owner-visible local acceptance findings.
-3. Resume the protected Preview decision only after the local owner baseline remains usable.
+1. Complete one fresh owner Google sign-in through corrected `localhost:3010`.
+2. If successful, continue the consolidated local smoke; if not, capture only the visible failure and investigate normally.
+3. Reconsider the protected Preview decision only after the local owner baseline remains usable.
 
 ## Checkpoint log
 
 | ID | Timestamp | What changed | Issue | Document |
 | --- | --- | --- | --- | --- |
-| CP-005 | 2026-09-16 12:52 BST | Reconciled Profile/combined reports, measured 200 records, repaired report header semantics and bounded lineage decisions | [#109](https://github.com/wolney8/OpenForge/issues/109), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-005-reporting-larger-data-and-evidence-boundary-package--2026-09-16) |
 | CP-006 | 2026-09-16 14:02 BST | Proved report and notification-history boundaries, refreshed dependency exposure and restored worktree mypy execution | [#90](https://github.com/wolney8/OpenForge/issues/90), [#111](https://github.com/wolney8/OpenForge/issues/111), [#115](https://github.com/wolney8/OpenForge/issues/115) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-006-reporting-notification-and-securityreliability-package--2026-09-16) |
 | CP-007 | 2026-09-16 14:10 BST | Added London date-and-time metadata rules for owner-facing documents | — | [Rule](AGENTS.md#project-document-timestamp-rule) |
 | CP-008 | 2026-09-16 14:27 BST | Extended precise London timestamps to project logs and backfilled verified recent events | — | [Rule](AGENTS.md#project-document-timestamp-rule) |
@@ -59,6 +58,7 @@ These figures measure **#114 audit coverage**, not the percentage of the product
 | CP-022 | 2026-09-18 14:48 BST | Restored practical owner performance, corrected cash-warning severity and governed synthetic Profile residue | [#116](https://github.com/wolney8/OpenForge/issues/116), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-022-owner-stability-and-data-health-gate--2026-09-18-1448-bst) |
 | CP-023 | 2026-09-18 15:48 BST | Repaired the session shell and duplicate UI identity, then simplified Multi-Lay without changing its calculation engine | [#116](https://github.com/wolney8/OpenForge/issues/116), [#35](https://github.com/wolney8/OpenForge/issues/35), [#92](https://github.com/wolney8/OpenForge/issues/92) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-023-owner-smoke-session-identity-and-multi-lay-corrections--2026-09-18-1548-bst) |
 | CP-024 | 2026-09-19 06:48 BST | Unified Multi-Lay table shells, corrected effective-odds presentation and applied canonical financial meaning to compact results | [#35](https://github.com/wolney8/OpenForge/issues/35), [#92](https://github.com/wolney8/OpenForge/issues/92) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-024-multi-lay-visual-consistency-correction--2026-09-19-0648-bst) |
+| CP-025 | 2026-09-19 07:57 BST | Repaired normal-owner OAuth environment selection, added fail-closed auth readiness and returned failures to the branded login shell | [#62](https://github.com/wolney8/OpenForge/issues/62), [#116](https://github.com/wolney8/OpenForge/issues/116) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-025-owner-blocking-local-google-sign-in--2026-09-19-0757-bst) |
 
 ## Reference index
 

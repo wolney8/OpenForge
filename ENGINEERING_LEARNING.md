@@ -1,16 +1,28 @@
 # Engineering Learning — Plum Duff / OpenForge — Doc ID: EL-CODEX-001
 
-**Last updated:** 2026-09-19 06:48 BST
+**Last updated:** 2026-09-19 07:57 BST
 
 This is a compact notebook of transferable lessons from building Plum Duff. It is not the audit,
 roadmap, backlog or evidence record.
 
 ## Current learning focus
 
-- Visual consistency through shared primitives rather than neighbouring one-off shells.
-- Semantic formatting that distinguishes instructions, liabilities and final profit or loss.
+- OAuth state and configuration provenance across a provider-owned redirect.
+- Failing closed when a security-critical normal runtime cannot prove its auth configuration.
 
 ## Concepts worth remembering
+
+### OAuth state
+
+**What it means:** A short-lived signed value ties the callback from an identity provider to the
+login attempt the application actually started, including its safe return destination and PKCE
+verifier.
+
+**Why it mattered in Plum Duff:** The owner failure occurred before state existed because the API
+had lost its private environment source. Once restored, mismatched, expired and replayed states are
+rejected while valid callbacks can create the database-backed local session.
+
+**Remember:** State connects one initiation to one callback; it is not a general login token.
 
 ### Semantic formatting
 
@@ -403,6 +415,7 @@ role/database/schema identity against isolated hosted storage.
 | CP-022 | 2026-09-18 14:48 BST | Load amplification; data hygiene | Active owner routes now scale with their selected scope, while synthetic residue is classified, retained or removed without rewriting financial history |
 | CP-023 | 2026-09-18 15:48 BST | Stable identity; progressive disclosure | Same-label records now retain canonical UI identity, while Multi-Lay exposes its common flow before validated advanced controls |
 | CP-024 | 2026-09-19 06:48 BST | Shared primitives; semantic formatting | One shell and one financial language now connect Multi-Lay input, compact Result and detailed Outcomes |
+| CP-025 | 2026-09-19 07:57 BST | OAuth state; fail closed | Normal-owner startup now proves its auth environment before serving, and every callback failure returns safely to the branded login shell |
 
 ## Where detailed evidence lives
 

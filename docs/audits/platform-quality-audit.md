@@ -1,5 +1,54 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
+## Current CP-025 owner-blocking local Google sign-in — 2026-09-19 07:57 BST
+
+Owner evidence correctly reopened PQA-J15: a fresh sign-in on normal `localhost:3010` returned
+HTTP 503 JSON `{"detail":"Unable to continue"}` from `/api/auth/google/login` before the browser
+left Plum Duff. The exact branch was incomplete Google client configuration. The normal-owner API
+was running the intended CP-024 worktree and canonical owner database, but `Settings` only looked
+for `.env` in that worktree. The worktree has no private `.env`; the canonical private owner file
+is in the primary checkout. `run-api-runtime.py` labelled an environment source without loading
+one, leaving Google credentials, the session secret, owner allowlist and auth-required flag at
+defaults. CP-023's session gate did not contribute: it only reads `/auth/session` after protected
+page entry and never touches the login initiation/state cookie.
+
+The role-bound launcher now makes the source real. Normal-owner uses the source checkout `.env`
+when present, otherwise the primary checkout's private owner `.env`; candidate/test roles never
+inherit that file and may only use an explicitly named alternative. The canonical owner database
+also resolves from the primary checkout when an approved worktree supplies the code. Normal-owner
+startup now fails closed unless authentication is required, an owner is allowed, the session
+secret is at least 32 bytes and both Google client values exist. Safe health evidence reports role,
+revision, database identity/schema, endpoint pair, environment classification, auth readiness and
+callback URL without returning credentials or a private path.
+
+Live 3010 evidence after repair: health is 200 as `normal-owner`, schema `account-access-v1`, source
+`297cc470…+dirty`, environment `primary-checkout-owner-env`, authentication required/configured and
+callback `http://localhost:3010/api/auth/google/callback`. Sign-in returns 302 to
+`accounts.google.com`, supplies that exact callback, PKCE S256 and a fresh signed state, and sets a
+local HTTP-only SameSite=Lax state cookie without `Secure` (correct for local HTTP). A headless
+provider-boundary check reached Google's genuine **Sign in - Google Accounts** surface and found no
+`redirect_uri_mismatch`. Hosted HTTPS cookie behaviour is unchanged.
+
+State/PKCE evidence is held in the signed short-lived cookie; the application does not persist an
+OAuth state row in the financial database. It consumes the browser state by deleting the cookie
+on success or failure. A separate nonce is not applicable because the flow exchanges the code with
+PKCE and reads Google's user-info endpoint rather than accepting an ID token. Fund-manager session
+persistence remains database-backed and its disposable integration test proves the callback-created
+cookie is readable through `/auth/session`. No duplicate live initiation/callback request was
+observed; sequential callback replay is rejected.
+
+Application-owned failure paths now redirect to the branded login panel for missing configuration,
+invalid/mismatched/expired/replayed state, provider denial, missing code, token exchange, identity
+lookup and local session-persistence failure. Raw provider/backend detail remains server-side.
+Rendered desktop/narrow evidence shows the Plum Duff mark, concise safe error and retry link; the
+CP-023 delayed branded session gate still passes 10/10 browser checks.
+
+Evidence: focused auth/runtime/health **34/34**, full API **1,085 passed / 12 intentional skips / 0
+failed / 0 errors**, auth/launcher **22/22**, web **432/432**, pre-auth Playwright **10/10**,
+TypeScript PASS and mypy 0/82. A final fresh owner Google completion
+is still required because engineering cannot supply or automate Will's provider interaction.
+PQA-J15 is therefore **PARTIAL — OWNER INTERACTION PENDING**, not PASS. Hosted Preview remains paused.
+
 ## Current CP-024 Multi-Lay visual consistency correction — 2026-09-19 06:48 BST
 
 Owner-smoke findings PD-FIX-258–260 are repaired locally without changing calculator inputs,
@@ -3825,7 +3874,7 @@ in the PD-QA-015 addendum still applies (PG, provider access, imported sources, 
 | ID | Scoped check | Assessment/result | Evidence or exact next check |
 |---|---|---|---|
 | PQA-F01 | Session/owner API guard | ASSESSED; PASS scoped | B auth/security named probes |
-| PQA-F02 | Browser expiry/re-authentication recovery | ASSESSED; PARTIAL / EXTERNAL BOUNDARY | CP-009 expiry/cross-tab/stale recovery and CP-020/021 OAuth initiation, state, callback, denial and session tests pass; genuine Google-owned interaction remains owner/manual |
+| PQA-F02 | Browser expiry/re-authentication recovery | ASSESSED; PARTIAL / EXTERNAL BOUNDARY | CP-009 expiry/cross-tab/stale recovery and CP-025 live initiation plus deterministic state, callback, denial and session tests pass after repairing normal-owner config; genuine Google-owned completion remains owner/manual |
 | PQA-F03 | Onboarding duplicate-name identity | ASSESSED; PASS scoped | B onboarding two distinct IDs |
 | PQA-F04 | Account monetary write atomicity | ASSESSED; PASS scoped | Account repair addendum +139-case candidate regression |
 | PQA-F05 | Account cash completeness/correction UI | ASSESSED; PASS scoped | money-repair-browser.json;12.34+10=22.34 |
@@ -3934,7 +3983,7 @@ Shared width/theme variants are recorded in the modal addendum, not inflated int
 |PQA-J12|Multi-Profile conversion failure→retry→new intent→notifications|PASS|CP-003 browser/API/persistence counts 2/1|—|—|Retain regression|
 |PQA-J13|Onboarding→catalogue Accounts→permissions→first action/reopen|PASS|CP-019 complete browser onboarding, saved landing/reopen and shared drawer discard navigation|—|—|Retain deterministic catalogue, validation, focus, narrow and 200% regressions|
 |PQA-J14|Profile archive/recover/delete→denied writes→directory/search isolation|PASS|CP-018 23 API plus 3 authenticated browser lifecycle checks|—|—|Retain active/archive/report/delete-boundary regression|
-|PQA-J15|Login→expiry→denial→re-authentication→state recovery|PARTIAL|CP-020 configured initiation/state/callback tests plus CP-009 expiry/cross-tab/stale-session evidence|One genuine fresh Google interaction|External provider / owner-manual boundary|Optional owner smoke with the authorised Google identity|
+|PQA-J15|Login→expiry→denial→re-authentication→state recovery|PARTIAL|CP-025 normal 3010 initiation reaches Google's sign-in surface; invalid/expired/replayed state, denial, callback/session persistence and CP-009 expiry/cross-tab recovery pass|One genuine fresh owner Google completion and return|External provider / owner-manual boundary|Click Sign in with Google once and report whether Plum Duff returns|
 |PQA-J16|Global search→filter/loadout→Quick Action→correct Profile record|PASS|CP-020 authenticated browser: restricted Profile action save/reopen/prefill/validation/record, Profile isolation, exact/partial/no-result search, keyboard/narrow and delayed-response ordering|—|—|Retain access-precedence, archived-search and stale-response regressions|
 |PQA-J17|Notification create→clear/reload→source lifecycle→history|PASS|CP-018 active→dismiss/reload→resolve durable event; retry and viewer isolation|—|—|Retain current/dismissed/history separation regression|
 |PQA-J18|Workbook import→review/write→lineage→reopen/report/export|PASS|CP-020 authenticated six-sheet #109 import→award retry/settlement→History/report→export/portable restore with native-ID remap and £7.18 counted once|—|—|Retain report-preset preflight, timezone restore and scoped-lineage regressions|

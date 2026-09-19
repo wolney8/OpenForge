@@ -6,6 +6,7 @@ from typing import Iterator
 from urllib.parse import parse_qs, urlparse
 
 import httpx
+import pytest
 from fastapi.testclient import TestClient
 
 from openforge_api import auth as auth_module
@@ -118,6 +119,23 @@ def test_health_and_oauth_routes_remain_public_when_data_routes_are_protected() 
         assert query["code_challenge_method"] == ["S256"]
         assert query["scope"] == ["openid email profile"]
         assert OAUTH_STATE_COOKIE_NAME in login_response.cookies
+        state_cookie_header = login_response.headers["set-cookie"].casefold()
+        assert "httponly" in state_cookie_header
+        assert "samesite=lax" in state_cookie_header
+        assert "path=/" in state_cookie_header
+        assert "secure" not in state_cookie_header
+
+
+def test_google_login_configuration_failure_returns_to_branded_login() -> None:
+    with configured_auth():
+        settings.google_oauth_client_secret = ""
+        client = TestClient(app, follow_redirects=False)
+
+        response = client.get("/auth/google/login")
+
+        assert response.status_code == 302
+        assert response.headers["location"] == "/login?error=oauth_configuration_unavailable"
+        assert response.headers.get("content-type") is None
 
 
 def test_hosted_health_fails_closed_without_neon(monkeypatch) -> None:
@@ -317,6 +335,165 @@ def test_authorized_google_callback_creates_owner_session(monkeypatch) -> None:
         logout_response = client.post("/auth/logout")
         assert logout_response.status_code == 204
         assert client.get("/profiles").status_code == 401
+
+
+def test_google_callback_rejects_expired_state_and_sequential_replay(monkeypatch) -> None:
+    class FakeAsyncClient:
+        def __init__(self, *args, **kwargs) -> None:
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args) -> None:
+            return None
+
+        async def post(self, *args, **kwargs) -> httpx.Response:
+            return httpx.Response(200, json={"access_token": "synthetic-access-token"})
+
+        async def get(self, *args, **kwargs) -> httpx.Response:
+            return httpx.Response(
+                200,
+                json={
+                    "sub": "google-founder-001",
+                    "email": "founder@example.invalid",
+                    "email_verified": True,
+                    "name": "Founder",
+                },
+            )
+
+    with configured_auth():
+        monkeypatch.setattr("openforge_api.auth.httpx.AsyncClient", FakeAsyncClient)
+        client = TestClient(app, follow_redirects=False)
+        expired_state = auth_module._sign_payload(
+            {"state": "expired", "verifier": "verifier", "next": "/", "exp": 1}
+        )
+        client.cookies.set(OAUTH_STATE_COOKIE_NAME, expired_state)
+        expired = client.get("/auth/google/callback?code=code&state=expired")
+        assert expired.headers["location"] == "/login?error=invalid_oauth_state"
+
+        login_response = client.get("/auth/google/login")
+        state = parse_qs(urlparse(login_response.headers["location"]).query)["state"][0]
+        first = client.get(f"/auth/google/callback?code=synthetic-code&state={state}")
+        assert first.headers["location"] == "/"
+        replay = client.get(f"/auth/google/callback?code=synthetic-code&state={state}")
+        assert replay.headers["location"] == "/login?error=invalid_oauth_state"
+
+
+def test_google_callback_handles_provider_denial_and_missing_code() -> None:
+    with configured_auth():
+        client = TestClient(app, follow_redirects=False)
+        login_response = client.get("/auth/google/login")
+        state = parse_qs(urlparse(login_response.headers["location"]).query)["state"][0]
+
+        denied = client.get(f"/auth/google/callback?error=access_denied&state={state}")
+
+        assert denied.headers["location"] == "/login?error=oauth_provider_denied"
+        assert OAUTH_STATE_COOKIE_NAME not in client.cookies
+
+        second_login = client.get("/auth/google/login")
+        second_state = parse_qs(urlparse(second_login.headers["location"]).query)["state"][0]
+        missing_code = client.get(f"/auth/google/callback?state={second_state}")
+        assert missing_code.headers["location"] == "/login?error=invalid_oauth_state"
+
+
+@pytest.mark.parametrize(
+    ("token_status", "identity_status", "expected_error"),
+    (
+        (400, 200, "oauth_exchange_failed"),
+        (200, 503, "oauth_identity_failed"),
+    ),
+)
+def test_google_callback_returns_provider_failures_to_login(
+    monkeypatch, token_status: int, identity_status: int, expected_error: str
+) -> None:
+    class FakeAsyncClient:
+        def __init__(self, *args, **kwargs) -> None:
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args) -> None:
+            return None
+
+        async def post(self, *args, **kwargs) -> httpx.Response:
+            return httpx.Response(token_status, json={"access_token": "synthetic-access-token"})
+
+        async def get(self, *args, **kwargs) -> httpx.Response:
+            return httpx.Response(identity_status, json={"sub": "synthetic"})
+
+    with configured_auth():
+        monkeypatch.setattr("openforge_api.auth.httpx.AsyncClient", FakeAsyncClient)
+        client = TestClient(app, follow_redirects=False)
+        login_response = client.get("/auth/google/login")
+        state = parse_qs(urlparse(login_response.headers["location"]).query)["state"][0]
+
+        response = client.get(f"/auth/google/callback?code=synthetic-code&state={state}")
+
+        assert response.headers["location"] == f"/login?error={expected_error}"
+        assert OAUTH_STATE_COOKIE_NAME not in client.cookies
+
+
+def test_google_callback_rejects_mismatched_state_before_provider_exchange(monkeypatch) -> None:
+    async_client_used = False
+
+    class UnexpectedAsyncClient:
+        def __init__(self, *args, **kwargs) -> None:
+            nonlocal async_client_used
+            async_client_used = True
+
+    with configured_auth():
+        monkeypatch.setattr("openforge_api.auth.httpx.AsyncClient", UnexpectedAsyncClient)
+        client = TestClient(app, follow_redirects=False)
+        client.get("/auth/google/login")
+
+        response = client.get("/auth/google/callback?code=synthetic-code&state=wrong")
+
+        assert response.headers["location"] == "/login?error=invalid_oauth_state"
+        assert async_client_used is False
+
+
+def test_google_callback_redirects_when_session_persistence_fails(monkeypatch) -> None:
+    class FakeAsyncClient:
+        def __init__(self, *args, **kwargs) -> None:
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args) -> None:
+            return None
+
+        async def post(self, *args, **kwargs) -> httpx.Response:
+            return httpx.Response(200, json={"access_token": "synthetic-access-token"})
+
+        async def get(self, *args, **kwargs) -> httpx.Response:
+            return httpx.Response(
+                200,
+                json={
+                    "sub": "google-founder-001",
+                    "email": "founder@example.invalid",
+                    "email_verified": True,
+                    "name": "Founder",
+                },
+            )
+
+    with configured_auth():
+        monkeypatch.setattr("openforge_api.auth.httpx.AsyncClient", FakeAsyncClient)
+        monkeypatch.setattr(
+            "openforge_api.auth.create_session_token",
+            lambda **kwargs: (_ for _ in ()).throw(RuntimeError("synthetic persistence failure")),
+        )
+        client = TestClient(app, follow_redirects=False)
+        login_response = client.get("/auth/google/login")
+        state = parse_qs(urlparse(login_response.headers["location"]).query)["state"][0]
+
+        response = client.get(f"/auth/google/callback?code=synthetic-code&state={state}")
+
+        assert response.status_code == 302
+        assert response.headers["location"] == "/login?error=oauth_session_failed"
+        assert SESSION_COOKIE_NAME not in response.cookies
 
 
 def test_root_return_target_uses_fund_manager_dashboard(monkeypatch) -> None:
