@@ -1,22 +1,22 @@
 # Project Status — Plum Duff / OpenForge — Doc ID: PS-CODEX-001
 
-**Last updated:** 2026-09-19 07:57 BST · **Status:** 🟡 Owner sign-in retest required
+**Last updated:** 2026-09-19 12:41 BST · **Status:** 🟡 Owner smoke ready to continue
 
 ## Right now
 
-- **Working on:** CP-025 repaired the normal-owner Google sign-in initiation/configuration regression and replaced raw OAuth failures with the branded auth shell.
-- **Next:** Will clicks **Sign in with Google** once; a successful return to Plum Duff reopens the remaining consolidated owner smoke checks.
-- **Blocked on:** the fresh owner/provider callback observation only; hosted Preview remains paused and VoiceOver output remains owner/manual
+- **Working on:** CP-026 enforces shared calculator heading/help, content-grid and semantic accent invariants across standalone and embedded calculator surfaces.
+- **Next:** Will continues the consolidated smoke, beginning with the still-pending genuine Google return and the corrected Multi-Lay geometry.
+- **Blocked on:** no further local engineering step; hosted Preview remains paused, while Google and VoiceOver retain their owner/manual boundaries
 
 ## Delivery state
 
 | Area | Evidence state |
 | --- | --- |
-| Local integrated build | CP-025 makes normal-owner authentication configuration explicit/fail-closed and routes safe failures through the branded login shell |
-| Normal `localhost:3010` | Healthy as `normal-owner`; 3010 now initiates Google with the exact local callback and no raw API failure |
+| Local integrated build | CP-026 adds one shared calculator heading primitive, one same-level content grid and governed back/lay semantic accents |
+| Normal `localhost:3010` | Healthy as `normal-owner`; frontend and API use the current local source line and 3010 retains corrected Google initiation |
 | Main / origin | Not updated by the local integration work |
 | Vercel | Not deployed or hosted-verified; protected Preview remains paused |
-| Owner smoke test | Paused pending one fresh Google sign-in retest; do not resume the remaining checks until that succeeds |
+| Owner smoke test | Ready to continue; Google completion remains the first genuine owner/provider check |
 
 ## Progress at a glance
 
@@ -59,6 +59,7 @@ These figures measure **#114 audit coverage**, not the percentage of the product
 | CP-023 | 2026-09-18 15:48 BST | Repaired the session shell and duplicate UI identity, then simplified Multi-Lay without changing its calculation engine | [#116](https://github.com/wolney8/OpenForge/issues/116), [#35](https://github.com/wolney8/OpenForge/issues/35), [#92](https://github.com/wolney8/OpenForge/issues/92) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-023-owner-smoke-session-identity-and-multi-lay-corrections--2026-09-18-1548-bst) |
 | CP-024 | 2026-09-19 06:48 BST | Unified Multi-Lay table shells, corrected effective-odds presentation and applied canonical financial meaning to compact results | [#35](https://github.com/wolney8/OpenForge/issues/35), [#92](https://github.com/wolney8/OpenForge/issues/92) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-024-multi-lay-visual-consistency-correction--2026-09-19-0648-bst) |
 | CP-025 | 2026-09-19 07:57 BST | Repaired normal-owner OAuth environment selection, added fail-closed auth readiness and returned failures to the branded login shell | [#62](https://github.com/wolney8/OpenForge/issues/62), [#116](https://github.com/wolney8/OpenForge/issues/116) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-025-owner-blocking-local-google-sign-in--2026-09-19-0757-bst) |
+| CP-026 | 2026-09-19 12:41 BST | Enforced inline calculator help, one Multi-Lay outer grid and paired semantic Back/Lay surfaces across standalone and embedded consumers | [#35](https://github.com/wolney8/OpenForge/issues/35), [#92](https://github.com/wolney8/OpenForge/issues/92) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-026-calculator-visual-contract-enforcement--2026-09-19-1241-bst) |
 
 ## Reference index
 

@@ -1,6 +1,6 @@
 # Audit Register — Plum Duff / OpenForge — Doc ID: AR-CODEX-001
 
-**Last updated:** 2026-09-19 07:57 BST
+**Last updated:** 2026-09-19 12:41 BST
 
 This is the owner-facing index for audit evidence. The
 [platform quality audit](docs/audits/platform-quality-audit.md) remains the detailed authority.
@@ -21,6 +21,7 @@ These are coverage measures, not percentages of the product finished.
 
 | ID | Plain-English problem | State | Repair / integration state | Issue |
 | --- | --- | --- | --- | --- |
+| #35 / PD-FIX-263–265 | Calculator help could fall below its title and same-level Back/Lay sections used different outer containers | Repaired locally / owner smoke ready | `CalculatorSectionHeading` now governs reference/table/embedded headings; one content grid aligns Multi-Lay sections and existing semantic tokens pair bookmaker/back with exchange/lay surfaces | [#35](https://github.com/wolney8/OpenForge/issues/35), [#92](https://github.com/wolney8/OpenForge/issues/92) |
 | #62 / PD-FIX-261–262 | Fresh normal-owner Google sign-in returned raw `Unable to continue` before leaving Plum Duff | Repaired locally / owner provider retest required | The worktree launcher now selects the classified primary owner environment, normal-owner auth fails closed when incomplete, 3010 reaches Google's sign-in surface with the exact local callback, and safe failures return to branded login | [#62](https://github.com/wolney8/OpenForge/issues/62), [#116](https://github.com/wolney8/OpenForge/issues/116) |
 | #35 / PD-FIX-258–260 | Multi-Lay input/results used visibly different shells, repeated unchanged effective odds and under-signalled financial meaning | Repaired locally / owner smoke ready | One shared calculator table shell now governs both sections; limit/explanation text uses accessible help, changed effective odds use canonical display, and compact Results distinguish neutral instructions/liability from P&L | [#35](https://github.com/wolney8/OpenForge/issues/35), [#92](https://github.com/wolney8/OpenForge/issues/92) |
 | #116 / PD-FIX-255–256 | Initial session checking was an empty blocking screen and same-label Accounts produced duplicate React keys | Repaired locally / owner smoke ready | Brief checks no longer flash a full-screen fallback; noticeable checks use the branded shared loader, and Account health/summary rows use canonical Account IDs with same-label regression coverage | [#116](https://github.com/wolney8/OpenForge/issues/116), [#92](https://github.com/wolney8/OpenForge/issues/92) |

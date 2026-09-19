@@ -1,6 +1,7 @@
 import { defineConfig } from "@playwright/test";
 
 const baseURL = process.env.OPENFORGE_E2E_BASE_URL ?? "http://127.0.0.1:3010";
+const apiBaseURL = process.env.OPENFORGE_E2E_API_BASE_URL ?? "http://127.0.0.1:8010";
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -27,7 +28,7 @@ export default defineConfig({
     {
       command: "pnpm dev:api",
       env: { ...process.env, OPENFORGE_AUTH_REQUIRED: "false" },
-      url: "http://127.0.0.1:8010/healthz",
+      url: `${apiBaseURL.replace(/\/$/, "")}/healthz`,
       reuseExistingServer: true,
       timeout: 120000,
     },
@@ -38,7 +39,7 @@ export default defineConfig({
         OPENFORGE_AUTH_REQUIRED: "false",
         OPENFORGE_E2E_AUTH_BYPASS: "true",
       },
-      url: "http://127.0.0.1:3010/login",
+      url: `${baseURL.replace(/\/$/, "")}/login`,
       reuseExistingServer: true,
       timeout: 120000,
     },

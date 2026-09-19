@@ -37,6 +37,7 @@ import {
 import { getAccountNamesByType, type AccountAuthorityRecord } from "@/lib/account-authorities";
 import { StatusToast } from "@/components/status-toast";
 import { CalculatorOutcomes, CalculatorOutcomeValueDisplay, type CalculatorOutcomeScenario } from "@/components/calculator-outcomes";
+import { CalculatorSectionHeading } from "@/components/calculator-section-heading";
 import { CommissionInput } from "@/components/commission-input";
 import { CopyableFinancialValue } from "@/components/copyable-financial-value";
 import { SingleLayCustomSlider } from "@/components/single-lay-custom-slider";
@@ -9219,7 +9220,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                                   : ""
                               }`}
                             >
-                              <div className="multi-lay-table-heading">Outcome Table</div>
+                              <CalculatorSectionHeading className="calculator-result-card-heading multi-lay-table-heading" title="Outcome Table" />
                               <table className="data-table multi-lay-planner-grid">
                                 <thead>
                                   <tr>
@@ -9581,7 +9582,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                           {multiLayPlannerSummary ? (
                             <div className="stack">
                               <div className="multi-lay-grid-wrap">
-                                <div className="multi-lay-table-heading">Result Table</div>
+                                <CalculatorSectionHeading className="calculator-result-card-heading multi-lay-table-heading" title="Result Table" />
                                 <table className="data-table multi-lay-results-grid">
                                   <thead>
                                     <tr>

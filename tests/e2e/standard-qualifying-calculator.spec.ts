@@ -1,18 +1,36 @@
 import { expect, test } from "@playwright/test";
 
+test.afterEach(async ({ page }) => {
+  await page.unrouteAll({ behavior: "ignoreErrors" });
+});
+
 const webBaseUrl = process.env.OPENFORGE_E2E_BASE_URL ?? "http://127.0.0.1:3010";
 const apiBaseUrl = process.env.OPENFORGE_E2E_API_BASE_URL ?? "http://127.0.0.1:8010";
 
 async function mockSession(page: import("@playwright/test").Page) {
+  const session = {
+    authenticated: true, email: "calculator-test@example.invalid", name: "Synthetic Fund Manager",
+    role: "fund_manager", expires_at: Math.floor(Date.now() / 1000) + 3600, linked_profile_ids: [],
+    session_policy: { auto_logout_enabled: false, timeout_minutes: 15, preference_configured: true, effective_expires_at: Math.floor(Date.now() / 1000) + 3600 },
+  };
   const sessionToken = process.env.OPENFORGE_E2E_SESSION_TOKEN;
   if (sessionToken) {
     await page.context().addCookies([{ name: "pd_session", value: sessionToken, url: webBaseUrl }]);
   }
-  await page.context().route("**/auth/session*", (route) => route.fulfill({ json: {
-    authenticated: true, email: "calculator-test@example.invalid", name: "Synthetic Fund Manager",
-    role: "fund_manager", expires_at: Math.floor(Date.now() / 1000) + 3600, linked_profile_ids: [],
-    session_policy: { auto_logout_enabled: false, timeout_minutes: 15, preference_configured: true, effective_expires_at: Math.floor(Date.now() / 1000) + 3600 },
-  }}));
+  const isolatedApiBaseUrl = process.env.OPENFORGE_E2E_API_BASE_URL?.replace(/\/$/, "");
+  if (isolatedApiBaseUrl) {
+    await page.route("**/api/**", async (route) => {
+      if (new URL(route.request().url()).pathname === "/api/auth/session") {
+        await route.fulfill({ json: session });
+        return;
+      }
+      const targetUrl = route.request().url().replace(/https?:\/\/[^/]+\/api/, isolatedApiBaseUrl);
+      const response = await route.fetch({ url: targetUrl });
+      await route.fulfill({ response });
+    });
+  } else {
+    await page.context().route("**/auth/session*", (route) => route.fulfill({ json: session }));
+  }
 }
 
 async function createSyntheticCalculatorAuthorities(
@@ -928,7 +946,7 @@ test("matches the signed-off Sportsbook calculator geometry", async ({ page, req
         band: pick(".calculator-band-multilay"),
         panel: pick(".calculator-panel-card-multilay"),
         heading: pick(".multi-lay-calculator-title-row"),
-        tableHeading: pick(".multi-lay-table-heading"),
+        tableHeading: pick(".calculator-section-heading"),
         grid: pick(".multi-lay-planner-grid, .multi-lay-reference-grid"),
         field: { height: field.getBoundingClientRect().height, radius: getComputedStyle(field).borderRadius, padding: getComputedStyle(field).padding },
       };

@@ -165,6 +165,12 @@ use the canonical primitive and computed styling.
   establish composed parity. Shared rows remain content-driven: shorter segments do not inherit
   empty trailing tracks merely to equalise panel bottoms. Existing presentation schemes use the
   stable shared header action slot and restore their established browser-local UI preference.
+- Calculator section titles and contextual help use the shared heading primitive. The help action
+  stays immediately beside its title in one non-wrapping heading row at desktop, half-width and
+  ordinary narrow widths; never place it in an accidental second row. Same-level calculator
+  sections share one outer content grid and matching left/right edges even when their internal
+  field/table columns differ. Bookmaker/back and exchange/lay accents come only from the paired
+  semantic tokens; a page-local border colour on one side is prohibited.
 - Repeated calculator selection surfaces round every exposed outer corner. Calculator-family paging
   uses a clipped reduced-motion-aware slide, visible disabled boundary arrows and an anchored
   ellipsis menu rather than numeric overflow chrome. The viewport reserves the shared focus/selected

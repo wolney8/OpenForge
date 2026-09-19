@@ -703,7 +703,8 @@ export function MultiLayCalculator({ exchanges, onState, search, planning = fals
     update({ ...inputs, outcomes: [...inputs.outcomes, { id: `outcome-${nextNumber}`, label: `Outcome ${inputs.outcomes.length + 1}`, layOdds: "", commission: inputs.outcomes.at(-1)?.commission ?? "0", commissionManual: false }] });
   };
   return <div className="calculator-panel-shell" data-pd-id="calculators.multi-lay.presentation"><div className="calculator-shell">
-    <div className="calculator-band calculator-band-primary">
+    <div className="calculator-band calculator-band-primary calculator-band-single calculator-band-multilay">
+      <div className="calculator-panel-card calculator-panel-card-multilay calculator-content-grid">
       <div className="multi-lay-calculator-title-row"><span className="eyebrow">Multi-Lay Calculator</span></div>
       <div className="ledger-calculator-mode-bar multi-lay-global-controls" data-pd-id="calculators.multi-lay.global-controls">
         <SelectField disabled={planning} id="multi-backing-type" label="Bet Type" value={primaryBetType} onChange={setPrimaryBetType} options={[["normal", "Normal"], ["normal_underlay", "Normal Underlay"], ["free_bet_snr", "Free Bet SNR"]]} />
@@ -713,11 +714,8 @@ export function MultiLayCalculator({ exchanges, onState, search, planning = fals
         <Field error={null} id="multi-back-stake" label="Back stake" onChange={(value) => update({ ...inputs, backStake: value })} value={inputs.backStake} />
         <Field error={getSportsbookOddsInputError(inputs.backOdds, { required: false })} id="multi-back-odds" label="Back odds" onBlur={() => { const normalized = normalizeCalculatorOddsInput(inputs.backOdds); if (normalized.converted) update({ ...inputs, backOdds: normalized.canonicalValue }); }} onChange={(value) => update({ ...inputs, backOdds: value })} value={inputs.backOdds} />
       </div>{effectiveOddsChanged && result ? <dl className="calculator-reference-inline"><div><dt>Effective odds</dt><dd>{formatSportsbookOdds(result.effective_back_odds)}</dd></div></dl> : null}</section>
-    </div>
-    <div className="calculator-band calculator-band-primary calculator-band-single calculator-band-multilay">
-      <div className="calculator-panel-card calculator-panel-card-multilay">
-        <div className="stack">
-          <CalculatorTableSection className="multi-lay-input-section calculator-table-section-input" headingAction={<ContextHelp label="About Multi-Lay outcome limits" text="Add up to 20 outcomes." />} inspectionId="calculators.multi-lay.lay-outcomes" title="Lay outcomes">
+        <div className="stack calculator-content-grid">
+          <CalculatorTableSection className="multi-lay-input-section calculator-table-section-input" headingAction={<ContextHelp label="About Multi-Lay outcome limits" text="Add up to 20 outcomes." />} inspectionId="calculators.multi-lay.lay-outcomes" title="Lay outcomes" tone="lay">
             <div className="multi-lay-grid-wrap"><table className={`data-table dense-calculator-grid multi-lay-reference-grid multi-lay-input-grid${inputs.outcomes.length > 2 ? " has-remove" : ""}`}><thead><tr><th>#</th><th>Outcome name</th><th>Lay odds</th><th>Commission (%)</th>{inputs.outcomes.length > 2 ? <th>Remove</th> : null}</tr></thead><tbody>
             {inputs.outcomes.map((outcome, index) => <tr data-pd-id={`calculators.multi-lay.outcome-${index + 1}`} key={outcome.id}>
               <td data-label="#">{index + 1}</td><td data-label="Outcome"><label className="field-control"><span className="sr-only">Outcome {index + 1} name</span><input aria-invalid={!outcome.label.trim()} data-pd-id={`calculators.multi-outcome-${index + 1}-label`} onChange={(event) => updateOutcome(index, "label", event.target.value)} value={outcome.label} /></label></td>

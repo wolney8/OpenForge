@@ -1,5 +1,16 @@
 # Plum Duff UI Change Register
 
+## CP-026 calculator visual-contract enforcement
+
+| ID | Surface | Requested outcome | Signed-off equivalent | Status |
+|---|---|---|---|---|
+| PD-FIX-263 | Calculator section headings | Keep every section help action inline with its visible heading through one shared heading primitive | Signed-off Standard reference-card heading geometry | COMPLETE — shared standalone/table/reference and embedded Sportsbook headings pass inline geometry and keyboard-help evidence |
+| PD-FIX-264 | Multi-Lay section composition | Give Back Bet, Lay Outcomes, Result, disclosures and Outcomes one shared outer content grid | Signed-off calculator band/content geometry | COMPLETE — Back/Lay outer bounds match at desktop, half-width, narrow and 200% text without overflow |
+| PD-FIX-265 | Calculator semantic surfaces | Apply the established bookmaker/back and exchange/lay accent tokens as a paired rule, with no one-off Multi-Lay border | Existing `calculator-segment-back` / `calculator-segment-lay` semantics | COMPLETE — paired semantic borders/backgrounds pass in light/dark; no formula or value changed |
+
+Issue coverage: GitHub #35 and #92 (externally synced by ChatGPT). Google owner re-authentication
+remains a separate #62 manual boundary; Hosted Preview remains paused.
+
 ## CP-025 local Google sign-in correction
 
 | ID | Surface | Requested outcome | Signed-off equivalent | Status |

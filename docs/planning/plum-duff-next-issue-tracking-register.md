@@ -1467,3 +1467,13 @@ offers and optional community feed inputs.
 - Source records retain provenance, freshness and manual-review state.
 - Discord or community feed intake remains advisory and non-autonomous.
 ```
+## CP-026 calculator visual-contract enforcement
+
+| ID | Surface | Requirement | State |
+|---|---|---|---|
+| PD-FIX-263 | Shared calculator headings | Section title and keyboard-accessible help remain one inline heading unit across Standard, Multi-Lay and shared calculator tables/cards | COMPLETE LOCALLY — shared primitive and standalone/embedded browser evidence pass |
+| PD-FIX-264 | Multi-Lay outer grid | Back Bet and Lay Outcomes use identical outer left/right bounds; same-level calculator sections share one content grid | COMPLETE LOCALLY — structural geometry passes at all required widths/text scale |
+| PD-FIX-265 | Back/lay semantic accents | Bookmaker/back and exchange/lay surfaces use the established paired semantic tokens, never a one-off page-local outline | COMPLETE LOCALLY — paired semantic tokens pass light/dark rendered inspection |
+
+GitHub #35 owns the calculator correction and #92 owns the shared visual invariant. #62 remains
+PARTIAL pending Will's genuine Google-owned interaction; no authentication change is included here.

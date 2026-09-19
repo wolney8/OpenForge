@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 
+import { CalculatorSectionHeading } from "@/components/calculator-section-heading";
 import { ContextHelp } from "@/components/context-help";
 import { CopyableFinancialValue } from "@/components/copyable-financial-value";
 import { FinancialValue, FinancialValueReplayGroup } from "@/components/financial-value";
@@ -48,10 +49,7 @@ export function CalculatorReferenceSection({
   const heading = <>{live ? <span className={`table-chip table-chip-danger calculator-live-chip${motion.ready && motion.enabled ? " is-motion-enabled" : ""}`}>LIVE</span> : null}{title}</>;
 
   return <section aria-busy={busy} className={`calculator-reference-section calculator-reference-tone-${tone}`} data-pd-id={inspectionId}>
-    <header className="calculator-reference-card-heading">
-      <h3>{heading}</h3>
-      <ContextHelp label={`About ${title}`} text={description} />
-    </header>
+    <CalculatorSectionHeading action={<ContextHelp label={`About ${title}`} text={description} />} className="calculator-reference-card-heading" title={heading} />
     {action ? <div className="calculator-reference-card-control">{action}</div> : null}
     <dl className="calculator-reference-card-values">
       {rows.map((row) => <FinancialValueReplayGroup key={row.label.toLowerCase().replaceAll(" ", "-")}>

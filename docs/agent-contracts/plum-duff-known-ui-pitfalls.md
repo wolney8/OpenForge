@@ -1,5 +1,17 @@
 # Plum Duff Known UI Pitfalls
 
+## 2026-09-19: Calculator help and same-level sections lost shared geometry
+
+- Area: shared calculator headings and the standalone Multi-Lay content flow.
+- Root cause: the table shell wrapped its title/help in an unstyled block while reference cards used
+  a separate flex header; Multi-Lay then put Back Bet and Lay Outcomes inside different nested bands.
+  The result was a second-line help icon and unequal outer section edges despite valid internals.
+- Prevention: route calculator section headings through `CalculatorSectionHeading`; same-level
+  sections use `calculator-content-grid`; use the paired back/lay semantic tokens rather than a
+  one-off border. Internal table/field columns may remain different.
+- Regression: calculator parity browser evidence compares heading/help rows, Back/Lay outer bounds,
+  semantic border pairing and page overflow at desktop, half-width, narrow and 200% text.
+
 ## Public authentication failures must return to the auth shell
 
 - A browser-facing OAuth initiation/callback endpoint must not expose FastAPI/JSON error bodies.

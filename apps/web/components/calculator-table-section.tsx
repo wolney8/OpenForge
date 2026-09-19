@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import { CalculatorSectionHeading } from "@/components/calculator-section-heading";
+
 export function CalculatorTableSection({
   busy = false,
   children,
@@ -7,6 +9,7 @@ export function CalculatorTableSection({
   headingAction,
   inspectionId,
   title,
+  tone = "neutral",
 }: {
   busy?: boolean;
   children: ReactNode;
@@ -14,15 +17,14 @@ export function CalculatorTableSection({
   headingAction?: ReactNode;
   inspectionId: string;
   title: ReactNode;
+  tone?: "back" | "lay" | "neutral";
 }) {
   return <section
     aria-busy={busy}
-    className={`calculator-table-section calculator-result-card${className ? ` ${className}` : ""}`}
+    className={`calculator-table-section calculator-result-card calculator-table-section-tone-${tone}${className ? ` ${className}` : ""}`}
     data-pd-id={inspectionId}
   >
-    <div className="calculator-result-card-heading">
-      <div className="calculator-reference-heading-content"><h3>{title}</h3>{headingAction}</div>
-    </div>
+    <CalculatorSectionHeading action={headingAction} className="calculator-result-card-heading" title={title} />
     {children}
   </section>;
 }

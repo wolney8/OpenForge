@@ -1,16 +1,36 @@
 # Engineering Learning — Plum Duff / OpenForge — Doc ID: EL-CODEX-001
 
-**Last updated:** 2026-09-19 07:57 BST
+**Last updated:** 2026-09-19 12:41 BST
 
 This is a compact notebook of transferable lessons from building Plum Duff. It is not the audit,
 roadmap, backlog or evidence record.
 
 ## Current learning focus
 
-- OAuth state and configuration provenance across a provider-owned redirect.
-- Failing closed when a security-critical normal runtime cannot prove its auth configuration.
+- Design invariants encoded in shared UI primitives rather than rediscovered page by page.
+- Semantic tokens that express domain meaning consistently across themes and consumers.
 
 ## Concepts worth remembering
+
+### Design invariant
+
+**What it means:** A rule that must remain true wherever a component is used, independent of page
+or calculator family.
+
+**Why it mattered in Plum Duff:** Help now stays beside its section title and same-level calculator
+sections share one outer grid because those rules live in shared primitives and regression checks.
+
+**Remember:** Repeated visual rules belong in components, not owner memory.
+
+### Semantic token
+
+**What it means:** A shared style value named for meaning, such as bookmaker/back or exchange/lay,
+rather than a local hard-coded colour.
+
+**Why it mattered in Plum Duff:** Multi-Lay now distinguishes Back and Lay using the same paired
+meaning in light, dark, standalone and embedded contexts without inventing a page-specific border.
+
+**Remember:** Name colour by what it communicates, not by its hex value.
 
 ### OAuth state
 
@@ -416,6 +436,7 @@ role/database/schema identity against isolated hosted storage.
 | CP-023 | 2026-09-18 15:48 BST | Stable identity; progressive disclosure | Same-label records now retain canonical UI identity, while Multi-Lay exposes its common flow before validated advanced controls |
 | CP-024 | 2026-09-19 06:48 BST | Shared primitives; semantic formatting | One shell and one financial language now connect Multi-Lay input, compact Result and detailed Outcomes |
 | CP-025 | 2026-09-19 07:57 BST | OAuth state; fail closed | Normal-owner startup now proves its auth environment before serving, and every callback failure returns safely to the branded login shell |
+| CP-026 | 2026-09-19 12:41 BST | Design invariant; semantic token | Shared headings, content grids and Back/Lay meaning now survive calculator, theme and viewport changes |
 
 ## Where detailed evidence lives
 

@@ -1,5 +1,30 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
+## Current CP-026 calculator visual contract enforcement — 2026-09-19 12:41 BST
+
+Owner-smoke findings PD-FIX-263–265 are repaired on the current normal-owner source without changing
+calculator inputs, formulae, rounding, copy values, persistence or authentication. The visible help
+defect came from two heading implementations: reference cards used a flex row, while the shared table
+shell nested its title/help inside an unstyled block. `CalculatorSectionHeading` now owns both, plus
+the embedded Sportsbook Multi-Lay Outcome/Result headings. Title and optional help remain one
+non-wrapping, keyboard-accessible semantic heading row.
+
+Multi-Lay's Back Bet was formerly in one calculator band while Lay Outcomes and later sections were
+inside a second band/panel. They now share one `calculator-content-grid`; internal field/table columns
+remain purpose-specific while the outer left/right bounds match. The accepted paired semantic rule is
+retained: Back/Bookmaker uses `--back-panel-*`, Lay/Exchange uses `--lay-panel-*`, and neutral result
+surfaces remain neutral. No one-off Multi-Lay border colour was added.
+
+Rendered structural evidence passes at 1440px desktop, 720px half-width, 390px narrow and 200% root
+text in both light and dark themes with reduced motion: heading/help centres align, flex remains
+non-wrapping, Back/Lay bounds match to the rounded pixel, both semantic borders are present and no
+page-level horizontal overflow occurs. Shared calculator Playwright is **4/4** and an isolated
+authenticated Sportsbook embedded-calculator parity journey is **1/1**. Web tests are **432/432**;
+TypeScript and mypy 0/82 pass; web lint has zero errors and retains eight pre-existing warnings.
+
+Google authentication source was not changed. PQA-J15 remains **PARTIAL — OWNER INTERACTION
+PENDING**. Hosted Preview remains paused.
+
 ## Current CP-025 owner-blocking local Google sign-in — 2026-09-19 07:57 BST
 
 Owner evidence correctly reopened PQA-J15: a fresh sign-in on normal `localhost:3010` returned

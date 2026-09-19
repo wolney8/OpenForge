@@ -8925,15 +8925,53 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   overflow: visible;
 }
 
+.calculator-section-heading {
+  align-items: center;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.55rem;
+  justify-content: center;
+  min-width: 0;
+}
+
+.calculator-section-heading h3 {
+  margin: 0;
+  min-width: 0;
+}
+
+.calculator-section-heading > .context-help {
+  flex: 0 0 auto;
+}
+
 .calculator-reference-card-heading {
   align-items: center;
   border-top: 0.25rem solid var(--calculator-reference-accent);
   border-radius: var(--shape-large) var(--shape-large) 0 0;
-  display: flex;
-  gap: 0.55rem;
-  justify-content: center;
   min-width: 0;
   padding: 0.7rem 0.9rem 0.65rem;
+}
+
+.calculator-content-grid {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+  width: 100%;
+}
+
+.calculator-content-grid > * {
+  box-sizing: border-box;
+  min-width: 0;
+  width: 100%;
+}
+
+.calculator-table-section-tone-back {
+  background: var(--back-panel-bg);
+  border-color: var(--back-panel-outline);
+}
+
+.calculator-table-section-tone-lay {
+  background: var(--lay-panel-bg);
+  border-color: var(--lay-panel-outline);
 }
 
 .calculator-reference-card-heading h3 {

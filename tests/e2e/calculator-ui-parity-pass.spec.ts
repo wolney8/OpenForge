@@ -1,11 +1,11 @@
 import { expect, test } from "@playwright/test";
 
+test.afterEach(async ({ page }) => {
+  await page.unrouteAll({ behavior: "ignoreErrors" });
+});
+
 async function mockSession(page: import("@playwright/test").Page) {
-  const sessionToken = process.env.OPENFORGE_E2E_SESSION_TOKEN;
-  if (sessionToken) {
-    await page.context().addCookies([{ name: "pd_session", value: sessionToken, url: process.env.OPENFORGE_E2E_BASE_URL ?? "http://127.0.0.1:3010" }]);
-  }
-  await page.context().route("**/auth/session*", (route) => route.fulfill({ json: {
+  const session = {
     authenticated: true,
     email: "calculator-parity@example.invalid",
     name: "Synthetic Fund Manager",
@@ -13,14 +13,25 @@ async function mockSession(page: import("@playwright/test").Page) {
     expires_at: Math.floor(Date.now() / 1000) + 3600,
     linked_profile_ids: [],
     session_policy: { auto_logout_enabled: false, timeout_minutes: 15, preference_configured: true, effective_expires_at: Math.floor(Date.now() / 1000) + 3600 },
-  }}));
+  };
+  const sessionToken = process.env.OPENFORGE_E2E_SESSION_TOKEN;
+  if (sessionToken) {
+    await page.context().addCookies([{ name: "pd_session", value: sessionToken, url: process.env.OPENFORGE_E2E_BASE_URL ?? "http://127.0.0.1:3010" }]);
+  }
   const isolatedApiBaseUrl = process.env.OPENFORGE_E2E_API_BASE_URL?.replace(/\/$/, "");
   if (isolatedApiBaseUrl) {
-    await page.route("**/api/fund-manager/calculators/**", async (route) => {
+    await page.route("**/api/**", async (route) => {
+      if (new URL(route.request().url()).pathname === "/api/auth/session") {
+        await route.fulfill({ json: session });
+        return;
+      }
       const targetUrl = route.request().url().replace(/https?:\/\/[^/]+\/api/, isolatedApiBaseUrl);
       const response = await route.fetch({ url: targetUrl });
       await route.fulfill({ response });
     });
+  }
+  if (!isolatedApiBaseUrl) {
+    await page.context().route("**/auth/session*", (route) => route.fulfill({ json: session }));
   }
 }
 
@@ -46,6 +57,72 @@ async function pairedPanelFit(page: import("@playwright/test").Page, id: string)
     return segment.getBoundingClientRect().bottom - bottom;
   }));
 }
+
+async function multiLayVisualContract(page: import("@playwright/test").Page) {
+  return page.locator('[data-pd-id="calculators.multi-lay.presentation"]').evaluate((root) => {
+    const back = root.querySelector<HTMLElement>('[data-pd-id="calculators.multi-lay.back"]')!;
+    const lay = root.querySelector<HTMLElement>('[data-pd-id="calculators.multi-lay.lay-outcomes"]')!;
+    const heading = lay.querySelector<HTMLElement>('.calculator-section-heading')!;
+    const title = heading.querySelector<HTMLElement>('h3')!.getBoundingClientRect();
+    const help = heading.querySelector<HTMLElement>('.context-help-action')!.getBoundingClientRect();
+    const backBox = back.getBoundingClientRect();
+    const layBox = lay.getBoundingClientRect();
+    const backStyle = getComputedStyle(back);
+    const layStyle = getComputedStyle(lay);
+    return {
+      edges: {
+        back: [Math.round(backBox.left), Math.round(backBox.right)],
+        lay: [Math.round(layBox.left), Math.round(layBox.right)],
+      },
+      heading: {
+        display: getComputedStyle(heading).display,
+        wrap: getComputedStyle(heading).flexWrap,
+        titleCentre: Math.round(title.top + title.height / 2),
+        helpCentre: Math.round(help.top + help.height / 2),
+      },
+      accents: {
+        backBorder: backStyle.borderColor,
+        backWidth: backStyle.borderLeftWidth,
+        layBorder: layStyle.borderColor,
+        layWidth: layStyle.borderLeftWidth,
+      },
+      overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    };
+  });
+}
+
+test("keeps calculator help inline and Multi-Lay sections on one semantic content grid", async ({ page }) => {
+  await mockSession(page);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  const cases = [
+    { name: "desktop-dark", width: 1440, rootSize: "16px", theme: "dark" },
+    { name: "half-light", width: 720, rootSize: "16px", theme: "light" },
+    { name: "narrow-dark", width: 390, rootSize: "16px", theme: "dark" },
+    { name: "text-200-light", width: 1440, rootSize: "32px", theme: "light" },
+  ];
+
+  for (const item of cases) {
+    await page.setViewportSize({ width: item.width, height: 1000 });
+    await page.goto("/fund-manager/calculators?family=multi-lay");
+    if (await page.locator("html").getAttribute("data-theme") !== item.theme) {
+      await page.locator('[data-pd-id="app-shell.theme-toggle"]').click();
+      await expect(page.locator("html")).toHaveAttribute("data-theme", item.theme);
+    }
+    await page.evaluate((rootSize) => { document.documentElement.style.fontSize = rootSize; }, item.rootSize);
+    const contract = await multiLayVisualContract(page);
+    expect(contract.edges.back, `${item.name} Back/Lay edges`).toEqual(contract.edges.lay);
+    expect(contract.heading.display).toBe("flex");
+    expect(contract.heading.wrap).toBe("nowrap");
+    expect(contract.heading.titleCentre, `${item.name} heading/help alignment`).toBeCloseTo(contract.heading.helpCentre, 0);
+    expect(contract.accents.backWidth).toBe("1px");
+    expect(contract.accents.layWidth).toBe("1px");
+    expect(contract.accents.backBorder).not.toBe(contract.accents.layBorder);
+    expect(contract.overflow, `${item.name} horizontal overflow`).toBeLessThanOrEqual(1);
+    if (process.env.CALCULATOR_UI_PARITY_SCREENSHOT_DIR) {
+      await page.screenshot({ path: `${process.env.CALCULATOR_UI_PARITY_SCREENSHOT_DIR}/multi-lay-contract-${item.name}.png`, fullPage: true });
+    }
+  }
+});
 
 test("aligns calculator segments, hierarchy, schemes and selection surfaces", async ({ page }) => {
   await mockSession(page);
