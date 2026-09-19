@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 
+import { BrandLogo } from "@/components/brand-logo";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import type { FundManagerSession } from "@/components/fund-manager-account-page";
 import { clearAuthenticatedSessionState } from "@/lib/authenticated-session-state";
@@ -43,6 +44,7 @@ export function SessionBootstrapGate({
   children: (session: FundManagerSession) => React.ReactNode;
 }) {
   const [attempt, setAttempt] = useState(0);
+  const [showChecking, setShowChecking] = useState(false);
   const [state, setState] = useState<BootstrapState>({
     status: "checking",
     session: null,
@@ -51,6 +53,9 @@ export function SessionBootstrapGate({
 
   useEffect(() => {
     let active = true;
+    const fallbackTimer = window.setTimeout(() => {
+      if (active) setShowChecking(true);
+    }, 250);
     void requestAuthoritativeSession()
       .then((session) => {
         if (active && session) setState({ status: "ready", session, error: "" });
@@ -65,6 +70,7 @@ export function SessionBootstrapGate({
       });
     return () => {
       active = false;
+      window.clearTimeout(fallbackTimer);
     };
   }, [attempt]);
 
@@ -83,16 +89,34 @@ export function SessionBootstrapGate({
       data-pd-id="session.bootstrap"
       id="main-content"
     >
-      <section className="content-panel stack-tight" role="status">
+      <section
+        className={`hero-panel stack session-bootstrap-panel${state.status === "checking" && !showChecking ? " is-delayed" : ""}`}
+        data-pd-id="session.bootstrap.panel"
+      >
         {state.status === "checking" ? (
-          <LedgerLoadingIndicator label="Checking session…" />
+          showChecking ? (
+            <>
+              <div className="session-bootstrap-brand">
+                <span className="brand-mark"><BrandLogo priority variant="mark" /></span>
+                <strong>Plum Duff</strong>
+              </div>
+              <LedgerLoadingIndicator label="Checking session…" />
+            </>
+          ) : (
+            <span aria-live="polite" className="sr-only" role="status">Checking session…</span>
+          )
         ) : (
           <>
+            <div className="session-bootstrap-brand">
+              <span className="brand-mark"><BrandLogo priority variant="mark" /></span>
+              <strong>Plum Duff</strong>
+            </div>
             <span className="eyebrow">Session</span>
             <h1>Unable to verify session</h1>
             <p className="error-text">{state.error}</p>
             <div className="tracker-nav tracker-nav-right">
               <button className="button-link" onClick={() => {
+                setShowChecking(false);
                 setState({ status: "checking", session: null, error: "" });
                 setAttempt((value) => value + 1);
               }} type="button">

@@ -68,7 +68,7 @@ test("native Add Row explicitly opts into Normal v2, previews/copies/saves/reope
   }
   await expect(planner.locator('[data-pd-id="calculators.multi-lay.outcome-1.copyable"]')).toContainText("16.33");
   await expect(planner.locator('[data-pd-id="calculators.multi-lay.outcome-2.copyable"]')).toContainText("13.42");
-  await planner.getByRole("button", { name: "Add lay", exact: true }).click();
+  await planner.getByRole("button", { name: "Add outcome", exact: true }).click();
   await planner.locator('[data-pd-id="calculators.multi-outcome-3-label"]').fill("Draw");
   await planner.locator('[data-pd-id="calculators.multi-outcome-3-odds"]').fill("5");
   await planner.locator('[data-pd-id="calculators.multi-outcome-3-commission"]').fill("0");

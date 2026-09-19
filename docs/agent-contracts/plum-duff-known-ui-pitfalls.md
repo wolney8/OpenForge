@@ -1,5 +1,17 @@
 # Plum Duff Known UI Pitfalls
 
+## 2026-09-18: Repeated display labels were used as React collection identity
+
+- Area: Account cash-health disclosure and tracker summary rows.
+- Root cause: records were grouped by canonical Account ID, then the renderer discarded that ID and
+  keyed rows by the repeatable `Profile · provider` display text. Distinct synthetic Accounts with
+  the same visible label therefore produced a duplicate-key warning.
+- Prevention: carry canonical identity through every view model and key by Account ID (or the
+  smallest scoped composite when one ID is not sufficient). Never use a label, random value or array
+  index when stable record identity exists.
+- Regression: `ledger-table-controls-parity.spec.ts` renders two same-label Accounts, targets each
+  canonical ID independently and rejects duplicate-key console output.
+
 ## 2026-09-17: Restored award lineage used a non-portable parent identifier
 
 - Area: Sportsbook editor linked Free Bet list after portable Profile restore.

@@ -411,6 +411,14 @@ test("pages calculator families and calculates Multi-Lay and Each Way modes", as
 
 test("Multi-Lay v2 routes backing type, boost, per-leg commission, advanced allocation and live copy", async ({ page }) => {
   await mockSession(page);
+  if (process.env.OPENFORGE_E2E_API_BASE_URL) {
+    await page.route("**/api/fund-manager/calculators/multi-lay/preview", async (route) => {
+      const response = await route.fetch({
+        url: `${process.env.OPENFORGE_E2E_API_BASE_URL}/fund-manager/calculators/multi-lay/preview`,
+      });
+      await route.fulfill({ response });
+    });
+  }
   await page.context().grantPermissions(["clipboard-read", "clipboard-write"], { origin: webBaseUrl });
   const previewBodies: Array<Record<string, unknown>> = [];
   page.on("request", (request) => {
@@ -420,8 +428,8 @@ test("Multi-Lay v2 routes backing type, boost, per-leg commission, advanced allo
   });
   await page.goto("/fund-manager/calculators?family=multi-lay");
   await expect(page.getByLabel("Bet Type")).toHaveValue("normal");
-  await expect(page.getByRole("button", { name: "Simple" })).toHaveAttribute("aria-pressed", "true");
-  await expect(page.getByLabel("Profit Boost (%)")).toHaveValue("0");
+  await expect(page.getByText("Mode", { exact: true })).toHaveCount(0);
+  await expect(page.locator('[data-pd-id="calculators.multi-lay.advanced"]')).not.toHaveAttribute("open", "");
   await expect(page.getByLabel("Outcome 1 commission")).toHaveValue("0");
 
   await page.getByLabel("Back stake").fill("10");
@@ -430,39 +438,65 @@ test("Multi-Lay v2 routes backing type, boost, per-leg commission, advanced allo
   await page.getByLabel("Outcome 2 lay odds").fill("3");
   await page.getByLabel("Outcome 1 commission").fill("5");
   await page.getByLabel("Outcome 2 commission").fill("5");
+  await expect(page.getByText("Up to 20", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "About Multi-Lay outcome limits" })).toBeVisible();
+  await expect(page.getByText("Effective odds", { exact: true })).toHaveCount(0);
+  await expect(page.locator('[data-pd-id="calculators.multi-lay.lay-outcomes"]')).toHaveClass(/calculator-table-section/);
+  await expect(page.locator('[data-pd-id="calculators.multi-lay.outcomes"]')).toHaveClass(/calculator-table-section/);
   await expect(page.locator('[data-pd-id="calculators.multi-lay.outcome-1.copyable"]')).toContainText("£ 16.33");
+  await expect(page.locator('[data-pd-id="calculators.multi-lay.result"]')).toContainText("Total liability");
+  await expect(page.locator('[data-pd-id="calculators.multi-lay.result"]')).toContainText("Back bet loses");
+  await expect(page.locator('[data-pd-id="calculators.multi-lay.result"]')).toContainText("If this outcome wins");
   await expect(page.locator('[data-pd-id="calculators.multi-lay.outcomes"]')).toContainText("£ 18.38");
   await expect(page.locator('[data-pd-id="calculators.multi-lay.outcomes"]')).toContainText("£ 10.94");
+  if (process.env.CP023_SCREENSHOT_DIR) {
+    await page.waitForTimeout(800);
+    await page.screenshot({ path: `${process.env.CP023_SCREENSHOT_DIR}/multi-lay-default-desktop.png`, fullPage: true });
+  }
+  await page.locator('[data-pd-id="calculators.multi-lay.reward-modifiers"] summary').click();
+  await page.getByLabel("Reward").selectOption("profit_boost");
   await page.getByLabel("Profit Boost (%)").fill("10");
+  await expect(page.locator('[data-pd-id="calculators.multi-lay.back"] .calculator-reference-inline')).toContainText("Effective odds");
+  await expect(page.locator('[data-pd-id="calculators.multi-lay.back"] .calculator-reference-inline')).toContainText("4.30");
   await expect(page.locator('[data-pd-id="calculators.multi-lay.outcome-1.copyable"]')).toContainText("£ 17.55");
-  await page.getByLabel("Profit Boost (%)").fill("0");
+  await page.getByLabel("Reward").selectOption("none");
+  await expect(page.getByText("Effective odds", { exact: true })).toHaveCount(0);
   await expect(page.locator('[data-pd-id="calculators.multi-lay.outcome-1.copyable"]')).toContainText("£ 16.33");
 
-  await page.getByRole("button", { name: "Advanced" }).click();
+  await page.getByLabel("Bet Type").selectOption("normal_underlay");
+  await expect.poll(() => previewBodies.at(-1)).toMatchObject({ backing_type: "normal", strategy: "underlay" });
+  await expect(page.locator('[data-pd-id="calculators.multi-lay.result"]')).toContainText("Normal Underlay");
+  await page.getByLabel("Bet Type").selectOption("free_bet_snr");
+  await expect.poll(() => previewBodies.at(-1)).toMatchObject({ backing_type: "free_bet_snr", strategy: "standard" });
+  await expect(page.locator('[data-pd-id="calculators.multi-lay.result"]')).toContainText("Free bet loses");
+  await page.getByLabel("Bet Type").selectOption("normal");
+
+  await page.locator('[data-pd-id="calculators.multi-lay.advanced"] summary').click();
   await expect(page.locator('[data-pd-id="calculators.multi-lay.advanced"]')).toContainText("0.3522×");
-  await page.getByRole("button", { name: "Use Underlay allocation", exact: true }).click();
+  await page.getByRole("button", { name: "Underlay", exact: true }).click();
   await expect(page.locator('[data-pd-id="calculators.multi-lay.outcome-1.copyable"]')).toContainText("£ 5.75");
-  await page.getByRole("button", { name: "Use Overlay allocation", exact: true }).click();
+  await expect(page.getByLabel("Bet Type")).toHaveValue("normal_underlay");
+  await page.getByRole("button", { name: "Overlay", exact: true }).click();
   await expect(page.locator('[data-pd-id="calculators.multi-lay.outcome-1.copyable"]')).toContainText("£ 42.19");
-  await page.getByRole("button", { name: "Use Custom allocation", exact: true }).click();
+  await page.getByRole("button", { name: "Custom", exact: true }).click();
   await page.getByLabel("Custom multiplier").fill("1.1");
   await expect(page.locator('[data-pd-id="calculators.multi-lay.outcome-1.copyable"]')).toContainText("£ 17.96");
   await page.locator('[data-pd-id="calculators.multi-lay.outcome-1.copyable"] button').click();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("17.96");
 
-  await page.getByLabel("Bet Type").selectOption("money_back");
+  await page.getByLabel("Reward").selectOption("money_back");
   await page.getByLabel("Refund amount").fill("10");
   await expect(page.getByLabel("Retention (%)")).toHaveValue("70");
   await expect.poll(() => previewBodies.at(-1)).toMatchObject({ backing_type: "money_back", strategy: "custom", refund_amount: "10", retention_percent: "70" });
   await expect(page.locator('[data-pd-id="calculators.multi-lay.convert"]')).toHaveCount(0);
   await expect(page.getByText(/destination cannot preserve this Multi-Lay configuration/)).toBeVisible();
 
-  await page.getByRole("button", { name: "Add lay" }).click();
+  await page.getByRole("button", { name: "Add outcome" }).click();
   await page.getByLabel("Outcome 3 lay odds").fill("6");
   await expect(page.locator('[data-pd-id="calculators.multi-lay.outcome-3"]')).toBeVisible();
   await page.getByRole("button", { name: "Remove Outcome 3" }).click();
   await expect(page.locator('[data-pd-id="calculators.multi-lay.outcome-3"]')).toHaveCount(0);
-  await page.getByRole("button", { name: "Add lay" }).click();
+  await page.getByRole("button", { name: "Add outcome" }).click();
   await page.getByLabel("Outcome 3 lay odds").fill("6");
   await page.getByLabel("Custom Multi-Lay multiplier").focus();
   await page.keyboard.press("ArrowRight");
@@ -476,8 +510,14 @@ test("Multi-Lay v2 routes backing type, boost, per-leg commission, advanced allo
       expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual(width + 1);
     }
   }
+  if (process.env.CP023_SCREENSHOT_DIR) {
+    await page.screenshot({ path: `${process.env.CP023_SCREENSHOT_DIR}/multi-lay-advanced-narrow.png`, fullPage: true });
+  }
   await page.locator('[data-pd-id="app-shell.theme-toggle"]').click();
   await expect(page.locator('[data-pd-id="calculators.multi-lay.outcomes"]')).toBeVisible();
+  if (process.env.CP023_SCREENSHOT_DIR) {
+    await page.screenshot({ path: `${process.env.CP023_SCREENSHOT_DIR}/multi-lay-advanced-dark.png`, fullPage: true });
+  }
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.getByLabel("Custom Multi-Lay multiplier").focus();
   await page.keyboard.press("ArrowLeft");

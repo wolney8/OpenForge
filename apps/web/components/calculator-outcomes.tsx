@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 import { FinancialValue, FinancialValueReplayGroup } from "@/components/financial-value";
 import { CopyableFinancialValue } from "@/components/copyable-financial-value";
+import { CalculatorTableSection } from "@/components/calculator-table-section";
 import { formatFinancialValue } from "@/lib/financial-display";
 
 export type CalculatorOutcomeValue = string | number | null | undefined;
@@ -54,8 +55,7 @@ export function CalculatorOutcomes({
   summary?: ReactNode;
   title?: ReactNode;
 }) {
-  return <section aria-busy={busy} className={`calculator-outcomes-matrix extra-place-outcome-matrix calculator-result-card${className ? ` ${className}` : ""}`} data-pd-id={inspectionId}>
-    <div className="calculator-result-card-heading"><div className="calculator-reference-heading-content"><h3>{title}</h3>{headingAction}</div></div>
+  return <CalculatorTableSection busy={busy} className={`calculator-outcomes-matrix extra-place-outcome-matrix${className ? ` ${className}` : ""}`} headingAction={headingAction} inspectionId={inspectionId} title={title}>
     {description ? <p className="calculator-section-guidance">{description}</p> : null}
     <div className="calculator-outcomes-table extra-place-outcome-table" role="table">
       {columns.length > 0 ? <div className={`extra-place-outcome-row extra-place-outcome-row-heading calculator-outcome-columns-${Math.min(columns.length, 3)}`} role="row">
@@ -88,5 +88,5 @@ export function CalculatorOutcomes({
       })}
     </div>
     {summary ? <div className="calculator-outcomes-summary extra-place-outcome-summary">{summary}</div> : null}
-  </section>;
+  </CalculatorTableSection>;
 }

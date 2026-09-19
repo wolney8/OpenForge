@@ -1,5 +1,44 @@
 # Plum Duff Next Issue Tracking Register
 
+## PD-AUDIT-CP024-20260919 — Multi-Lay visual consistency correction
+
+GitHub #35 owns the Multi-Lay correction and #92 owns the shared visual-consistency rule. No new
+issue is required; external evidence was already synced by the owner.
+
+| ID | Area | Requested outcome | Canonical equivalent | State |
+|---|---|---|---|---|
+| PD-FIX-258 | Lay outcomes / Outcomes shells | Reuse one table-section geometry with semantic input/result tones | Shared calculator card heading and responsive outcome shell | COMPLETE |
+| PD-FIX-259 | Limit and effective-odds display | Put the 20-outcome limit behind help; suppress redundant effective odds and format changed odds canonically | Context help and shared sportsbook odds formatter | COMPLETE |
+| PD-FIX-260 | Result financial hierarchy | Use aligned label/value rows and canonical stake/liability/P&L meaning | Shared financial/copy primitives | COMPLETE |
+
+The correction changes presentation only. Multi-Lay engine inputs, allocation, commission,
+rounding, copy values and detailed Outcomes arithmetic remain unchanged.
+
+## PD-AUDIT-CP023-20260918 — owner smoke session, identity and Multi-Lay corrections
+
+GitHub #116 owns the session-shell and stable-identity corrections. GitHub #35 owns the revised
+Multi-Lay information architecture; #92 remains the shared calculator presentation reference.
+Hosted Preview and the remaining owner smoke items stay paused until this batch is rendered and
+regression-proven.
+
+| ID | Area | Requested outcome | Canonical equivalent | State |
+|---|---|---|---|---|
+| PD-FIX-255 | Session bootstrap | Avoid short full-screen flashes; show an intentional branded shared loader only for noticeable validation and preserve secure expiry/error transitions | Public auth brand panel plus shared loading indicator | COMPLETE — 250ms delayed fallback, branded shared status, secure error/retry and expired redirect pass |
+| PD-FIX-256 | React collection identity | Use canonical Profile/Account IDs for repeated rows even when human-readable labels are identical; classify rather than silently deduplicate the data | Account selectors keyed by `account_id` | COMPLETE — Account health/summary keys use canonical IDs; two same-label rows render and target independently without a React warning |
+| PD-FIX-257 | Multi-Lay calculator | Replace the permanent Mode/allocation-card flow with Normal, Normal Underlay and Free Bet SNR primary types, compact lay inputs/results and collapsed Advanced allocation | Existing Multi-Lay engine, copy primitive and shared Outcomes shell | COMPLETE — primary hierarchy and copyable results are compact; reward and advanced allocation capability remain in collapsed disclosures |
+
+No formula change is authorised. Multi-Lay keeps the independently verified v2 engine, per-leg
+commission, rounding, exposure and advanced allocation endpoints; this batch changes their
+user-facing hierarchy only.
+
+CP-023 focused evidence at **2026-09-18 15:48 BST**: session browser **4/4**, duplicate-label
+identity browser **1/1**, Multi-Lay browser **1/1**, Standard/shared calculator parity **1/1** and
+calculation API **17/17** pass. TypeScript and mypy pass; web lint has no errors (eight existing
+warnings), while the separately classified API Ruff backlog remains 200 findings. Rendered desktop,
+narrow, light/dark and reduced-motion evidence was inspected. The repeated `Frank Eastender · 10Bet`
+labels represent distinct old synthetic fixture Accounts (one earlier record plus a later generated
+cluster), not one React entity; ambiguous ledger-by-label provenance prevents speculative deletion.
+
 ## PD-AUDIT-CP022-20260918 — owner-blocking local stability / data health
 
 GitHub #116 owns this bounded corrective batch. Owner smoke testing and protected hosted Preview

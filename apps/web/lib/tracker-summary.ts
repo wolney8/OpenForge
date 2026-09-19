@@ -216,6 +216,7 @@ type ActivityItem = {
 };
 
 type AccountHealthItem = {
+  accountId: string;
   accountName: string;
   accountStatus: string;
   lastOfferActivityAt: string;
@@ -947,6 +948,7 @@ export function summarizeTrackerData(
       }
 
       return {
+        accountId: account.account_id,
         accountName: account.account,
         accountStatus: account.status,
         lastOfferActivityAt: lastOfferRow?.date_settled ?? "",

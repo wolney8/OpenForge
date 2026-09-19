@@ -1,22 +1,22 @@
 # Project Status — Plum Duff / OpenForge — Doc ID: PS-CODEX-001
 
-**Last updated:** 2026-09-18 14:48 BST · **Status:** 🟢 On track
+**Last updated:** 2026-09-19 06:48 BST · **Status:** 🟢 On track
 
 ## Right now
 
-- **Working on:** CP-022 local stability/data-health gate is green; normal `localhost:3010` is ready for the paused owner smoke test.
-- **Next:** Record the owner smoke result, then decide whether to resume the separately approval-gated protected Preview milestone.
-- **Blocked on:** none for ordinary local use; hosted work remains paused, and Google/VoiceOver observations remain owner/manual
+- **Working on:** CP-024 Multi-Lay visual consistency corrections are integrated locally and the CP-023/024 owner-smoke batch is checkpointed.
+- **Next:** Continue the consolidated owner smoke test, then resolve any further local acceptance findings before reconsidering Preview.
+- **Blocked on:** none for continued local smoke testing; hosted work remains paused, and Google/VoiceOver observations remain owner/manual
 
 ## Delivery state
 
 | Area | Evidence state |
 | --- | --- |
-| Local integrated build | CP-022 removes archived-Profile load amplification, groups Account cash warnings and retains the closed #114 review baseline |
-| Normal `localhost:3010` | Healthy as `normal-owner`; 3 active owner Profiles load by default while 39 protected synthetic Profiles remain archived |
+| Local integrated build | CP-024 gives Multi-Lay shared table geometry, canonical odds display and semantic Result values without changing calculation behaviour |
+| Normal `localhost:3010` | Healthy as `normal-owner`; CP-022 performance/data-health repairs and the CP-023/024 owner-smoke corrections are live |
 | Main / origin | Not updated by the local integration work |
 | Vercel | Not deployed or hosted-verified; protected Preview remains paused |
-| Owner smoke test | Ready to resume on the repaired local owner application; result pending |
+| Owner smoke test | Ready to continue from the CP-024 corrected Multi-Lay surface; result pending |
 
 ## Progress at a glance
 
@@ -31,16 +31,14 @@ These figures measure **#114 audit coverage**, not the percentage of the product
 
 ## Next 3 steps
 
-1. Record the consolidated owner smoke result against stable `localhost:3010`.
-2. Continue bounded local defect work independently if the smoke result exposes anything.
+1. Continue the consolidated owner smoke test against corrected `localhost:3010`.
+2. Repair and regression-test any further owner-visible local acceptance findings.
 3. Resume the protected Preview decision only after the local owner baseline remains usable.
 
 ## Checkpoint log
 
 | ID | Timestamp | What changed | Issue | Document |
 | --- | --- | --- | --- | --- |
-| CP-003 | 2026-09-16 11:07 BST | Closed the local integration gate and completed browser portable-Profile recovery evidence | [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#current-local-integration-milestone--2026-09-16) |
-| CP-004 | 2026-09-16 12:19 BST | Exercised full Profile import/recovery and populated ledgers; repaired import, Cash validation and shared dialog defects | [#12](https://github.com/wolney8/OpenForge/issues/12), [#91](https://github.com/wolney8/OpenForge/issues/91), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-004-import-populated-ledger-and-accessibility-package--2026-09-16) |
 | CP-005 | 2026-09-16 12:52 BST | Reconciled Profile/combined reports, measured 200 records, repaired report header semantics and bounded lineage decisions | [#109](https://github.com/wolney8/OpenForge/issues/109), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-005-reporting-larger-data-and-evidence-boundary-package--2026-09-16) |
 | CP-006 | 2026-09-16 14:02 BST | Proved report and notification-history boundaries, refreshed dependency exposure and restored worktree mypy execution | [#90](https://github.com/wolney8/OpenForge/issues/90), [#111](https://github.com/wolney8/OpenForge/issues/111), [#115](https://github.com/wolney8/OpenForge/issues/115) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-006-reporting-notification-and-securityreliability-package--2026-09-16) |
 | CP-007 | 2026-09-16 14:10 BST | Added London date-and-time metadata rules for owner-facing documents | — | [Rule](AGENTS.md#project-document-timestamp-rule) |
@@ -59,6 +57,8 @@ These figures measure **#114 audit coverage**, not the percentage of the product
 | CP-020 | 2026-09-18 12:56 BST | Closed combined Account/award and Search/Quick Action journeys and bounded Google/VoiceOver evidence truthfully | [#62](https://github.com/wolney8/OpenForge/issues/62), [#76](https://github.com/wolney8/OpenForge/issues/76), [#77](https://github.com/wolney8/OpenForge/issues/77), [#109](https://github.com/wolney8/OpenForge/issues/109), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-020-combined-accessaward-search-and-external-boundary-closure--2026-09-18-1256-bst) |
 | CP-021 | 2026-09-18 13:10 BST | Closed all local audit, competitor and requirement review coverage and defined the protected hosted Preview gate | [#111](https://github.com/wolney8/OpenForge/issues/111), [#114](https://github.com/wolney8/OpenForge/issues/114), [#115](https://github.com/wolney8/OpenForge/issues/115) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-021-local-audit-closure-and-pre-hosted-readiness--2026-09-18-1310-bst) |
 | CP-022 | 2026-09-18 14:48 BST | Restored practical owner performance, corrected cash-warning severity and governed synthetic Profile residue | [#116](https://github.com/wolney8/OpenForge/issues/116), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-022-owner-stability-and-data-health-gate--2026-09-18-1448-bst) |
+| CP-023 | 2026-09-18 15:48 BST | Repaired the session shell and duplicate UI identity, then simplified Multi-Lay without changing its calculation engine | [#116](https://github.com/wolney8/OpenForge/issues/116), [#35](https://github.com/wolney8/OpenForge/issues/35), [#92](https://github.com/wolney8/OpenForge/issues/92) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-023-owner-smoke-session-identity-and-multi-lay-corrections--2026-09-18-1548-bst) |
+| CP-024 | 2026-09-19 06:48 BST | Unified Multi-Lay table shells, corrected effective-odds presentation and applied canonical financial meaning to compact results | [#35](https://github.com/wolney8/OpenForge/issues/35), [#92](https://github.com/wolney8/OpenForge/issues/92) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-024-multi-lay-visual-consistency-correction--2026-09-19-0648-bst) |
 
 ## Reference index
 

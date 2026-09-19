@@ -1,6 +1,6 @@
 # Audit Register — Plum Duff / OpenForge — Doc ID: AR-CODEX-001
 
-**Last updated:** 2026-09-18 14:48 BST
+**Last updated:** 2026-09-19 06:48 BST
 
 This is the owner-facing index for audit evidence. The
 [platform quality audit](docs/audits/platform-quality-audit.md) remains the detailed authority.
@@ -21,6 +21,9 @@ These are coverage measures, not percentages of the product finished.
 
 | ID | Plain-English problem | State | Repair / integration state | Issue |
 | --- | --- | --- | --- | --- |
+| #35 / PD-FIX-258–260 | Multi-Lay input/results used visibly different shells, repeated unchanged effective odds and under-signalled financial meaning | Repaired locally / owner smoke ready | One shared calculator table shell now governs both sections; limit/explanation text uses accessible help, changed effective odds use canonical display, and compact Results distinguish neutral instructions/liability from P&L | [#35](https://github.com/wolney8/OpenForge/issues/35), [#92](https://github.com/wolney8/OpenForge/issues/92) |
+| #116 / PD-FIX-255–256 | Initial session checking was an empty blocking screen and same-label Accounts produced duplicate React keys | Repaired locally / owner smoke ready | Brief checks no longer flash a full-screen fallback; noticeable checks use the branded shared loader, and Account health/summary rows use canonical Account IDs with same-label regression coverage | [#116](https://github.com/wolney8/OpenForge/issues/116), [#92](https://github.com/wolney8/OpenForge/issues/92) |
+| #35 / PD-FIX-257 | Multi-Lay exposed Mode plus large allocation cards before its core lay instructions | Repaired locally / owner smoke ready | Primary Bet Types are Normal, Normal Underlay and Free Bet SNR; result stakes/liability/positions precede detailed Outcomes, while reward modifiers and validated allocation modes remain in collapsed secondary disclosures | [#35](https://github.com/wolney8/OpenForge/issues/35), [#92](https://github.com/wolney8/OpenForge/issues/92) |
 | #116 | Archived synthetic residue made normal owner pages scan 66 Profiles and flood the screen with cash warnings | Repaired locally / owner smoke ready | Default reporting now queries 3 active Profiles, optional reporting has a local loading boundary, unknown cash is a grouped warning, and 24 proven empty synthetic Profiles were removed after clone/backup evidence | [#116](https://github.com/wolney8/OpenForge/issues/116), [#114](https://github.com/wolney8/OpenForge/issues/114) |
 | PD-QA-022 | A disposable candidate could be pointed at the normal owner database | Repaired on isolated candidate | Source-rooted configuration, explicit runtime roles and connection-level ownership checks now fail closed; the CP-012 near-miss left no lasting data change | [#114](https://github.com/wolney8/OpenForge/issues/114) |
 | PD-QA-006 | Broad tests depended on hidden fixture/contract state | Repaired locally | 1,074 pass, zero fail/error and 12 documented private-source acceptance skips; all 1,086 outcomes are classified without owner data |
@@ -75,14 +78,14 @@ These are coverage measures, not percentages of the product finished.
 
 ## Owner/manual acceptance
 
-- Consolidated integrated visual smoke — ready to resume after the CP-022 stability repair; result pending.
+- Consolidated integrated visual smoke — ready to continue after the CP-024 Multi-Lay consistency correction; result pending.
 - Fresh Google provider interaction — application side passes; provider/owner observation pending.
 - VoiceOver spoken output — engineering semantics pass; actual speech observation pending.
 
 ## Remaining boundaries after local closure
 
 - The protected hosted Preview remains paused until the repaired local owner baseline has completed
-  its pending visual smoke; no hosted work was started in CP-022.
+  its pending visual smoke; no hosted work was started in CP-022, CP-023 or CP-024.
 - Protected Vercel Preview, isolated Neon recovery, hosted OAuth and hosted rollback remain unverified.
 - #96 credential rotation is owner/provider controlled.
 - Later #111 controls, Google bound-script runtime and other planned features are not local audit PASS

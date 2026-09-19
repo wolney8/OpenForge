@@ -37,6 +37,11 @@ export function parseSportsbookOddsInput(value: string): number | null {
   return Number(value);
 }
 
+export function formatSportsbookOdds(value: string | number): string {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed.toFixed(2) : String(value);
+}
+
 export type CalculatorOddsNormalization = {
   canonicalValue: string;
   converted: boolean;

@@ -14,6 +14,14 @@ async function mockSession(page: import("@playwright/test").Page) {
     linked_profile_ids: [],
     session_policy: { auto_logout_enabled: false, timeout_minutes: 15, preference_configured: true, effective_expires_at: Math.floor(Date.now() / 1000) + 3600 },
   }}));
+  const isolatedApiBaseUrl = process.env.OPENFORGE_E2E_API_BASE_URL?.replace(/\/$/, "");
+  if (isolatedApiBaseUrl) {
+    await page.route("**/api/fund-manager/calculators/**", async (route) => {
+      const targetUrl = route.request().url().replace(/https?:\/\/[^/]+\/api/, isolatedApiBaseUrl);
+      const response = await route.fetch({ url: targetUrl });
+      await route.fulfill({ response });
+    });
+  }
 }
 
 async function pairedGeometry(page: import("@playwright/test").Page, id: string) {
@@ -150,14 +158,15 @@ test("aligns calculator segments, hierarchy, schemes and selection surfaces", as
   await multiLay.getByLabel("Back odds", { exact: true }).fill("4");
   await multiLay.getByLabel("Outcome 1 lay odds", { exact: true }).fill("4");
   await multiLay.getByLabel("Outcome 2 lay odds", { exact: true }).fill("5");
-  await multiLay.getByRole("button", { name: "Advanced" }).click();
+  await multiLay.locator('[data-pd-id="calculators.multi-lay.advanced"] summary').click();
   await expect(multiLay.locator('[data-pd-id="calculators.multi-lay.advanced"]')).toBeVisible();
   await expect(multiLay.locator(".calculator-reference-rows")).toHaveCount(0);
-  await expect(multiLay.locator('[data-pd-id="calculators.multi-lay.underlay"]')).toBeVisible();
-  await expect(multiLay.locator('[data-pd-id="calculators.multi-lay.standard"]')).toBeVisible();
-  await expect(multiLay.locator('[data-pd-id="calculators.multi-lay.overlay"]')).toBeVisible();
+  await expect(multiLay.getByRole("button", { name: "Underlay", exact: true })).toBeVisible();
+  await expect(multiLay.getByRole("button", { name: "Standard", exact: true })).toBeVisible();
+  await expect(multiLay.getByRole("button", { name: "Overlay", exact: true })).toBeVisible();
   await expect(multiLay.locator('.calculator-reference-section [data-label="Total"]')).toHaveCount(0);
-  await expect(multiLay.locator('[data-pd-id="calculators.multi-lay.custom"] h3')).toHaveText("Custom");
+  await multiLay.getByRole("button", { name: "Custom", exact: true }).click();
+  await expect(multiLay.locator('[data-pd-id="calculators.multi-lay.custom"]')).toBeVisible();
   if (process.env.CALCULATOR_UI_PARITY_SCREENSHOT_DIR) {
     await page.screenshot({ path: `${process.env.CALCULATOR_UI_PARITY_SCREENSHOT_DIR}/multi-lay-advanced-desktop.png`, fullPage: true });
   }

@@ -1100,7 +1100,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                       </tr>
                     ) : (
                       summary.accountHealth.map((row) => (
-                        <tr key={row.accountName}>
+                        <tr key={row.accountId}>
                           <td>{row.accountName}</td>
                           <td>{row.accountStatus}</td>
                           <td>{row.lastOfferActivityAt ? formatHumanDisplayDate(row.lastOfferActivityAt, true) : "—"}</td>

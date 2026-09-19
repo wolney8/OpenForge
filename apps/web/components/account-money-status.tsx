@@ -1,12 +1,16 @@
 import type { AccountMoneyIssue } from "@/lib/account-money";
 
-type IssueGroup = { accountName: string; fields: string[] };
+type IssueGroup = { accountId: string; accountName: string; fields: string[] };
 
 function groupIssues(issues: AccountMoneyIssue[]): IssueGroup[] {
   const grouped = new Map<string, IssueGroup>();
   for (const issue of issues) {
     const key = `${issue.accountId}:${issue.accountName}`;
-    const group = grouped.get(key) ?? { accountName: issue.accountName, fields: [] };
+    const group = grouped.get(key) ?? {
+      accountId: issue.accountId,
+      accountName: issue.accountName,
+      fields: [],
+    };
     const field = issue.field === "current_balance" ? "current balance" : "pending withdrawal";
     if (!group.fields.includes(field)) group.fields.push(field);
     grouped.set(key, group);
@@ -46,7 +50,7 @@ function MoneyIssueDisclosure({
       </summary>
       <ul>
         {groups.map((group) => (
-          <li key={group.accountName}>
+          <li key={group.accountId}>
             <strong>{group.accountName}</strong>
             <span>{invalid ? "Invalid" : "Not recorded"}: {group.fields.join(" and ")}</span>
           </li>

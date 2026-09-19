@@ -7,7 +7,7 @@ test.describe("pre-auth privacy and session controls", () => {
     let sessionRequests = 0;
     await page.route("**/api/auth/session", async (route) => {
       sessionRequests += 1;
-      await new Promise((resolve) => setTimeout(resolve, 350));
+      await new Promise((resolve) => setTimeout(resolve, 800));
       await route.fulfill({
         contentType: "application/json",
         json: {
@@ -25,9 +25,48 @@ test.describe("pre-auth privacy and session controls", () => {
 
     await page.goto("/profiles");
     await expect(page.locator('[data-pd-id="session.bootstrap"]')).toContainText("Checking session…");
+    await expect(page.locator('[data-pd-id="session.bootstrap.panel"] img[alt="Plum Duff"]')).toBeVisible();
+    await expect(page.locator('[data-pd-id="session.bootstrap.panel"] [role="status"]')).toContainText("Checking session…");
+    if (process.env.CP023_SCREENSHOT_DIR) {
+      await page.screenshot({ path: `${process.env.CP023_SCREENSHOT_DIR}/session-checking-desktop.png`, fullPage: true });
+    }
     await expect(page.locator('[data-pd-id="app-shell.top-bar"]')).toHaveCount(0);
     await expect(page.locator('[data-pd-id="app-shell.top-bar"]')).toBeVisible();
     expect(sessionRequests).toBe(1);
+  });
+
+  test("avoids a full-screen flash for a short authoritative session check", async ({ page }) => {
+    await page.route("**/api/auth/session", async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 80));
+      await route.fulfill({ json: {
+        authenticated: true, email: "founder@example.invalid", name: "Demo Founder", role: "fund_manager",
+      } });
+    });
+    await page.route("**/api/profiles", (route) => route.fulfill({ json: [] }));
+    await page.goto("/profiles");
+    await expect(page.locator('[data-pd-id="session.bootstrap.panel"]')).toBeHidden();
+    await expect(page.locator('[data-pd-id="app-shell.top-bar"]')).toBeVisible();
+  });
+
+  test("recovers from an unavailable session service without weakening the gate", async ({ page }) => {
+    let attempt = 0;
+    await page.route("**/api/auth/session", async (route) => {
+      attempt += 1;
+      if (attempt === 1) {
+        await route.fulfill({ status: 503, json: { detail: "Unavailable" } });
+        return;
+      }
+      await route.fulfill({ json: {
+        authenticated: true, email: "founder@example.invalid", name: "Demo Founder", role: "fund_manager",
+      } });
+    });
+    await page.route("**/api/profiles", (route) => route.fulfill({ json: [] }));
+    await page.goto("/profiles");
+    await expect(page.getByRole("heading", { name: "Unable to verify session" })).toBeVisible();
+    await expect(page.locator('[data-pd-id="app-shell.top-bar"]')).toHaveCount(0);
+    await page.getByRole("button", { name: "Try again" }).click();
+    await expect(page.locator('[data-pd-id="app-shell.top-bar"]')).toBeVisible();
+    expect(attempt).toBeGreaterThanOrEqual(2);
   });
 
   test("redirects an expired authoritative session without exposing a usable shell", async ({ page }) => {
@@ -37,7 +76,6 @@ test.describe("pre-auth privacy and session controls", () => {
     });
 
     await page.goto("/profiles");
-    await expect(page.locator('[data-pd-id="session.bootstrap"]')).toContainText("Checking session…");
     await expect(page.locator('[data-pd-id="app-shell.top-bar"]')).toHaveCount(0);
     await expect(page).toHaveURL(/\/login\?error=session_expired$/);
   });

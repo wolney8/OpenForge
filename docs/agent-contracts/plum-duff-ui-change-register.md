@@ -1,5 +1,29 @@
 # Plum Duff UI Change Register
 
+## CP-024 Multi-Lay visual consistency correction
+
+| ID | Surface | Requested outcome | Signed-off equivalent | State |
+| --- | --- | --- | --- | --- |
+| PD-FIX-258 | Multi-Lay table sections | Give Lay outcomes and Outcomes one shared section geometry while retaining input/result tone | Shared calculator result-card heading and responsive Outcomes geometry | COMPLETE — both sections use `CalculatorTableSection`; rendered desktop/half/narrow and light/dark evidence passes |
+| PD-FIX-259 | Multi-Lay odds guidance | Move the outcome limit to accessible help and show effective odds only when a modifier changes it, using canonical two-decimal display | `ContextHelp` and sportsbook decimal-odds formatting | COMPLETE — ordinary odds are not repeated; Profit Boost displays a semantic label/value at two decimals |
+| PD-FIX-260 | Multi-Lay financial results | Present stake, liability and final position as aligned semantic values with canonical financial tones | `CopyableFinancialValue` and `FinancialValue` | COMPLETE — stake/liability remain neutral; final positions use positive/negative/zero semantics consistently with Outcomes |
+
+No formula or calculator-state behaviour changed. Advanced allocation remains secondary and the
+Standard calculator remains the shared regression reference, not a redesign target.
+
+## CP-023 owner-smoke correction batch
+
+| ID | Surface | Requested outcome | Signed-off equivalent | State |
+| --- | --- | --- | --- | --- |
+| PD-FIX-255 | Session bootstrap | Delay brief fallback and give noticeable session validation one branded, accessible shared status without weakening expiry/error handling | Public auth branding plus `LedgerLoadingIndicator` | COMPLETE — 4/4 session browser states and rendered desktop/narrow/theme/reduced-motion evidence pass |
+| PD-FIX-256 | Account health/summary lists | Preserve two same-label records with canonical identity and correct selection/mutation targets | Account tables keyed by `account_id` | COMPLETE — deterministic duplicate-label browser evidence passes with no React key warning |
+| PD-FIX-257 | Multi-Lay | Lead with three Bet Types, direct lay inputs and copyable result; retain validated reward/allocation capability secondarily | Multi-Lay v2 engine, shared copy/value primitives and detailed Outcomes | COMPLETE — Normal/Underlay/SNR, 2/3-leg, commission, disclosure, Custom, narrow/theme/motion and Standard regression evidence pass |
+
+The CP-023 change reuses existing tokens and shared primitives. It introduces no calculation, schema,
+auth or persistence policy. The permanent Multi-Lay Mode layer is removed; reward modifiers and
+Underlay/Standard/Overlay/Custom allocation remain available behind collapsed disclosures. Rendered
+comparison was against the supplied Outplayed information hierarchy, not its branding.
+
 ## CP-020 active batch
 
 | ID | Surface | Requested outcome | Signed-off equivalent | State |

@@ -1,5 +1,72 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
+## Current CP-024 Multi-Lay visual consistency correction — 2026-09-19 06:48 BST
+
+Owner-smoke findings PD-FIX-258–260 are repaired locally without changing calculator inputs,
+formulae, rounding, allocation or persistence. `Lay outcomes` and detailed `Outcomes` now share the
+same `CalculatorTableSection` heading, radius, edge alignment and responsive shell while retaining
+appropriate input/result surfaces. The 20-outcome limit and detailed scenario explanation remain
+available through keyboard/click/touch `ContextHelp` rather than permanent header/preamble text.
+
+Unmodified Back odds no longer produce a redundant Effective odds row. A modifier that changes the
+price exposes a semantic label/value pair using the shared sportsbook two-decimal display rule.
+Compact Result rows use label/value structure: lay stake and liability are neutral instructions or
+exposure, while final outcome and summary positions use canonical positive/negative/zero financial
+tones. Copy retains the exact governed numeric value.
+
+Focused evidence: TypeScript and API mypy pass; the isolated calculator selection contains 12/12
+standalone/shared checks passing. Four ledger-editor cases require their dedicated authenticated
+fixture runtime and were not counted as calculator regressions. Rendered desktop, half-width,
+narrow, 200%-equivalent reflow, light, dark and reduced-motion views were inspected with no page
+overflow; Normal, Normal Underlay, Free Bet SNR, Profit Boost effective odds, 2/3-leg commission,
+Custom allocation and Standard shared-shell regressions retain their existing arithmetic.
+
+## Current CP-023 owner-smoke session, identity and Multi-Lay corrections — 2026-09-18 15:48 BST
+
+The resumed owner smoke exposed three local acceptance defects tracked under existing #116, #35 and
+#92. Hosted Preview remained paused. No calculation formula, schema, normal owner record or service
+ownership boundary changed.
+
+The protected shell performs one authoritative session request when it first mounts or refreshes.
+Measured normal authenticated navigation did not repeat that request: first load was about 916ms,
+refresh 420ms and a client route transition 363ms with zero session requests. The problem was the
+initial fallback itself: it appeared immediately and reused an absolute ledger overlay without brand
+or application context. The gate now delays visible fallback for 250ms, so a short successful check
+does not flash a blank page. A noticeable check displays one compact Plum Duff-branded shared status;
+existing authenticated route navigation retains the mounted shell, and unavailable/expired states
+still retry or redirect without mounting protected content. Light/dark, narrow and reduced-motion
+rendering, live status semantics and secure transitions pass.
+
+The duplicate-key warning came from Account cash-health grouping, not from an Account uniqueness
+constraint: records were grouped by Account ID but the rendered `<li>` key had been reduced back to
+the display name. Tracker summary rows had the same latent name-key pattern. Both now carry and use
+the canonical Account ID. A deterministic browser fixture renders two distinct Accounts with the
+same `10Bet` label, selects and edits the correct first ID, removes the second ID and observes no
+duplicate-key warning. The normal-data labels classify as distinct old synthetic fixture Accounts:
+one earlier row and a later generated archived cluster. They were not deleted or merged because
+display equality is not identity and historical ledger provenance still uses provider text in places.
+
+Multi-Lay retains the independently tested `multi-lay-v2` engine, two-to-20 outcomes, per-leg
+commission, exposure, penny placement and Standard/Underlay/Overlay/Custom allocation. Its default
+information architecture now leads with **Normal**, **Normal Underlay** or **Free Bet SNR**, followed
+by Exchange, Back Stake/Odds, compact lay inputs and a primary Result. Each result exposes outcome
+name, liability, that outcome's final position and a directly copyable lay stake; total liability,
+back/free-bet-loses position and lowest final position appear before the detailed Outcomes table.
+The permanent Simple/Advanced Mode selector and large `Use X allocation` cards are gone. Profit
+Boost/Money Back remain under `Reward modifiers`; validated allocation endpoints, Custom multiplier
+and synchronised slider/input remain under one collapsed `Advanced allocation` disclosure. Opening a
+disclosure does not mutate selection.
+
+Focused evidence: session browser **4/4**, same-label Account identity **1/1**, Multi-Lay browser
+**1/1**, shared Standard/calculator visual parity **1/1** and calculation API **17/17** pass.
+TypeScript and mypy pass. Web lint has no errors and retains eight existing warnings; the separately
+classified API Ruff maintenance backlog is still 200 findings. Rendered desktop, 390px, light/dark
+and reduced-motion screenshots were inspected after animations settled. Normal `localhost:3010`
+continues to use the `normal-owner` runtime and normal authentication; the disposable calculation API
+used only explicit isolated storage. Owner smoke is ready to continue, while hosted Preview remains
+paused. The closed audit coverage scorecard remains 87/87 assessments, 22/24 passing journeys,
+27/27 reviewed competitor cells and 133/133 reconciled requirements.
+
 ## Current CP-022 owner stability and data-health gate — 2026-09-18 14:48 BST
 
 GitHub #116 became owner-blocking after the normal Profiles page showed `3 / 66`, repeated Account

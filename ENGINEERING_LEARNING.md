@@ -1,16 +1,48 @@
 # Engineering Learning — Plum Duff / OpenForge — Doc ID: EL-CODEX-001
 
-**Last updated:** 2026-09-18 14:48 BST
+**Last updated:** 2026-09-19 06:48 BST
 
 This is a compact notebook of transferable lessons from building Plum Duff. It is not the audit,
 roadmap, backlog or evidence record.
 
 ## Current learning focus
 
-- Preventing archived/test data from amplifying ordinary owner work.
-- Keeping valid unknown data distinct from invalid data and test residue.
+- Visual consistency through shared primitives rather than neighbouring one-off shells.
+- Semantic formatting that distinguishes instructions, liabilities and final profit or loss.
 
 ## Concepts worth remembering
+
+### Semantic formatting
+
+**What it means:** Presentation carries domain meaning: a stake is an instruction, liability is
+exposure, and a final position is profit, loss or neutral—not merely another currency string.
+
+**Why it mattered in Plum Duff:** Multi-Lay now uses the same financial primitives as its detailed
+Outcomes table, so colour, signs, copy precision and accessible labels tell one consistent story.
+
+**Remember:** Formatting is part of the financial contract when it changes how a number is read.
+
+### Stable identity versus display label
+
+**What it means:** A record key identifies the underlying entity; a name is presentation and may
+legitimately be shared by several records.
+
+**Why it mattered in Plum Duff:** Distinct Accounts called `Frank Eastender · 10Bet` collided when
+React was keyed by the visible name. Canonical Account IDs now preserve both rows and the correct
+edit/removal target.
+
+**Remember:** If the database has an identity, do not make the UI invent one from text.
+
+### Progressive disclosure
+
+**What it means:** The default view presents the shortest common workflow while advanced choices
+remain available in a deliberate secondary surface.
+
+**Why it mattered in Plum Duff:** Multi-Lay now leads with Bet Type, back inputs, lay outcomes and
+copyable results; reward modifiers and Underlay/Standard/Overlay/Custom allocation remain available
+without forcing every user through them.
+
+**Remember:** Hide complexity, not capability.
 
 ### Load amplification
 
@@ -369,6 +401,8 @@ role/database/schema identity against isolated hosted storage.
 | CP-020 | 2026-09-18 12:56 BST | System boundary; acceptance boundary | OAuth and VoiceOver evidence now stop exactly where external-provider or human-observed behaviour begins |
 | CP-021 | 2026-09-18 13:10 BST | Verification envelope; residual risk | Local review closure now separates proven local behaviour from hosted, provider and owner/manual evidence |
 | CP-022 | 2026-09-18 14:48 BST | Load amplification; data hygiene | Active owner routes now scale with their selected scope, while synthetic residue is classified, retained or removed without rewriting financial history |
+| CP-023 | 2026-09-18 15:48 BST | Stable identity; progressive disclosure | Same-label records now retain canonical UI identity, while Multi-Lay exposes its common flow before validated advanced controls |
+| CP-024 | 2026-09-19 06:48 BST | Shared primitives; semantic formatting | One shell and one financial language now connect Multi-Lay input, compact Result and detailed Outcomes |
 
 ## Where detailed evidence lives
 

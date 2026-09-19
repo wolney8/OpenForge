@@ -9,6 +9,16 @@ test.beforeEach(async ({ page }) => {
   }}));
   await page.route("**/auth/activity", (route) => route.fulfill({ status: 204 }));
   await page.route("**/auth/security-preference", (route) => route.fulfill({ json: { configured: false } }));
+  await page.route("**/fund-manager/import-executions", (route) => route.fulfill({ json: [] }));
+  await page.route("**/fund-manager/notifications**", (route) => {
+    const pathname = new URL(route.request().url()).pathname;
+    const json = pathname.endsWith("/state")
+      ? { dismissed_ids: [], read_keys: [] }
+      : pathname.endsWith("/preferences")
+        ? { preferences: {} }
+        : [];
+    return route.fulfill({ json });
+  });
 });
 
 function rgbChannels(value: string) {
@@ -264,6 +274,89 @@ test("Accounts ignores stale collapsed state and keeps canonical table controls 
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
   );
   expect(pageOverflow).toBeLessThanOrEqual(1);
+  await expect.poll(() => runtimeErrors).toEqual([]);
+});
+
+test("Accounts keep distinct canonical identity when display labels match", async ({ page }) => {
+  const profileId = "profile-demo-001";
+  const makeAccount = (accountId: string, notes: string) => ({
+    account_id: accountId, profile_id: profileId, account: "10Bet",
+    account_name: "10Bet", type: "Bookie", account_type: "Bookie",
+    catalogue_id: null, bookmaker_id: "BM-10BET", counts_in_cash_total: true,
+    channel: "Online", status: "Active", lifecycle_status: "Active", signup_offer_status: "Unknown",
+    restrictions: [], stake_access: "Normal", promo_access: "Full",
+    restriction_details: { fixed_maximum_stake: "", stake_restriction_type: "", stake_restriction_note: "", available_promotion_types: [], promotion_restriction_note: "" },
+    access_evidence_note: "Synthetic duplicate-label fixture",
+    access_source: "Test fixture", access_observed_at: "2026-09-18T09:00:00Z",
+    current_balance: "", pending_withdrawal_amount: "", last_balance_update: "",
+    group_name: "Synthetic", platform: "Web", sign_up_date: "2026-09-01", notes, created_at: "2026-09-01T09:00:00Z",
+    updated_at: "2026-09-18T09:00:00Z",
+  });
+  let accounts = [makeAccount("AC-SAME-LABEL-001", "First identity"), makeAccount("AC-SAME-LABEL-002", "Second identity")];
+  let updatedId = "";
+  let removedId = "";
+  await page.route("**/api/profiles", (route) => route.fulfill({ json: [{
+    profile_id: profileId, profile_name: "Duplicate Label Profile", display_name: "Duplicate Label Profile",
+    profile_code: "DUP-LABEL", status: "Active", active: true, tracking_start_date: "2026-09-18",
+    management_fee_percent: "0.00", investment_fee_percent: "0.00", current_cash_snapshot: "0.00",
+  }] }));
+  await page.route("**/account-catalogue/source", (route) => route.fulfill({ json: {
+    catalogue_name: "Duplicate label fixture", records: [], schema_version: "1.0", updated_at: "2026-09-18",
+    default_operating_context: { jurisdiction: "GB", subdivision: "", channels: ["Online"] },
+  } }));
+  await page.route("**/bookmaker-catalogue", (route) => route.fulfill({ json: [] }));
+  await page.route(`**/api/profiles/${profileId}`, (route) => route.fulfill({ json: {
+    profile_id: profileId, profile_name: "Duplicate Label Profile", display_name: "Duplicate Label Profile",
+    profile_code: "DUP-LABEL", status: "Active", active: true, tracking_start_date: "2026-09-18",
+    management_fee_percent: "0.00", investment_fee_percent: "0.00", current_cash_snapshot: "0.00",
+  } }));
+  await page.route(`**/profiles/${profileId}/accounts`, async (route) => {
+    await route.fulfill({ json: accounts });
+  });
+  await page.route(`**/profiles/${profileId}/accounts/*`, async (route) => {
+    const id = decodeURIComponent(new URL(route.request().url()).pathname.split("/").at(-1) ?? "");
+    if (route.request().method() === "PUT") {
+      updatedId = id;
+      const body = route.request().postDataJSON() as Record<string, unknown>;
+      accounts = accounts.map((account) => account.account_id === id ? { ...account, ...body, account_id: id } : account);
+      await route.fulfill({ json: accounts.find((account) => account.account_id === id) });
+      return;
+    }
+    if (route.request().method() === "DELETE") {
+      removedId = id;
+      accounts = accounts.filter((account) => account.account_id !== id);
+      await route.fulfill({ json: { removed: true } });
+      return;
+    }
+    await route.fallback();
+  });
+  const runtimeErrors: string[] = [];
+  page.on("console", (message) => {
+    if (message.type() === "error" && /same key|encountered two children/i.test(message.text())) runtimeErrors.push(message.text());
+  });
+  await page.goto(`/profiles/${profileId}/tracker/accounts`);
+  await expect(page.locator(".accounts-data-table tbody tr")).toHaveCount(2);
+  await page.locator('[data-pd-id="account-money.incomplete"] summary').click();
+  const affected = page.locator('[data-pd-id="account-money.incomplete"] li');
+  await expect(affected).toHaveCount(2);
+  await expect(affected).toHaveText([/10Bet/, /10Bet/]);
+  await expect.poll(() => runtimeErrors).toEqual([]);
+
+  await page.getByText("AC-SAME-LABEL-001", { exact: true }).click();
+  const firstEditor = page.getByRole("dialog", { name: "Edit account" });
+  await expect(firstEditor.getByRole("textbox", { name: "Notes", exact: true })).toHaveValue("First identity");
+  await firstEditor.getByRole("textbox", { name: "Notes", exact: true }).fill("Updated first identity");
+  await firstEditor.getByRole("button", { name: "Save", exact: true }).click();
+  await expect.poll(() => updatedId).toBe("AC-SAME-LABEL-001");
+
+  await page.getByText("AC-SAME-LABEL-002", { exact: true }).click();
+  const secondEditor = page.getByRole("dialog", { name: "Edit account" });
+  await expect(secondEditor.getByRole("textbox", { name: "Notes", exact: true })).toHaveValue("Second identity");
+  await secondEditor.getByRole("button", { name: "Remove from Profile" }).click();
+  await page.getByRole("dialog", { name: "Remove Account?" }).getByRole("button", { name: "Remove from Profile" }).click();
+  await expect.poll(() => removedId).toBe("AC-SAME-LABEL-002");
+  await expect(page.locator(".accounts-data-table tbody tr")).toHaveCount(1);
+  await expect(page.getByText("AC-SAME-LABEL-001", { exact: true })).toBeVisible();
   await expect.poll(() => runtimeErrors).toEqual([]);
 });
 
