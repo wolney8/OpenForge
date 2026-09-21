@@ -1,5 +1,4 @@
 import { findProfile, listModuleRows, listProfiles } from "./local-db";
-import { AUTH_SESSION_COOKIE } from "./auth-session";
 import { getServerApiBaseUrl, serverAuthenticationRequired } from "./api";
 import type { ProfileSummary, TrackerModuleKey, TrackerRow } from "./tracker-types";
 
@@ -34,15 +33,19 @@ function mapApiProfile(profile: ApiProfile): ProfileSummary {
 }
 
 async function authenticatedApiFetch(path: string): Promise<Response> {
-  let sessionToken = "";
+  let requestCookieHeader = "";
+  let protectionBypass = "";
   try {
-    const { cookies } = await import("next/headers");
-    sessionToken = (await cookies()).get(AUTH_SESSION_COOKIE)?.value ?? "";
+    const { cookies, headers: requestHeaders } = await import("next/headers");
+    const requestCookies = await cookies();
+    requestCookieHeader = requestCookies.toString();
+    protectionBypass = (await requestHeaders()).get("x-vercel-protection-bypass") ?? "";
   } catch {
     // Unit tests and local static tooling can run outside a Next request context.
   }
   const headers = new Headers();
-  if (sessionToken) headers.set("Cookie", `${AUTH_SESSION_COOKIE}=${sessionToken}`);
+  if (requestCookieHeader) headers.set("Cookie", requestCookieHeader);
+  if (protectionBypass) headers.set("x-vercel-protection-bypass", protectionBypass);
   return fetch(`${getServerApiBaseUrl()}${path}`, {
     cache: "no-store",
     headers,
