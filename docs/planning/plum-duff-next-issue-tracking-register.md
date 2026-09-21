@@ -1,5 +1,19 @@
 # Plum Duff Next Issue Tracking Register
 
+## CP-027 owner acceptance and frozen local baseline
+
+| ID | Area | Owner/engineering evidence | State |
+|---|---|---|---|
+| #35 / #92 | Multi-Lay and shared calculator presentation | CP-026 geometry/regression evidence plus Will's visual acceptance of the complete named presentation batch | OWNER ACCEPTED LOCALLY |
+| PQA-J15 / #62 | Genuine Google provider return | CP-025 application-owned auth evidence plus Will's fresh Google sign-in and successful return to Plum Duff | PASS LOCALLY |
+| PQA-J23 / PQA-U08 | VoiceOver spoken output | Keyboard, semantic and automated accessibility evidence is complete; no actual spoken-output observation was supplied | OWNER-MANUAL EVIDENCE REQUIRED |
+| #114 | Local audit/acceptance phase boundary | 87/87 assessments reviewed, 23/24 journeys passing, 27/27 competitor cells reviewed and 133/133 requirements reconciled | LOCAL BASELINE FROZEN; HOSTED EVIDENCE NOT INFERRED |
+
+The accepted application baseline is revision `49b9af53cd84da48cdf0e8385edd48ab1779cb21`, normal-owner
+SQLite and schema `account-access-v1`. Protected Preview is the recommended next milestone but is
+not authorised or created by this checkpoint. External #35/#92 owner-PASS evidence is already synced;
+#62 should record the successful owner return and #114 should record the local phase boundary.
+
 ## CP-025 owner-blocking local Google sign-in
 
 | ID | Area | Requested behaviour | Status |
@@ -7,8 +21,8 @@
 | PD-FIX-261 | OAuth runtime configuration | Normal-owner startup must load an explicit canonical environment source; worktree execution must not silently lose Google/session configuration | COMPLETE LOCALLY — explicit owner environment selection, safe health identity and fail-closed auth readiness pass; candidate/test cannot inherit the owner environment |
 | PD-FIX-262 | OAuth failure UX | Configuration, provider, callback and persistence failures return to the branded login shell with safe retry rather than raw JSON | COMPLETE LOCALLY — deterministic callback/failure cases and rendered branded retry state pass |
 
-Owner smoke testing remains paused until one fresh owner Google interaction confirms the repaired
-callback/session path. Existing external tracking is #62 and #116; no duplicate issue is required.
+This historical repair boundary is now owner accepted by CP-027. Existing external tracking is #62
+and #116; no duplicate issue is required.
 
 ## PD-AUDIT-CP024-20260919 — Multi-Lay visual consistency correction
 
@@ -138,7 +152,7 @@ External CP-021 summary sync remains pending for #114, #111 and #115; CP-020's a
 | PD-FIX-248 | Preserve #109 Account access through the combined reward browser journey | COMPLETE LOCALLY: Status wins first; Stake/Promo restrictions remain visible and portable without changing award arithmetic |
 | PD-FIX-249 | Close Global Search/loadout/Quick Action evidence | COMPLETE LOCALLY: active Profile results, no-result, keyboard, narrow, delayed response and governed action removal pass |
 | PD-FIX-250 | Apply Promo access to promotional Quick Actions | COMPLETE LOCALLY: None blocks; Restricted/Not Checked warn; hard lifecycle blocks still win; Profile actions use the same shared decision |
-| PQA-J15 / #62 | Separate application-owned OAuth recovery from provider interaction | PARTIAL / OWNER INTERACTION REQUIRED: CP-025 repaired the live normal-owner configuration, initiation reaches Google's sign-in surface without callback mismatch, and deterministic state/callback/denial/session recovery passes; owner completion/return remains external |
+| PQA-J15 / #62 | Separate application-owned OAuth recovery from provider interaction | PASS LOCALLY: CP-025 repaired and proved the application-owned path; CP-027 records Will's genuine Google completion and successful return to Plum Duff |
 | PQA-J23 / PQA-U08 | Record the final VoiceOver boundary truthfully | ENGINEERING EVIDENCE COMPLETE / OWNER-MANUAL OUTPUT REQUIRED: semantic, keyboard and recovery evidence passes; spoken output remains unverified |
 
 Reconciled in this package: #48, #71, #76 and #77, with current-state refreshes for #109, #49,
@@ -1475,5 +1489,5 @@ offers and optional community feed inputs.
 | PD-FIX-264 | Multi-Lay outer grid | Back Bet and Lay Outcomes use identical outer left/right bounds; same-level calculator sections share one content grid | COMPLETE LOCALLY — structural geometry passes at all required widths/text scale |
 | PD-FIX-265 | Back/lay semantic accents | Bookmaker/back and exchange/lay surfaces use the established paired semantic tokens, never a one-off page-local outline | COMPLETE LOCALLY — paired semantic tokens pass light/dark rendered inspection |
 
-GitHub #35 owns the calculator correction and #92 owns the shared visual invariant. #62 remains
-PARTIAL pending Will's genuine Google-owned interaction; no authentication change is included here.
+GitHub #35 owns the calculator correction and #92 owns the shared visual invariant. CP-027 records
+owner acceptance for both and separately promotes #62 after the genuine Google-owned interaction.

@@ -1,5 +1,39 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
+## Current CP-027 owner acceptance and frozen local baseline — 2026-09-21 10:44 BST
+
+Owner acceptance is recorded separately from engineering evidence. Will visually accepted the
+CP-023–CP-026 Multi-Lay/calculator presentation: shared Back/Lay bounds, inline heading/help,
+paired semantic accents, financial result styling, conditional Effective Odds, separate detailed
+Outcomes and secondary Advanced allocation. Will also completed a genuine fresh Google sign-in and
+returned successfully to Plum Duff. PQA-J15 therefore moves from owner-pending to **PASS**; actual
+VoiceOver spoken output remains PQA-J23 **UNVERIFIED / OWNER-MANUAL EVIDENCE REQUIRED**. The
+canonical journey score is **23/24 (96%)**, comprising **22/22 engineering-controlled journeys
+passing**, one provider-owned journey accepted by the owner and one remaining manual journey.
+
+The owner-accepted application revision is `49b9af53cd84da48cdf0e8385edd48ab1779cb21`, containing
+the committed CP-023–CP-026 source line. The normal contract is `normal-owner`, canonical local
+SQLite, schema `account-access-v1`, frontend `http://localhost:3010` and API
+`http://127.0.0.1:8010`. CP-027 adds records only; it changes no application source or owner data.
+
+Focused final evidence passes: **67/67 API** authentication/session, immutable-history/report,
+Account-access and eligibility tests; **432/432 web tests**; **14/14** isolated browser calculator
+and shared-geometry tests; **2/2** focused stale-protected-request/Search and Quick Action browser
+checks; TypeScript PASS; mypy **0/82**. The first browser command was deliberately rejected by the
+auth-required normal runtime because it was not supplied the isolated test contract; no owner write
+succeeded. The canonical rerun used explicit disposable storage and passed.
+
+The normal database was then checked read-only. It remains at the CP-022 baseline: 42 Profiles
+(3 active), 175 Accounts, 538 Sportsbook rows, 291 Free Bets, 90 Casino rows, 58 Cash Adjustments,
+123 Extra Place rows and 305 immutable history events. `PRAGMA integrity_check` is `ok` and the
+foreign-key check returns zero violations. No owner financial record or count changed.
+
+This verification envelope proves the integrated local normal-owner application, canonical SQLite
+data, local Google authentication, `account-access-v1`, reviewed calculator/ledger/report/recovery
+workflows and owner acceptance for the named visual surfaces. It does not prove Vercel, Neon,
+hosted OAuth, hosted rollback, Production or VoiceOver spoken output. Protected Preview remains
+uncreated and requires separate approval.
+
 ## Current CP-026 calculator visual contract enforcement — 2026-09-19 12:41 BST
 
 Owner-smoke findings PD-FIX-263–265 are repaired on the current normal-owner source without changing

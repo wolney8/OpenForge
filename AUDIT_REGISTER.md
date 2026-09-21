@@ -1,6 +1,6 @@
 # Audit Register — Plum Duff / OpenForge — Doc ID: AR-CODEX-001
 
-**Last updated:** 2026-09-19 12:41 BST
+**Last updated:** 2026-09-21 10:44 BST
 
 This is the owner-facing index for audit evidence. The
 [platform quality audit](docs/audits/platform-quality-audit.md) remains the detailed authority.
@@ -12,8 +12,8 @@ These are coverage measures, not percentages of the product finished.
 | Area | Covered | Method note |
 | --- | ---: | --- |
 | Assessments reviewed | 87 / 87 (100%) | Reviewed includes explicit partial, blocked, unverified and deferred states; it does not mean PASS |
-| Complete tasks exercised | 22 / 24 (92%) | All required steps must be exercised |
-| Complete tasks passing | 22 / 24 (92%) | Blocked or partial tasks are excluded |
+| Complete tasks exercised | 23 / 24 (96%) | All required steps must be exercised |
+| Complete tasks passing | 23 / 24 (96%) | Blocked or partial tasks are excluded |
 | Competitor comparisons | 27 / 27 (100%) | 14 documentation, 3 hands-on and 10 reviewed-inaccessible cells; reviewed is not confirmed |
 | Requirements reconciled | 133 / 133 (100%) | Implementation, hosted and owner-acceptance states remain separate |
 
@@ -21,11 +21,11 @@ These are coverage measures, not percentages of the product finished.
 
 | ID | Plain-English problem | State | Repair / integration state | Issue |
 | --- | --- | --- | --- | --- |
-| #35 / PD-FIX-263–265 | Calculator help could fall below its title and same-level Back/Lay sections used different outer containers | Repaired locally / owner smoke ready | `CalculatorSectionHeading` now governs reference/table/embedded headings; one content grid aligns Multi-Lay sections and existing semantic tokens pair bookmaker/back with exchange/lay surfaces | [#35](https://github.com/wolney8/OpenForge/issues/35), [#92](https://github.com/wolney8/OpenForge/issues/92) |
-| #62 / PD-FIX-261–262 | Fresh normal-owner Google sign-in returned raw `Unable to continue` before leaving Plum Duff | Repaired locally / owner provider retest required | The worktree launcher now selects the classified primary owner environment, normal-owner auth fails closed when incomplete, 3010 reaches Google's sign-in surface with the exact local callback, and safe failures return to branded login | [#62](https://github.com/wolney8/OpenForge/issues/62), [#116](https://github.com/wolney8/OpenForge/issues/116) |
-| #35 / PD-FIX-258–260 | Multi-Lay input/results used visibly different shells, repeated unchanged effective odds and under-signalled financial meaning | Repaired locally / owner smoke ready | One shared calculator table shell now governs both sections; limit/explanation text uses accessible help, changed effective odds use canonical display, and compact Results distinguish neutral instructions/liability from P&L | [#35](https://github.com/wolney8/OpenForge/issues/35), [#92](https://github.com/wolney8/OpenForge/issues/92) |
+| #35 / PD-FIX-263–265 | Calculator help could fall below its title and same-level Back/Lay sections used different outer containers | Repaired locally / owner accepted | `CalculatorSectionHeading` governs reference/table/embedded headings; one content grid aligns Multi-Lay sections, semantic tokens pair bookmaker/back with exchange/lay surfaces, and Will visually accepted the result on 2026-09-21 | [#35](https://github.com/wolney8/OpenForge/issues/35), [#92](https://github.com/wolney8/OpenForge/issues/92) |
+| #62 / PD-FIX-261–262 | Fresh normal-owner Google sign-in returned raw `Unable to continue` before leaving Plum Duff | Repaired locally / owner accepted | The role-bound launcher selects the canonical owner environment, auth fails closed when incomplete, deterministic state/callback/session evidence passes, and Will completed a genuine Google return to Plum Duff | [#62](https://github.com/wolney8/OpenForge/issues/62), [#116](https://github.com/wolney8/OpenForge/issues/116) |
+| #35 / PD-FIX-258–260 | Multi-Lay input/results used visibly different shells, repeated unchanged effective odds and under-signalled financial meaning | Repaired locally / owner accepted | One shared calculator table shell governs both sections; limit/explanation text uses accessible help, changed effective odds use canonical display, and compact Results distinguish neutral instructions/liability from P&L | [#35](https://github.com/wolney8/OpenForge/issues/35), [#92](https://github.com/wolney8/OpenForge/issues/92) |
 | #116 / PD-FIX-255–256 | Initial session checking was an empty blocking screen and same-label Accounts produced duplicate React keys | Repaired locally / owner smoke ready | Brief checks no longer flash a full-screen fallback; noticeable checks use the branded shared loader, and Account health/summary rows use canonical Account IDs with same-label regression coverage | [#116](https://github.com/wolney8/OpenForge/issues/116), [#92](https://github.com/wolney8/OpenForge/issues/92) |
-| #35 / PD-FIX-257 | Multi-Lay exposed Mode plus large allocation cards before its core lay instructions | Repaired locally / owner smoke ready | Primary Bet Types are Normal, Normal Underlay and Free Bet SNR; result stakes/liability/positions precede detailed Outcomes, while reward modifiers and validated allocation modes remain in collapsed secondary disclosures | [#35](https://github.com/wolney8/OpenForge/issues/35), [#92](https://github.com/wolney8/OpenForge/issues/92) |
+| #35 / PD-FIX-257 | Multi-Lay exposed Mode plus large allocation cards before its core lay instructions | Repaired locally / owner accepted | Primary Bet Types are Normal, Normal Underlay and Free Bet SNR; result stakes/liability/positions precede detailed Outcomes, while reward modifiers and validated allocation modes remain in collapsed secondary disclosures | [#35](https://github.com/wolney8/OpenForge/issues/35), [#92](https://github.com/wolney8/OpenForge/issues/92) |
 | #116 | Archived synthetic residue made normal owner pages scan 66 Profiles and flood the screen with cash warnings | Repaired locally / owner smoke ready | Default reporting now queries 3 active Profiles, optional reporting has a local loading boundary, unknown cash is a grouped warning, and 24 proven empty synthetic Profiles were removed after clone/backup evidence | [#116](https://github.com/wolney8/OpenForge/issues/116), [#114](https://github.com/wolney8/OpenForge/issues/114) |
 | PD-QA-022 | A disposable candidate could be pointed at the normal owner database | Repaired on isolated candidate | Source-rooted configuration, explicit runtime roles and connection-level ownership checks now fail closed; the CP-012 near-miss left no lasting data change | [#114](https://github.com/wolney8/OpenForge/issues/114) |
 | PD-QA-006 | Broad tests depended on hidden fixture/contract state | Repaired locally | 1,085 pass, zero fail/error and 12 documented private-source acceptance skips; all 1,097 outcomes are classified without owner data |
@@ -60,7 +60,7 @@ These are coverage measures, not percentages of the product finished.
 | Profile and combined financial reporting | Passed for canonical journey | Active-only defaults, deliberate archived inclusion, arithmetic/range/breakdowns, point inspection and reconciled-record drilldown pass; later module/metric controls are separate roadmap work |
 | Notification clear and history | Passed locally | Current alert, dismissal and durable historical event remain distinct; retry and viewer isolation pass |
 | Profile lifecycle and recovery | Passed locally | Create, archive, active-navigation exclusion, historical-report retention, recover and empty-Profile deletion boundaries pass |
-| Settings and session recovery | Partial | CP-025 re-proves initiation, state, callback, failure and session persistence after repairing the live runtime configuration; a genuine owner Google return and VoiceOver speech remain manual boundaries |
+| Settings and session recovery | Passed locally | CP-025 re-proves initiation, state, callback, failure and session persistence; CP-027 records Will's successful genuine Google return. VoiceOver remains a separate journey |
 | Realistic 200-record Profile | Passed locally | Navigation, pagination, filter/search, chart and delayed-response recovery pass; hosted capacity remains separate |
 | SQLite backup restore and reopen | Passed for the isolated local copy | Operational/hosted disaster recovery remains separate |
 | Local PostgreSQL transaction, backup and restore | Passed for the isolated test scope | This is not hosted disaster-recovery proof |
@@ -80,14 +80,12 @@ These are coverage measures, not percentages of the product finished.
 
 ## Owner/manual acceptance
 
-- Consolidated integrated visual smoke — paused at Google sign-in until the single repaired provider interaction succeeds.
-- Fresh Google provider interaction — 3010 reaches the Google sign-in surface without callback mismatch; owner completion/return pending.
 - VoiceOver spoken output — engineering semantics pass; actual speech observation pending.
 
 ## Remaining boundaries after local closure
 
-- The protected hosted Preview remains paused until the repaired local owner baseline has completed
-  its pending visual smoke; no hosted work was started in CP-022, CP-023 or CP-024.
+- The local normal-owner baseline is frozen and owner accepted for the reviewed calculator and Google
+  surfaces. Protected hosted Preview remains unstarted and requires separate approval.
 - Protected Vercel Preview, isolated Neon recovery, hosted OAuth and hosted rollback remain unverified.
 - #96 credential rotation is owner/provider controlled.
 - Later #111 controls, Google bound-script runtime and other planned features are not local audit PASS

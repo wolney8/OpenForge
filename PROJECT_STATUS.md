@@ -1,22 +1,22 @@
 # Project Status — Plum Duff / OpenForge — Doc ID: PS-CODEX-001
 
-**Last updated:** 2026-09-19 12:41 BST · **Status:** 🟡 Owner smoke ready to continue
+**Last updated:** 2026-09-21 10:44 BST · **Status:** 🟢 Local owner-accepted baseline frozen
 
 ## Right now
 
-- **Working on:** CP-026 enforces shared calculator heading/help, content-grid and semantic accent invariants across standalone and embedded calculator surfaces.
-- **Next:** Will continues the consolidated smoke, beginning with the still-pending genuine Google return and the corrected Multi-Lay geometry.
-- **Blocked on:** no further local engineering step; hosted Preview remains paused, while Google and VoiceOver retain their owner/manual boundaries
+- **Working on:** CP-027 closes the local owner-acceptance cycle and freezes the verified normal-owner source/data/runtime baseline.
+- **Next:** seek separate approval for one protected hosted Preview using Preview-only PostgreSQL/Neon and OAuth configuration.
+- **Blocked on:** no local engineering blocker; VoiceOver spoken output remains the sole owner/manual journey boundary and hosted Preview remains unstarted
 
 ## Delivery state
 
 | Area | Evidence state |
 | --- | --- |
-| Local integrated build | CP-026 adds one shared calculator heading primitive, one same-level content grid and governed back/lay semantic accents |
-| Normal `localhost:3010` | Healthy as `normal-owner`; frontend and API use the current local source line and 3010 retains corrected Google initiation |
+| Local integrated build | The CP-023–CP-026 calculator corrections are visually accepted; CP-027 focused engineering evidence passes |
+| Normal `localhost:3010` | Healthy as `normal-owner`; frontend and API use the frozen local source line, canonical SQLite data and `account-access-v1` schema |
 | Main / origin | Not updated by the local integration work |
 | Vercel | Not deployed or hosted-verified; protected Preview remains paused |
-| Owner smoke test | Ready to continue; Google completion remains the first genuine owner/provider check |
+| Owner smoke test | Calculator presentation and genuine Google return accepted; VoiceOver spoken output remains separate and unverified |
 
 ## Progress at a glance
 
@@ -25,15 +25,15 @@ These figures measure **#114 audit coverage**, not the percentage of the product
 | Review area | Current coverage |
 | --- | ---: |
 | Assessments reviewed | 87 / 87 (100%) |
-| Complete tasks exercised and passing | 22 / 24 (92%) |
+| Complete tasks exercised and passing | 23 / 24 (96%) |
 | Competitor comparisons | 27 / 27 (100%) |
 | Requirements reconciled | 133 / 133 (100%) |
 
 ## Next 3 steps
 
-1. Complete one fresh owner Google sign-in through corrected `localhost:3010`.
-2. If successful, continue the consolidated local smoke; if not, capture only the visible failure and investigate normally.
-3. Reconsider the protected Preview decision only after the local owner baseline remains usable.
+1. Keep the frozen normal-owner baseline available as the comparison point for environment promotion.
+2. Obtain separate approval before creating one isolated protected Preview.
+3. Prove hosted revision/runtime/database/schema identity, OAuth and rollback without touching Production.
 
 ## Checkpoint log
 
@@ -60,6 +60,7 @@ These figures measure **#114 audit coverage**, not the percentage of the product
 | CP-024 | 2026-09-19 06:48 BST | Unified Multi-Lay table shells, corrected effective-odds presentation and applied canonical financial meaning to compact results | [#35](https://github.com/wolney8/OpenForge/issues/35), [#92](https://github.com/wolney8/OpenForge/issues/92) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-024-multi-lay-visual-consistency-correction--2026-09-19-0648-bst) |
 | CP-025 | 2026-09-19 07:57 BST | Repaired normal-owner OAuth environment selection, added fail-closed auth readiness and returned failures to the branded login shell | [#62](https://github.com/wolney8/OpenForge/issues/62), [#116](https://github.com/wolney8/OpenForge/issues/116) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-025-owner-blocking-local-google-sign-in--2026-09-19-0757-bst) |
 | CP-026 | 2026-09-19 12:41 BST | Enforced inline calculator help, one Multi-Lay outer grid and paired semantic Back/Lay surfaces across standalone and embedded consumers | [#35](https://github.com/wolney8/OpenForge/issues/35), [#92](https://github.com/wolney8/OpenForge/issues/92) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-026-calculator-visual-contract-enforcement--2026-09-19-1241-bst) |
+| CP-027 | 2026-09-21 10:44 BST | Recorded owner calculator and Google acceptance, promoted provider re-authentication to PASS and froze the verified local baseline | [#35](https://github.com/wolney8/OpenForge/issues/35), [#62](https://github.com/wolney8/OpenForge/issues/62), [#92](https://github.com/wolney8/OpenForge/issues/92), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-027-owner-acceptance-and-frozen-local-baseline--2026-09-21-1044-bst) |
 
 ## Reference index
 

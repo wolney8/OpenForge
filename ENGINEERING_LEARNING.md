@@ -1,16 +1,27 @@
 # Engineering Learning — Plum Duff / OpenForge — Doc ID: EL-CODEX-001
 
-**Last updated:** 2026-09-19 12:41 BST
+**Last updated:** 2026-09-21 10:44 BST
 
 This is a compact notebook of transferable lessons from building Plum Duff. It is not the audit,
 roadmap, backlog or evidence record.
 
 ## Current learning focus
 
-- Design invariants encoded in shared UI primitives rather than rediscovered page by page.
-- Semantic tokens that express domain meaning consistently across themes and consumers.
+- A verified baseline that fixes source, data and runtime identity before environment promotion.
+- A verification envelope that keeps local acceptance separate from hosted evidence.
 
 ## Concepts worth remembering
+
+### Baseline
+
+**What it means:** A known source, data and environment combination whose important behaviour has
+been tested and accepted.
+
+**Why it mattered in Plum Duff:** The CP-027 local baseline joins the accepted calculator and Google
+experience to one normal-owner revision, schema and verified database state. Future Preview defects
+can now be compared with a stable reference rather than another moving target.
+
+**Remember:** Freeze one known-good state before changing environments.
 
 ### Design invariant
 
@@ -437,6 +448,7 @@ role/database/schema identity against isolated hosted storage.
 | CP-024 | 2026-09-19 06:48 BST | Shared primitives; semantic formatting | One shell and one financial language now connect Multi-Lay input, compact Result and detailed Outcomes |
 | CP-025 | 2026-09-19 07:57 BST | OAuth state; fail closed | Normal-owner startup now proves its auth environment before serving, and every callback failure returns safely to the branded login shell |
 | CP-026 | 2026-09-19 12:41 BST | Design invariant; semantic token | Shared headings, content grids and Back/Lay meaning now survive calculator, theme and viewport changes |
+| CP-027 | 2026-09-21 10:44 BST | Baseline; environment promotion | Owner acceptance and focused engineering evidence now identify one stable local source/data/runtime reference before any hosted work |
 
 ## Where detailed evidence lives
 

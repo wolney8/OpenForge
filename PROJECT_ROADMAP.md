@@ -1,6 +1,6 @@
 # Project Roadmap — Plum Duff / OpenForge — Doc ID: PR-CODEX-001
 
-**Last updated:** 2026-09-19 07:57 BST
+**Last updated:** 2026-09-21 10:44 BST
 
 ## Product goal
 
@@ -10,9 +10,11 @@ reporting and recovery clearer and safer.
 
 ## Current milestone
 
-Hold the practical normal-owner local baseline, confirm the repaired fresh Google return, then
-complete the resumed owner smoke corrections before reconsidering the protected hosted Preview.
-Preview remains paused and uncreated.
+**Completed milestone:** local whole-platform audit plus integrated owner acceptance. The accepted
+normal-owner source/data/runtime combination is frozen as the comparison baseline.
+
+**Next milestone:** protected hosted Preview verification, subject to separate approval. Preview
+remains uncreated; it must use isolated Preview PostgreSQL/Neon and Preview-only OAuth/configuration.
 
 ## Local defect / completeness
 
@@ -21,8 +23,8 @@ Preview remains paused and uncreated.
   a normal-owner process must never start silently without its Google/session boundary.
 - Preserve the CP-022 active-only query boundary, grouped cash-health disclosure and governed
   synthetic-data retention so database growth cannot make ordinary owner work scale with archives.
-- Preserve the CP-023 delayed branded session gate, canonical list identity and compact Multi-Lay
-  information hierarchy while the consolidated owner smoke continues.
+- Preserve the CP-023 delayed branded session gate, canonical list identity and the owner-accepted
+  CP-023–CP-026 Multi-Lay information hierarchy and visual contract.
 - Preserve completed Profile import, populated-ledger, combined-report and 200-record evidence.
 - Preserve the completed CP-014 normal-local identity/history migration, rollback checkpoint and
   authenticated browser evidence while main and hosted environments remain unchanged.
@@ -33,18 +35,14 @@ Preview remains paused and uncreated.
 
 ## Hosted acceptance
 
-- Keep protected Preview work paused until the repaired local owner baseline completes its pending
-  smoke result; then seek explicit approval for one isolated Vercel Preview.
+- Seek explicit approval before creating one isolated protected Preview; local acceptance does not
+  authorise Vercel, Neon, hosted OAuth or Production changes.
 - Prove hosted revision/runtime/database/schema identity, OAuth configuration, backup/rollback and
   authenticated financial/reporting behaviour before considering Production.
 - Keep #96 credential rotation and provider-owned configuration as explicit owner/provider actions.
 
 ## Owner / manual acceptance
 
-- One consolidated integrated visual smoke is paused until the repaired Google interaction returns
-  successfully to Plum Duff.
-- One genuine Google-owned provider interaction remains pending; initiation now reaches Google's
-  sign-in surface with the registered local callback and no mismatch.
 - One bounded VoiceOver spoken-output check remains pending.
 
 ## Planned product features
@@ -73,8 +71,8 @@ Preview remains paused and uncreated.
 ## Deferred / decision required
 
 - The #113 bulk owner calculator comparison is deferred without a date; engineering verification continues.
-- Fresh Google provider interaction and VoiceOver spoken output require owner/manual evidence; the
-  application-owned authentication and accessibility engineering boundaries are complete.
+- VoiceOver spoken output requires owner/manual evidence; application-owned accessibility evidence
+  is complete. The genuine local Google interaction passed on the frozen baseline.
 - Main, Neon and Vercel integration of the locally migrated identity/history work remains a later,
   separately approved release decision.
 - An owner smoke test may follow the engineering gate but does not block independent audit work.
@@ -85,12 +83,10 @@ Preview remains paused and uncreated.
 
 ## Dependency flow
 
-`Integrated local build` → `Engineering gate` → `Owner smoke test when convenient`
+`Integrated local build` → `Engineering gate` → `Owner acceptance` → `Frozen local baseline`
 
-`Local stability gate` → `Fresh Google owner retest` → `Owner smoke result` → `Approve protected Preview` → `Isolated hosted engineering gate`
+`Frozen local baseline` → `Approve protected Preview` → `Isolated hosted engineering gate`
 → `Hosted owner acceptance` → `Separate Production decision`
-
-The owner smoke test and continuing audit can proceed independently after the engineering gate.
 
 ## Detailed planning
 
