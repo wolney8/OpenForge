@@ -651,6 +651,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
   const isCreatingDraftRef = useRef(false);
 
   const isPersistingRef = useRef(false);
+  const pendingSaveOperationRef = useRef<{ key: string; fingerprint: string } | null>(null);
   const [pageSize, setPageSize] = useState(8);
   const isDirty = useMemo(
     () => JSON.stringify(formState) !== JSON.stringify(pristineFormState),
@@ -1504,10 +1505,20 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
         ? `${apiBaseUrl}/profiles/${profileId}/cash-adjustments/${activeRowId}`
         : `${apiBaseUrl}/profiles/${profileId}/cash-adjustments`;
       const method = isEditing ? "PUT" : "POST";
+      const operationFingerprint = JSON.stringify(nextFormState);
+      const pendingOperation = pendingSaveOperationRef.current;
+      const operationId =
+        pendingOperation?.fingerprint === operationFingerprint
+          ? pendingOperation.key
+          : crypto.randomUUID();
+      pendingSaveOperationRef.current = { key: operationId, fingerprint: operationFingerprint };
 
       const response = await fetch(url, {
         method,
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": operationId,
+        },
         body: JSON.stringify(nextFormState),
       });
 
@@ -1519,6 +1530,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
       }
 
       const saved = (await response.json()) as CashAdjustmentRecord;
+      pendingSaveOperationRef.current = null;
       const savedFormState = recordToForm(saved);
       invalidateCachedJson(`${apiBaseUrl}/profiles/${profileId}/cash-adjustments`);
       dispatchTrackerDataUpdated({ ledger: "cash-adjustments", profileId });

@@ -77,6 +77,49 @@ def _history_reason(payload: dict[str, Any]) -> str:
     ).strip()
 
 
+def _cash_adjustment_history_retry(
+    connection: Any,
+    *,
+    profile_id: str,
+    operation_id: str,
+    payload: dict[str, Any],
+) -> CashAdjustmentRecord | None:
+    """Return the prior result for an identical retried HTTP mutation.
+
+    Financial history owns the stable operation identity.  Comparing only the
+    governed business fields keeps server timestamps out of retry equivalence.
+    """
+    if not operation_id:
+        return None
+    event = connection.execute(
+        "SELECT activity_id, after_snapshot_json FROM financial_activity_history "
+        "WHERE profile_id = ? AND operation_id = ? AND ledger_type = 'cash_adjustment'",
+        (profile_id, operation_id),
+    ).fetchone()
+    if event is None:
+        return None
+    after = json.loads(str(event["after_snapshot_json"]))
+    expected = {
+        "adjustment_date": payload["adjustment_date"],
+        "direction": payload["direction"],
+        "amount": payload["amount"],
+        "adjustment_type": payload["adjustment_type"],
+        "affects_investment": int(bool(payload["affects_investment"])),
+        "affects_cash_snapshot": int(bool(payload["affects_cash_snapshot"])),
+        "linked_account": payload["linked_account"],
+        "description": payload["description"],
+    }
+    if any(after.get(field) != value for field, value in expected.items()):
+        raise ValueError("This idempotency key was already used for different contents")
+    stored = connection.execute(
+        "SELECT * FROM cash_adjustments WHERE profile_id = ? AND cash_adjustment_id = ?",
+        (profile_id, str(event["activity_id"])),
+    ).fetchone()
+    if stored is None:
+        raise ValueError("The prior idempotent Cash Adjustment result is unavailable")
+    return map_cash_adjustment_row(stored)
+
+
 def _append_financial_history(
     connection: Any,
     *,
@@ -6057,6 +6100,7 @@ def create_cash_adjustment(
     profile_id: str,
     payload: dict[str, Any],
 ) -> CashAdjustmentRecord:
+    operation_id = str(payload.get("_history_operation_id") or "").strip()
     record = {
         "cash_adjustment_id": payload.get("cash_adjustment_id") or f"CA-{uuid4().hex[:8].upper()}",
         "profile_id": profile_id,
@@ -6072,6 +6116,14 @@ def create_cash_adjustment(
         "updated_at": utc_now(),
     }
     with connect() as connection:
+        retried = _cash_adjustment_history_retry(
+            connection,
+            profile_id=profile_id,
+            operation_id=operation_id,
+            payload=payload,
+        )
+        if retried is not None:
+            return retried
         inserted = connection.execute(
             """
             INSERT INTO cash_adjustments (
@@ -6143,6 +6195,7 @@ def update_cash_adjustment(
     cash_adjustment_id: str,
     payload: dict[str, Any],
 ) -> CashAdjustmentRecord | None:
+    operation_id = str(payload.get("_history_operation_id") or "").strip()
     existing = get_cash_adjustment(profile_id, cash_adjustment_id)
     if existing is None:
         return None
@@ -6159,6 +6212,16 @@ def update_cash_adjustment(
         "updated_at": utc_now(),
     }
     with connect() as connection:
+        retried = _cash_adjustment_history_retry(
+            connection,
+            profile_id=profile_id,
+            operation_id=operation_id,
+            payload=payload,
+        )
+        if retried is not None:
+            if retried.cash_adjustment_id != cash_adjustment_id:
+                raise ValueError("This idempotency key belongs to another Cash Adjustment")
+            return retried
         linked_fee_withdrawal = connection.execute(
             """
             SELECT 1 FROM fee_withdrawal_links

@@ -256,6 +256,69 @@ def test_cash_adjustment_create_retry_reuses_exact_identity_and_rejects_changes(
         create_cash_adjustment("profile-demo-002", payload)
 
 
+def test_cash_adjustment_http_idempotency_survives_lost_create_and_update_responses(
+    tmp_path: Path,
+) -> None:
+    configure_database(tmp_path)
+    client = TestClient(app)
+    create_payload = {
+        "adjustment_date": "2026-09-21",
+        "direction": "In",
+        "amount": "6.00",
+        "adjustment_type": "Correction",
+        "affects_investment": True,
+        "affects_cash_snapshot": True,
+        "linked_account": "Bookmaker A",
+        "description": "Synthetic hosted retry fixture",
+    }
+    create_headers = {"Idempotency-Key": "cash-http-create-001"}
+    created = client.post(
+        "/profiles/profile-demo-001/cash-adjustments",
+        json=create_payload,
+        headers=create_headers,
+    )
+    retried_create = client.post(
+        "/profiles/profile-demo-001/cash-adjustments",
+        json=create_payload,
+        headers=create_headers,
+    )
+    assert created.status_code == retried_create.status_code == 201
+    assert (
+        retried_create.json()["cash_adjustment_id"]
+        == created.json()["cash_adjustment_id"]
+    )
+
+    adjustment_id = created.json()["cash_adjustment_id"]
+    update_payload = {**create_payload, "amount": "5.00"}
+    update_headers = {"Idempotency-Key": "cash-http-correct-001"}
+    corrected = client.put(
+        f"/profiles/profile-demo-001/cash-adjustments/{adjustment_id}",
+        json=update_payload,
+        headers=update_headers,
+    )
+    retried_update = client.put(
+        f"/profiles/profile-demo-001/cash-adjustments/{adjustment_id}",
+        json=update_payload,
+        headers=update_headers,
+    )
+    assert corrected.status_code == retried_update.status_code == 200
+    assert retried_update.json()["amount"] == "5.00"
+    assert [
+        event.operation
+        for event in get_financial_history(
+            "profile-demo-001", "cash_adjustment", adjustment_id
+        )
+    ] == ["created", "corrected"]
+
+    conflict = client.put(
+        f"/profiles/profile-demo-001/cash-adjustments/{adjustment_id}",
+        json={**update_payload, "amount": "4.00"},
+        headers=update_headers,
+    )
+    assert conflict.status_code == 409
+    assert "different contents" in conflict.json()["detail"]
+
+
 def test_imported_parent_requires_explicit_same_profile_resolution(tmp_path: Path) -> None:
     configure_database(tmp_path)
     timestamp = "2026-09-16T12:00:00Z"

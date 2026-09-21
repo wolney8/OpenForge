@@ -3,7 +3,7 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import Literal
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from openforge_api.calculations.cash_adjustment_values import (
@@ -160,9 +160,13 @@ def get_profile_cash_adjustment(
 def create_profile_cash_adjustment(
     profile_id: str,
     payload: CashAdjustmentPayload,
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
 ) -> CashAdjustmentResponse:
     try:
-        created = create_cash_adjustment(profile_id, payload.model_dump())
+        values = payload.model_dump()
+        if idempotency_key:
+            values["_history_operation_id"] = idempotency_key
+        created = create_cash_adjustment(profile_id, values)
     except ValueError as error:
         raise HTTPException(status_code=409, detail=str(error)) from error
     return build_response(created)
@@ -173,9 +177,13 @@ def update_profile_cash_adjustment(
     profile_id: str,
     cash_adjustment_id: str,
     payload: CashAdjustmentPayload,
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
 ) -> CashAdjustmentResponse:
     try:
-        updated = update_cash_adjustment(profile_id, cash_adjustment_id, payload.model_dump())
+        values = payload.model_dump()
+        if idempotency_key:
+            values["_history_operation_id"] = idempotency_key
+        updated = update_cash_adjustment(profile_id, cash_adjustment_id, values)
     except ValueError as error:
         raise HTTPException(status_code=409, detail=str(error)) from error
     if updated is None:
