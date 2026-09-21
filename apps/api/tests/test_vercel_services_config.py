@@ -55,9 +55,11 @@ def test_vercel_wrapper_starts_and_mounts_api() -> None:
 
     client = TestClient(app)
 
-    assert client.get("/healthz").json() == {"status": "ok"}
+    root_health = client.get("/healthz").json()
     mounted_health = client.get("/api/healthz").json()
-    assert mounted_health["status"] == "ok"
-    assert mounted_health["runtime_role"] == "test"
-    assert mounted_health["database_classification"] == "isolated"
-    assert "database_url" not in mounted_health
+    for payload in (root_health, mounted_health):
+        assert payload["status"] == "ok"
+        assert payload["runtime_role"] == "test"
+        assert payload["database_classification"] == "isolated"
+        assert payload["schema_version"] == "account-access-v1"
+        assert "database_url" not in payload
