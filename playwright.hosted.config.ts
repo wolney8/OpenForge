@@ -4,8 +4,6 @@ const baseURL = process.env.OPENFORGE_E2E_BASE_URL;
 if (!baseURL) throw new Error("OPENFORGE_E2E_BASE_URL is required for hosted verification");
 
 const sessionToken = process.env.OPENFORGE_E2E_SESSION_TOKEN;
-const protectionBypass = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
-
 export default defineConfig({
   testDir: "./tests/e2e",
   fullyParallel: false,
@@ -13,9 +11,6 @@ export default defineConfig({
   timeout: 180_000,
   use: {
     baseURL,
-    extraHTTPHeaders: protectionBypass
-      ? { "x-vercel-protection-bypass": protectionBypass }
-      : undefined,
     storageState: {
       cookies: sessionToken
         ? [{

@@ -1509,3 +1509,18 @@ owner acceptance for both and separately promotes #62 after the genuine Google-o
 
 Local GitHub authentication is unavailable. These CP-028 summaries need external sync to #114,
 #115 and #62; no duplicate issues or comments were created locally.
+
+## CP-029 authenticated protected Preview evidence — 2026-09-21 15:24 BST
+
+- **#62:** Will completed the genuine Google-owned hosted interaction and returned to Plum Duff.
+  Hosted session read/reload, protected Profile access, logout and revoked-session denial pass.
+- **#114:** authenticated hosted SSR initially lost the protected request context and selected a
+  stale project-level internal API base. Revision `d35eed7` repairs both boundaries and core Preview
+  routes render. Profile Reports still emits React error 185 (maximum update depth), so the full
+  authenticated journey gate remains NOT READY.
+- **#115:** the deployed production graph still has zero known advisories and the latest deployment
+  log sample exposes no secret/token leakage. A four-worker hosted stress run produced five
+  300-second 504s; the serial rerun recovered with no 5xx, leaving a bounded capacity finding.
+
+New external sync required: the three summaries above for #62, #114 and #115. No issue was created
+or closed locally, and the already-synced CP-028 comments should not be duplicated.

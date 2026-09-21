@@ -1,5 +1,62 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
+## Current CP-029 authenticated protected Preview verification — 2026-09-21 15:24 BST
+
+Will completed the genuine Google-owned interaction on the protected Preview and returned to Plum
+Duff. This is recorded separately from CP-028's application-owned state/PKCE/callback evidence:
+**HOSTED GOOGLE AUTH: PASS**. Synthetic hosted session evidence then proved session read 200,
+authenticated Profiles access 200, logout 204 and subsequent revoked-session access 401. No token,
+code, cookie value or provider secret was recorded.
+
+The authenticated pass exposed a real hosted integration defect. Browser API calls carried the
+session, but Next server rendering used an inherited project-level internal API base and forwarded
+only a narrow cookie path, so protected Profile routes rendered `Unable to continue / Profile API
+unavailable`. Revision `d35eed7e4b17d7bfeefbcf17548b9b70b680a7d0` now forwards the trusted
+incoming Cookie and Vercel protection context, while the deployment explicitly selects the stable
+Preview `/api` endpoint. The stable Preview alias now targets deployment
+`dpl_Gs9Rf6P5fPJSxWyD6j2MFNtSXcif`; role remains `preview`, database identity remains
+`preview:plum_duff_preview_cp028` and schema remains `account-access-v1`. Production aliases,
+credentials and data were not touched.
+
+An engineering diagnostic initially followed the legacy project-wide PostgreSQL URL rather than the
+deployment's explicit CP-028 database name. Eight exact-prefix synthetic auth-session rows were
+created in that legacy hosted database, then revoked and removed; post-cleanup count is zero. No
+Profile or financial row was read or changed there. The lesson is retained as evidence that every
+hosted diagnostic must assert the same safe database identity as the runtime before access.
+
+The authenticated UI now renders Profiles, Profile Dashboard, Accounts, Standard, Multi-Lay and
+Reports. Deterministic visual checks confirm the accepted Multi-Lay hierarchy, inline help,
+same-level section bounds, paired semantic accents and no narrow/200%-text overflow. The serial
+browser timings were Profiles 7.86s, Profile Dashboard 6.00s, Accounts 7.39s, Standard 5.98s,
+Multi-Lay 4.53s and Profile Reports 7.05s, with no branded recovery event. These are slower than the
+CP-028 shell/API baseline but remained practically interactive. The existing 600-row Sportsbook
+boundary remains about 3.88s/1.30MB and stays recorded for pagination/capacity work.
+
+The gate is not green. The production Reports page emits React error 185, `Maximum update depth
+exceeded`, during the authenticated render. The hosted Playwright gate now treats React, hydration,
+duplicate-key, unhandled and token/secret diagnostics as failures, so this defect cannot be hidden by
+otherwise visible content. A separate four-worker broad run also saturated five functions to their
+300-second limit (auth session, matched-betting preview, notifications, notification preferences and
+exchanges); the later serial run recovered and the latest 100 deployment records contain 88×200,
+2×204, 6×304, two expected 401 and two expected isolation 404 responses, with no 5xx or server log
+error. The parallel result is retained as a hosted capacity finding rather than described as normal
+single-user success.
+
+Preview data remains synthetic-only: 66 Profiles (3 active/63 archived), 176 Accounts, 311 immutable
+financial-history events and 91 source mappings. Direct authorization evidence proves an owned Cash
+Adjustment 200 and the same ID under another Profile 404; Global Search, history and source identity
+retain their Profile boundaries. Existing CP-028 database evidence still proves £6→£5 reports £5
+once, immutable History retains both meanings, archive does not reverse P&L, retries do not duplicate
+Cash Adjustments or awards, and imported identity is Profile scoped. The authenticated 22-item hosted
+mutation set was stopped rather than over-claimed once the Reports diagnostic failed.
+
+TypeScript passes, mypy is 0/82 and the production dependency audit is zero known advisories. The
+latest deployment log sample contains no secret/token leakage. CP-028 database backup,
+DB-unavailable readiness and restore evidence remain valid because the schema/database did not
+change. The verdict is **PROTECTED PREVIEW: NOT READY**. Smallest next action: repair the bounded
+Reports render loop, rerun the serial authenticated journey set, then assess the recorded parallel
+capacity boundary before owner Preview smoke.
+
 ## Current CP-028 protected hosted Preview verification — 2026-09-21 13:02 BST
 
 The frozen CP-027 normal-owner baseline remained available and healthy throughout. Hosted work used

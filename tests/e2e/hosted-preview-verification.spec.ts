@@ -2,11 +2,22 @@ import { expect, test } from "@playwright/test";
 
 test("authenticated Preview renders core hosted surfaces and accepted visual invariants", async ({ page }) => {
   test.skip(process.env.OPENFORGE_HOSTED_PREVIEW_GATE !== "true", "Explicit hosted gate only");
+  const baseURL = process.env.OPENFORGE_E2E_BASE_URL!;
+  const protectionBypass = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
+  if (protectionBypass) {
+    const bypassResponse = await page.request.get(baseURL, {
+      headers: {
+        "x-vercel-protection-bypass": protectionBypass,
+        "x-vercel-set-bypass-cookie": "true",
+      },
+    });
+    expect(bypassResponse.status()).toBeLessThan(400);
+  }
   const diagnostics: string[] = [];
   page.on("console", (message) => {
     if (["error", "warning"].includes(message.type())) diagnostics.push(`${message.type()}: ${message.text()}`);
   });
-  page.on("pageerror", (error) => diagnostics.push(`pageerror: ${error.message}`));
+  page.on("pageerror", (error) => diagnostics.push(`pageerror ${page.url()}: ${error.message}`));
 
   const timings: Record<string, number> = {};
   const recoveries: string[] = [];
@@ -40,7 +51,10 @@ test("authenticated Preview renders core hosted surfaces and accepted visual inv
 
   const search = page.locator('[data-pd-id="global-search.input"]');
   await search.fill("Subscriber Alpha");
-  await expect(page.locator('[data-pd-id="global-search.results"]')).toContainText("Subscriber Alpha");
+  await expect(page.locator('[data-pd-id="global-search.results"]')).toContainText(
+    "Subscriber Alpha",
+    { timeout: 90_000 },
+  );
   await search.press("Escape");
 
   await open("/profiles/profile-demo-001/tracker/dashboard", "Dashboard");
@@ -58,7 +72,8 @@ test("authenticated Preview renders core hosted surfaces and accepted visual inv
   await expect(page.getByRole("button", { name: "Advanced" })).toBeVisible();
   await page.getByLabel("Back stake", { exact: false }).first().fill("10");
   await page.getByLabel("Back odds", { exact: false }).first().fill("5");
-  await expect(page.locator(".financial-value").first()).toBeVisible();
+  await page.getByLabel("Lay odds", { exact: false }).first().fill("5.2");
+  await expect(page.locator(".financial-value").first()).toBeVisible({ timeout: 90_000 });
 
   await open("/fund-manager/calculators?family=multi-lay", "Calculators");
   const multi = page.locator('[data-pd-id="calculators.multi-lay.presentation"]');
@@ -81,7 +96,10 @@ test("authenticated Preview renders core hosted surfaces and accepted visual inv
   await page.screenshot({ path: "/tmp/cp029-preview-multilay-desktop.png", fullPage: true });
 
   await open("/profiles/profile-demo-001/tracker/reports", "Reports");
-  await expect(page.locator("main")).toContainText(/Profit|P&L|Financial/i);
+  await expect(page.getByText("Loading tracker summaries", { exact: true })).toBeHidden({
+    timeout: 90_000,
+  });
+  await expect(page.locator("main")).toContainText(/Profit|P&L|Financial/i, { timeout: 90_000 });
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.emulateMedia({ reducedMotion: "reduce" });
@@ -95,7 +113,7 @@ test("authenticated Preview renders core hosted surfaces and accepted visual inv
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
 
   const unexpected = diagnostics.filter((entry) =>
-    /duplicate key|hydration|uncaught|unhandled|secret|token/i.test(entry),
+    /duplicate key|hydration|uncaught|unhandled|secret|token|react error/i.test(entry),
   );
   expect(unexpected).toEqual([]);
   console.log(`CP029_HOSTED_TIMINGS=${JSON.stringify(timings)}`);

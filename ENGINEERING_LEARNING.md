@@ -1,16 +1,27 @@
 # Engineering Learning — Plum Duff / OpenForge — Doc ID: EL-CODEX-001
 
-**Last updated:** 2026-09-21 13:02 BST
+**Last updated:** 2026-09-21 15:24 BST
 
 This is a compact notebook of transferable lessons from building Plum Duff. It is not the audit,
 roadmap, backlog or evidence record.
 
 ## Current learning focus
 
-- Environment parity without shared data ownership.
-- A promotion gate that stops at the first external or owner-controlled boundary.
+- Environment parity includes server-to-server request context, not just matching source and schema.
+- Authorization boundaries must remain intact across browser, server rendering and database access.
 
 ## Concepts worth remembering
+
+### Authorization boundary
+
+**What it means:** Every route to protected data must carry and validate the same authority at the
+boundary where the read or write occurs.
+
+**Why it mattered in Plum Duff:** Browser API requests were authenticated, but hosted server-side
+rendering did not forward the protected request context to its internal API. The same signed-in user
+therefore saw a branded data-unavailable state until that server-to-server boundary was repaired.
+
+**Remember:** A successful browser login does not automatically authenticate an internal server fetch.
 
 ### Environment parity
 
@@ -440,12 +451,12 @@ source checkout and safe database identity.
 **Portability status:** On track
 
 **Reason:** SQLite/PostgreSQL targets, source roots and endpoints have an explicit fail-closed runtime
-contract; the broad tests are private-data-free; and a live protected Preview now proves the separate
-hosted role, database identity, schema and recovery path. Genuine hosted Google interaction and the
-authenticated browser journey set remain outside the current evidence envelope.
+contract; the broad tests are private-data-free; and the protected Preview now proves its hosted
+role, database identity, schema, OAuth and recovery path. CP-029 additionally made the internal SSR
+base URL and protected request context explicit instead of relying on project-wide inheritance.
 
-**Smallest improvement:** Complete one owner Google sign-in on the stable Preview callback, then run
-the already-defined authenticated hosted journey set without widening scope.
+**Smallest improvement:** Repair the Reports maximum-update-depth loop, then repeat the serial
+authenticated hosted journey set without widening scope.
 
 ## Learning log
 
@@ -473,6 +484,7 @@ the already-defined authenticated hosted journey set without widening scope.
 | CP-026 | 2026-09-19 12:41 BST | Design invariant; semantic token | Shared headings, content grids and Back/Lay meaning now survive calculator, theme and viewport changes |
 | CP-027 | 2026-09-21 10:44 BST | Baseline; environment promotion | Owner acceptance and focused engineering evidence now identify one stable local source/data/runtime reference before any hosted work |
 | CP-028 | 2026-09-21 13:02 BST | Environment parity; promotion gate | A protected Preview now matches accepted contracts without sharing owner/Production data, and stops before Production or unobserved provider claims |
+| CP-029 | 2026-09-21 15:24 BST | Environment parity; authorization boundary | Hosted auth passed, but authenticated SSR and client rendering still needed their own evidence before Preview promotion |
 
 ## Where detailed evidence lives
 

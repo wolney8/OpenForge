@@ -1,6 +1,6 @@
 # Vercel and Neon Local-First Readiness
 
-**Last updated:** 2026-09-21 13:02 BST
+**Last updated:** 2026-09-21 15:24 BST
 
 This note records the Vercel-to-Neon activation boundary.
 
@@ -40,7 +40,7 @@ This checklist was authorised for one CP-028 protected Preview. Current state:
 - [x] Will authorised one protected Preview and the intended source revision.
 - [x] Preview has an isolated PostgreSQL/Neon database with a verified non-Production identity.
 - [x] Preview role and all endpoints are explicit; missing/mismatched config fails closed.
-- [ ] Preview OAuth uses the stable callback below; owner/provider registration and genuine sign-in remain.
+- [x] Preview OAuth uses the stable callback below; Will completed the genuine Google interaction.
 - [x] Only approved current migrations ran against the isolated Preview database.
 - [x] A current-schema backup, database-unavailable response and recreate/restore/re-migrate recovery were exercised.
 - [x] Health/readiness exposes safe revision, role, database and schema identity.
@@ -49,14 +49,13 @@ This checklist was authorised for one CP-028 protected Preview. Current state:
 - [ ] #96 credential rotation remains a separate owner/provider operation and was not performed by CP-028.
 - [x] Preview test data is synthetic, unmistakable and removable through governed teardown.
 - [x] Runtime safety rejects Production/normal-owner identities and no Production or owner data was used.
-- [ ] Authenticated browser import/core journey coverage awaits the genuine hosted Google interaction;
-  API-level identity, append-only history, correction/report-once and recovery evidence passes.
+- [ ] Authenticated core routes render after the CP-029 protected-SSR repair, but the Reports route
+  emits React maximum-update-depth error 185 and blocks the complete browser gate.
 - [ ] Teardown removes Preview resources without touching Production or normal-local data.
 
-Codex configured the isolated runtime, ran migrations/tests and verified identity/recovery within
-the CP-028 approval. Will/provider action is now limited to stable OAuth redirect registration and
-the fresh provider-owned sign-in observation. #96 rotation and Production cutover remain separate
-decisions.
+Codex configured the isolated runtime, migrations, identity/recovery and protected SSR within the
+Preview approval. Will completed the fresh provider-owned sign-in. Engineering must now repair the
+Reports render loop; #96 rotation and Production cutover remain separate decisions.
 
 ## CP-028 protected Preview identity
 
@@ -68,6 +67,19 @@ decisions.
 - OAuth callback requiring owner/provider confirmation:
   `https://plum-duff-cp028-preview-homelab11.vercel.app/api/auth/google/callback`
 - Production aliases and data: unchanged
+
+## CP-029 authenticated Preview state
+
+- Stable protected URL: unchanged.
+- Active deployment: `dpl_Gs9Rf6P5fPJSxWyD6j2MFNtSXcif` (`plum-duff-5a2pi903c-homelab11.vercel.app`).
+- Application source: `d35eed7e4b17d7bfeefbcf17548b9b70b680a7d0`.
+- Runtime/database/schema: unchanged `preview` / `preview:plum_duff_preview_cp028` /
+  `account-access-v1`.
+- Hosted Google authentication: PASS.
+- Authenticated SSR: repaired by forwarding trusted request context and selecting the explicit
+  stable Preview internal API base.
+- Verification blocker: Profile Reports emits React error 185; a four-worker stress run also
+  exposed a five-endpoint 300-second saturation boundary. Production remains untouched.
 
 ## Current State
 
@@ -104,9 +116,9 @@ Latest local check on 2026-08-20:
 - runtime adapter: verified against Neon with synthetic data
 - hosted runtime activation at that checkpoint: not yet performed
 
-Current boundary: the Vercel Preview revision, isolated PostgreSQL identity, migrations, backup and
-bounded recovery are proven. Genuine hosted OAuth and the authenticated browser journey set remain
-owner-blocked. Production is neither tested nor authorised.
+Current boundary: the Vercel Preview revision, isolated PostgreSQL identity, migrations, backup,
+bounded recovery and genuine hosted OAuth are proven. The authenticated browser journey set remains
+engineering-blocked by the Reports render loop. Production is neither tested nor authorised.
 
 ## Runtime Rules
 
@@ -132,6 +144,6 @@ Profile-specific ledgers and reports belong in the profile summary menu once ins
 
 ## Next implementation slice
 
-Will verifies/adds the callback above and completes one Google sign-in. Engineering then executes
-the authenticated hosted journey checklist on the retained synthetic Preview. Production remains
-out of scope until Preview evidence is accepted and a separate promotion decision is made.
+Repair the bounded Reports render loop, repeat the serial authenticated journey checklist and then
+offer the six-item owner Preview smoke. Production remains out of scope until Preview evidence is
+accepted and a separate promotion decision is made.

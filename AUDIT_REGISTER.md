@@ -21,7 +21,7 @@ These are coverage measures, not percentages of the product finished.
 
 | ID | Plain-English problem | State | Repair / integration state | Issue |
 | --- | --- | --- | --- | --- |
-| CP-028 hosted gate | Local acceptance did not prove Vercel, hosted PostgreSQL, OAuth or recovery | Preview engineering boundary passed / owner OAuth pending | Protected revision `e6a4206` reports role `preview`, dedicated DB `preview:plum_duff_preview_cp028`, schema `account-access-v1` and DB-aware readiness; migration/repeat/recovery, synthetic seed and financial-history retry evidence pass. Authenticated browser journeys await the genuine owner Google interaction | [#62](https://github.com/wolney8/OpenForge/issues/62), [#114](https://github.com/wolney8/OpenForge/issues/114), [#115](https://github.com/wolney8/OpenForge/issues/115) |
+| CP-029 hosted gate | Hosted authentication passed, but authenticated SSR initially lost its protected request context and Reports now exposes a client render loop | Preview not ready | Revision `d35eed7` forwards trusted cookie/protection context and uses the explicit stable Preview API base. Core authenticated routes now render, but Reports emits React error 185; a four-worker stress run also produced five 300-second 504s although the serial journey remained practical | [#62](https://github.com/wolney8/OpenForge/issues/62), [#114](https://github.com/wolney8/OpenForge/issues/114), [#115](https://github.com/wolney8/OpenForge/issues/115) |
 | #35 / PD-FIX-263–265 | Calculator help could fall below its title and same-level Back/Lay sections used different outer containers | Repaired locally / owner accepted | `CalculatorSectionHeading` governs reference/table/embedded headings; one content grid aligns Multi-Lay sections, semantic tokens pair bookmaker/back with exchange/lay surfaces, and Will visually accepted the result on 2026-09-21 | [#35](https://github.com/wolney8/OpenForge/issues/35), [#92](https://github.com/wolney8/OpenForge/issues/92) |
 | #62 / PD-FIX-261–262 | Fresh normal-owner Google sign-in returned raw `Unable to continue` before leaving Plum Duff | Repaired locally / owner accepted | The role-bound launcher selects the canonical owner environment, auth fails closed when incomplete, deterministic state/callback/session evidence passes, and Will completed a genuine Google return to Plum Duff | [#62](https://github.com/wolney8/OpenForge/issues/62), [#116](https://github.com/wolney8/OpenForge/issues/116) |
 | #35 / PD-FIX-258–260 | Multi-Lay input/results used visibly different shells, repeated unchanged effective odds and under-signalled financial meaning | Repaired locally / owner accepted | One shared calculator table shell governs both sections; limit/explanation text uses accessible help, changed effective odds use canonical display, and compact Results distinguish neutral instructions/liability from P&L | [#35](https://github.com/wolney8/OpenForge/issues/35), [#92](https://github.com/wolney8/OpenForge/issues/92) |
@@ -82,14 +82,15 @@ These are coverage measures, not percentages of the product finished.
 ## Owner/manual acceptance
 
 - VoiceOver spoken output — engineering semantics pass; actual speech observation pending.
-- Protected Preview Google interaction — verify/add the stable callback in Google Cloud Console,
-  then sign in once; authenticated hosted browser acceptance follows immediately afterwards.
+- Hosted Google interaction — PASS: Will completed the genuine provider-owned flow and returned to
+  Plum Duff. The owner Preview smoke waits for the Reports engineering defect, not authentication.
 
 ## Remaining boundaries after local closure
 
 - The local normal-owner baseline remains frozen and owner accepted; CP-028 did not alter it.
-- Protected Vercel deployment, isolated Preview PostgreSQL, DB-aware readiness and bounded recovery
-  are proven. Genuine hosted OAuth and the full authenticated hosted journey set remain unverified.
+- Protected Vercel deployment, isolated Preview PostgreSQL, DB-aware readiness, bounded recovery and
+  genuine hosted OAuth are proven. The complete authenticated hosted journey set remains blocked by
+  the Reports render loop and the recorded high-concurrency capacity boundary.
 - #96 credential rotation is owner/provider controlled.
 - Later #111 controls, Google bound-script runtime and other planned features are not local audit PASS
   claims and are not treated as hidden defects.

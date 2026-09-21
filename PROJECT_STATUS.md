@@ -1,12 +1,12 @@
 # Project Status — Plum Duff / OpenForge — Doc ID: PS-CODEX-001
 
-**Last updated:** 2026-09-21 13:02 BST · **Status:** 🟠 Protected Preview awaiting owner OAuth interaction
+**Last updated:** 2026-09-21 15:24 BST · **Status:** 🟠 Protected Preview authenticated; Reports render defect blocks verification
 
 ## Right now
 
-- **Working on:** CP-028 has deployed an isolated, Vercel-protected Preview on revision `e6a4206`, role `preview`, schema `account-access-v1` and dedicated Preview PostgreSQL.
-- **Next:** Will adds/verifies the one Preview Google redirect URI, signs in once, then engineering completes the authenticated hosted browser journeys.
-- **Blocked on:** genuine hosted Google interaction; VoiceOver spoken output remains the separate local/manual evidence boundary
+- **Working on:** CP-029 recorded genuine hosted Google PASS and repaired authenticated server rendering on Preview revision `d35eed7`; the Reports route still emits React error 185 (maximum update depth).
+- **Next:** remove the Reports render loop, repeat the serial authenticated hosted journey gate, then invite the short owner Preview smoke.
+- **Blocked on:** one hosted Reports client-render defect; VoiceOver spoken output remains the separate local/manual evidence boundary
 
 ## Delivery state
 
@@ -15,8 +15,8 @@
 | Local integrated build | The CP-023–CP-026 calculator corrections are visually accepted; CP-027 focused engineering evidence passes |
 | Normal `localhost:3010` | Healthy as `normal-owner`; frontend and API use the frozen local source line, canonical SQLite data and `account-access-v1` schema |
 | Main / origin | Not updated by the local integration work |
-| Vercel | Protected Preview is Ready at `plum-duff-cp028-preview-homelab11.vercel.app`; Production alias/data remain untouched |
-| Owner smoke test | Local calculator and Google acceptance remain PASS; hosted Google/Preview inspection awaits one owner interaction; VoiceOver remains separate |
+| Vercel | Protected Preview is Ready at `plum-duff-cp028-preview-homelab11.vercel.app` on app revision `d35eed7`; Production alias/data remain untouched |
+| Owner smoke test | Hosted Google PASS is recorded; the broader Preview smoke waits for the Reports render defect; VoiceOver remains separate |
 
 ## Progress at a glance
 
@@ -32,8 +32,8 @@ These figures measure **#114 audit coverage**, not the percentage of the product
 ## Next 3 steps
 
 1. Preserve the frozen normal-owner baseline unchanged as the environment comparison point.
-2. Complete the owner-controlled Google redirect/sign-in step on the protected Preview.
-3. Finish authenticated hosted journeys and accept or tear down the Preview before any separate Production decision.
+2. Repair and re-prove the hosted Reports client render without widening the analytics scope.
+3. Finish the authenticated hosted journey gate and accept or tear down the Preview before any separate Production decision.
 
 ## Checkpoint log
 
@@ -62,6 +62,7 @@ These figures measure **#114 audit coverage**, not the percentage of the product
 | CP-026 | 2026-09-19 12:41 BST | Enforced inline calculator help, one Multi-Lay outer grid and paired semantic Back/Lay surfaces across standalone and embedded consumers | [#35](https://github.com/wolney8/OpenForge/issues/35), [#92](https://github.com/wolney8/OpenForge/issues/92) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-026-calculator-visual-contract-enforcement--2026-09-19-1241-bst) |
 | CP-027 | 2026-09-21 10:44 BST | Recorded owner calculator and Google acceptance, promoted provider re-authentication to PASS and froze the verified local baseline | [#35](https://github.com/wolney8/OpenForge/issues/35), [#62](https://github.com/wolney8/OpenForge/issues/62), [#92](https://github.com/wolney8/OpenForge/issues/92), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-027-owner-acceptance-and-frozen-local-baseline--2026-09-21-1044-bst) |
 | CP-028 | 2026-09-21 13:02 BST | Created an isolated protected Preview, proved hosted runtime/database readiness and recovery, and stopped truthfully at the owner-controlled Google interaction | [#62](https://github.com/wolney8/OpenForge/issues/62), [#114](https://github.com/wolney8/OpenForge/issues/114), [#115](https://github.com/wolney8/OpenForge/issues/115) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-028-protected-hosted-preview-verification--2026-09-21-1302-bst) |
+| CP-029 | 2026-09-21 15:24 BST | Recorded hosted Google PASS, repaired protected authenticated SSR context and stopped the Preview gate on a real Reports render loop | [#62](https://github.com/wolney8/OpenForge/issues/62), [#114](https://github.com/wolney8/OpenForge/issues/114), [#115](https://github.com/wolney8/OpenForge/issues/115) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-029-authenticated-protected-preview-verification--2026-09-21-1524-bst) |
 
 ## Reference index
 
