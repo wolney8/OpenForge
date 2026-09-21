@@ -9,8 +9,9 @@ from urllib.parse import urlsplit, urlunsplit
 
 from openforge_api.config import SOURCE_ROOT, Settings
 
-ALLOWED_RUNTIME_ROLES = frozenset({"normal-owner", "candidate", "test"})
+ALLOWED_RUNTIME_ROLES = frozenset({"normal-owner", "candidate", "test", "preview"})
 ISOLATED_RUNTIME_ROLES = frozenset({"candidate", "test"})
+PREVIEW_DATABASE_IDENTITY_PREFIX = "preview:"
 OWNER_DATABASE_IDENTITY = "normal-owner"
 
 
@@ -93,19 +94,42 @@ def _database_target(settings: Settings) -> tuple[str, str]:
     return "sqlite", str(settings.database_path.resolve())
 
 
+def _postgres_database_name(connection_url: str) -> str:
+    return urlsplit(connection_url).path.lstrip("/").casefold()
+
+
+def _validate_complete_authentication(settings: Settings, runtime_label: str) -> None:
+    if not settings.authentication_required:
+        raise RuntimeSafetyError(f"The {runtime_label} runtime requires authentication")
+    if (
+        not settings.owner_emails
+        or len(settings.auth_session_secret.encode("utf-8")) < 32
+        or not settings.google_oauth_client_id.strip()
+        or not settings.google_oauth_client_secret.strip()
+    ):
+        raise RuntimeSafetyError(
+            f"The {runtime_label} runtime requires complete owner and Google "
+            "authentication configuration"
+        )
+
+
 def validate_runtime_contract(settings: Settings) -> RuntimeIdentity:
     role = settings.runtime_role.strip().casefold()
     identity = settings.runtime_database_identity.strip().casefold()
     configured_source = settings.runtime_source_root.strip()
     if role not in ALLOWED_RUNTIME_ROLES:
         raise RuntimeSafetyError(
-            "OPENFORGE_RUNTIME_ROLE must explicitly be normal-owner, candidate, or test"
+            "OPENFORGE_RUNTIME_ROLE must explicitly be normal-owner, candidate, test, or preview"
         )
     if not identity:
         raise RuntimeSafetyError("OPENFORGE_RUNTIME_DATABASE_IDENTITY is required")
     if not configured_source:
         raise RuntimeSafetyError("OPENFORGE_RUNTIME_SOURCE_ROOT is required")
-    if Path(configured_source).resolve() != SOURCE_ROOT:
+    if configured_source.casefold() == "deployed-source-root" and role == "preview":
+        configured_source_path = SOURCE_ROOT
+    else:
+        configured_source_path = Path(configured_source).resolve()
+    if configured_source_path != SOURCE_ROOT:
         raise RuntimeSafetyError(
             "Configured runtime source does not match the running source checkout"
         )
@@ -121,9 +145,13 @@ def validate_runtime_contract(settings: Settings) -> RuntimeIdentity:
         raise RuntimeSafetyError(
             "An isolated candidate/test runtime requires an explicit database target"
         )
-    primary_root = _primary_checkout_root()
-    owner_target = str((primary_root / "data/private/db/openforge.sqlite3").resolve())
-    is_owner_target = engine == "sqlite" and target == owner_target
+    primary_root: Path | None = None
+    owner_target = ""
+    is_owner_target = False
+    if role != "preview":
+        primary_root = _primary_checkout_root()
+        owner_target = str((primary_root / "data/private/db/openforge.sqlite3").resolve())
+        is_owner_target = engine == "sqlite" and target == owner_target
 
     if role in ISOLATED_RUNTIME_ROLES:
         if identity == OWNER_DATABASE_IDENTITY or is_owner_target:
@@ -133,7 +161,43 @@ def validate_runtime_contract(settings: Settings) -> RuntimeIdentity:
         if engine == "sqlite" and not Path(target).is_absolute():
             raise RuntimeSafetyError("An isolated SQLite target must be an absolute path")
         classification = "isolated"
+    elif role == "preview":
+        if settings.environment.strip().casefold() != "preview":
+            raise RuntimeSafetyError(
+                "The Preview runtime requires OPENFORGE_ENVIRONMENT=preview"
+            )
+        if not settings.runtime_database_target_explicit:
+            raise RuntimeSafetyError(
+                "The Preview runtime requires an explicit Preview database target"
+            )
+        if engine != "postgresql":
+            raise RuntimeSafetyError("The Preview runtime requires PostgreSQL storage")
+        if not identity.startswith(PREVIEW_DATABASE_IDENTITY_PREFIX):
+            raise RuntimeSafetyError(
+                "The Preview database identity must use preview:<database-name>"
+            )
+        expected_database_name = identity.removeprefix(
+            PREVIEW_DATABASE_IDENTITY_PREFIX
+        )
+        actual_database_name = _postgres_database_name(settings.neon_database_url)
+        if not expected_database_name or actual_database_name != expected_database_name:
+            raise RuntimeSafetyError(
+                "The Preview runtime database identity does not match its PostgreSQL database"
+            )
+        if "preview" not in actual_database_name:
+            raise RuntimeSafetyError(
+                "The Preview PostgreSQL database name must be explicitly Preview-scoped"
+            )
+        if not settings.runtime_source_revision.strip():
+            raise RuntimeSafetyError("The Preview source revision must be explicit")
+        if not settings.runtime_frontend_endpoint.strip().startswith("https://"):
+            raise RuntimeSafetyError("The Preview frontend endpoint must use HTTPS")
+        if not settings.runtime_api_endpoint.strip().startswith("https://"):
+            raise RuntimeSafetyError("The Preview API endpoint must use HTTPS")
+        _validate_complete_authentication(settings, "Preview")
+        classification = "preview"
     else:
+        assert primary_root is not None
         if identity != OWNER_DATABASE_IDENTITY:
             raise RuntimeSafetyError(
                 "The normal owner runtime requires the normal-owner database identity"
@@ -150,18 +214,7 @@ def validate_runtime_contract(settings: Settings) -> RuntimeIdentity:
                     "A normal-owner runtime outside the primary checkout requires its exact "
                     "source revision to be explicitly approved"
                 )
-        if not settings.authentication_required:
-            raise RuntimeSafetyError("The normal owner runtime requires authentication")
-        if (
-            not settings.owner_emails
-            or len(settings.auth_session_secret.encode("utf-8")) < 32
-            or not settings.google_oauth_client_id.strip()
-            or not settings.google_oauth_client_secret.strip()
-        ):
-            raise RuntimeSafetyError(
-                "The normal owner runtime requires complete owner and Google "
-                "authentication configuration"
-            )
+        _validate_complete_authentication(settings, "normal owner")
         classification = "normal-owner"
 
     fingerprint = hashlib.sha256(f"{engine}:{target}".encode()).hexdigest()[:16]

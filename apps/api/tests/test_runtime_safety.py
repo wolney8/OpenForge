@@ -76,6 +76,62 @@ def test_candidate_with_explicit_postgresql_database_passes_without_exposing_sec
     assert "private-password" not in identity.database_fingerprint
 
 
+def preview_settings(tmp_path: Path, **updates: object) -> Settings:
+    values: dict[str, object] = {
+        "role": "preview",
+        "environment": "preview",
+        "runtime_database_identity": "preview:plum_duff_preview_cp028",
+        "runtime_source_root": "deployed-source-root",
+        "runtime_frontend_endpoint": "https://plum-duff-preview.example.invalid",
+        "runtime_api_endpoint": "https://plum-duff-preview.example.invalid/api",
+        "database_mode": "postgresql",
+        "neon_database_url": (
+            "postgresql://private-user:private-password@preview.invalid/"
+            "plum_duff_preview_cp028"
+        ),
+    }
+    values.update(updates)
+    return runtime_settings(tmp_path, **values)
+
+
+def test_preview_with_explicit_preview_database_passes(tmp_path: Path) -> None:
+    identity = validate_runtime_contract(preview_settings(tmp_path))
+    assert identity.role == "preview"
+    assert identity.database_engine == "postgresql"
+    assert identity.database_identity == "preview:plum_duff_preview_cp028"
+    assert identity.database_classification == "preview"
+
+
+@pytest.mark.parametrize(
+    ("updates", "message"),
+    [
+        ({"runtime_database_target_explicit": False}, "explicit Preview database"),
+        ({"database_mode": "local"}, "requires PostgreSQL"),
+        ({"environment": "production"}, "ENVIRONMENT=preview"),
+        ({"runtime_database_identity": "production"}, "preview:<database-name>"),
+        (
+            {"runtime_database_identity": "preview:another_database"},
+            "identity does not match",
+        ),
+        (
+            {
+                "runtime_database_identity": "preview:plum_duff",
+                "neon_database_url": "postgresql://user:secret@production.invalid/plum_duff",
+            },
+            "must be explicitly Preview-scoped",
+        ),
+        ({"runtime_source_revision": ""}, "source revision must be explicit"),
+        ({"runtime_frontend_endpoint": "http://localhost:3010"}, "must use HTTPS"),
+        ({"google_oauth_client_secret": ""}, "complete owner and Google"),
+    ],
+)
+def test_preview_fails_closed_when_contract_is_unsafe(
+    tmp_path: Path, updates: dict[str, object], message: str
+) -> None:
+    with pytest.raises(RuntimeSafetyError, match=message):
+        validate_runtime_contract(preview_settings(tmp_path, **updates))
+
+
 def test_candidate_without_explicit_database_fails_closed(tmp_path: Path) -> None:
     settings = runtime_settings(tmp_path, runtime_database_target_explicit=False)
     with pytest.raises(RuntimeSafetyError, match="explicit database target"):
