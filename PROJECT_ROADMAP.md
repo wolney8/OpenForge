@@ -1,6 +1,6 @@
 # Project Roadmap — Plum Duff / OpenForge — Doc ID: PR-CODEX-001
 
-**Last updated:** 2026-09-21 10:44 BST
+**Last updated:** 2026-09-21 13:02 BST
 
 ## Product goal
 
@@ -13,8 +13,14 @@ reporting and recovery clearer and safer.
 **Completed milestone:** local whole-platform audit plus integrated owner acceptance. The accepted
 normal-owner source/data/runtime combination is frozen as the comparison baseline.
 
-**Next milestone:** protected hosted Preview verification, subject to separate approval. Preview
-remains uncreated; it must use isolated Preview PostgreSQL/Neon and Preview-only OAuth/configuration.
+**Current milestone:** protected hosted Preview verification. The isolated Preview is deployed and
+its revision, `preview` role, dedicated PostgreSQL identity, schema, readiness and recovery boundary
+are proven. Authenticated browser acceptance is waiting at the owner-controlled Google redirect and
+sign-in step.
+
+**Next outcome:** complete the authenticated hosted journeys on this protected Preview, record owner
+environment acceptance, then make a separate retain/teardown decision. Production remains a later,
+separately authorised promotion gate.
 
 ## Local defect / completeness
 
@@ -35,10 +41,10 @@ remains uncreated; it must use isolated Preview PostgreSQL/Neon and Preview-only
 
 ## Hosted acceptance
 
-- Seek explicit approval before creating one isolated protected Preview; local acceptance does not
-  authorise Vercel, Neon, hosted OAuth or Production changes.
-- Prove hosted revision/runtime/database/schema identity, OAuth configuration, backup/rollback and
-  authenticated financial/reporting behaviour before considering Production.
+- The authorised Preview is live behind Vercel protection with dedicated synthetic-only PostgreSQL;
+  its stable callback is `https://plum-duff-cp028-preview-homelab11.vercel.app/api/auth/google/callback`.
+- Finish genuine hosted OAuth and the authenticated browser journey set before considering Preview
+  verified. Deployment/readiness evidence alone is not product acceptance.
 - Keep #96 credential rotation and provider-owned configuration as explicit owner/provider actions.
 
 ## Owner / manual acceptance
@@ -73,11 +79,10 @@ remains uncreated; it must use isolated Preview PostgreSQL/Neon and Preview-only
 - The #113 bulk owner calculator comparison is deferred without a date; engineering verification continues.
 - VoiceOver spoken output requires owner/manual evidence; application-owned accessibility evidence
   is complete. The genuine local Google interaction passed on the frozen baseline.
-- Main, Neon and Vercel integration of the locally migrated identity/history work remains a later,
-  separately approved release decision.
+- Main and Production integration remain later, separately approved release decisions. CP-028's
+  Neon/Vercel work is confined to one protected Preview database and deployment.
 - An owner smoke test may follow the engineering gate but does not block independent audit work.
-- Vercel Preview requires explicit approval and the protected gate in
-  `docs/deployment/vercel-neon-local-first-readiness.md`; Production is a later decision.
+- The protected Preview gate is in progress under CP-028; Production is a later decision.
 - OddsForge, live scraping and autonomous wagering remain outside the current Plum Duff scope.
 - Historical SR and bonus-on-win records remain compatible but are not everyday new-calculation priorities.
 

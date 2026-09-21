@@ -1491,3 +1491,21 @@ offers and optional community feed inputs.
 
 GitHub #35 owns the calculator correction and #92 owns the shared visual invariant. CP-027 records
 owner acceptance for both and separately promotes #62 after the genuine Google-owned interaction.
+
+## CP-028 protected Preview evidence — 2026-09-21 13:02 BST
+
+- **#114:** one Vercel-protected Preview is live on revision `e6a4206`, role `preview`, isolated
+  PostgreSQL identity `preview:plum_duff_preview_cp028` and schema `account-access-v1`. Runtime,
+  migration/repeat, DB-unavailable readiness, restore/recovery and synthetic-data evidence pass.
+  Full authenticated hosted browser evidence remains pending.
+- **#115:** the deployed artifact uses Next 16.3.3 and the audited production dependency graph has
+  zero known advisories. Safe diagnostics expose no credentials. The server build's dynamic local
+  seed path causes broad source tracing and remains bounded hosted build-hygiene debt; the deployed
+  archive contains committed source only, not private inputs or owner data.
+- **#62:** application-owned hosted initiation targets Google with state/PKCE and the exact stable
+  callback `https://plum-duff-cp028-preview-homelab11.vercel.app/api/auth/google/callback`.
+  Owner/provider callback registration and one genuine sign-in are required before hosted auth and
+  downstream browser journeys can be accepted.
+
+Local GitHub authentication is unavailable. These CP-028 summaries need external sync to #114,
+#115 and #62; no duplicate issues or comments were created locally.

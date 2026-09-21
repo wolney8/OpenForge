@@ -1,16 +1,38 @@
 # Engineering Learning — Plum Duff / OpenForge — Doc ID: EL-CODEX-001
 
-**Last updated:** 2026-09-21 10:44 BST
+**Last updated:** 2026-09-21 13:02 BST
 
 This is a compact notebook of transferable lessons from building Plum Duff. It is not the audit,
 roadmap, backlog or evidence record.
 
 ## Current learning focus
 
-- A verified baseline that fixes source, data and runtime identity before environment promotion.
-- A verification envelope that keeps local acceptance separate from hosted evidence.
+- Environment parity without shared data ownership.
+- A promotion gate that stops at the first external or owner-controlled boundary.
 
 ## Concepts worth remembering
+
+### Environment parity
+
+**What it means:** Environments should exercise the same application contracts while retaining
+explicitly different roles, data and credentials.
+
+**Why it mattered in Plum Duff:** Preview runs the locally accepted schema and behaviour on hosted
+PostgreSQL, but its `preview` role and database identity prevent “parity” becoming accidental access
+to normal-owner or Production data.
+
+**Remember:** Match behaviour across environments; never blur ownership between them.
+
+### Promotion gate
+
+**What it means:** A checkpoint that requires named evidence before a build can move into a more
+consequential environment.
+
+**Why it mattered in Plum Duff:** Healthy deployment, migrations and synthetic financial evidence
+do not promote this Preview to Production. Genuine hosted OAuth and authenticated journeys must pass,
+followed by a separate owner decision.
+
+**Remember:** Deployment is an input to a promotion decision, not the decision itself.
 
 ### Baseline
 
@@ -418,11 +440,12 @@ source checkout and safe database identity.
 **Portability status:** On track
 
 **Reason:** SQLite/PostgreSQL targets, source roots and endpoints have an explicit fail-closed runtime
-contract; the broad tests are private-data-free; and Preview/Production now have separate documented
-roles and database ownership. Google/provider setup and hosted recovery are still unverified.
+contract; the broad tests are private-data-free; and a live protected Preview now proves the separate
+hosted role, database identity, schema and recovery path. Genuine hosted Google interaction and the
+authenticated browser journey set remain outside the current evidence envelope.
 
-**Smallest improvement:** On approval, instantiate one protected Preview and prove the documented
-role/database/schema identity against isolated hosted storage.
+**Smallest improvement:** Complete one owner Google sign-in on the stable Preview callback, then run
+the already-defined authenticated hosted journey set without widening scope.
 
 ## Learning log
 
@@ -449,6 +472,7 @@ role/database/schema identity against isolated hosted storage.
 | CP-025 | 2026-09-19 07:57 BST | OAuth state; fail closed | Normal-owner startup now proves its auth environment before serving, and every callback failure returns safely to the branded login shell |
 | CP-026 | 2026-09-19 12:41 BST | Design invariant; semantic token | Shared headings, content grids and Back/Lay meaning now survive calculator, theme and viewport changes |
 | CP-027 | 2026-09-21 10:44 BST | Baseline; environment promotion | Owner acceptance and focused engineering evidence now identify one stable local source/data/runtime reference before any hosted work |
+| CP-028 | 2026-09-21 13:02 BST | Environment parity; promotion gate | A protected Preview now matches accepted contracts without sharing owner/Production data, and stops before Production or unobserved provider claims |
 
 ## Where detailed evidence lives
 

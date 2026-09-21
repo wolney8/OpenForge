@@ -1,5 +1,73 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
+## Current CP-028 protected hosted Preview verification — 2026-09-21 13:02 BST
+
+The frozen CP-027 normal-owner baseline remained available and healthy throughout. Hosted work used
+an exact committed archive rather than the normal runtime or owner database. The live protected
+deployment is `https://plum-duff-cp028-preview-homelab11.vercel.app`, Vercel deployment
+`dpl_5BzzGWKe1Voi59Y7TdxaTcEFTrD3`, source `e6a42064d49b55a41470acc25f906890ab1cde51`
+and target `preview`. No Production alias was changed. The app reports `preview`, PostgreSQL,
+database identity `preview:plum_duff_preview_cp028`, fingerprint `c3b647ca129cf41c`, schema
+`account-access-v1`, Preview endpoints/config source and the stable Preview OAuth callback. Both
+root and API readiness are database-aware rather than process-only.
+
+The hosted safety contract fails closed unless Preview supplies an explicit PostgreSQL target whose
+database name matches its `preview:` identity, HTTPS endpoints, complete auth, source revision and
+Preview environment. Focused isolation/readiness tests pass **20/20**; the combined
+runtime/health/Vercel selection passes **34/34** after the bounded financial-retry repair. A missing
+database produces 503 readiness, and role/database mismatches are rejected before normal operation.
+The existing Vercel project still has legacy variables scoped broadly, so CP-028 supplies explicit
+per-deployment Preview values; the runtime identity check prevents an inherited mismatched database
+from being accepted. Production storage and normal-owner SQLite were never used.
+
+The dedicated database was migrated from fresh state. The current migration hash
+`76fade2854b9e88b0f2d9a7024c0c692c34d3e2e4c2815f7f6ba2147e42f49ec` is stable across the
+intended repeat. During recovery rehearsal the dedicated Preview database alone was made
+unavailable: readiness returned 503, it was recreated/restored, migrations were reapplied twice,
+required history/identity tables returned and readiness recovered. The current-schema rollback
+checkpoint is `preview-current-schema-20260921-124344-BST.dump`, SHA-256
+`33071cdd3143a589c0525ec2e757513c1436619065f22b8783f3b55e6166cd3c`; its private path and
+credentials are deliberately omitted.
+
+Only deterministic synthetic data was seeded. After hosted write evidence the retained Preview has
+66 Profiles (3 active/63 archived), 176 Accounts, 600 Sportsbook rows, 250 Free Bets, 150 Casino
+rows, 102 Cash Adjustments, one Extra Place row, 311 history events, 91 Profile-scoped source
+mappings and 52 notification events; duplicate history operation identities are zero. Same-Profile
+imported lineage resolves without using native IDs as portable identity. The data is clearly
+synthetic and safe to destroy. No local owner or Production data was uploaded.
+
+Hosted correction rehearsal found and repaired a real boundary defect: the persistence layer had a
+stable history operation identity, but Cash Adjustment HTTP/UI saves did not carry it. A lost
+response could append duplicate correction evidence. `Idempotency-Key` now survives the browser/API
+boundary, identical create/update retries return the established result, and changed contents under
+the same key return conflict. Deployed replay proves one `created` plus one `corrected` event for a
+single activity and current £5.00 after £6.00→£5.00; current reporting reads the £5.00 ledger state
+once and does not ingest history as another transaction. Append-only UPDATE/DELETE enforcement
+still rejects mutation. Focused history/identity/runtime tests pass **34/34**, mypy **0/82**,
+TypeScript passes, the complete web unit suite passes **432/432**, and the deployed production graph
+has zero known dependency advisories (Next 16.3.3).
+
+Mature-data hosted measurements before the recovery cycle were: `/profiles` 2.12s/9.9KB,
+Dashboard shell 0.50s/9.4KB, Reports shell 0.44s/9.7KB, Profile Dashboard 1.50s/10.8KB and Profile
+Reports 1.11s/11.1KB. `/api/profiles` took 2.53s/17.3KB. A deliberately large 600-row Sportsbook
+response took 3.88s and 1.30MB; that remains a capacity/pagination boundary, not a hidden PASS.
+Archived Profiles did not recreate the CP-022 all-Profile request storm.
+
+Application-owned hosted OAuth evidence passes initiation: Google is targeted with PKCE/state and
+the exact callback
+`https://plum-duff-cp028-preview-homelab11.vercel.app/api/auth/google/callback`; synthetic hosted
+session persistence also passes. The deployment is protected and a genuine provider-owned sign-in
+has not been observed. Guided Onboarding and the remaining authenticated hosted browser journey set
+therefore cannot truthfully be marked hosted PASS yet. CP-028 stops at **OWNER ACTION REQUIRED**:
+Will must verify/add that redirect URI in the Google OAuth client, open the protected Preview and
+sign in once. Engineering then completes the defined hosted journey and responsive checks.
+
+Resources are one Vercel Preview deployment plus one dedicated Neon/PostgreSQL database and its
+private backup. They may consume the provider plans' deployment, compute, storage and transfer
+allowances; no claim of zero cost is made. Teardown removes the Preview alias/deployment, dedicated
+database and backup, losing only synthetic data/evidence. They are retained for owner inspection.
+Production, its aliases/data, subscriber access and #96 rotation were untouched.
+
 ## Current CP-027 owner acceptance and frozen local baseline — 2026-09-21 10:44 BST
 
 Owner acceptance is recorded separately from engineering evidence. Will visually accepted the

@@ -1,6 +1,6 @@
 # Vercel and Neon Local-First Readiness
 
-**Last updated:** 2026-09-18 13:10 BST
+**Last updated:** 2026-09-21 13:02 BST
 
 This note records the Vercel-to-Neon activation boundary.
 
@@ -35,32 +35,43 @@ Preview must never fall back to Production storage when configuration is missing
 
 ## Protected Preview approval gate
 
-This checklist is decision-ready but **not executed or authorised**:
+This checklist was authorised for one CP-028 protected Preview. Current state:
 
-- [ ] Will authorises one protected Preview and the intended source revision.
-- [ ] Preview has an isolated PostgreSQL/Neon database with a verified non-Production identity.
-- [ ] Preview role and all endpoints are explicit; missing config fails closed.
-- [ ] Preview OAuth uses a stable approved callback/base URL and separately governed credentials.
-- [ ] Only approved additive migrations run against the isolated Preview database.
-- [ ] A pre-migration backup/restore point and exact rollback/teardown procedure are verified.
-- [ ] Health/readiness exposes safe revision, role, database and schema identity.
-- [ ] The deployment revision is visible and matches frontend/API assets.
-- [ ] #115 remains zero known production advisories; accepted dev-only transitives do not ship.
-- [ ] #96 credential rotation is dispositioned by Will/provider before any affected credential is used.
-- [ ] Preview test data is synthetic, unmistakable and removable through governed teardown.
-- [ ] Preview cannot reach Production aliases, storage, secrets or data.
-- [ ] Authenticated import, core financial journeys, report-once and recovery smoke passes.
+- [x] Will authorised one protected Preview and the intended source revision.
+- [x] Preview has an isolated PostgreSQL/Neon database with a verified non-Production identity.
+- [x] Preview role and all endpoints are explicit; missing/mismatched config fails closed.
+- [ ] Preview OAuth uses the stable callback below; owner/provider registration and genuine sign-in remain.
+- [x] Only approved current migrations ran against the isolated Preview database.
+- [x] A current-schema backup, database-unavailable response and recreate/restore/re-migrate recovery were exercised.
+- [x] Health/readiness exposes safe revision, role, database and schema identity.
+- [x] The deployment revision is visible and frontend/API diagnostics agree.
+- [x] #115 remains zero known production advisories in the deployed production graph.
+- [ ] #96 credential rotation remains a separate owner/provider operation and was not performed by CP-028.
+- [x] Preview test data is synthetic, unmistakable and removable through governed teardown.
+- [x] Runtime safety rejects Production/normal-owner identities and no Production or owner data was used.
+- [ ] Authenticated browser import/core journey coverage awaits the genuine hosted Google interaction;
+  API-level identity, append-only history, correction/report-once and recovery evidence passes.
 - [ ] Teardown removes Preview resources without touching Production or normal-local data.
 
-Codex can later prepare/configure the isolated runtime, run migrations/tests, verify identity and
-recovery, and produce the evidence bundle after explicit approval and access. Will/provider action
-is required for hosted account permissions, stable OAuth redirect registration, #96 secret rotation
-and the fresh provider-owned sign-in observation. Production cutover remains a separate decision.
+Codex configured the isolated runtime, ran migrations/tests and verified identity/recovery within
+the CP-028 approval. Will/provider action is now limited to stable OAuth redirect registration and
+the fresh provider-owned sign-in observation. #96 rotation and Production cutover remain separate
+decisions.
+
+## CP-028 protected Preview identity
+
+- Stable protected URL: `https://plum-duff-cp028-preview-homelab11.vercel.app`
+- Deployment: `dpl_5BzzGWKe1Voi59Y7TdxaTcEFTrD3`
+- Source: `e6a42064d49b55a41470acc25f906890ab1cde51`
+- Runtime/database/schema: `preview` / `preview:plum_duff_preview_cp028` /
+  `account-access-v1`
+- OAuth callback requiring owner/provider confirmation:
+  `https://plum-duff-cp028-preview-homelab11.vercel.app/api/auth/google/callback`
+- Production aliases and data: unchanged
 
 ## Current State
 
-- Vercel can be used for web/API deployment testing only after the protected Preview gate above is
-  explicitly authorised and environment variables are configured deliberately for that target.
+- One protected Vercel Preview is live under CP-028 with explicit per-deployment configuration.
 - Local development remains SQLite by default.
 - Vercel Production becomes Neon authoritative only when `OPENFORGE_DATABASE_MODE=neon` is set.
 - The PostgreSQL runtime adapter and transactional migrations are implemented.
@@ -80,7 +91,7 @@ Before deploying a test build to Vercel:
 - Check `/fund-manager/database/neon-cutover-readiness`.
 - Create a fresh verified local backup if any database migration/rehearsal is planned.
 
-## Current Verified Database Status
+## Earlier local adapter baseline
 
 Latest local check on 2026-08-20:
 
@@ -91,11 +102,11 @@ Latest local check on 2026-08-20:
 - Neon isolation: isolated
 - remote schema: expected tables present, no missing or extra tables
 - runtime adapter: verified against Neon with synthetic data
-- hosted runtime activation: awaiting Vercel environment switch and authenticated smoke
+- hosted runtime activation at that checkpoint: not yet performed
 
-Current boundary: local adapters and isolated PostgreSQL recovery are proven, but no current Vercel
-Preview/Production revision, hosted database identity, OAuth callback or rollback has been accepted.
-The next hosted step is a protected Preview, not a Production environment switch.
+Current boundary: the Vercel Preview revision, isolated PostgreSQL identity, migrations, backup and
+bounded recovery are proven. Genuine hosted OAuth and the authenticated browser journey set remain
+owner-blocked. Production is neither tested nor authorised.
 
 ## Runtime Rules
 
@@ -121,5 +132,6 @@ Profile-specific ledgers and reports belong in the profile summary menu once ins
 
 ## Next implementation slice
 
-After explicit owner approval, create one protected Preview against an isolated database and execute
-the checklist above. Production remains out of scope until Preview evidence is accepted.
+Will verifies/adds the callback above and completes one Google sign-in. Engineering then executes
+the authenticated hosted journey checklist on the retained synthetic Preview. Production remains
+out of scope until Preview evidence is accepted and a separate promotion decision is made.

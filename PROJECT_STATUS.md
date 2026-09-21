@@ -1,12 +1,12 @@
 # Project Status — Plum Duff / OpenForge — Doc ID: PS-CODEX-001
 
-**Last updated:** 2026-09-21 10:44 BST · **Status:** 🟢 Local owner-accepted baseline frozen
+**Last updated:** 2026-09-21 13:02 BST · **Status:** 🟠 Protected Preview awaiting owner OAuth interaction
 
 ## Right now
 
-- **Working on:** CP-027 closes the local owner-acceptance cycle and freezes the verified normal-owner source/data/runtime baseline.
-- **Next:** seek separate approval for one protected hosted Preview using Preview-only PostgreSQL/Neon and OAuth configuration.
-- **Blocked on:** no local engineering blocker; VoiceOver spoken output remains the sole owner/manual journey boundary and hosted Preview remains unstarted
+- **Working on:** CP-028 has deployed an isolated, Vercel-protected Preview on revision `e6a4206`, role `preview`, schema `account-access-v1` and dedicated Preview PostgreSQL.
+- **Next:** Will adds/verifies the one Preview Google redirect URI, signs in once, then engineering completes the authenticated hosted browser journeys.
+- **Blocked on:** genuine hosted Google interaction; VoiceOver spoken output remains the separate local/manual evidence boundary
 
 ## Delivery state
 
@@ -15,8 +15,8 @@
 | Local integrated build | The CP-023–CP-026 calculator corrections are visually accepted; CP-027 focused engineering evidence passes |
 | Normal `localhost:3010` | Healthy as `normal-owner`; frontend and API use the frozen local source line, canonical SQLite data and `account-access-v1` schema |
 | Main / origin | Not updated by the local integration work |
-| Vercel | Not deployed or hosted-verified; protected Preview remains paused |
-| Owner smoke test | Calculator presentation and genuine Google return accepted; VoiceOver spoken output remains separate and unverified |
+| Vercel | Protected Preview is Ready at `plum-duff-cp028-preview-homelab11.vercel.app`; Production alias/data remain untouched |
+| Owner smoke test | Local calculator and Google acceptance remain PASS; hosted Google/Preview inspection awaits one owner interaction; VoiceOver remains separate |
 
 ## Progress at a glance
 
@@ -31,9 +31,9 @@ These figures measure **#114 audit coverage**, not the percentage of the product
 
 ## Next 3 steps
 
-1. Keep the frozen normal-owner baseline available as the comparison point for environment promotion.
-2. Obtain separate approval before creating one isolated protected Preview.
-3. Prove hosted revision/runtime/database/schema identity, OAuth and rollback without touching Production.
+1. Preserve the frozen normal-owner baseline unchanged as the environment comparison point.
+2. Complete the owner-controlled Google redirect/sign-in step on the protected Preview.
+3. Finish authenticated hosted journeys and accept or tear down the Preview before any separate Production decision.
 
 ## Checkpoint log
 
@@ -61,6 +61,7 @@ These figures measure **#114 audit coverage**, not the percentage of the product
 | CP-025 | 2026-09-19 07:57 BST | Repaired normal-owner OAuth environment selection, added fail-closed auth readiness and returned failures to the branded login shell | [#62](https://github.com/wolney8/OpenForge/issues/62), [#116](https://github.com/wolney8/OpenForge/issues/116) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-025-owner-blocking-local-google-sign-in--2026-09-19-0757-bst) |
 | CP-026 | 2026-09-19 12:41 BST | Enforced inline calculator help, one Multi-Lay outer grid and paired semantic Back/Lay surfaces across standalone and embedded consumers | [#35](https://github.com/wolney8/OpenForge/issues/35), [#92](https://github.com/wolney8/OpenForge/issues/92) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-026-calculator-visual-contract-enforcement--2026-09-19-1241-bst) |
 | CP-027 | 2026-09-21 10:44 BST | Recorded owner calculator and Google acceptance, promoted provider re-authentication to PASS and froze the verified local baseline | [#35](https://github.com/wolney8/OpenForge/issues/35), [#62](https://github.com/wolney8/OpenForge/issues/62), [#92](https://github.com/wolney8/OpenForge/issues/92), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-027-owner-acceptance-and-frozen-local-baseline--2026-09-21-1044-bst) |
+| CP-028 | 2026-09-21 13:02 BST | Created an isolated protected Preview, proved hosted runtime/database readiness and recovery, and stopped truthfully at the owner-controlled Google interaction | [#62](https://github.com/wolney8/OpenForge/issues/62), [#114](https://github.com/wolney8/OpenForge/issues/114), [#115](https://github.com/wolney8/OpenForge/issues/115) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-028-protected-hosted-preview-verification--2026-09-21-1302-bst) |
 
 ## Reference index
 
