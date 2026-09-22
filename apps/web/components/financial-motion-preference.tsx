@@ -17,6 +17,7 @@ type FinancialMotionPreferenceContextValue = {
   durationMs: number;
   enabled: boolean;
   ready: boolean;
+  reducedMotion: boolean;
   replayDelayMs: number;
   save: (update: FinancialMotionPreferenceUpdate) => Promise<boolean>;
   saving: boolean;
@@ -27,6 +28,7 @@ const FinancialMotionPreferenceContext = createContext<FinancialMotionPreference
   durationMs: 520,
   enabled: true,
   ready: true,
+  reducedMotion: false,
   replayDelayMs: 1500,
   save: async () => false,
   saving: false,
@@ -55,6 +57,7 @@ export function FinancialMotionPreferenceProvider({ children }: { children: Reac
     staggerMs: 80,
   });
   const [ready, setReady] = useState(false);
+  const [reducedMotion, setReducedMotion] = useState(false);
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
 
@@ -82,6 +85,14 @@ export function FinancialMotionPreferenceProvider({ children }: { children: Reac
         if (active) setReady(true);
       });
     return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const syncReducedMotion = () => setReducedMotion(mediaQuery.matches);
+    syncReducedMotion();
+    mediaQuery.addEventListener("change", syncReducedMotion);
+    return () => mediaQuery.removeEventListener("change", syncReducedMotion);
   }, []);
 
   const save = useCallback(async (update: FinancialMotionPreferenceUpdate) => {
@@ -123,8 +134,8 @@ export function FinancialMotionPreferenceProvider({ children }: { children: Reac
   }, [preference]);
 
   const value = useMemo(
-    () => ({ ...preference, ready, save, saving }),
-    [preference, ready, save, saving]
+    () => ({ ...preference, ready, reducedMotion, save, saving }),
+    [preference, ready, reducedMotion, save, saving]
   );
   return (
     <FinancialMotionPreferenceContext.Provider value={value}>

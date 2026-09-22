@@ -42,9 +42,9 @@ export function FinancialValue({
     : "neutral";
   const display = isValid ? formatFinancialValue(numericValue, { showPositiveSign }) : "Unavailable";
   const {
-    durationMs, enabled: preferenceEnabled, ready: preferenceReady, replayDelayMs, staggerMs,
+    durationMs, enabled: preferenceEnabled, ready: preferenceReady, reducedMotion,
+    replayDelayMs, staggerMs,
   } = useFinancialMotionPreference();
-  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
   const [motion, setMotion] = useState<MoneyMotionDirection>("none");
   const [motionCycle, setMotionCycle] = useState(0);
   const previousValueRef = useRef<number | null>(null);
@@ -52,7 +52,7 @@ export function FinancialValue({
   const animationFrameRef = useRef<number | null>(null);
   const motionCycleRef = useRef(0);
   const replayBlockedUntilRef = useRef(0);
-  const motionAllowed = animate && preferenceReady && preferenceEnabled && !prefersReducedMotion && numericValue !== 0;
+  const motionAllowed = animate && preferenceReady && preferenceEnabled && !reducedMotion && numericValue !== 0;
   const motionCharacters = useMemo(
     () => display.split("").map((character, index) => ({ character, key: `${index}-${character}` })),
     [display]
@@ -95,17 +95,9 @@ export function FinancialValue({
   }, [startMotion]);
 
   useEffect(() => {
-    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const syncReducedMotion = () => setPrefersReducedMotion(mediaQuery.matches);
-    syncReducedMotion();
-    mediaQuery.addEventListener("change", syncReducedMotion);
-    return () => mediaQuery.removeEventListener("change", syncReducedMotion);
-  }, []);
-
-  useEffect(() => {
     if (!motionAllowed || !isValid) {
       settleMotion();
-      previousValueRef.current = !preferenceReady || !preferenceEnabled || prefersReducedMotion
+      previousValueRef.current = !preferenceReady || !preferenceEnabled || reducedMotion
         ? null : isValid ? numericValue : null;
       return;
     }
@@ -118,7 +110,7 @@ export function FinancialValue({
       return;
     }
     startMotion(direction);
-  }, [isValid, motionAllowed, numericValue, preferenceEnabled, preferenceReady, prefersReducedMotion, settleMotion, startMotion]);
+  }, [isValid, motionAllowed, numericValue, preferenceEnabled, preferenceReady, reducedMotion, settleMotion, startMotion]);
 
   const grouped = useMotionReplayRegistration(startMotion, motionCycle);
   useEffect(() => () => settleMotion(), [settleMotion]);

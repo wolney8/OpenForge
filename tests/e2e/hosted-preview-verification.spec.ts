@@ -1,5 +1,35 @@
 import { expect, test } from "@playwright/test";
 
+test("authenticated Preview Reports settles without a React update loop", async ({ page }) => {
+  test.skip(process.env.OPENFORGE_HOSTED_PREVIEW_GATE !== "true", "Explicit hosted gate only");
+  const diagnostics: string[] = [];
+  const responses: Array<{ path: string; status: number }> = [];
+  page.on("console", (message) => {
+    if (["error", "warning"].includes(message.type())) diagnostics.push(`${message.type()}: ${message.text()}`);
+  });
+  page.on("pageerror", (error) => diagnostics.push(`pageerror: ${error.message}\n${error.stack ?? ""}`));
+  page.on("response", (response) => {
+    const url = new URL(response.url());
+    if (url.pathname.includes("/profiles/profile-demo-001/")) {
+      responses.push({ path: url.pathname, status: response.status() });
+    }
+  });
+
+  const response = await page.goto("/profiles/profile-demo-001/tracker/reports", {
+    waitUntil: "domcontentloaded", timeout: 90_000,
+  });
+  expect(response?.status()).toBeLessThan(400);
+  await expect(page.getByRole("heading", { name: "Reports", exact: true })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText("Loading tracker summaries", { exact: true })).toBeHidden({
+    timeout: 150_000,
+  });
+  await page.waitForTimeout(2_000);
+  console.log(`CP030_REPORTS_DIAGNOSTICS=${JSON.stringify(diagnostics)}`);
+  console.log(`CP030_REPORTS_RESPONSES=${JSON.stringify(responses)}`);
+
+  expect(diagnostics.filter((entry) => /maximum update depth|react error #185/i.test(entry))).toEqual([]);
+});
+
 test("authenticated Preview renders core hosted surfaces and accepted visual invariants", async ({ page }) => {
   test.skip(process.env.OPENFORGE_HOSTED_PREVIEW_GATE !== "true", "Explicit hosted gate only");
   const baseURL = process.env.OPENFORGE_E2E_BASE_URL!;
@@ -115,8 +145,8 @@ test("authenticated Preview renders core hosted surfaces and accepted visual inv
   const unexpected = diagnostics.filter((entry) =>
     /duplicate key|hydration|uncaught|unhandled|secret|token|react error/i.test(entry),
   );
-  expect(unexpected).toEqual([]);
   console.log(`CP029_HOSTED_TIMINGS=${JSON.stringify(timings)}`);
   console.log(`CP029_HOSTED_RECOVERIES=${JSON.stringify(recoveries)}`);
   console.log(`CP029_HOSTED_DIAGNOSTICS=${JSON.stringify(diagnostics)}`);
+  expect(unexpected).toEqual([]);
 });

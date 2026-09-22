@@ -11,7 +11,7 @@ test.beforeEach(async ({ page, baseURL }) => {
   }]);
 });
 
-async function mockDashboard(page: Page, motionEnabled = true) {
+async function mockDashboard(page: Page, motionEnabled = true, reportRowCount = 3) {
   await page.addInitScript(() => window.localStorage.setItem("openforge-theme", "dark"));
   await page.route("**/auth/session**", (route) => route.fulfill({ json: {
     authenticated: true, auth_provider: "local", email: "motion@example.invalid",
@@ -23,6 +23,14 @@ async function mockDashboard(page: Page, motionEnabled = true) {
     duration_ms: 520, enabled: motionEnabled, replay_delay_ms: 1500, stagger_ms: 80,
   }}));
   await page.route("**/fund-manager/import-executions", (route) => route.fulfill({ json: [] }));
+  await page.route("**/account-catalogue/source", (route) => route.fulfill({ json: {
+    catalogue_name: "Synthetic catalogue", default_operating_context: {
+      channels: ["web"], jurisdiction: "GB", subdivision: "",
+    }, records: [], schema_version: "1.0", updated_at: "2026-09-22",
+  }}));
+  await page.route(`**/profiles/${profileId}/bookmaker-display-settings`, (route) => route.fulfill({ json: {
+    global_mode: "Name", profile_override: "Inherit", resolved_mode: "Name",
+  }}));
   await page.route("**/fund-manager/notifications**", (route) => {
     const pathname = new URL(route.request().url()).pathname;
     return route.fulfill({ json: pathname.endsWith("/state")
@@ -61,7 +69,16 @@ async function mockDashboard(page: Page, motionEnabled = true) {
       is_overdue: false, lay_status: "Fully Laid", match_strategy: "Standard",
       offer_name: "Synthetic later offer", offer_type: "Qualifying Bet", projected_current_pnl: "0.00",
       reporting_value: "0.00", result: "Pending", sportsbook_bet_id: "MOTION-SB-003", status: "Placed",
-    }], cash_adjustments: [], tracker_settings: {
+    }, ...Array.from({ length: Math.max(0, reportRowCount - 3) }, (_, index) => ({
+      bookmaker: `Bookmaker ${index + 4}`, calculated_liability_1: "10.00", counts_as_open: false,
+      created_at: `2026-09-${String((index % 20) + 1).padStart(2, "0")}T08:00:00Z`,
+      date_settled: `2026-09-${String((index % 20) + 1).padStart(2, "0")}T09:00:00Z`,
+      event_name: `Synthetic report event ${index + 4}`, exchange_name: "Exchange A",
+      final_net_pnl: "1.00", is_overdue: false, lay_status: "Fully Laid", match_strategy: "Standard",
+      offer_name: `Synthetic report offer ${index + 4}`, offer_type: "Qualifying Bet",
+      projected_current_pnl: "1.00", reporting_value: "1.00", result: "Win",
+      sportsbook_bet_id: `MOTION-SB-${String(index + 4).padStart(3, "0")}`, status: "Settled",
+    }))], cash_adjustments: [], tracker_settings: {
       annual_profit_target: "200.00",
       active_date_preset: "This Year", custom_end_date: "", custom_start_date: "",
       range_back_days: 0, range_forward_days: 0,
@@ -69,7 +86,38 @@ async function mockDashboard(page: Page, motionEnabled = true) {
   }}));
 }
 
+test("Reports settles a mature populated dataset without an update-depth loop", async ({ page }) => {
+  const pageErrors: string[] = [];
+  page.on("pageerror", (error) => pageErrors.push(`${error.message}\n${error.stack ?? ""}`));
+  await mockDashboard(page, true, 600);
+
+  await page.goto(`/profiles/${profileId}/tracker/dashboard`);
+  await expect(page.getByText("Loading tracker summaries")).toBeHidden({ timeout: 60_000 });
+  const chartPoints = page.locator('[data-pd-id="dashboard.performance-graph"] button');
+  if (await chartPoints.count()) {
+    await chartPoints.first().focus();
+    await chartPoints.first().press("Enter");
+    await expect(page.locator('[data-pd-id="dashboard.chart.drilldown"]')).toBeVisible();
+  }
+  await page.goto("/fund-manager/calculators?family=standard");
+  await expect(page.getByRole("heading", { name: "Calculators", exact: true })).toBeVisible();
+  await page.getByLabel("Back stake", { exact: false }).first().fill("10");
+  await page.getByLabel("Back odds", { exact: false }).first().fill("5");
+  await page.getByLabel("Lay odds", { exact: false }).first().fill("5.2");
+  await page.goto("/fund-manager/calculators?family=multi-lay");
+  await expect(page.getByRole("heading", { name: "Calculators", exact: true })).toBeVisible();
+  await page.goto(`/profiles/${profileId}/tracker/reports`);
+  await expect(page.getByText("Loading tracker summaries")).toBeHidden({ timeout: 60_000 });
+  await expect(page.getByRole("heading", { name: "Reports", exact: true })).toBeVisible();
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.waitForTimeout(2_000);
+
+  expect(pageErrors.filter((message) => /maximum update depth|react error #185/i.test(message))).toEqual([]);
+});
+
 test("dashboard containers coordinate financial, bar, and ring replay without layout drift", async ({ page }) => {
+  const pageErrors: string[] = [];
+  page.on("pageerror", (error) => pageErrors.push(`${error.message}\n${error.stack ?? ""}`));
   await mockDashboard(page);
   await page.goto(`/profiles/${profileId}/tracker/dashboard`);
   await expect(page.getByText("Loading tracker summaries")).toBeHidden({ timeout: 60_000 });
@@ -215,6 +263,7 @@ test("dashboard containers coordinate financial, bar, and ring replay without la
     );
     return next.some((cycle, index) => cycle > hoveredReportCycles[index]);
   }).toBe(true);
+  expect(pageErrors).toEqual([]);
 });
 
 test("financial motion preference off keeps chart progress at its exact final state", async ({ page }) => {

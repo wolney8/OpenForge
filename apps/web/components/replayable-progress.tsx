@@ -13,13 +13,12 @@ function clampPercent(value: number) {
 }
 
 function useReplayableProgress(valueKey: number | string) {
-  const { durationMs, enabled, ready, staggerMs } = useFinancialMotionPreference();
-  const [reduced, setReduced] = useState(false);
+  const { durationMs, enabled, ready, reducedMotion, staggerMs } = useFinancialMotionPreference();
   const [cycle, setCycle] = useState(0);
   const [replaying, setReplaying] = useState(false);
   const frameRef = useRef<number | null>(null);
   const timeoutRef = useRef<number | null>(null);
-  const allowed = ready && enabled && !reduced;
+  const allowed = ready && enabled && !reducedMotion;
   const chartDurationMs = durationMs + 500;
 
   const settle = useCallback(() => {
@@ -42,13 +41,6 @@ function useReplayableProgress(valueKey: number | string) {
     timeoutRef.current = window.setTimeout(settle, chartDurationMs + staggerMs * 5 + 400);
   }, [allowed, chartDurationMs, settle, staggerMs]);
 
-  useEffect(() => {
-    const query = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const sync = () => setReduced(query.matches);
-    sync();
-    query.addEventListener("change", sync);
-    return () => query.removeEventListener("change", sync);
-  }, []);
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
       if (allowed) replay();
