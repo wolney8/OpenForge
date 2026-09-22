@@ -30,6 +30,117 @@ test("authenticated Preview Reports settles without a React update loop", async 
   expect(diagnostics.filter((entry) => /maximum update depth|react error #185/i.test(entry))).toEqual([]);
 });
 
+test("authenticated Preview preserves a £6 to £5 Cash Adjustment correction once", async ({ page }) => {
+  test.skip(process.env.OPENFORGE_HOSTED_PREVIEW_GATE !== "true", "Explicit hosted gate only");
+  test.setTimeout(600_000);
+  const suffix = `${Date.now()}`;
+  const createdProfileResponse = await page.request.post("/api/profiles/onboarding", { data: {
+    accounts: [],
+    display_name: `Synthetic CP030 Reports ${suffix}`,
+    enabled_modules: ["sportsbook-bets", "free-bets", "cash-adjustments"],
+    profile_code: `CP30-${suffix}`,
+    quick_actions: [],
+    setup_path: "import",
+    tracking_start_date: "2026-09-22",
+  }});
+  expect(createdProfileResponse.status()).toBe(201);
+  const createdProfile = await createdProfileResponse.json() as { profile: { profile_id: string } };
+  const profileId = createdProfile.profile.profile_id;
+  expect((await page.request.patch(`/api/profiles/${profileId}`, {
+    data: { status: "Active" },
+  })).ok()).toBeTruthy();
+
+  const description = `Synthetic CP030 original £6 ${suffix}`;
+  const correctedDescription = `Synthetic CP030 corrected to £5 ${suffix}`;
+  const createPayload = {
+    adjustment_date: "2026-09-22T12:00",
+    direction: "In",
+    amount: "6.00",
+    adjustment_type: "TopUp",
+    affects_investment: true,
+    affects_cash_snapshot: true,
+    linked_account: "",
+    description,
+  };
+  const createdAdjustmentResponse = await page.request.post(
+    `/api/profiles/${profileId}/cash-adjustments`,
+    {
+      data: createPayload,
+      headers: { "Idempotency-Key": `cp030-create-${suffix}` },
+    },
+  );
+  expect(createdAdjustmentResponse.status()).toBe(201);
+  const created = await createdAdjustmentResponse.json() as {
+    cash_adjustment_id: string; signed_amount: string;
+  };
+  expect(created.signed_amount).toBe("6.00");
+  const adjustmentId = created.cash_adjustment_id;
+
+  await page.goto(`/profiles/${profileId}/tracker/cash-adjustments`);
+  await expect(page.getByText("Loading cash-adjustment ledger")).toBeHidden({ timeout: 90_000 });
+  await page.getByLabel("Search cash-adjustment rows").fill(adjustmentId);
+  await page.getByRole("row", { name: new RegExp(adjustmentId) }).dblclick();
+  const editDialog = page.getByRole("dialog", { name: "Edit cash adjustment" });
+  await expect(editDialog.getByLabel("Amount", { exact: true })).toHaveValue("6.00");
+  await editDialog.getByRole("button", { name: "Close cash-adjustment editor" }).click();
+  await expect(editDialog).toHaveCount(0);
+
+  const correctionKey = `cp030-correct-${suffix}`;
+  const correctionPayload = { ...createPayload, amount: "5.00", description: correctedDescription };
+  const correction = await page.request.put(
+    `/api/profiles/${profileId}/cash-adjustments/${adjustmentId}`,
+    { data: correctionPayload, headers: { "Idempotency-Key": correctionKey } },
+  );
+  expect(correction.status()).toBe(200);
+
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await expect(page.getByText("Loading cash-adjustment ledger")).toBeHidden({ timeout: 90_000 });
+  await page.getByLabel("Search cash-adjustment rows").fill(adjustmentId);
+  await page.getByRole("row", { name: new RegExp(adjustmentId) }).dblclick();
+  const reopenedDialog = page.getByRole("dialog", { name: "Edit cash adjustment" });
+  const history = reopenedDialog.locator('[data-pd-id="cash_adjustment.editor.history"]');
+  await history.locator("summary").click();
+  await expect(history.getByText("Created", { exact: true })).toBeVisible({ timeout: 90_000 });
+  await expect(history.getByText("Corrected", { exact: true })).toBeVisible({ timeout: 90_000 });
+  await expect(history.getByText("£ 6.00", { exact: true }).first()).toBeVisible({ timeout: 90_000 });
+  await expect(history.getByText("£ 5.00", { exact: true }).first()).toBeVisible({ timeout: 90_000 });
+
+  const retry = await page.request.put(
+    `/api/profiles/${profileId}/cash-adjustments/${adjustmentId}`,
+    { data: correctionPayload, headers: { "Idempotency-Key": correctionKey } },
+  );
+  expect(retry.status()).toBe(200);
+  await page.keyboard.press("Escape");
+  await page.goto(`/profiles/${profileId}/tracker/reports`);
+  await expect(page.getByText("Loading tracker summaries", { exact: true })).toBeHidden({ timeout: 150_000 });
+  const range = page.getByLabel("Change tracker date range");
+  if (await range.isVisible()) await range.selectOption({ label: "All Dates" });
+  const cashCard = page.locator("article.stat-card", { hasText: "Cash Adjustments" }).first();
+  await expect(cashCard.getByText("£ 5.00", { exact: true })).toBeVisible({ timeout: 90_000 });
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await expect(page.getByText("Loading tracker summaries", { exact: true })).toBeHidden({ timeout: 150_000 });
+  await expect(page.locator("article.stat-card", { hasText: "Cash Adjustments" }).first()
+    .getByText("£ 5.00", { exact: true })).toBeVisible();
+  await page.screenshot({ path: "/tmp/cp030-preview-cash-report.png", fullPage: true });
+
+  const [persistedRowsResponse, historyResponse] = await Promise.all([
+    page.request.get(`/api/profiles/${profileId}/cash-adjustments`),
+    page.request.get(`/api/profiles/${profileId}/financial-history/cash_adjustment/${adjustmentId}`),
+  ]);
+  expect([persistedRowsResponse.status(), historyResponse.status()]).toEqual([200, 200]);
+  const persistedRows = await persistedRowsResponse.json() as Array<{
+    cash_adjustment_id: string; signed_amount: string;
+  }>;
+  const persistedHistory = await historyResponse.json() as Array<{ operation: string }>;
+  expect(persistedRows.filter((row) => row.cash_adjustment_id === adjustmentId)).toEqual([
+    expect.objectContaining({ signed_amount: "5.00" }),
+  ]);
+  expect(persistedHistory.map((event) => event.operation)).toEqual(["created", "corrected"]);
+  expect((await page.request.patch(`/api/profiles/${profileId}`, {
+    data: { status: "Archived" },
+  })).ok()).toBeTruthy();
+});
+
 test("authenticated Preview renders core hosted surfaces and accepted visual invariants", async ({ page }) => {
   test.skip(process.env.OPENFORGE_HOSTED_PREVIEW_GATE !== "true", "Explicit hosted gate only");
   const baseURL = process.env.OPENFORGE_E2E_BASE_URL!;
