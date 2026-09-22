@@ -87,6 +87,7 @@ Done means:
 - relevant edge cases are covered
 - profile isolation is covered when applicable
 - anything not tested is explicitly stated
+- Final replies report actual changes, executed evidence, remaining work and the resume point; never substitute the incoming task instructions for results.
 
 ## Mandatory bar for financial work
 

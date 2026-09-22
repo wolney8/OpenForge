@@ -1,12 +1,12 @@
 # Project Status — Plum Duff / OpenForge — Doc ID: PS-CODEX-001
 
-**Last updated:** 2026-09-21 15:24 BST · **Status:** 🟠 Protected Preview authenticated; Reports render defect blocks verification
+**Last updated:** 2026-09-22 11:57 BST · **Status:** 🟠 Reports repaired on protected Preview; remaining CP-029 verification queued
 
 ## Right now
 
-- **Working on:** CP-029 recorded genuine hosted Google PASS and repaired authenticated server rendering on Preview revision `d35eed7`; the Reports route still emits React error 185 (maximum update depth).
-- **Next:** remove the Reports render loop, repeat the serial authenticated hosted journey gate, then invite the short owner Preview smoke.
-- **Blocked on:** one hosted Reports client-render defect; VoiceOver spoken output remains the separate local/manual evidence boundary
+- **Working on:** CP-030 repaired Reports React error 185 and proved one hosted £6→£5 Cash Adjustment correction on Preview revision `b9e58e7`.
+- **Next:** resume the remaining CP-029 authenticated hosted journey, recovery, authorisation, performance and diagnostic checks.
+- **Blocked on:** no blocker for engineering continuation; VoiceOver spoken output remains the separate local/manual evidence boundary.
 
 ## Delivery state
 
@@ -15,8 +15,8 @@
 | Local integrated build | The CP-023–CP-026 calculator corrections are visually accepted; CP-027 focused engineering evidence passes |
 | Normal `localhost:3010` | Healthy as `normal-owner`; frontend and API use the frozen local source line, canonical SQLite data and `account-access-v1` schema |
 | Main / origin | Not updated by the local integration work |
-| Vercel | Protected Preview is Ready at `plum-duff-cp028-preview-homelab11.vercel.app` on app revision `d35eed7`; Production alias/data remain untouched |
-| Owner smoke test | Hosted Google PASS is recorded; the broader Preview smoke waits for the Reports render defect; VoiceOver remains separate |
+| Vercel | Protected Preview is Ready at `plum-duff-cp028-preview-homelab11.vercel.app` on revision `b9e58e7`; Production alias/data remain untouched |
+| Owner smoke test | Hosted Google PASS is recorded; broader Preview engineering verification remains in progress; VoiceOver remains separate |
 
 ## Progress at a glance
 
@@ -63,6 +63,8 @@ These figures measure **#114 audit coverage**, not the percentage of the product
 | CP-027 | 2026-09-21 10:44 BST | Recorded owner calculator and Google acceptance, promoted provider re-authentication to PASS and froze the verified local baseline | [#35](https://github.com/wolney8/OpenForge/issues/35), [#62](https://github.com/wolney8/OpenForge/issues/62), [#92](https://github.com/wolney8/OpenForge/issues/92), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-027-owner-acceptance-and-frozen-local-baseline--2026-09-21-1044-bst) |
 | CP-028 | 2026-09-21 13:02 BST | Created an isolated protected Preview, proved hosted runtime/database readiness and recovery, and stopped truthfully at the owner-controlled Google interaction | [#62](https://github.com/wolney8/OpenForge/issues/62), [#114](https://github.com/wolney8/OpenForge/issues/114), [#115](https://github.com/wolney8/OpenForge/issues/115) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-028-protected-hosted-preview-verification--2026-09-21-1302-bst) |
 | CP-029 | 2026-09-21 15:24 BST | Recorded hosted Google PASS, repaired protected authenticated SSR context and stopped the Preview gate on a real Reports render loop | [#62](https://github.com/wolney8/OpenForge/issues/62), [#114](https://github.com/wolney8/OpenForge/issues/114), [#115](https://github.com/wolney8/OpenForge/issues/115) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-029-authenticated-protected-preview-verification--2026-09-21-1524-bst) |
+| CP-029-R | 2026-09-22 08:02 BST | Recovered retained execution evidence: deployed source and screenshots exist, the hosted Playwright gate failed, and financial/recovery claims were inherited from CP-028 rather than rerun | [#62](https://github.com/wolney8/OpenForge/issues/62), [#114](https://github.com/wolney8/OpenForge/issues/114), [#115](https://github.com/wolney8/OpenForge/issues/115) | [Recovery evidence](docs/audits/platform-quality-audit.md#cp-029-evidence-recovery-correction--2026-09-22-0802-bst) |
+| CP-030 | 2026-09-22 11:57 BST | Repaired the Reports reduced-motion update loop and proved a hosted £6→£5 Cash Adjustment through History, Reports, reload and idempotent retry | [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#cp-030-reports-repair-and-hosted-cash-correction-proof--2026-09-22-1157-bst) |
 
 ## Reference index
 

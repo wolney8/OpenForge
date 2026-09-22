@@ -1,5 +1,13 @@
 # Plum Duff UI Change Register
 
+## CP-030 hosted Reports render correction
+
+| ID | Surface | Requested outcome | Signed-off equivalent | Status |
+|---|---|---|---|---|
+| PD-FIX-266 | Reports interaction lifecycle | Remove the React update-depth loop while preserving Profile/date filters, chart inspection, drilldown, financial totals and the accepted Reports presentation | Locally accepted #111 Reports interaction and financial-value contracts | COMPLETE — local 600-row regression passes; protected Preview direct Reports and £6→£5 History/Reports proof pass on `b9e58e7` |
+
+Issue coverage: GitHub #114 existing hosted-verification scope; no duplicate issue created.
+
 ## CP-026 calculator visual-contract enforcement
 
 | ID | Surface | Requested outcome | Signed-off equivalent | Status |

@@ -1492,6 +1492,15 @@ offers and optional community feed inputs.
 GitHub #35 owns the calculator correction and #92 owns the shared visual invariant. CP-027 records
 owner acceptance for both and separately promotes #62 after the genuine Google-owned interaction.
 
+## CP-030 hosted Reports render correction
+
+| ID | Surface | Requirement | State |
+|---|---|---|---|
+| PD-FIX-266 | Reports interaction lifecycle | Reports must settle without a React update-depth loop while retaining Profile/date filters, chart inspection, drilldown and governed financial totals | COMPLETE — repaired and verified on protected Preview revision `b9e58e7`; remaining CP-029 scope stays open |
+
+GitHub #114 already owns the unfinished authenticated Preview verification; this bounded repair does
+not cancel the remaining CP-029 queue.
+
 ## CP-028 protected Preview evidence — 2026-09-21 13:02 BST
 
 - **#114:** one Vercel-protected Preview is live on revision `e6a4206`, role `preview`, isolated

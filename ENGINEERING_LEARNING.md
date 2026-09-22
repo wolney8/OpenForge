@@ -485,6 +485,7 @@ authenticated hosted journey set without widening scope.
 | CP-027 | 2026-09-21 10:44 BST | Baseline; environment promotion | Owner acceptance and focused engineering evidence now identify one stable local source/data/runtime reference before any hosted work |
 | CP-028 | 2026-09-21 13:02 BST | Environment parity; promotion gate | A protected Preview now matches accepted contracts without sharing owner/Production data, and stops before Production or unobserved provider claims |
 | CP-029 | 2026-09-21 15:24 BST | Environment parity; authorization boundary | Hosted auth passed, but authenticated SSR and client rendering still needed their own evidence before Preview promotion |
+| CP-030 | 2026-09-22 11:57 BST | Shared external-state subscription; explicit hosted self-routing | One reduced-motion subscription prevents update fan-out, while an explicit protected internal API URL keeps server rendering on the intended Preview boundary |
 
 ## Where detailed evidence lives
 

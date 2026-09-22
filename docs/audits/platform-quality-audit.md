@@ -1,5 +1,51 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
+## CP-030 Reports repair and hosted cash-correction proof — 2026-09-22 11:57 BST
+
+The deployed failure was reproduced on the exact hosted sequence and traced to
+`FinancialValue`: every rendered value installed its own reduced-motion media-query listener. A
+preference transition on populated Reports synchronously notified hundreds of listeners and caused
+React error 185. `FinancialMotionPreferenceProvider` now owns one listener and shares the result;
+`FinancialValue` and `ReplayableProgress` consume it without changing financial calculations,
+filters, chart inspection, drilldown or visual semantics.
+
+The deterministic 600-row local regression passes 4/4. TypeScript, mypy (0/82) and the production
+web build pass; the existing Turbopack dynamic-filesystem warning remains unchanged. Protected
+Preview deployment `dpl_CkBF3rMPxACgeawU77WbLSZY49hb` serves revision
+`b9e58e77c8fff3bd647138c8b1d8cc38f22812be`, role `preview`, database
+`preview:plum_duff_preview_cp028` and schema `account-access-v1`. The stable protected alias and
+explicit `OPENFORGE_INTERNAL_API_BASE_URL` preserve authenticated server rendering; Production and
+the accepted localhost baseline were untouched.
+
+Hosted focused evidence passes 2/2 in 4.2 minutes. Direct Reports settled with no React/page error
+and all observed report requests returned 200. A synthetic TopUp was persisted at £6, reopened,
+corrected to £5, shown as Created then Corrected in History, and shown as one £5 Cash Adjustment in
+Reports after reload. Replaying the same correction idempotency key returned the same result;
+independent row/history reads proved one activity at £5 and exactly `created`, `corrected` events.
+Seven failed-run synthetic Profiles were retained safely as archived; none remains active. The
+remaining CP-029 hosted journeys, recovery, authorisation, performance and log review remain queued.
+
+## CP-029 evidence-recovery correction — 2026-09-22 08:02 BST
+
+Retained evidence confirms branch `repair/import-history-012`, HEAD `5d190cb`, deployed application
+revision `d35eed7` and active Preview deployment `dpl_Gs9Rf6P5fPJSxWyD6j2MFNtSXcif`. The only
+working-tree change is generated `apps/web/tsconfig.typecheck.tsbuildinfo`; it is preserved and was
+not committed. No CP-029 test process remains running.
+
+The owner Google PASS is an owner assertion supplied in the CP-029 request, not a capture from the
+engineering browser. The engineering browser used a synthetic hosted session cookie. Its retained
+Playwright result is **failed**, not passed; it reached Profiles, Dashboard, Accounts, Standard,
+Multi-Lay and Reports before the end-of-run diagnostic assertion exposed React error 185. Three
+rendered screenshots and the failed-result JSON remain. The full 22 hosted mutation journeys did not
+run to completion. CP-029 did not freshly rerun financial mutation/reconciliation or database-outage
+recovery; those statements reuse CP-028 evidence on the unchanged Preview database/schema.
+
+The retained latest log sample contains 100 requests with 88×200, 2×204, 6×304, 2×401 and 2×404,
+and no 5xx/error-level record. Exact direct-API response bodies and the performance command output
+were not retained; timings survive only in the contemporaneous CP-029 audit entry and therefore are
+not independently reproducible from raw artifacts. Resume at focused Reports error reproduction and
+stack capture on `d35eed7`, before any further broad hosted journey run.
+
 ## Current CP-029 authenticated protected Preview verification — 2026-09-21 15:24 BST
 
 Will completed the genuine Google-owned interaction on the protected Preview and returned to Plum
