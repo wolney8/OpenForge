@@ -1,5 +1,52 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
+## CP-031 authenticated protected Preview completion — 2026-09-22 14:22 BST
+
+The final protected Preview is deployment `dpl_HfBLDGQvCDjf3RV2cCXshuG4rb7V`, source
+`659d0eafaac8a354ee7a901566c23de17dd7c568`, role `preview`, database
+`preview:plum_duff_preview_cp028` and schema `account-access-v1`. Production, its aliases/data and
+the frozen localhost baseline were untouched. The verified pre-disruption Preview backup has SHA-256
+`5b055f684303fb6be06900d20ae973406b75cc1a3a887544e42cdc74c4be4561` and 345 restore-list entries.
+
+CP-030's Reports and £6→£5 correction evidence remains valid. A final-source regression additionally
+changed reduced-motion preference, navigated away/back and rendered populated Reports with no React
+185, listener/request storm or browser diagnostic. Independent hosted groups proved supported
+Standard/SNR, Profit Boost, Cashback and Multi-Lay planning; settlement/history/reporting; Guided
+Onboarding, Profile lifecycle, #109 Account eligibility, awards, imported lineage and portable
+restore; and Global Search, Casino Quick Action, chart inspection/drilldown and return context.
+The complete functional browser set passed 8/8 in 10.3 minutes on the preceding `96bad5e` repair;
+the final `659d0ea` change affects only eligibility scope, and its Group C/access plus unchanged
+Reports checks passed 3/3 after deployment.
+
+| Original CP-029 hosted journey | State | Evidence boundary |
+|---|---|---|
+| 1–5 Onboarding, Profile lifecycle, Account/#109, Standard | PASS | Browser/API persistence and reload |
+| 6 Multi-Lay | PARTIAL | Supported plan/save/reopen passes; richer reward and actual-placement configurations remain unimplemented |
+| 7–12 Plan, placement, settlement, correction, History, Reports | PASS | Supported ledgers; CP-030 proves correction exactly once |
+| 13–16 Profit Boost, Cashback, awards, imported lineage | PASS | Retry, Profile scope and restore/remap checked |
+| 17–22 Search, Quick Action, chart, drilldown, export, restore | PASS | Real UI plus independent persisted-state reads |
+
+Two load-amplification defects were repaired. Free Bet list assembly performed lineage/audit reads
+per child; batched Profile-scoped evidence reduced the 250-child tracker summary from 70.78s to
+5.81s. Multi-Profile eligibility read all 83 Profiles and their Accounts/exchanges; it now uses the
+three active Profiles, returning 200 in 11.88s/1,427 bytes instead of timing out at 90 seconds.
+Focused API evidence passes 39/39 across both repairs; mypy remains 0/82 and TypeScript passes.
+The known 600-row Sportsbook response remains 4.03s/~1.30MB: usable, but retained pagination/capacity
+debt rather than a verified unlimited-scale claim.
+
+Responsive browser evidence passed at desktop, half/narrow widths, 200% text, both themes and reduced
+motion with no overflow or accepted calculator-contract regression. Fresh session/logout evidence is
+200/204/401; unauthenticated access is 401, owned multi-Profile navigation succeeds, mismatched
+record identity is 404/empty scoped history, and malformed money is rejected without a write.
+CP-028's unchanged-schema database-unavailable/readiness/restore proof is reused; CP-031 also proved
+a fresh runtime deployment without reseeding. The final 500-log sample is all info (480×200,
+20×304), with no 5xx, React/hydration/duplicate-key warning or sensitive-label signal.
+
+**Verdict:** PROTECTED PREVIEW VERIFIED WITHIN THE LISTED SCOPE. This is not Production readiness.
+Owner Google PASS remains separately sourced owner evidence; VoiceOver spoken output, richer
+Multi-Lay behaviour, the 600-row capacity item, Preview teardown and any Production promotion remain
+outside this verification claim.
+
 ## CP-030 Reports repair and hosted cash-correction proof — 2026-09-22 11:57 BST
 
 The deployed failure was reproduced on the exact hosted sequence and traced to

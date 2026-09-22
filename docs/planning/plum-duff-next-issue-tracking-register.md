@@ -1501,6 +1501,17 @@ owner acceptance for both and separately promotes #62 after the genuine Google-o
 GitHub #114 already owns the unfinished authenticated Preview verification; this bounded repair does
 not cancel the remaining CP-029 queue.
 
+## CP-031 hosted verification completion
+
+| ID | Surface | Requirement | State |
+|---|---|---|---|
+| PD-FIX-267 | Imported Free Bet summaries | Populated Profile summaries must batch lineage/audit evidence rather than open per-child database reads | COMPLETE — focused API and protected Preview performance evidence pass on `96bad5e` |
+| PD-FIX-268 | Multi-Profile Account eligibility | Active-owner eligibility must not scan archived synthetic Profiles and Accounts | COMPLETE — API regression and protected Preview browser/access evidence pass on `659d0ea` |
+
+GitHub #114 owns the completed supported Preview journey gate; #115 owns the hosted
+security/recovery evidence. The richer Multi-Lay and 600-row pagination/capacity boundaries remain
+visible future work rather than being silently folded into these repairs.
+
 ## CP-028 protected Preview evidence — 2026-09-21 13:02 BST
 
 - **#114:** one Vercel-protected Preview is live on revision `e6a4206`, role `preview`, isolated

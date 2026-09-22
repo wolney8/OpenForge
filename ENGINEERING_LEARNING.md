@@ -1,16 +1,28 @@
 # Engineering Learning — Plum Duff / OpenForge — Doc ID: EL-CODEX-001
 
-**Last updated:** 2026-09-21 15:24 BST
+**Last updated:** 2026-09-22 14:22 BST
 
 This is a compact notebook of transferable lessons from building Plum Duff. It is not the audit,
 roadmap, backlog or evidence record.
 
 ## Current learning focus
 
-- Environment parity includes server-to-server request context, not just matching source and schema.
-- Authorization boundaries must remain intact across browser, server rendering and database access.
+- Batch relationship evidence at the owning scope before formatting many rows.
+- Default owner decisions should query active records, not scan archived history and hide it later.
 
 ## Concepts worth remembering
+
+### Scoped batch read
+
+**What it means:** Read shared relationship evidence once for the governing Profile or request, then
+resolve individual rows from that bounded set.
+
+**Why it mattered in Plum Duff:** Hosted Free Bet summaries opened repeated lineage/audit reads for
+250 children, while Account eligibility repeated work for 80 archived Profiles. Batching lineage and
+selecting active Profiles removed the amplification without caching or changing business meaning.
+
+**Remember:** If a list is fast when empty but slow when populated, count its downstream reads—not
+just its top-level query.
 
 ### Authorization boundary
 
@@ -486,6 +498,7 @@ authenticated hosted journey set without widening scope.
 | CP-028 | 2026-09-21 13:02 BST | Environment parity; promotion gate | A protected Preview now matches accepted contracts without sharing owner/Production data, and stops before Production or unobserved provider claims |
 | CP-029 | 2026-09-21 15:24 BST | Environment parity; authorization boundary | Hosted auth passed, but authenticated SSR and client rendering still needed their own evidence before Preview promotion |
 | CP-030 | 2026-09-22 11:57 BST | Shared external-state subscription; explicit hosted self-routing | One reduced-motion subscription prevents update fan-out, while an explicit protected internal API URL keeps server rendering on the intended Preview boundary |
+| CP-031 | 2026-09-22 14:22 BST | Scoped batch reads | Profile-scoped batching and active-only eligibility removed hosted load amplification without hiding it behind caching |
 
 ## Where detailed evidence lives
 

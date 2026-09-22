@@ -1,6 +1,6 @@
 # Vercel and Neon Local-First Readiness
 
-**Last updated:** 2026-09-21 15:24 BST
+**Last updated:** 2026-09-22 14:22 BST
 
 This note records the Vercel-to-Neon activation boundary.
 
@@ -49,13 +49,13 @@ This checklist was authorised for one CP-028 protected Preview. Current state:
 - [ ] #96 credential rotation remains a separate owner/provider operation and was not performed by CP-028.
 - [x] Preview test data is synthetic, unmistakable and removable through governed teardown.
 - [x] Runtime safety rejects Production/normal-owner identities and no Production or owner data was used.
-- [ ] Authenticated core routes render after the CP-029 protected-SSR repair, but the Reports route
-  emits React maximum-update-depth error 185 and blocks the complete browser gate.
+- [x] Authenticated supported journeys render and persist without the repaired Reports update loop;
+  CP-031 completes the browser, authorization, responsive and diagnostic engineering gate.
 - [ ] Teardown removes Preview resources without touching Production or normal-local data.
 
-Codex configured the isolated runtime, migrations, identity/recovery and protected SSR within the
-Preview approval. Will completed the fresh provider-owned sign-in. Engineering must now repair the
-Reports render loop; #96 rotation and Production cutover remain separate decisions.
+Codex configured and verified the isolated runtime, migrations, identity/recovery, protected SSR and
+supported hosted journeys. Will completed the fresh provider-owned sign-in. #96 rotation,
+Preview teardown and any Production cutover remain separate decisions.
 
 ## CP-028 protected Preview identity
 
@@ -80,6 +80,20 @@ Reports render loop; #96 rotation and Production cutover remain separate decisio
   stable Preview internal API base.
 - Verification blocker: Profile Reports emits React error 185; a four-worker stress run also
   exposed a five-endpoint 300-second saturation boundary. Production remains untouched.
+
+## CP-031 verified Preview state
+
+- Stable protected URL: unchanged.
+- Active deployment: `dpl_HfBLDGQvCDjf3RV2cCXshuG4rb7V`
+  (`plum-duff-orjy0kdh3-homelab11.vercel.app`).
+- Application source: `659d0eafaac8a354ee7a901566c23de17dd7c568`.
+- Runtime/database/schema: unchanged `preview` / `preview:plum_duff_preview_cp028` /
+  `account-access-v1`.
+- Reports, supported authenticated workflows, responsive UI, authorization, recovery reuse and
+  final diagnostics pass. Free Bet lineage reads are batched and Account eligibility excludes
+  archived Profiles at the server boundary.
+- Explicit remaining boundaries: richer Multi-Lay placement/reward configurations, the 600-row
+  response pagination/capacity item, teardown, VoiceOver and every Production action.
 
 ## Current State
 
@@ -116,9 +130,8 @@ Latest local check on 2026-08-20:
 - runtime adapter: verified against Neon with synthetic data
 - hosted runtime activation at that checkpoint: not yet performed
 
-Current boundary: the Vercel Preview revision, isolated PostgreSQL identity, migrations, backup,
-bounded recovery and genuine hosted OAuth are proven. The authenticated browser journey set remains
-engineering-blocked by the Reports render loop. Production is neither tested nor authorised.
+Current boundary: the protected Preview is engineering-verified within the supported scope.
+Production is neither tested nor authorised.
 
 ## Runtime Rules
 
@@ -144,6 +157,5 @@ Profile-specific ledgers and reports belong in the profile summary menu once ins
 
 ## Next implementation slice
 
-Repair the bounded Reports render loop, repeat the serial authenticated journey checklist and then
-offer the six-item owner Preview smoke. Production remains out of scope until Preview evidence is
-accepted and a separate promotion decision is made.
+Retain the Preview for optional owner environment acceptance or authorise governed teardown.
+Production remains out of scope until a separate owner decision is supplied.

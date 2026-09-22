@@ -1,6 +1,6 @@
 # Project Roadmap — Plum Duff / OpenForge — Doc ID: PR-CODEX-001
 
-**Last updated:** 2026-09-21 15:24 BST
+**Last updated:** 2026-09-22 14:22 BST
 
 ## Product goal
 
@@ -13,14 +13,12 @@ reporting and recovery clearer and safer.
 **Completed milestone:** local whole-platform audit plus integrated owner acceptance. The accepted
 normal-owner source/data/runtime combination is frozen as the comparison baseline.
 
-**Current milestone:** protected hosted Preview verification. The isolated Preview is deployed and
-its revision, `preview` role, dedicated PostgreSQL identity, schema, readiness and recovery boundary
-are proven. Genuine hosted Google authentication now passes. Authenticated server rendering was
-repaired, but the Reports route's React maximum-update-depth error keeps the engineering gate open.
+**Completed milestone:** protected hosted Preview engineering verification within the supported
+scope. The isolated Preview proves its revision, `preview` role, dedicated PostgreSQL identity,
+schema, OAuth, supported journeys, responsive UI, authorization, diagnostics and recovery boundary.
 
-**Next outcome:** repair the bounded Reports render loop, rerun the serial authenticated hosted
-journeys, record owner environment acceptance, then make a separate retain/teardown decision.
-Production remains a later, separately authorised promotion gate.
+**Next outcome:** retain the verified Preview for optional owner environment acceptance or authorise
+its governed teardown. Production remains a later, separately authorised planning and promotion gate.
 
 ## Local defect / completeness
 
@@ -43,8 +41,8 @@ Production remains a later, separately authorised promotion gate.
 
 - The authorised Preview is live behind Vercel protection with dedicated synthetic-only PostgreSQL;
   its stable callback is `https://plum-duff-cp028-preview-homelab11.vercel.app/api/auth/google/callback`.
-- Hosted OAuth passes. Finish the authenticated browser journey set without React/runtime errors
-  before considering Preview verified. Deployment/readiness evidence alone is not product acceptance.
+- Hosted OAuth and the supported authenticated browser journey set pass. The claim excludes richer
+  Multi-Lay placement/reward modes and the recorded 600-row pagination/capacity item.
 - Keep #96 credential rotation and provider-owned configuration as explicit owner/provider actions.
 
 ## Owner / manual acceptance
@@ -82,7 +80,7 @@ Production remains a later, separately authorised promotion gate.
 - Main and Production integration remain later, separately approved release decisions. CP-028's
   Neon/Vercel work is confined to one protected Preview database and deployment.
 - An owner smoke test may follow the engineering gate but does not block independent audit work.
-- The protected Preview gate is in progress under CP-029; Production is a later decision.
+- The protected Preview engineering gate completed under CP-031; Production is a later decision.
 - OddsForge, live scraping and autonomous wagering remain outside the current Plum Duff scope.
 - Historical SR and bonus-on-win records remain compatible but are not everyday new-calculation priorities.
 

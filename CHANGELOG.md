@@ -8,6 +8,12 @@ roadmap or detailed audit record.
 
 No published release is represented by the local milestones below.
 
+## 2026-09-22
+
+- **2026-09-22 14:22 BST — CP-031:** Completed the supported authenticated protected-Preview
+  journeys and repaired hosted load amplification in imported Free Bet lineage and active Account
+  eligibility without changing Production or the frozen localhost baseline.
+
 ## 2026-09-19
 
 - **2026-09-19 07:57 BST — CP-025:** Repaired normal-owner Google OAuth environment selection,
