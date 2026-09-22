@@ -351,6 +351,7 @@ def build_response(
     *,
     tracker_settings: ProfileTrackerSettingsRecord,
     commission_lookup: Callable[[str], str] | None = None,
+    lineage_evidence: tuple[str, bool] | None = None,
     strict: bool = False,
 ) -> FreeBetResponse:
     record = row.__dict__
@@ -420,18 +421,22 @@ def build_response(
     award_review = False
     removal_reason = ""
     if row.origin_qual_bet_id:
-        from openforge_api.db import connect_read_only
-        with connect_read_only() as connection:
-            from openforge_api.db import linked_free_bet_removal_block_reason
-            removal_reason = linked_free_bet_removal_block_reason(connection, record)
-            native_parent_id = row.origin_qual_bet_native_id
-            verified = None
-            if native_parent_id and row.source_award_group_id:
-                verified = connection.execute(
-                    "SELECT audit_id FROM sportsbook_bet_audit WHERE profile_id=? "
-                    "AND sportsbook_bet_id=? AND audit_id=? AND action='award_operation'",
-                    (row.profile_id, native_parent_id, "award-operation-" + row.source_award_group_id),
-                ).fetchone()
+        if lineage_evidence is not None:
+            removal_reason, award_operation_verified = lineage_evidence
+            verified = True if award_operation_verified else None
+        else:
+            from openforge_api.db import connect_read_only
+            with connect_read_only() as connection:
+                from openforge_api.db import linked_free_bet_removal_block_reason
+                removal_reason = linked_free_bet_removal_block_reason(connection, record)
+                native_parent_id = row.origin_qual_bet_native_id
+                verified = None
+                if native_parent_id and row.source_award_group_id:
+                    verified = connection.execute(
+                        "SELECT audit_id FROM sportsbook_bet_audit WHERE profile_id=? "
+                        "AND sportsbook_bet_id=? AND audit_id=? AND action='award_operation'",
+                        (row.profile_id, native_parent_id, "award-operation-" + row.source_award_group_id),
+                    ).fetchone()
         award_review = row.origin_qual_bet_resolution_state != "resolved" or (
             bool(row.source_award_group_id) and verified is None
         )
@@ -508,6 +513,65 @@ def prepare_write_response(
 def list_profile_free_bets(profile_id: str) -> list[FreeBetResponse]:
     tracker_settings = get_profile_tracker_settings(profile_id)
     commission_cache = get_profile_exchange_commission_map(profile_id)
+    rows = list_free_bets(profile_id)
+
+    from openforge_api.db import connect_read_only, linked_free_bet_removal_block_reason
+    with connect_read_only() as connection:
+        parent_ids = {
+            row.origin_qual_bet_native_id
+            or (
+                row.origin_qual_bet_id
+                if row.origin_qual_bet_resolution_state == "not_applicable"
+                else ""
+            )
+            for row in rows if row.origin_qual_bet_id
+        }
+        existing_parents = {
+            str(item["sportsbook_bet_id"])
+            for item in connection.execute(
+                "SELECT sportsbook_bet_id FROM sportsbook_bets WHERE profile_id=?",
+                (profile_id,),
+            ).fetchall()
+            if str(item["sportsbook_bet_id"]) in parent_ids
+        }
+        audit_payloads: dict[str, list[str]] = {}
+        for item in connection.execute(
+            "SELECT free_bet_id, payload_json FROM free_bet_audit WHERE profile_id=?",
+            (profile_id,),
+        ).fetchall():
+            audit_payloads.setdefault(str(item["free_bet_id"]), []).append(
+                str(item["payload_json"])
+            )
+        award_audits = {
+            (str(item["sportsbook_bet_id"]), str(item["audit_id"]))
+            for item in connection.execute(
+                "SELECT sportsbook_bet_id, audit_id FROM sportsbook_bet_audit "
+                "WHERE profile_id=? AND action='award_operation'",
+                (profile_id,),
+            ).fetchall()
+        }
+        lineage_evidence = {
+            row.free_bet_id: (
+                linked_free_bet_removal_block_reason(
+                    connection,
+                    row.__dict__,
+                    audit_payloads=audit_payloads.get(row.free_bet_id, []),
+                    parent_exists=(
+                        row.origin_qual_bet_native_id
+                        or (
+                            row.origin_qual_bet_id
+                            if row.origin_qual_bet_resolution_state == "not_applicable"
+                            else ""
+                        )
+                    ) in existing_parents,
+                ),
+                (
+                    row.origin_qual_bet_native_id,
+                    "award-operation-" + row.source_award_group_id,
+                ) in award_audits,
+            )
+            for row in rows if row.origin_qual_bet_id
+        }
 
     def resolve_commission(exchange_name: str) -> str:
         return commission_cache.get(exchange_name, "")
@@ -517,8 +581,9 @@ def list_profile_free_bets(profile_id: str) -> list[FreeBetResponse]:
             row,
             tracker_settings=tracker_settings,
             commission_lookup=resolve_commission,
+            lineage_evidence=lineage_evidence.get(row.free_bet_id),
         )
-        for row in list_free_bets(profile_id)
+        for row in rows
     ]
 
 

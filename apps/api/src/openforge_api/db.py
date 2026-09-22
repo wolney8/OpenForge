@@ -5975,7 +5975,13 @@ def lock_award_profile(connection: Any, profile_id: str) -> None:
         raise HTTPException(status_code=409, detail="Profile is archived.")
 
 
-def linked_free_bet_removal_block_reason(connection: Any, current: Any) -> str:
+def linked_free_bet_removal_block_reason(
+    connection: Any,
+    current: Any,
+    *,
+    audit_payloads: list[str] | None = None,
+    parent_exists: bool | None = None,
+) -> str:
     from decimal import Decimal, InvalidOperation
     current_map = dict(current)
     native_parent_id = str(current_map.get("origin_qual_bet_native_id") or "")
@@ -5994,15 +6000,27 @@ def linked_free_bet_removal_block_reason(connection: Any, current: Any) -> str:
             except InvalidOperation:
                 return True
         return False
-    if current["status"] not in {"Prospecting","Available","Not Yet Awarded"} or protected(dict(current)):
+    if current["status"] not in {
+        "Prospecting",
+        "Available",
+        "Not Yet Awarded",
+    } or protected(dict(current)):
         return "This linked free bet has protected actual activity and cannot be deleted."
-    audits = connection.execute("SELECT payload_json FROM free_bet_audit WHERE profile_id=? AND free_bet_id=?", (current["profile_id"],current["free_bet_id"])).fetchall()
-    if any(protected(json.loads(a["payload_json"])) for a in audits):
+    if audit_payloads is None:
+        audits = connection.execute(
+            "SELECT payload_json FROM free_bet_audit "
+            "WHERE profile_id=? AND free_bet_id=?",
+            (current["profile_id"], current["free_bet_id"]),
+        ).fetchall()
+        audit_payloads = [str(a["payload_json"]) for a in audits]
+    if any(protected(json.loads(payload)) for payload in audit_payloads):
         return "This linked free bet retains protected placement/settlement history."
-    if not native_parent_id or not connection.execute(
-        "SELECT 1 FROM sportsbook_bets WHERE profile_id=? AND sportsbook_bet_id=?",
-        (current["profile_id"], native_parent_id),
-    ).fetchone():
+    if parent_exists is None:
+        parent_exists = bool(native_parent_id) and bool(connection.execute(
+            "SELECT 1 FROM sportsbook_bets WHERE profile_id=? AND sportsbook_bet_id=?",
+            (current["profile_id"], native_parent_id),
+        ).fetchone())
+    if not native_parent_id or not parent_exists:
         state = current_map.get("origin_qual_bet_resolution_state") or "legacy_unresolved"
         return f"Imported award source is {state}; review its parent identity before removal."
     return ""
