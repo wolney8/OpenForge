@@ -222,6 +222,19 @@ test("Group C preserves search, empty state, drilldown and return context", asyn
   await page.goto("/profiles/profile-demo-002/tracker/sportsbook-bets", { waitUntil: "domcontentloaded" });
   await expect(page.getByRole("heading", { name: "Sportsbook Bets", exact: true })).toBeVisible({ timeout: 90_000 });
   await expect(page.locator("main")).toContainText(/No .*rows|No sportsbook|0 records/i, { timeout: 90_000 });
+
+  await page.goto("/profiles/profile-demo-001/tracker/casino-offers", { waitUntil: "domcontentloaded" });
+  await expect(page.getByRole("heading", { name: "Casino Offers", exact: true })).toBeVisible({ timeout: 90_000 });
+  const quickActions = page.locator('[data-pd-id="ledger-quick-actions.casino"]');
+  await expect(quickActions.getByRole("button", { name: "Demo Free Spins", exact: true })).toBeVisible({ timeout: 90_000 });
+  await quickActions.getByRole("button", { name: "Demo Free Spins", exact: true }).click();
+  const editor = page.getByRole("dialog", { name: "Create casino row" });
+  await expect(editor).toBeVisible();
+  await expect(editor.getByLabel("Offer name", { exact: false })).toHaveValue("Free Spins");
+  await editor.getByRole("button", { name: "Close casino editor" }).click();
+  await page.getByRole("dialog", { name: "Unsaved tracker changes" })
+    .getByRole("button", { name: "Discard Changes" }).click();
+  await expect(editor).toHaveCount(0);
 });
 
 test("Reports motion preference changes and navigation do not accumulate work", async ({ page }) => {
@@ -264,11 +277,22 @@ test("Preview authorization and failed-write boundaries remain Profile-scoped", 
 
   const profilesResponse = await page.request.get("/api/profiles");
   expect(profilesResponse.status()).toBe(200);
-  const profiles = await profilesResponse.json() as Array<{ profile_id: string }>;
+  const profiles = await profilesResponse.json() as Array<{ profile_id: string; status: string }>;
   expect(profiles.some((profile) => profile.profile_id === "profile-demo-001")).toBe(true);
   expect(profiles.some((profile) => profile.profile_id === "profile-demo-002")).toBe(true);
   expect((await page.request.get("/api/profiles/profile-demo-001/accounts")).status()).toBe(200);
   expect((await page.request.get("/api/profiles/profile-demo-002/accounts")).status()).toBe(200);
+
+  const eligibilityStartedAt = Date.now();
+  const eligibilityResponse = await page.request.post("/api/multi-profile-opportunities/eligibility", {
+    data: { bookmaker: "10Bet", offer_type: "Bet & Get" },
+  });
+  expect(eligibilityResponse.status()).toBe(200);
+  const eligibility = await eligibilityResponse.json() as Array<{ profile_id: string }>;
+  expect(eligibility.map((row) => row.profile_id).sort()).toEqual(
+    profiles.filter((profile) => profile.status !== "Archived").map((profile) => profile.profile_id).sort(),
+  );
+  expect(Date.now() - eligibilityStartedAt).toBeLessThan(30_000);
 
   const rows = await (await page.request.get("/api/profiles/profile-demo-001/sportsbook-bets")).json() as Array<{ sportsbook_bet_id: string }>;
   expect(rows.length).toBeGreaterThan(0);

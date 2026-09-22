@@ -201,6 +201,7 @@ def build_eligibility(bookmaker: str, offer_type: str) -> list[MultiProfileTarge
             match_strategy="No Lay",
         )
         for profile in list_profiles()
+        if profile.status != "Archived"
     ]
 
 

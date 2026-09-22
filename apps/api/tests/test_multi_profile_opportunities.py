@@ -555,6 +555,26 @@ def test_bonus_restriction_blocks_promotion_but_allows_mug_bet(tmp_path: Path) -
     assert mug_bet["eligible"] is True
 
 
+def test_eligibility_excludes_archived_profiles_from_the_active_owner_scope(
+    tmp_path: Path,
+) -> None:
+    configure_temp_database(tmp_path)
+    client = TestClient(app)
+    add_authorities(client, "profile-demo-001")
+    add_authorities(client, "profile-demo-002")
+    assert client.patch(
+        "/profiles/profile-demo-002", json={"status": "Archived"}
+    ).status_code == 200
+
+    response = client.post(
+        "/multi-profile-opportunities/eligibility",
+        json={"bookmaker": "Bookmaker Opportunity Demo", "offer_type": "Bet & Get"},
+    )
+
+    assert response.status_code == 200, response.text
+    assert [row["profile_id"] for row in response.json()] == ["profile-demo-001"]
+
+
 def test_prospecting_target_can_be_reset_removed_and_restored(tmp_path: Path) -> None:
     configure_temp_database(tmp_path)
     client = TestClient(app)
