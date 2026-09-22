@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import sqlite3
-import time
+from contextlib import contextmanager
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -108,7 +108,7 @@ def test_tracker_summary_sources_reuse_signed_off_read_contracts(tmp_path: Path)
         assert sources[key] == individual.json()
 
 
-def test_tracker_summary_sources_reads_existing_contracts_concurrently(monkeypatch) -> None:
+def test_tracker_summary_sources_reuse_one_connection(monkeypatch) -> None:
     reader_names = (
         "list_profile_accounts",
         "list_profile_sportsbook_bets",
@@ -121,19 +121,32 @@ def test_tracker_summary_sources_reads_existing_contracts_concurrently(monkeypat
         "get_tracker_settings",
     )
 
-    def slow_reader(profile_id: str) -> list[str]:
+    events: list[str] = []
+    connection = object()
+
+    @contextmanager
+    def shared_connection():
+        events.append("connect")
+        yield connection
+
+    @contextmanager
+    def reuse_connection(value):
+        assert value is connection
+        events.append("reuse")
+        yield
+
+    def reader(profile_id: str) -> list[str]:
         assert profile_id == "profile-demo-001"
-        time.sleep(0.05)
         return [profile_id]
 
+    monkeypatch.setattr(tracker_summary_sources, "connect", shared_connection)
+    monkeypatch.setattr(tracker_summary_sources, "reuse_mutation_connection", reuse_connection)
     for name in reader_names:
-        monkeypatch.setattr(tracker_summary_sources, name, slow_reader)
+        monkeypatch.setattr(tracker_summary_sources, name, reader)
 
-    started = time.perf_counter()
     result = asyncio.run(
         tracker_summary_sources.get_profile_tracker_summary_sources("profile-demo-001")
     )
-    elapsed = time.perf_counter() - started
 
     assert set(result) == {
         "accounts",
@@ -146,7 +159,7 @@ def test_tracker_summary_sources_reads_existing_contracts_concurrently(monkeypat
         "fee_periods",
         "tracker_settings",
     }
-    assert elapsed < 0.25
+    assert events == ["connect", "reuse"]
 
 
 def profile_onboarding_payload() -> dict[str, object]:

@@ -32,6 +32,7 @@ from openforge_api.calculations.sportsbook_current_value import (
 )
 from openforge_api.calculators import MultiLayPayload, preview_multi_lay
 from openforge_api.db import (
+    connect_read_only,
     create_multi_profile_entry_batch,
     create_sportsbook_bet,
     delete_sportsbook_bet,
@@ -46,6 +47,7 @@ from openforge_api.db import (
     list_profiles,
     list_sportsbook_bets,
     list_sportsbook_partial_lay_reminder_audit,
+    reuse_mutation_connection,
     update_multi_profile_entry_target,
     update_sportsbook_bet,
     update_sportsbook_partial_lay_reminder,
@@ -896,7 +898,9 @@ def reminder_timestamp(value: str, *, end_of_day_for_date: bool = False) -> floa
 
 @router.get("", response_model=list[SportsbookBetResponse])
 def list_profile_sportsbook_bets(profile_id: str) -> list[SportsbookBetResponse]:
-    commission_cache = get_profile_exchange_commission_map(profile_id)
+    with connect_read_only() as connection, reuse_mutation_connection(connection):
+        commission_cache = get_profile_exchange_commission_map(profile_id)
+        rows = list_sportsbook_bets(profile_id)
 
     def resolve_commission(exchange_name: str) -> str:
         return commission_cache.get(exchange_name, "")
@@ -908,7 +912,7 @@ def list_profile_sportsbook_bets(profile_id: str) -> list[SportsbookBetResponse]
             as_of_date=date.today(),
             commission_lookup=resolve_commission,
         )
-        for row in list_sportsbook_bets(profile_id)
+        for row in rows
     ]
 
 

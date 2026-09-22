@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from openforge_api.db import (
     add_or_restore_multi_profile_opportunity_target,
+    connect_read_only,
     create_multi_profile_opportunity,
     create_sportsbook_bet,
     delete_multi_profile_opportunity,
@@ -24,6 +25,7 @@ from openforge_api.db import (
     list_profile_exchange_commissions,
     list_profiles,
     remove_multi_profile_opportunity_target_row,
+    reuse_mutation_connection,
     set_multi_profile_opportunity_state,
     update_multi_profile_opportunity_target,
     update_sportsbook_bet,
@@ -189,20 +191,24 @@ def parse_decimal(value: str, label: str) -> Decimal:
 
 
 def build_eligibility(bookmaker: str, offer_type: str) -> list[MultiProfileTargetEligibility]:
-    return [
-        evaluate_multi_profile_target(
-            profile=profile,
-            accounts=list_accounts(profile.profile_id),
-            exchange_commissions=list_profile_exchange_commissions(profile.profile_id),
-            bookmaker=bookmaker,
-            offer_type=offer_type,
-            # Exchange readiness belongs to Stage 2 and must not block creation
-            # of a Prospecting row.
-            match_strategy="No Lay",
-        )
-        for profile in list_profiles()
-        if profile.status != "Archived"
-    ]
+    # Eligibility is one coherent read. Reuse a single read-only snapshot rather
+    # than paying for Profiles + Accounts + commissions as separate hosted
+    # PostgreSQL connections for every active Profile.
+    with connect_read_only() as connection, reuse_mutation_connection(connection):
+        return [
+            evaluate_multi_profile_target(
+                profile=profile,
+                accounts=list_accounts(profile.profile_id),
+                exchange_commissions=list_profile_exchange_commissions(profile.profile_id),
+                bookmaker=bookmaker,
+                offer_type=offer_type,
+                # Exchange readiness belongs to Stage 2 and must not block creation
+                # of a Prospecting row.
+                match_strategy="No Lay",
+            )
+            for profile in list_profiles()
+            if profile.status != "Archived"
+        ]
 
 
 def resolve_default_exchange(profile_id: str, target: MultiProfileTargetEligibility) -> str:
