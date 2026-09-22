@@ -11,6 +11,7 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 def test_vercel_services_route_api_before_frontend_catch_all() -> None:
     config = json.loads((REPOSITORY_ROOT / "vercel.json").read_text(encoding="utf-8"))
 
+    assert config["regions"] == ["lhr1"]
     assert config["services"]["frontend"] == {
         "root": "apps/web/",
         "framework": "nextjs",
