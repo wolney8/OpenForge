@@ -1,21 +1,21 @@
 # Project Status — Plum Duff / OpenForge — Doc ID: PS-CODEX-001
 
-**Last updated:** 2026-09-22 14:22 BST · **Status:** 🟢 Protected Preview engineering verification complete within the supported scope
+**Last updated:** 2026-09-22 16:33 BST · **Status:** 🟢 Hosted performance gate passed; tested shared fixes integrated into normal localhost
 
 ## Right now
 
-- **Working on:** CP-031 completed the authenticated hosted journey, responsive, access, recovery and diagnostic gate on Preview revision `659d0ea`.
-- **Next:** retain the verified Preview for owner inspection or authorise teardown; any Production planning remains a separate decision.
+- **Working on:** CP-032 completed the bounded hosted performance repair and reconciled the tested shared source into normal `localhost:3010`.
+- **Next:** retain the verified Preview for a short owner loading/Account/saved-record check or authorise teardown; Production remains a separate decision.
 - **Blocked on:** no engineering blocker inside the supported Preview scope; VoiceOver spoken output remains separate manual evidence.
 
 ## Delivery state
 
 | Area | Evidence state |
 | --- | --- |
-| Local integrated build | The CP-023–CP-026 calculator corrections are visually accepted; CP-027 focused engineering evidence passes |
-| Normal `localhost:3010` | Healthy as `normal-owner`; frontend and API use the frozen local source line, canonical SQLite data and `account-access-v1` schema |
+| Local integrated build | Shared CP-029–CP-032 application repairs now run locally on application revision `712d174`; the CP-027 baseline remains the rollback reference |
+| Normal `localhost:3010` | Healthy as `normal-owner` on canonical SQLite and `account-access-v1`; all owner row projections and counts match the pre-update backup |
 | Main / origin | Not updated by the local integration work |
-| Vercel | Protected Preview is verified within the supported scope at `plum-duff-cp028-preview-homelab11.vercel.app` on revision `659d0ea`; Production alias/data remain untouched |
+| Vercel | Protected Preview is verified within the supported scope at `plum-duff-cp028-preview-homelab11.vercel.app` on revision `712d174`; Production alias/data remain untouched |
 | Owner smoke test | Hosted Google PASS is recorded; optional Preview visual acceptance and VoiceOver spoken output remain separate |
 
 ## Progress at a glance
@@ -31,9 +31,9 @@ These figures measure **#114 audit coverage**, not the percentage of the product
 
 ## Next 3 steps
 
-1. Preserve the frozen normal-owner baseline unchanged as the environment comparison point.
-2. Repair and re-prove the hosted Reports client render without widening the analytics scope.
-3. Finish the authenticated hosted journey gate and accept or tear down the Preview before any separate Production decision.
+1. Preserve the CP-027 rollback reference and the new CP-032 verified local baseline.
+2. Offer one short Preview check covering loading, Account selection and a saved synthetic record.
+3. Accept or tear down the Preview before any separately authorised Production decision.
 
 ## Checkpoint log
 
@@ -66,6 +66,7 @@ These figures measure **#114 audit coverage**, not the percentage of the product
 | CP-029-R | 2026-09-22 08:02 BST | Recovered retained execution evidence: deployed source and screenshots exist, the hosted Playwright gate failed, and financial/recovery claims were inherited from CP-028 rather than rerun | [#62](https://github.com/wolney8/OpenForge/issues/62), [#114](https://github.com/wolney8/OpenForge/issues/114), [#115](https://github.com/wolney8/OpenForge/issues/115) | [Recovery evidence](docs/audits/platform-quality-audit.md#cp-029-evidence-recovery-correction--2026-09-22-0802-bst) |
 | CP-030 | 2026-09-22 11:57 BST | Repaired the Reports reduced-motion update loop and proved a hosted £6→£5 Cash Adjustment through History, Reports, reload and idempotent retry | [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#cp-030-reports-repair-and-hosted-cash-correction-proof--2026-09-22-1157-bst) |
 | CP-031 | 2026-09-22 14:22 BST | Completed the supported authenticated Preview workflows and repaired archived-Profile amplification in lineage and Account eligibility reads | [#114](https://github.com/wolney8/OpenForge/issues/114), [#115](https://github.com/wolney8/OpenForge/issues/115) | [Audit evidence](docs/audits/platform-quality-audit.md#cp-031-authenticated-protected-preview-completion--2026-09-22-1422-bst) |
+| CP-032 | 2026-09-22 16:33 BST | Removed the remaining hosted connection/region latency and integrated all tested shared Preview repairs into healthy normal localhost without changing owner data | [#114](https://github.com/wolney8/OpenForge/issues/114), [#115](https://github.com/wolney8/OpenForge/issues/115) | [Audit evidence](docs/audits/platform-quality-audit.md#cp-032-hosted-performance-and-local-reconciliation--2026-09-22-1633-bst) |
 
 ## Reference index
 

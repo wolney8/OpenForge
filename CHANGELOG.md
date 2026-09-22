@@ -10,6 +10,9 @@ No published release is represented by the local milestones below.
 
 ## 2026-09-22
 
+- **2026-09-22 16:33 BST — CP-032:** Removed repeated hosted PostgreSQL connection setup, colocated
+  Preview functions with their database and reconciled the tested shared fixes into normal
+  `localhost:3010` without changing owner data or Production.
 - **2026-09-22 14:22 BST — CP-031:** Completed the supported authenticated protected-Preview
   journeys and repaired hosted load amplification in imported Free Bet lineage and active Account
   eligibility without changing Production or the frozen localhost baseline.

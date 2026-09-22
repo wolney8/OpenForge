@@ -1,5 +1,46 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
+## CP-032 hosted performance and local reconciliation — 2026-09-22 16:33 BST
+
+CP-031 left three slow paths. Five measurements on `659d0ea` gave repeat medians/slowest values of
+**5.68s/5.68s** for the 2.09 MB populated summary (first-after-inactivity **20.01s**),
+**11.92s/11.98s** for 1.4 KB eligibility, and **4.04s/4.12s** for the 1.30 MB/600-row Sportsbook
+response. Eligibility opened seven serial PostgreSQL connections for three active Profiles; the
+summary opened nine readers, and Sportsbook opened separate commission/row reads. Safe diagnostics
+also showed Preview requests entering London but functions executing in Washington against the
+London PostgreSQL database.
+
+Revision `3a00eda` now reuses one request-scoped connection/snapshot for eligibility, summary and
+Sportsbook reads while preserving active scope, formulas and full-scope totals. Revision `712d174`
+places Preview functions in `lhr1`. On five final samples, medians/slowest were **0.67s/0.79s**
+summary, **0.42s/0.51s** eligibility and **0.40s/0.51s** Sportsbook; the first final summary was
+**0.72s**. The 1.30 MB payload remains explicit pagination/capacity debt, but is not currently
+user-blocking and was not disguised as a page subtotal. Focused API evidence passes **144/144**,
+Vercel configuration **4/4**, TypeScript PASS, mypy **0/82**, build PASS and the affected hosted
+browser gate **6/6**. Reports preference/navigation, £6→£5/retry, isolation, active/archive scope and
+malformed-write protection remained green with no request storm or React error.
+
+The stable protected alias serves deployment `dpl_4MZW4CAjH25sJ6iFWErXCjYkL9rW`, revision
+`712d174bd1cbcd89031e75087db5b543d4c1dce7`, role `preview`, database
+`preview:plum_duff_preview_cp028` and `account-access-v1`. Production was untouched. Shared changes
+since CP-027—protected SSR context, Cash retry identity, shared motion subscription, Free Bet
+batching, active eligibility and this connection repair—were checked against isolated synthetic
+data and a fresh normal-data clone. The clone retained every old-row projection and financial count.
+
+Before local cutover, a fresh 7.71 MB backup was verified (`integrity_check = ok`, zero foreign-key
+violations; SHA-256 `8f9b2035250f1af80eff8c2ea2e18bdab5b36af1c40b0cd1cba875338d319e40`). The fail-closed runtime
+guard rejected an unapproved worktree start, then accepted the explicitly authorised revision.
+Normal 3010 now reports `normal-owner`, canonical SQLite, `account-access-v1`, required auth and
+configured OAuth. Read-only owner-load evidence passes: Profiles **1.95s**, Dashboard **1.33s** and
+Reports **1.59s** settled, each with 15 requests/three active summaries; Profile switch was 1.02s
+and Search 0.34s. All owner-table digests and counts remain byte-for-byte unchanged: 42 Profiles
+(3 active), 175 Accounts, 538 Sportsbook, 291 Free Bets, 90 Casino, 58 Cash, 123 Extra Place and
+305 history events. The temporary verification session was removed. The CP-027 baseline remains the
+rollback reference; generated Next/TypeScript files remain uncommitted.
+
+**Verdict:** hosted performance and local reconciliation PASS. Preview remains available;
+Production and VoiceOver spoken-output evidence remain outside this checkpoint.
+
 ## CP-031 authenticated protected Preview completion — 2026-09-22 14:22 BST
 
 The final protected Preview is deployment `dpl_HfBLDGQvCDjf3RV2cCXshuG4rb7V`, source

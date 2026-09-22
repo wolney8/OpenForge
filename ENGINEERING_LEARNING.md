@@ -1,16 +1,27 @@
 # Engineering Learning — Plum Duff / OpenForge — Doc ID: EL-CODEX-001
 
-**Last updated:** 2026-09-22 14:22 BST
+**Last updated:** 2026-09-22 16:33 BST
 
 This is a compact notebook of transferable lessons from building Plum Duff. It is not the audit,
 roadmap, backlog or evidence record.
 
 ## Current learning focus
 
-- Batch relationship evidence at the owning scope before formatting many rows.
-- Default owner decisions should query active records, not scan archived history and hide it later.
+- Keep compute and its database in the same practical region.
+- Reuse one request-scoped database snapshot instead of repeatedly paying connection setup.
 
 ## Concepts worth remembering
+
+### Data locality
+
+**What it means:** Put application compute close to the database it repeatedly reads, while keeping
+runtime and data ownership explicit.
+
+**Why it mattered in Plum Duff:** Batching removed duplicate work, but a small eligibility response
+still took nearly 12 seconds while functions ran in Washington against a London database. The same
+query path fell below one second when Preview functions moved to London.
+
+**Remember:** Optimise query shape and physical distance; either one can dominate an otherwise small request.
 
 ### Scoped batch read
 
@@ -499,6 +510,7 @@ authenticated hosted journey set without widening scope.
 | CP-029 | 2026-09-21 15:24 BST | Environment parity; authorization boundary | Hosted auth passed, but authenticated SSR and client rendering still needed their own evidence before Preview promotion |
 | CP-030 | 2026-09-22 11:57 BST | Shared external-state subscription; explicit hosted self-routing | One reduced-motion subscription prevents update fan-out, while an explicit protected internal API URL keeps server rendering on the intended Preview boundary |
 | CP-031 | 2026-09-22 14:22 BST | Scoped batch reads | Profile-scoped batching and active-only eligibility removed hosted load amplification without hiding it behind caching |
+| CP-032 | 2026-09-22 16:33 BST | Data locality | Request-scoped connections and London-colocated Preview functions removed latency without caching wrong-scope results |
 
 ## Where detailed evidence lives
 

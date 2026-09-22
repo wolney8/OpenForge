@@ -1,6 +1,6 @@
 # Audit Register — Plum Duff / OpenForge — Doc ID: AR-CODEX-001
 
-**Last updated:** 2026-09-22 14:22 BST
+**Last updated:** 2026-09-22 16:33 BST
 
 This is the owner-facing index for audit evidence. The
 [platform quality audit](docs/audits/platform-quality-audit.md) remains the detailed authority.
@@ -21,6 +21,7 @@ These are coverage measures, not percentages of the product finished.
 
 | ID | Plain-English problem | State | Repair / integration state | Issue |
 | --- | --- | --- | --- | --- |
+| PD-FIX-269–270 / CP-032 | Small hosted reads repeatedly opened PostgreSQL connections and Preview functions ran across the Atlantic from their database | Repaired / Preview and localhost verified | Request-scoped connection reuse plus `lhr1` Preview functions reduced warm medians to 0.67s summary, 0.42s eligibility and 0.40s for 600 Sportsbook rows. Shared fixes through `712d174` now run on normal 3010; every owner row projection is unchanged | [#114](https://github.com/wolney8/OpenForge/issues/114), [#115](https://github.com/wolney8/OpenForge/issues/115) |
 | PD-FIX-267–268 / CP-031 | Hosted Free Bet lineage and Account eligibility performed repeated work across archived Profiles/rows | Repaired / verified on protected Preview | Batched Profile-scoped lineage reads reduced the populated summary from 70.78s to 5.81s; active-owner eligibility now reads 3 active Profiles rather than 83 total and returns in 11.88s. Supported hosted journeys, responsive/access/recovery and diagnostics pass on `659d0ea`; richer Multi-Lay placement/reward modes and the 600-row payload remain named future boundaries | [#114](https://github.com/wolney8/OpenForge/issues/114), [#115](https://github.com/wolney8/OpenForge/issues/115) |
 | PD-FIX-266 / CP-030 | Populated Reports could hit React error 185 when reduced-motion preference changed | Repaired / verified on protected Preview | One shared motion subscription replaces hundreds of per-value listeners. Revision `b9e58e7` passed the direct hosted Reports and £6→£5 proof; CP-031 retained that result on final Preview source | [#114](https://github.com/wolney8/OpenForge/issues/114) |
 | CP-029-R evidence recovery | The CP-029 delivery did not make the retained run/failure boundary sufficiently explicit | Recovered / Preview still not ready | HEAD `5d190cb`; deployed app `d35eed7`; one hosted Playwright result is retained as failed, with three rendered screenshots. The 22 hosted mutation journeys, fresh financial mutation proof and fresh DB-outage recovery were not completed in CP-029 | [#62](https://github.com/wolney8/OpenForge/issues/62), [#114](https://github.com/wolney8/OpenForge/issues/114), [#115](https://github.com/wolney8/OpenForge/issues/115) |
@@ -86,14 +87,15 @@ These are coverage measures, not percentages of the product finished.
 
 - VoiceOver spoken output — engineering semantics pass; actual speech observation pending.
 - Hosted Google interaction — PASS: Will completed the genuine provider-owned flow and returned to
-  Plum Duff. The owner Preview smoke waits for the Reports engineering defect, not authentication.
+  Plum Duff. One short optional Preview loading/Account/saved-record check is now available.
 
 ## Remaining boundaries after local closure
 
-- The local normal-owner baseline remains frozen and owner accepted; CP-028 did not alter it.
-- Protected Vercel deployment, isolated Preview PostgreSQL, DB-aware readiness, bounded recovery and
-  genuine hosted OAuth are proven. The complete authenticated hosted journey set remains blocked by
-  the Reports render loop and the recorded high-concurrency capacity boundary.
+- The CP-027 normal-owner baseline remains the rollback reference; CP-032 integrated the tested
+  shared Preview fixes locally after clone/backup evidence without changing owner rows.
+- Protected Vercel deployment, isolated Preview PostgreSQL, DB-aware readiness, bounded recovery,
+  genuine hosted OAuth and supported hosted journeys are proven. The 1.30 MB/600-row payload remains
+  explicit pagination/capacity debt rather than a current acceptance blocker.
 - #96 credential rotation is owner/provider controlled.
 - Later #111 controls, Google bound-script runtime and other planned features are not local audit PASS
   claims and are not treated as hidden defects.

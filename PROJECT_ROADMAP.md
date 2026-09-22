@@ -1,6 +1,6 @@
 # Project Roadmap — Plum Duff / OpenForge — Doc ID: PR-CODEX-001
 
-**Last updated:** 2026-09-22 14:22 BST
+**Last updated:** 2026-09-22 16:33 BST
 
 ## Product goal
 
@@ -16,6 +16,10 @@ normal-owner source/data/runtime combination is frozen as the comparison baselin
 **Completed milestone:** protected hosted Preview engineering verification within the supported
 scope. The isolated Preview proves its revision, `preview` role, dedicated PostgreSQL identity,
 schema, OAuth, supported journeys, responsive UI, authorization, diagnostics and recovery boundary.
+
+**Completed milestone:** hosted performance closure and local reconciliation. The tested shared
+application fixes now run on the canonical normal-owner runtime after clone, backup and unchanged-
+projection evidence; Preview-only role, database and protection configuration stayed hosted-only.
 
 **Next outcome:** retain the verified Preview for optional owner environment acceptance or authorise
 its governed teardown. Production remains a later, separately authorised planning and promotion gate.
@@ -80,7 +84,7 @@ its governed teardown. Production remains a later, separately authorised plannin
 - Main and Production integration remain later, separately approved release decisions. CP-028's
   Neon/Vercel work is confined to one protected Preview database and deployment.
 - An owner smoke test may follow the engineering gate but does not block independent audit work.
-- The protected Preview engineering gate completed under CP-031; Production is a later decision.
+- The protected Preview engineering and performance gates completed under CP-032; Production is a later decision.
 - OddsForge, live scraping and autonomous wagering remain outside the current Plum Duff scope.
 - Historical SR and bonus-on-win records remain compatible but are not everyday new-calculation priorities.
 
