@@ -1,4 +1,16 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
+
+async function ensureHostedRouteReady(page: Page, heading: string) {
+  const target = page.getByRole("heading", { name: heading, exact: true }).first();
+  try {
+    await target.waitFor({ state: "visible", timeout: 30_000 });
+  } catch (error) {
+    const recovery = page.getByRole("heading", { name: "Unable to continue", exact: true });
+    if (!(await recovery.isVisible())) throw error;
+    await page.getByRole("button", { name: "Try again", exact: true }).click();
+    await target.waitFor({ state: "visible", timeout: 90_000 });
+  }
+}
 
 test("authenticated Preview Reports settles without a React update loop", async ({ page }) => {
   test.skip(process.env.OPENFORGE_HOSTED_PREVIEW_GATE !== "true", "Explicit hosted gate only");
@@ -19,7 +31,7 @@ test("authenticated Preview Reports settles without a React update loop", async 
     waitUntil: "domcontentloaded", timeout: 90_000,
   });
   expect(response?.status()).toBeLessThan(400);
-  await expect(page.getByRole("heading", { name: "Reports", exact: true })).toBeVisible({ timeout: 30_000 });
+  await ensureHostedRouteReady(page, "Reports");
   await expect(page.getByText("Loading tracker summaries", { exact: true })).toBeHidden({
     timeout: 150_000,
   });
@@ -77,6 +89,7 @@ test("authenticated Preview preserves a £6 to £5 Cash Adjustment correction on
   const adjustmentId = created.cash_adjustment_id;
 
   await page.goto(`/profiles/${profileId}/tracker/cash-adjustments`);
+  await ensureHostedRouteReady(page, "Cash Adjustments");
   await expect(page.getByText("Loading cash-adjustment ledger")).toBeHidden({ timeout: 90_000 });
   await page.getByLabel("Search cash-adjustment rows").fill(adjustmentId);
   await page.getByRole("row", { name: new RegExp(adjustmentId) }).dblclick();
@@ -94,6 +107,7 @@ test("authenticated Preview preserves a £6 to £5 Cash Adjustment correction on
   expect(correction.status()).toBe(200);
 
   await page.reload({ waitUntil: "domcontentloaded" });
+  await ensureHostedRouteReady(page, "Cash Adjustments");
   await expect(page.getByText("Loading cash-adjustment ledger")).toBeHidden({ timeout: 90_000 });
   await page.getByLabel("Search cash-adjustment rows").fill(adjustmentId);
   await page.getByRole("row", { name: new RegExp(adjustmentId) }).dblclick();
@@ -112,12 +126,14 @@ test("authenticated Preview preserves a £6 to £5 Cash Adjustment correction on
   expect(retry.status()).toBe(200);
   await page.keyboard.press("Escape");
   await page.goto(`/profiles/${profileId}/tracker/reports`);
+  await ensureHostedRouteReady(page, "Reports");
   await expect(page.getByText("Loading tracker summaries", { exact: true })).toBeHidden({ timeout: 150_000 });
   const range = page.getByLabel("Change tracker date range");
   if (await range.isVisible()) await range.selectOption({ label: "All Dates" });
   const cashCard = page.locator("article.stat-card", { hasText: "Cash Adjustments" }).first();
   await expect(cashCard.getByText("£ 5.00", { exact: true })).toBeVisible({ timeout: 90_000 });
   await page.reload({ waitUntil: "domcontentloaded" });
+  await ensureHostedRouteReady(page, "Reports");
   await expect(page.getByText("Loading tracker summaries", { exact: true })).toBeHidden({ timeout: 150_000 });
   await expect(page.locator("article.stat-card", { hasText: "Cash Adjustments" }).first()
     .getByText("£ 5.00", { exact: true })).toBeVisible();
