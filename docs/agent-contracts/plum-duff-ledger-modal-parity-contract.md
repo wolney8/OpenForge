@@ -191,6 +191,16 @@ Do not show ordinary row-open, field-change or draft-save toasts while an editor
 Inline feedback belongs inside the modal. Durable tasks and reminders belong in the notification
 bell.
 
+## Explicit ledger draft contract
+
+Sportsbook, Free Bet, Extra Place, Casino and Cash Adjustment field edits remain client drafts until
+the user explicitly saves. Blur, debounce, step changes and close/unmount must not persist them.
+Save is enabled only for a valid dirty draft; Revert restores the last confirmed response without a
+write. Closing, record navigation or in-app navigation with a dirty draft uses the shared “You have
+unsaved changes” decision: Keep editing, Discard changes, or Save and close. Browser refresh/tab close
+uses the native unload warning. Only a confirmed successful save advances the saved baseline; a
+failure retains the draft and never closes the editor.
+
 ## Required parity checks
 
 Before handoff, verify:

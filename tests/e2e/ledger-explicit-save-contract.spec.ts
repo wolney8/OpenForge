@@ -66,7 +66,33 @@ test("Free Bet-step Notes remain a dirty draft until explicit Save", async ({ pa
     expect(updateRequests).toBe(0);
     await expect(editor.getByRole("button", { name: "Save", exact: true })).toBeEnabled();
     await editor.getByRole("button", { name: "Close sportsbook editor" }).click();
-    await expect(page.locator('[data-pd-id="unsaved-changes.dialog"]')).toContainText("You have unsaved changes.");
+    const confirmation = page.locator('[data-pd-id="unsaved-changes.dialog"]');
+    await expect(confirmation).toContainText("You have unsaved changes.");
+    await confirmation.getByRole("button", { name: "Keep Editing", exact: true }).click();
+    await expect(awardNotes).toHaveValue("gggg");
+    await editor.getByRole("button", { name: "Close sportsbook editor" }).click();
+    await confirmation.getByRole("button", { name: "Discard Changes" }).click();
+    await expect(editor).toBeHidden();
+
+    await page.getByRole("button", { name: `Copy ${created.sportsbook_bet_id} to free bets` }).click();
+    const reopened = page.getByRole("dialog", { name: "Edit sportsbook row" });
+    await reopened.getByRole("tab", { name: "Free Bet" }).click();
+    const reopenedNotes = reopened.locator('[data-pd-id="ledger-editor.panel.free_bet"]').getByLabel("Notes");
+    await expect(reopenedNotes).toHaveValue("");
+    await reopenedNotes.fill("saved explicitly");
+    await reopened.getByRole("button", { name: "Save", exact: true }).click();
+    await expect(reopened).toBeHidden();
+
+    await page.getByRole("button", { name: `Copy ${created.sportsbook_bet_id} to free bets` }).click();
+    const savedEditor = page.getByRole("dialog", { name: "Edit sportsbook row" });
+    await savedEditor.getByRole("tab", { name: "Free Bet" }).click();
+    const savedNotes = savedEditor.locator('[data-pd-id="ledger-editor.panel.free_bet"]').getByLabel("Notes");
+    await expect(savedNotes).toHaveValue("saved explicitly");
+    await savedNotes.fill("saved and closed");
+    await savedEditor.getByRole("button", { name: "Close sportsbook editor" }).click();
+    await confirmation.getByRole("button", { name: "Save and close" }).click();
+    await expect(savedEditor).toBeHidden();
+    expect(updateRequests).toBe(0);
   } finally {
     await page.request.patch(`/api/profiles/${profileId}`, { data: { status: "Archived" } }).catch(() => undefined);
   }

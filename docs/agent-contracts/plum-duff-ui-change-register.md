@@ -1,5 +1,13 @@
 # Plum Duff UI Change Register
 
+## CP-035 explicit ledger Save / Discard contract
+
+| ID | Surface | Requested outcome | Signed-off equivalent | Status |
+|---|---|---|---|---|
+| PD-FIX-273 | Sportsbook, Free Bet, Extra Place, Casino and Cash Adjustment editors | Keep draft and confirmed saved state separate; no blur/wait/step/close persistence; shared Keep editing, Discard changes and Save and close decision; explicit Save/Revert only | Existing shared ledger modal shell, app confirmation controller and CP-034 action-scoped validation | COMPLETE ON PREVIEW — owner reproduction and five-ledger browser matrix pass on `75042e5`; guarded local reconciliation remains the delivery gate |
+
+Issue coverage: GitHub #117 remains open; #92 and #114 retain shared UI and acceptance evidence.
+
 ## CP-033 owner-blocking ledger edit repair
 
 | ID | Surface | Requested outcome | Signed-off equivalent | Status |

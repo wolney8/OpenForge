@@ -102,6 +102,14 @@ These are coverage measures, not percentages of the product finished.
   claims and are not treated as hidden defects.
 - Competitor member capabilities remain reviewed-but-unverified where public access is unavailable.
 
+## CP-035 explicit ledger editing — 2026-09-23 20:06 BST
+
+Protected Preview revision `75042e5` passes browser evidence for no write before Save, Keep editing,
+Discard, explicit Save/reopen, Save and close, add/amend/clear and unchanged money/identity across
+Sportsbook, Free Bet, Extra Place, Casino and Cash Adjustment. Focused API ownership, atomic invalid-
+change and lifecycle regressions pass 141/141. #117 remains open through the guarded local cutover;
+Production is unchanged.
+
 ## Detailed evidence
 
 - [Platform quality audit](docs/audits/platform-quality-audit.md)

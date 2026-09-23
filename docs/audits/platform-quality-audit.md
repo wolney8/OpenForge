@@ -4494,3 +4494,20 @@ five fully exercised journeys, seven documented competitor cells and four fully 
 GitHub evidence synced on2026-09-12: #91 comment5648926365, #114 comment5648926454,
 #36 comment5648926501, #40 comment5648926573. Issues remain open. Read-only final health checks:
 8010/8020/8013/8024/8026/8030 healthz200;3010/3020/3013/3024/3026/3030 login200.
+
+## CP-035 explicit ledger Save and Discard — 2026-09-23 20:06 BST
+
+The observed Free Bet-step `gggg` text was not a server autosave: a Sportsbook award-review effect
+wrote every keystroke to session storage while that draft was omitted from the editor dirty state,
+so Save stayed disabled and reopen rehydrated the browser draft. Ordinary Account/status dropdowns
+in four ledger shells also still issued immediate persistence requests.
+
+Revision `75042e5` removes those ordinary writes and treats the ledger form and award review as
+explicit drafts. All five editors share the accessible Keep editing / Discard changes / Save and
+close decision; Revert is local and failures retain the draft. The deployed Preview reports role
+`preview`, database `preview:plum_duff_preview_cp028`, schema `account-access-v1` and source
+`75042e5`. Hosted browser evidence passes the observed award-note case plus all five ledger
+add/amend/clear, wait/blur without writes, discard/reopen, explicit save/reopen and Save-and-close
+paths. Stored financial/identity fields remain equivalent apart from notes and normal modified
+metadata; focused API lifecycle/security checks pass 141/141. Production and owner data were not
+used for mutation evidence.

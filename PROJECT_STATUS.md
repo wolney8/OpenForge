@@ -1,11 +1,11 @@
 # Project Status — Plum Duff / OpenForge — Doc ID: PS-CODEX-001
 
-**Last updated:** 2026-09-23 17:56 BST · **Status:** 🟢 #117 ledger Notes editing verified on Preview and reconciled locally
+**Last updated:** 2026-09-23 20:06 BST · **Status:** 🟢 #117 explicit ledger Save/Discard verified on Preview; local reconciliation in progress
 
 ## Right now
 
-- **Working on:** CP-034 completed the five-ledger #117 browser matrix and integrated the tested shared repair into normal localhost.
-- **Next:** retain the protected Preview for inspection, then resume the separately authorised Production-readiness decision.
+- **Working on:** CP-035 removes ordinary ledger autosave and verifies explicit Save/Discard across all five editors.
+- **Next:** finish the guarded normal-owner restart and integrity comparison, then resume the separately authorised Production-readiness decision.
 - **Blocked on:** no #117 engineering blocker; VoiceOver spoken output remains separate manual evidence.
 
 ## Delivery state
@@ -15,7 +15,7 @@
 | Local integrated build | Shared repairs through #117 run on normal 3010 at application revision `a52ee88`; generated Next/TypeScript files remain uncommitted |
 | Normal `localhost:3010` | Healthy as `normal-owner` on canonical SQLite and `account-access-v1`; all owner ledger hashes/counts match the fresh pre-update backup |
 | Main / origin | Not updated by the local integration work |
-| Vercel | Protected Preview serves application revision `a52ee88` with five-ledger #117 browser evidence against `preview:plum_duff_preview_cp028`; Production alias/data remain untouched |
+| Vercel | Protected Preview serves application revision `75042e5` with explicit Save/Discard browser evidence against `preview:plum_duff_preview_cp028`; Production alias/data remain untouched |
 | Owner smoke test | Hosted Google PASS is recorded; optional Preview visual acceptance and VoiceOver spoken output remain separate |
 
 ## Progress at a glance
@@ -69,6 +69,7 @@ These figures measure **#114 audit coverage**, not the percentage of the product
 | CP-032 | 2026-09-22 16:33 BST | Removed the remaining hosted connection/region latency and integrated all tested shared Preview repairs into healthy normal localhost without changing owner data | [#114](https://github.com/wolney8/OpenForge/issues/114), [#115](https://github.com/wolney8/OpenForge/issues/115) | [Audit evidence](docs/audits/platform-quality-audit.md#cp-032-hosted-performance-and-local-reconciliation--2026-09-22-1633-bst) |
 | CP-033 | 2026-09-23 15:13 BST | Repaired action-scoped Notes editing for existing ledger rows, retained historical Account/financial meaning and removed cold-request schema-lock contention on Preview | [#117](https://github.com/wolney8/OpenForge/issues/117), [#91](https://github.com/wolney8/OpenForge/issues/91), [#36](https://github.com/wolney8/OpenForge/issues/36), [#92](https://github.com/wolney8/OpenForge/issues/92), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#cp-033-owner-blocking-ledger-edit-repair--2026-09-23-1513-bst) |
 | CP-034 | 2026-09-23 17:56 BST | Completed browser Notes add/amend/clear across five ledgers, corrected Cash note-history semantics and reconciled the verified shared repair into normal localhost without changing owner financial data | [#117](https://github.com/wolney8/OpenForge/issues/117), [#91](https://github.com/wolney8/OpenForge/issues/91), [#36](https://github.com/wolney8/OpenForge/issues/36), [#92](https://github.com/wolney8/OpenForge/issues/92), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#cp-034-five-ledger-note-editing-and-local-reconciliation--2026-09-23-1756-bst) |
+| CP-035 | 2026-09-23 20:06 BST | Replaced ordinary ledger autosave with one explicit draft, Save, Revert and three-way close contract across five editors | [#117](https://github.com/wolney8/OpenForge/issues/117), [#92](https://github.com/wolney8/OpenForge/issues/92), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#cp-035-explicit-ledger-save-and-discard--2026-09-23-2006-bst) |
 
 ## Reference index
 

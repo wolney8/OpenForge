@@ -524,6 +524,7 @@ a harmless field edit cannot silently reacquire new-entry or financial-correctio
 | CP-032 | 2026-09-22 16:33 BST | Data locality | Request-scoped connections and London-colocated Preview functions removed latency without caching wrong-scope results |
 | CP-033 | 2026-09-23 15:13 BST | Action-scoped validation | A harmless edit validates what changed and the invariants it can affect; it must not reinterpret an unchanged historical relationship as new business |
 | CP-034 | 2026-09-23 17:56 BST | Semantic event classification | Audit history should describe the action actually performed: clearing a note is an edit, while changing financial meaning is a correction |
+| CP-035 | 2026-09-23 20:06 BST | Draft versus saved state | A visible draft is not a saved record: only an explicit, confirmed write may advance the baseline; Discard abandons local state without a compensating server mutation |
 
 ## Where detailed evidence lives
 

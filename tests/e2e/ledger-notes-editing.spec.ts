@@ -5,6 +5,17 @@ const hostedOnly = () => test.skip(
   "Explicit hosted Preview gate only",
 );
 
+test.beforeEach(async ({ page }) => {
+  const baseURL = process.env.OPENFORGE_E2E_BASE_URL;
+  if (!baseURL) return;
+  const session = process.env.OPENFORGE_E2E_SESSION_TOKEN;
+  const protection = process.env.OPENFORGE_E2E_VERCEL_COOKIE;
+  await page.context().addCookies([
+    ...(session ? [{ name: "pd_session", value: session, url: baseURL }] : []),
+    ...(protection ? [{ name: "_vercel_jwt", value: protection, url: baseURL }] : []),
+  ]);
+});
+
 async function createProfile(request: APIRequestContext) {
   const suffix = `${Date.now()}-${Math.floor(Math.random() * 10_000)}`;
   const response = await request.post("/api/profiles/onboarding", { data: {

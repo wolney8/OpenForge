@@ -1514,6 +1514,12 @@ visible future work rather than being silently folded into these repairs.
 
 ## CP-033 owner-blocking ledger edit repair
 
+CP-035 continuation: `PD-FIX-273` records the owner-approved explicit Save/Discard contract for all
+five ledger editors. Ordinary field edits must remain drafts until Save; closing uses the shared
+Keep editing / Discard changes / Save and close decision, while browser unload uses the native
+warning. Status: COMPLETE in engineering on protected Preview revision `75042e5`; #117 remains open
+until CP-035's guarded normal-owner reconciliation is recorded.
+
 | ID | Surface | Requirement | State |
 |---|---|---|---|
 | PD-FIX-271 | Existing ledger Notes editing | An authorised Notes-only update preserves the attached Account and every financial field across supported draft, placed, settled and corrected/voided states; hidden or unchanged fields are not reinterpreted as new input | COMPLETE — five-ledger browser add/amend/clear, legacy/missing/archived reference, keyboard/compact/theme and atomic API evidence pass on Preview; Cash note-only history is `edited`, not a financial correction; normal 3010 runs application revision `a52ee88` with unchanged owner data |

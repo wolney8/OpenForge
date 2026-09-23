@@ -78,6 +78,7 @@ async function saveNote(
   tab: RegExp,
   label: string,
   advancedLabel?: string,
+  previousNote = "",
 ) {
   const edit = dialog.getByRole("button", { name: /Edit (settled|cash-adjustment) row/ });
   if (await edit.isVisible().catch(() => false)) await edit.click();
@@ -98,6 +99,17 @@ async function saveNote(
   expect(saveHandle).not.toBeNull();
   await noteHandle!.fill(note);
   expect(await noteHandle!.inputValue()).toBe(note);
+  let updateRequests = 0;
+  const countUpdate = (request: import("@playwright/test").Request) => {
+    if (request.method() === "PUT" && request.url().endsWith(endpoint)) updateRequests += 1;
+  };
+  page.on("request", countUpdate);
+  await noteInput.blur();
+  await page.waitForTimeout(900);
+  expect(updateRequests).toBe(0);
+  const beforeSave = await (await page.request.get(endpoint)).json() as Record<string, unknown>;
+  const noteField = label === "Description" ? "description" : "user_notes";
+  expect(beforeSave[noteField]).toBe(previousNote);
   expect(await saveHandle!.isEnabled()).toBeTruthy();
   const response = page.waitForResponse((candidate) =>
     candidate.request().method() === "PUT" && candidate.url().endsWith(endpoint),
@@ -109,6 +121,69 @@ async function saveNote(
   const result = await response;
   expect(result.status(), await result.text()).toBe(200);
   await expect(save).toBeHidden({ timeout: 30_000 });
+  page.off("request", countUpdate);
+}
+
+async function verifyDiscard(
+  page: Page,
+  open: () => Promise<Locator>,
+  endpoint: string,
+  tab: RegExp,
+  label: string,
+  noteField: string,
+  previousNote = "",
+  advancedLabel?: string,
+) {
+  const dialog = await open();
+  const edit = dialog.getByRole("button", { name: /Edit (settled|cash-adjustment) row/ });
+  if (await edit.isVisible().catch(() => false)) await edit.click();
+  await dialog.getByRole("tab", { name: tab }).click();
+  const input = page.locator("label").filter({ hasText: new RegExp(`^${label}`) }).locator("textarea, input").first();
+  const hidden = await input.evaluate((element) => Boolean(element.closest("[inert]") || element.closest("details:not([open])"))).catch(() => true);
+  if (advancedLabel && hidden) await dialog.getByText(advancedLabel, { exact: true }).click();
+  await input.fill("discard this draft");
+  await dialog.getByRole("button", { name: /^Close .*editor$/i }).first().click();
+  const confirmation = page.locator('[data-pd-id="unsaved-changes.dialog"]');
+  await confirmation.getByRole("button", { name: "Keep Editing", exact: true }).click();
+  await expect(input).toHaveValue("discard this draft");
+  await dialog.getByRole("button", { name: /^Close .*editor$/i }).first().click();
+  await confirmation.getByRole("button", { name: "Discard Changes" }).click();
+  await expect(dialog).toBeHidden();
+  expect((await (await page.request.get(endpoint)).json() as Record<string, unknown>)[noteField]).toBe(previousNote);
+  const reopened = await open();
+  const reopenedEdit = reopened.getByRole("button", { name: /Edit (settled|cash-adjustment) row/ });
+  if (await reopenedEdit.isVisible().catch(() => false)) await reopenedEdit.click();
+  await reopened.getByRole("tab", { name: tab }).click();
+  const reopenedInput = page.locator("label").filter({ hasText: new RegExp(`^${label}`) }).locator("textarea, input").first();
+  const reopenedHidden = await reopenedInput.evaluate((element) => Boolean(element.closest("[inert]") || element.closest("details:not([open])"))).catch(() => true);
+  if (advancedLabel && reopenedHidden) await reopened.getByText(advancedLabel, { exact: true }).click();
+  await expect(reopenedInput).toHaveValue(previousNote);
+  await reopened.getByRole("button", { name: /^Close .*editor$/i }).first().click();
+}
+
+async function verifySaveAndClose(
+  page: Page,
+  open: () => Promise<Locator>,
+  endpoint: string,
+  tab: RegExp,
+  label: string,
+  noteField: string,
+  advancedLabel?: string,
+) {
+  const dialog = await open();
+  const edit = dialog.getByRole("button", { name: /Edit (settled|cash-adjustment) row/ });
+  if (await edit.isVisible().catch(() => false)) await edit.click();
+  await dialog.getByRole("tab", { name: tab }).click();
+  const input = page.locator("label").filter({ hasText: new RegExp(`^${label}`) }).locator("textarea, input").first();
+  const hidden = await input.evaluate((element) => Boolean(element.closest("[inert]") || element.closest("details:not([open])"))).catch(() => true);
+  if (advancedLabel && hidden) await dialog.getByText(advancedLabel, { exact: true }).click();
+  await input.fill("save and close verified");
+  await dialog.getByRole("button", { name: /^Close .*editor$/i }).first().click();
+  const response = page.waitForResponse((candidate) => candidate.request().method() === "PUT" && candidate.url().endsWith(endpoint));
+  await page.locator('[data-pd-id="unsaved-changes.dialog"]').getByRole("button", { name: "Save and close" }).click();
+  expect((await response).status()).toBe(200);
+  await expect(dialog).toBeHidden();
+  expect((await (await page.request.get(endpoint)).json() as Record<string, unknown>)[noteField]).toBe("save and close verified");
 }
 
 function expectOnlyNoteChanged(before: Record<string, unknown>, after: Record<string, unknown>, noteField: string, note: string) {
@@ -145,13 +220,15 @@ test("Free Bet Notes survive add, amend and clear on an incomplete existing reco
   const route = `/profiles/${profileId}/tracker/free-bets`;
   const endpoint = `/api/profiles/${profileId}/free-bets/${record.free_bet_id}`;
   try {
+    await verifyDiscard(page, () => openRow(page, route, String(record.event_name), "Edit free-bet row"), endpoint, /Settlement/, "Notes", "user_notes", "", "Advanced controls");
     for (const note of ["Free Bet note", "Free Bet amended", ""]) {
       const dialog = await openRow(page, route, String(record.event_name), "Edit free-bet row");
-      await saveNote(page, dialog, note, endpoint, /Settlement/, "Notes", "Advanced controls");
+      await saveNote(page, dialog, note, endpoint, /Settlement/, "Notes", "Advanced controls", String(record.user_notes ?? ""));
       const persisted = await (await page.request.get(endpoint)).json() as Record<string, unknown>;
       expectOnlyNoteChanged(record, persisted, "user_notes", note);
       record.user_notes = note; record.updated_at = persisted.updated_at;
     }
+    await verifySaveAndClose(page, () => openRow(page, route, String(record.event_name), "Edit free-bet row"), endpoint, /Settlement/, "Notes", "user_notes", "Advanced controls");
   } finally { await archiveSyntheticProfile(page.request, profileId); }
 });
 
@@ -174,13 +251,15 @@ test("Extra Place Notes survive add, amend and clear on an imported missing-refe
   const route = `/profiles/${profileId}/tracker/each-way-extra-places`;
   const endpoint = `/api/profiles/${profileId}/each-way-extra-places/${record.each_way_extra_place_id}`;
   try {
+    await verifyDiscard(page, () => openRow(page, route, String(record.runner), "Edit Extra Place row"), endpoint, /Settlement/, "Notes", "user_notes", "", "Advanced");
     for (const note of ["Extra Place note", "Extra Place amended", ""]) {
       const dialog = await openRow(page, route, String(record.runner), "Edit Extra Place row");
-      await saveNote(page, dialog, note, endpoint, /Settlement/, "Notes", "Advanced");
+      await saveNote(page, dialog, note, endpoint, /Settlement/, "Notes", "Advanced", String(record.user_notes ?? ""));
       const persisted = await (await page.request.get(endpoint)).json() as Record<string, unknown>;
       expectOnlyNoteChanged(record, persisted, "user_notes", note);
       record.user_notes = note; record.updated_at = persisted.updated_at;
     }
+    await verifySaveAndClose(page, () => openRow(page, route, String(record.runner), "Edit Extra Place row"), endpoint, /Settlement/, "Notes", "user_notes", "Advanced");
   } finally { await archiveSyntheticProfile(page.request, profileId); }
 });
 
@@ -206,13 +285,15 @@ test("Casino Notes survive add, amend and clear on an incomplete activity", asyn
   const endpoint = `/api/profiles/${profileId}/casino-offers/${created.casino_offer_id}`;
   const record = await (await page.request.get(endpoint)).json() as Record<string, unknown> & { casino_offer_id: string };
   try {
+    await verifyDiscard(page, () => openRow(page, route, String(record.offer_name), "Edit casino row"), endpoint, /Advanced/, "Notes", "user_notes");
     for (const note of ["Casino note", "Casino amended", ""]) {
       const dialog = await openRow(page, route, String(record.offer_name), "Edit casino row");
-      await saveNote(page, dialog, note, endpoint, /Advanced/, "Notes");
+      await saveNote(page, dialog, note, endpoint, /Advanced/, "Notes", undefined, String(record.user_notes ?? ""));
       const persisted = await (await page.request.get(endpoint)).json() as Record<string, unknown>;
       expectOnlyNoteChanged(record, persisted, "user_notes", note);
       record.user_notes = note; record.updated_at = persisted.updated_at;
     }
+    await verifySaveAndClose(page, () => openRow(page, route, String(record.offer_name), "Edit casino row"), endpoint, /Advanced/, "Notes", "user_notes");
   } finally { await archiveSyntheticProfile(page.request, profileId); }
 });
 
@@ -228,12 +309,14 @@ test("Cash Adjustment Notes survive add, amend and clear without changing money"
   const endpoint = `/api/profiles/${profileId}/cash-adjustments/${created.cash_adjustment_id}`;
   const record = await (await page.request.get(endpoint)).json() as Record<string, unknown> & { cash_adjustment_id: string };
   try {
+    await verifyDiscard(page, () => openRow(page, route, "6.00", "Edit cash adjustment"), endpoint, /Notes/, "Description", "description");
     for (const note of ["Cash note", "Cash amended", ""]) {
       const dialog = await openRow(page, route, note ? "6.00" : "Cash amended", "Edit cash adjustment");
-      await saveNote(page, dialog, note, endpoint, /Notes/, "Description");
+      await saveNote(page, dialog, note, endpoint, /Notes/, "Description", undefined, String(record.description ?? ""));
       const persisted = await (await page.request.get(endpoint)).json() as Record<string, unknown>;
       expectOnlyNoteChanged(record, persisted, "description", note);
       record.description = note; record.updated_at = persisted.updated_at;
     }
+    await verifySaveAndClose(page, () => openRow(page, route, "6.00", "Edit cash adjustment"), endpoint, /Notes/, "Description", "description");
   } finally { await archiveSyntheticProfile(page.request, profileId); }
 });
