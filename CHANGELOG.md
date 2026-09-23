@@ -8,6 +8,12 @@ roadmap or detailed audit record.
 
 No published release is represented by the local milestones below.
 
+## 2026-09-23
+
+- **2026-09-23 15:13 BST — CP-033:** Repaired action-scoped Notes editing for existing ledger
+  rows, preserved unchanged historical Account and financial meaning, and prevented already-
+  migrated Preview cold starts from repeating table-changing schema work beside ordinary writes.
+
 ## 2026-09-22
 
 - **2026-09-22 16:33 BST — CP-032:** Removed repeated hosted PostgreSQL connection setup, colocated

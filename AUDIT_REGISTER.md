@@ -1,6 +1,6 @@
 # Audit Register — Plum Duff / OpenForge — Doc ID: AR-CODEX-001
 
-**Last updated:** 2026-09-22 16:33 BST
+**Last updated:** 2026-09-23 15:13 BST
 
 This is the owner-facing index for audit evidence. The
 [platform quality audit](docs/audits/platform-quality-audit.md) remains the detailed authority.
@@ -21,6 +21,7 @@ These are coverage measures, not percentages of the product finished.
 
 | ID | Plain-English problem | State | Repair / integration state | Issue |
 | --- | --- | --- | --- | --- |
+| PD-FIX-271–272 / CP-033 | Notes edits on existing bets revalidated unchanged historical Accounts as new selections; cold Preview functions could also rerun table-changing schema setup beside an ordinary write | Repaired / protected Preview verified | Account references validate when changed, harmless existing-row Notes edits bypass unrelated placement-completeness checks, retained commission/financial values stay unchanged, and current PostgreSQL schemas now use a read-only migration-marker check. Two consecutive hosted browser runs pass on `260d5cb`; normal 3010 is intentionally unchanged pending controlled reconciliation | [#117](https://github.com/wolney8/OpenForge/issues/117), [#91](https://github.com/wolney8/OpenForge/issues/91), [#36](https://github.com/wolney8/OpenForge/issues/36), [#92](https://github.com/wolney8/OpenForge/issues/92), [#114](https://github.com/wolney8/OpenForge/issues/114) |
 | PD-FIX-269–270 / CP-032 | Small hosted reads repeatedly opened PostgreSQL connections and Preview functions ran across the Atlantic from their database | Repaired / Preview and localhost verified | Request-scoped connection reuse plus `lhr1` Preview functions reduced warm medians to 0.67s summary, 0.42s eligibility and 0.40s for 600 Sportsbook rows. Shared fixes through `712d174` now run on normal 3010; every owner row projection is unchanged | [#114](https://github.com/wolney8/OpenForge/issues/114), [#115](https://github.com/wolney8/OpenForge/issues/115) |
 | PD-FIX-267–268 / CP-031 | Hosted Free Bet lineage and Account eligibility performed repeated work across archived Profiles/rows | Repaired / verified on protected Preview | Batched Profile-scoped lineage reads reduced the populated summary from 70.78s to 5.81s; active-owner eligibility now reads 3 active Profiles rather than 83 total and returns in 11.88s. Supported hosted journeys, responsive/access/recovery and diagnostics pass on `659d0ea`; richer Multi-Lay placement/reward modes and the 600-row payload remain named future boundaries | [#114](https://github.com/wolney8/OpenForge/issues/114), [#115](https://github.com/wolney8/OpenForge/issues/115) |
 | PD-FIX-266 / CP-030 | Populated Reports could hit React error 185 when reduced-motion preference changed | Repaired / verified on protected Preview | One shared motion subscription replaces hundreds of per-value listeners. Revision `b9e58e7` passed the direct hosted Reports and £6→£5 proof; CP-031 retained that result on final Preview source | [#114](https://github.com/wolney8/OpenForge/issues/114) |

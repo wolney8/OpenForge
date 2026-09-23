@@ -478,8 +478,8 @@ contract; the broad tests are private-data-free; and the protected Preview now p
 role, database identity, schema, OAuth and recovery path. CP-029 additionally made the internal SSR
 base URL and protected request context explicit instead of relying on project-wide inheritance.
 
-**Smallest improvement:** Repair the Reports maximum-update-depth loop, then repeat the serial
-authenticated hosted journey set without widening scope.
+**Smallest improvement:** Reconcile the protected-Preview #117 application repair into the normal
+local source through the existing identity/backup gate; never copy Preview configuration or data.
 
 ## Learning log
 
@@ -511,6 +511,7 @@ authenticated hosted journey set without widening scope.
 | CP-030 | 2026-09-22 11:57 BST | Shared external-state subscription; explicit hosted self-routing | One reduced-motion subscription prevents update fan-out, while an explicit protected internal API URL keeps server rendering on the intended Preview boundary |
 | CP-031 | 2026-09-22 14:22 BST | Scoped batch reads | Profile-scoped batching and active-only eligibility removed hosted load amplification without hiding it behind caching |
 | CP-032 | 2026-09-22 16:33 BST | Data locality | Request-scoped connections and London-colocated Preview functions removed latency without caching wrong-scope results |
+| CP-033 | 2026-09-23 15:13 BST | Action-scoped validation | A harmless edit validates what changed and the invariants it can affect; it must not reinterpret an unchanged historical relationship as new business |
 
 ## Where detailed evidence lives
 

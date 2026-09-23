@@ -1,5 +1,36 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
+## CP-033 owner-blocking ledger edit repair — 2026-09-23 15:13 BST
+
+Read-only inspection established that the observed Sportsbook row belonged to its expected Profile,
+retained a historical bookmaker label for which no current same-Profile Account exists, and was not
+changed during diagnosis. The ordinary note is the Sportsbook row's `user_notes`; the separate Notes
+field on the Free Bet step is only future-award draft state and does not issue a child on global Save.
+
+The failure was action/validation mismatch: the editor sent the complete row and the API re-resolved
+unchanged bookmaker/exchange display values against today's eligible Accounts. The UI also applied
+new-placement completeness to harmless Notes-only edits and could blank a retained commission where
+no lay-plan document existed. Revision `4320b73` limits Account validation to references actually
+changed; `36ec3e7` permits only a strictly Notes-only existing edit through unrelated completeness
+gaps and preserves existing commission. Changed/foreign Accounts, malformed money and wrong-Profile
+writes remain atomic failures, and genuine Account errors route to the correct editor step while
+retaining the draft.
+
+Focused SQLite evidence passes **151/151**, web **432/432**, TypeScript PASS, mypy **0/82** and the
+production build PASS. The matrix covers add/clear, placed Pending, settled plus note, later settled
+note, missing/archived historical Accounts, wrong Profile, invalid money, and unchanged financial
+projections across Sportsbook, Free Bet, Extra Place, Casino and Cash Adjustment contracts.
+
+The first cold deployed write exposed a separate PostgreSQL deadlock: a new serverless instance was
+rerunning table-changing schema setup while a warm instance appended financial history. Revision
+`260d5cb` first checks the approved migration marker read-only and runs migrations only when absent.
+Twelve concurrent isolated-PostgreSQL connections passed, followed by two consecutive protected-
+Preview browser runs. Both unsettled and settled notes survived reopen; Account, stake, odds,
+commission, settlement, reporting value and child count were unchanged, with zero browser errors or
+final-deployment error logs. The alias reports role `preview`, database
+`preview:plum_duff_preview_cp028`, schema `account-access-v1` and revision `260d5cb`. All 16 CP-033
+synthetic Profiles are archived. Production, localhost:3010 and owner records were untouched.
+
 ## CP-032 hosted performance and local reconciliation — 2026-09-22 16:33 BST
 
 CP-031 left three slow paths. Five measurements on `659d0ea` gave repeat medians/slowest values of

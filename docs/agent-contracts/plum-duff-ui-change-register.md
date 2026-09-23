@@ -4,7 +4,8 @@
 
 | ID | Surface | Requested outcome | Signed-off equivalent | Status |
 |---|---|---|---|---|
-| PD-FIX-271 | Existing ledger record editing | Permit authorised Notes-only edits across supported lifecycle states without reselecting or revalidating unchanged financial/Account fields; retain drafts on failure and keep identity/financial meaning unchanged | Existing ledger editors, canonical Account identity and field-scoped mutation/history contracts | IN PROGRESS — owner Preview failure reproduced/investigation active under #117 |
+| PD-FIX-271 | Existing ledger record editing | Permit authorised Notes-only edits across supported lifecycle states without reselecting or revalidating unchanged financial/Account fields; retain drafts on failure and keep identity/financial meaning unchanged | Existing ledger editors, canonical Account identity and field-scoped mutation/history contracts | COMPLETE — focused cross-ledger API evidence and two consecutive protected-Preview browser runs pass on `260d5cb` |
+| PD-FIX-272 | Preview persistence startup | Prevent an ordinary cold request from competing with repeat table-changing schema setup after the approved migration marker exists | Fail-closed runtime/schema readiness and explicit migration boundary | COMPLETE — current schemas use a read-only marker check; 12 concurrent isolated-PostgreSQL connections and final hosted runs complete without deadlock |
 
 Issue coverage: GitHub #117 owns the defect; #91, #36, #92 and #114 retain related ledger,
 shared-UI and acceptance evidence. No duplicate issue created.
