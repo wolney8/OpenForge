@@ -46,6 +46,7 @@ async function addAccount(request: APIRequestContext, profileId: string, account
 
 async function openRow(page: Page, route: string, rowText: string, dialogName: string) {
   await page.goto(route, { waitUntil: "domcontentloaded" });
+  await page.waitForLoadState("networkidle");
   const range = page.getByLabel(/Change tracker date range/);
   if (await range.isVisible().catch(() => false)) await range.selectOption({ label: "All Dates" });
   const row = page.locator(".data-table tbody tr", { hasText: rowText }).first();
