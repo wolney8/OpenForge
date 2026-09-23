@@ -5,6 +5,7 @@ import { ModalBoundary } from "@/components/modal-boundary";
 import type { MouseEvent as ReactMouseEvent, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { apiBaseUrl } from "@/lib/api";
+import { isOnlyFieldChange } from "@/lib/field-change";
 import {
   fetchJsonAndCache,
   invalidateCachedJson,
@@ -3315,8 +3316,21 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
     }
 
     setErrorMessage("");
+    const activeRowId = nextFormState.casino_offer_id ?? selectedId;
+    const isEditing = Boolean(activeRowId);
+    const isNotesOnlyExistingEdit =
+      isEditing &&
+      isOnlyFieldChange(
+        nextFormState,
+        pristineFormState,
+        new Set<keyof CasinoOfferFormState>(["user_notes"]),
+      );
     const resolvedFormState = buildPersistForm(nextFormState);
-    if (!options?.skipWorkflowValidation && !canPersistForm(resolvedFormState)) {
+    if (
+      !isNotesOnlyExistingEdit &&
+      !options?.skipWorkflowValidation &&
+      !canPersistForm(resolvedFormState)
+    ) {
       setShowOfferIdentityValidation(true);
       if (!options?.suppressMissingRequiredMessage) {
         const missingFields = [
@@ -3334,8 +3348,6 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
     setIsPersisting(true);
 
     try {
-      const activeRowId = resolvedFormState.casino_offer_id ?? selectedId;
-      const isEditing = Boolean(activeRowId);
       const url = isEditing
         ? `${apiBaseUrl}/profiles/${profileId}/casino-offers/${activeRowId}`
         : `${apiBaseUrl}/profiles/${profileId}/casino-offers`;
@@ -3345,7 +3357,9 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...resolvedFormState,
+          ...(isNotesOnlyExistingEdit
+            ? { ...pristineFormState, user_notes: nextFormState.user_notes }
+            : resolvedFormState),
           date_started: fromDateTimeLocalValue(resolvedFormState.date_started),
           date_settling: fromDateTimeLocalValue(resolvedFormState.date_settling),
           expiry_datetime: fromDateTimeLocalValue(resolvedFormState.expiry_datetime),

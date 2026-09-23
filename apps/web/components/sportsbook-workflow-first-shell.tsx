@@ -7,6 +7,7 @@ import { CoreLayPlanner, CoreLayPlannerUpgrade } from "@/components/core-lay-pla
 import { readLayPlan, type LayPlan } from "@/lib/lay-plan";
 import { getMoneyInputErrors } from "@/lib/decimal-input";
 import { hasNewerFormEdits, reconcileSavedForm } from "@/lib/latest-edit";
+import { isOnlyFieldChange } from "@/lib/field-change";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { MouseEvent as ReactMouseEvent, ReactNode, SetStateAction } from "react";
@@ -5429,9 +5430,10 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     const isEditing = Boolean(activeRowId);
     const isNotesOnlyExistingEdit =
       isEditing &&
-      nextFormState.user_notes !== pristineFormState.user_notes &&
-      (Object.keys(nextFormState) as Array<keyof SportsbookFormState>).every(
-        (key) => key === "user_notes" || nextFormState[key] === pristineFormState[key]
+      isOnlyFieldChange(
+        nextFormState,
+        pristineFormState,
+        new Set<keyof SportsbookFormState>(["user_notes"]),
       );
 
     if (

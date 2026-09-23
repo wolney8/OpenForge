@@ -2,6 +2,14 @@ import { defineConfig } from "@playwright/test";
 
 const baseURL = process.env.OPENFORGE_E2E_BASE_URL ?? "http://127.0.0.1:3010";
 const apiBaseURL = process.env.OPENFORGE_E2E_API_BASE_URL ?? "http://127.0.0.1:8010";
+const hostedCookieHeader = [
+  process.env.OPENFORGE_E2E_SESSION_TOKEN
+    ? `pd_session=${process.env.OPENFORGE_E2E_SESSION_TOKEN}`
+    : "",
+  process.env.OPENFORGE_E2E_VERCEL_COOKIE
+    ? `_vercel_jwt=${process.env.OPENFORGE_E2E_VERCEL_COOKIE}`
+    : "",
+].filter(Boolean).join("; ");
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -9,6 +17,7 @@ export default defineConfig({
   retries: 0,
   use: {
     baseURL,
+    ...(hostedCookieHeader ? { extraHTTPHeaders: { Cookie: hostedCookieHeader } } : {}),
     trace: "off",
     video: "off",
     screenshot: "off",

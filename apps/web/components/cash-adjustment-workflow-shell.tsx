@@ -3,6 +3,7 @@
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { apiBaseUrl } from "@/lib/api";
+import { isOnlyFieldChange } from "@/lib/field-change";
 import { formatApiErrorBody } from "@/lib/api-error";
 import {
   fetchJsonAndCache,
@@ -1478,7 +1479,16 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
     }
 
     setErrorMessage("");
-    if (!canPersistForm(nextFormState)) {
+    const activeRowId = nextFormState.cash_adjustment_id ?? selectedId;
+    const isEditing = Boolean(activeRowId);
+    const isNotesOnlyExistingEdit =
+      isEditing &&
+      isOnlyFieldChange(
+        nextFormState,
+        pristineFormState,
+        new Set<keyof CashAdjustmentFormState>(["description"]),
+      );
+    if (!isNotesOnlyExistingEdit && !canPersistForm(nextFormState)) {
       setShowAdjustmentValidation(true);
       if (!options?.suppressMissingRequiredMessage) {
         const missing = getMissingRequiredFields(nextFormState);
@@ -1499,8 +1509,6 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
     setIsPersisting(true);
 
     try {
-      const activeRowId = nextFormState.cash_adjustment_id ?? selectedId;
-      const isEditing = Boolean(activeRowId);
       const url = isEditing
         ? `${apiBaseUrl}/profiles/${profileId}/cash-adjustments/${activeRowId}`
         : `${apiBaseUrl}/profiles/${profileId}/cash-adjustments`;

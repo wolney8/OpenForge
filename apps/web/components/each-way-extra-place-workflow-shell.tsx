@@ -31,6 +31,7 @@ import {
 } from "@/components/ledger-editor-tabs";
 import { TrackerRangeCard } from "@/components/tracker-range-card";
 import { apiBaseUrl } from "@/lib/api";
+import { isOnlyFieldChange } from "@/lib/field-change";
 import {
   findMasterAccountCatalogueEntry,
   type MasterAccountCatalogueRecord,
@@ -960,6 +961,10 @@ export function EachWayExtraPlaceWorkflowShell({
         (form.status !== "Prospecting" &&
           !selectedAccountAccess.allowsOperationalUse)),
   );
+  const isNotesOnlyExistingEdit = Boolean(
+    selectedId &&
+      isOnlyFieldChange(form, pristine, new Set<keyof Form>(["user_notes"])),
+  );
   const openCount = rangeRows.filter((row) => row.status === "Placed").length;
   const issueCount = rangeRows.filter(hasIssue).length;
   const settledCount = rangeRows.filter(
@@ -1349,7 +1354,7 @@ export function EachWayExtraPlaceWorkflowShell({
                   <div className="tracker-nav workflow-editor-footer-primary">
                     <button
                       className="modal-primary-button"
-                      disabled={saving || accountUseBlocked}
+                      disabled={saving || (accountUseBlocked && !isNotesOnlyExistingEdit)}
                       onClick={() => void save()}
                       type="button"
                     >

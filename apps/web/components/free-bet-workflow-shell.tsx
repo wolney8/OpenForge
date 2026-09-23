@@ -4,6 +4,7 @@ import { ModalBoundary } from "@/components/modal-boundary";
 import { formatApiErrorBody } from "@/lib/api-error";
 import { CoreLayPlanner, CoreLayPlannerUpgrade } from "@/components/core-lay-planner";
 import { hasNewerFormEdits, reconcileSavedForm } from "@/lib/latest-edit";
+import { isOnlyFieldChange } from "@/lib/field-change";
 
 import { getFreeBetInputErrors } from "@/lib/free-bet-input";
 
@@ -1750,6 +1751,14 @@ export function FreeBetWorkflowShell({
   const calculatorUnlocked = offerSetupComplete && !isAwaitingAwardStatus;
   const financialInputErrors = getFreeBetInputErrors(formState);
   const hasInvalidFinancialInput = Object.keys(financialInputErrors).length > 0;
+  const isNotesOnlyExistingEdit = Boolean(
+    (formState.free_bet_id ?? selectedId) &&
+      isOnlyFieldChange(
+        formState,
+        pristineFormState,
+        new Set<keyof FreeBetFormState>(["user_notes"]),
+      ),
+  );
   const renderFinancialInputError = (field: string) => financialInputErrors[field]
     ? <span className="error-text" role="alert" id={`free-bet-${field}-error`}>{financialInputErrors[field]}</span> : null;
   const financialDescribedBy = (field: string) =>
@@ -2805,11 +2814,20 @@ export function FreeBetWorkflowShell({
     }
 
     setErrorMessage("");
+    const activeRowId = nextFormState.free_bet_id ?? selectedId;
+    const isEditing = Boolean(activeRowId);
+    const isNotesOnlyExistingEdit =
+      isEditing &&
+      isOnlyFieldChange(
+        nextFormState,
+        pristineFormState,
+        new Set<keyof FreeBetFormState>(["user_notes"]),
+      );
     const nextResolvedCommission = getResolvedExchangeCommission(
       exchangeSettings,
       nextFormState.exchange_name
     );
-    if (!canPersistForm(nextFormState)) {
+    if (!isNotesOnlyExistingEdit && !canPersistForm(nextFormState)) {
       setShowOfferIdentityValidation(true);
       if (!options?.suppressMissingRequiredMessage) {
         const missingFields = [
@@ -2827,8 +2845,6 @@ export function FreeBetWorkflowShell({
     setIsPersisting(true);
 
     try {
-      const activeRowId = nextFormState.free_bet_id ?? selectedId;
-      const isEditing = Boolean(activeRowId);
       const url = isEditing
         ? `${apiBaseUrl}/profiles/${profileId}/free-bets/${activeRowId}`
         : `${apiBaseUrl}/profiles/${profileId}/free-bets`;
@@ -2839,7 +2855,8 @@ export function FreeBetWorkflowShell({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...nextFormState,
-          lay_commission_1: nextFormState.lay_plan_json ? nextFormState.lay_commission_1 : "",
+          lay_commission_1:
+            isEditing || nextFormState.lay_plan_json ? nextFormState.lay_commission_1 : "",
           expiry_datetime: fromDateTimeLocalValue(nextFormState.expiry_datetime),
           date_settled: fromDateTimeLocalValue(nextFormState.date_settled),
         })
@@ -5269,7 +5286,13 @@ export function FreeBetWorkflowShell({
                 <>
                   <button
                     className="review-chip review-chip-copy"
-                    disabled={isPending || isPersisting || corePlanPending || !isDirty || hasInvalidFinancialInput}
+                    disabled={
+                      isPending ||
+                      isPersisting ||
+                      corePlanPending ||
+                      !isDirty ||
+                      (hasInvalidFinancialInput && !isNotesOnlyExistingEdit)
+                    }
                     type="submit"
                   >
                     {isPending || isPersisting ? <span aria-hidden="true" className="button-spinner" /> : null}
