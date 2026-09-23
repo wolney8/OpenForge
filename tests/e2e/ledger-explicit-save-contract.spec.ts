@@ -93,6 +93,16 @@ test("Free Bet-step Notes remain a dirty draft until explicit Save", async ({ pa
     await confirmation.getByRole("button", { name: "Save and close" }).click();
     await expect(savedEditor).toBeHidden();
     expect(updateRequests).toBe(0);
+
+    await page.getByRole("button", { name: `Copy ${created.sportsbook_bet_id} to free bets` }).click();
+    const finalEditor = page.getByRole("dialog", { name: "Edit sportsbook row" });
+    await finalEditor.getByRole("tab", { name: "Free Bet" }).click();
+    const finalNotes = finalEditor.locator('[data-pd-id="ledger-editor.panel.free_bet"]').getByLabel("Notes");
+    await expect(finalNotes).toHaveValue("saved and closed");
+    await finalNotes.fill("revert this draft");
+    await finalEditor.getByRole("button", { name: "Revert", exact: true }).click();
+    await expect(finalNotes).toHaveValue("saved and closed");
+    await finalEditor.getByRole("button", { name: "Close sportsbook editor" }).click();
   } finally {
     await page.request.patch(`/api/profiles/${profileId}`, { data: { status: "Archived" } }).catch(() => undefined);
   }
