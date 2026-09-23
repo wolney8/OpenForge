@@ -72,7 +72,9 @@ async function saveNote(
     const disclosure = dialog.getByText("Advanced", { exact: true });
     if (await disclosure.isVisible().catch(() => false)) await disclosure.click();
   }
-  await dialog.getByLabel(label, { exact: true }).fill(note);
+  const noteInput = dialog.getByLabel(label, { exact: true });
+  await noteInput.fill(note);
+  await expect(noteInput).toHaveValue(note);
   const save = dialog.getByRole("button", { name: /^(Save|Save Edits)$/ });
   await expect(save).toBeEnabled({ timeout: 10_000 });
   const response = page.waitForResponse((candidate) =>

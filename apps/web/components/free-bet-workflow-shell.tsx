@@ -2723,6 +2723,7 @@ export function FreeBetWorkflowShell({
       return;
     }
     setSelectedId(rowId);
+    selectedIdRef.current = rowId;
     setActiveEditorTabId("setup");
     setFreeBetLayWorkflowModeOverride(null);
     setFreeBetCustomSliderMin("");
@@ -2739,6 +2740,7 @@ export function FreeBetWorkflowShell({
     setShowOfferIdentityValidation(false);
     setSettledEditEnabled(false);
     setWorkflowVisible(true);
+    workflowVisibleRef.current = true;
     setTableCollapsed(Boolean(options?.collapseTable));
     setStatusMessage("");
     revealEditor({ expandLedger: !options?.collapseTable });
@@ -2759,6 +2761,7 @@ export function FreeBetWorkflowShell({
     isCreatingDraftRef.current = true;
     setIsNewCoreIntent(true);
     setWorkflowVisible(true);
+    workflowVisibleRef.current = true;
     setTableCollapsed(false);
     setPreviewCalculation(null);
     const blankForm = createBlankForm();
@@ -2779,6 +2782,7 @@ export function FreeBetWorkflowShell({
       return;
     }
     setWorkflowVisible(false);
+    workflowVisibleRef.current = false;
     setSelectedId(null);
     selectedIdRef.current = null;
     setFollowUpReminderEditorState(null);
