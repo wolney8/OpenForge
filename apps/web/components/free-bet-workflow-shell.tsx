@@ -5243,7 +5243,7 @@ export function FreeBetWorkflowShell({
               <label className="field-control field-span-2">
                 <span>Notes</span>
                 <textarea
-                  onInput={(event) => setFormState((current) => ({ ...current, user_notes: event.currentTarget.value }))}
+                  onChange={(event) => setFormState((current) => ({ ...current, user_notes: event.target.value }))}
                   rows={5}
                   value={formState.user_notes}
                 />
