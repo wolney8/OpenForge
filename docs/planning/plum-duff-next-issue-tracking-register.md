@@ -1516,7 +1516,7 @@ visible future work rather than being silently folded into these repairs.
 
 | ID | Surface | Requirement | State |
 |---|---|---|---|
-| PD-FIX-271 | Existing ledger Notes editing | An authorised Notes-only update preserves the attached Account and every financial field across supported draft, placed, settled and corrected/voided states; hidden or unchanged fields are not reinterpreted as new input | COMPLETE — shared update validation, legacy-row UI save and protected-Preview reopen evidence pass on `260d5cb` |
+| PD-FIX-271 | Existing ledger Notes editing | An authorised Notes-only update preserves the attached Account and every financial field across supported draft, placed, settled and corrected/voided states; hidden or unchanged fields are not reinterpreted as new input | COMPLETE — five-ledger browser add/amend/clear, legacy/missing/archived reference, keyboard/compact/theme and atomic API evidence pass on Preview; Cash note-only history is `edited`, not a financial correction; normal 3010 runs application revision `a52ee88` with unchanged owner data |
 | PD-FIX-272 | Preview cold persistence path | An already-migrated Preview must not repeat table-changing schema work during an ordinary read/write and contend with financial history persistence | COMPLETE — current migration-marker reads replace repeat DDL; concurrent PostgreSQL and hosted retry evidence pass |
 
 GitHub #117 is the primary defect. Existing #91, #36, #92 and #114 evidence is qualified by the
@@ -1525,7 +1525,9 @@ CP-033 matrix; external comment sync remains a tracking action, not an engineeri
 External sync required: #117 — unchanged historical Account references no longer block Notes-only
 edits; placed-Pending and settled Preview reopen checks preserve commission/reporting and create no
 award. #91/#36/#92/#114 — qualify prior edit claims with the CP-033 action-scoped validation matrix
-and deployed revision `260d5cb`.
+and deployed application revision `a52ee88`. CP-034 adds all-ledger browser and local reconciliation
+evidence; CP-031's supported hosted verification remains complete, with richer unsupported
+Multi-Lay modes and VoiceOver spoken output retained as separate boundaries.
 
 ## CP-028 protected Preview evidence — 2026-09-21 13:02 BST
 

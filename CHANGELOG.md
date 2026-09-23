@@ -10,6 +10,9 @@ No published release is represented by the local milestones below.
 
 ## 2026-09-23
 
+- **2026-09-23 17:56 BST — CP-034:** Completed five-ledger browser Notes editing, corrected Cash
+  note-history classification and reconciled the verified shared repair into normal localhost
+  without changing owner ledger data.
 - **2026-09-23 15:13 BST — CP-033:** Repaired action-scoped Notes editing for existing ledger
   rows, preserved unchanged historical Account and financial meaning, and prevented already-
   migrated Preview cold starts from repeating table-changing schema work beside ordinary writes.

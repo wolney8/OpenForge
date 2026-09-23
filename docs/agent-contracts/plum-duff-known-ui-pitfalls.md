@@ -1263,3 +1263,14 @@ Half-width pointer Save remains BLOCKED under PD-QA-004; these probes are not wh
   owner routes and asserts bounded summary requests, usable rendering, grouped warning semantics,
   responsive containment, keyboard access, both themes and reduced motion. The deterministic
   `cross-profile-load-scope` fixture models few active plus many archived Profiles.
+
+## 2026-09-23: Harmless existing-row edits inherited unrelated workflow validation
+
+- Area: shared ledger editor Save actions.
+- Root cause: full-row payloads made unchanged historical Account/calculator state look newly supplied,
+  while Cash description clearing defaulted to the financial-correction history operation.
+- Prevention: authorise the record/Profile on every request, then validate changed fields and affected
+  invariants; retain unchanged historical references and classify note-only history as `edited`.
+- Regression evidence: `ledger-notes-editing.spec.ts`, `ledger-notes-editing-cross-ledger.spec.ts`
+  and the focused five-ledger API matrix cover browser persistence, keyboard Save, atomic rejection,
+  stale refresh, stable identity and unchanged financial projections.

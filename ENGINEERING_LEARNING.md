@@ -432,6 +432,17 @@ source checkout and safe database identity.
 
 **Remember:** A disposable runtime must never have an owner-data fallback.
 
+### Semantic event classification
+
+**What it means:** Persisted history should name the business action that actually changed state,
+not reuse the most severe operation supported by the endpoint.
+
+**Why it mattered in Plum Duff:** Clearing a Cash Adjustment description changed no money, but the
+generic update path called it a correction and therefore demanded a correction reason. Comparing
+the governed financial fields keeps note edits readable without weakening correction safeguards.
+
+**Remember:** Classify an event from its changed meaning, not merely from the route that saved it.
+
 ## Things I should personally inspect when AI changes code
 
 - Does the test prove behaviour independently, or repeat the implementation's own answer?
@@ -478,8 +489,8 @@ contract; the broad tests are private-data-free; and the protected Preview now p
 role, database identity, schema, OAuth and recovery path. CP-029 additionally made the internal SSR
 base URL and protected request context explicit instead of relying on project-wide inheritance.
 
-**Smallest improvement:** Reconcile the protected-Preview #117 application repair into the normal
-local source through the existing identity/backup gate; never copy Preview configuration or data.
+**Smallest improvement:** Keep action-scoped browser matrices alongside each shared ledger editor so
+a harmless field edit cannot silently reacquire new-entry or financial-correction semantics.
 
 ## Learning log
 
@@ -512,6 +523,7 @@ local source through the existing identity/backup gate; never copy Preview confi
 | CP-031 | 2026-09-22 14:22 BST | Scoped batch reads | Profile-scoped batching and active-only eligibility removed hosted load amplification without hiding it behind caching |
 | CP-032 | 2026-09-22 16:33 BST | Data locality | Request-scoped connections and London-colocated Preview functions removed latency without caching wrong-scope results |
 | CP-033 | 2026-09-23 15:13 BST | Action-scoped validation | A harmless edit validates what changed and the invariants it can affect; it must not reinterpret an unchanged historical relationship as new business |
+| CP-034 | 2026-09-23 17:56 BST | Semantic event classification | Audit history should describe the action actually performed: clearing a note is an edit, while changing financial meaning is a correction |
 
 ## Where detailed evidence lives
 

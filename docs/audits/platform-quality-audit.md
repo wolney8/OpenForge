@@ -1,5 +1,36 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
+## CP-034 five-ledger Note editing and local reconciliation — 2026-09-23 17:56 BST
+
+CP-033 Sportsbook evidence was retained. Fresh protected-Preview browser groups now prove Free Bet
+(incomplete existing row with removed current Account), Extra Place (settled imported missing-reference
+row), Casino (incomplete activity) and Cash Adjustment add, amend, deliberate clear, Save, reopen and
+refresh. Sportsbook was rerun with its archived Account, award draft and settled edit path. The light
+desktop run passed 5/5 and the compact dark keyboard-Save run passed 4/4; persisted API reads, not
+toasts, proved the note while identity, amounts, odds, commission, dates, outcome, links and report
+meaning remained unchanged.
+
+One additional defect was found: Cash description clearing used the default `corrected` history
+operation and failed because corrections require a meaningful reason. Revision `a52ee88` compares
+the governed financial fields and records description-only changes as `edited`; real money changes
+remain `corrected`. Focused SQLite evidence passes 44/44, the Cash clear/history regression 3/3,
+PostgreSQL cold-start marker evidence 4/4 and TypeScript passes. The protected alias reports role
+`preview`, database `preview:plum_duff_preview_cp028`, schema `account-access-v1` and application
+revision `a52ee88`.
+
+Before local reconciliation, a fresh readable SQLite backup passed `integrity_check = ok` and zero
+foreign-key violations. Normal 3010 was restarted through the fail-closed owner launcher and reports
+`normal-owner`, canonical owner database and `account-access-v1` at application revision `a52ee88`.
+Profiles, Dashboard, Accounts, Reports, Sportsbook and calculators rendered authenticated without
+browser diagnostics. Every owner ledger/history hash and count is unchanged: 42 Profiles (3 active),
+175 Accounts, 538 Sportsbook, 291 Free Bets, 90 Casino, 58 Cash, 123 Extra Place and 305 history
+events. The temporary verification session was revoked. Preview-only credentials/configuration and
+Production were untouched.
+
+**Verdict:** #117 is engineering-verified for the listed supported states in Preview and localhost.
+CP-031's supported hosted verification remains complete; unsupported richer Multi-Lay modes, the
+recorded 600-row capacity item and VoiceOver spoken output remain their existing separate boundaries.
+
 ## CP-033 owner-blocking ledger edit repair — 2026-09-23 15:13 BST
 
 Read-only inspection established that the observed Sportsbook row belonged to its expected Profile,

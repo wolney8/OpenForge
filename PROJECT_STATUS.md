@@ -1,21 +1,21 @@
 # Project Status — Plum Duff / OpenForge — Doc ID: PS-CODEX-001
 
-**Last updated:** 2026-09-23 15:13 BST · **Status:** 🟢 #117 ledger Notes editing repaired and verified on protected Preview
+**Last updated:** 2026-09-23 17:56 BST · **Status:** 🟢 #117 ledger Notes editing verified on Preview and reconciled locally
 
 ## Right now
 
-- **Working on:** CP-033 repaired existing-row Notes saves that revalidated an unchanged historical Account as new business.
-- **Next:** reconcile the shared CP-033 application fixes into the normal local build through a separately controlled local gate, then resume Production-readiness planning.
+- **Working on:** CP-034 completed the five-ledger #117 browser matrix and integrated the tested shared repair into normal localhost.
+- **Next:** retain the protected Preview for inspection, then resume the separately authorised Production-readiness decision.
 - **Blocked on:** no #117 engineering blocker; VoiceOver spoken output remains separate manual evidence.
 
 ## Delivery state
 
 | Area | Evidence state |
 | --- | --- |
-| Local integrated build | Shared CP-029–CP-032 repairs remain on normal 3010 at `712d174`; CP-033 is Preview-only pending controlled local reconciliation |
-| Normal `localhost:3010` | Healthy as `normal-owner` on canonical SQLite and `account-access-v1`; all owner row projections and counts match the pre-update backup |
+| Local integrated build | Shared repairs through #117 run on normal 3010 at application revision `a52ee88`; generated Next/TypeScript files remain uncommitted |
+| Normal `localhost:3010` | Healthy as `normal-owner` on canonical SQLite and `account-access-v1`; all owner ledger hashes/counts match the fresh pre-update backup |
 | Main / origin | Not updated by the local integration work |
-| Vercel | Protected Preview serves revision `260d5cb` with #117 verified against `preview:plum_duff_preview_cp028`; Production alias/data remain untouched |
+| Vercel | Protected Preview serves application revision `a52ee88` with five-ledger #117 browser evidence against `preview:plum_duff_preview_cp028`; Production alias/data remain untouched |
 | Owner smoke test | Hosted Google PASS is recorded; optional Preview visual acceptance and VoiceOver spoken output remain separate |
 
 ## Progress at a glance
@@ -68,6 +68,7 @@ These figures measure **#114 audit coverage**, not the percentage of the product
 | CP-031 | 2026-09-22 14:22 BST | Completed the supported authenticated Preview workflows and repaired archived-Profile amplification in lineage and Account eligibility reads | [#114](https://github.com/wolney8/OpenForge/issues/114), [#115](https://github.com/wolney8/OpenForge/issues/115) | [Audit evidence](docs/audits/platform-quality-audit.md#cp-031-authenticated-protected-preview-completion--2026-09-22-1422-bst) |
 | CP-032 | 2026-09-22 16:33 BST | Removed the remaining hosted connection/region latency and integrated all tested shared Preview repairs into healthy normal localhost without changing owner data | [#114](https://github.com/wolney8/OpenForge/issues/114), [#115](https://github.com/wolney8/OpenForge/issues/115) | [Audit evidence](docs/audits/platform-quality-audit.md#cp-032-hosted-performance-and-local-reconciliation--2026-09-22-1633-bst) |
 | CP-033 | 2026-09-23 15:13 BST | Repaired action-scoped Notes editing for existing ledger rows, retained historical Account/financial meaning and removed cold-request schema-lock contention on Preview | [#117](https://github.com/wolney8/OpenForge/issues/117), [#91](https://github.com/wolney8/OpenForge/issues/91), [#36](https://github.com/wolney8/OpenForge/issues/36), [#92](https://github.com/wolney8/OpenForge/issues/92), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#cp-033-owner-blocking-ledger-edit-repair--2026-09-23-1513-bst) |
+| CP-034 | 2026-09-23 17:56 BST | Completed browser Notes add/amend/clear across five ledgers, corrected Cash note-history semantics and reconciled the verified shared repair into normal localhost without changing owner financial data | [#117](https://github.com/wolney8/OpenForge/issues/117), [#91](https://github.com/wolney8/OpenForge/issues/91), [#36](https://github.com/wolney8/OpenForge/issues/36), [#92](https://github.com/wolney8/OpenForge/issues/92), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#cp-034-five-ledger-note-editing-and-local-reconciliation--2026-09-23-1756-bst) |
 
 ## Reference index
 

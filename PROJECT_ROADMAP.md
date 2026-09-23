@@ -1,6 +1,6 @@
 # Project Roadmap — Plum Duff / OpenForge — Doc ID: PR-CODEX-001
 
-**Last updated:** 2026-09-23 15:13 BST
+**Last updated:** 2026-09-23 17:56 BST
 
 ## Product goal
 
@@ -21,13 +21,12 @@ schema, OAuth, supported journeys, responsive UI, authorization, diagnostics and
 application fixes now run on the canonical normal-owner runtime after clone, backup and unchanged-
 projection evidence; Preview-only role, database and protection configuration stayed hosted-only.
 
-**Current correction gate:** #117 existing-row Notes editing is repaired and protected-Preview
-verified. Production-readiness work remains paused until the shared CP-033 source is reconciled into
-the normal local build through the existing backup/identity gate.
+**Completed correction gate:** #117 existing-row Notes editing is repaired across all five ledger
+editors, protected-Preview verified and reconciled into the normal local build through the existing
+backup/identity gate.
 
-**Next outcome:** controlled local reconciliation of CP-033 without changing owner data, followed by
-resumption of the separately authorised Production-readiness decision. The protected Preview remains
-available; Production is unchanged.
+**Next outcome:** resume the separately authorised Production-readiness decision. The protected
+Preview remains available; Production is unchanged and no release is implied by #117 closure.
 
 ## Local defect / completeness
 
