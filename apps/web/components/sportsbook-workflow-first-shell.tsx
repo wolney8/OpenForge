@@ -3117,6 +3117,14 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     () => JSON.stringify(currentDirtyState) !== JSON.stringify(pristineDirtyState),
     [currentDirtyState, pristineDirtyState]
   );
+  const isNotesOnlyExistingEdit = Boolean(
+    (formState.sportsbook_bet_id ?? selectedId) &&
+      isOnlyFieldChange(
+        formState,
+        pristineFormState,
+        new Set<keyof SportsbookFormState>(["user_notes"]),
+      ),
+  );
   const hasPendingEditorChanges = workflowVisible && isDirty;
   const confirmDiscardChanges = useUnsavedChangesGuard(hasPendingEditorChanges);
   const clearStatusMessage = useCallback(() => setStatusMessage(""), []);
@@ -5409,7 +5417,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       partialLayLegsOverride?: PartialLayLegInput[];
     }
   ): Promise<boolean> {
-    if (isPersistingRef.current || corePlanPendingRef.current) {
+    if (isPersistingRef.current) {
       return false;
     }
 
@@ -5435,6 +5443,9 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
         pristineFormState,
         new Set<keyof SportsbookFormState>(["user_notes"]),
       );
+    if (corePlanPendingRef.current && !isNotesOnlyExistingEdit) {
+      return false;
+    }
 
     if (
       !isNotesOnlyExistingEdit &&
@@ -10789,7 +10800,13 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
 	                  <>
 	                    <button
 	                      className="review-chip review-chip-copy"
-	                      disabled={isInitialLoading || isPersisting || corePlanPending || !isDirty || hasInvalidOddsInput}
+	                      disabled={
+	                        isInitialLoading ||
+	                        isPersisting ||
+	                        (corePlanPending && !isNotesOnlyExistingEdit) ||
+	                        !isDirty ||
+	                        (hasInvalidOddsInput && !isNotesOnlyExistingEdit)
+	                      }
 	                      type="submit"
 	                    >
 	                      {isPersisting ? <span aria-hidden="true" className="button-spinner" /> : null}

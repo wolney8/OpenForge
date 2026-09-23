@@ -2809,7 +2809,7 @@ export function FreeBetWorkflowShell({
       returnToLedgerOnSuccess?: boolean;
     }
   ): Promise<boolean> {
-    if (isPersistingRef.current || corePlanPendingRef.current) {
+    if (isPersistingRef.current) {
       return false;
     }
 
@@ -2823,6 +2823,9 @@ export function FreeBetWorkflowShell({
         pristineFormState,
         new Set<keyof FreeBetFormState>(["user_notes"]),
       );
+    if (corePlanPendingRef.current && !isNotesOnlyExistingEdit) {
+      return false;
+    }
     const nextResolvedCommission = getResolvedExchangeCommission(
       exchangeSettings,
       nextFormState.exchange_name
@@ -5289,7 +5292,7 @@ export function FreeBetWorkflowShell({
                     disabled={
                       isPending ||
                       isPersisting ||
-                      corePlanPending ||
+                      (corePlanPending && !isNotesOnlyExistingEdit) ||
                       !isDirty ||
                       (hasInvalidFinancialInput && !isNotesOnlyExistingEdit)
                     }

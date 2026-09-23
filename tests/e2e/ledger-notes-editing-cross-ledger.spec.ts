@@ -73,10 +73,13 @@ async function saveNote(
     if (await disclosure.isVisible().catch(() => false)) await disclosure.click();
   }
   await dialog.getByLabel(label, { exact: true }).fill(note);
+  const save = dialog.getByRole("button", { name: /^(Save|Save Edits)$/ });
+  await expect(save).toBeEnabled({ timeout: 10_000 });
   const response = page.waitForResponse((candidate) =>
     candidate.request().method() === "PUT" && candidate.url().endsWith(endpoint),
+    { timeout: 30_000 },
   );
-  await dialog.getByRole("button", { name: /^(Save|Save Edits)$/ }).click();
+  await save.click();
   expect((await response).status()).toBe(200);
   await expect(dialog).toBeHidden({ timeout: 30_000 });
 }
