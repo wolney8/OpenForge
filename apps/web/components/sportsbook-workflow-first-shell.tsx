@@ -2937,7 +2937,6 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     formStateRef.current = next;
     setRenderedFormState(next);
   }, []);
-  const queuedCoreAutosaveRef = useRef<string | null>(null);
   const corePlanPendingRef = useRef(false);
   const [corePlanPending, setCorePlanPending] = useState(false);
   const handleCoreValidity = useCallback((valid: boolean) => { corePlanPendingRef.current = !valid; setCorePlanPending(!valid); }, []);
@@ -3050,6 +3049,8 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   const [freeBetBridgeModalState, setFreeBetBridgeModalState] = useState<FreeBetBridgeModalState | null>(
     null
   );
+  const [savedFreeBetBridgeState, setSavedFreeBetBridgeState] =
+    useState<FreeBetBridgeModalState | null>(null);
   const [isFreeBetBridgeSubmitting, setIsFreeBetBridgeSubmitting] = useState(false);
   const [freeBetBridgeSplitsExpanded, setFreeBetBridgeSplitsExpanded] = useState(false);
   const [freeBetBridgeCreatedCount, setFreeBetBridgeCreatedCount] = useState(0);
@@ -3113,10 +3114,15 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     },
     [pristineFormState]
   );
-  const isDirty = useMemo(
+  const coreIsDirty = useMemo(
     () => JSON.stringify(currentDirtyState) !== JSON.stringify(pristineDirtyState),
     [currentDirtyState, pristineDirtyState]
   );
+  const awardDraftIsDirty = useMemo(
+    () => JSON.stringify(freeBetBridgeModalState) !== JSON.stringify(savedFreeBetBridgeState),
+    [freeBetBridgeModalState, savedFreeBetBridgeState],
+  );
+  const isDirty = coreIsDirty || awardDraftIsDirty;
   const isNotesOnlyExistingEdit = Boolean(
     (formState.sportsbook_bet_id ?? selectedId) &&
       isOnlyFieldChange(
@@ -3126,7 +3132,14 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       ),
   );
   const hasPendingEditorChanges = workflowVisible && isDirty;
-  const confirmDiscardChanges = useUnsavedChangesGuard(hasPendingEditorChanges);
+  const confirmDiscardChanges = useUnsavedChangesGuard(hasPendingEditorChanges, {
+    message: "Choose whether to keep editing, discard this draft, or save it before closing.",
+    onDiscard: () => {
+      loadEditorFormState(pristineFormState);
+      setFreeBetBridgeModalState(savedFreeBetBridgeState);
+    },
+    onSaveAndClose: () => saveEditorDraft(false),
+  });
   const clearStatusMessage = useCallback(() => setStatusMessage(""), []);
   const tableColumns = useMemo(
     () =>
@@ -4123,6 +4136,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       const persisted = JSON.parse(sessionStorage.getItem(`pd.award-review.${record.profile_id}.${record.sportsbook_bet_id}`) || "null") as FreeBetBridgeModalState | null;
       if (persisted?.operation_id && persisted.sourceRowId === record.sportsbook_bet_id) {
         setFreeBetBridgeModalState(persisted);
+        setSavedFreeBetBridgeState(persisted);
         setFreeBetBridgeCreatedCount(persisted.operation_completed ? persisted.splits.length : 0);
         return;
       }
@@ -4133,7 +4147,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     const betType = record.bet_type || "Single";
     const fixtureType = record.fixture_type || "Football";
     const freeBetValue = "5";
-    setFreeBetBridgeModalState({
+    const nextBridgeState: FreeBetBridgeModalState = {
       operation_id: crypto.randomUUID(),
       sourceRowId: record.sportsbook_bet_id,
       bookmaker: record.bookmaker,
@@ -4158,15 +4172,12 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
           retentionMode: "SNR",
         }),
       ],
-    });
+    };
+    setFreeBetBridgeModalState(nextBridgeState);
+    setSavedFreeBetBridgeState(nextBridgeState);
     setFreeBetBridgeCreatedCount(0);
     setFreeBetBridgeSplitsExpanded(false);
   }, []);
-  useEffect(() => {
-    if (freeBetBridgeModalState) {
-      sessionStorage.setItem(`pd.award-review.${profileId}.${freeBetBridgeModalState.sourceRowId}`, JSON.stringify(freeBetBridgeModalState));
-    }
-  }, [freeBetBridgeModalState, profileId]);
   const activateEditorTab = useCallback((tabId: SportsbookEditorTabId) => {
     if (
       tabId === "free_bet" &&
@@ -5601,54 +5612,48 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     } finally {
       isPersistingRef.current = false;
       setIsPersisting(false);
-      const queued = corePlanPendingRef.current ? null : queuedCoreAutosaveRef.current;
-      if (queued) queuedCoreAutosaveRef.current = null;
-      if (queued) void persistForm(formStateRef.current, {autosaveLabel:queued,
-        suppressMissingRequiredMessage:true, returnToLedgerOnSuccess:false});
     }
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    queuedCoreAutosaveRef.current = null;
-    await persistForm(formStateRef.current);
+    await saveEditorDraft(true);
+  }
+
+  async function saveEditorDraft(closeOnSuccess: boolean): Promise<boolean> {
+    if (!coreIsDirty && !awardDraftIsDirty) return true;
+    if (coreIsDirty) {
+      const saved = await persistForm(formStateRef.current, {
+        returnToLedgerOnSuccess: false,
+      });
+      if (!saved) return false;
+    }
+    if (awardDraftIsDirty && freeBetBridgeModalState) {
+      sessionStorage.setItem(
+        `pd.award-review.${profileId}.${freeBetBridgeModalState.sourceRowId}`,
+        JSON.stringify(freeBetBridgeModalState),
+      );
+      setSavedFreeBetBridgeState(freeBetBridgeModalState);
+    }
+    if (closeOnSuccess) {
+      setWorkflowVisible(false);
+      setSelectedId(null);
+      selectedIdRef.current = null;
+      ignoreInitialRecordIdRef.current = true;
+      isCreatingDraftRef.current = false;
+      setTableCollapsed(false);
+    }
+    return true;
   }
 
   async function applyDropdownChange(
     updater: (current: SportsbookFormState) => SportsbookFormState,
-    autosaveLabel: string
+    _autosaveLabel: string
   ) {
     const previousFormState = formStateRef.current;
     const nextFormState = updater(previousFormState);
-    setRevertSnapshot(previousFormState);
     setFormState(nextFormState);
-    if (!(selectedId ?? formState.sportsbook_bet_id)) {
-      return;
-    }
-    if (!canPersistForm(nextFormState)) {
-      return;
-    }
-    if (nextFormState.lay_plan_json && (isPersistingRef.current || corePlanPendingRef.current)) {
-      queuedCoreAutosaveRef.current = autosaveLabel;
-      return;
-    }
-    await persistForm(nextFormState, {
-      autosaveLabel,
-      suppressMissingRequiredMessage: true,
-      returnToLedgerOnSuccess: false,
-    });
   }
-
-  useEffect(() => {
-    if (corePlanPending || isPersisting || !queuedCoreAutosaveRef.current) return;
-    const label = queuedCoreAutosaveRef.current;
-    queuedCoreAutosaveRef.current = null;
-    void persistForm(formStateRef.current, { autosaveLabel: label,
-      suppressMissingRequiredMessage: true, returnToLedgerOnSuccess: false });
-    // The readiness transition drains one intent against the current draft; unrelated
-    // renders must not retry a failed write or replay an already-drained intent.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [corePlanPending, isPersisting]);
 
   function loadEditorFormState(
     nextFormState: SportsbookFormState,
@@ -5689,24 +5694,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   }
 
   async function handleResetForm() {
-    if (revertSnapshot) {
-      loadEditorFormState(revertSnapshot);
-      const rowId = revertSnapshot.sportsbook_bet_id ?? selectedId;
-      if (rowId && canPersistForm(revertSnapshot)) {
-        const reverted = await persistForm(revertSnapshot, {
-          autosaveLabel: "Revert sportsbook row",
-          returnToLedgerOnSuccess: false,
-          suppressMissingRequiredMessage: true,
-        });
-        if (!reverted) {
-          return;
-        }
-      }
-      setRevertSnapshot(null);
-      setStatusMessage("Reverted the last sportsbook change.");
-      return;
-    }
-
+    setFreeBetBridgeModalState(savedFreeBetBridgeState);
     if (selectedSportsbookRow) {
       const nextFormState = recordToForm(selectedSportsbookRow);
       loadEditorFormState(nextFormState, { markPristine: true });
@@ -10803,9 +10791,9 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
 	                      disabled={
 	                        isInitialLoading ||
 	                        isPersisting ||
-	                        (corePlanPending && !isNotesOnlyExistingEdit) ||
+	                        (corePlanPending && coreIsDirty && !isNotesOnlyExistingEdit) ||
 	                        !isDirty ||
-	                        (hasInvalidOddsInput && !isNotesOnlyExistingEdit)
+	                        (hasInvalidOddsInput && coreIsDirty && !isNotesOnlyExistingEdit)
 	                      }
 	                      type="submit"
 	                    >

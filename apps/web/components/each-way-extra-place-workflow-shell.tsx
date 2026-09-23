@@ -380,7 +380,11 @@ export function EachWayExtraPlaceWorkflowShell({
     () => JSON.stringify(form) !== JSON.stringify(pristine),
     [form, pristine],
   );
-  const confirmDiscardChanges = useUnsavedChangesGuard(open && isDirty);
+  const confirmDiscardChanges = useUnsavedChangesGuard(open && isDirty, {
+    message: "Choose whether to keep editing, discard this draft, or save it before closing.",
+    onDiscard: () => setForm(pristine),
+    onSaveAndClose: () => save(false),
+  });
   const load = useCallback(async () => {
     // Draft and issue rows must appear immediately after a write, even when the
     // active tracker range would normally hide their dates.
@@ -623,7 +627,7 @@ export function EachWayExtraPlaceWorkflowShell({
     if (saving || (isDirty && !(await confirmDiscardChanges()))) return;
     setOpen(false);
   };
-  const save = async () => {
+  const save = async (closeOnSuccess = true): Promise<boolean> => {
     setSaving(true);
     setError("");
     try {
@@ -640,13 +644,17 @@ export function EachWayExtraPlaceWorkflowShell({
           (await response.json()).detail ||
             "Could not save the Extra Place row.",
         );
-        return;
+        return false;
       }
       const saved = await response.json();
       setPreview(saved);
       setPristine(form);
       await load();
-      setOpen(false);
+      if (closeOnSuccess) setOpen(false);
+      return true;
+    } catch {
+      setError("Save was not confirmed. Your edits are retained; retry saving.");
+      return false;
     } finally {
       setSaving(false);
     }

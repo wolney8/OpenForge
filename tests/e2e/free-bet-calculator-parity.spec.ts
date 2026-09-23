@@ -107,14 +107,21 @@ test("Free Bets calculator keeps Matching active when Advanced mode autosaves", 
     expect(nextExchange).toBeTruthy();
 
     if (nextExchange !== currentExchange) {
-      const autosaveResponse = page.waitForResponse(
-        (response) =>
-          response.url().includes(`/profiles/${profileId}/free-bets/${createdRow.free_bet_id}`) &&
-          response.request().method() === "PUT"
-      );
-      await Promise.all([autosaveResponse, exchangeSelect.selectOption(nextExchange)]);
+      let updateRequests = 0;
+      const countUpdate = (request: import("@playwright/test").Request) => {
+        if (
+          request.url().includes(`/profiles/${profileId}/free-bets/${createdRow.free_bet_id}`) &&
+          request.method() === "PUT"
+        ) updateRequests += 1;
+      };
+      page.on("request", countUpdate);
+      await exchangeSelect.selectOption(nextExchange);
+      await page.waitForTimeout(750);
+      expect(updateRequests).toBe(0);
       await expect(matchingPanel).toBeVisible();
       await expect(layModeSelect).toHaveValue("Advanced");
+      await expect(editor.getByRole("button", { name: "Save", exact: true })).toBeEnabled();
+      page.off("request", countUpdate);
     }
 
   } finally {

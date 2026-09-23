@@ -5,7 +5,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 const defaultMessage =
   "Unsaved changes will be discarded.";
 
-const activeUnsavedGuards = new Map<symbol, string>();
+type UnsavedGuard = {
+  message: string;
+  onDiscard?: () => void;
+  onSaveAndClose?: () => Promise<boolean>;
+};
+
+const activeUnsavedGuards = new Map<symbol, UnsavedGuard>();
 export const APP_CONFIRMATION_OPEN_EVENT = "plum-duff:app-confirmation-open";
 export const APP_CONFIRMED_NAVIGATION_EVENT = "plum-duff:confirmed-navigation";
 
@@ -21,21 +27,29 @@ type UnsavedChangesPromptRequest = {
   title: string;
   variant: "discard" | "destructive";
   onConfirmed?: () => void;
+  onSaveAndClose?: () => Promise<boolean>;
   resolve: (confirmed: boolean) => void;
 };
 
 let promptHandler: ((request: UnsavedChangesPromptRequest) => void) | null = null;
 
-function requestUnsavedChangesConfirmation(message: string, onConfirmed?: () => void): Promise<boolean> {
+function requestUnsavedChangesConfirmation(
+  guard: UnsavedGuard,
+  onConfirmed?: () => void,
+): Promise<boolean> {
   return requestAppConfirmation({
     accessibleName: "Unsaved tracker changes",
     cancelLabel: "Keep Editing",
     confirmLabel: "Discard Changes",
     eyebrow: "",
-    message,
-    title: "Leave this tracker form?",
+    message: guard.message,
+    title: "You have unsaved changes.",
     variant: "discard",
-    onConfirmed,
+    onConfirmed: () => {
+      guard.onDiscard?.();
+      onConfirmed?.();
+    },
+    onSaveAndClose: guard.onSaveAndClose,
   });
 }
 
@@ -79,16 +93,16 @@ export function hasUnsavedTrackerChanges(): boolean {
 }
 
 export async function confirmUnsavedTrackerChanges(): Promise<boolean> {
-  const message = activeUnsavedGuards.values().next().value as string | undefined;
-  return message ? requestUnsavedChangesConfirmation(message) : true;
+  const guard = activeUnsavedGuards.values().next().value as UnsavedGuard | undefined;
+  return guard ? requestUnsavedChangesConfirmation(guard) : true;
 }
 
 export function confirmUnsavedTrackerNavigation(
   navigationHref: string,
   onConfirmed?: () => void,
 ): void {
-  const message = activeUnsavedGuards.values().next().value as string | undefined;
-  if (!message) {
+  const guard = activeUnsavedGuards.values().next().value as UnsavedGuard | undefined;
+  if (!guard) {
     onConfirmed?.();
     window.location.assign(navigationHref);
     return;
@@ -98,16 +112,21 @@ export function confirmUnsavedTrackerNavigation(
     cancelLabel: "Keep Editing",
     confirmLabel: "Discard Changes",
     eyebrow: "",
-    message,
+    message: guard.message,
     navigationHref,
-    onConfirmed,
-    title: "Leave this tracker form?",
+    onConfirmed: () => {
+      guard.onDiscard?.();
+      onConfirmed?.();
+    },
+    onSaveAndClose: guard.onSaveAndClose,
+    title: "You have unsaved changes.",
     variant: "discard",
   });
 }
 
 export function useUnsavedChangesPromptController() {
   const [request, setRequest] = useState<UnsavedChangesPromptRequest | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     const handler = (nextRequest: UnsavedChangesPromptRequest) => {
@@ -131,20 +150,36 @@ export function useUnsavedChangesPromptController() {
     [request]
   );
 
-  return { request, respond };
+  const saveAndRespond = useCallback(async () => {
+    if (!request?.onSaveAndClose || isSaving) return false;
+    setIsSaving(true);
+    try {
+      const saved = await request.onSaveAndClose();
+      if (saved) {
+        request.resolve(true);
+        setRequest(null);
+      }
+      return saved;
+    } finally {
+      setIsSaving(false);
+    }
+  }, [isSaving, request]);
+
+  return { isSaving, request, respond, saveAndRespond };
 }
 
 export function useUnsavedChangesGuard(
   isDirty: boolean,
-  message: string = defaultMessage
+  options: string | UnsavedGuard = defaultMessage
 ): () => Promise<boolean> {
   const guardId = useRef(Symbol("unsaved-tracker-form"));
+  const guard = typeof options === "string" ? { message: options } : options;
   const confirmDiscardChanges = useCallback(async () => {
     if (!isDirty) {
       return true;
     }
-    return requestUnsavedChangesConfirmation(message);
-  }, [isDirty, message]);
+    return requestUnsavedChangesConfirmation(guard);
+  }, [guard, isDirty]);
 
   useEffect(() => {
     const activeGuardId = guardId.current;
@@ -153,7 +188,7 @@ export function useUnsavedChangesGuard(
       return;
     }
 
-    activeUnsavedGuards.set(activeGuardId, message);
+    activeUnsavedGuards.set(activeGuardId, guard);
 
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
       if (
@@ -162,7 +197,7 @@ export function useUnsavedChangesGuard(
       ) return;
       if (allowNextDocumentNavigation) return;
       event.preventDefault();
-      event.returnValue = message;
+      event.returnValue = guard.message;
     };
 
     const handleDocumentClick = (event: MouseEvent) => {
@@ -205,7 +240,7 @@ export function useUnsavedChangesGuard(
       event.preventDefault();
       event.stopPropagation();
 
-      void requestUnsavedChangesConfirmation(message).then((confirmed) => {
+      void requestUnsavedChangesConfirmation(guard).then((confirmed) => {
         if (confirmed) {
           allowNextDocumentNavigation = true;
           // The drawer closes when the app confirmation opens, so its Link may
@@ -231,7 +266,7 @@ export function useUnsavedChangesGuard(
       window.removeEventListener("beforeunload", handleBeforeUnload);
       document.removeEventListener("click", handleDocumentClick, true);
     };
-  }, [isDirty, message]);
+  }, [guard, isDirty]);
 
   useEffect(() => {
     const activeGuardId = guardId.current;

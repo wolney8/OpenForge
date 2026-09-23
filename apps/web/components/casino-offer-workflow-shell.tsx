@@ -1832,7 +1832,11 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
     () => JSON.stringify(formState) !== JSON.stringify(pristineFormState),
     [formState, pristineFormState]
   );
-  const confirmDiscardChanges = useUnsavedChangesGuard(workflowVisible && isDirty);
+  const confirmDiscardChanges = useUnsavedChangesGuard(workflowVisible && isDirty, {
+    message: "Choose whether to keep editing, discard this draft, or save it before closing.",
+    onDiscard: () => setFormState(pristineFormState),
+    onSaveAndClose: () => persistForm(formState, { returnToLedgerOnSuccess: false }),
+  });
   const clearStatusMessage = useCallback(() => setStatusMessage(""), []);
   const tableColumns = useMemo(
     () =>
@@ -3414,20 +3418,10 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
 
   async function applyDropdownChange(
     updater: (current: CasinoOfferFormState) => CasinoOfferFormState,
-    autosaveLabel: string
+    _autosaveLabel: string
   ) {
     const nextFormState = buildPersistForm(updater(formState));
     setFormState(nextFormState);
-    if (!(selectedId ?? formState.casino_offer_id)) {
-      return;
-    }
-    if (!canPersistForm(nextFormState)) {
-      return;
-    }
-    await persistForm(nextFormState, {
-      autosaveLabel,
-      suppressMissingRequiredMessage: true,
-    });
   }
 
   async function submitOutcomeModal() {

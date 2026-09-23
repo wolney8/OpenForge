@@ -1339,7 +1339,6 @@ export function FreeBetWorkflowShell({
     pristineFormStateRef.current = next;
     setRenderedPristineFormState(next);
   }, []);
-  const queuedDropdownAutosaveRef = useRef<string | null>(null);
   const [outcomeModalState, setOutcomeModalState] = useState<FreeBetOutcomeModalState | null>(null);
   const [followUpReminderEditorState, setFollowUpReminderEditorState] =
     useState<FreeBetFollowUpReminderEditorState | null>(null);
@@ -1393,7 +1392,11 @@ export function FreeBetWorkflowShell({
     [currentDirtyState, pristineDirtyState]
   );
   const hasPendingEditorChanges = workflowVisible && isDirty;
-  const confirmDiscardChanges = useUnsavedChangesGuard(hasPendingEditorChanges);
+  const confirmDiscardChanges = useUnsavedChangesGuard(hasPendingEditorChanges, {
+    message: "Choose whether to keep editing, discard this draft, or save it before closing.",
+    onDiscard: () => setFormState(pristineFormStateRef.current),
+    onSaveAndClose: () => persistForm(formStateRef.current, { returnToLedgerOnSuccess: false }),
+  });
   const clearStatusMessage = useCallback(() => setStatusMessage(""), []);
   const tableColumns = useMemo(
     () =>
@@ -2794,7 +2797,6 @@ export function FreeBetWorkflowShell({
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    queuedDropdownAutosaveRef.current = null;
     await persistForm(formStateRef.current);
   }
 
@@ -2930,48 +2932,16 @@ export function FreeBetWorkflowShell({
     } finally {
       isPersistingRef.current = false;
       setIsPersisting(false);
-      const queuedLabel = corePlanPendingRef.current ? null : queuedDropdownAutosaveRef.current;
-      if (queuedLabel) queuedDropdownAutosaveRef.current = null;
-      if (queuedLabel) void persistForm(formStateRef.current, {
-        autosaveLabel: queuedLabel,
-        suppressMissingRequiredMessage: true,
-        returnToLedgerOnSuccess: false,
-      });
     }
   }
 
   async function applyDropdownChange(
     updater: (current: FreeBetFormState) => FreeBetFormState,
-    autosaveLabel: string
+    _autosaveLabel: string
   ) {
     const nextFormState = updater(formStateRef.current);
     setFormState(nextFormState);
-    if (!(selectedId ?? formState.free_bet_id)) {
-      return;
-    }
-    if (!canPersistForm(nextFormState)) {
-      return;
-    }
-    if (isPersistingRef.current || corePlanPendingRef.current) {
-      queuedDropdownAutosaveRef.current = autosaveLabel;
-      return;
-    }
-    await persistForm(nextFormState, {
-      autosaveLabel,
-      suppressMissingRequiredMessage: true,
-    });
   }
-
-  useEffect(() => {
-    if (corePlanPending || isPersisting || !queuedDropdownAutosaveRef.current) return;
-    const label = queuedDropdownAutosaveRef.current;
-    queuedDropdownAutosaveRef.current = null;
-    void persistForm(formStateRef.current, { autosaveLabel: label,
-      suppressMissingRequiredMessage: true, returnToLedgerOnSuccess: false });
-    // Drain one pending intent with the latest draft only on readiness; a failed
-    // mutation remains an explicit retry, not an automatic request loop.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [corePlanPending, isPersisting]);
 
   function applyFreeBetLayWorkflowMode(mode: LayWorkflowMode) {
     if (!freeBetLayWorkflowModeOptions.includes(mode)) {

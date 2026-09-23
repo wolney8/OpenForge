@@ -927,6 +927,23 @@ function AppChromeContent({
               >
                 {unsavedPrompt.request.cancelLabel}
               </button>
+              {unsavedPrompt.request.onSaveAndClose ? (
+                <button
+                  className="review-chip review-chip-copy"
+                  data-pd-id="unsaved-changes.save-and-close"
+                  disabled={unsavedPrompt.isSaving}
+                  onClick={() => {
+                    const href = unsavedPrompt.request?.navigationHref;
+                    void unsavedPrompt.saveAndRespond().then((saved) => {
+                      if (saved && href) router.push(href);
+                    });
+                  }}
+                  type="button"
+                >
+                  <span aria-hidden="true" className="material-symbols-outlined">save</span>
+                  <span>{unsavedPrompt.isSaving ? "Saving…" : "Save and close"}</span>
+                </button>
+              ) : null}
               {unsavedPrompt.request.navigationHref ? (
                 <form action={unsavedPrompt.request.navigationHref} method="get">
                   <button

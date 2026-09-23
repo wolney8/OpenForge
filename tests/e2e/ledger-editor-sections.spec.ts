@@ -97,7 +97,7 @@ test.describe("Ledger editor sections", () => {
     await page.waitForLoadState("networkidle");
     await page.getByRole("button", { name: "Add sportsbook row" }).click();
 
-    // The draft autosave can change the accessible name from Create to Edit mid-entry.
+    // Ordinary entry remains an explicit-save draft throughout the editor.
     const dialog = page.locator(".workflow-editor-modal");
     await page.getByLabel("Offer", { exact: true }).fill("Synthetic calculator check");
     await page.locator('select:has(option[value="Bookmaker A"])').selectOption("Bookmaker A");
