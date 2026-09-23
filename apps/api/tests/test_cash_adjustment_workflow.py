@@ -92,6 +92,39 @@ def test_cash_adjustment_workflow_create_update_and_isolation(tmp_path: Path) ->
     ):
         assert noted[field] == updated[field]
 
+    clear_note_response = client.put(
+        f"/profiles/profile-demo-001/cash-adjustments/{created['cash_adjustment_id']}",
+        json={**updated_payload, "description": ""},
+    )
+    assert clear_note_response.status_code == 200, clear_note_response.text
+    cleared = clear_note_response.json()
+    assert cleared["description"] == ""
+    for field in (
+        "profile_id",
+        "linked_account",
+        "adjustment_date",
+        "direction",
+        "amount",
+        "adjustment_type",
+        "affects_investment",
+        "affects_cash_snapshot",
+        "signed_amount",
+    ):
+        assert cleared[field] == updated[field]
+
+    connection = sqlite3.connect(settings.database_path)
+    operations = [
+        row[0]
+        for row in connection.execute(
+            "SELECT operation FROM financial_activity_history "
+            "WHERE profile_id = ? AND ledger_type = 'cash_adjustment' "
+            "AND activity_id = ? ORDER BY recorded_at",
+            ("profile-demo-001", created["cash_adjustment_id"]),
+        ).fetchall()
+    ]
+    connection.close()
+    assert operations[-2:] == ["edited", "edited"]
+
     wrong_profile_response = client.get(
         f"/profiles/profile-demo-002/cash-adjustments/{created['cash_adjustment_id']}"
     )

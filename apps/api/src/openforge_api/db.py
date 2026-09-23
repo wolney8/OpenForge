@@ -6312,10 +6312,29 @@ def update_cash_adjustment(
             "SELECT * FROM cash_adjustments WHERE profile_id=? AND cash_adjustment_id=?",
             (profile_id, cash_adjustment_id),
         ).fetchone()
+        financial_before = {
+            "adjustment_date": existing.adjustment_date,
+            "direction": existing.direction,
+            "amount": existing.amount,
+            "adjustment_type": existing.adjustment_type,
+            "affects_investment": existing.affects_investment,
+            "affects_cash_snapshot": existing.affects_cash_snapshot,
+            "linked_account": existing.linked_account,
+        }
+        financial_after = {
+            **{field: updated[field] for field in financial_before},
+            "affects_investment": bool(updated["affects_investment"]),
+            "affects_cash_snapshot": bool(updated["affects_cash_snapshot"]),
+        }
+        history_operation = (
+            "corrected"
+            if financial_before != financial_after
+            else "edited"
+        )
         _append_financial_history(
             connection, profile_id=profile_id, ledger_type="cash_adjustment",
             activity_id=cash_adjustment_id,
-            operation=str(payload.get("_history_operation") or "corrected"),
+            operation=history_operation,
             before=existing.__dict__, after=stored, payload=payload,
         )
     return get_cash_adjustment(profile_id, cash_adjustment_id)
