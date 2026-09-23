@@ -127,7 +127,7 @@ test("existing Sportsbook Notes save retains an archived Account and award draft
 
     const settledResponse = await page.request.put(
       `/api/profiles/${profileId}/sportsbook-bets/${created.sportsbook_bet_id}`,
-      { data: { ...payload, status: "Settled", result: "Back Won", date_settled: "2026-09-23T12:00:00Z", user_notes: "Settled with note" } },
+      { data: { ...payload, status: "Settled", result: "Back Won", date_settled: "2026-09-23 12:00", user_notes: "Settled with note" } },
     );
     expect(settledResponse.status(), await settledResponse.text()).toBe(200);
     const settled = await settledResponse.json() as typeof created;

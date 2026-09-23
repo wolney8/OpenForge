@@ -109,10 +109,27 @@ class PostgresConnectionAdapter:
         self._connection.close()
 
 
+def _has_current_postgres_schema(connection_url: str, migration_id: str) -> bool:
+    """Check the migration marker without taking table-changing locks."""
+
+    try:
+        with psycopg.connect(connection_url, connect_timeout=10) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "SELECT 1 FROM schema_migrations WHERE migration_id = %s",
+                    (migration_id,),
+                )
+                return cursor.fetchone() is not None
+    except psycopg.errors.UndefinedTable:
+        return False
+
+
 @lru_cache(maxsize=4)
 def ensure_postgres_schema(connection_url: str) -> str:
-    from openforge_api.postgres_migrations import apply_postgres_migrations
+    from openforge_api.postgres_migrations import MIGRATION_ID, apply_postgres_migrations
 
+    if _has_current_postgres_schema(connection_url, MIGRATION_ID):
+        return MIGRATION_ID
     return apply_postgres_migrations(connection_url)
 
 
