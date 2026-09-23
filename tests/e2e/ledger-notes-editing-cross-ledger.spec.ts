@@ -74,7 +74,8 @@ async function saveNote(
     if (await disclosure.isVisible().catch(() => false)) await disclosure.click();
   }
   const noteInput = dialog.getByLabel(label, { exact: true });
-  await noteInput.fill(note);
+  await noteInput.fill("");
+  if (note) await noteInput.pressSequentially(note);
   await expect(noteInput).toHaveValue(note);
   const save = dialog.getByRole("button", { name: /^(Save|Save Edits)$/ });
   await expect(save).toBeEnabled({ timeout: 10_000 });
