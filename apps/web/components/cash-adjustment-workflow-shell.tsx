@@ -754,8 +754,10 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
             const isReloadingCurrentEditor =
               workflowVisibleRef.current &&
               selectedIdRef.current === selected;
-            setFormState(nextFormState);
-            setPristineFormState(nextFormState);
+            if (!isReloadingCurrentEditor) {
+              setFormState(nextFormState);
+              setPristineFormState(nextFormState);
+            }
             setShowAdjustmentValidation(false);
             setGuidedEntryDismissed(false);
             if (!isReloadingCurrentEditor) {
@@ -1407,11 +1409,13 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
       return;
     }
     setSelectedId(rowId);
+    selectedIdRef.current = rowId;
     isCreatingDraftRef.current = false;
     const nextFormState = recordToForm(record);
     setFormState(nextFormState);
     setPristineFormState(nextFormState);
     setWorkflowVisible(true);
+    workflowVisibleRef.current = true;
     setErrorMessage("");
     setShowAdjustmentValidation(false);
     setGuidedEntryDismissed(false);
@@ -1430,6 +1434,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
     selectedIdRef.current = null;
     isCreatingDraftRef.current = true;
     setWorkflowVisible(true);
+    workflowVisibleRef.current = true;
     setTableCollapsed(false);
     const blankForm = createBlankForm();
     setFormState(blankForm);
@@ -1451,6 +1456,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
       return;
     }
     setWorkflowVisible(false);
+    workflowVisibleRef.current = false;
     setSelectedId(null);
     selectedIdRef.current = null;
     isCreatingDraftRef.current = false;
