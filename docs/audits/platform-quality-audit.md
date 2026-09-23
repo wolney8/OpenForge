@@ -19,7 +19,9 @@ PostgreSQL cold-start marker evidence 4/4 and TypeScript passes. The protected a
 revision `a52ee88`.
 
 Before local reconciliation, a fresh readable SQLite backup passed `integrity_check = ok` and zero
-foreign-key violations. Normal 3010 was restarted through the fail-closed owner launcher and reports
+foreign-key violations (SHA-256 `fd8fa0ae118b531d4f911f2dcb2493fb39ae9a9bee62dc0ed870f4b46d4d7f9a`).
+The private CP-034 Git bundle also verifies as a complete history. Normal 3010 was restarted through
+the fail-closed owner launcher and reports
 `normal-owner`, canonical owner database and `account-access-v1` at application revision `a52ee88`.
 Profiles, Dashboard, Accounts, Reports, Sportsbook and calculators rendered authenticated without
 browser diagnostics. Every owner ledger/history hash and count is unchanged: 42 Profiles (3 active),
