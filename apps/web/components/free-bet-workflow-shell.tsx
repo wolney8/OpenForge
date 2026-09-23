@@ -1372,6 +1372,7 @@ export function FreeBetWorkflowShell({
   const [isPersisting, setIsPersisting] = useState(false);
   const editorRef = useRef<HTMLElement | null>(null);
   const selectedIdRef = useRef<string | null>(null);
+  const workflowVisibleRef = useRef(workflowVisible);
   const ignoreInitialRecordIdRef = useRef(false);
   const loadRowsRequestIdRef = useRef(0);
   const isCreatingDraftRef = useRef(false);
@@ -1447,6 +1448,10 @@ export function FreeBetWorkflowShell({
     selectedIdRef.current = selectedId;
   }, [selectedId]);
 
+  useEffect(() => {
+    workflowVisibleRef.current = workflowVisible;
+  }, [workflowVisible]);
+
   const loadRows = useCallback(async (preferredSelection?: string | null) => {
     const requestId = ++loadRowsRequestIdRef.current;
     const url = `${apiBaseUrl}/profiles/${profileId}/free-bets`;
@@ -1474,7 +1479,7 @@ export function FreeBetWorkflowShell({
           ? nextSelectedCandidate
           : null;
       const shouldPreserveEditorStep = Boolean(
-        selected && selected === selectedIdRef.current && workflowVisible
+        selected && selected === selectedIdRef.current && workflowVisibleRef.current
       );
       setSelectedId(selected);
       if (selected) {
@@ -1512,7 +1517,7 @@ export function FreeBetWorkflowShell({
         setWorkflowVisible(false);
       }
     });
-  }, [profileId, startTransition, workflowVisible, setFormState, setPristineFormState]);
+  }, [profileId, startTransition, setFormState, setPristineFormState]);
 
   const loadExchangeSettings = useCallback(async () => {
     const response = await fetch(`${apiBaseUrl}/profiles/${profileId}/exchange-commissions`, {
