@@ -158,6 +158,10 @@ async function verifyDiscard(
   const reopenedHidden = await reopenedInput.evaluate((element) => Boolean(element.closest("[inert]") || element.closest("details:not([open])"))).catch(() => true);
   if (advancedLabel && reopenedHidden) await reopened.getByText(advancedLabel, { exact: true }).click();
   await expect(reopenedInput).toHaveValue(previousNote);
+  await reopenedInput.fill("revert this draft");
+  await reopened.getByRole("button", { name: "Revert", exact: true }).click();
+  await expect(reopenedInput).toHaveValue(previousNote);
+  expect((await (await page.request.get(endpoint)).json() as Record<string, unknown>)[noteField]).toBe(previousNote);
   await reopened.getByRole("button", { name: /^Close .*editor$/i }).first().click();
 }
 
