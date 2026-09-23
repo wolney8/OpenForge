@@ -1,18 +1,18 @@
 # Project Status — Plum Duff / OpenForge — Doc ID: PS-CODEX-001
 
-**Last updated:** 2026-09-23 20:06 BST · **Status:** 🟢 #117 explicit ledger Save/Discard verified on Preview; local reconciliation in progress
+**Last updated:** 2026-09-23 20:14 BST · **Status:** 🟢 #117 explicit ledger Save/Discard verified on Preview and reconciled locally
 
 ## Right now
 
-- **Working on:** CP-035 removes ordinary ledger autosave and verifies explicit Save/Discard across all five editors.
-- **Next:** finish the guarded normal-owner restart and integrity comparison, then resume the separately authorised Production-readiness decision.
+- **Working on:** CP-035 completed explicit Save/Discard across all five ledger editors without changing owner financial data.
+- **Next:** retain #117 for owner acceptance and resume the separately authorised Production-readiness decision.
 - **Blocked on:** no #117 engineering blocker; VoiceOver spoken output remains separate manual evidence.
 
 ## Delivery state
 
 | Area | Evidence state |
 | --- | --- |
-| Local integrated build | Shared repairs through #117 run on normal 3010 at application revision `a52ee88`; generated Next/TypeScript files remain uncommitted |
+| Local integrated build | Explicit ledger Save/Discard runs on normal 3010 at source `093f18b+dirty` (application repair `75042e5`); generated Next/TypeScript files remain uncommitted |
 | Normal `localhost:3010` | Healthy as `normal-owner` on canonical SQLite and `account-access-v1`; all owner ledger hashes/counts match the fresh pre-update backup |
 | Main / origin | Not updated by the local integration work |
 | Vercel | Protected Preview serves application revision `75042e5` with explicit Save/Discard browser evidence against `preview:plum_duff_preview_cp028`; Production alias/data remain untouched |

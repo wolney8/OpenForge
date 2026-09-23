@@ -107,7 +107,9 @@ These are coverage measures, not percentages of the product finished.
 Protected Preview revision `75042e5` passes browser evidence for no write before Save, Keep editing,
 Discard, explicit Save/reopen, Save and close, add/amend/clear and unchanged money/identity across
 Sportsbook, Free Bet, Extra Place, Casino and Cash Adjustment. Focused API ownership, atomic invalid-
-change and lifecycle regressions pass 141/141. #117 remains open through the guarded local cutover;
+change and lifecycle regressions pass 141/141. Normal 3010 subsequently started as `normal-owner`
+on source `093f18b+dirty`; its 42/175/538/291/90/58/123/305 owner counts, ledger hashes, integrity
+and foreign keys match the verified pre-cutover backup. #117 remains open for owner acceptance;
 Production is unchanged.
 
 ## Detailed evidence

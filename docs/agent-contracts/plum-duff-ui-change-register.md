@@ -4,7 +4,7 @@
 
 | ID | Surface | Requested outcome | Signed-off equivalent | Status |
 |---|---|---|---|---|
-| PD-FIX-273 | Sportsbook, Free Bet, Extra Place, Casino and Cash Adjustment editors | Keep draft and confirmed saved state separate; no blur/wait/step/close persistence; shared Keep editing, Discard changes and Save and close decision; explicit Save/Revert only | Existing shared ledger modal shell, app confirmation controller and CP-034 action-scoped validation | COMPLETE ON PREVIEW — owner reproduction and five-ledger browser matrix pass on `75042e5`; guarded local reconciliation remains the delivery gate |
+| PD-FIX-273 | Sportsbook, Free Bet, Extra Place, Casino and Cash Adjustment editors | Keep draft and confirmed saved state separate; no blur/wait/step/close persistence; shared Keep editing, Discard changes and Save and close decision; explicit Save/Revert only | Existing shared ledger modal shell, app confirmation controller and CP-034 action-scoped validation | COMPLETE IN PREVIEW AND LOCAL — owner reproduction and five-ledger browser matrix pass on `75042e5`; normal 3010 is healthy on `093f18b+dirty` with unchanged owner ledger projections |
 
 Issue coverage: GitHub #117 remains open; #92 and #114 retain shared UI and acceptance evidence.
 

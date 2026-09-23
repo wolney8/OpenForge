@@ -4511,3 +4511,11 @@ add/amend/clear, wait/blur without writes, discard/reopen, explicit save/reopen 
 paths. Stored financial/identity fields remain equivalent apart from notes and normal modified
 metadata; focused API lifecycle/security checks pass 141/141. Production and owner data were not
 used for mutation evidence.
+
+The guarded local reconciliation created readable rollback backup
+`openforge-pre-cp035-local-reconcile-20260923-200941.sqlite3`, then restarted only the owned normal
+API/web processes. Health reports `normal-owner`, database `normal-owner`, schema `account-access-v1`
+and source `093f18b+dirty`. Profiles, active Profiles, Accounts, five ledger families and history
+remain 42/3/175/538/291/90/58/123/305; every tracked ledger dump hash matches before/after,
+`integrity_check` is `ok`, foreign-key check is empty, and authenticated Dashboard, Accounts,
+Reports and Sportsbook reads render without browser errors. No owner financial row was mutated.

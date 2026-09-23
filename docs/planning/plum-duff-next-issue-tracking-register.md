@@ -1517,8 +1517,8 @@ visible future work rather than being silently folded into these repairs.
 CP-035 continuation: `PD-FIX-273` records the owner-approved explicit Save/Discard contract for all
 five ledger editors. Ordinary field edits must remain drafts until Save; closing uses the shared
 Keep editing / Discard changes / Save and close decision, while browser unload uses the native
-warning. Status: COMPLETE in engineering on protected Preview revision `75042e5`; #117 remains open
-until CP-035's guarded normal-owner reconciliation is recorded.
+warning. Status: COMPLETE in engineering on protected Preview revision `75042e5` and normal 3010
+source `093f18b+dirty`; #117 remains open for owner acceptance rather than an engineering gap.
 
 | ID | Surface | Requirement | State |
 |---|---|---|---|
