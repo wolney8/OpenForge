@@ -285,6 +285,33 @@ def test_patch_effective_state_and_omission_blank_zero_policy(free_client):
     assert draft.json()["free_bet_value"] == ""
 
 
+@pytest.mark.parametrize("historical_account_state", ["missing", "archived"])
+def test_notes_patch_retains_unchanged_historical_account(
+    free_client, historical_account_state
+):
+    made = free_client.post("/profiles/money-a/free-bets", json=payload()).json()
+    url = f"/profiles/money-a/free-bets/{made['free_bet_id']}"
+    with db.connect() as connection:
+        if historical_account_state == "missing":
+            connection.execute(
+                "DELETE FROM accounts WHERE profile_id=? AND account=? AND type='Bookie'",
+                ("money-a", "Bookmaker A"),
+            )
+        else:
+            connection.execute(
+                "UPDATE accounts SET status='Archived', lifecycle_status='Archived' "
+                "WHERE profile_id=? AND account=? AND type='Bookie'",
+                ("money-a", "Bookmaker A"),
+            )
+
+    response = free_client.patch(url, json={"user_notes": "Historical Account retained"})
+    assert response.status_code == 200, response.text
+    updated = response.json()
+    assert updated["user_notes"] == "Historical Account retained"
+    assert updated["bookmaker"] == made["bookmaker"]
+    assert updated["final_net_pnl"] == made["final_net_pnl"]
+
+
 @pytest.mark.parametrize("boundary", ["calculation", "response_json"])
 @pytest.mark.parametrize("operation", ["create", "update"])
 def test_unexpected_failure_rolls_back_row_and_business_audit(

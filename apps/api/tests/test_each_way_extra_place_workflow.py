@@ -107,6 +107,29 @@ def test_each_way_extra_place_crud_is_profile_scoped() -> None:
     )
     assert settled.status_code == 200
     assert settled.json()["final_value"] == "30.53"
+    settled_row = settled.json()
+    noted = client.put(
+        f"/profiles/profile-demo-001/each-way-extra-places/{row['each_way_extra_place_id']}",
+        json=payload(
+            status="Settled",
+            result="Extra Place",
+            user_notes="Notes-only lifecycle edit",
+        ),
+    )
+    assert noted.status_code == 200, noted.text
+    noted_row = noted.json()
+    assert noted_row["user_notes"] == "Notes-only lifecycle edit"
+    for field in (
+        "profile_id",
+        "bookmaker_account",
+        "status",
+        "result",
+        "each_way_stake",
+        "back_odds",
+        "current_value",
+        "final_value",
+    ):
+        assert noted_row[field] == settled_row[field]
 
     blocked = client.request(
         "DELETE",

@@ -5483,7 +5483,23 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
 
     if (!response.ok) {
       const detail = await response.text();
-      setErrorMessage(formatApiErrorBody(detail, "Unable to save sportsbook row."));
+      const formattedDetail = formatApiErrorBody(detail, "Unable to save sportsbook row.");
+      if (formattedDetail.startsWith("bookmaker:")) {
+        setActiveEditorTabId("setup");
+        setErrorMessage(
+          "Choose a Bookmaker Account belonging to this Profile in Bet Setup. Your edits are retained."
+        );
+      } else if (
+        formattedDetail.startsWith("exchange_name:") ||
+        formattedDetail.startsWith("multi_lay_outcomes_json.placedExchange:")
+      ) {
+        setActiveEditorTabId("matching");
+        setErrorMessage(
+          "Choose an Exchange Account belonging to this Profile in Matching. Your edits are retained."
+        );
+      } else {
+        setErrorMessage(formattedDetail);
+      }
       return false;
     }
 

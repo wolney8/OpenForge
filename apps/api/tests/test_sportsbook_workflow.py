@@ -4,6 +4,7 @@ import json
 import sqlite3
 from pathlib import Path
 
+import pytest
 from apps.api.tests.synthetic_setup import (
     seed_committed_test_database,
     seed_synthetic_betting_context,
@@ -117,6 +118,126 @@ def test_sportsbook_workflow_create_update_and_isolation(tmp_path: Path) -> None
         f"/profiles/profile-demo-001/sportsbook-bets/{created['sportsbook_bet_id']}"
     )
     assert deleted_lookup.status_code == 200
+
+
+@pytest.mark.parametrize("historical_account_state", ["missing", "archived"])
+def test_existing_sportsbook_notes_edit_retains_historical_account(
+    tmp_path: Path, historical_account_state: str,
+) -> None:
+    """A harmless edit must not reinterpret an unchanged historical Account link."""
+
+    configure_temp_database(tmp_path)
+    client = TestClient(app)
+    payload = {
+        "event_name": "Synthetic historical Account regression",
+        "offer_text": "Bet and get",
+        "bookmaker": "Bookmaker A",
+        "offer_type": "Sign up / Welcome",
+        "status": "Placed",
+        "result": "Pending",
+        "back_stake": "10.00",
+        "back_odds": "2.10",
+        "match_strategy": "Standard",
+        "lay_odds_1": "2.20",
+        "lay_commission_1": "",
+        "exchange_name": "Matchbook",
+        "date_settled": "",
+        "user_notes": "",
+        "manual_override_value": "",
+        "manual_override_reason": "",
+    }
+    created_response = client.post(
+        "/profiles/profile-demo-001/sportsbook-bets", json=payload
+    )
+    assert created_response.status_code == 201, created_response.text
+    created = created_response.json()
+
+    with sqlite3.connect(settings.database_path) as connection:
+        if historical_account_state == "missing":
+            connection.execute(
+                "DELETE FROM accounts WHERE profile_id=? AND account=? AND type='Bookie'",
+                ("profile-demo-001", "Bookmaker A"),
+            )
+        else:
+            connection.execute(
+                "UPDATE accounts SET status='Archived', lifecycle_status='Archived' "
+                "WHERE profile_id=? AND account=? AND type='Bookie'",
+                ("profile-demo-001", "Bookmaker A"),
+            )
+
+    updated_response = client.put(
+        f"/profiles/profile-demo-001/sportsbook-bets/{created['sportsbook_bet_id']}",
+        json={**payload, "user_notes": "Retained note"},
+    )
+    assert updated_response.status_code == 200, updated_response.text
+    updated = updated_response.json()
+    assert updated["user_notes"] == "Retained note"
+    for field in (
+        "profile_id",
+        "bookmaker",
+        "status",
+        "result",
+        "back_stake",
+        "back_odds",
+        "match_strategy",
+        "lay_odds_1",
+        "exchange_name",
+        "date_settled",
+    ):
+        assert updated[field] == created[field]
+
+    cleared_response = client.put(
+        f"/profiles/profile-demo-001/sportsbook-bets/{created['sportsbook_bet_id']}",
+        json={**payload, "user_notes": ""},
+    )
+    assert cleared_response.status_code == 200, cleared_response.text
+    assert cleared_response.json()["user_notes"] == ""
+
+    settled_payload = {
+        **payload,
+        "status": "Settled",
+        "result": "Back Won",
+        "date_settled": "2026-09-23",
+        "user_notes": "Settled and noted together",
+    }
+    settled_response = client.put(
+        f"/profiles/profile-demo-001/sportsbook-bets/{created['sportsbook_bet_id']}",
+        json=settled_payload,
+    )
+    assert settled_response.status_code == 200, settled_response.text
+    settled = settled_response.json()
+    assert settled["status"] == "Settled"
+    assert settled["result"] == "Back Won"
+    assert settled["user_notes"] == "Settled and noted together"
+
+    rejected = client.put(
+        f"/profiles/profile-demo-001/sportsbook-bets/{created['sportsbook_bet_id']}",
+        json={**settled_payload, "back_stake": "not-money", "user_notes": "must not leak"},
+    )
+    assert rejected.status_code == 422
+    retained = client.get(
+        f"/profiles/profile-demo-001/sportsbook-bets/{created['sportsbook_bet_id']}"
+    ).json()
+    assert retained["back_stake"] == settled["back_stake"]
+    assert retained["user_notes"] == "Settled and noted together"
+
+    foreign_account = client.put(
+        f"/profiles/profile-demo-001/sportsbook-bets/{created['sportsbook_bet_id']}",
+        json={**settled_payload, "bookmaker": "Foreign Bookmaker", "user_notes": "must not leak"},
+    )
+    assert foreign_account.status_code == 422
+    retained = client.get(
+        f"/profiles/profile-demo-001/sportsbook-bets/{created['sportsbook_bet_id']}"
+    ).json()
+    assert retained["bookmaker"] == "Bookmaker A"
+    assert retained["user_notes"] == "Settled and noted together"
+    assert (
+        client.put(
+            f"/profiles/profile-demo-002/sportsbook-bets/{created['sportsbook_bet_id']}",
+            json=settled_payload,
+        ).status_code
+        == 404
+    )
 
 
 def test_override_reason_is_required(tmp_path: Path) -> None:

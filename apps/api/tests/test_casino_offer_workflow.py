@@ -124,6 +124,26 @@ def test_casino_offer_workflow_create_update_and_isolation(tmp_path: Path) -> No
     assert updated["settlement_other_costs"] == "0.00"
     assert updated["counts_as_open"] is False
 
+    note_response = client.put(
+        f"/profiles/profile-demo-001/casino-offers/{created['casino_offer_id']}",
+        json={**updated_payload, "user_notes": "Notes-only lifecycle edit"},
+    )
+    assert note_response.status_code == 200, note_response.text
+    noted = note_response.json()
+    assert noted["user_notes"] == "Notes-only lifecycle edit"
+    for field in (
+        "profile_id",
+        "bookmaker",
+        "status",
+        "result",
+        "own_cash_committed",
+        "cash_returned",
+        "settlement_other_costs",
+        "final_net_pnl",
+        "resolved_net_pnl",
+    ):
+        assert noted[field] == updated[field]
+
     wrong_profile_response = client.get(
         f"/profiles/profile-demo-002/casino-offers/{created['casino_offer_id']}"
     )

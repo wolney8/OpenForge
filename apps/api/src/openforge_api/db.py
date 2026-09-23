@@ -4422,8 +4422,17 @@ def update_sportsbook_bet(
     history_metadata = {
         key: value for key, value in payload.items() if key.startswith("_history_")
     }
+    account_fields_to_validate = {
+        key
+        for key in ("bookmaker", "exchange_name", "multi_lay_outcomes_json")
+        if key in payload and payload[key] != getattr(existing, key)
+    }
     payload = capture_first_placement_commission(existing, payload)
-    payload = validate_write_payload(profile_id, {**existing.__dict__, **payload})
+    payload = validate_write_payload(
+        profile_id,
+        {**existing.__dict__, **payload},
+        account_fields_to_validate=account_fields_to_validate,
+    )
     payload.update(history_metadata)
     commissions = get_profile_exchange_commission_map(profile_id)
 
@@ -5635,8 +5644,17 @@ def update_free_bet(
     history_metadata = {
         key: value for key, value in payload.items() if key.startswith("_history_")
     }
+    account_fields_to_validate = {
+        key
+        for key in ("bookmaker", "exchange_name")
+        if key in payload and payload[key] != getattr(existing, key)
+    }
     payload = capture_first_placement_commission(existing, payload)
-    payload = validate_write_payload(profile_id, {**existing.__dict__, **payload})
+    payload = validate_write_payload(
+        profile_id,
+        {**existing.__dict__, **payload},
+        account_fields_to_validate=account_fields_to_validate,
+    )
     payload.update(history_metadata)
     tracker_settings = get_profile_tracker_settings(profile_id)
     commission_cache = get_profile_exchange_commission_map(profile_id)

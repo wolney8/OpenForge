@@ -72,6 +72,26 @@ def test_cash_adjustment_workflow_create_update_and_isolation(tmp_path: Path) ->
     assert updated["signed_amount"] == "50.00"
     assert updated["adjustment_type"] == "TopUp"
 
+    note_response = client.put(
+        f"/profiles/profile-demo-001/cash-adjustments/{created['cash_adjustment_id']}",
+        json={**updated_payload, "description": "Notes-only lifecycle edit"},
+    )
+    assert note_response.status_code == 200, note_response.text
+    noted = note_response.json()
+    assert noted["description"] == "Notes-only lifecycle edit"
+    for field in (
+        "profile_id",
+        "linked_account",
+        "adjustment_date",
+        "direction",
+        "amount",
+        "adjustment_type",
+        "affects_investment",
+        "affects_cash_snapshot",
+        "signed_amount",
+    ):
+        assert noted[field] == updated[field]
+
     wrong_profile_response = client.get(
         f"/profiles/profile-demo-002/cash-adjustments/{created['cash_adjustment_id']}"
     )

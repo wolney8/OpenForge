@@ -1,5 +1,14 @@
 # Plum Duff UI Change Register
 
+## CP-033 owner-blocking ledger edit repair
+
+| ID | Surface | Requested outcome | Signed-off equivalent | Status |
+|---|---|---|---|---|
+| PD-FIX-271 | Existing ledger record editing | Permit authorised Notes-only edits across supported lifecycle states without reselecting or revalidating unchanged financial/Account fields; retain drafts on failure and keep identity/financial meaning unchanged | Existing ledger editors, canonical Account identity and field-scoped mutation/history contracts | IN PROGRESS — owner Preview failure reproduced/investigation active under #117 |
+
+Issue coverage: GitHub #117 owns the defect; #91, #36, #92 and #114 retain related ledger,
+shared-UI and acceptance evidence. No duplicate issue created.
+
 ## CP-030 hosted Reports render correction
 
 | ID | Surface | Requested outcome | Signed-off equivalent | Status |

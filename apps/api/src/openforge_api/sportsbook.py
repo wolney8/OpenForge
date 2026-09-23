@@ -782,7 +782,12 @@ def build_response(
         return SportsbookBetResponse.model_validate({**record, **unavailable})
 
 
-def validate_write_payload(profile_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+def validate_write_payload(
+    profile_id: str,
+    payload: dict[str, Any],
+    *,
+    account_fields_to_validate: set[str] | None = None,
+) -> dict[str, Any]:
     profile = get_profile(profile_id)
     if profile is None:
         raise HTTPException(status_code=404, detail="Profile not found")
@@ -794,14 +799,24 @@ def validate_write_payload(profile_id: str, payload: dict[str, Any]) -> dict[str
         raise HTTPException(status_code=422, detail=error.errors(include_context=False)) from error
     accounts = list_accounts(profile_id)
     references = [
-        (parsed.bookmaker, "Bookie", "bookmaker"),
-        (parsed.exchange_name, "Exchange", "exchange_name"),
+        (parsed.bookmaker, "Bookie", "bookmaker", "bookmaker"),
+        (parsed.exchange_name, "Exchange", "exchange_name", "exchange_name"),
     ]
     references.extend(
-        (entry.get("placedExchange", ""), "Exchange", "multi_lay_outcomes_json.placedExchange")
+        (
+            entry.get("placedExchange", ""),
+            "Exchange",
+            "multi_lay_outcomes_json.placedExchange",
+            "multi_lay_outcomes_json",
+        )
         for entry in json.loads(parsed.multi_lay_outcomes_json)
     )
-    for name, kind, field in references:
+    for name, kind, field, source_field in references:
+        if (
+            account_fields_to_validate is not None
+            and source_field not in account_fields_to_validate
+        ):
+            continue
         if not name:
             continue
         account = next((a for a in accounts if a.account == name and a.type == kind), None)

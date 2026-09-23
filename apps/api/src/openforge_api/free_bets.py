@@ -454,7 +454,12 @@ def build_response(
     )
 
 
-def validate_write_payload(profile_id: str, payload: dict[str, object]) -> dict[str, object]:
+def validate_write_payload(
+    profile_id: str,
+    payload: dict[str, object],
+    *,
+    account_fields_to_validate: set[str] | None = None,
+) -> dict[str, object]:
     """Shared new-business-write policy; historical restore/read models remain separate."""
     profile = get_profile(profile_id)
     if profile is None:
@@ -470,6 +475,8 @@ def validate_write_payload(profile_id: str, payload: dict[str, object]) -> dict[
         (parsed.bookmaker, "Bookie", "bookmaker"),
         (parsed.exchange_name, "Exchange", "exchange_name"),
     ]:
+        if account_fields_to_validate is not None and field not in account_fields_to_validate:
+            continue
         if not name:
             continue
         account = next((a for a in accounts if a.account == name and a.type == kind), None)

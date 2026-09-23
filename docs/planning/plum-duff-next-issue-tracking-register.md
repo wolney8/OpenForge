@@ -1512,6 +1512,15 @@ GitHub #114 owns the completed supported Preview journey gate; #115 owns the hos
 security/recovery evidence. The richer Multi-Lay and 600-row pagination/capacity boundaries remain
 visible future work rather than being silently folded into these repairs.
 
+## CP-033 owner-blocking ledger edit repair
+
+| ID | Surface | Requirement | State |
+|---|---|---|---|
+| PD-FIX-271 | Existing ledger Notes editing | An authorised Notes-only update preserves the attached Account and every financial field across supported draft, placed, settled and corrected/voided states; hidden or unchanged fields are not reinterpreted as new input | IN PROGRESS — tracked by #117; hosted reproduction and shared update-boundary repair underway |
+
+GitHub #117 is the primary defect. Existing #91, #36, #92 and #114 evidence will be qualified and
+updated after the cross-ledger and protected-Preview acceptance matrix runs.
+
 ## CP-028 protected Preview evidence — 2026-09-21 13:02 BST
 
 - **#114:** one Vercel-protected Preview is live on revision `e6a4206`, role `preview`, isolated
