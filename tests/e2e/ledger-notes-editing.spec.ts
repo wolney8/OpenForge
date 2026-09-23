@@ -45,7 +45,12 @@ async function addAccount(
 
 test("existing Sportsbook Notes save retains an archived Account and award draft", async ({ page }) => {
   hostedOnly();
-  test.setTimeout(300_000);
+  test.setTimeout(180_000);
+  const browserErrors: string[] = [];
+  page.on("pageerror", (error) => browserErrors.push(error.message));
+  page.on("console", (message) => {
+    if (message.type() === "error") browserErrors.push(message.text());
+  });
   const profileId = await createProfile(page.request);
   const bookie = await addAccount(page.request, profileId, "Bet365", "Bookie");
   await addAccount(page.request, profileId, "Smarkets", "Exchange");
@@ -82,40 +87,79 @@ test("existing Sportsbook Notes save retains an archived Account and award draft
     await page.goto(`/profiles/${profileId}/tracker/sportsbook-bets`, {
       waitUntil: "domcontentloaded",
     });
-    await page.getByRole("row", { name: /Synthetic CP033 Account retention/ }).click();
+    await page.getByRole("button", {
+      name: `Copy ${created.sportsbook_bet_id} to free bets`,
+    }).click({ timeout: 30_000 });
     const editor = page.getByRole("dialog", { name: "Edit sportsbook row" });
     await expect(editor).toBeVisible({ timeout: 90_000 });
-    await editor.getByRole("tab", { name: /Settlement/ }).click();
+    await editor.getByRole("tab", { name: /Settlement/ }).click({ timeout: 15_000 });
     const settlement = editor.locator('[data-pd-id="ledger-editor.panel.settlement"]');
-    await settlement.getByText("Advanced controls", { exact: true }).click();
-    await settlement.getByLabel("Notes").fill("Synthetic ordinary note");
-    await editor.getByRole("tab", { name: "Free Bet" }).click();
+    await settlement.getByText("Advanced controls", { exact: true }).click({ timeout: 15_000 });
+    await settlement.getByLabel("Notes").fill("Synthetic ordinary note", { timeout: 15_000 });
+    await editor.getByRole("tab", { name: "Free Bet" }).click({ timeout: 15_000 });
     const awardDraft = editor.locator('[data-pd-id="ledger-editor.panel.free_bet"]');
-    await awardDraft.getByLabel("Notes").fill("Synthetic future award note");
+    await awardDraft.getByLabel("Notes").fill("Synthetic future award note", { timeout: 15_000 });
     const saveResponse = page.waitForResponse((response) =>
       response.request().method() === "PUT" &&
       response.url().endsWith(`/api/profiles/${profileId}/sportsbook-bets/${created.sportsbook_bet_id}`)
     );
-    await editor.locator('[data-pd-id="sportsbook.editor.actions"]').getByRole("button", { name: "Save", exact: true }).click();
+    await editor.locator('[data-pd-id="sportsbook.editor.actions"]').getByRole("button", { name: "Save", exact: true }).click({ timeout: 15_000 });
     expect((await saveResponse).status()).toBe(200);
 
     const persisted = await (await page.request.get(
       `/api/profiles/${profileId}/sportsbook-bets/${created.sportsbook_bet_id}`
     )).json() as typeof created;
     expect(persisted.user_notes).toBe("Synthetic ordinary note");
-    for (const field of ["profile_id", "bookmaker", "status", "result", "back_stake", "back_odds", "lay_actual", "lay_matched_stake_1", "exchange_name", "reporting_value"] as const) {
+    for (const field of ["profile_id", "bookmaker", "status", "result", "back_stake", "back_odds", "lay_actual", "lay_matched_stake_1", "lay_commission_1", "exchange_name", "reporting_value"] as const) {
       expect(persisted[field]).toBe(created[field]);
     }
     const freeBets = await (await page.request.get(`/api/profiles/${profileId}/free-bets`)).json() as unknown[];
     expect(freeBets).toEqual([]);
 
     await page.goto(`/profiles/${profileId}/tracker/sportsbook-bets`);
-    await page.getByRole("row", { name: /Synthetic CP033 Account retention/ }).click();
+    await page.getByRole("button", {
+      name: `Copy ${created.sportsbook_bet_id} to free bets`,
+    }).click({ timeout: 30_000 });
     const reopened = page.getByRole("dialog", { name: "Edit sportsbook row" });
-    await reopened.getByRole("tab", { name: "Free Bet" }).click();
+    await reopened.getByRole("tab", { name: "Free Bet" }).click({ timeout: 15_000 });
     await expect(reopened.locator('[data-pd-id="ledger-editor.panel.free_bet"]').getByLabel("Notes"))
       .toHaveValue("Synthetic future award note");
+
+    const settledResponse = await page.request.put(
+      `/api/profiles/${profileId}/sportsbook-bets/${created.sportsbook_bet_id}`,
+      { data: { ...payload, status: "Settled", result: "Back Won", date_settled: "2026-09-23T12:00:00Z", user_notes: "Settled with note" } },
+    );
+    expect(settledResponse.status(), await settledResponse.text()).toBe(200);
+    const settled = await settledResponse.json() as typeof created;
+
+    await page.goto(`/profiles/${profileId}/tracker/sportsbook-bets`);
+    await page.getByRole("button", {
+      name: `Copy ${created.sportsbook_bet_id} to free bets`,
+    }).click({ timeout: 30_000 });
+    const settledEditor = page.getByRole("dialog", { name: "Edit sportsbook row" });
+    await settledEditor.locator('[data-pd-id="sportsbook.editor.edit-settled-row"]:visible').click();
+    await settledEditor.getByRole("tab", { name: /Settlement/ }).click();
+    const settledPanel = settledEditor.locator('[data-pd-id="ledger-editor.panel.settlement"]');
+    await settledPanel.getByText("Advanced controls", { exact: true }).click();
+    await settledPanel.getByLabel("Notes").fill("Synthetic settled note edit");
+    const settledSaveResponse = page.waitForResponse((response) =>
+      response.request().method() === "PUT" &&
+      response.url().endsWith(`/api/profiles/${profileId}/sportsbook-bets/${created.sportsbook_bet_id}`)
+    );
+    await settledEditor.getByRole("button", { name: "Save Edits", exact: true }).click();
+    expect((await settledSaveResponse).status()).toBe(200);
+
+    const afterSettledNote = await (await page.request.get(
+      `/api/profiles/${profileId}/sportsbook-bets/${created.sportsbook_bet_id}`
+    )).json() as typeof created;
+    expect(afterSettledNote.user_notes).toBe("Synthetic settled note edit");
+    for (const field of ["profile_id", "bookmaker", "status", "result", "back_stake", "back_odds", "lay_actual", "lay_matched_stake_1", "lay_commission_1", "exchange_name", "date_settled", "reporting_value"] as const) {
+      expect(afterSettledNote[field]).toBe(settled[field]);
+    }
+    expect(await (await page.request.get(`/api/profiles/${profileId}/free-bets`)).json()).toEqual([]);
+    expect(browserErrors).toEqual([]);
   } finally {
-    await page.request.patch(`/api/profiles/${profileId}`, { data: { status: "Archived" } });
+    await page.request.patch(`/api/profiles/${profileId}`, { data: { status: "Archived" }, timeout: 15_000 })
+      .catch(() => undefined);
   }
 });

@@ -5425,8 +5425,17 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       partialLayLegs: resolvedPartialLayLegs,
       primaryPlacement: resolvedMultiLayPrimaryPlacement,
     });
+    const activeRowId = nextFormState.sportsbook_bet_id ?? selectedId;
+    const isEditing = Boolean(activeRowId);
+    const isNotesOnlyExistingEdit =
+      isEditing &&
+      nextFormState.user_notes !== pristineFormState.user_notes &&
+      (Object.keys(nextFormState) as Array<keyof SportsbookFormState>).every(
+        (key) => key === "user_notes" || nextFormState[key] === pristineFormState[key]
+      );
 
     if (
+      !isNotesOnlyExistingEdit &&
       !canPersistForm(
         persistableFormState,
         resolvedMultiLayOutcomes,
@@ -5462,8 +5471,6 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
 
     try {
 
-    const activeRowId = nextFormState.sportsbook_bet_id ?? selectedId;
-    const isEditing = Boolean(activeRowId);
     const url = isEditing
       ? `${apiBaseUrl}/profiles/${profileId}/sportsbook-bets/${activeRowId}`
       : `${apiBaseUrl}/profiles/${profileId}/sportsbook-bets`;
@@ -5476,7 +5483,9 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       },
       body: JSON.stringify({
         ...persistableFormState,
-        lay_commission_1: persistableFormState.lay_plan_json ? persistableFormState.lay_commission_1 : "",
+        lay_commission_1: isEditing || persistableFormState.lay_plan_json
+          ? persistableFormState.lay_commission_1
+          : "",
         date_settled: fromDateTimeLocalValue(persistableFormState.date_settled),
       }),
     });
