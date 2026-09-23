@@ -1,5 +1,9 @@
 import { expect, test, type APIRequestContext, type Locator, type Page } from "@playwright/test";
 
+test.use(process.env.OPENFORGE_E2E_COMPACT_DARK === "true"
+  ? { colorScheme: "dark", viewport: { width: 760, height: 900 } }
+  : { colorScheme: "light", viewport: { width: 1440, height: 1000 } });
+
 const hostedOnly = () => test.skip(
   process.env.OPENFORGE_HOSTED_PREVIEW_GATE !== "true",
   "Explicit hosted Preview gate only",
@@ -99,7 +103,9 @@ async function saveNote(
     candidate.request().method() === "PUT" && candidate.url().endsWith(endpoint),
     { timeout: 30_000 },
   );
-  await saveHandle!.click();
+  await saveHandle!.focus();
+  expect(await saveHandle!.evaluate((button) => document.activeElement === button)).toBeTruthy();
+  await saveHandle!.press("Enter");
   const result = await response;
   expect(result.status(), await result.text()).toBe(200);
   await expect(save).toBeHidden({ timeout: 30_000 });
@@ -119,7 +125,7 @@ function expectOnlyNoteChanged(before: Record<string, unknown>, after: Record<st
   }
 }
 
-test("Free Bet Notes survive add, amend and clear for incomplete and settled records", async ({ page }) => {
+test("Free Bet Notes survive add, amend and clear on an incomplete existing record", async ({ page }) => {
   hostedOnly(); test.setTimeout(240_000);
   const profileId = await createProfile(page.request, "free-bet");
   const bookie = await addAccount(page.request, profileId, "Bet365", "Bookie");
