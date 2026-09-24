@@ -1,21 +1,21 @@
 # Project Status — Plum Duff / OpenForge — Doc ID: PS-CODEX-001
 
-**Last updated:** 2026-09-23 20:14 BST · **Status:** 🟢 #117 explicit ledger Save/Discard verified on Preview and reconciled locally
+**Last updated:** 2026-09-24 08:35 BST · **Status:** 🟠 #117 settled-editor repair deployed and local; authenticated Preview recheck pending
 
 ## Right now
 
-- **Working on:** CP-035 completed explicit Save/Discard across all five ledger editors without changing owner financial data.
-- **Next:** retain #117 for owner acceptance and resume the separately authorised Production-readiness decision.
-- **Blocked on:** no #117 engineering blocker; VoiceOver spoken output remains separate manual evidence.
+- **Working on:** CP-036 preserves owner-confirmed Save/Discard and repairs settled-value flicker plus Advanced Controls reveal behaviour.
+- **Next:** refresh the authorised synthetic Preview session and run the single authenticated settled-editor browser regression.
+- **Blocked on:** retained Preview test sessions are expired; Production readiness remains paused. VoiceOver spoken output is separate manual evidence.
 
 ## Delivery state
 
 | Area | Evidence state |
 | --- | --- |
-| Local integrated build | Explicit ledger Save/Discard runs on normal 3010 at source `093f18b+dirty` (application repair `75042e5`); generated Next/TypeScript files remain uncommitted |
-| Normal `localhost:3010` | Healthy as `normal-owner` on canonical SQLite and `account-access-v1`; all owner ledger hashes/counts match the fresh pre-update backup |
+| Local integrated build | CP-036 application revision `1435c5b` runs on normal 3010; only generated Next/TypeScript files remain uncommitted |
+| Normal `localhost:3010` | Healthy as `normal-owner` on canonical SQLite and `account-access-v1`; all owner ledger/history hashes and counts match the fresh pre-update backup |
 | Main / origin | Not updated by the local integration work |
-| Vercel | Protected Preview serves application revision `75042e5` with explicit Save/Discard browser evidence against `preview:plum_duff_preview_cp028`; Production alias/data remain untouched |
+| Vercel | Protected Preview serves `1435c5b` against `preview:plum_duff_preview_cp028`; deployment identity is healthy, while the CP-036 authenticated browser recheck awaits a renewed synthetic session; Production remains untouched |
 | Owner smoke test | Hosted Google PASS is recorded; optional Preview visual acceptance and VoiceOver spoken output remain separate |
 
 ## Progress at a glance
@@ -70,6 +70,7 @@ These figures measure **#114 audit coverage**, not the percentage of the product
 | CP-033 | 2026-09-23 15:13 BST | Repaired action-scoped Notes editing for existing ledger rows, retained historical Account/financial meaning and removed cold-request schema-lock contention on Preview | [#117](https://github.com/wolney8/OpenForge/issues/117), [#91](https://github.com/wolney8/OpenForge/issues/91), [#36](https://github.com/wolney8/OpenForge/issues/36), [#92](https://github.com/wolney8/OpenForge/issues/92), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#cp-033-owner-blocking-ledger-edit-repair--2026-09-23-1513-bst) |
 | CP-034 | 2026-09-23 17:56 BST | Completed browser Notes add/amend/clear across five ledgers, corrected Cash note-history semantics and reconciled the verified shared repair into normal localhost without changing owner financial data | [#117](https://github.com/wolney8/OpenForge/issues/117), [#91](https://github.com/wolney8/OpenForge/issues/91), [#36](https://github.com/wolney8/OpenForge/issues/36), [#92](https://github.com/wolney8/OpenForge/issues/92), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#cp-034-five-ledger-note-editing-and-local-reconciliation--2026-09-23-1756-bst) |
 | CP-035 | 2026-09-23 20:06 BST | Replaced ordinary ledger autosave with one explicit draft, Save, Revert and three-way close contract across five editors | [#117](https://github.com/wolney8/OpenForge/issues/117), [#92](https://github.com/wolney8/OpenForge/issues/92), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#cp-035-explicit-ledger-save-and-discard--2026-09-23-2006-bst) |
+| CP-036 | 2026-09-24 08:35 BST | Separated Notes drafts from calculation-preview identity and added one shared, editor-owned disclosure reveal behaviour | [#117](https://github.com/wolney8/OpenForge/issues/117), [#92](https://github.com/wolney8/OpenForge/issues/92) | [Audit evidence](docs/audits/platform-quality-audit.md#cp-036-settled-editor-stability-and-disclosure-visibility--2026-09-24-0835-bst) |
 
 ## Reference index
 

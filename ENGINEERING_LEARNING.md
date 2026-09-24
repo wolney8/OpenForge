@@ -525,6 +525,7 @@ a harmless field edit cannot silently reacquire new-entry or financial-correctio
 | CP-033 | 2026-09-23 15:13 BST | Action-scoped validation | A harmless edit validates what changed and the invariants it can affect; it must not reinterpret an unchanged historical relationship as new business |
 | CP-034 | 2026-09-23 17:56 BST | Semantic event classification | Audit history should describe the action actually performed: clearing a note is an edit, while changing financial meaning is a correction |
 | CP-035 | 2026-09-23 20:06 BST | Draft versus saved state | A visible draft is not a saved record: only an explicit, confirmed write may advance the baseline; Discard abandons local state without a compensating server mutation |
+| CP-036 | 2026-09-24 08:35 BST | Calculation identity | A preview identity should contain only inputs that can change the calculation; descriptive Notes must not invalidate a confirmed financial result or trigger recalculation |
 
 ## Where detailed evidence lives
 

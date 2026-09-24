@@ -1,5 +1,32 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
+## CP-036 settled-editor stability and disclosure visibility — 2026-09-24 08:35 BST
+
+The two symptoms had related surfaces but distinct mechanics. Sportsbook and Free Bet used the full
+form, including `user_notes`, as their calculation-preview identity: the failing regression recorded
+seven preview requests while typing a short Note, and the active settled result unmounted until each
+debounce completed. Sportsbook Advanced Controls was separately a native disclosure with no knowledge
+of `.workflow-editor-body` or its sticky footer.
+
+Application revision `1435c5b` excludes Notes from calculation identity while retaining all financial
+inputs, so Notes typing neither recalculates nor writes and the confirmed Final Value stays mounted.
+Sportsbook now uses the shared `EditorSection`; a deliberate expansion waits for actual transition
+geometry, scrolls only the owning editor body as far as needed, retains trigger focus, accounts for
+the sticky footer and uses immediate positioning under reduced motion. The request is consumed once,
+so later typing/rendering/restored state cannot pull the user's scroll.
+
+Focused intermediate-state browser evidence passes pointer/keyboard, compact, enlarged text, themes
+and reduced motion; the five-ledger explicit Save/Discard matrix passes 5/5 desktop/light and 4/4
+compact/dark. Web tests pass 435/435, TypeScript and mypy pass, and the production build completes.
+Protected Preview health proves `preview` / `preview:plum_duff_preview_cp028` / `account-access-v1`
+on deployed source `1435c5b`. Exact authenticated post-deploy browser evidence is still pending
+because every retained synthetic Preview session is expired; no authentication shortcut was added.
+
+Normal 3010 was updated only after a fresh readable backup. It reports `normal-owner`, canonical
+SQLite, `account-access-v1` and `1435c5b+dirty` (generated files only). Integrity is `ok`, foreign-key
+check is empty and all before/after data hashes match: 42 Profiles, 175 Accounts, 538 Sportsbook,
+291 Free Bets, 123 Extra Place, 90 Casino, 58 Cash and 307 history events. Production is unchanged.
+
 ## CP-034 five-ledger Note editing and local reconciliation — 2026-09-23 17:56 BST
 
 CP-033 Sportsbook evidence was retained. Fresh protected-Preview browser groups now prove Free Bet

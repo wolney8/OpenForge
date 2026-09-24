@@ -1,6 +1,6 @@
 # Audit Register — Plum Duff / OpenForge — Doc ID: AR-CODEX-001
 
-**Last updated:** 2026-09-23 17:56 BST
+**Last updated:** 2026-09-24 08:35 BST
 
 This is the owner-facing index for audit evidence. The
 [platform quality audit](docs/audits/platform-quality-audit.md) remains the detailed authority.
@@ -21,6 +21,7 @@ These are coverage measures, not percentages of the product finished.
 
 | ID | Plain-English problem | State | Repair / integration state | Issue |
 | --- | --- | --- | --- | --- |
+| PD-FIX-274–275 / CP-036 | Notes typing invalidated settled previews, while Advanced Controls opened below the useful editor viewport | Repaired / deployed and local; hosted browser recheck pending | Sportsbook and Free Bet calculation identity now excludes Notes; shared disclosures reveal their beginning in the owning editor body once per user expansion. Isolated browser, five-ledger Save/Discard, web 435/435, types and build pass. Preview and normal 3010 serve `1435c5b`; owner data hashes are unchanged. Retained Preview test sessions are expired, so exact authenticated post-deploy interaction remains unverified | [#117](https://github.com/wolney8/OpenForge/issues/117), [#92](https://github.com/wolney8/OpenForge/issues/92) |
 | PD-FIX-271–272 / CP-034 | Existing Notes edits revalidated historical Accounts/new-entry completeness; Cash note clearing was also misclassified as a financial correction; cold Preview functions could rerun schema setup | Repaired / Preview and localhost verified | Five ledger editors pass browser add/amend/clear with stable identity and unchanged money; Cash description-only events are `edited` while monetary changes remain `corrected`; current PostgreSQL schemas retain the read-only migration-marker check. Preview and normal 3010 serve `a52ee88`; owner ledger hashes/counts are unchanged | [#117](https://github.com/wolney8/OpenForge/issues/117), [#91](https://github.com/wolney8/OpenForge/issues/91), [#36](https://github.com/wolney8/OpenForge/issues/36), [#92](https://github.com/wolney8/OpenForge/issues/92), [#114](https://github.com/wolney8/OpenForge/issues/114) |
 | PD-FIX-269–270 / CP-032 | Small hosted reads repeatedly opened PostgreSQL connections and Preview functions ran across the Atlantic from their database | Repaired / Preview and localhost verified | Request-scoped connection reuse plus `lhr1` Preview functions reduced warm medians to 0.67s summary, 0.42s eligibility and 0.40s for 600 Sportsbook rows. Shared fixes through `712d174` now run on normal 3010; every owner row projection is unchanged | [#114](https://github.com/wolney8/OpenForge/issues/114), [#115](https://github.com/wolney8/OpenForge/issues/115) |
 | PD-FIX-267–268 / CP-031 | Hosted Free Bet lineage and Account eligibility performed repeated work across archived Profiles/rows | Repaired / verified on protected Preview | Batched Profile-scoped lineage reads reduced the populated summary from 70.78s to 5.81s; active-owner eligibility now reads 3 active Profiles rather than 83 total and returns in 11.88s. Supported hosted journeys, responsive/access/recovery and diagnostics pass on `659d0ea`; richer Multi-Lay placement/reward modes and the 600-row payload remain named future boundaries | [#114](https://github.com/wolney8/OpenForge/issues/114), [#115](https://github.com/wolney8/OpenForge/issues/115) |
@@ -111,6 +112,17 @@ change and lifecycle regressions pass 141/141. Normal 3010 subsequently started 
 on source `093f18b+dirty`; its 42/175/538/291/90/58/123/305 owner counts, ledger hashes, integrity
 and foreign keys match the verified pre-cutover backup. #117 remains open for owner acceptance;
 Production is unchanged.
+
+## CP-036 settled-editor stability — 2026-09-24 08:35 BST
+
+The pre-fix regression observed seven preview requests from one short Notes edit. Revision `1435c5b`
+removes Notes from Sportsbook and Free Bet calculation identity, keeps confirmed settled values
+mounted and replaces the Sportsbook-only disclosure with shared editor-owned reveal behaviour. The
+focused intermediate-state browser check, five-ledger Save/Discard matrix (desktop/light and
+compact/dark), web 435/435, TypeScript, mypy and production build pass. The protected Preview and
+normal 3010 both report `1435c5b`, their required roles and `account-access-v1`; normal owner counts
+and complete ledger/history hashes match the verified pre-update backup. The retained authenticated
+Preview test sessions have expired, so #117 remains open for that one post-deployment browser recheck.
 
 ## Detailed evidence
 

@@ -1535,6 +1535,13 @@ and deployed application revision `a52ee88`. CP-034 adds all-ledger browser and 
 evidence; CP-031's supported hosted verification remains complete, with richer unsupported
 Multi-Lay modes and VoiceOver spoken output retained as separate boundaries.
 
+CP-036 continuation: `PD-FIX-274` separates descriptive Notes from Sportsbook/Free Bet calculation
+preview identity, and `PD-FIX-275` gives shared editor disclosures one action-scoped reveal inside
+the owning modal body. Application revision `1435c5b` passes deterministic browser/build evidence,
+is deployed to the protected Preview and runs on normal 3010 with unchanged owner data. #117 remains
+open because the retained synthetic Preview authentication sessions expired before the exact
+post-deployment browser recheck; no owner-data mutation or authentication bypass was used.
+
 ## CP-028 protected Preview evidence — 2026-09-21 13:02 BST
 
 - **#114:** one Vercel-protected Preview is live on revision `e6a4206`, role `preview`, isolated
