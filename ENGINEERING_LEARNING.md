@@ -1,6 +1,6 @@
 # Engineering Learning — Plum Duff / OpenForge — Doc ID: EL-CODEX-001
 
-**Last updated:** 2026-09-24 15:00 BST
+**Last updated:** 2026-09-24 16:00 BST
 
 This is a compact notebook of transferable lessons from building Plum Duff. It is not the audit,
 roadmap, backlog or evidence record.
@@ -27,6 +27,10 @@ not a complete result. Both inputs must be ready before the total is presented.
 
 CP-042: readiness also follows scope. Loading an archived directory page must not invalidate a
 confirmed Active-Profile total; a failed Active source must not produce an apparently complete subtotal.
+
+CP-043: a metric can be known while its reference metric is unavailable. Keep those readiness decisions
+separate. When saving a new period, cancel the older read at the mutation boundary so it cannot later
+replace either the visible selection or its cached settings.
 
 ### Scope parity
 

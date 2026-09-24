@@ -1,5 +1,25 @@
 # Plum Duff Next Issue Tracking Register
 
+## CP-043 Extra Places and Profile Dashboard delivery — 2026-09-24 16:00 BST
+
+PD-FIX-290–291 COMPLETE at app `3a7f0a3`, normal local and protected Preview. Extra Places now owns
+row/range readiness and independent P&L/qualifying-loss/weekly-spend completeness; the summary replays
+through the existing shared group. Dashboard cancels an older read when saving a period and suppresses
+failed cached cards. Existing card groups and Profile navigation are verified, not redesigned.
+
+Combined isolated6/6, hosted6/6, restored-runtime2/2, web46/calculation5, types/lint/build pass. Normal
+served modules were verified over HTTP; canonical runtime restored with exact revision gate after
+ECONNREFUSED. Eight owner projections unchanged; protected Preview remains dedicated and authenticated.
+Provider-managed configuration reused remotely; no secret transfer. Test session revoked. Git push
+still withheld; #96, fresh owner-authenticated browser and VoiceOver remain separate. #117 acceptance retained.
+[Evidence](../audits/platform-quality-audit.md#cp-043-extra-places-summaries-and-profile-dashboard-cards--2026-09-24-1600-bst); [named #105 remainder](../contracts/financial-value-presentation-contract.md#rollout-coverage).
+
+Next two executable actions:
+1. #105: reproduce and add nearest-card replay to the Reports header, module-mix and Cash/formal-period summary cards in TrackerSummaryShell; verify their readiness without changing report membership.
+2. #105: reproduce and complete the Fund Manager Fee Position (Available to Withdraw / Fees Withdrawn) and Exposure liability card groups; preserve governed fee and liability meanings.
+
+GitHub evidence synced once each: [#92](https://github.com/wolney8/OpenForge/issues/92#issuecomment-5816686917), [#105](https://github.com/wolney8/OpenForge/issues/105#issuecomment-5816685978), [#114](https://github.com/wolney8/OpenForge/issues/114#issuecomment-5816688144). No issue closed.
+
 ## CP-042 Preview delivery and bounded UI completion — 2026-09-24 15:00 BST
 
 CP-041 PD-FIX-284–287 now has actual hosted 4/4 evidence at `7763284`. PD-FIX-288 (#92 Extra Places

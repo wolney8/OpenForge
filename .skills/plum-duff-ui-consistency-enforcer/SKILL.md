@@ -55,7 +55,7 @@ Before changing markup or CSS, compare the affected control with its canonical e
 | Actions | variant, target size, icon size, ordering, spacing and destructive treatment |
 | Accessibility | semantic role, visible label, accessible name, focus order and keyboard action |
 | Process state | enabled, disabled, loading, success, error and cancellation behaviour |
-| Financial cards | Read readiness matches the displayed Profile scope; unrelated Archived reads preserve confirmed Active nodes/cycles, and Active failures cannot become partial totals. Pending/failed row or range reads are not zero; same-value refresh retains its node/replay cycle; card and table-cell minimums accommodate enlarged accounting values and whole outer badges during motion |
+| Financial cards | Read readiness matches the displayed Profile scope; unrelated Archived reads preserve confirmed Active nodes/cycles, and Active failures cannot become partial totals. Pending/failed row or range reads are not zero; assess completeness per metric (known realised P&L does not imply known reference loss), invalidate obsolete reads/cache writes when saving a newer period, and verify failed warm refreshes; same-value refresh retains its node/replay cycle; card and table-cell minimums accommodate enlarged accounting values and whole outer badges during motion |
 
 If an intentional difference exists, record the workflow reason before implementation. Otherwise,
 use the canonical primitive and computed styling.

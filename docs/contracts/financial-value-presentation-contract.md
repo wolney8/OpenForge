@@ -1,10 +1,10 @@
 # Contract: Financial Value Presentation and Motion
 
-_Last updated: 2026-09-24 12:11 BST_
+_Last updated: 2026-09-24 16:00 BST_
 
 ## Status and scope
 
-- Status: Shared odometer implemented locally; wider rollout coverage pending verification
+- Status: Shared odometer implemented; bounded local/Preview evidence below, wider replay/readiness coverage remains open
 - Milestone: M15 Platform Experience: Financial Motion, Accessibility and Guided Entry
 - Related issues: historical contract [#58](https://github.com/wolney8/OpenForge/issues/58),
   historical implementation [#59](https://github.com/wolney8/OpenForge/issues/59), and current
@@ -167,8 +167,9 @@ Reference: [WCAG status messages](https://www.w3.org/WAI/WCAG22/Understanding/st
 
 ## Rollout coverage
 
-All items remain pending until implemented and verified in bounded batches. Extending the shared
-component alone does not establish complete surface coverage.
+The checked adoption items below record shared-component use, not complete replay/readiness
+acceptance. Bounded evidence and remaining named consumers follow; extending a primitive alone
+does not establish full surface coverage.
 
 - [x] Shared `FinancialValue` digit-roll correction and focused helper/rendered fixtures.
 - [x] Dashboards and summary cards: Profile dashboard, portfolio point/command rails, Combined
@@ -179,6 +180,23 @@ component alone does not establish complete surface coverage.
 - [x] Reports, Profit Tracker and Account summaries reached through the shared tracker/report paths.
 - [x] Relevant existing read-only side-panel, drawer and fee-review values.
 - [ ] Future read-only signed-money displays adopt the shared component by default.
+
+### Named consumer completion and remainder — CP-043, 2026-09-24 16:00 BST
+
+| Surface | Implementation state | Verification state / next work |
+| --- | --- | --- |
+| Extra Places P&L / selected qualifying loss / current-week spend and budget | COMPLETE: shared readiness, per-metric completeness and nearest-card replay | CP-043 isolated/hosted: delayed/failed/unknown/zero, correction/Void, range/search, large values, Copy, themes/text/keyboard and motion; preserved Notes workflow |
+| Single-Profile Dashboard headline/financial cards | COMPLETE: period refresh cancellation and failed-summary guard; existing groups retained | CP-043 isolated/hosted: selected Profile/period, rapid changes, distinct cash/P&L/fees, every populated card replay; no layout repair needed |
+| Reports header P&L / retained / open-current-and-settled-final; selected-range module mix; Cash breakdown; latest/formal-period summary cards (`TrackerSummaryShell`) | UNIMPLEMENTED nearest-card replay (FinancialValue already adopted) | Reproduce nearest-card behaviour; bounded readiness, large-value geometry, Copy and motion verification still needed. Existing table-row replay/weekly-P&L evidence retained |
+| Fund Manager Fee Position: Available to Withdraw / Fees Withdrawn; Exposure liability (`CrossProfileAnalytics`) | UNIMPLEMENTED nearest-card replay (FinancialValue already adopted) | Reproduce and verify these named cards. CP-042 headline-card/Active-scope evidence stays accepted |
+| Profile command/header metric; directory financial rows; Profile detail balance/P&L/fees | Shared groups IMPLEMENTED | VERIFICATION ONLY: remaining bounded nearest-group/copy/unknown/read-failure matrix. Profile-detail fee fallback under failed reads is a candidate to reproduce, not a confirmed new defect |
+| Fee Period Review dialog/revision values and Fee Centre Breakdown drawer | Shared groups IMPLEMENTED | VERIFICATION ONLY: scoped financial readiness/replay/Copy/compact/reduced-motion cases remain |
+
+The nested `Tracker quick views` block inside `!isDashboardLike` is not an active Dashboard consumer;
+its contradictory inner guard is not counted as unimplemented user-facing scope. `PeriodPnlReport`,
+`ReportPointChart` captions/drilldowns and FinancialHistoryPanel have approved static read-only text;
+they are not replay defects. Editable inputs/exports also remain static. No new inventory or completion
+percentage is created, and wider issue closure/owner acceptance remains separate.
 
 Remaining static exceptions are editable/read-only form controls, accessible narrative strings,
 file/export output and legacy/non-active shells. New surfaces still require bounded adoption evidence.

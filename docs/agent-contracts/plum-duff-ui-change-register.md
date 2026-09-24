@@ -1,5 +1,13 @@
 # Plum Duff UI Change Register
 
+## CP-043 verified batch — 2026-09-24 16:00 BST
+
+| ID / issue | Surface / request | Existing equivalent and exact scope | State |
+| --- | --- | --- | --- |
+| PD-FIX-290 / #105 #92 | Extra Places P&L, qualifying loss and weekly budget read-only summary | Existing FinancialReadValue/replay; preserve placed-at range, independent weekly budget, row meanings and table filters. Reproduce missing/failed values and large-value geometry | COMPLETE — app `3a7f0a3`; isolated/hosted readiness, values, replay and retained workflows pass |
+| PD-FIX-291 / #105 | Single-Profile Dashboard financial cards and response ownership | PortfolioDashboardView already groups cards: verify unchanged replay. Reproduce missing/failed source, rapid Profile/date changes and partial-money handling in TrackerSummaryShell | COMPLETE — app `3a7f0a3`; isolated/hosted readiness, values, replay and retained workflows pass |
+
+
 ## CP-042 verified Preview/local batch — 2026-09-24 15:00 BST
 
 | ID / issue | Surface and request | Reproduction target | Signed-off equivalent | Status |

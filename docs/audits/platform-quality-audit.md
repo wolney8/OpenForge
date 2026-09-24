@@ -1,5 +1,92 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
+## CP-043 Extra Places summaries and Profile Dashboard cards — 2026-09-24 16:00 BST
+
+**Application `3a7f0a3` is served by the existing protected Preview and normal local frontend.**
+PD-FIX-290–291 complete this bounded batch; wider #105/#92 and owner acceptance remain separate.
+
+### Demonstrated gaps and actual changes
+
+| ID / issue | Before | Delivered |
+| --- | --- | --- |
+| PD-FIX-290 / #105 #92 | Four money values appeared while Extra Places rows were held; a 503 still displayed zero; clicking the card label did not replay. Missing money was reduced as zero | Profile/request-owned rows/settings readiness, shared FinancialReadValue and one existing replay group. P&L, range qualifying loss and current-week spend have independent finite-value guards; a successful empty range is genuine zero |
+| PD-FIX-291 / #105 | A late consolidated GET reset a successfully selected 1D period; cached Dashboard cards remained visible after a 503 | Abort/invalidate the old refresh before saving the period; hide failed summary values. Existing Dashboard card groups, Profile navigation, fonts, colours and geometry were already correct and were verified without redesign |
+
+Known equations, final-value/current-value precedence, placed-at range membership, independent weekly
+loss budget, correction/Void, Account balance meanings, fee rules, persistence and report membership
+are unchanged. No shared reduced-motion subscription/listener change, new per-card request or Profile
+fan-out. Memoised Extra Places reductions depend on rows/range, not Notes or theme. Counts show a dash
+until the source/range is ready. Successful settings retain their existing authorised budget default.
+
+### Executed checks and UI consistency checklist
+
+- Final fixed-source combined isolated browser **6/6 (2.2m)** and actual hosted **6/6 (1.5m)**:
+  `cp043-final-isolated-browser.log`, `cp043-final-hosted-browser.log`. Includes both changed surfaces,
+  Extra Places Notes add/amend/clear, explicit Save/Discard/Revert/reopen and financial neutrality,
+  weekly-P&L exact totals/drilldown/return context, accepted Standard and Multi-Lay geometry.
+- Expanded Dashboard checks additionally replay **every populated financial card**. Static chart
+  captions and drilldown rows remain static by their existing animate=false contract. These expanded
+  assertions ran in the final hosted six and the restored-runtime isolated **2/2 (58.1s)** run,
+  `cp043-restored-runtime-browser.log`; the original six-pass isolated log is retained unchanged.
+- Independently expected fixture: current−1.77 plus settled28.23 = selected-week26.46; Today28.23.
+  Correcting settled to Unplaced gives−3.54; Void then gives−1.77. Reference qualifying loss remains−3.54,
+  weekly spend3.54/budget15. Observed Account cash150 and cash movement193 (TopUp200 less Deduction7)
+  remain distinct from betting P&L26.46. No owner records used as test fixtures.
+- Delayed/failed rows and settings, completed warm-refresh failure, zero, incomplete Account balance,
+  missing row values, known historical P&L with unavailable qualifying loss, search scope, late period
+  response and rapid A→B→A→B navigation exercised. Old A cannot repaint B. Large rendering-only
+  response fixtures preserve exact accounting signs/currency and copy; no balances were changed to
+  repair presentation.
+- Both themes, 390/760/1440px, 200% text, keyboard period activation and editor Save/Discard, intermediate
+  digit bounds/glyph widths, canonical accessible final text, no live/focusable digits, exact clipboard,
+  theme stability, initial/replayed/changed values, reduced and disabled motion pass. Full-card images
+  and settled reduced-motion screenshots inspected in retained isolated/hosted evidence directories.
+- **46/46 focused web tests** (six files), **5/5 Extra Places calculation fixtures**, final nonincremental
+  TypeScript, targeted ESLint (zero errors/warnings) and production webpack build pass. Hosted build
+  also passes. Logs: `cp043-units.log`, `cp043-calculation-oracle.log`, `cp043-typecheck.log`,
+  `cp043-lint.log`, `cp043-build.log`. No unrelated historical suite/migration campaign rerun.
+- Reuse/consistency gate: CP-041 FinancialReadValue and Cash readiness, FinancialValueReplayGroup,
+  existing stat cards and PortfolioDashboardView are the references. No new CSS/variant/action/icon,
+  token, calculator or toolbar framework. Related non-batch consumers are named in the existing
+  [#105 checklist](../contracts/financial-value-presentation-contract.md#rollout-coverage).
+- Read-only code review found no concrete defect in the two-component patch. Retained failing probes
+  distinguish real reproductions from harness corrections (uppercase Profile code, response/route
+  synchronisation, row-ID selection, minimum-width glyph measurement and intentional static captions).
+
+### Delivery, runtime and retained limits
+
+- Deployment `FnGAeWg84JPCnyx5JbALvEqzwbiU`, unique host `plum-duff-jpnkpj21i-homelab11.vercel.app`.
+  Unique health verified before updating the same protected alias. Stable alias serves `3a7f0a3`;
+  anonymous root302 to Vercel; runtime `preview`, dedicated database `preview:plum_duff_preview_cp028`,
+  fingerprint `c3b647ca129cf41c`, schema `account-access-v1`, auth required. Health and real screens pass.
+- Existing provider-managed configuration reused remotely; **no secret values exported/transferred**.
+  Names/scopes rechecked: OPENFORGE_NEON_DATABASE_URL Preview-only; existing session/OAuth bindings
+  remain Preview+Production and #96 rotation remains open. No binding/scope/credential changes.
+- Normal frontend3010 served both new components byte-for-byte over HTTP source maps, then passed the
+  same proof after restart. Normal API8010 now reports `3a7f0a3…+dirty`, role normal-owner, canonical
+  SQLite fingerprint `7246998d43722066`; login200 and anonymous session/Profile reads401. Normal-owner
+  authenticated browser remains **NOT RUN**. Source parity alone is not the serving proof.
+- During final verification all four task runtimes returned ECONNREFUSED; no cause was inferred.
+  Restored only stopped existing normal/isolated services. Normal canonical launcher retained the
+  exact reviewed revision approval gate. Isolated Turbopack rejected its external dependency symlink;
+  its established webpack path restored3120 successfully. No unrelated services stopped. Isolated
+  API8046 retains its earlier backend launch label, with the same test role/database/fingerprint.
+- Fresh SQLite backup verified; integrity/foreign-key checks and all eight owner projections unchanged
+  before/after reconciliation and restart: Profiles42, Accounts175, Sportsbook538, Free Bets291,
+  Extra Places123, Casino90, Cash58, financial history307. Original evidence/backups preserved;
+  source bundle and selected safe evidence archive refreshed and hash-verified after records commit.
+- All three CP-043 synthetic Preview Profiles archived; other regression fixtures clean up in their
+  passing workflows. Test session revoked and reuse rejected **200→204→401** (`cp043-session-close.log`).
+- Git push withheld for unresolved automatic-deployment isolation; no Production/main/schema change.
+  #96 remains separately gated. Fresh owner-authenticated browser and VoiceOver are unexecuted;
+  no new owner test campaign or blanket closure. #117 scoped owner acceptance is retained.
+
+GitHub evidence synced once each: [#92](https://github.com/wolney8/OpenForge/issues/92#issuecomment-5816686917), [#105](https://github.com/wolney8/OpenForge/issues/105#issuecomment-5816685978), [#114](https://github.com/wolney8/OpenForge/issues/114#issuecomment-5816688144). No issue closed.
+
+Next two executable actions:
+1. #105: reproduce and add nearest-card replay to the Reports header, module-mix and Cash/formal-period summary cards in TrackerSummaryShell; verify their readiness without changing report membership.
+2. #105: reproduce and complete the Fund Manager Fee Position (Available to Withdraw / Fees Withdrawn) and Exposure liability card groups; preserve governed fee and liability meanings.
+
 ## CP-042 protected Preview delivery and bounded UI repairs — 2026-09-24 15:00 BST
 
 **Application `cb4c1c4`; CP-041 hosted gap closed at `7763284`; same protected Preview now serves

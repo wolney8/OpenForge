@@ -1,5 +1,11 @@
 # Plum Duff Known UI Pitfalls
 
+## CP-043 reinforcement — 2026-09-24 16:00 BST
+
+- #105 / PD-FIX-290: readiness belongs to each metric as well as its source/range. Known imported realised P&L does not make missing reference qualifying loss known. Empty successful scope is zero; an incomplete subtotal is unavailable. Preserve original membership and formulas.
+- #105 / PD-FIX-291: a late read can overwrite a newer saved period, including its cache. Cancel/invalidate the obsolete consolidated request at the mutation boundary. A failed warm refresh must not leave cached money looking authoritative. Test held response ordering and completed failures.
+- Regression: `extra-place-dashboard-financial.spec.ts` covers these boundaries plus real correction/Void, rapid Profile selection, every populated Dashboard card, static chart exceptions and enlarged intermediate glyph geometry.
+
 ## CP-042 additions — 2026-09-24 15:00 BST
 
 - #92 / PD-FIX-288: absolute filter clear controls require the existing positioned filter-button wrapper. Keep modal focus lifecycle in the persistent parent so development effect replay cannot capture a soon-detached close button; exercise Escape and trigger restoration. Reuse the existing sticky footer for enlarged text.

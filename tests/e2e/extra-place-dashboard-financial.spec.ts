@@ -54,10 +54,11 @@ async function moneyChecks(page: Page, card: Locator, info: import("@playwright/
       })), "One final accessible value with equal-width presentation, no focusable/live digits").toBe(true);
     }
     expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
-    await page.screenshot({path:info.outputPath(`${prefix}-${width}-${theme}-${scale}.png`)});
+    await card.screenshot({path:info.outputPath(`${prefix}-${width}-${theme}-${scale}.png`)});
   }
   await page.emulateMedia({reducedMotion:"reduce"});
   const cycle=await values.first().getAttribute("data-money-motion-cycle"); await card.locator(".eyebrow").first().click(); await expect(values.first()).toHaveAttribute("data-money-motion","none"); expect(await values.first().getAttribute("data-money-motion-cycle")).toBe(cycle);
+  await card.screenshot({path:info.outputPath(`${prefix}-settled-reduced.png`)});
   const label=await values.first().getAttribute("aria-label"); await values.first().evaluate(el=>{const r=document.createRange();r.selectNodeContents(el);getSelection()!.removeAllRanges();getSelection()!.addRange(r);});
   await page.context().grantPermissions(["clipboard-read","clipboard-write"]);await page.keyboard.press(process.platform==="darwin"?"Meta+c":"Control+c");expect(await page.evaluate(()=>navigator.clipboard.readText())).toBe(label);
   await page.evaluate(()=>{document.documentElement.style.fontSize="";});await page.setViewportSize({width:1440,height:1000});
@@ -114,6 +115,19 @@ test("Profile Dashboard cards retain meaning and cannot repaint a stale Profile 
     await expect(pnl).toHaveAttribute("aria-label","Selected range portfolio profit and loss: £ 26.46");
     const cash=view.locator(".dashboard-mini-card").filter({has:page.getByText("Current Account Cash",{exact:true})});await expect(cash.locator("strong .financial-value")).toHaveAttribute("aria-label","£ 150.00");
     await expect(view.locator(".dashboard-mini-card").filter({has:page.getByText("Cash Movement",{exact:true})}).locator("strong .financial-value")).toHaveAttribute("aria-label","£ 193.00");
+    // Existing groups already exist: verify every populated financial card, not just cash.
+    const groups=view.locator('article[data-motion-replay-group="true"]').filter({has:page.locator(".financial-value")});
+    expect(await groups.count()).toBeGreaterThan(4);
+    for (const group of await groups.all()) {
+      const values=group.locator(".financial-value:not(.dashboard-chart-figure .financial-value)");
+      const staticChartValues=group.locator(".dashboard-chart-figure .financial-value");
+      const staticCycles=await staticChartValues.evaluateAll(ns=>ns.map(n=>n.getAttribute("data-money-motion-cycle")));
+      await expect.poll(()=>values.evaluateAll(ns=>ns.every(n=>n.getAttribute("data-money-tone")==="neutral" || Number(n.getAttribute("data-money-motion-cycle"))>0))).toBe(true);
+      const before=await values.evaluateAll(ns=>ns.map(n=>Number(n.getAttribute("data-money-motion-cycle"))));
+      await group.locator(".eyebrow, h3").first().click();
+      for(let i=0;i<before.length;i++)if(await values.nth(i).getAttribute("data-money-tone")!=="neutral")expect(Number(await values.nth(i).getAttribute("data-money-motion-cycle"))).toBeGreaterThan(before[i]);
+      expect(await staticChartValues.evaluateAll(ns=>ns.map(n=>n.getAttribute("data-money-motion-cycle")))).toEqual(staticCycles);
+    }
     await moneyChecks(page,cash,info,"dashboard-cash");
     await page.emulateMedia({reducedMotion:"no-preference"});
     // Warm re-entry intentionally reads cached complete data while the existing GET refreshes.
