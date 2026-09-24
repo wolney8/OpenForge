@@ -9,6 +9,10 @@ import { AccountProviderIdentity } from "@/components/account-provider-identity"
 import { ProfileOpportunityQueue } from "@/components/profile-opportunity-queue";
 import { ConfirmationDialog } from "@/components/confirmation-dialog";
 import { FinancialValue, FinancialValueReplayRow } from "@/components/financial-value";
+import { FinancialReadValue, type FinancialReadState } from "@/components/financial-read-value";
+import { financialColumnWidth } from "@/lib/financial-column-width";
+import { formatFinancialValue } from "@/lib/financial-display";
+import { MotionReplayGroup } from "@/components/motion-replay-group";
 import { FinancialTextInput } from "@/components/financial-text-input";
 import { AccountMoneyStatus } from "@/components/account-money-status";
 import { accountMoneyDisplayValue, accountMoneyError, normalizeAccountMoney, sumAccountMoney } from "@/lib/account-money";
@@ -425,6 +429,8 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
   const [statusMessage, setStatusMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [financialReadState, setFinancialReadState] = useState<FinancialReadState>(null);
+  const financialReadRequestRef = useRef(0);
   const [isSaving, setIsSaving] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
   const [isArchiveConfirmationOpen, setIsArchiveConfirmationOpen] = useState(false);
@@ -455,46 +461,56 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
 
   const loadRows = useCallback(
     async (preferredSelection?: string | null) => {
-      const response = await fetch(`${apiBaseUrl}/profiles/${profileId}/accounts`, {
-        cache: "no-store",
-      });
-      if (!response.ok) {
-        throw new Error("Unable to load account rows");
-      }
-
-      const nextRows = (await response.json()) as AccountRecord[];
-      startTransition(() => {
-        setRows(nextRows);
-        const selected =
-          preferredSelection && nextRows.some((row) => row.account_id === preferredSelection)
-            ? preferredSelection
-            : null;
-        setSelectedId(selected);
-        if (selected) {
-          isCreatingDraftRef.current = false;
-          const activeRecord = nextRows.find((row) => row.account_id === selected);
-          if (activeRecord) {
-            const nextFormState = recordToForm(
-              activeRecord,
-              exchangeCommissionsRef.current.find(
-                (commission) => commission.exchange_name === activeRecord.account
-              )?.commission_rate ?? ""
-            );
-            setFormState(nextFormState);
-            setPristineFormState(nextFormState);
-          }
-          setWorkflowVisible(true);
-        } else {
-          if (isCreatingDraftRef.current) {
-            setWorkflowVisible(true);
-            return;
-          }
-          const blankForm = createBlankForm();
-          setFormState(blankForm);
-          setPristineFormState(blankForm);
-          setWorkflowVisible(false);
+      const requestId = ++financialReadRequestRef.current;
+      setFinancialReadState((current) => current?.profileId === profileId && current.state === "ready"
+        ? current : { profileId, state: "loading" });
+      try {
+        const response = await fetch(`${apiBaseUrl}/profiles/${profileId}/accounts`, {
+          cache: "no-store",
+        });
+        if (!response.ok) {
+          throw new Error("Unable to load account rows");
         }
-      });
+
+        const nextRows = (await response.json()) as AccountRecord[];
+        if (requestId !== financialReadRequestRef.current) return;
+        startTransition(() => {
+          setFinancialReadState({ profileId, state: "ready" });
+          setRows(nextRows);
+          const selected =
+            preferredSelection && nextRows.some((row) => row.account_id === preferredSelection)
+              ? preferredSelection
+              : null;
+          setSelectedId(selected);
+          if (selected) {
+            isCreatingDraftRef.current = false;
+            const activeRecord = nextRows.find((row) => row.account_id === selected);
+            if (activeRecord) {
+              const nextFormState = recordToForm(
+                activeRecord,
+                exchangeCommissionsRef.current.find(
+                  (commission) => commission.exchange_name === activeRecord.account
+                )?.commission_rate ?? ""
+              );
+              setFormState(nextFormState);
+              setPristineFormState(nextFormState);
+            }
+            setWorkflowVisible(true);
+          } else {
+            if (isCreatingDraftRef.current) {
+              setWorkflowVisible(true);
+              return;
+            }
+            const blankForm = createBlankForm();
+            setFormState(blankForm);
+            setPristineFormState(blankForm);
+            setWorkflowVisible(false);
+          }
+        });
+      } catch (error) {
+        if (requestId === financialReadRequestRef.current) setFinancialReadState({ profileId, state: "error" });
+        throw error;
+      }
     },
     [profileId, startTransition]
   );
@@ -554,10 +570,21 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
     return () => window.clearTimeout(timeoutId);
   }, [loadRows, profileId]);
 
+  const summaryReadState = financialReadState?.profileId === profileId ? financialReadState.state : "loading";
+
   const resolvedRows = useMemo(
     () => rows.map((row) => inheritGlobalProviderMetadata(row, masterAccountCatalogue)),
     [masterAccountCatalogue, rows]
   );
+  const moneyColumnWidths = useMemo(() => Object.fromEntries(
+    (["current_balance", "pending_withdrawal_amount"] as const).map((key) => [key,
+      financialColumnWidth(columnWidths[key], resolvedRows.map((row) => {
+        const value = accountMoneyDisplayValue(String(row[key] ?? ""));
+        return value === "Unavailable" ? value : formatFinancialValue(Number(value));
+      }), 10), // Existing 7.5rem Account badge plus table-cell padding.
+    ])
+  ), [columnWidths, resolvedRows]);
+
   const selectedRow = useMemo(
     () => resolvedRows.find((row) => row.account_id === selectedId) ?? null,
     [resolvedRows, selectedId]
@@ -1023,14 +1050,14 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
       setRows((current) => isEditing
         ? current.map((row) => row.account_id === saved.account_id ? saved : row)
         : [...current, saved]);
-      const refreshed = await fetch(`${apiBaseUrl}/profiles/${profileId}/accounts`, { cache: "no-store" });
-      if (refreshed.ok) setRows((await refreshed.json()) as AccountRecord[]);
+      let refreshed = true;
+      try { await loadRows(); } catch { refreshed = false; }
       setSelectedId(null);
       setWorkflowVisible(false);
       setSignupOfferDraft(createBlankSignupOfferDraft());
       setSignupOfferSourceId("");
       setStatusMessage(
-        !refreshed.ok
+        !refreshed
           ? "Account saved. The latest row is shown while the full table refresh retries."
           : isEditing
           ? `Updated account ${saved.account_id}.`
@@ -1083,34 +1110,34 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
             label="Loading Profile Accounts"
           />
         ) : null}
-        <section className="stat-strip" aria-label="Account quick view">
+        <section aria-busy={summaryReadState === "loading"} className="stat-strip" aria-label="Account quick view">
           <article className="stat-card">
             <span className="eyebrow">Active accounts</span>
-            <strong>{accountQuickView.activeAccounts}</strong>
-            <p className="lede">Restricted {accountQuickView.restrictedAccounts}</p>
+            <strong>{summaryReadState === "ready" ? accountQuickView.activeAccounts : "—"}</strong>
+            <p className="lede">{summaryReadState === "ready" ? `Restricted ${accountQuickView.restrictedAccounts}` : summaryReadState === "loading" ? "Loading Account counts…" : "Account counts unavailable"}</p>
           </article>
-          <article className="stat-card">
+          <MotionReplayGroup><article className="stat-card">
             <span className="eyebrow">Bankroll</span>
-            <strong><FinancialValue value={accountQuickView.cashIncludedBalance} /></strong>
-            <p className="lede">{Number.isNaN(accountQuickView.cashIncludedBalance) ? <>Incomplete · Known subtotal <FinancialValue value={accountQuickView.knownSubtotal} /></> : `${accountQuickView.cashTotalCount} accounts included`}</p>
-          </article>
-          <article className="stat-card">
+            <strong><FinancialReadValue state={summaryReadState} subject="Balance" value={accountQuickView.cashIncludedBalance} /></strong>
+            <p className="lede">{summaryReadState !== "ready" ? "Included Account balances" : Number.isNaN(accountQuickView.cashIncludedBalance) ? <>Incomplete · Known subtotal <FinancialReadValue state={summaryReadState} subject="Balance" value={accountQuickView.knownSubtotal} /></> : `${accountQuickView.cashTotalCount} accounts included`}</p>
+          </article></MotionReplayGroup>
+          <MotionReplayGroup><article className="stat-card">
             <span className="eyebrow">Bookmaker balances</span>
-            <strong><FinancialValue value={sumAccountMoney(resolvedRows.filter((row) => row.type === "Bookie"),"current_balance").value} /></strong>
+            <strong><FinancialReadValue state={summaryReadState} subject="Balance" value={sumAccountMoney(resolvedRows.filter((row) => row.type === "Bookie"),"current_balance").value} /></strong>
             <p className="lede">Profile bookmaker cash</p>
-          </article>
-          <article className="stat-card">
+          </article></MotionReplayGroup>
+          <MotionReplayGroup><article className="stat-card">
             <span className="eyebrow">Exchange balances</span>
-            <strong><FinancialValue value={sumAccountMoney(resolvedRows.filter((row) => row.type === "Exchange"),"current_balance").value} /></strong>
+            <strong><FinancialReadValue state={summaryReadState} subject="Balance" value={sumAccountMoney(resolvedRows.filter((row) => row.type === "Exchange"),"current_balance").value} /></strong>
             <p className="lede">Profile exchange cash</p>
-          </article>
-          <article className="stat-card">
+          </article></MotionReplayGroup>
+          <MotionReplayGroup><article className="stat-card">
             <span className="eyebrow">Pending withdrawals</span>
-            <strong><FinancialValue value={accountQuickView.pendingWithdrawals} /></strong>
+            <strong><FinancialReadValue state={summaryReadState} subject="Pending withdrawals" value={accountQuickView.pendingWithdrawals} /></strong>
             <p className="lede">Across all tracked account rows for this profile.</p>
-          </article>
+          </article></MotionReplayGroup>
         </section>
-        <AccountMoneyStatus issues={accountQuickView.moneyIssues} />
+        {summaryReadState === "ready" ? <AccountMoneyStatus issues={accountQuickView.moneyIssues} /> : null}
         <ProfileOpportunityQueue profileId={profileId} />
         <>
             <div
@@ -1208,7 +1235,7 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
               <table className="data-table accounts-data-table">
                 <colgroup>
                   {visibleTableColumns.map((column) => (
-                    <col key={column.key} style={{ width: `${columnWidths[column.key]}px` }} />
+                    <col key={column.key} style={{ width: moneyColumnWidths[column.key] ?? `${columnWidths[column.key]}px` }} />
                   ))}
                 </colgroup>
                 <thead>
@@ -1418,13 +1445,13 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
                   <strong>{selectedRow.status}</strong>
                   <p className="lede">Type: {selectedRow.type}</p>
                 </article>
-                <article className="stat-card">
+                <MotionReplayGroup><article className="stat-card">
                   <span className="eyebrow">Current balance</span>
                   <strong><FinancialValue value={accountMoneyDisplayValue(selectedRow.current_balance)} /></strong>
                   <p className="lede">
                     Pending withdrawal: <FinancialValue value={accountMoneyDisplayValue(selectedRow.pending_withdrawal_amount)} />
                   </p>
-                </article>
+                </article></MotionReplayGroup>
                 <article className="stat-card">
                   <span className="eyebrow">Cash total</span>
                   <strong>{selectedRow.counts_in_cash_total ? "Included" : "Excluded"}</strong>

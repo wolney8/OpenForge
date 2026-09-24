@@ -1,9 +1,9 @@
 "use client";
 
-import { FinancialValue } from "@/components/financial-value";
+import { FinancialReadValue, type FinancialReadState } from "@/components/financial-read-value";
 import { MotionReplayGroup } from "@/components/motion-replay-group";
 
-export type LedgerReadState = { profileId: string; state: "loading" | "ready" | "error" } | null;
+export type LedgerReadState = FinancialReadState;
 
 /** Same stat-card geometry; unresolved reads are not zero financial results. */
 export function LedgerPnlCard({ label, description, value, state }: {
@@ -12,8 +12,7 @@ export function LedgerPnlCard({ label, description, value, state }: {
   return <MotionReplayGroup>
     <article className="stat-card" data-pd-id="ledger.pnl-card" aria-busy={state === "loading"}>
       <span className="eyebrow">{label}</span>
-      <strong>{state === "ready" ? <FinancialValue value={value} /> :
-        <span>{state === "loading" ? "Loading P&L…" : "P&L unavailable"}</span>}</strong>
+      <strong><FinancialReadValue state={state} subject="P&L" value={value} /></strong>
       <span>{description}</span>
     </article>
   </MotionReplayGroup>;

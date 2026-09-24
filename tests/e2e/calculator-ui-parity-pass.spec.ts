@@ -104,6 +104,7 @@ test("keeps calculator help inline and Multi-Lay sections on one semantic conten
   for (const item of cases) {
     await page.setViewportSize({ width: item.width, height: 1000 });
     await page.goto("/fund-manager/calculators?family=multi-lay");
+    await expect(page.locator(".theme-ready")).toBeVisible();
     if (await page.locator("html").getAttribute("data-theme") !== item.theme) {
       await page.locator('[data-pd-id="app-shell.theme-toggle"]').click();
       await expect(page.locator("html")).toHaveAttribute("data-theme", item.theme);

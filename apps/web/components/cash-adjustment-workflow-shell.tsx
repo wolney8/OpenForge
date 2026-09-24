@@ -14,6 +14,8 @@ import {
 import { dispatchTrackerDataUpdated } from "@/lib/tracker-data-events";
 import { getAllAccountNames, type AccountAuthorityRecord } from "@/lib/account-authorities";
 import { FinancialValue, FinancialValueReplayRow } from "@/components/financial-value";
+import { FinancialReadValue, type FinancialReadState } from "@/components/financial-read-value";
+import { MotionReplayGroup } from "@/components/motion-replay-group";
 import { FinancialHistoryPanel } from "@/components/financial-history-panel";
 import { StatusToast } from "@/components/status-toast";
 import { EditorSection } from "@/components/editor-section";
@@ -41,6 +43,7 @@ import {
 import type { TableColumn } from "@/lib/tracker-modules";
 import { saveTrackerDatePreset } from "@/lib/tracker-settings-client";
 import { formatFinancialValue } from "@/lib/financial-display";
+import { financialColumnWidth } from "@/lib/financial-column-width";
 import {
   formatResolvedDateRange,
   formatResolvedDateRangeContext,
@@ -604,6 +607,10 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
   const guidedAccessEnabled = isGuidedAccessEnabled(guidedAccessMode);
   const [rows, setRows] = useState<CashAdjustmentRecord[]>([]);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [financialReadState, setFinancialReadState] = useState<FinancialReadState>(null);
+  const [rangeReadState, setRangeReadState] = useState<FinancialReadState>(null);
+  const rangeReadRequestRef = useRef(0);
+  const financialReadRequestRef = useRef(0);
   const [accountAuthorities, setAccountAuthorities] = useState<AccountAuthorityRecord[]>([]);
   const [trackerSettings, setTrackerSettings] = useState<TrackerSettingsRecord | null>(null);
   const [isTrackerRangeSaving, setIsTrackerRangeSaving] = useState(false);
@@ -728,62 +735,73 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
 
   const loadRows = useCallback(
     async (preferredSelection?: string | null) => {
-      const url = `${apiBaseUrl}/profiles/${profileId}/cash-adjustments`;
-      const cachedRows = readCachedJson<CashAdjustmentRecord[]>(
-        url,
-        TRACKER_STALE_WHILE_REFRESH_MS
-      );
-      if (cachedRows) {
-        setRows(cachedRows);
-        setIsInitialLoading(false);
-      }
+      const requestId = ++financialReadRequestRef.current;
+      setFinancialReadState((current) => current?.profileId === profileId && current.state === "ready"
+        ? current : { profileId, state: "loading" });
+      try {
+        const url = `${apiBaseUrl}/profiles/${profileId}/cash-adjustments`;
+        const cachedRows = readCachedJson<CashAdjustmentRecord[]>(
+          url,
+          TRACKER_STALE_WHILE_REFRESH_MS
+        );
+        if (cachedRows) {
+          setRows(cachedRows);
+          setFinancialReadState({ profileId, state: "ready" });
+          setIsInitialLoading(false);
+        }
 
-      const nextRows = await fetchJsonAndCache<CashAdjustmentRecord[]>(url);
-      startTransition(() => {
-        setRows(nextRows);
-        setIsInitialLoading(false);
-        const nextSelectedCandidate =
-          preferredSelection === undefined ? selectedIdRef.current : preferredSelection;
-        const selected =
-          nextSelectedCandidate &&
-          nextRows.some((row) => row.cash_adjustment_id === nextSelectedCandidate)
-            ? nextSelectedCandidate
-            : null;
-        setSelectedId(selected);
-        if (selected) {
-          isCreatingDraftRef.current = false;
-          const activeRecord = nextRows.find((row) => row.cash_adjustment_id === selected);
-          if (activeRecord) {
-            const nextFormState = recordToForm(activeRecord);
-            const isReloadingCurrentEditor =
-              workflowVisibleRef.current &&
-              selectedIdRef.current === selected;
-            if (!isReloadingCurrentEditor) {
-              setFormState(nextFormState);
-              setPristineFormState(nextFormState);
+        const nextRows = await fetchJsonAndCache<CashAdjustmentRecord[]>(url);
+        if (requestId !== financialReadRequestRef.current) return;
+        startTransition(() => {
+          setFinancialReadState({ profileId, state: "ready" });
+          setRows(nextRows);
+          setIsInitialLoading(false);
+          const nextSelectedCandidate =
+            preferredSelection === undefined ? selectedIdRef.current : preferredSelection;
+          const selected =
+            nextSelectedCandidate &&
+            nextRows.some((row) => row.cash_adjustment_id === nextSelectedCandidate)
+              ? nextSelectedCandidate
+              : null;
+          setSelectedId(selected);
+          if (selected) {
+            isCreatingDraftRef.current = false;
+            const activeRecord = nextRows.find((row) => row.cash_adjustment_id === selected);
+            if (activeRecord) {
+              const nextFormState = recordToForm(activeRecord);
+              const isReloadingCurrentEditor =
+                workflowVisibleRef.current &&
+                selectedIdRef.current === selected;
+              if (!isReloadingCurrentEditor) {
+                setFormState(nextFormState);
+                setPristineFormState(nextFormState);
+              }
+              setShowAdjustmentValidation(false);
+              setGuidedEntryDismissed(false);
+              if (!isReloadingCurrentEditor) {
+                setActiveEditorTabId("details");
+              } else {
+                setActiveEditorTabId(activeEditorTabIdRef.current);
+              }
             }
+            setWorkflowVisible(true);
+          } else {
+            if (isCreatingDraftRef.current) {
+              setWorkflowVisible(true);
+              return;
+            }
+            const blankForm = createBlankForm();
+            setFormState(blankForm);
+            setPristineFormState(blankForm);
             setShowAdjustmentValidation(false);
             setGuidedEntryDismissed(false);
-            if (!isReloadingCurrentEditor) {
-              setActiveEditorTabId("details");
-            } else {
-              setActiveEditorTabId(activeEditorTabIdRef.current);
-            }
+            setWorkflowVisible(false);
           }
-          setWorkflowVisible(true);
-        } else {
-          if (isCreatingDraftRef.current) {
-            setWorkflowVisible(true);
-            return;
-          }
-          const blankForm = createBlankForm();
-          setFormState(blankForm);
-          setPristineFormState(blankForm);
-          setShowAdjustmentValidation(false);
-          setGuidedEntryDismissed(false);
-          setWorkflowVisible(false);
-        }
-      });
+        });
+      } catch (error) {
+        if (requestId === financialReadRequestRef.current) setFinancialReadState({ profileId, state: "error" });
+        throw error;
+      }
     },
     [profileId, startTransition]
   );
@@ -800,6 +818,10 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
   }, [profileId]);
 
   const loadTrackerSettings = useCallback(async () => {
+    const requestId = ++rangeReadRequestRef.current;
+    setRangeReadState((current) => current?.profileId === profileId && current.state === "ready"
+      ? current : { profileId, state: "loading" });
+    try {
     const response = await fetch(`${apiBaseUrl}/profiles/${profileId}/tracker-settings`, {
       cache: "no-store",
     });
@@ -807,7 +829,13 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
       throw new Error("Unable to load tracker settings");
     }
     const nextSettings = (await response.json()) as TrackerSettingsRecord;
+    if (requestId !== rangeReadRequestRef.current) return;
     setTrackerSettings(nextSettings);
+    setRangeReadState({ profileId, state: "ready" });
+    } catch (error) {
+      if (requestId === rangeReadRequestRef.current) setRangeReadState({ profileId, state: "error" });
+      throw error;
+    }
   }, [profileId]);
 
   useEffect(() => {
@@ -1356,6 +1384,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
       try {
         const savedSettings = await saveTrackerDatePreset(profileId, trackerSettings, preset);
         setTrackerSettings(savedSettings);
+        setRangeReadState({ profileId, state: "ready" });
         setStatusMessage(`Tracker range set to ${preset}.`);
       } catch (error) {
         setErrorMessage(error instanceof Error ? error.message : "Unable to save tracker range.");
@@ -1365,6 +1394,11 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
     },
     [profileId, trackerSettings]
   );
+  const rowReadStatus = financialReadState?.profileId === profileId ? financialReadState.state : "loading";
+  const rangeReadStatus = rangeReadState?.profileId === profileId ? rangeReadState.state : "loading";
+  const summaryReadState = rowReadStatus === "error" || rangeReadStatus === "error" ? "error"
+    : rowReadStatus === "ready" && rangeReadStatus === "ready" ? "ready" : "loading";
+
   const quickView = useMemo(() => {
     const rangeRows = rows.filter((row) =>
       isDateWithinResolvedRange(parseDateValue(row.adjustment_date), resolvedDateRange)
@@ -1395,6 +1429,13 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
       signedTotal,
     };
   }, [resolvedDateRange, rows]);
+  const moneyColumnWidths = useMemo(() => Object.fromEntries(
+    (["amount", "signed_amount"] as const).map((key) => [key,
+      financialColumnWidth(columnWidths[key] ?? defaultCashAdjustmentColumnWidths[key],
+        rows.map((row) => formatMoneyValue(row[key]))),
+    ])
+  ), [columnWidths, rows]);
+
   const quickViewRangeContext = formatResolvedDateRange(resolvedDateRange);
   const quickViewRangeDetail = formatResolvedDateRangeContext(resolvedDateRange);
 
@@ -1791,7 +1832,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
         {isInitialLoading ? (
           <LedgerLoadingIndicator label="Loading cash-adjustment ledger" />
         ) : null}
-        <section className="stat-strip" aria-label="Cash-adjustment quick view">
+        <section aria-busy={summaryReadState === "loading"} className="stat-strip" aria-label="Cash-adjustment quick view">
           <TrackerRangeCard
             activePreset={trackerSettings?.active_date_preset ?? "Week (Mon-Sun)"}
             isSaving={isTrackerRangeSaving}
@@ -1799,28 +1840,28 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
             rangeDetail={quickViewRangeDetail}
             rangeContext={quickViewRangeContext}
           />
-          <article className="stat-card">
+          <MotionReplayGroup><article className="stat-card">
             <span className="eyebrow">Withdrawals</span>
-            <strong>{quickView.withdrawalCount}</strong>
-            <span><FinancialValue value={quickView.withdrawalTotal} /></span>
-          </article>
-          <article className="stat-card">
+            <strong>{summaryReadState === "ready" ? quickView.withdrawalCount : "—"}</strong>
+            <span><FinancialReadValue state={summaryReadState} subject="Cash value" value={quickView.withdrawalTotal} /></span>
+          </article></MotionReplayGroup>
+          <MotionReplayGroup><article className="stat-card">
             <span className="eyebrow">Costs</span>
-            <strong>{quickView.costCount}</strong>
-            <span><FinancialValue value={quickView.costTotal} /></span>
-          </article>
+            <strong>{summaryReadState === "ready" ? quickView.costCount : "—"}</strong>
+            <span><FinancialReadValue state={summaryReadState} subject="Cash value" value={quickView.costTotal} /></span>
+          </article></MotionReplayGroup>
           <article className="stat-card">
             <span className="eyebrow">Cash impact</span>
             <strong>
-              {quickView.investmentCount} / {quickView.cashSnapshotCount}
+              {summaryReadState === "ready" ? `${quickView.investmentCount} / ${quickView.cashSnapshotCount}` : "—"}
             </strong>
             <span>Investment rows • Account-cash rows</span>
           </article>
-          <article className="stat-card">
+          <MotionReplayGroup><article className="stat-card">
             <span className="eyebrow">Cash Adjustment Net</span>
-            <strong><FinancialValue value={quickView.signedTotal} /></strong>
+            <strong><FinancialReadValue state={summaryReadState} subject="Cash value" value={quickView.signedTotal} /></strong>
             <span>Selected-range cash movement</span>
-          </article>
+          </article></MotionReplayGroup>
         </section>
         <div className="sportsbook-review-bar" aria-label="Cash-adjustment ledger controls" role="toolbar">
           <label className="field-control table-search-field"><span className="visually-hidden">Search cash-adjustment rows</span><input aria-label="Search cash-adjustment rows" onChange={(event) => { setQuery(event.target.value); setCurrentPage(1); }} placeholder="Search cash-adjustment rows" type="search" value={query} /></label>
@@ -1868,7 +1909,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
                   {tableColumns.map((column) => {
                     const key = column.key as CashAdjustmentColumnKey;
                     const width = columnWidths[key] ?? defaultCashAdjustmentColumnWidths[key];
-                    return <col key={column.key} style={{ width: `${width}px` }} />;
+                    return <col key={column.key} style={{ width: moneyColumnWidths[key] ?? `${width}px` }} />;
                   })}
                 </colgroup>
                 <thead>

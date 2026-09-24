@@ -3750,6 +3750,7 @@ html[data-theme="dark"] .notification-count-badge {
 }
 
 .cross-profile-analytics {
+  container: profile-analytics / inline-size;
   position: relative;
   min-height: 20rem;
 }
@@ -5013,6 +5014,18 @@ html[data-theme="dark"] .notification-count-badge {
 
   .directory-pagination {
     justify-content: space-between;
+  }
+}
+
+@container profile-analytics (max-width: 60rem) {
+  .fund-manager-control-bar.is-directory {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .fund-manager-control-bar.is-directory .fund-manager-control-slot-search,
+  .fund-manager-control-bar.is-directory .fund-manager-control-slot-status,
+  .fund-manager-control-bar.is-directory .fund-manager-control-slot-range {
+    grid-column: 1;
   }
 }
 
@@ -14858,7 +14871,7 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
 .settings-table-toolbar {
   display: grid;
   grid-template-columns: minmax(16rem, 1fr) minmax(16rem, 1fr);
-  align-items: end;
+  align-items: start;
   gap: 0.75rem;
 }
 
