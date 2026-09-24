@@ -1,5 +1,71 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
+## CP-040 recovered delivery verification — 2026-09-24 12:59 BST
+
+The requested pending batch was already implemented in the existing integration worktree:
+application `113d810528cea9c280cd8ed34cec3ebbe8607141`, records `396acf0`. Parent checkout `main` at
+`f7a3b35` is older and was not reset, switched or modified. Live #92/#105 comments confirmed
+CP-039 delivery. Repeated status/source inspection found no application drift or competing source
+writer; the two generated Next/TypeScript changes were preserved. No new application patch was
+needed, and PD-FIX-281–283 retain their original IDs and implementation evidence.
+
+### Fresh verification, distinct from retained evidence
+
+- All **399** compared tracked application/test files match `/private/tmp/openforge-cp036-src`;
+  generated `next-env.d.ts` and TypeScript build information are excluded from source identity.
+- Focused Vitest: **19/19** across five files (ledger P&L card, financial display, period P&L,
+  report point chart and saved Profile selection). TypeScript no-emit/nonincremental and targeted
+  `ledger-pnl-card` component/test ESLint exit **0**. No claim of clean whole-shell lint: CP-039's
+  pre-existing Free Bet render-time ref error and nine warnings remain recorded.
+- Existing isolated browser suite: **6/6**, **2.2m**, exit **0**; output under private
+  `/private/tmp/cp040-isolated` and `cp040-isolated-*.log`. Both themes, 1440/760/390px,
+  200% text, keyboard/filter controls, intermediate money frames, canonical copy, zero/error,
+  reduced motion, explicit Casino Notes Save and period-P&L chart/drilldown/return pass.
+  Fresh compact light/dark, enlarged accounting-negative and Report screenshots inspected.
+- Next **production build exit 0** in the existing separate staging directory
+  `/private/tmp/plum-duff-cp038.RUVOM0`, whose tracked application files match current source.
+  Existing dependencies were linked; no dependency installation, new runtime or live `.next`
+  rebuild. Log: `/private/tmp/cp040-build.log`.
+- Fresh normal local public browser check: login/Google link render; anonymous Profile/session APIs
+  return **401**; Reports redirects to login; no page errors. Read-only owner verification:
+  integrity **ok**, **0** FK violations, all eight table projections identical to CP-039 backup.
+- Current local health is **200**, `normal-owner`, fingerprint `7246998d43722066`, source
+  `113d810…+dirty`. Protected Preview health is **200**, `preview:plum_duff_preview_cp028`,
+  fingerprint `c3b647ca129cf41c`, source `113d810`. Both retain `account-access-v1`.
+  Anonymous Preview still redirects to Vercel protection (**302**); the correctly revoked
+  synthetic Preview session still returns **401**. No renewal or personal-cookie use.
+- CP-039's **453/453** full web tests and **6/6 authenticated Preview** tests were recovered
+  from retained successful logs, not rerun or relabelled as fresh evidence. Fresh authenticated
+  normal-owner browser and VoiceOver are still **NOT RUN**; the established safety gate was not
+  bypassed. No new deployment, service restart, schema change, owner mutation or Production work.
+
+### Delivery and records
+
+Runtime remains normal `http://localhost:3010` / `http://127.0.0.1:8010` and the existing
+[protected Preview](https://plum-duff-cp028-preview-homelab11.vercel.app), all application `113d810`.
+The isolated runtime's launch-time health revision still reads `cp036-source-with-cp037-hover`;
+current file comparison, not that stale label, establishes the tested frontend source. No service
+was restarted merely to change metadata.
+
+The existing CP-039 Git bundle, evidence archive and SQLite backup match recorded SHA-256 values;
+bundle verification passes. The archive contains **214 tar members**; its original manifest said
+114 entries. That bookkeeping mismatch does not change the matching archive hash or test results.
+CP-040 refreshes source/evidence backup in the same private backup directory, retaining CP-039.
+Secrets, session tokens, environment files and personal browser storage are excluded.
+
+Scoped records are committed separately; push is withheld at the existing deployment boundary.
+The remote branch tip `078a38d` has a successful Vercel deployment status, so a Git push cannot be
+assumed publication-only; safe automatic-deployment isolation is not established. This does not
+undo the already verified stable Preview delivery. No main merge or new environment.
+
+No new requirement, fixture, governance document, learning entry or roadmap phase was needed.
+Next executable actions remain #92 Account Catalogue/Profile-directory composed toolbar checks,
+then #105 Account/Cash financial-display consumer checks. Wider issues remain open.
+Issue evidence synced: [#92](https://github.com/wolney8/OpenForge/issues/92#issuecomment-5813651216),
+[#105](https://github.com/wolney8/OpenForge/issues/105#issuecomment-5813653049),
+[#114](https://github.com/wolney8/OpenForge/issues/114#issuecomment-5813655184).
+
+
 ## CP-039 ledger toolbars and financial display — 2026-09-24 12:11 BST
 
 Application `113d810528cea9c280cd8ed34cec3ebbe8607141` is the fixed batch, layered on records

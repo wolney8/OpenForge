@@ -1,5 +1,19 @@
 # Plum Duff Next Issue Tracking Register
 
+## CP-040 verification receipt — 2026-09-24 12:59 BST
+
+PD-FIX-281–283 were already delivered at app `113d810` / records `396acf0`; no duplicate patch
+or new request ID. Fresh isolated browser **6/6**, focused units **19/19**, types, targeted lint,
+build and local/Preview health checks pass. All eight owner-data projections unchanged.
+Retained CP-039 authenticated Preview **6/6** remains prior evidence; its test session is revoked.
+Fresh normal-owner authenticated browser remains unexecuted. Existing generated files preserved.
+[Detailed evidence](../audits/platform-quality-audit.md#cp-040-recovered-delivery-verification--2026-09-24-1259-bst).
+GitHub sync verified: [#92](https://github.com/wolney8/OpenForge/issues/92#issuecomment-5813651216),
+[#105](https://github.com/wolney8/OpenForge/issues/105#issuecomment-5813653049),
+[#114](https://github.com/wolney8/OpenForge/issues/114#issuecomment-5813655184). No issue closed.
+Next: #92 Account Catalogue/Profile-directory toolbars; then #105 Account/Cash consumers.
+
+
 ## CP-039 shared ledger display batch — 2026-09-24 12:11 BST
 
 | ID | Original request → latest clarification | Current implementation / evidence | Remaining / issue |
