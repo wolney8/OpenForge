@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   countTrueOpenPositions,
+  buildFormalReportRecords,
+  readSummaryMoney,
   formatHumanDisplayDate,
   formatResolvedDateRangeContext,
   formatTrackingTenure,
@@ -704,5 +706,74 @@ describe("summarizeTrackerData", () => {
     expect(summary.weeklyReports[0]?.withdrawals).toBeCloseTo(-12, 6);
     expect(summary.weeklyReports[0]?.costs).toBeCloseTo(-3, 6);
     expect(summary.weeklyReports[0]?.retainedProfit).toBeCloseTo(-6.6, 6);
+  });
+});
+
+
+describe("Reports required output readiness", () => {
+  const range = resolveDateRange({ preset: "All Dates", today: new Date("2026-07-01T12:00:00Z") });
+  function fixture(): TrackerSummaryDataset {
+    return { accounts: [], sportsbookBets: [], freeBets: [], eachWayExtraPlaces: [],
+      casinoOffers: [{ ...dataset.casinoOffers[0]!, status: "Settled", counts_as_open: false, resolved_net_pnl: "5" }],
+      cashAdjustments: [
+        {...dataset.cashAdjustments[0]!, adjustment_type:"Deduction", signed_amount:"-7"},
+        {...dataset.cashAdjustments[0]!, cash_adjustment_id:"COST-2", adjustment_type:"Costs", signed_amount:"-2"},
+        {...dataset.cashAdjustments[0]!, cash_adjustment_id:"FUND", adjustment_type:"TopUp", signed_amount:"200"},
+      ] };
+  }
+  it.each([null, undefined, "", "  ", "broken", "Infinity"])("keeps required output %s unavailable", value => {
+    expect(readSummaryMoney(value)).toBeNaN();
+  });
+  it("preserves genuine costs, signed funding and authoritative zero without changing membership", () => {
+    const source=fixture(), result=summarizeTrackerData(source,range);
+    expect(result.profitQuickView.overallPnl).toBe(5);
+    expect(result.cashAdjustmentBreakdown.deductionsAndSubscriptions).toBe(-9);
+    expect(result.reportingModel.selectedRange.retainedProfit).toBe(-4);
+    expect(result.betsQuickView.selectedRangeCashAdjustments).toBe(193);
+    expect(result.weeklyReports[0]!.retainedProfit).toBe(-4);
+    expect(buildFormalReportRecords(source)).toHaveLength(4);
+    source.casinoOffers[0]!.status="Prospecting";source.casinoOffers[0]!.resolved_net_pnl="0.00";
+    expect(summarizeTrackerData(source,range).profitQuickView.casino.reportingValue).toBe(0);
+  });
+  it("does not present known partial costs as a complete retained result", () => {
+    const source=fixture();source.cashAdjustments[0]!.signed_amount=null;
+    const result=summarizeTrackerData(source,range);
+    expect(result.profitQuickView.overallPnl).toBe(5);
+    expect(result.cashAdjustmentBreakdown.deductionsAndSubscriptions).toBeNaN();
+    expect(result.reportingModel.selectedRange.retainedProfit).toBeNaN();
+    expect(result.weeklyReports[0]!.costs).toBeNaN();
+    expect(result.weeklyReports[0]!.retainedProfit).toBeNaN();
+    expect(buildFormalReportRecords(source).find(row=>row.component==="costs")!.value).toBeNaN();
+  });
+  it("does not let unavailable funding erase known betting and genuine costs", () => {
+    const source=fixture();source.cashAdjustments[2]!.signed_amount=null;
+    const result=summarizeTrackerData(source,range);
+    expect(result.betsQuickView.selectedRangeCashAdjustments).toBeNaN();
+    expect(result.reportingModel.selectedRange.retainedProfit).toBe(-4);
+    expect(result.weeklyReports[0]!.retainedProfit).toBe(-4);
+  });
+  it("keeps Cash known when Casino output is unavailable and never invents a Void zero", () => {
+    const source=fixture();source.casinoOffers[0]!.resolved_net_pnl=null;source.casinoOffers[0]!.result="Void";
+    const result=summarizeTrackerData(source,range);
+    expect(result.profitQuickView.overallPnl).toBeNaN();
+    expect(result.profitQuickView.casino.finalValue).toBeNaN();
+    expect(result.reportingModel.selectedRange.retainedProfit).toBeNaN();
+    expect(result.weeklyReports[0]!.totalPnl).toBeNaN();
+    expect(result.cashAdjustmentBreakdown.deductionsAndSubscriptions).toBe(-9);
+    expect(result.betsQuickView.selectedRangeCashAdjustments).toBe(193);
+  });
+  it("preserves Extra Place historical current/final and explicit Void outputs with independent exposure readiness", () => {
+    const source=fixture();source.eachWayExtraPlaces=[{each_way_extra_place_id:"EP-READ",placed_at:"2026-07-01T12:00:00",runner:"Synthetic",race:"Synthetic",bookmaker:"Bookie A",mode:"Extra Place",status:"Placed",result:"Pending",current_value:null,final_value:null,win_liability:null,place_liability:null}];
+    let result=summarizeTrackerData(source,range);
+    expect(result.profitQuickView.eachWayExtraPlaces.reportingValue).toBeNaN();expect(result.betsQuickView.currentLiability).toBeNaN();
+    source.eachWayExtraPlaces[0]!.current_value="12.34";result=summarizeTrackerData(source,range);
+    expect(result.profitQuickView.eachWayExtraPlaces.reportingValue).toBe(12.34);expect(result.profitQuickView.eachWayExtraPlaces.finalValue).toBe(0);
+    Object.assign(source.eachWayExtraPlaces[0]!,{status:"Void",result:"Void/NR",current_value:"0",final_value:"0"});
+    result=summarizeTrackerData(source,range);expect(result.profitQuickView.eachWayExtraPlaces.reportingValue).toBe(0);
+    expect(result.weeklyReports[0]!.eachWayExtraPlacePnl).toBe(0);
+    Object.assign(source.eachWayExtraPlaces[0]!,{status:"Prospecting",result:"Pending",current_value:null,final_value:null});
+    result=summarizeTrackerData(source,range);expect(result.profitQuickView.eachWayExtraPlaces.reportingValue).toBeNaN();expect(result.profitQuickView.eachWayExtraPlaces.finalValue).toBe(0);
+    source.eachWayExtraPlaces[0]!.final_value="7.00";
+    result=summarizeTrackerData(source,range);expect(result.profitQuickView.eachWayExtraPlaces.finalValue).toBe(7);
   });
 });

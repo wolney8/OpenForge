@@ -181,6 +181,17 @@ does not establish full surface coverage.
 - [x] Relevant existing read-only side-panel, drawer and fee-review values.
 - [ ] Future read-only signed-money displays adopt the shared component by default.
 
+Reports readiness uses authoritative outputs, not reconstructed inputs: Cash `signed_amount`,
+Casino `resolved_net_pnl`, and Extra Places final/current values and required open liabilities.
+Missing, blank or non-finite required outputs make only the affected measure unavailable. Existing
+Cash type/date membership and retained-profit equations remain unchanged, including genuine
+costs and legacy Costs. Funding incompleteness does not erase known betting P&L or retained
+results; unavailable betting P&L does not erase known Cash costs. Authoritative zero remains zero.
+Pending Extra Places have no settled-final contribution; historical known values remain usable.
+During a saved-range request, selected-range cards/tables wait using FinancialReadValue; all-period
+formal-history cards/tables retain their independent context. This is a display/readiness boundary,
+not a change to calculations, persistence, reporting membership or financial history.
+
 ### Named consumer completion and remainder — CP-043, 2026-09-24 16:00 BST
 
 | Surface | Implementation state | Verification state / next work |

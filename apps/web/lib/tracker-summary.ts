@@ -406,6 +406,14 @@ function parseMoney(value: string | null | undefined): number {
   return Number.isFinite(normalized) ? normalized : 0;
 }
 
+// Required authoritative read outputs: absent/invalid is unavailable, never a zero subtotal.
+// This leaves optional calculator inputs and all record/type/date membership unchanged.
+export function readSummaryMoney(value: string | null | undefined): number {
+  if (value == null || value.trim() === "") return NaN;
+  const parsed = Number(value.replace(/,/g, "").trim());
+  return Number.isFinite(parsed) ? parsed : NaN;
+}
+
 function firstMoneyValue(...values: Array<string | null | undefined>): number {
   const firstValue = values.find((value) => value != null && value.trim() !== "");
   return parseMoney(firstValue);
@@ -427,7 +435,7 @@ export function freeBetDisplayValue(row: FreeBetSummaryRecord): number {
 }
 
 function eachWayExtraPlaceDisplayValue(row: EachWayExtraPlaceSummaryRecord): number {
-  return firstMoneyValue(row.final_value, row.current_value);
+  return readSummaryMoney([row.final_value, row.current_value].find((value) => value != null && value.trim() !== ""));
 }
 
 export type FormalReportRecord = {
@@ -456,11 +464,11 @@ export function buildFormalReportRecords(dataset: TrackerSummaryDataset): Formal
       row.event_name || "Free Bet", row.date_settled, freeBetDisplayValue(row), "freeBetPnl");
   }
   for (const row of dataset.casinoOffers) add(row.casino_offer_id, "casino-offers",
-    row.offer_name || "Casino activity", row.date_settling, parseMoney(row.resolved_net_pnl), "casinoPnl");
+    row.offer_name || "Casino activity", row.date_settling, readSummaryMoney(row.resolved_net_pnl), "casinoPnl");
   for (const row of dataset.eachWayExtraPlaces ?? []) add(row.each_way_extra_place_id, "each-way-extra-places",
     row.runner || row.race || "Extra Place activity", row.placed_at, eachWayExtraPlaceDisplayValue(row), "eachWayExtraPlacePnl");
   for (const row of dataset.cashAdjustments) add(row.cash_adjustment_id, "cash-adjustments",
-    row.description || row.adjustment_type, row.adjustment_date, parseMoney(row.signed_amount),
+    row.description || row.adjustment_type, row.adjustment_date, readSummaryMoney(row.signed_amount),
     row.adjustment_type === "Withdrawal" ? "withdrawals" : costAdjustmentTypes.has(row.adjustment_type) ? "costs" : "funding");
   return records;
 }
@@ -828,25 +836,28 @@ export function summarizeTrackerData(
     .filter((row) => !row.counts_as_open)
     .reduce((sum, row) => sum + (Number.isFinite(freeBetDisplayValue(row)) ? parseMoney(row.final_net_pnl) : NaN), 0);
   const casinoReportingValue = casinoInRange.reduce(
-    (sum, row) => sum + parseMoney(row.resolved_net_pnl),
+    (sum, row) => sum + readSummaryMoney(row.resolved_net_pnl),
     0
   );
   const casinoSettledFinalValue = casinoInRange
     .filter((row) => !row.counts_as_open)
-    .reduce((sum, row) => sum + parseMoney(row.resolved_net_pnl), 0);
+    .reduce((sum, row) => sum + readSummaryMoney(row.resolved_net_pnl), 0);
   const eachWayExtraPlaceReportingValue = eachWayExtraPlacesInRange.reduce(
     (sum, row) => sum + eachWayExtraPlaceDisplayValue(row),
     0
   );
   const eachWayExtraPlaceOpenCurrentValue = eachWayExtraPlacesInRange
     .filter((row) => row.status === "Placed" && row.result === "Pending")
-    .reduce((sum, row) => sum + parseMoney(row.current_value), 0);
+    .reduce((sum, row) => sum + readSummaryMoney(row.current_value), 0);
   const eachWayExtraPlaceSettledFinalValue = eachWayExtraPlacesInRange
     .filter((row) => row.status !== "Placed" || row.result !== "Pending")
-    .reduce((sum, row) => sum + parseMoney(row.final_value), 0);
+    .reduce((sum, row) => sum + (
+      row.status === "Prospecting" && row.result === "Pending" && !row.final_value?.trim()
+        ? 0 : readSummaryMoney(row.final_value)
+    ), 0);
   const selectedRangeCashAdjustments = cashAdjustmentsInRange
     .filter((row) => cashAdjustmentTypesForDashboard.has(row.adjustment_type))
-    .reduce((sum, row) => sum + parseMoney(row.signed_amount), 0);
+    .reduce((sum, row) => sum + readSummaryMoney(row.signed_amount), 0);
 
   // Dashboard operational metrics follow the same resolved range as its P&L.
   // Account balances remain current-state values and are intentionally handled above.
@@ -878,22 +889,22 @@ export function summarizeTrackerData(
     openSportsbook.reduce((sum, row) => sum + (row.calculation_state === "review_required" && row.calculated_liability_1 == null ? NaN : parseMoney(row.calculated_liability_1)), 0) +
     openFreeBets.reduce((sum, row) => sum + (row.calculation_state === "review_required" && row.calculated_liability_1 == null ? NaN : parseMoney(row.calculated_liability_1)), 0) +
     openEachWayExtraPlaces.reduce(
-      (sum, row) => sum + parseMoney(row.win_liability) + parseMoney(row.place_liability),
+      (sum, row) => sum + readSummaryMoney(row.win_liability) + readSummaryMoney(row.place_liability),
       0
     );
 
   const topUps = cashAdjustmentsInRange
     .filter((row) => row.adjustment_type === "TopUp")
-    .reduce((sum, row) => sum + parseMoney(row.signed_amount), 0);
+    .reduce((sum, row) => sum + readSummaryMoney(row.signed_amount), 0);
   const deposits = cashAdjustmentsInRange
     .filter((row) => row.adjustment_type === "Deposit")
-    .reduce((sum, row) => sum + parseMoney(row.signed_amount), 0);
+    .reduce((sum, row) => sum + readSummaryMoney(row.signed_amount), 0);
   const withdrawals = cashAdjustmentsInRange
     .filter((row) => row.adjustment_type === "Withdrawal")
-    .reduce((sum, row) => sum + parseMoney(row.signed_amount), 0);
+    .reduce((sum, row) => sum + readSummaryMoney(row.signed_amount), 0);
   const deductionsAndSubscriptions = cashAdjustmentsInRange
     .filter((row) => costAdjustmentTypes.has(row.adjustment_type))
-    .reduce((sum, row) => sum + parseMoney(row.signed_amount), 0);
+    .reduce((sum, row) => sum + readSummaryMoney(row.signed_amount), 0);
 
   const expiringFreeBets = freeBetsInRange
     .filter(
@@ -935,7 +946,7 @@ export function summarizeTrackerData(
       bookmakerOrAccount: row.bookmaker,
       status: `${row.status} / ${row.result}`,
       date: row.date_settling,
-      value: parseMoney(row.resolved_net_pnl),
+      value: readSummaryMoney(row.resolved_net_pnl),
     })),
     ...cashAdjustmentsInRange.map((row) => ({
       id: row.cash_adjustment_id,
@@ -944,7 +955,7 @@ export function summarizeTrackerData(
       bookmakerOrAccount: row.linked_account || "Cash adjustment",
       status: `${row.adjustment_type} / ${row.direction}`,
       date: row.adjustment_date,
-      value: parseMoney(row.signed_amount),
+      value: readSummaryMoney(row.signed_amount),
     })),
     ...eachWayExtraPlacesInRange.map((row) => ({
       id: row.each_way_extra_place_id,
@@ -1104,7 +1115,7 @@ export function summarizeTrackerData(
 
   for (const row of casinoInRange) {
     const next = bookmakerRow(row.bookmaker);
-    next.casinoPnl += parseMoney(row.resolved_net_pnl);
+    next.casinoPnl += readSummaryMoney(row.resolved_net_pnl);
     next.totalPnl = next.sportsbookPnl + next.freeBetPnl + next.casinoPnl + next.eachWayExtraPlacePnl;
     if (row.counts_as_open) {
       next.openRowCount += 1;

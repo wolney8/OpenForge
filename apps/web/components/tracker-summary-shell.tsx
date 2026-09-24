@@ -12,7 +12,8 @@ import {
   catalogueIdForBookmaker,
   useBookmakerCatalogue,
 } from "@/components/bookmaker-identity";
-import { FinancialValue, FinancialValueReplayRow } from "@/components/financial-value";
+import { FinancialValue, FinancialValueReplayGroup, FinancialValueReplayRow } from "@/components/financial-value";
+import { FinancialReadValue } from "@/components/financial-read-value";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { PortfolioDashboardView } from "@/components/portfolio-dashboard-view";
 import { TrackerRangeCard } from "@/components/tracker-range-card";
@@ -37,6 +38,7 @@ import {
   formatResolvedDateRangeContext,
   resolveDateRange,
   summarizeTrackerData,
+  readSummaryMoney,
   type AccountSummaryRecord,
   type BalanceSnapshotSummaryRecord,
   type CashAdjustmentSummaryRecord,
@@ -498,6 +500,8 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
     );
   }, [profileId, resolvedRange, summary]);
 
+  const selectedRangeReadState = isTrackerRangeSaving ? "loading" : "ready";
+
   const feePosition = useMemo(
     () => summarizeFeePeriods(feePeriods, resolvedRange.start, resolvedRange.end),
     [feePeriods, resolvedRange.end, resolvedRange.start]
@@ -625,7 +629,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
   const isCriticalLoading = !summary && !errorMessage;
 
   return (
-    <section aria-busy={isCriticalLoading} className="stack tracker-summary-shell">
+    <section aria-busy={isCriticalLoading || isTrackerRangeSaving} className="stack tracker-summary-shell">
       {!isCriticalLoading ? <AccountMoneyStatus issues={summary?.accountQuickView.moneyIssues} /> : null}
       {!isCriticalLoading && summary?.sportsbookFinancialIssues?.length ? (
         <p className="error-text" role="status" data-pd-id="sportsbook-money.incomplete">
@@ -656,24 +660,24 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
           />
           {summary && !isDashboardLike ? (
             <>
-              <article className="stat-card">
+              <FinancialValueReplayGroup><article className="stat-card">
                 <span className="eyebrow">Selected Range P&amp;L</span>
-                <strong><FinancialValue value={summary.profitQuickView.overallPnl} /></strong>
+                <strong><FinancialReadValue state={selectedRangeReadState} subject="value" value={summary.profitQuickView.overallPnl} /></strong>
                 <span>Total profit and loss for this range</span>
-              </article>
-              <article className="stat-card">
+              </article></FinancialValueReplayGroup>
+              <FinancialValueReplayGroup><article className="stat-card">
                 <span className="eyebrow">Retained profit</span>
-                <strong><FinancialValue value={summary.reportingModel.selectedRange.retainedProfit} /></strong>
+                <strong><FinancialReadValue state={selectedRangeReadState} subject="value" value={summary.reportingModel.selectedRange.retainedProfit} /></strong>
                 <span>After withdrawals, costs, and retained adjustments</span>
-              </article>
-              <article className="stat-card">
+              </article></FinancialValueReplayGroup>
+              <FinancialValueReplayGroup><article className="stat-card">
                 <span className="eyebrow">Open current / settled final</span>
                 <strong>
-                  <FinancialValue value={summary.reportingModel.selectedRange.openCurrentValue} /> /{" "}
-                  <FinancialValue value={summary.reportingModel.selectedRange.settledFinalValue} />
+                  <FinancialReadValue state={selectedRangeReadState} subject="value" value={summary.reportingModel.selectedRange.openCurrentValue} /> /{" "}
+                  <FinancialReadValue state={selectedRangeReadState} subject="value" value={summary.reportingModel.selectedRange.settledFinalValue} />
                 </strong>
                 <span>Current value stays separate from settled value</span>
-              </article>
+              </article></FinancialValueReplayGroup>
               <article className="stat-card">
                 <span className="eyebrow">
                   {isReports ? "Formal Report Periods" : "Current Account Cash"}
@@ -732,35 +736,35 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
               <h2>Selected Range Module Mix</h2>
             </div>
             <section className="stat-strip" aria-label="Selected range module mix">
-              <article className="stat-card">
+              <FinancialValueReplayGroup><article className="stat-card">
                 <span className="eyebrow">Sportsbook</span>
-                <strong><FinancialValue value={summary.profitQuickView.sportsbook.reportingValue} /></strong>
+                <strong><FinancialReadValue state={selectedRangeReadState} subject="value" value={summary.profitQuickView.sportsbook.reportingValue} /></strong>
                 <span>
-                  Open/current <FinancialValue value={summary.profitQuickView.sportsbook.currentValue} /> • Final{" "}
-                  <FinancialValue value={summary.profitQuickView.sportsbook.finalValue} />
+                  Open/current <FinancialReadValue state={selectedRangeReadState} subject="value" value={summary.profitQuickView.sportsbook.currentValue} /> • Final{" "}
+                  <FinancialReadValue state={selectedRangeReadState} subject="value" value={summary.profitQuickView.sportsbook.finalValue} />
                 </span>
-              </article>
-              <article className="stat-card">
+              </article></FinancialValueReplayGroup>
+              <FinancialValueReplayGroup><article className="stat-card">
                 <span className="eyebrow">Free Bets</span>
-                <strong><FinancialValue value={summary.profitQuickView.freeBets.reportingValue} /></strong>
+                <strong><FinancialReadValue state={selectedRangeReadState} subject="value" value={summary.profitQuickView.freeBets.reportingValue} /></strong>
                 <span>
-                  Open/current <FinancialValue value={summary.profitQuickView.freeBets.currentValue} /> • Final{" "}
-                  <FinancialValue value={summary.profitQuickView.freeBets.finalValue} />
+                  Open/current <FinancialReadValue state={selectedRangeReadState} subject="value" value={summary.profitQuickView.freeBets.currentValue} /> • Final{" "}
+                  <FinancialReadValue state={selectedRangeReadState} subject="value" value={summary.profitQuickView.freeBets.finalValue} />
                 </span>
-              </article>
-              <article className="stat-card">
+              </article></FinancialValueReplayGroup>
+              <FinancialValueReplayGroup><article className="stat-card">
                 <span className="eyebrow">Casino</span>
-                <strong><FinancialValue value={summary.profitQuickView.casino.reportingValue} /></strong>
+                <strong><FinancialReadValue state={selectedRangeReadState} subject="value" value={summary.profitQuickView.casino.reportingValue} /></strong>
                 <span>Resolved from casino net P&amp;L rows</span>
-              </article>
-              <article className="stat-card">
+              </article></FinancialValueReplayGroup>
+              <FinancialValueReplayGroup><article className="stat-card">
                 <span className="eyebrow">Cash Adjustments</span>
-                <strong><FinancialValue value={summary.betsQuickView.selectedRangeCashAdjustments} /></strong>
+                <strong><FinancialReadValue state={selectedRangeReadState} subject="value" value={summary.betsQuickView.selectedRangeCashAdjustments} /></strong>
                 <span>
-                  Withdrawals <FinancialValue value={summary.cashAdjustmentBreakdown.withdrawals} /> • Costs{" "}
-                  <FinancialValue value={summary.cashAdjustmentBreakdown.deductionsAndSubscriptions} />
+                  Withdrawals <FinancialReadValue state={selectedRangeReadState} subject="value" value={summary.cashAdjustmentBreakdown.withdrawals} /> • Costs{" "}
+                  <FinancialReadValue state={selectedRangeReadState} subject="value" value={summary.cashAdjustmentBreakdown.deductionsAndSubscriptions} />
                 </span>
-              </article>
+              </article></FinancialValueReplayGroup>
             </section>
           </section>
 
@@ -885,7 +889,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                     <FinancialValueReplayRow key={row.moduleKey}>
                       <td>{row.label}</td>
                       <td className="align-end">{row.rowCount}</td>
-                      <td className="align-end"><FinancialValue value={row.reportingValue} /></td>
+                      <td className="align-end"><FinancialReadValue state={selectedRangeReadState} subject="value" value={row.reportingValue} /></td>
                     </FinancialValueReplayRow>
                   ))
                 ),
@@ -912,11 +916,11 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                   summary.bookmakerBreakdown.map((row) => (
                     <FinancialValueReplayRow key={row.bookmaker}>
                       <td><BookmakerIdentity bookmaker={row.bookmaker} catalogueId={catalogueIdForBookmaker(providerIdsByName, row.bookmaker)} catalogue={bookmakerCatalogue} mode="Brand badge" /></td>
-                      <td className="align-end"><FinancialValue value={row.sportsbookPnl} /></td>
-                      <td className="align-end"><FinancialValue value={row.freeBetPnl} /></td>
-                      <td className="align-end"><FinancialValue value={row.casinoPnl} /></td>
-                      <td className="align-end"><FinancialValue value={row.eachWayExtraPlacePnl} /></td>
-                      <td className="align-end"><FinancialValue value={row.totalPnl} /></td>
+                      <td className="align-end"><FinancialReadValue state={selectedRangeReadState} subject="value" value={row.sportsbookPnl} /></td>
+                      <td className="align-end"><FinancialReadValue state={selectedRangeReadState} subject="value" value={row.freeBetPnl} /></td>
+                      <td className="align-end"><FinancialReadValue state={selectedRangeReadState} subject="value" value={row.casinoPnl} /></td>
+                      <td className="align-end"><FinancialReadValue state={selectedRangeReadState} subject="value" value={row.eachWayExtraPlacePnl} /></td>
+                      <td className="align-end"><FinancialReadValue state={selectedRangeReadState} subject="value" value={row.totalPnl} /></td>
                       <td className="align-end">
                         {row.openRowCount > 0 ? (
                           <span className="report-open-module-links" aria-label={`${row.openRowCount} ${row.bookmaker} rows requiring action`}>
@@ -957,7 +961,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                       <td>{row.owner}</td>
                       <td>{row.status}</td>
                       <td>{formatHumanDisplayDate(row.dueDate, true)}</td>
-                      <td className="align-end"><FinancialValue value={Number(row.value ?? 0)} /></td>
+                      <td className="align-end"><FinancialReadValue state={selectedRangeReadState} subject="value" value={Number(row.value ?? 0)} /></td>
                       <td><Link aria-label={`Open ${row.reference} in ${getActivityModuleLabel(row.module)}`} className="report-value-link" href={getActivityLedgerHref(profileId, row.module, row.reference)}><span aria-hidden="true" className="material-symbols-outlined">open_in_new</span></Link></td>
                     </FinancialValueReplayRow>
                   ))
@@ -980,7 +984,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                       <td>{row.owner}</td>
                       <td>{row.status}</td>
                       <td>{formatHumanDisplayDate(row.dueDate, true)}</td>
-                      <td className="align-end"><FinancialValue value={Number(row.value ?? 0)} /></td>
+                      <td className="align-end"><FinancialReadValue state={selectedRangeReadState} subject="value" value={Number(row.value ?? 0)} /></td>
                       <td><Link aria-label={`Open ${row.reference} in ${getActivityModuleLabel(row.module)}`} className="report-value-link" href={getActivityLedgerHref(profileId, row.module, row.reference)}><span aria-hidden="true" className="material-symbols-outlined">open_in_new</span></Link></td>
                     </FinancialValueReplayRow>
                   ))
@@ -1172,33 +1176,33 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
           {isReports && (
             <>
               <section className="stat-strip" aria-label="Report quick views">
-                <article className="stat-card">
+                <FinancialValueReplayGroup><article className="stat-card">
                   <span className="eyebrow">Weekly periods</span>
                   <strong>{summary.reportingModel.formalReports.weeklyPeriods}</strong>
                   <span>
                     {summary.reportingModel.formalReports.latestWeeklyLabel} •{" "}
                     <FinancialValue value={summary.reportingModel.formalReports.latestWeeklyRetainedProfit} />
                   </span>
-                </article>
-                <article className="stat-card">
+                </article></FinancialValueReplayGroup>
+                <FinancialValueReplayGroup><article className="stat-card">
                   <span className="eyebrow">Monthly periods</span>
                   <strong>{summary.reportingModel.formalReports.monthlyPeriods}</strong>
                   <span>
                     {summary.reportingModel.formalReports.latestMonthlyLabel} •{" "}
                     <FinancialValue value={summary.reportingModel.formalReports.latestMonthlyRetainedProfit} />
                   </span>
-                </article>
-                <article className="stat-card">
+                </article></FinancialValueReplayGroup>
+                <FinancialValueReplayGroup><article className="stat-card">
                   <span className="eyebrow">Yearly periods</span>
                   <strong>{summary.reportingModel.formalReports.yearlyPeriods}</strong>
                   <span>
                     {summary.reportingModel.formalReports.latestYearlyLabel} •{" "}
                     <FinancialValue value={summary.reportingModel.formalReports.latestYearlyRetainedProfit} />
                   </span>
-                </article>
-                <article className="stat-card">
+                </article></FinancialValueReplayGroup>
+                <FinancialValueReplayGroup><article className="stat-card">
                   <span className="eyebrow">Open exposure</span>
-                  <strong><FinancialValue value={summary.betsQuickView.currentLiability} /></strong>
+                  <strong><FinancialReadValue state={selectedRangeReadState} subject="value" value={summary.betsQuickView.currentLiability} /></strong>
                   <span>
                     Open positions {summary.betsQuickView.openBets} • Overdue{" "}
                     {summary.betsQuickView.overdueBets}
@@ -1208,36 +1212,36 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                       Action needed: {summary.betsQuickView.overdueBets} overdue
                     </Link>
                   ) : null}
-                </article>
+                </article></FinancialValueReplayGroup>
               </section>
               <section className="content-panel stack">
                 <div className="panel-header">
                   <h2>Selected range vs formal reports</h2>
                 </div>
                 <section className="stat-strip" aria-label="Report boundary summary">
-                  <article className="stat-card">
+                  <FinancialValueReplayGroup><article className="stat-card">
                     <span className="eyebrow">Gross betting P&amp;L</span>
-                    <strong><FinancialValue value={summary.reportingModel.selectedRange.grossBettingPnl} /></strong>
+                    <strong><FinancialReadValue state={selectedRangeReadState} subject="value" value={summary.reportingModel.selectedRange.grossBettingPnl} /></strong>
                     <span>Selected range module reporting values</span>
-                  </article>
-                  <article className="stat-card">
+                  </article></FinancialValueReplayGroup>
+                  <FinancialValueReplayGroup><article className="stat-card">
                     <span className="eyebrow">Retained profit</span>
-                    <strong><FinancialValue value={summary.reportingModel.selectedRange.retainedProfit} /></strong>
+                    <strong><FinancialReadValue state={selectedRangeReadState} subject="value" value={summary.reportingModel.selectedRange.retainedProfit} /></strong>
                     <span>After report-eligible withdrawals and costs</span>
-                  </article>
-                  <article className="stat-card">
+                  </article></FinancialValueReplayGroup>
+                  <FinancialValueReplayGroup><article className="stat-card">
                     <span className="eyebrow">Cash adjustments</span>
-                    <strong><FinancialValue value={summary.reportingModel.selectedRange.cashAdjustments} /></strong>
+                    <strong><FinancialReadValue state={selectedRangeReadState} subject="value" value={summary.reportingModel.selectedRange.cashAdjustments} /></strong>
                     <span>Dashboard-visible movement in range</span>
-                  </article>
-                  <article className="stat-card">
+                  </article></FinancialValueReplayGroup>
+                  <FinancialValueReplayGroup><article className="stat-card">
                     <span className="eyebrow">Open / final value</span>
                     <strong>
-                      <FinancialValue value={summary.reportingModel.selectedRange.openCurrentValue} /> /{" "}
-                      <FinancialValue value={summary.reportingModel.selectedRange.settledFinalValue} />
+                      <FinancialReadValue state={selectedRangeReadState} subject="value" value={summary.reportingModel.selectedRange.openCurrentValue} /> /{" "}
+                      <FinancialReadValue state={selectedRangeReadState} subject="value" value={summary.reportingModel.selectedRange.settledFinalValue} />
                     </strong>
                     <span>Current open value remains separate from final</span>
-                  </article>
+                  </article></FinancialValueReplayGroup>
                   <article className="stat-card">
                     <span className="eyebrow">Latest weekly period</span>
                     <strong>{summary.reportingModel.formalReports.latestWeeklyLabel}</strong>
@@ -1266,7 +1270,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                         <td>{row.owner}</td>
                         <td>{row.status}</td>
                         <td>{formatHumanDisplayDate(row.dueDate, true)}</td>
-                      <td className="align-end"><FinancialValue value={Number(row.value ?? 0)} /></td>
+                      <td className="align-end"><FinancialReadValue state={selectedRangeReadState} subject="value" value={readSummaryMoney(row.value)} /></td>
                       <td><Link aria-label={`Open ${row.reference} in ${getActivityModuleLabel(row.module)}`} className="report-value-link" href={getActivityLedgerHref(profileId, row.module, row.reference)}><span aria-hidden="true" className="material-symbols-outlined">open_in_new</span></Link></td>
                       </FinancialValueReplayRow>
                     ))
@@ -1288,7 +1292,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                         <td>{row.owner}</td>
                         <td>{row.status}</td>
                         <td>{formatHumanDisplayDate(row.dueDate, true)}</td>
-                      <td className="align-end"><FinancialValue value={Number(row.value ?? 0)} /></td>
+                      <td className="align-end"><FinancialReadValue state={selectedRangeReadState} subject="value" value={readSummaryMoney(row.value)} /></td>
                       <td><Link aria-label={`Open ${row.reference} in ${getActivityModuleLabel(row.module)}`} className="report-value-link" href={getActivityLedgerHref(profileId, row.module, row.reference)}><span aria-hidden="true" className="material-symbols-outlined">open_in_new</span></Link></td>
                       </FinancialValueReplayRow>
                     ))
@@ -1308,7 +1312,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                           <td>{formatHumanDisplayDate(row.snapshot_at, true)}</td>
                           <td>{row.snapshot_type}</td>
                           <td>{row.account_id ?? "Profile total"}</td>
-                          <td className="align-end"><FinancialValue value={Number(row.balance_amount)} /></td>
+                          <td className="align-end"><FinancialReadValue state={selectedRangeReadState} subject="value" value={readSummaryMoney(row.balance_amount)} /></td>
                           <td>{row.notes || "—"}</td>
                         </FinancialValueReplayRow>
                       )),
