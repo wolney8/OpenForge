@@ -1,5 +1,17 @@
 # Plum Duff Known UI Pitfalls
 
+## 2026-09-24 09:57 BST: Chart inspection and headline scope diverged
+
+- Area: #111 Dashboard betting-P&L chart and its record drilldown (PD-FIX-276–277).
+- Root cause: points handled focus/click but not hover; chart/drilldown also admitted cash funding
+  that the headline excludes, then a terminal reconciliation adjustment concealed the scope error.
+- Prevention: pointer and keyboard inspect the same selected-point detail. Headline, buckets and
+  underlying records use the same governed financial scope; funding is not betting profit. A final
+  total matching does not prove that intermediate points or their records are truthful.
+- Regression: `dashboard-analytics.test.ts` covers cash-only and mixed cash/betting datasets;
+  `hosted-preview-cp031.spec.ts` checks hover, keyboard, records, return navigation, themes and
+  unchanged persisted rows. Reuse existing chart/FinancialValue geometry; no new visual variant.
+
 ## 2026-09-19: Calculator help and same-level sections lost shared geometry
 
 - Area: shared calculator headings and the standalone Multi-Lay content flow.

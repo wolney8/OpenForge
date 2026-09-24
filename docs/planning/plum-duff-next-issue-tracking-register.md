@@ -1,5 +1,17 @@
 # Plum Duff Next Issue Tracking Register
 
+## CP-037 bounded issue-led batch — 2026-09-24 10:00 BST
+
+| ID | Original request / clarification | Implementation / evidence | Remaining |
+|---|---|---|---|
+| PD-FIX-274–275 / #117 / #92 | Stable settled Final Value during Notes typing; reveal Advanced Controls only on deliberate expansion; preserve owner-confirmed explicit Save/Discard | Existing shared CP-036 repair now passes the outstanding authenticated Preview browser flow, including independent explicit Save/reopen; application `86ee412` in Preview/local | Owner visual acceptance remains distinct; unchanged five-ledger matrices reused |
+| PD-FIX-276 / #111 | Original chart interaction requires mouse/keyboard exact date/value inspection | Shared pointer entry now selects existing point detail/drilldown; failing hosted reproduction then final hosted PASS | Later metric/granularity/explorer roadmap remains separate |
+| PD-FIX-277 / #111 | Existing selected-range betting P&L separates cash funding | Headline, chart and underlying records now use the same scope; two before-failing fixtures and cash-only/mixed hosted workflow pass | Approved bounded period-P&L preset is next, not delivered by this repair |
+
+Original decisions and historical entries below are retained. Coverage remains 133/133 reconciled;
+these fixes do not inflate the numerator. Evidence and live issue-comment references are in
+[CP-037](../audits/platform-quality-audit.md#cp-037-issue-led-settled-editor-and-chart-verification--2026-09-24-1000-bst).
+
 ## CP-027 owner acceptance and frozen local baseline
 
 | ID | Area | Owner/engineering evidence | State |

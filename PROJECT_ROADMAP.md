@@ -1,6 +1,6 @@
 # Project Roadmap — Plum Duff / OpenForge — Doc ID: PR-CODEX-001
 
-**Last updated:** 2026-09-23 17:56 BST
+**Last updated:** 2026-09-24 10:00 BST
 
 ## Product goal
 
@@ -25,8 +25,13 @@ projection evidence; Preview-only role, database and protection configuration st
 editors, protected-Preview verified and reconciled into the normal local build through the existing
 backup/identity gate.
 
-**Next outcome:** resume the separately authorised Production-readiness decision. The protected
-Preview remains available; Production is unchanged and no release is implied by #117 closure.
+**Current correction gate:** CP-035 explicit Save/Discard is owner-confirmed; CP-037 completes the
+authenticated CP-036 settled-value/disclosure check. #117 remains open for separate owner acceptance,
+not another bulk engineering audit. CP-037 also repairs #111 chart hover and betting-P&L scope.
+
+**Next outcome:** deliver small approved issue-led batches, starting with #111's bounded period-P&L
+preset and its Profile/combined reconciliation. Production readiness remains paused; protected
+Preview and normal localhost stay available on the same tested application. No release is implied.
 
 ## Local defect / completeness
 

@@ -61,6 +61,9 @@ use the canonical primitive and computed styling.
 ## 3. Non-negotiable implementation rules
 
 - Use existing Plum Duff components, classes, tokens and Material Symbols before adding local CSS.
+- Chart pointer inspection and keyboard inspection must select the same readable date/value and
+  records. Verify intermediate points and drilldown use the headline's governed financial scope;
+  a matching final total alone cannot validate the chart. Reuse existing detail/FinancialValue UI.
 - Verify intrinsic header/action sizing with root text enlargement separately from320px reflow.
   Labelled targets must wrap/bound their minimum width without shrinking text, hiding controls or
   letting an identity label overflow its shrinking flex target. Record combined stress separately.

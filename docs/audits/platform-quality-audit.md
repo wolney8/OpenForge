@@ -1,5 +1,91 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
+## CP-037 issue-led settled-editor and chart verification — 2026-09-24 10:00 BST
+
+Application `86ee4126c3a85c47909c38a369e0eabd839cda7e` is the fixed batch. Source started at records
+`cd4667b` / deployed application `1435c5b`; newer generated files were preserved. Live #117, #92
+and #111 comments were read before choosing PD-FIX-274–277. One read-only reviewer inspected #111;
+one implementation owner made the changes. Concise issue-led cadence is now in the existing AGENTS.
+
+### Completed evidence and exact scope
+
+| Item | Before | Executed result |
+|---|---|---|
+| #117 / PD-FIX-274–275 | CP-036 isolated evidence existed but authenticated Preview check had not run | Existing settled-editor browser test passes on original `1435c5b`, then again on final `86ee412`: type/pause, stable mounted Final Value, zero Notes-triggered preview/write calls, intentional Advanced reveal, Discard, explicit Save and persisted reopen with unchanged money/identity |
+| #111 / PD-FIX-276 | Deployed pointer hover left inspection at 23 September £5 while pointing at 22 September £2 | One shared point pointer handler now selects the same detail/records as focus/click/keyboard; hosted £2 then cumulative £5, drilldown and navigation back pass |
+| #111 / PD-FIX-277 | Two deterministic failures: £2/£3 cash-only funding created false chart movement; mixed £2/£3 betting plus funding produced period values £4/£1 rather than £2/£3 | Chart/drilldown now use the existing betting-only headline scope. Cash-only shows no betting activity; mixed fixture shows £2 then cumulative £5 with only betting records. Separate Cash reporting remains unchanged |
+
+Existing selected-range P&L contract §9.1 and implemented headline logic establish that cash funding
+is separate from betting P&L. No financial equation, fee policy, mutation endpoint or schema changed.
+The generic final reconciliation adjustment is unchanged; this fix removes the demonstrated wrong-
+scope source rather than concealing it with another balancing adjustment.
+
+Evidence: `apps/web/lib/dashboard-analytics.test.ts` (two cash-scope fixtures),
+`tests/e2e/hosted-preview-cp031.spec.ts` (“chart hover…”), and
+`tests/e2e/ledger-notes-editing.spec.ts` (“settled Final Value…”). Retained private evidence bundle:
+`cp037-hosted-final` screenshots, `cp037-hosted-final.log`, `cp037-hover-before-sportsbook`
+failure context, `cp037-chart-isolated-fixed`, and web/typecheck logs. No tokens/cookies are retained
+in committed evidence.
+
+- Final web suite: **437/437**, 64 files, exit 0; TypeScript exit 0; diff check passes.
+- Targeted isolated chart/summary fixtures: **33/33**, exit 0. Isolated production build and actual
+  Vercel production build pass; tested application-file hashes match the committed integration files.
+- Final protected-Preview affected browser group: **2/2 in 19.9s**, exit 0. No page errors.
+  Persisted cash and Sportsbook rows remain identical through chart inspection/navigation; the
+  explicit Notes Save changes only intended Notes/normal edit metadata, not identity or money.
+- Rendered screenshots inspected: chart desktop/dark and compact/light; editor desktop/light,
+  compact/dark/reduced motion and enlarged text. Existing selected-point/detail/FinancialValue,
+  EditorSection, modal scroll owner and focus treatments are reused; no CSS or visual variant added.
+  Geometry/overflow, pointer/keyboard and intermediate typing states are asserted. This is not a
+  renewed claim for all viewport/ledger configurations; unchanged CP-035/036 matrices are reused.
+- Test-development failures are not product passes: early chart setup used the wrong preset and
+  then an incorrect cash-as-P&L oracle; both were corrected from the existing contract. A development
+  navigation wait hit cold compilation, and an overlapping local run was interrupted. The retained
+  final independent runs above completed. No historical whole-audit rerun was attempted.
+
+### Runtime, session and data safety
+
+Preview deployment `dpl_3NKeLBu8zRGyJwtVgbbkvpsuSDJ5` serves application `86ee412` through the
+existing CP-028 alias. Its unauthenticated visit redirects to Vercel protection; authenticated
+readiness proves `preview`, PostgreSQL `preview:plum_duff_preview_cp028`,
+fingerprint `c3b647ca129cf41c`, `account-access-v1` and the unchanged Preview callback.
+Only the Preview source-revision metadata and its existing non-Production alias were updated.
+
+Expired synthetic sessions were renewed through the existing session function at its normal
+12-hour expiry, after runtime/fingerprint validation. A redacted retained DB value failed closed
+before access; an older environment file also named the wrong legacy database and was not used as
+the target. The already-established dedicated Preview database name and current safe identity were
+verified before issuing the session. No auth bypass, personal cookie, provider interaction, secret
+rotation or expiry extension was introduced. This is synthetic application-session evidence,
+not a new Google owner PASS.
+
+All nine Preview Profiles created by this run are archived; one interrupted-setup residue required
+explicit governed archiving. Financial history is retained. No test financial data was added locally.
+Normal web/API were restarted only after isolated/final Preview success and a readable backup:
+`openforge-pre-cp037-local-reconcile-20260924-094725.sqlite3`,
+SHA-256 `4a8f3695818102a97e003e82446d001b171de349daff1a284e34744939775c80`.
+Normal API reports `86ee412+dirty`, `normal-owner`, fingerprint `7246998d43722066` and unchanged
+schema; frontend is from the same integration source. Dirty state is records/generated files, not
+another application patch. Existing authenticated owner reads recover successfully after restart.
+Integrity is `ok`, foreign-key violations **0**, and every full-table owner hash matches before:
+42 Profiles, 175 Accounts, 538 Sportsbook, 291 Free Bets, 123 Extra Place, 90 Casino, 58 Cash and
+307 financial-history events. Production, main, credentials and financial history are untouched.
+
+### Handoff / acceptance
+
+PD-FIX-274–277 are engineering COMPLETE within this evidence. #117 stays open: owner-confirmed
+Save/Discard is retained separately from engineering proof of the final visual defects. Canonical
+coverage remains 87/87 reviewed, 23/24 journeys, 27/27 competitor cells and 133/133 reconciled.
+VoiceOver remains manual; broader #111 metric/granularity/explorer capability is not delivered here.
+Next ready actions: deliver the already-approved bounded period-P&L preset, then prove its selected-
+Profile/combined values and saved return context. Production readiness stays paused.
+
+Live GitHub updates: [#117](https://github.com/wolney8/OpenForge/issues/117#issuecomment-5811092023),
+[#111](https://github.com/wolney8/OpenForge/issues/111#issuecomment-5811092846),
+[#92](https://github.com/wolney8/OpenForge/issues/92#issuecomment-5811099277),
+[#114](https://github.com/wolney8/OpenForge/issues/114#issuecomment-5811100254).
+No issue was closed and no duplicate issue created.
+
 ## CP-036 settled-editor stability and disclosure visibility — 2026-09-24 08:35 BST
 
 The two symptoms had related surfaces but distinct mechanics. Sportsbook and Free Bet used the full

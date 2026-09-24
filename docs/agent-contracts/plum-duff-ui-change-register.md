@@ -1,11 +1,24 @@
 # Plum Duff UI Change Register
 
+## CP-037 verified batch — 2026-09-24 10:00 BST
+
+| ID | Surface | Requested outcome | Signed-off equivalent | Status |
+|---|---|---|---|---|
+| PD-FIX-276 / #111 | Dashboard point inspection | Hover exposes the same exact date/value and record details as keyboard/click without changing totals or requiring a click | Existing `DashboardChartSurface` selected-point detail, `FinancialValue` and drilldown | COMPLETE — failing deployed hover reproduction repaired by the shared pointer handler; final protected-Preview hover/keyboard/drilldown/return and unchanged persisted rows pass on `86ee412`, now also local |
+| PD-FIX-277 / #111 | Betting P&L trend and drilldown scope | Cash funding must not appear as betting profit or an artificial later loss | Existing selected-range P&L contract §9.1 and four-ledger headline | COMPLETE — two before-failing deterministic fixtures and hosted cash-only/mixed workflows pass; only this chart/drilldown scope changed, separate Cash reports preserved |
+
+PD-FIX-274–275: authenticated Preview interaction COMPLETE on `86ee412` using the existing synthetic
+session function with normal expiry. Retain CP-036 isolated evidence and CP-035 owner Save/Discard
+acceptance separately. Final affected hosted group 2/2; web 437/437, TypeScript and build pass.
+Rendered geometry/focus/overflow/theme/motion evidence inspected; no new CSS variant. Details:
+[CP-037](../audits/platform-quality-audit.md#cp-037-issue-led-settled-editor-and-chart-verification--2026-09-24-1000-bst).
+
 ## CP-036 settled-editor stability and disclosure visibility
 
 | ID | Surface | Requested outcome | Signed-off equivalent | Status |
 |---|---|---|---|---|
-| PD-FIX-274 | Settled ledger value presentation while editing Notes | Keep the confirmed settled Final Value mounted and unchanged throughout a Notes-only draft; no preview request or persistence occurs before explicit Save | Existing settled outcome panel, `FinancialValue`, and CP-035 explicit draft contract | NEEDS VERIFICATION — failing request-count regression reproduced 7 preview calls, then passed with zero Notes-triggered preview/write calls on `1435c5b`; exact source is deployed and runs locally, but the retained authenticated Preview test session has expired |
-| PD-FIX-275 | Shared editor disclosures inside bounded modal bodies | A deliberate expansion reveals the heading and first useful control by scrolling only the owning editor body; no repeat scroll during typing/render/restore | Shared `EditorSection`, canonical `.workflow-editor-body` scroll owner, and reduced-motion preference | NEEDS VERIFICATION — shared pointer/keyboard, compact, enlarged-text, theme and reduced-motion evidence passes on `1435c5b`; exact source is deployed and runs locally, but authenticated post-deploy browser evidence remains unavailable |
+| PD-FIX-274 | Settled ledger value presentation while editing Notes | Keep the confirmed settled Final Value mounted and unchanged throughout a Notes-only draft; no preview request or persistence occurs before explicit Save | Existing settled outcome panel, `FinancialValue`, and CP-035 explicit draft contract | COMPLETE — CP-037 closes the authenticated Preview gap: stable typing/pause value, zero automatic preview/write, Discard, explicit Save and independently persisted reopen pass |
+| PD-FIX-275 | Shared editor disclosures inside bounded modal bodies | A deliberate expansion reveals the heading and first useful control by scrolling only the owning editor body; no repeat scroll during typing/render/restore | Shared `EditorSection`, canonical `.workflow-editor-body` scroll owner, and reduced-motion preference | COMPLETE — CP-037 authenticated pointer/keyboard, compact, enlarged-text, theme and reduced-motion checks pass; the background page and later manual scroll remain unchanged |
 
 Issue coverage: GitHub #117 owns the settled-editor defects; #92 owns the shared disclosure rule.
 CP-035 Save/Discard remains owner-confirmed and is not reopened.

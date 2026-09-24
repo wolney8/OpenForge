@@ -1,16 +1,24 @@
 # Engineering Learning — Plum Duff / OpenForge — Doc ID: EL-CODEX-001
 
-**Last updated:** 2026-09-22 16:33 BST
+**Last updated:** 2026-09-24 09:57 BST
 
 This is a compact notebook of transferable lessons from building Plum Duff. It is not the audit,
 roadmap, backlog or evidence record.
 
 ## Current learning focus
 
-- Keep compute and its database in the same practical region.
-- Reuse one request-scoped database snapshot instead of repeatedly paying connection setup.
+- Keep a headline, its chart and its underlying records within the same financial scope.
 
 ## Concepts worth remembering
+
+### Scope parity
+
+**What it means:** A headline, time series and drilldown must describe the same set of activities.
+
+**Why it mattered in Plum Duff:** The betting-P&L headline excluded cash funding but its chart
+included it, creating false intermediate gains/losses despite a reconciled final total.
+
+**Remember:** Check intermediate points and underlying records, not just the final number.
 
 ### Data locality
 
@@ -526,6 +534,7 @@ a harmless field edit cannot silently reacquire new-entry or financial-correctio
 | CP-034 | 2026-09-23 17:56 BST | Semantic event classification | Audit history should describe the action actually performed: clearing a note is an edit, while changing financial meaning is a correction |
 | CP-035 | 2026-09-23 20:06 BST | Draft versus saved state | A visible draft is not a saved record: only an explicit, confirmed write may advance the baseline; Discard abandons local state without a compensating server mutation |
 | CP-036 | 2026-09-24 08:35 BST | Calculation identity | A preview identity should contain only inputs that can change the calculation; descriptive Notes must not invalidate a confirmed financial result or trigger recalculation |
+| CP-037 | 2026-09-24 09:57 BST | Scope parity | A correct headline cannot rescue chart points or underlying records that include a different category of money |
 
 ## Where detailed evidence lives
 
