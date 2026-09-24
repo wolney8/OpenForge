@@ -1,6 +1,6 @@
 # Project Roadmap — Plum Duff / OpenForge — Doc ID: PR-CODEX-001
 
-**Last updated:** 2026-09-24 10:00 BST
+**Last updated:** 2026-09-24 11:08 BST
 
 ## Product goal
 
@@ -29,9 +29,14 @@ backup/identity gate.
 authenticated CP-036 settled-value/disclosure check. #117 remains open for separate owner acceptance,
 not another bulk engineering audit. CP-037 also repairs #111 chart hover and betting-P&L scope.
 
-**Next outcome:** deliver small approved issue-led batches, starting with #111's bounded period-P&L
-preset and its Profile/combined reconciliation. Production readiness remains paused; protected
-Preview and normal localhost stay available on the same tested application. No release is implied.
+**Completed bounded slice:** CP-038 delivers #111's weekly period-P&L preset, record reconciliation
+and saved return context, with #92 compact Report/help/header repairs. Preview and normal localhost
+share application `516baf5`; direct authenticated normal-owner browser recheck remains unexecuted,
+while isolated SQLite and authenticated Preview evidence pass.
+
+**Next outcome:** verify remaining approved #92 toolbar composition and #105 FinancialValue/motion
+consumers, repairing demonstrated bounded gaps. Production readiness remains paused. No release
+or completion of the general #111 analytics roadmap is implied.
 
 ## Local defect / completeness
 
@@ -64,8 +69,8 @@ Preview and normal localhost stay available on the same tested application. No r
 
 ## Planned product features
 
-- #111 one period-P&L Reports preset is the next approved bounded reporting slice; the general
-  metric/granularity/filter model and saved explorer presets need later design.
+- #111's bounded weekly period-P&L Reports preset is implemented; the general
+  metric/granularity/filter model and saved explorer presets still need later design.
 - Account freshness/trend reporting, decision-support tasks, richer Multi-Lay and approved source
   ingestion remain separately planned.
 

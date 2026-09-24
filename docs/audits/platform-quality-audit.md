@@ -1,5 +1,115 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
+## CP-038 period-PnL preset and shared report geometry — 2026-09-24 11:08 BST
+
+Fixed application: `516baf5a55035bd845208d8730d0049911fdb8f4`, based on records `b0b3044`
+and accepted application `86ee412`. One implementation owner and one bounded read-only reporting
+reviewer; no reset, new worktree, database, schema, authentication or financial-equation change.
+Current #111/#92 requirements and reporting contracts were reconciled before implementation.
+
+### Delivered scope and financial meaning
+
+- **PD-FIX-278 / #111:** one weekly period-P&L preset in Profile and combined Reports. Existing
+  all/latest-3/6/12-week controls, explicit week selection and positive/negative filters feed
+  non-cumulative weekly points, source-record links and the visible total. Scope, filter, week and
+  selected point survive drilldown, return and reload through existing UI preference storage.
+- Formal-report dates and value precedence are unchanged: Sportsbook/Free Bet settlement date
+  (eligible Free Bets Placed/Settled), Casino settling date, Extra Place placed date. This is
+  explicitly labelled **before management fees, including eligible current values**, not a new
+  settled-only metric. Missing dates do not silently inherit Dashboard fallbacks.
+- Betting profit excludes funding and History. Row-level commission/Casino costs are already in
+  canonical values; signed cash costs and withdrawals remain separately disclosed in retained
+  profit. One exported formal-report record projection supplies the old tables and new drilldown.
+- Authorised active/default scope and explicit archived inclusion remain distinct; a saved active
+  Profile becoming archived does not automatically become an explicitly selected historical Profile.
+- **PD-FIX-279 / #92:** compact Report flex-basis no longer becomes excessive vertical whitespace
+  after row-to-column reflow. Shared help measures actual overflow on opening and stays inside the
+  viewport, retaining existing keyboard/click/Escape behaviour without timers or new subscriptions.
+- **PD-FIX-280 / #92:** removed the expressly requested redundant “Tracker platform” subtitle.
+  Existing brand, navigation and action geometry remain unchanged.
+
+### Executed evidence on the fixed source
+
+| Check | Result / independent expectation | Retained reference |
+|---|---|---|
+| Web regression | 445/445 across 67 files, exit 0; eight additional deterministic cases | `cp038-web-final.log`; `period-pnl.test.ts`, `report-point-chart.test.ts`, `report-profile-selection.test.ts` |
+| Independent four-ledger week | Corrected Sportsbook 5 + Placed Free Bet 4 + Casino 8 (gross 10 less embedded cost 2) − Extra Place 2 + Void 0 = betting 15; costs −2 and withdrawals −3 give retained 10. Funding 300 excluded; adjacent weeks 40/80 and undated exclusions asserted | `apps/web/lib/period-pnl.test.ts` |
+| Profile/scope boundaries | Active A+B week 12, retained 7; explicit archived C adds 7 → 19/14. Invalid dates/selections and unavailable money are not coerced to zero | Same fixtures plus saved-scope and accessible unknown-point tests |
+| Isolated SQLite browser | 3/3 in 1.3m, exit 0: CP-037 chart, shared help/header, full preset | `cp038-isolated-final.log`; `tests/e2e/period-pnl-reports.spec.ts`; existing chart test |
+| Protected Preview browser | Same final 3/3 in 42.8s, exit 0 on `516baf5` | `cp038-hosted-final.log`, `cp038-hosted` rendered screenshots |
+| Hosted actual money | Sportsbook 6→5; selected week A=5, A+B=2, explicit archived C=9; retained A=0 asserted and A+B+C=4 inspected. Funding 300 excluded. All-weeks A=125; source rows and both immutable correction-history events unchanged by report use | Same browser test: API persistence before/after plus rendered point/detail/total assertions |
+| Complete report workflow | Profile/combined entry → period/filter/scope → pointer and keyboard points → owning ledger record → back → reload; empty week, negative filter, rapid week changes; no page/console errors or continuing read storm | Same browser tests, idle-read delta ≤1 over 1.2s |
+| Types, lint, build | TypeScript, targeted lint, isolated production build and deployed Vercel production build all exit 0 | `cp038-types-final.log`, `cp038-lint.log`, `cp038-build.log`, `cp038-deploy.log` |
+| Normal local non-mutating gate | Role/database/schema/revision healthy; public login rendered; Google link present; anonymous Profiles/session 401; protected Reports redirects to login; no page errors | `cp038-local-public-check.mjs`, executed exit 0 |
+
+Commands: existing web Vitest suite and typecheck, Next production build, targeted lint;
+`node /private/tmp/cp038-run-browser.mjs isolated 'period-pnl-reports.spec.ts|hosted-preview-cp031.spec.ts' 'period P&L|chart hover|shared Report help'`
+and the same command with `preview`, single worker, line reporter. Runtime/token values are never
+printed. Private logs/screenshots are retained under the named CP-038 evidence references; no raw
+owner data or authenticated browser storage is committed.
+
+UI implementation checklist completed for the affected scope: existing Reports/FinancialValue/
+ContextHelp primitives reused; shared point component retains CP-037 pointer/focus and reduced-motion
+behaviour; Profile-source links retain ownership; keyboard help/point/record navigation and empty/
+unavailable/disabled states covered. Rendered desktop dark, half-width light, 390px dark and 200%
+text/light screenshots inspected. Structural heading/control bounds, 44px header actions, tooltip
+containment and zero page overflow asserted. Standard Advanced help was also exercised at three
+widths. No claim of VoiceOver output, every calculator configuration or owner acceptance is added.
+
+Pre-fix rendered compact evidence showed flex-basis whitespace and off-screen help; structural
+assertions now protect both. The reviewer identified archived-intent restoration and unknown-money
+SVG risks, both repaired with focused tests before deployment. Setup failures (synthetic Profile
+code constraints, package-alias resolution and a concurrent development-compilation 500) were not
+counted as PASS; the final serial fixed-source runs above completed without these errors.
+
+### Delivery, isolation and local reconciliation
+
+Existing protected alias: https://plum-duff-cp028-preview-homelab11.vercel.app
+Deployment: `dpl_AGEToqMsuZtJnuQadwAZTgsBT8CX`; unique host
+`plum-duff-3sk300x74-homelab11.vercel.app`. Served revision is `516baf5`,
+role `preview`, dedicated PostgreSQL identity `preview:plum_duff_preview_cp028`,
+fingerprint `c3b647ca129cf41c`, schema `account-access-v1`. Unauthenticated access redirects to
+Vercel protection. Only the existing Preview revision metadata/deployment/alias changed.
+
+The existing authorised synthetic Preview session was renewed at its normal expiry, not extended
+indefinitely; this is not a new owner Google interaction. All four Preview synthetic Profiles made
+by the final groups are archived through governed lifecycle; financial History retained. After
+verification the CP-038 synthetic session alone was logged out (204); reuse returned 401.
+
+Normal local update followed isolated and hosted PASS plus verified fresh backup
+`openforge-pre-cp038-local-reconcile-20260924-110215.sqlite3`,
+SHA-256 `4a8f3695818102a97e003e82446d001b171de349daff1a284e34744939775c80`.
+The integration branch fast-forwarded to the tested application, and only its owned web/API
+processes restarted. No Preview environment, session or data was copied. Local source hashes
+match the application commit; health reports `516baf5…+dirty`, `normal-owner`,
+fingerprint `7246998d43722066`, unchanged schema and normal Google callback. Dirty files are
+records/generated output, not an additional application patch.
+
+Owner integrity remains `ok`, foreign-key violations 0. All eight complete row projections and
+counts are identical before/after: 42 Profiles, 175 Accounts, 538 Sportsbook, 291 Free Bets,
+123 Extra Place, 90 Casino, 58 Cash, 307 financial-history events. No owner test records or financial
+writes; no new migration. Production, main, credentials and aliases are untouched.
+
+**Narrow unverified boundary:** the execution safety gate rejected creating a fresh normal-owner
+test session. No bypass or personal-cookie reuse followed. Direct authenticated 3010 report
+interaction was therefore **not rerun**; authenticated evidence is isolated SQLite and the actual
+protected Preview, with local source/health/login guards/data checks above. Permission for an
+appropriate temporary normal-owner test session would be required to execute that additional check.
+
+### Handoff
+
+PD-FIX-278–280 are implemented, fixed-source tested and available in both environments with the
+normal-owner browser qualification above. #111 stays open for future metric/granularity/explorer
+design; #92 retains its wider consistency queue. #117 visual owner acceptance remains separate.
+Coverage remains 87/87 reviewed, 23/24 journeys, 27/27 competitor cells and 133/133 reconciled.
+Next executable bounded work: #92 remaining toolbar composition, then #105 FinancialValue/motion
+consumer coverage. Neither requires reopening the audit or waiting for a bulk owner campaign.
+
+Live evidence sync completed **2026-09-24 11:11 BST** without closing issues:
+[#111](https://github.com/wolney8/OpenForge/issues/111#issuecomment-5812165582),
+[#92](https://github.com/wolney8/OpenForge/issues/92#issuecomment-5812166357),
+[#114](https://github.com/wolney8/OpenForge/issues/114#issuecomment-5812167427).
+
 ## CP-037 issue-led settled-editor and chart verification — 2026-09-24 10:00 BST
 
 Application `86ee4126c3a85c47909c38a369e0eabd839cda7e` is the fixed batch. Source started at records

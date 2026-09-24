@@ -10,6 +10,13 @@ No published release is represented by the local milestones below.
 
 ## 2026-09-24
 
+- **2026-09-24 11:08 BST — CP-038:** Delivered the approved weekly period-P&L Reports preset with
+  reconciled source records and retained period/Profile/point context. Fixed shared compact Report
+  geometry/help containment and removed redundant header copy. Application `516baf5` passes
+  authenticated Preview/isolated SQLite checks and is integrated locally with unchanged owner data;
+  direct authenticated normal-owner browser recheck remains unexecuted.
+  [Evidence](docs/audits/platform-quality-audit.md#cp-038-period-pnl-preset-and-shared-report-geometry--2026-09-24-1108-bst).
+
 - **2026-09-24 10:00 BST — CP-037:** Completed authenticated settled-editor Save/Discard/value/reveal evidence,
   repaired #111 hover parity and excluded cash funding from betting-P&L points/drilldown.
   Application `86ee412` is verified in protected Preview and normal localhost; owner records are
@@ -120,3 +127,4 @@ their original IDs.
 | CP-016 | 2026-09-17 14:46 BST | Closed two complete journeys, corrected Void history and separated active from archived reporting defaults | [#88](https://github.com/wolney8/OpenForge/issues/88), [#111](https://github.com/wolney8/OpenForge/issues/111), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-016-complete-journey-and-archive-reporting-package--2026-09-17) |
 | CP-017 | 2026-09-17 15:59 BST | Closed fresh award lineage, Cash reconciliation and Casino fee journeys and repaired four bounded safety/portability defects | [#49](https://github.com/wolney8/OpenForge/issues/49), [#80](https://github.com/wolney8/OpenForge/issues/80), [#91](https://github.com/wolney8/OpenForge/issues/91), [#109](https://github.com/wolney8/OpenForge/issues/109), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-017-award-cash-reconciliation-and-casino-fee-package--2026-09-17-1559-bst) |
 | CP-018 | 2026-09-18 09:15 BST | Added durable notification history, deterministic API fixtures and complete Profile lifecycle evidence; reduced broad API failures from 143 to 21 | [#90](https://github.com/wolney8/OpenForge/issues/90), [#99](https://github.com/wolney8/OpenForge/issues/99), [#109](https://github.com/wolney8/OpenForge/issues/109), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-018-reproducibility-profile-lifecycle-and-notification-history--2026-09-18-0915-bst) |
+| CP-019 | 2026-09-18 11:20 BST | Integrated #109 Account access, cleared broad API failures and closed onboarding, report-drilldown and stale-response journeys | [#109](https://github.com/wolney8/OpenForge/issues/109), [#111](https://github.com/wolney8/OpenForge/issues/111), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-019-account-access-test-hermeticity-and-journey-closure--2026-09-18-1120-bst) |

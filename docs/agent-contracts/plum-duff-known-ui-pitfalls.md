@@ -1,5 +1,15 @@
 # Plum Duff Known UI Pitfalls
 
+## 2026-09-24 10:54 BST: Responsive flex-basis and help containment
+
+- Area: formal Report headings/controls and shared contextual help (#92, PD-FIX-279).
+- A desktop row's width-oriented flex-basis became vertical empty space after the shared heading
+  changed to a column. Reset that basis at the existing compact breakpoint; do not add local offsets.
+- Right-anchored help can extend left of a narrow viewport. Keep the shared anchor where it fits,
+  translating only the measured overflow when pointer/keyboard/touch opens help.
+- Regression: assert heading/control height as well as page overflow, and the opened tooltip's
+  viewport bounds. Reports and calculator help reuse the same primitive; inspect rendered output.
+
 ## 2026-09-24 09:57 BST: Chart inspection and headline scope diverged
 
 - Area: #111 Dashboard betting-P&L chart and its record drilldown (PD-FIX-276–277).

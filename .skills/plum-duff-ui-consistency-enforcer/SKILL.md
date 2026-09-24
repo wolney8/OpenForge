@@ -48,6 +48,7 @@ Before changing markup or CSS, compare the affected control with its canonical e
 | Area | Required comparison |
 |---|---|
 | Geometry | width, max-width, height, padding, gap, radius and alignment |
+| Stacked controls/help | Desktop flex-basis must not become vertical whitespace after row-to-column reflow; opened help must remain inside the viewport |
 | Layout | flex/grid behaviour, `min-width: 0`, overflow owner and responsive reflow |
 | Typography | family, size, weight, line height, case and truncation |
 | Colour | semantic token, light/dark contrast, hover, focus, selected and disabled states |

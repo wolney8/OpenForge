@@ -1,6 +1,6 @@
 # Engineering Learning — Plum Duff / OpenForge — Doc ID: EL-CODEX-001
 
-**Last updated:** 2026-09-24 09:57 BST
+**Last updated:** 2026-09-24 11:08 BST
 
 This is a compact notebook of transferable lessons from building Plum Duff. It is not the audit,
 roadmap, backlog or evidence record.
@@ -19,6 +19,9 @@ roadmap, backlog or evidence record.
 included it, creating false intermediate gains/losses despite a reconciled final total.
 
 **Remember:** Check intermediate points and underlying records, not just the final number.
+
+CP-038 reinforces this rule: reuse one canonical record projection for formal totals and point
+drilldown. Funding, embedded costs and signed deductions must retain their distinct meaning.
 
 ### Data locality
 
@@ -535,6 +538,7 @@ a harmless field edit cannot silently reacquire new-entry or financial-correctio
 | CP-035 | 2026-09-23 20:06 BST | Draft versus saved state | A visible draft is not a saved record: only an explicit, confirmed write may advance the baseline; Discard abandons local state without a compensating server mutation |
 | CP-036 | 2026-09-24 08:35 BST | Calculation identity | A preview identity should contain only inputs that can change the calculation; descriptive Notes must not invalidate a confirmed financial result or trigger recalculation |
 | CP-037 | 2026-09-24 09:57 BST | Scope parity | A correct headline cannot rescue chart points or underlying records that include a different category of money |
+| CP-038 | 2026-09-24 11:08 BST | Scope parity reinforced | Reuse the same record projection for each point, its records and the total; independently test funding and costs rather than trusting matching aggregates |
 
 ## Where detailed evidence lives
 

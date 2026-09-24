@@ -1,5 +1,18 @@
 # Plum Duff Next Issue Tracking Register
 
+## CP-038 approved period-P&L and shared consistency — 2026-09-24 11:08 BST
+
+| ID | Original request → clarification | Implementation / local and hosted evidence | Remaining / issue |
+|---|---|---|---|
+| PD-FIX-278 / FINANCIAL-ANALYTICS-EXPLORER-001 | #111 period profit/records → approved bounded preset using existing formal-report semantics, not a general explorer | Shared weekly projection and period/scope/point return context; independent boundaries/correction/void/funding/costs; 445 web tests and 3/3 browser checks in isolated SQLite and Preview; app `516baf5` locally integrated with unchanged owner data | #111 open for later metric/granularity/explorer design. Direct authenticated normal-owner browser recheck not authorised; owner acceptance not inferred |
+| PD-FIX-279 / #92 | Reuse shared Report controls/help without compact whitespace or clipped explanations | Shared reflow geometry and measured help containment; rendered desktop/compact/narrow/200% text, both themes, keyboard and calculator help regression | Wider #92 toolbar/component queue remains open |
+| PD-FIX-280 / #92 | Remove redundant “Tracker platform” header subtitle | Removed from canonical app chrome; responsive header controls remain usable | No broader header redesign or owner acceptance claimed |
+
+Existing requests and earlier evidence below remain intact. Coverage stays 133/133 reconciled.
+See [CP-038](../audits/platform-quality-audit.md#cp-038-period-pnl-preset-and-shared-report-geometry--2026-09-24-1108-bst).
+Next: verify already-approved #92 toolbar composition, then #105 FinancialValue/motion consumers;
+fix demonstrated gaps, not planning-only feature breadth.
+
 ## CP-037 bounded issue-led batch — 2026-09-24 10:00 BST
 
 | ID | Original request / clarification | Implementation / evidence | Remaining |

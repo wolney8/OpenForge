@@ -1,6 +1,6 @@
 # Calculation Contract: Cross-Profile Reporting Aggregation
 
-_Last updated: 2026-07-16_
+_Last updated: 2026-09-24 11:08 BST_
 
 ## 0. Contract status
 
@@ -13,6 +13,28 @@ _Last updated: 2026-07-16_
   - `docs/contracts/liability-exposure-contract.md`
 
 ## 1. Purpose and boundary
+
+### CP-038 approved bounded period-P&L preset — 2026-09-24 10:53 BST
+
+The owner's #111 implementation request approves a preset over the **existing formal weekly
+Reports**, not a new realised-only measure. Weeks remain Monday–Sunday: Sportsbook/Free Bets use
+their recorded settlement date (Free Bet status Placed/Settled); Casino uses settling date; Extra
+Place uses placed date. Missing formal dates do not acquire Dashboard date fallbacks.
+
+Betting P&L uses canonical row reporting values (including governed corrections/voids and eligible
+current values); row-level commission/Casino costs are not subtracted twice. Extra Place remains
+included, as in the integrated four-ledger reporting baseline. Signed cash costs and withdrawals
+are separate and added to betting P&L for retained profit. Funding and append-only History do not
+become profit. Management/investment fees remain separate from this pre-fee view.
+
+Reuse existing all/latest-N formal-period filtering, with an explicit week selection (including
+empty weeks) and positive/negative filtering. Points, source records and totals share one canonical
+projection; source links always address the owning Profile. Existing UI preference persistence
+retains period/filter/point and authorised scope on return/reload; no user-created preset model.
+Active/non-archived scope remains the default under CP-016; explicit historical selection is retained,
+but a formerly active Profile becoming archived does not gain historical inclusion automatically.
+Unavailable money stays unavailable, never zero. Metric/granularity/cumulative explorer work remains
+outside this slice and #111 stays open.
 
 Provide the Fund Manager with comparable, read-only reporting across profiles without mixing profile-owned operational rows.
 

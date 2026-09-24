@@ -1,5 +1,18 @@
 # Plum Duff UI Change Register
 
+## CP-038 active batch — 2026-09-24 10:23 BST
+
+| ID | Surface | Requested outcome | Signed-off equivalent | Status |
+|---|---|---|---|---|
+| PD-FIX-278 / #111 | Profile and combined Reports | Approved weekly period-P&L preset with exact formal-report record reconciliation and retained period/scope/point on return | Existing formal Reports period controls, shared Dashboard point inspection/drilldown and FinancialValue | COMPLETE — `516baf5`; independent weekly money/scope fixtures, full isolated/Preview workflow; integrated local source/health/data checks. Direct authenticated normal-owner browser recheck remains unexecuted |
+| PD-FIX-279 / #92 | Shared formal Report headings/help at compact widths | Prevent desktop flex-basis becoming vertical whitespace; contain opened help within viewport | Existing shared formal-report heading, compact controls and ContextHelp | COMPLETE — actual 390px defects reproduced; shared reflow/containment repaired, geometry and rendered theme/text/keyboard/calculator regressions pass |
+| PD-FIX-280 / #92 | Application brand subtitle | Remove the explicitly requested redundant “Tracker platform” subtitle without redesigning the header | Existing app-chrome wordmark/logo and responsive controls | COMPLETE — bounded copy removal; existing header controls/geometry verified in isolated and actual Preview browser |
+
+Verified **2026-09-24 11:08 BST**: web 445/445, isolated affected browser 3/3, protected Preview 3/3,
+types/lint/build pass. Same application integrated locally with owner records unchanged; direct
+authenticated normal-owner browser check was not authorised and is not claimed. Broader #111/#92
+remain open. [Evidence](../audits/platform-quality-audit.md#cp-038-period-pnl-preset-and-shared-report-geometry--2026-09-24-1108-bst).
+
 ## CP-037 verified batch — 2026-09-24 10:00 BST
 
 | ID | Surface | Requested outcome | Signed-off equivalent | Status |
