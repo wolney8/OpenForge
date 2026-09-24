@@ -2,6 +2,9 @@
 import { AccountMoneyStatus } from "@/components/account-money-status";
 
 import Link from "next/link";
+import { PeriodPnlReport } from "@/components/period-pnl-report";
+import { usePersistedState } from "@/lib/ledger-ui";
+import { restoreReportProfileSelection, type ReportProfileSelection } from "@/lib/report-profile-selection";
 import { useRouter } from "next/navigation";
 import { type ComponentProps, useEffect, useMemo, useRef, useState } from "react";
 import { apiBaseUrl } from "@/lib/api";
@@ -360,11 +363,23 @@ export function CrossProfileAnalytics({
   const [preset, setPreset] = useState<DatePreset>("Week (Mon-Sun)");
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
-  const [selectedProfileIds, setSelectedProfileIds] = useState(() =>
+  const [localProfileIds, setLocalProfileIds] = useState(() =>
     profiles
       .filter((profile) => normalizeProfileStatus(profile.status) !== "Archived")
       .map((profile) => profile.profileId)
   );
+  const [savedReportProfileIds, setSavedReportProfileIds] = usePersistedState<ReportProfileSelection | null>(
+    "openforge-report-profile-selection", null);
+  const selectedProfileIds = useMemo(() => {
+    if (initialTab !== "reports") return localProfileIds;
+    return restoreReportProfileSelection(savedReportProfileIds, profiles, activeProfileIds);
+  }, [activeProfileIds, initialTab, localProfileIds, profiles, savedReportProfileIds]);
+  const setSelectedProfileIds = (next: string[] | ((ids: string[]) => string[])) => {
+    const ids = typeof next === "function" ? next(selectedProfileIds) : next;
+    if (initialTab === "reports") setSavedReportProfileIds({ selectedIds: ids,
+      archivedIds: ids.filter((id) => profiles.some((profile) => profile.profileId === id && normalizeProfileStatus(profile.status) === "Archived")) });
+    else setLocalProfileIds(ids);
+  };
   const [datasets, setDatasets] = useState<Map<string, TrackerSummaryDataset>>(new Map());
   const [feePeriods, setFeePeriods] = useState<Map<string, FeePeriodApiRecord[]>>(new Map());
   const [trackerSettings, setTrackerSettings] = useState<Map<string, TrackerSettingsRecord>>(new Map());
@@ -1514,6 +1529,12 @@ export function CrossProfileAnalytics({
             id="analytics-panel-reports"
             role="tabpanel"
           >
+          <PeriodPnlReport rows={formalCombined.weeklyReports} contextKey="combined"
+            scopes={profileRecords.filter((profile) => selectedProfileIds.includes(profile.profileId))
+              .flatMap((profile) => {
+                const dataset = datasets.get(profile.profileId);
+                return dataset ? [{ profileId: profile.profileId, label: profile.displayName, dataset }] : [];
+              })} />
           <ReportTable
             feeGranularity="week"
             feeHeading="Indicative Fee Impact"

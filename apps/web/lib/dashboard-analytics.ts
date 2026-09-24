@@ -294,7 +294,7 @@ export function buildDashboardDrilldownRows({
     .map(({ date: _date, ...row }) => row);
 }
 
-export function buildSparklinePoints(points: Array<{ value: number }>): { line: string; area: string } {
+export function buildSparklinePoints(points: Array<{ value: number }>, includeZero = false): { line: string; area: string; zeroY?: number } {
   if (points.length === 0) {
     return { line: "", area: "" };
   }
@@ -302,18 +302,22 @@ export function buildSparklinePoints(points: Array<{ value: number }>): { line: 
   const width = 100;
   const height = 42;
   const values = points.map((point) => point.value);
-  const min = Math.min(...values);
-  const max = Math.max(...values);
+  const min = Math.min(...values, ...(includeZero ? [0] : []));
+  const max = Math.max(...values, ...(includeZero ? [0] : []));
   const range = max - min || 1;
   const coordinates = points.map((point, index) => {
-    const x = points.length === 1 ? width : (index / (points.length - 1)) * width;
+    const x = includeZero
+      ? points.length === 1 ? width / 2 : 3 + (index / (points.length - 1)) * (width - 6)
+      : points.length === 1 ? width : (index / (points.length - 1)) * width;
     const y = height - ((point.value - min) / range) * (height - 8) - 4;
     return `${x.toFixed(2)},${y.toFixed(2)}`;
   });
 
+  const zeroY = height - ((0 - min) / range) * (height - 8) - 4;
   return {
     line: coordinates.join(" "),
-    area: `0,${height} ${coordinates.join(" ")} ${width},${height}`,
+    area: `0,${includeZero ? zeroY : height} ${coordinates.join(" ")} ${width},${includeZero ? zeroY : height}`,
+    ...(includeZero ? { zeroY } : {}),
   };
 }
 

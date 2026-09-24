@@ -4,6 +4,7 @@ import { AccountMoneyStatus } from "@/components/account-money-status";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { PeriodPnlReport } from "@/components/period-pnl-report";
 import { apiBaseUrl } from "@/lib/api";
 import { AccessScopeBadge } from "@/components/access-scope-badge";
 import {
@@ -1306,6 +1307,8 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                       )),
               })}
 
+              {data ? <PeriodPnlReport rows={summary.weeklyReports} contextKey={profileId}
+                scopes={[{ profileId, label: "This Profile", dataset: data }]} /> : null}
               {renderReportTable({ title: "Weekly reports", rows: summary.weeklyReports })}
               {renderReportTable({ title: "Monthly reports", rows: summary.monthlyReports })}
               {renderReportTable({ title: "Yearly reports", rows: summary.yearlyReports })}

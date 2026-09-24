@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { ReportPointChart } from "@/components/report-point-chart";
 import { useState, type ReactNode } from "react";
 import { FinancialValue, FinancialValueReplayGroup } from "@/components/financial-value";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
-import { ReplayableGraph, ReplayableProgressFill, ReplayableProgressRing } from "@/components/replayable-progress";
+import { ReplayableProgressFill, ReplayableProgressRing } from "@/components/replayable-progress";
 import {
   buildDashboardTargetProgress,
   buildDashboardDrilldownRows,
@@ -20,7 +21,6 @@ import {
 } from "@/lib/dashboard-analytics";
 import {
   formatHumanDisplayDate,
-  formatMoney,
   formatResolvedDateRange,
   type DatePreset,
   type ResolvedDateRange,
@@ -629,67 +629,15 @@ function DashboardChartSurface({
   range: ResolvedDateRange;
 }) {
   const [selectedPointIndex, setSelectedPointIndex] = useState(Math.max(0, points.length - 1));
-  const coordinates = line.split(" ").map((coordinate) => {
-    const [x, y] = coordinate.split(",").map(Number);
-    return { x, y };
-  });
-  const selectedPoint = points[selectedPointIndex] ?? points.at(-1);
+  const index = points[selectedPointIndex] ? selectedPointIndex : points.length - 1;
+  const selectedPoint = points[index];
   const drilldownRows = dataset && selectedPoint
-    ? buildDashboardDrilldownRows({ dataset, pointKey: selectedPoint.key, range })
-    : [];
-  const accessibleSummary =
-    points.length === 0
-      ? "No trend points available."
-      : points.map((point) => `${point.label}: ${formatMoney(point.cumulativeValue ?? point.value)}`).join("; ");
-  return (
-    <figure className="dashboard-chart-figure">
-      <ReplayableGraph
-        aria-label={label}
-        className="dashboard-sparkline"
-        preserveAspectRatio="none"
-        role="group"
-        valueKey={`${area}|${line}`}
-        viewBox="0 0 100 42"
-      >
-        <polygon className="dashboard-sparkline-area" points={area} />
-        <polyline className="dashboard-sparkline-line" pathLength="1" points={line} />
-        {points.map((point, index) => {
-          const coordinate = coordinates[index];
-          if (!coordinate || !Number.isFinite(coordinate.x) || !Number.isFinite(coordinate.y)) return null;
-          const value = point.cumulativeValue ?? point.value;
-          return (
-            <circle
-              aria-label={`${point.label}: ${formatMoney(value)}`}
-              className={`dashboard-sparkline-point${selectedPointIndex === index ? " is-selected" : ""}`}
-              cx={coordinate.x}
-              cy={coordinate.y}
-              key={`${point.label}-${index}`}
-              onClick={() => setSelectedPointIndex(index)}
-              onFocus={() => setSelectedPointIndex(index)}
-              onPointerEnter={() => setSelectedPointIndex(index)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ") {
-                  event.preventDefault();
-                  setSelectedPointIndex(index);
-                }
-              }}
-              r="2.5"
-              role="button"
-              tabIndex={0}
-            />
-          );
-        })}
-      </ReplayableGraph>
-      <figcaption className="dashboard-chart-point-detail" aria-live="polite">
-        {selectedPoint ? (
-          <><span>{selectedPoint.label}</span><FinancialValue animate={false} value={selectedPoint.cumulativeValue ?? selectedPoint.value} /></>
-        ) : "No trend points available."}
-      </figcaption>
-      {selectedPoint ? <section aria-label={`Records for ${selectedPoint.label}`} className="dashboard-chart-drilldown" data-pd-id="dashboard.chart.drilldown">
-        <h4>Records in this point</h4>
-        {drilldownRows.length ? <ul>{drilldownRows.map((row) => <li key={`${row.module}-${row.id}`}><Link href={`/profiles/${profileId}/tracker/${row.module}?search=${encodeURIComponent(row.id)}&source=report-point`}><span>{row.label}</span><FinancialValue animate={false} value={row.value} /></Link></li>)}</ul> : <p className="muted-text">No underlying records in this point.</p>}
-      </section> : null}
-      <span className="visually-hidden">{accessibleSummary}</span>
-    </figure>
-  );
+    ? buildDashboardDrilldownRows({ dataset, pointKey: selectedPoint.key, range }) : [];
+  return <ReportPointChart area={area} line={line} label={label} points={points}
+    selectedIndex={index} onSelect={setSelectedPointIndex}>
+    {selectedPoint ? <section aria-label={`Records for ${selectedPoint.label}`} className="dashboard-chart-drilldown" data-pd-id="dashboard.chart.drilldown">
+      <h4>Records in this point</h4>
+      {drilldownRows.length ? <ul>{drilldownRows.map((row) => <li key={`${row.module}-${row.id}`}><Link href={`/profiles/${profileId}/tracker/${row.module}?search=${encodeURIComponent(row.id)}&source=report-point`}><span>{row.label}</span><FinancialValue animate={false} value={row.value} /></Link></li>)}</ul> : <p className="muted-text">No underlying records in this point.</p>}
+    </section> : null}
+  </ReportPointChart>;
 }

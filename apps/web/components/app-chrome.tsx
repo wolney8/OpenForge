@@ -596,7 +596,6 @@ function AppChromeContent({
       : null;
   const profileSummaryLoading =
     isInsideProfile && headerSummary?.profileId !== activeProfileId;
-  const brandSubtitle = "Tracker platform";
   const recentProfileName =
     activeProfiles.find((profile) => profile.profile_id === activeProfileId)?.display_name ??
     (headerSummary?.profileId === activeProfileId ? headerSummary.profileName : "");
@@ -686,7 +685,6 @@ function AppChromeContent({
             </Link>
             <div>
               <div className="brand-title">{platformBrand.name}</div>
-              <div className="brand-subtitle">{brandSubtitle}</div>
             </div>
           </div>
           {!isPublicAuthRoute ? <GlobalSearch /> : <div aria-hidden="true" />}

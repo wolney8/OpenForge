@@ -430,6 +430,41 @@ function eachWayExtraPlaceDisplayValue(row: EachWayExtraPlaceSummaryRecord): num
   return firstMoneyValue(row.final_value, row.current_value);
 }
 
+export type FormalReportRecord = {
+  id: string;
+  module: "sportsbook-bets" | "free-bets" | "casino-offers" | "each-way-extra-places" | "cash-adjustments";
+  label: string;
+  date: Date;
+  weekKey: string;
+  value: number;
+  component: "sportsbookPnl" | "freeBetPnl" | "casinoPnl" | "eachWayExtraPlacePnl" | "withdrawals" | "costs" | "funding";
+};
+
+// One projection feeds both the formal tables and their source-record drilldown.
+// It deliberately preserves the workbook's dates and current-value inclusion.
+export function buildFormalReportRecords(dataset: TrackerSummaryDataset): FormalReportRecord[] {
+  const records: FormalReportRecord[] = [];
+  const add = (id: string, module: FormalReportRecord["module"], label: string,
+    rawDate: string, value: number, component: FormalReportRecord["component"]) => {
+    const date = parseDateInput(rawDate);
+    if (date) records.push({ id, module, label, date, weekKey: getWeekKey(toPeriodDate(date)), value, component });
+  };
+  for (const row of dataset.sportsbookBets) add(row.sportsbook_bet_id, "sportsbook-bets",
+    row.event_name || row.offer_name || "Sportsbook activity", row.date_settled, sportsbookDisplayValue(row), "sportsbookPnl");
+  for (const row of dataset.freeBets) {
+    if (reportFreeBetStatuses.has(row.status)) add(row.free_bet_id, "free-bets",
+      row.event_name || "Free Bet", row.date_settled, freeBetDisplayValue(row), "freeBetPnl");
+  }
+  for (const row of dataset.casinoOffers) add(row.casino_offer_id, "casino-offers",
+    row.offer_name || "Casino activity", row.date_settling, parseMoney(row.resolved_net_pnl), "casinoPnl");
+  for (const row of dataset.eachWayExtraPlaces ?? []) add(row.each_way_extra_place_id, "each-way-extra-places",
+    row.runner || row.race || "Extra Place activity", row.placed_at, eachWayExtraPlaceDisplayValue(row), "eachWayExtraPlacePnl");
+  for (const row of dataset.cashAdjustments) add(row.cash_adjustment_id, "cash-adjustments",
+    row.description || row.adjustment_type, row.adjustment_date, parseMoney(row.signed_amount),
+    row.adjustment_type === "Withdrawal" ? "withdrawals" : costAdjustmentTypes.has(row.adjustment_type) ? "costs" : "funding");
+  return records;
+}
+
 function parseDateInput(value: string | null | undefined): Date | null {
   if (!value?.trim()) {
     return null;
@@ -645,6 +680,12 @@ function buildReportAccumulator() {
 
 function getWeekKey(value: Date): string {
   return toLocalDateKey(startOfWeekMonday(value));
+}
+
+export function formalReportWeekKey(value: string | null | undefined): string | null {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const parsed = parseDateInput(value + "T12:00:00");
+  return parsed && toLocalDateKey(parsed) === value ? getWeekKey(parsed) : null;
 }
 
 function getWeekLabel(value: Date): string {
@@ -977,93 +1018,12 @@ export function summarizeTrackerData(
   const monthlyMap = new Map<string, ReportRow>();
   const yearlyMap = new Map<string, ReportRow>();
 
-  for (const row of dataset.sportsbookBets) {
-    const value = sportsbookDisplayValue(row);
-    const settledDate = parseDateInput(row.date_settled);
-    if (!settledDate) {
-      continue;
-    }
-    const periodDate = toPeriodDate(settledDate);
-    pushOrAdd(weeklyMap, getWeekKey(periodDate), getWeekLabel(periodDate), (reportRow) => {
-      reportRow.sportsbookPnl += value;
-    });
-    pushOrAdd(monthlyMap, getMonthKey(periodDate), getMonthLabel(periodDate), (reportRow) => {
-      reportRow.sportsbookPnl += value;
-    });
-    pushOrAdd(yearlyMap, getYearKey(periodDate), getYearLabel(periodDate), (reportRow) => {
-      reportRow.sportsbookPnl += value;
-    });
-  }
-
-  for (const row of dataset.freeBets) {
-    if (!reportFreeBetStatuses.has(row.status)) {
-      continue;
-    }
-    const value = freeBetDisplayValue(row);
-    const settledDate = parseDateInput(row.date_settled);
-    if (!settledDate) {
-      continue;
-    }
-    const periodDate = toPeriodDate(settledDate);
-    pushOrAdd(weeklyMap, getWeekKey(periodDate), getWeekLabel(periodDate), (reportRow) => {
-      reportRow.freeBetPnl += value;
-    });
-    pushOrAdd(monthlyMap, getMonthKey(periodDate), getMonthLabel(periodDate), (reportRow) => {
-      reportRow.freeBetPnl += value;
-    });
-    pushOrAdd(yearlyMap, getYearKey(periodDate), getYearLabel(periodDate), (reportRow) => {
-      reportRow.freeBetPnl += value;
-    });
-  }
-
-  for (const row of dataset.casinoOffers) {
-    const value = parseMoney(row.resolved_net_pnl);
-    const settledDate = parseDateInput(row.date_settling);
-    if (!settledDate) {
-      continue;
-    }
-    const periodDate = toPeriodDate(settledDate);
-    pushOrAdd(weeklyMap, getWeekKey(periodDate), getWeekLabel(periodDate), (reportRow) => {
-      reportRow.casinoPnl += value;
-    });
-    pushOrAdd(monthlyMap, getMonthKey(periodDate), getMonthLabel(periodDate), (reportRow) => {
-      reportRow.casinoPnl += value;
-    });
-    pushOrAdd(yearlyMap, getYearKey(periodDate), getYearLabel(periodDate), (reportRow) => {
-      reportRow.casinoPnl += value;
-    });
-  }
-
-  for (const row of dataset.eachWayExtraPlaces ?? []) {
-    const value = eachWayExtraPlaceDisplayValue(row);
-    const placedAt = parseDateInput(row.placed_at);
-    if (!placedAt) {
-      continue;
-    }
-    const periodDate = toPeriodDate(placedAt);
+  for (const record of buildFormalReportRecords(dataset)) {
+    const periodDate = toPeriodDate(record.date);
     const apply = (reportRow: ReportRow) => {
-      reportRow.eachWayExtraPlacePnl += value;
+      // Funding can establish a report period but never becomes betting/retained P&L.
+      if (record.component !== "funding") reportRow[record.component] += record.value;
     };
-    pushOrAdd(weeklyMap, getWeekKey(periodDate), getWeekLabel(periodDate), apply);
-    pushOrAdd(monthlyMap, getMonthKey(periodDate), getMonthLabel(periodDate), apply);
-    pushOrAdd(yearlyMap, getYearKey(periodDate), getYearLabel(periodDate), apply);
-  }
-
-  for (const row of dataset.cashAdjustments) {
-    const value = parseMoney(row.signed_amount);
-    const adjustmentDate = parseDateInput(row.adjustment_date);
-    if (!adjustmentDate) {
-      continue;
-    }
-    const apply = (reportRow: ReportRow) => {
-      if (row.adjustment_type === "Withdrawal") {
-        reportRow.withdrawals += value;
-      }
-      if (costAdjustmentTypes.has(row.adjustment_type)) {
-        reportRow.costs += value;
-      }
-    };
-    const periodDate = toPeriodDate(adjustmentDate);
     pushOrAdd(weeklyMap, getWeekKey(periodDate), getWeekLabel(periodDate), apply);
     pushOrAdd(monthlyMap, getMonthKey(periodDate), getMonthLabel(periodDate), apply);
     pushOrAdd(yearlyMap, getYearKey(periodDate), getYearLabel(periodDate), apply);

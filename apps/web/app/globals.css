@@ -4976,6 +4976,13 @@ html[data-theme="dark"] .notification-count-badge {
 }
 
 @media (max-width: 840px) {
+  /* A row's width flex-basis must not become a tall empty spacer after stacking. */
+  .formal-report-section-heading > h3,
+  .formal-report-section-controls {
+    flex-basis: auto;
+    width: 100%;
+  }
+
   .compact-report-controls,
   .reporting-breakdown-grid {
     grid-template-columns: 1fr;
