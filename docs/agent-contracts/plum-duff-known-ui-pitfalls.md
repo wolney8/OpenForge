@@ -1340,3 +1340,13 @@ Half-width pointer Save remains BLOCKED under PD-QA-004; these probes are not wh
 - Regression evidence: `ledger-notes-editing.spec.ts` checks every keystroke, the former debounce
   interval, no preview/write, stable value/focus/scroll, pointer/keyboard, compact, enlarged text,
   themes and reduced motion. The cross-ledger matrix preserves Save/Discard and unchanged money.
+
+
+### Required report outputs must not use optional-input zero defaults — 2026-09-24 19:46 BST
+
+CP-044 / PD-FIX-293 / #105: a null Cash deduction was rendered as a complete retained total;
+Casino and Extra Places shared the same optional-input parser. Read required authoritative outputs
+as unavailable and propagate only to dependent measures. Preserve exact type/date/status membership,
+known independent costs/funding and explicit source zero. Keep selected-range values waiting while
+settings save, including breakdown/watchlist cells; all-period formal history stays independently
+ready. Regressions: `tracker-summary.test.ts` and `reports-financial-display.spec.ts`.

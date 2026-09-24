@@ -1,6 +1,6 @@
 # Contract: Financial Value Presentation and Motion
 
-_Last updated: 2026-09-24 16:00 BST_
+_Last updated: 2026-09-24 19:46 BST_
 
 ## Status and scope
 
@@ -192,19 +192,19 @@ During a saved-range request, selected-range cards/tables wait using FinancialRe
 formal-history cards/tables retain their independent context. This is a display/readiness boundary,
 not a change to calculations, persistence, reporting membership or financial history.
 
-### Named consumer completion and remainder — CP-043, 2026-09-24 16:00 BST
+### Named consumer completion and remainder — CP-044, 2026-09-24 19:46 BST
 
 | Surface | Implementation state | Verification state / next work |
 | --- | --- | --- |
 | Extra Places P&L / selected qualifying loss / current-week spend and budget | COMPLETE: shared readiness, per-metric completeness and nearest-card replay | CP-043 isolated/hosted: delayed/failed/unknown/zero, correction/Void, range/search, large values, Copy, themes/text/keyboard and motion; preserved Notes workflow |
 | Single-Profile Dashboard headline/financial cards | COMPLETE: period refresh cancellation and failed-summary guard; existing groups retained | CP-043 isolated/hosted: selected Profile/period, rapid changes, distinct cash/P&L/fees, every populated card replay; no layout repair needed |
-| Reports header P&L / retained / open-current-and-settled-final; selected-range module mix; Cash breakdown; latest/formal-period summary cards (`TrackerSummaryShell`) | UNIMPLEMENTED nearest-card replay (FinancialValue already adopted) | Reproduce nearest-card behaviour; bounded readiness, large-value geometry, Copy and motion verification still needed. Existing table-row replay/weekly-P&L evidence retained |
+| Reports header; selected-range module mix; active Cash module/boundary; latest/formal-period summary cards (`TrackerSummaryShell`) | COMPLETE:15 nearest-card groups and shared selected-period/required-output readiness | CP-044 isolated/hosted: exact totals and independent unknown/zero/cost/funding states; delayed/failed/rapid scope changes; Copy, nearest-only replay, large-value geometry, themes/text/keyboard, intermediate/reduced/off motion. Weekly-P&L/archived/drilldown/return preserved |
 | Fund Manager Fee Position: Available to Withdraw / Fees Withdrawn; Exposure liability (`CrossProfileAnalytics`) | UNIMPLEMENTED nearest-card replay (FinancialValue already adopted) | Reproduce and verify these named cards. CP-042 headline-card/Active-scope evidence stays accepted |
 | Profile command/header metric; directory financial rows; Profile detail balance/P&L/fees | Shared groups IMPLEMENTED | VERIFICATION ONLY: remaining bounded nearest-group/copy/unknown/read-failure matrix. Profile-detail fee fallback under failed reads is a candidate to reproduce, not a confirmed new defect |
 | Fee Period Review dialog/revision values and Fee Centre Breakdown drawer | Shared groups IMPLEMENTED | VERIFICATION ONLY: scoped financial readiness/replay/Copy/compact/reduced-motion cases remain |
 
-The nested `Tracker quick views` block inside `!isDashboardLike` is not an active Dashboard consumer;
-its contradictory inner guard is not counted as unimplemented user-facing scope. `PeriodPnlReport`,
+The nested `Tracker quick views` and legacy Cash adjustment summary blocks inside `!isDashboardLike` is not an active Dashboard consumer;
+their contradictory inner guards is not counted as unimplemented user-facing scope. `PeriodPnlReport`,
 `ReportPointChart` captions/drilldowns and FinancialHistoryPanel have approved static read-only text;
 they are not replay defects. Editable inputs/exports also remain static. No new inventory or completion
 percentage is created, and wider issue closure/owner acceptance remains separate.

@@ -1,5 +1,24 @@
 # Plum Duff Next Issue Tracking Register
 
+## CP-044 Reports delivery — 2026-09-24 19:46 BST
+
+PD-FIX-292–293 COMPLETE at app`0189434`, normal frontend3010 and the same protected Preview.
+Fifteen Reports cards now reuse nearest-card replay; shared selected-period/required-output readiness
+preserves independent costs, funding and betting meanings. Reports3/3 hosted; all eight relevant
+workflows have passing evidence after bounded rechecks. Web48, types/lint/build pass; owner data and
+normal API unchanged. [Evidence](../audits/platform-quality-audit.md#cp-044-reports-financial-display--2026-09-24-1946-bst).
+
+Implementation remaining: Fund Manager Fee Position (Available to Withdraw / Fees Withdrawn) and
+Exposure liability replay, subject to reproduction. Verification remaining: Profile header/command,
+directory/detail values; Fee Period Review and Fee Centre Breakdown. No additional inventory or
+broader acceptance claim. #117 acceptance retained; authenticated owner browser/VoiceOver unexecuted.
+
+Next two: #105: reproduce and complete nearest-card replay for Fund Manager Fee Position (Available to Withdraw / Fees Withdrawn) and Exposure liability, retaining their governed meanings. Then #105: verify Profile command/header, directory and detail financial values for scope/read failures, unknown/zero, nearest-group replay and exact Copy; fix demonstrated gaps only.
+
+GitHub [#105](https://github.com/wolney8/OpenForge/issues/105#issuecomment-5820146222) updated once.
+The extra #114 comment was rejected by automatic approval review as internal metadata lacking explicit
+publication authorisation; local audit evidence retained, no retry or bypass. Git push remains withheld.
+
 ## CP-043 Extra Places and Profile Dashboard delivery — 2026-09-24 16:00 BST
 
 PD-FIX-290–291 COMPLETE at app `3a7f0a3`, normal local and protected Preview. Extra Places now owns

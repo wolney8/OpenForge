@@ -1,5 +1,13 @@
 # Plum Duff UI Change Register
 
+## CP-044 Reports batch — 2026-09-24 19:46 BST
+
+| ID / issue | Named group and requested outcome | Existing equivalent / exact scope | State |
+| --- | --- | --- | --- |
+| PD-FIX-292 / #105 | Reports header, module mix, Cash and formal period cards: shared nearest-card replay and legible accounting values | Existing FinancialValueReplayGroup/stat cards; 15 active money cards in TrackerSummaryShell, including its active Cash module/boundary cards. Do not enable the unreachable legacy Cash block | COMPLETE — app`0189434`; isolated/hosted rendered, readiness and replay checks pass |
+| PD-FIX-293 / #105 | Truthful selected Profile/period and per-measure readiness, preserving known subtotals and independent costs/funding | CP-043 request ownership, existing summary contracts/FinancialReadValue; reproduce missing inputs and scope changes before the smallest display-boundary repair | COMPLETE — app`0189434`; isolated/hosted rendered, readiness and replay checks pass |
+
+
 ## CP-043 verified batch — 2026-09-24 16:00 BST
 
 | ID / issue | Surface / request | Existing equivalent and exact scope | State |

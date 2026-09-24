@@ -1,6 +1,6 @@
 # Engineering Learning — Plum Duff / OpenForge — Doc ID: EL-CODEX-001
 
-**Last updated:** 2026-09-24 16:00 BST
+**Last updated:** 2026-09-24 19:46 BST
 
 This is a compact notebook of transferable lessons from building Plum Duff. It is not the audit,
 roadmap, backlog or evidence record.
@@ -31,6 +31,10 @@ confirmed Active-Profile total; a failed Active source must not produce an appar
 CP-043: a metric can be known while its reference metric is unavailable. Keep those readiness decisions
 separate. When saving a new period, cancel the older read at the mutation boundary so it cannot later
 replace either the visible selection or its cached settings.
+
+CP-044 (2026-09-24 19:46 BST): optional calculator inputs and required report outputs need different blank rules.
+A missing deduction cannot quietly become zero; an unavailable funding value must not erase known
+retained profit. Preserve each measure's dependency boundary and its governed record membership.
 
 ### Scope parity
 

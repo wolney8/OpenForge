@@ -1,5 +1,101 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
+## CP-044 Reports financial display — 2026-09-24 19:46 BST
+
+**Application `0189434` is served by normal localhost3010 and the existing protected Preview.**
+PD-FIX-292–293 complete the four named Reports groups. #105 remains open for its finite queue;
+#117 scoped owner acceptance is retained. No owner smoke campaign or new analytics scope.
+
+### Reproduced gaps and bounded implementation
+
+| ID / issue | Observed before | Actual repair |
+| --- | --- | --- |
+| PD-FIX-292 / #105 | Zero of the 15 active Reports money cards had a nearest-card replay group | Reuse FinancialValueReplayGroup around three header, four module-mix, four quick-view and four boundary cards. Existing article geometry, tokens, FinancialValue motion and one shared reduced-motion subscription remain unchanged |
+| PD-FIX-293 / #105 | A held period Save displayed old money under the new selection; a missing £7 Cash deduction displayed £112.50 retained as complete instead of unavailable | Shared FinancialReadValue waits for period Save in selected-range cards and breakdown/watchlist/snapshot cells. Required Cash/Casino/Extra Places read outputs use finite-value guards; only dependent totals become unavailable. Independently known funding, costs, betting P&L and all-period formal history remain visible |
+
+The active Cash consumers are the module-mix and boundary cards. The separately named legacy Cash
+summary is unreachable under contradictory guards and was not enabled. Reports watchlist/snapshot
+cells were included because they consume the same selected-range readiness and required-output
+boundary; they add no new queued consumer. Formal fee-review/breakdown dialogs belong to
+CrossProfileAnalytics and are not mounted/shared here, so their verification remains in the queue.
+
+No equations, report type/date/status membership, rounding, persistence, Account balances, correction,
+Void or History semantics changed. Real Cash costs (including legacy Costs) still reduce retained
+results. Unknown funding does not erase known retained profit. Explicit upstream zero remains zero;
+known historical Extra Places values remain usable, and pending rows do not invent settled results.
+The weekly-P&L preset, chart points/source records, filters, archived scope and drilldown return context
+are preserved. Approved static chart/drilldown/History values and editable inputs remain static.
+No request fan-out, per-card requests, new motion system, listeners, CSS or design variants.
+
+### Checks actually executed / UI implementation checklist
+
+- [x] Contracts, request IDs and nearest signed-off equivalents checked before repair; bounded
+  read-only review found the exact15 active cards and reviewed the final required-output guards.
+- [x] **48/48** focused web tests: tracker summary, financial display/readiness, cross-Profile
+  reporting, formal report filters, report chart and Profile selection. Independent oracles include
+  gross£5, real costs−£9, retained−£4 and dashboard movement£193; missing funding and missing costs
+  propagate differently. Explicit zero, invalid/blank values, pending/final, historical known values
+  and Void are asserted without filtering records away.
+- [x] Final TypeScript, targeted ESLint, local webpack production build and hosted production build pass.
+- [x] **Three Reports workflows pass locally and hosted**: known/empty/negative/zero/unknown,
+  delayed/failed source and range saves, latest Profile/period ownership, preserved independent
+  formal periods, source corrections/Void, no all-Profile source fan-out, first display/change/replay,
+  nearest-card-only cycles, unchanged peer cycles and exact clipboard text.
+- [x] Combined isolated run **7/8**; weekly-P&L financial/navigation assertions passed but its console
+  recorded a notification-preferences proxy `ECONNRESET`/500. Targeted weekly retry passed. A
+  separate Reports recheck hit a development hot-reload `SyntaxError: Invalid or unexpected token`
+  while the final guard was being written; the fixed-source readiness rerun passed **1/1**.
+  Those failed runs remain retained, not relabelled PASS.
+- [x] Fixed-build hosted combined run **7/8**, including all three Reports cases, weekly-P&L,
+  Extra Places and both Standard/Multi-Lay calculator checks. Dashboard's old test helper accepted
+  the old Profile's route suffix before navigation completed; waiting for the exact Profile URL
+  fixes that harness race. The unchanged application then passed the full Dashboard recheck **1/1**.
+  All eight relevant workflows have passing evidence; there is no claimed combined8/8 run.
+- [x] Actual rendering inspected at1440px light,390px dark,760px/200% both themes, and settled
+  reduced motion. Independent visual review inspected25 isolated card images; representative hosted
+  images also inspected. Currency, accounting parentheses, large values and header pairs remain
+  contained; glyph/canonical geometry and stable accessible labels checked during intermediate frames.
+- [x] Native keyboard/focus, no digit tab stops/live announcements, motion disabled/reduced, exact Copy
+  and theme changes without replay verified. Existing action/icon geometry untouched and calculator
+  regressions pass. No Notes/editor code changed: CP-043 Notes neutrality and explicit Save/Discard/
+  reopen evidence reused honestly rather than rerunning unrelated ledger entry.
+- [ ] Fresh authenticated normal-owner browser and actual VoiceOver output were not executed.
+
+### Runtime, data, publication and retained evidence
+
+- Stable protected Preview: `0189434`, role`preview`, database`preview:plum_duff_preview_cp028`,
+  fingerprint`c3b647ca129cf41c`, schema`account-access-v1`, authentication required. Anonymous302
+  protection retained; unique deployment checked before changing only the existing Preview alias.
+- Local3010: both changed modules match source maps fetched over HTTP; login200. API8010 remains
+  healthy with its unchanged `3a7f0a3…+dirty` launch label, role`normal-owner`, normal database,
+  fingerprint`7246998d43722066`. No restart or authenticated owner execution was needed/claimed.
+- Existing isolated3120/API8046 test environment retained. No new environment, infrastructure,
+  schema, credentials, main merge or Production change. Git push withheld for unverified Git-trigger
+  deployment isolation.
+- Existing provider-managed bindings reused in place; no secret export/transmission or scope change.
+  The already-recorded shared auth/OAuth scopes and separate #96 rotation boundary remain explicit.
+- Pre-reconciliation owner SQLite backup passes integrity/FK/projection checks; all eight owner
+  projections and counts remain unchanged. CP044 Preview synthetic Profiles are archived; test session
+  revocation proved200→204→401. Earlier source/evidence archives remain untouched; final CP044 bundle/
+  evidence manifest verifies their hashes and the new archive members.
+- Evidence under private `cp044-*`: reproduction/focused/final logs, combined isolated and hosted
+  failures plus successful targeted rechecks, screenshots, local served-module receipt, source parity,
+  runtime health, names/scopes-only configuration receipt, owner hashes and backup verification.
+  Tokens, cookies, environment-value files and live runtime logs are excluded from the evidence backup.
+- GitHub [#105 evidence](https://github.com/wolney8/OpenForge/issues/105#issuecomment-5820146222)
+  published once. The additional #114 comment was rejected by automatic approval review as internal
+  project metadata without explicit publication authorisation; its evidence remains here. No retry
+  or bypass and no broader issue closure/owner acceptance inferred.
+
+### Exact remaining #105 queue / next actions
+
+1. Implementation: Fund Manager Fee Position — Available to Withdraw / Fees Withdrawn — and Exposure
+   liability replay, if reproduction confirms the remaining gap.
+2. Verification: Profile command/header, directory and Profile-detail balance/P&L/fees.
+3. Verification: Fee Period Review dialog/revision values and Fee Centre Breakdown drawer.
+
+Next: #105: reproduce and complete nearest-card replay for Fund Manager Fee Position (Available to Withdraw / Fees Withdrawn) and Exposure liability, retaining their governed meanings. Then: #105: verify Profile command/header, directory and detail financial values for scope/read failures, unknown/zero, nearest-group replay and exact Copy; fix demonstrated gaps only.
+
 ## CP-043 Extra Places summaries and Profile Dashboard cards — 2026-09-24 16:00 BST
 
 **Application `3a7f0a3` is served by the existing protected Preview and normal local frontend.**

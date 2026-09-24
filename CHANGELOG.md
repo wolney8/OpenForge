@@ -10,6 +10,8 @@ No published release is represented by the local milestones below.
 
 ## 2026-09-24
 
+- **2026-09-24 19:46 BST — CP-044:** Delivered Reports card replay and per-measure readiness at`0189434`, local/protected Preview. Reports3/3 hosted, eight workflows passing after bounded rechecks;48 web tests, types/lint/build pass. Owner data unchanged; Git push withheld; #105 synced, additional #114 publication rejected. [Evidence](docs/audits/platform-quality-audit.md#cp-044-reports-financial-display--2026-09-24-1946-bst).
+
 - **2026-09-24 16:00 BST — CP-043:** Delivered Extra Places summary readiness/replay and Dashboard period/failure handling at `3a7f0a3`, locally and protected Preview. Isolated6/6, hosted6/6, restored-runtime2/2, web46/API-fixture5, types/lint/build pass. Owner data unchanged; Git push withheld. [Evidence](docs/audits/platform-quality-audit.md#cp-043-extra-places-summaries-and-profile-dashboard-cards--2026-09-24-1600-bst).
 
 - **2026-09-24 15:00 BST — CP-042:** Published CP-041 with remote configuration reuse, verified four hosted workflows, then delivered Extra Places controls and Active-Profile card readiness/replay at `cb4c1c4`. Four isolated/four hosted regressions and 32 focused units/types/build pass; owner data unchanged; Git push withheld. [Evidence](docs/audits/platform-quality-audit.md#cp-042-protected-preview-delivery-and-bounded-ui-repairs--2026-09-24-1500-bst).
@@ -164,3 +166,4 @@ their original IDs.
 | --- | --- | --- | --- | --- |
 | CP-023 | 2026-09-18 15:48 BST | Repaired the session shell and duplicate UI identity, then simplified Multi-Lay without changing its calculation engine | [#116](https://github.com/wolney8/OpenForge/issues/116), [#35](https://github.com/wolney8/OpenForge/issues/35), [#92](https://github.com/wolney8/OpenForge/issues/92) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-023-owner-smoke-session-identity-and-multi-lay-corrections--2026-09-18-1548-bst) |
 | CP-024 | 2026-09-19 06:48 BST | Unified Multi-Lay table shells, corrected effective-odds presentation and applied canonical financial meaning to compact results | [#35](https://github.com/wolney8/OpenForge/issues/35), [#92](https://github.com/wolney8/OpenForge/issues/92) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-024-multi-lay-visual-consistency-correction--2026-09-19-0648-bst) |
+| CP-025 | 2026-09-19 07:57 BST | Repaired normal-owner OAuth environment selection, added fail-closed auth readiness and returned failures to the branded login shell | [#62](https://github.com/wolney8/OpenForge/issues/62), [#116](https://github.com/wolney8/OpenForge/issues/116) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-025-owner-blocking-local-google-sign-in--2026-09-19-0757-bst) |

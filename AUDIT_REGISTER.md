@@ -1,6 +1,6 @@
 # Audit Register — Plum Duff / OpenForge — Doc ID: AR-CODEX-001
 
-**Last updated:** 2026-09-24 16:00 BST
+**Last updated:** 2026-09-24 19:46 BST
 
 This is the owner-facing index for audit evidence. The
 [platform quality audit](docs/audits/platform-quality-audit.md) remains the detailed authority.
@@ -21,6 +21,7 @@ These are coverage measures, not percentages of the product finished.
 
 | ID | Plain-English problem | State | Repair / integration state | Issue |
 | --- | --- | --- | --- | --- |
+| PD-FIX-292–293 / CP-044 | Reports missed card replay, displayed stale period money and converted missing Cash costs into a complete retained total | COMPLETE locally and protected Preview | App`0189434`; Reports3/3 hosted, eight relevant workflows pass after bounded rechecks,48 web tests/types/build; unchanged owner data. #105 synced; additional #114 comment rejected by automatic approval review. [Evidence](docs/audits/platform-quality-audit.md#cp-044-reports-financial-display--2026-09-24-1946-bst) | [#105](https://github.com/wolney8/OpenForge/issues/105) |
 | PD-FIX-290–291 / CP-043 | Extra Places premature/partial zero and missing card replay; Dashboard delayed-period overwrite and failed-cache display | COMPLETE locally and protected Preview | App `3a7f0a3`; isolated6/6, hosted6/6, restored2/2, web46/calculation5, types/lint/build; actual local served source and unchanged owner data. [Evidence](docs/audits/platform-quality-audit.md#cp-043-extra-places-summaries-and-profile-dashboard-cards--2026-09-24-1600-bst) | [#105](https://github.com/wolney8/OpenForge/issues/105), [#92](https://github.com/wolney8/OpenForge/issues/92) |
 | PD-FIX-288–289 / CP-042 | Extra Places detached clear action/focus failures; all-profile cards lacked replay and hid/partially displayed Active totals | COMPLETE locally and protected Preview | App `cb4c1c4`; 4 isolated/4 hosted workflows, 32 focused units/types/build; unchanged owner data. CP-041 hosted gap also closed4/4. [Evidence](docs/audits/platform-quality-audit.md#cp-042-protected-preview-delivery-and-bounded-ui-repairs--2026-09-24-1500-bst) | [#92](https://github.com/wolney8/OpenForge/issues/92), [#105](https://github.com/wolney8/OpenForge/issues/105) |
 | PD-FIX-284–287 / CP-041 | Profile controls collapsed/overflowed; wrapped Catalogue actions displaced Search; Account/Cash cards showed premature zero and financial cells clipped | Implemented / local and protected Preview proven | App `7763284`; 12/12 browser workflows, 457 units, types/build pass; owner data unchanged. CP-042 closes the earlier publication block with remote configuration reuse and 4/4 hosted checks at `7763284`; final Preview includes these repairs in `cb4c1c4`. [Evidence](docs/audits/platform-quality-audit.md#cp-041-accountprofile-controls-and-accountcash-displays--2026-09-24-1352-bst) | [#92](https://github.com/wolney8/OpenForge/issues/92), [#105](https://github.com/wolney8/OpenForge/issues/105) |

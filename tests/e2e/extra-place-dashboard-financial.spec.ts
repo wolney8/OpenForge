@@ -67,7 +67,8 @@ async function command(page:Page, route:string, profile?:string) {
   await page.locator('[data-pd-id="profile-command.trigger"]').click();
   if(profile){await page.locator('[data-pd-id="profile-command.search"]').fill("CP043");await page.locator(`[data-pd-id="profile-command.profile.${profile}"]`).click();}
   await page.locator(`[data-pd-id="profile-command.route.${route}"]`).click();
-  await expect(page).toHaveURL(new RegExp(`/tracker/${route}$`));
+  // A shared route suffix also matches the old Profile while navigation is pending.
+  await expect(page).toHaveURL(new RegExp(profile ? `/profiles/${profile}/tracker/${route}$` : `/tracker/${route}$`));
   await expect(page.locator(`[data-pd-id="profile-command.route.${route}"]`)).toBeHidden();
 }
 
