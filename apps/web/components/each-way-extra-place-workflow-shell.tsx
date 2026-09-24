@@ -3,6 +3,7 @@
 import { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { FinancialValue, FinancialValueReplayGroup } from "@/components/financial-value";
+import { FinancialReadValue, type FinancialReadState } from "@/components/financial-read-value";
 import { FinancialHistoryPanel } from "@/components/financial-history-panel";
 import {
   EachWayBackBetSection,
@@ -338,6 +339,9 @@ export function EachWayExtraPlaceWorkflowShell({
   const baseUrl = `${apiBaseUrl}/profiles/${profileId}/each-way-extra-places`;
   const editorRef = useRef<HTMLElement | null>(null);
   const [rows, setRows] = useState<Row[]>([]);
+  const [rowsRead, setRowsRead] = useState<FinancialReadState>(null);
+  const [settingsRead, setSettingsRead] = useState<FinancialReadState>(null);
+  const rowsRequestRef = useRef(0);
   const [form, setForm] = useState(newForm);
   const [pristine, setPristine] = useState(newForm);
   const [preview, setPreview] = useState<Row | null>(null);
@@ -387,17 +391,31 @@ export function EachWayExtraPlaceWorkflowShell({
     onDiscard: () => setForm(pristine),
     onSaveAndClose: () => save(false),
   });
-  const load = useCallback(async () => {
-    // Draft and issue rows must appear immediately after a write, even when the
-    // active tracker range would normally hide their dates.
-    const response = await fetch(baseUrl, { cache: "no-store" });
-    if (response.ok) setRows(await response.json());
-  }, [baseUrl]);
+  const load = useCallback(async (signal?: AbortSignal) => {
+    // A successful empty read is zero; a pending or failed read is not.
+    const requestId = ++rowsRequestRef.current;
+    const isCurrent = () => requestId === rowsRequestRef.current && !signal?.aborted;
+    setRowsRead((current) => current?.profileId === profileId && current.state === "ready"
+      ? current : { profileId, state: "loading" });
+    try {
+      const response = await fetch(baseUrl, { cache: "no-store", signal });
+      if (!response.ok) throw new Error("Unable to load Extra Place rows");
+      const nextRows = await response.json() as Row[];
+      if (!isCurrent()) return;
+      setRows(nextRows);
+      setRowsRead({ profileId, state: "ready" });
+    } catch {
+      if (isCurrent()) setRowsRead({ profileId, state: "error" });
+    }
+  }, [baseUrl, profileId]);
   useEffect(() => {
-    const timeout = window.setTimeout(() => {
-      void load();
-    }, 0);
-    return () => window.clearTimeout(timeout);
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => { void load(controller.signal); }, 0);
+    return () => {
+      controller.abort();
+      rowsRequestRef.current += 1;
+      window.clearTimeout(timeout);
+    };
   }, [load]);
   useEffect(() => {
     const timeout = window.setTimeout(async () => {
@@ -452,18 +470,22 @@ export function EachWayExtraPlaceWorkflowShell({
     return () => window.clearInterval(interval);
   }, []);
   useEffect(() => {
-    let cancelled = false;
-    void fetch(`${apiBaseUrl}/profiles/${profileId}/tracker-settings`, {
-      cache: "no-store",
-    }).then(async (response) => {
-      if (response.ok && !cancelled)
-        setTrackerSettings(
-          (await response.json()) as TrackerSettingsClientRecord,
-        );
-    });
-    return () => {
-      cancelled = true;
-    };
+    const controller = new AbortController();
+    void (async () => {
+      try {
+        const response = await fetch(`${apiBaseUrl}/profiles/${profileId}/tracker-settings`, {
+          cache: "no-store", signal: controller.signal,
+        });
+        if (!response.ok) throw new Error("Unable to load Extra Place range");
+        const nextSettings = await response.json() as TrackerSettingsClientRecord;
+        if (controller.signal.aborted) return;
+        setTrackerSettings(nextSettings);
+        setSettingsRead({ profileId, state: "ready" });
+      } catch {
+        if (!controller.signal.aborted) setSettingsRead({ profileId, state: "error" });
+      }
+    })();
+    return () => controller.abort();
   }, [profileId]);
   useEffect(() => {
     let cancelled = false;
@@ -980,31 +1002,26 @@ export function EachWayExtraPlaceWorkflowShell({
   const settledCount = rangeRows.filter(
     (row) => row.status === "Settled",
   ).length;
-  const resolvedValue = rangeRows.reduce(
-    (total, row) =>
-      total + (asNumber(row.final_value ?? row.current_value) ?? 0),
-    0,
-  );
-  const qualifyingLoss = rangeRows.reduce(
-    (total, row) => total + (asNumber(row.qualifying_loss) ?? 0),
-    0,
-  );
-  const weeklyQualifyingLoss = useMemo(
-    () =>
-      rows
-        .filter((row) =>
-          isDateWithinRange(parseRowDate(row.placed_at), weeklyBudgetRange),
-        )
-        .reduce(
-          (total, row) => total + (asNumber(row.qualifying_loss) ?? 0),
-          0,
-        ),
-    [rows, weeklyBudgetRange],
-  );
-  const lossBudget = getExtraPlaceLossBudgetState(
-    trackerSettings?.weekly_extra_place_loss_budget,
-    weeklyQualifyingLoss,
-  );
+  const rowReadStatus = rowsRead?.profileId === profileId ? rowsRead.state : "loading";
+  const settingsReadStatus = settingsRead?.profileId === profileId ? settingsRead.state : "loading";
+  const summaryReadState = rowReadStatus === "error" || settingsReadStatus === "error" ? "error"
+    : rowReadStatus === "ready" && settingsReadStatus === "ready" ? "ready" : "loading";
+  // Readiness is per metric: imported realised P&L may be known while reference loss is not.
+  const resolvedValue = useMemo(() => rangeRows.every((row) => asNumber(row.final_value ?? row.current_value) !== null)
+    ? rangeRows.reduce((total, row) => total + (asNumber(row.final_value ?? row.current_value) ?? 0), 0)
+    : Number.NaN, [rangeRows]);
+  const qualifyingLoss = useMemo(() => rangeRows.every((row) => asNumber(row.qualifying_loss) !== null)
+    ? rangeRows.reduce((total, row) => total + (asNumber(row.qualifying_loss) ?? 0), 0)
+    : Number.NaN, [rangeRows]);
+  const weeklyQualifyingLoss = useMemo(() => {
+    const weeklyRows = rows.filter((row) => isDateWithinRange(parseRowDate(row.placed_at), weeklyBudgetRange));
+    return weeklyRows.every((row) => asNumber(row.qualifying_loss) !== null)
+      ? weeklyRows.reduce((total, row) => total + (asNumber(row.qualifying_loss) ?? 0), 0)
+      : Number.NaN;
+  }, [rows, weeklyBudgetRange]);
+  const lossBudget = useMemo(() => getExtraPlaceLossBudgetState(
+    trackerSettings?.weekly_extra_place_loss_budget, weeklyQualifyingLoss,
+  ), [trackerSettings?.weekly_extra_place_loss_budget, weeklyQualifyingLoss]);
   const rangeContext = formatResolvedDateRange(resolvedDateRange);
   const rangeDetail = formatResolvedDateRangeContext(resolvedDateRange);
 
@@ -1019,7 +1036,7 @@ export function EachWayExtraPlaceWorkflowShell({
           <h1>Extra Places</h1>
         </div>
       </div>
-      <section aria-label="Extra Place quick view" className="stat-strip">
+      <section aria-busy={summaryReadState === "loading"} aria-label="Extra Place quick view" className="stat-strip">
         <TrackerRangeCard
           activePreset={activeDatePreset}
           isSaving={savingRange}
@@ -1029,23 +1046,24 @@ export function EachWayExtraPlaceWorkflowShell({
         />
         <Stat
           label="Open rows"
-          value={openCount}
+          value={summaryReadState === "ready" ? openCount : "—"}
           detail="Placed and awaiting settlement"
         />
         <Stat
           label="Needs action"
-          value={issueCount}
+          value={summaryReadState === "ready" ? issueCount : "—"}
           detail="Incomplete or unresolved rows"
         />
         <Stat
           label="Settled"
-          value={settledCount}
+          value={summaryReadState === "ready" ? settledCount : "—"}
           detail="Completed race rows"
         />
+        <FinancialValueReplayGroup>
         <article className="stat-card">
           <span className="eyebrow">Extra Place P&L</span>
           <strong>
-            <FinancialValue value={resolvedValue} />
+            <FinancialReadValue state={summaryReadState} subject="Extra Place P&L" value={resolvedValue} />
           </strong>
           <span
             aria-label="Qualifying loss"
@@ -1056,7 +1074,7 @@ export function EachWayExtraPlaceWorkflowShell({
             <span aria-hidden="true" className="material-symbols-outlined">
               trending_down
             </span>
-            <FinancialValue value={qualifyingLoss} />
+            <FinancialReadValue state={summaryReadState} subject="Qualifying loss" value={qualifyingLoss} />
           </span>
           <span
             aria-label="Weekly qualifying loss spend against weekly loss budget"
@@ -1068,12 +1086,13 @@ export function EachWayExtraPlaceWorkflowShell({
               savings
             </span>
             <span className="extra-place-budget-current">
-              <FinancialValue value={lossBudget.spent} />
+              <FinancialReadValue state={summaryReadState} subject="Weekly loss spend" value={lossBudget.spent} />
             </span>
             <span aria-hidden="true">/</span>
-            <span><FinancialValue value={lossBudget.budget} /></span>
+            <span><FinancialReadValue state={summaryReadState} subject="Weekly loss budget" value={lossBudget.budget} /></span>
           </span>
         </article>
+        </FinancialValueReplayGroup>
       </section>
       <div
         aria-label="Extra Place controls"
@@ -1535,7 +1554,7 @@ function Stat({
   detail,
 }: {
   label: string;
-  value: number;
+  value: number | string;
   detail: string;
 }) {
   return (

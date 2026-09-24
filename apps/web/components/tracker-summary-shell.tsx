@@ -271,6 +271,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
   const [loadRevision, setLoadRevision] = useState(0);
   const trackerRangeMutationInFlight = useRef(false);
   const loadRequestIdRef = useRef(0);
+  const loadControllerRef = useRef<AbortController | null>(null);
 
   const loadData = useCallback(async (signal?: AbortSignal) => {
     const requestId = ++loadRequestIdRef.current;
@@ -368,6 +369,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
 
   useEffect(() => {
     const controller = new AbortController();
+    loadControllerRef.current = controller;
     const timeoutId = window.setTimeout(() => {
       void loadData(controller.signal)
         .then(() => {
@@ -441,6 +443,10 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
       ) {
         return;
       }
+      // A complete snapshot is range-independent. The old refresh must not
+      // overwrite the saved period or republish stale settings to the cache.
+      loadRequestIdRef.current += 1;
+      loadControllerRef.current?.abort();
       trackerRangeMutationInFlight.current = true;
       setPendingTrackerRange(preset);
       setIsTrackerRangeSaving(true);
@@ -460,7 +466,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
   );
 
   const summary = useMemo(() => {
-    if (!data) {
+    if (!data || errorMessage) {
       return null;
     }
     return summarizeTrackerData(data, resolvedRange, undefined, {
@@ -470,6 +476,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
     });
   }, [
     data,
+    errorMessage,
     resolvedRange,
     settings?.free_bet_expiry_alert_window_days,
     settings?.mug_bet_frequency_days,
