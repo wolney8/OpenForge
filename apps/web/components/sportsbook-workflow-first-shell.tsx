@@ -3993,7 +3993,14 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       resolvedCommission,
     ]
   );
-  const previewFormKey = useMemo(() => JSON.stringify(previewFormState), [previewFormState]);
+  const calculationPreviewFormKey = useMemo(
+    () => JSON.stringify({ ...previewFormState, user_notes: "" }),
+    [previewFormState]
+  );
+  const calculationPreviewFormState = useMemo(
+    () => JSON.parse(calculationPreviewFormKey) as SportsbookFormState,
+    [calculationPreviewFormKey]
+  );
   const offerReferenceInputKey = useMemo(() => JSON.stringify([
     formState.offer_type,
     formState.back_stake,
@@ -4361,7 +4368,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   const activePreviewCalculation =
     betSetupComplete &&
     !hasInvalidOddsInput &&
-    previewCalculationKey === previewFormKey
+    previewCalculationKey === calculationPreviewFormKey
       ? previewCalculation
       : null;
   const activeOfferReferenceCalculation = activePreviewCalculation ?? (
@@ -4871,9 +4878,9 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
         },
         signal: controller.signal,
         body: JSON.stringify({
-          ...previewFormState,
+          ...calculationPreviewFormState,
           lay_commission_1: formState.lay_plan_json ? offerPlanningCommission : "",
-          date_settled: fromDateTimeLocalValue(previewFormState.date_settled),
+          date_settled: fromDateTimeLocalValue(calculationPreviewFormState.date_settled),
         }),
       })
         .then(async (response) => {
@@ -4885,7 +4892,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
         .then((payload) => {
           if (!controller.signal.aborted) {
             setPreviewCalculation(payload);
-            setPreviewCalculationKey(previewFormKey);
+            setPreviewCalculationKey(calculationPreviewFormKey);
             setPreviewOfferReferenceKey(offerReferenceInputKey);
           }
         })
@@ -4902,7 +4909,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       window.clearTimeout(timeoutId);
       controller.abort();
     };
-  }, [betSetupComplete, hasInvalidOddsInput, previewFormKey, previewFormState, profileId,
+  }, [betSetupComplete, calculationPreviewFormKey, calculationPreviewFormState, hasInvalidOddsInput, profileId,
     offerPlanningCommission, offerReferenceInputKey, formState.lay_plan_json]);
 
   const reviewRows = useMemo(() => {
@@ -10171,8 +10178,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                     </label>
                   ) : null}
                 </div>
-                <details className="settlement-advanced-controls field-span-2">
-                  <summary>Advanced controls</summary>
+                <EditorSection defaultOpen={false} title="Advanced controls">
                   <div className="form-grid">
                     <label className="field-control field-span-2">
                       <span>Manual override value</span>
@@ -10213,7 +10219,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                       />
                     </label>
                   </div>
-                </details>
+                </EditorSection>
               </fieldset>
             </EditorSection>
             {selectedSportsbookRow ? (

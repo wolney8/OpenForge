@@ -201,6 +201,17 @@ unsaved changes” decision: Keep editing, Discard changes, or Save and close. B
 uses the native unload warning. Only a confirmed successful save advances the saved baseline; a
 failure retains the draft and never closes the editor.
 
+Non-financial draft fields such as Notes must not participate in a calculation-preview identity.
+Typing them keeps the confirmed settled value mounted and must not issue preview or persistence
+requests. A financial draft may request a proposed recalculation, but it must remain distinct from
+the saved settled result.
+
+When the user deliberately opens a collapsible editor section, the shared disclosure reveals the
+section heading and first useful control inside `.workflow-editor-body` where the available space
+permits. It accounts for the sticky action footer, retains focus on the trigger, uses immediate
+positioning for reduced motion, and must not repeat the scroll during typing, rendering or restored
+open state.
+
 ## Required parity checks
 
 Before handoff, verify:

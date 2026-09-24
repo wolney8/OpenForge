@@ -1779,7 +1779,15 @@ export function FreeBetWorkflowShell({
       formState.event_name.trim() &&
       formState.bookmaker.trim()
   );
-  const activePreviewCalculation = previewReady && previewSnapshotKey === JSON.stringify(formState) ? previewCalculation : null;
+  const calculationPreviewFormKey = useMemo(
+    () => JSON.stringify({ ...formState, user_notes: "" }),
+    [formState]
+  );
+  const calculationPreviewFormState = useMemo(
+    () => JSON.parse(calculationPreviewFormKey) as FreeBetFormState,
+    [calculationPreviewFormKey]
+  );
+  const activePreviewCalculation = previewReady && previewSnapshotKey === calculationPreviewFormKey ? previewCalculation : null;
   const editorLayStatus = isNoLayStrategy
     ? "Fully Laid"
     : activePreviewCalculation?.lay_status ?? selectedRow?.lay_status ?? "Not Laid";
@@ -2253,10 +2261,10 @@ export function FreeBetWorkflowShell({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          ...formState,
-          lay_commission_1: formState.lay_plan_json ? formState.lay_commission_1 : "",
-          expiry_datetime: fromDateTimeLocalValue(formState.expiry_datetime),
-          date_settled: fromDateTimeLocalValue(formState.date_settled),
+          ...calculationPreviewFormState,
+          lay_commission_1: calculationPreviewFormState.lay_plan_json ? calculationPreviewFormState.lay_commission_1 : "",
+          expiry_datetime: fromDateTimeLocalValue(calculationPreviewFormState.expiry_datetime),
+          date_settled: fromDateTimeLocalValue(calculationPreviewFormState.date_settled),
         }),
       })
         .then(async (response) => {
@@ -2265,12 +2273,12 @@ export function FreeBetWorkflowShell({
           }
           return (await response.json()) as FreeBetCalculationPreview;
         })
-        .then((payload) => { if(current) {setPreviewCalculation(payload); setPreviewSnapshotKey(JSON.stringify(formState));} })
+        .then((payload) => { if(current) {setPreviewCalculation(payload); setPreviewSnapshotKey(calculationPreviewFormKey);} })
         .catch(() => { if(current)setPreviewCalculation(null); });
     }, 250);
 
     return () => { current=false; controller.abort(); window.clearTimeout(timeoutId); };
-  }, [formState, previewReady, profileId]);
+  }, [calculationPreviewFormKey, calculationPreviewFormState, previewReady, profileId]);
 
   const reviewRows = useMemo(() => {
     const nextRows = [...rows];

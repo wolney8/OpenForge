@@ -1274,3 +1274,17 @@ Half-width pointer Save remains BLOCKED under PD-QA-004; these probes are not wh
 - Regression evidence: `ledger-notes-editing.spec.ts`, `ledger-notes-editing-cross-ledger.spec.ts`
   and the focused five-ledger API matrix cover browser persistence, keyboard Save, atomic rejection,
   stale refresh, stable identity and unchanged financial projections.
+
+## 2026-09-24: Non-financial drafts invalidated settled previews
+
+- Area: Sportsbook and Free Bet settled editors plus shared expandable editor sections.
+- Root cause: the full editable form, including Notes, was used as the calculation-preview identity;
+  each keystroke therefore invalidated the confirmed result and queued another preview. The old
+  native Advanced Controls disclosure also had no relationship with the editor's scroll owner.
+- Prevention: calculation identity contains calculation inputs only. Non-financial drafts keep the
+  saved result mounted. Deliberate disclosure expansion uses actual post-transition geometry to
+  reveal its beginning in `.workflow-editor-body`, accounting for the sticky footer and reduced
+  motion, exactly once per user action.
+- Regression evidence: `ledger-notes-editing.spec.ts` checks every keystroke, the former debounce
+  interval, no preview/write, stable value/focus/scroll, pointer/keyboard, compact, enlarged text,
+  themes and reduced motion. The cross-ledger matrix preserves Save/Discard and unchanged money.

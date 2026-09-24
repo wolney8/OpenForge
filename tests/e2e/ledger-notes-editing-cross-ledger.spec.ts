@@ -200,6 +200,14 @@ function expectOnlyNoteChanged(before: Record<string, unknown>, after: Record<st
       typeof after[key] === "string" &&
       value.replace("T", " ") === String(after[key]).replace("T", " ")
     ) continue;
+    if (
+      key.endsWith("_json") &&
+      typeof value === "string" &&
+      typeof after[key] === "string"
+    ) {
+      expect(JSON.parse(after[key] as string), key).toEqual(JSON.parse(value));
+      continue;
+    }
     expect(after[key], key).toEqual(value);
   }
 }

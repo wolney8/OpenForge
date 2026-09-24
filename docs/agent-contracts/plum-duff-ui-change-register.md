@@ -1,5 +1,15 @@
 # Plum Duff UI Change Register
 
+## CP-036 settled-editor stability and disclosure visibility
+
+| ID | Surface | Requested outcome | Signed-off equivalent | Status |
+|---|---|---|---|---|
+| PD-FIX-274 | Settled ledger value presentation while editing Notes | Keep the confirmed settled Final Value mounted and unchanged throughout a Notes-only draft; no preview request or persistence occurs before explicit Save | Existing settled outcome panel, `FinancialValue`, and CP-035 explicit draft contract | IN PROGRESS — owner-observed flicker reproduced against the currently served Preview source |
+| PD-FIX-275 | Shared editor disclosures inside bounded modal bodies | A deliberate expansion reveals the heading and first useful control by scrolling only the owning editor body; no repeat scroll during typing/render/restore | Shared `EditorSection`, canonical `.workflow-editor-body` scroll owner, and reduced-motion preference | IN PROGRESS — native Sportsbook disclosure has no owned reveal behaviour; shared consumers are under regression |
+
+Issue coverage: GitHub #117 owns the settled-editor defects; #92 owns the shared disclosure rule.
+CP-035 Save/Discard remains owner-confirmed and is not reopened.
+
 ## CP-035 explicit ledger Save / Discard contract
 
 | ID | Surface | Requested outcome | Signed-off equivalent | Status |
