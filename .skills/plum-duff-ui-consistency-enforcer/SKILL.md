@@ -55,6 +55,7 @@ Before changing markup or CSS, compare the affected control with its canonical e
 | Actions | variant, target size, icon size, ordering, spacing and destructive treatment |
 | Accessibility | semantic role, visible label, accessible name, focus order and keyboard action |
 | Process state | enabled, disabled, loading, success, error and cancellation behaviour |
+| Financial cards | Pending/failed reads are not zero; same-value refresh retains its node/replay cycle; card minimums accommodate enlarged text and full accounting values during motion |
 
 If an intentional difference exists, record the workflow reason before implementation. Otherwise,
 use the canonical primitive and computed styling.

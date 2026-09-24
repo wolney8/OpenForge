@@ -1,5 +1,96 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
+## CP-039 ledger toolbars and financial display — 2026-09-24 12:11 BST
+
+Application `113d810528cea9c280cd8ed34cec3ebbe8607141` is the fixed batch, layered on records
+`d6ec018` / application `516baf5`. Current #92/#105 clarifications were read through authenticated
+GitHub; #117's existing first-Notes scope was checked when that defect surfaced. One implementation
+owner and one bounded read-only reviewer; no new environment, schema, financial policy or auth path.
+
+### Demonstrated defects and scoped repairs
+
+| ID / issue | Before evidence | Shared repair / result |
+|---|---|---|
+| PD-FIX-281 / #92 | Sportsbook search grew to 480px at 760/390px and 960px at 200% text. Its row-oriented `30rem` flex-basis became height after column reflow | Reset basis at the existing compact toolbar breakpoint; same search/filter/add primitives. Sportsbook, Free Bets and Casino composed geometry, keyboard order and filter controls pass |
+| PD-FIX-282 / #105 | Initial and failed reads displayed `£ -`; card-label replay was absent. £1,234,567.89 exceeded its fixed-pixel card by 13.72px at 200% text | Shared `LedgerPnlCard` composes existing stat-card, FinancialValue and MotionReplayGroup; Profile-labelled read states separate pending/error/confirmed zero. Text-relative shared grid minimum retains default-size geometry |
+| PD-FIX-282 refresh regression | Reviewer identified a new uncached-refresh unmount; delayed actual Casino Notes-save refetch reproduced missing financial element | Keep same-Profile confirmed readiness through refresh; identical result retains the same DOM node and replay cycle. Failure still shows unavailable; other-Profile/initial reads remain unresolved |
+| PD-FIX-283 / #117 | A settled Free Spins record with empty Notes and no advanced calculation content had no Advanced tab, so its first note was unreachable | Tab visibility now follows existing Casino capabilities, not whether Notes already exists. Existing settled EDIT lock and explicit Save retained; first Notes save and unchanged monetary/identity fields pass |
+
+No totals, rounding, report membership, stored money, settlement policy or financial equations changed.
+The native datetime serializer still normalises `T` to a space; the Notes assertion compares the
+same business minute, following the existing cross-ledger acceptance helper. No new date policy.
+
+### Executed fixed-source evidence
+
+| Check | Actual result | Evidence |
+|---|---|---|
+| Web tests | **453/453**, 68 files, exit 0 | `cp039-web-final.log`; new `apps/web/lib/ledger-pnl-card.test.ts` (8 cases) |
+| Types/build | TypeScript exit 0; isolated production build exit 0; Vercel production compilation exit 0 | `cp039-types-final.log`, `cp039-build.log`, `cp039-deploy.log` |
+| Lint | New component/test pass, exit 0. Full touched-shell lint retains **one pre-existing** Free Bet render-time ref error and nine warnings; not reported as a clean full lint run | `cp039-new-lint.log`, `cp039-lint.log`; unchanged retention-mode ref expression verified in parent source |
+| Isolated browser | **6/6**, 1.9m, exit 0 | `cp039-isolated-1790247752511.log`, `cp039-isolated` screenshots |
+| Protected Preview browser | **6/6**, 1.3m, exit 0 on served `113d810` | `cp039-hosted-1790248048500.log`, `cp039-hosted` screenshots |
+| Financial display | Positive £1,234,567.89, negative £(14.01), Casino £(3.00), zero and unavailable; exact accessible/copy text, intermediate digit frames, rapid updates, equal rerenders, hover cooldown and unlimited appropriate clicks; motion Off/reduced motion static | New unit/browser tests; Casino independent 7 returned − 10 committed = −3; explicit canonical final-result fixture |
+| Financial neutrality | No ledger request during search/theme/replay; rows/history unchanged by display checks. Explicit Casino Notes Save preserves money, Account/Profile and business dates; unchanged refresh keeps financial node/cycle | Same browser test with independent API before/after and held real read |
+| Retained #111/#35 evidence | Full period-P&L source records/points/total/scope/back/reload plus CP-037 chart hover/keyboard; Standard help at desktop/compact/narrow; no continuing Reports read storm or page/Reports-console errors | Existing `period-pnl-reports.spec.ts` and chart-hover test in `hosted-preview-cp031.spec.ts`, included in the six |
+| Local gate | Normal health/schema/source verified, public login rendered, Google link present, anonymous APIs 401, canonical `/reports` returns to login, no page errors; owner data unchanged | `cp039-local-public.log`, `cp039-owner-after.log` |
+
+Commands: existing Vitest, TypeScript and Next build; browser command
+`node /private/tmp/cp039-run-browser.mjs isolated 'ledger-toolbar-financial-display.spec.ts|period-pnl-reports.spec.ts|hosted-preview-cp031.spec.ts' 'compact toolbar|period P&L|chart hover|shared Report help'`
+and the same command with `preview`. Browser tests use real authorised synthetic sessions and ledger
+data; only pending/error reads are deliberately held/failed. No mock success/authentication screens.
+Earlier failed assertions and harness errors are retained, not counted as passes: required core
+onboarding modules, actual All Dates option, Casino result/final-value payload, settled EDIT control
+and established datetime serialization were traced to their contracts. An initial pnpm wrapper
+attempt aborted before installation; existing binaries were used. One shell wrapper failed after
+the first green unit run; the final unit command above independently exited 0.
+
+UI skills/checklist: nearest signed-off stat cards/toolbars/financial values reused; no page-specific
+variant or new motion listener. Geometry asserts control height, peer non-overlap, selected-control
+containment, value bounds during animation and page overflow at 1440/760/390px and 200% text.
+Both themes, keyboard filters/focus, reduced motion and persisted motion Off are exercised.
+Rendered screenshots were inspected, including supplemental static 200% dark results
+`cp039-static-{sportsbook-bets,free-bets,casino-offers}.png`. Shared grid rule and repeatable readiness
+pitfalls are recorded in existing guidance. Accepted calculator architecture/SaveDiscard remain intact.
+
+### Runtime, data and evidence boundaries
+
+Existing Preview alias remains https://plum-duff-cp028-preview-homelab11.vercel.app ; new Preview-only
+deployment `dpl_CHEWtdzMoXA1fSMXHKpu6XH9h3ud`, unique host `plum-duff-fil8gfcqx-homelab11.vercel.app`.
+Source metadata and served health agree on `113d810`; role `preview`, dedicated PostgreSQL
+`preview:plum_duff_preview_cp028`, fingerprint `c3b647ca129cf41c`, schema `account-access-v1`.
+Unauthenticated entry still redirects to Vercel protection. Three CP-039 synthetic Profiles are
+archived; retained #111/chart factories also perform governed archive cleanup. No owner/Production data.
+
+**CP-038 evidence correction:** its final logout helper used `openforge_session`, not the canonical
+`pd_session`; anonymous 204/401 did not prove synthetic-session revocation. CP-039 preflight proved
+that authorised synthetic session still valid (200), reused it without extending expiry, and the
+correct-cookie final check now proves **200 → logout 204 → reuse 401**. No personal session touched.
+
+After hosted PASS, normal source fast-forwarded to the same app and only owned 3010/8010 processes
+restarted. Verified backup `openforge-pre-cp039-local-reconcile-20260924-120628.sqlite3`, SHA-256
+`4a8f3695818102a97e003e82446d001b171de349daff1a284e34744939775c80`. Integrity ok; 0 FK violations;
+all eight complete owner table projections identical: 42 Profiles, 175 Accounts, 538 Sportsbook,
+291 Free Bets, 123 Extra Place, 90 Casino, 58 Cash, 307 History. No owner test residue, imported
+Preview config/data, migration or historical rewrite. Local role/database `normal-owner`, fingerprint
+`7246998d43722066`, unchanged schema; health `113d810…+dirty` reflects preserved records/generated files.
+
+Fresh authenticated normal-owner browser interaction remains **unexecuted**, as in CP-038; the
+execution safety gate was not bypassed and no identity widened. Isolated/Preview evidence is not
+called owner-browser evidence. This does not block the bounded issue queue. Existing owner acceptance
+remains separate; no new Google/VoiceOver/Production claim. Wider #92/#105 and #117 acceptance stay open.
+Portability unchanged: same shared source and schema in SQLite/isolated Preview PostgreSQL.
+
+Scope resumes with #92 Account Catalogue/Profile-directory toolbar composition, then #105 Account/
+Cash display consumers. Coverage remains 87/87 reviewed, 23/24 journeys, 27/27 competitor cells,
+133/133 reconciled. Roadmap sequencing did not change. Source/evidence backup bundle is refreshed
+under private `data/private/backups/openforge-cp039-*`; secrets and browser storage are excluded.
+
+New evidence synced to [#92](https://github.com/wolney8/OpenForge/issues/92#issuecomment-5812998505),
+[#105](https://github.com/wolney8/OpenForge/issues/105#issuecomment-5813050518),
+[#117](https://github.com/wolney8/OpenForge/issues/117#issuecomment-5813052763) and
+[#114](https://github.com/wolney8/OpenForge/issues/114#issuecomment-5813051826); no issues closed.
+
+
 ## CP-038 period-PnL preset and shared report geometry — 2026-09-24 11:08 BST
 
 Fixed application: `516baf5a55035bd845208d8730d0049911fdb8f4`, based on records `b0b3044`

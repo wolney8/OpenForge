@@ -34,6 +34,9 @@ surfaces and record actual composed-layout, theme, focus, scaling and responsive
       remains open.
 - [ ] Remaining search/filter/action toolbars: catalogue, ledgers, Profile directory and Settings
       authority surfaces, reviewed in bounded batches.
+- [x] CP-039 / 2026-09-24 12:11 BST: Sportsbook, Free Bet and Casino shared toolbars — compact
+      sizing, action non-overlap, keyboard/filter controls and enlarged-text financial cards verified
+      in isolated SQLite and protected Preview on `113d810`. Other consumers remain unchecked.
 - [ ] Repeated form layouts: peer labels/control edges, validation/help text, action grouping and
       breakpoint reflow.
 - [ ] Repeated page/panel headers: title/action alignment, wrapping, copy density and narrow-layout

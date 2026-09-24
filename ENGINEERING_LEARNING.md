@@ -1,6 +1,6 @@
 # Engineering Learning — Plum Duff / OpenForge — Doc ID: EL-CODEX-001
 
-**Last updated:** 2026-09-24 11:08 BST
+**Last updated:** 2026-09-24 12:11 BST
 
 This is a compact notebook of transferable lessons from building Plum Duff. It is not the audit,
 roadmap, backlog or evidence record.
@@ -10,6 +10,17 @@ roadmap, backlog or evidence record.
 - Keep a headline, its chart and its underlying records within the same financial scope.
 
 ## Concepts worth remembering
+
+### Readiness is not a financial value
+
+**Concept:** Readiness is not a financial value.
+
+**What it means:** Waiting for data, failing to obtain it and confirming a zero result are distinct states.
+
+**Why it matters here:** Empty client arrays briefly presented ledger P&L as zero. Separating read
+readiness also lets an unchanged confirmed value survive a refresh without unmounting/replaying it.
+
+**Remember:** Do not manufacture money from the absence of a response.
 
 ### Scope parity
 
@@ -507,6 +518,7 @@ a harmless field edit cannot silently reacquire new-entry or financial-correctio
 
 | CP | Timestamp | Concept(s) | Why it mattered |
 | --- | --- | --- | --- |
+| CP-039 | 2026-09-24 12:11 BST | Readiness is not a financial value | Initial/failed reads are not zero; a same-value refresh must not restart presentation |
 | CP-005 | 2026-09-16 12:52 BST | Planning versus actual; idempotency; failure atomicity and provenance | Reporting, imported parents and deletion history depend on keeping financial state and its source evidence distinct |
 | CP-006 | 2026-09-16 14:02 BST | Current state versus event history; exposure-based dependency review | Notification history and dependency risk both required evidence beyond labels or current display state |
 | CP-009 | 2026-09-16 14:54 BST | Persistence boundary/state ownership; static analysis | Settings, sessions and financial responses need explicit owners and safe shapes beyond happy-path runtime evidence |

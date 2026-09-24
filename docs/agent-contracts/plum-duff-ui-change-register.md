@@ -1,5 +1,22 @@
 # Plum Duff UI Change Register
 
+## CP-039 active batch — 2026-09-24 11:35 BST
+
+| ID | Surface | Requested outcome | Signed-off equivalent | Status |
+|---|---|---|---|---|
+| PD-FIX-281 / #92 | Shared Sportsbook, Free Bet and Casino ledger toolbars | Keep search/filter/add controls compact and usable when the shared toolbar changes axis | Existing desktop ledger toolbar and CP-038 responsive Reports reflow | COMPLETE — shared compact basis reset; real 480px/960px defect repaired; keyboard, filters, action geometry and rendered themes/text sizes pass |
+| PD-FIX-282 / #105 | The same three ledger P&L cards | Never present loading/failed data as zero; replay from the nearest semantic card using approved motion rules | Existing FinancialValue, MotionReplayGroup and stat-card geometry | COMPLETE — shared readiness/replay card; unchanged refresh retains node/cycle; text-relative grid contains large amounts at 200%. Eight unit cases and real isolated/Preview populated/empty/failure/motion/copy checks |
+| PD-FIX-283 / #117 | Casino Advanced tab / first Notes edit | An existing supported Casino row must allow its first Notes edit without requiring pre-existing Notes or a calculation override | Existing Casino capability-defined Advanced tab and explicit Save/Discard | COMPLETE — settled Free Spins with blank Notes, no advanced calculation and valid final result now exposes the existing capability-defined Advanced tab; explicit Notes save preserves financial meaning |
+
+No formula, report membership, persistence, authentication or calculator redesign is authorised by
+this batch. CP-038 isolated/Preview browser and local health/data evidence remain valid; fresh
+authenticated normal-owner browser interaction remains unexecuted and is not a delivery blocker.
+
+Verified **2026-09-24 12:11 BST**, application `113d810`: web 453/453; combined affected browser
+6/6 each in isolated SQLite and protected Preview; types/build pass. Same app integrated locally
+after verified backup, with unchanged owner records. Wider issues/owner acceptance remain open.
+[CP-039 evidence](../audits/platform-quality-audit.md#cp-039-ledger-toolbars-and-financial-display--2026-09-24-1211-bst).
+
 ## CP-038 active batch — 2026-09-24 10:23 BST
 
 | ID | Surface | Requested outcome | Signed-off equivalent | Status |

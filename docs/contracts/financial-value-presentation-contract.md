@@ -1,6 +1,6 @@
 # Contract: Financial Value Presentation and Motion
 
-_Last updated: 2026-09-07_
+_Last updated: 2026-09-24 12:11 BST_
 
 ## Status and scope
 
@@ -133,7 +133,7 @@ Reference: [WCAG status messages](https://www.w3.org/WAI/WCAG22/Understanding/st
 - ledger current/final Material Symbol indicator rendering
 - manual override indicator
 - first resolved positive/up and negative/down motion
-- destination-sign direction independent of delta, including `20 → 10` up and `-20 → -10` down
+- destination-sign direction on initial display; later numeric delta (`20 → 10` down and `-20 → -10` up)
 - positive/negative sign transitions, equal refetch, static neutral zero, unavailable/loading and rapid updates
 - pointer-enter, leave/re-enter and unlimited explicit click replay coordinated at the nearest card/row
 - configurable replay cooldown with a 1.5-second default after automatic and explicit triggers

@@ -1,5 +1,17 @@
 # Plum Duff Known UI Pitfalls
 
+## 2026-09-24 11:56 BST: Ledger toolbar axes and financial-card readiness
+
+- #92 / PD-FIX-281: ledger search inherited `30rem` as height after its toolbar stacked. Test
+  control height against its font/line role, not merely page overflow or its equally stretched parent.
+- #105 / PD-FIX-282: an initial empty array is not authoritative zero. Ledger-specific reads own
+  loading/error/ready state; unrelated setup errors must not imply zero. Preserve an already-known
+  same-Profile value through an unchanged refresh so Notes Save does not remount/replay it.
+- Shared stat-card grid minimums must scale with text; the million-pound fixture at 200% text
+  exceeded a pixel-sized card despite no page overflow. Test value bounds during digit motion too.
+- #117 / PD-FIX-283: do not gate a Notes entry surface on Notes already containing text. Use the
+  existing ledger capability contract; keep explicit Save/Discard and settled-edit locking.
+
 ## 2026-09-24 10:54 BST: Responsive flex-basis and help containment
 
 - Area: formal Report headings/controls and shared contextual help (#92, PD-FIX-279).

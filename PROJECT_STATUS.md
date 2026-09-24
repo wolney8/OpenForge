@@ -1,22 +1,22 @@
 # Project Status — Plum Duff / OpenForge — Doc ID: PS-CODEX-001
 
-**Last updated:** 2026-09-24 11:08 BST · **Status:** 🟢 CP-038 period-P&L preset verified on Preview and integrated locally
+**Last updated:** 2026-09-24 12:11 BST · **Status:** 🟢 CP-039 bounded toolbar/financial-display batch verified and integrated
 
 ## Right now
 
-- **Working on:** delivered #111's bounded weekly period-P&L preset and #92 compact report/help/header fixes on application `516baf5`.
-- **Next:** verify the remaining approved #92 toolbar composition cases, then #105 FinancialValue/motion consumers; fix only demonstrated bounded gaps.
-- **Blocked on:** direct authenticated normal-owner browser recheck was not authorised by the execution safety gate; no session shortcut was added. Isolated SQLite and authenticated Preview flows pass. #117 owner visual acceptance and VoiceOver remain separate; Production readiness is paused.
+- **Working on:** delivered #92 compact ledger toolbars, #105 truthful/loading/replay P&L cards and a first-Notes Casino entry fix under #117; application `113d810` in Preview and normal localhost.
+- **Next:** #92 Account Catalogue/Profile-directory toolbar composition; then #105 Account/Cash financial-display consumer coverage. Keep fixes bounded and evidence-led.
+- **Blocked on:** no blocker for that independent work. Fresh authenticated normal-owner browser interaction remains unexecuted; isolated SQLite and protected Preview evidence is not relabelled as owner-browser evidence. #117 visual owner acceptance and VoiceOver remain separate; Production readiness stays paused.
 
 ## Delivery state
 
 | Area | Evidence state |
 | --- | --- |
-| Local integrated build | Application `516baf5`; records-only checkpoint follows it. Generated Next/TypeScript files preserved and excluded |
-| Normal `localhost:3010` | Healthy `normal-owner`, canonical SQLite, `account-access-v1`; all eight owner record/history hashes and counts unchanged against the fresh verified backup |
+| Local integrated build | Application `113d810`; same application as Preview. Records-only checkpoint follows; generated Next/TypeScript changes preserved and excluded |
+| Normal `localhost:3010` | Healthy `normal-owner`, canonical SQLite, `account-access-v1`; all eight owner record/history projections unchanged against verified CP-039 backup. Public login/guards pass; no fresh authenticated owner-browser check |
 | Main / origin | No merge or push; Production untouched |
-| Vercel | Existing protected Preview serves `516baf5`, `preview:plum_duff_preview_cp028`; final affected authenticated browser checks 3/3 |
-| Owner acceptance | Explicit Save/Discard remains owner-confirmed. CP-038 is engineering evidence, not new owner visual or Google acceptance |
+| Vercel | Existing protected Preview serves `113d810`, `preview:plum_duff_preview_cp028`; affected authenticated browser 6/6. Synthetic session revoked after verification |
+| Owner acceptance | Explicit Save/Discard remains owner-confirmed. CP-039 is engineering evidence, not new owner visual/Google acceptance or blanket closure of #92/#105/#117 |
 
 ## Progress at a glance
 
@@ -31,15 +31,14 @@ These figures measure **#114 audit coverage**, not the percentage of the product
 
 ## Next 3 steps
 
-1. Check #92's remaining search/filter/action-toolbar composition against accepted equivalents.
-2. Check #105's remaining FinancialValue/motion consumers and repair proven bypasses.
+1. Check #92 Account Catalogue/Profile-directory toolbars against accepted shared composition.
+2. Check #105 Account/Cash financial-display consumers, including unknown/loading and replay state.
 3. Keep broader #111 explorer design, #117 owner acceptance, VoiceOver and Production decisions separate.
 
 ## Checkpoint log
 
 | ID | Timestamp | What changed | Issue | Document |
 | --- | --- | --- | --- | --- |
-| CP-020 | 2026-09-18 12:56 BST | Closed combined Account/award and Search/Quick Action journeys and bounded Google/VoiceOver evidence truthfully | [#62](https://github.com/wolney8/OpenForge/issues/62), [#76](https://github.com/wolney8/OpenForge/issues/76), [#77](https://github.com/wolney8/OpenForge/issues/77), [#109](https://github.com/wolney8/OpenForge/issues/109), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-020-combined-accessaward-search-and-external-boundary-closure--2026-09-18-1256-bst) |
 | CP-021 | 2026-09-18 13:10 BST | Closed all local audit, competitor and requirement review coverage and defined the protected hosted Preview gate | [#111](https://github.com/wolney8/OpenForge/issues/111), [#114](https://github.com/wolney8/OpenForge/issues/114), [#115](https://github.com/wolney8/OpenForge/issues/115) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-021-local-audit-closure-and-pre-hosted-readiness--2026-09-18-1310-bst) |
 | CP-022 | 2026-09-18 14:48 BST | Restored practical owner performance, corrected cash-warning severity and governed synthetic Profile residue | [#116](https://github.com/wolney8/OpenForge/issues/116), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-022-owner-stability-and-data-health-gate--2026-09-18-1448-bst) |
 | CP-023 | 2026-09-18 15:48 BST | Repaired the session shell and duplicate UI identity, then simplified Multi-Lay without changing its calculation engine | [#116](https://github.com/wolney8/OpenForge/issues/116), [#35](https://github.com/wolney8/OpenForge/issues/35), [#92](https://github.com/wolney8/OpenForge/issues/92) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-023-owner-smoke-session-identity-and-multi-lay-corrections--2026-09-18-1548-bst) |
@@ -59,6 +58,7 @@ These figures measure **#114 audit coverage**, not the percentage of the product
 | CP-036 | 2026-09-24 08:35 BST | Separated Notes drafts from calculation-preview identity and added one shared, editor-owned disclosure reveal behaviour | [#117](https://github.com/wolney8/OpenForge/issues/117), [#92](https://github.com/wolney8/OpenForge/issues/92) | [Audit evidence](docs/audits/platform-quality-audit.md#cp-036-settled-editor-stability-and-disclosure-visibility--2026-09-24-0835-bst) |
 | CP-037 | 2026-09-24 10:00 BST | Closed the authenticated settled-editor gap, repaired chart hover and betting-P&L scope, and enforced concise issue-led delivery with unchanged owner data | [#117](https://github.com/wolney8/OpenForge/issues/117), [#111](https://github.com/wolney8/OpenForge/issues/111), [#92](https://github.com/wolney8/OpenForge/issues/92), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#cp-037-issue-led-settled-editor-and-chart-verification--2026-09-24-1000-bst) |
 | CP-038 | 2026-09-24 11:08 BST | Delivered reconciled period-P&L with retained scope/point context, fixed compact Report/help geometry and reconciled the tested application locally without changing owner data | [#111](https://github.com/wolney8/OpenForge/issues/111), [#92](https://github.com/wolney8/OpenForge/issues/92), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#cp-038-period-pnl-preset-and-shared-report-geometry--2026-09-24-1108-bst) |
+| CP-039 | 2026-09-24 12:11 BST | Repaired compact ledger toolbars, truthful P&L card readiness/replay and first Casino Notes entry; preserved period-P&L and integrated tested source with unchanged owner data | [#92](https://github.com/wolney8/OpenForge/issues/92), [#105](https://github.com/wolney8/OpenForge/issues/105), [#117](https://github.com/wolney8/OpenForge/issues/117), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Evidence](docs/audits/platform-quality-audit.md#cp-039-ledger-toolbars-and-financial-display--2026-09-24-1211-bst) |
 
 ## Reference index
 

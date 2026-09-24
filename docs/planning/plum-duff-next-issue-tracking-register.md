@@ -1,5 +1,24 @@
 # Plum Duff Next Issue Tracking Register
 
+## CP-039 shared ledger display batch — 2026-09-24 12:11 BST
+
+| ID | Original request → latest clarification | Current implementation / evidence | Remaining / issue |
+|---|---|---|---|
+| PD-FIX-281 / #92 | Consistent toolbar composition → inspect real peer layout, not only page overflow | Shared column-axis basis fixed for Sportsbook/Free Bet/Casino; 480/960px search-height regression, keyboard/filter/action bounds and rendered themes/compact/text-scale checks | Other toolbar consumers remain in existing retrospective checklist; no blanket #92 closure |
+| PD-FIX-282 / #105 | Canonical financial formatting/motion → initial sign, subsequent delta, static zero, nearest-card replay, unlimited appropriate click and hover delay | Shared readiness-aware P&L card, same-value refresh identity and text-scaled grid; 8 new unit tests plus real positive/negative/zero/error/copy/motion/read-only neutrality browser proof | Wider Account/Cash and other consumer coverage; historical fixture wording reconciled to later approved rules, not new policy |
+| PD-FIX-283 / #117 | Ordinary Notes editing across supported states → explicit Save/Discard; no prerequisite outcome/reward/completion | Real settled Casino first note was unreachable because empty Notes hid Advanced. Existing capability-defined tab now remains available; Notes save and held refresh preserve value/identity | Existing broader owner visual acceptance remains separate; one supported settled Casino case is not every configuration |
+
+App `113d810`: 453 web tests; affected browser 6/6 in isolated SQLite and 6/6 on protected Preview;
+types/build pass. Normal local source/health/data reconciliation passes without owner writes. Fresh
+authenticated normal-owner browser evidence is still unexecuted, not a blocker and not inferred.
+See [CP-039 evidence](../audits/platform-quality-audit.md#cp-039-ledger-toolbars-and-financial-display--2026-09-24-1211-bst).
+Next two actions: #92 Account Catalogue/Profile-directory toolbars; #105 Account/Cash display coverage.
+No new request denominator or roadmap phase. New CP-039 evidence synced without closing issues:
+[#92](https://github.com/wolney8/OpenForge/issues/92#issuecomment-5812998505),
+[#105](https://github.com/wolney8/OpenForge/issues/105#issuecomment-5813050518),
+[#117](https://github.com/wolney8/OpenForge/issues/117#issuecomment-5813052763),
+[#114](https://github.com/wolney8/OpenForge/issues/114#issuecomment-5813051826).
+
 ## CP-038 approved period-P&L and shared consistency — 2026-09-24 11:08 BST
 
 | ID | Original request → clarification | Implementation / local and hosted evidence | Remaining / issue |
