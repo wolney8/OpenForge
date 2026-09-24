@@ -1,4 +1,5 @@
 "use client";
+import { FinancialReadValue } from "@/components/financial-read-value";
 import { AccountMoneyStatus } from "@/components/account-money-status";
 
 import Link from "next/link";
@@ -660,6 +661,14 @@ export function CrossProfileAnalytics({
       ),
     [formalProfileSummaries, selectedProfileIds]
   );
+
+  // Directory-only reads must not hide or replay confirmed Active-Profile totals.
+  // A missing/failed Active source is not an authoritative zero or partial total.
+  const headlineReadState = failures.some((failure) => activeProfileIds.includes(failure.profileId))
+    ? "error"
+    : activeProfileIds.every((id) => datasets.has(id) && trackerSettings.has(id) && feePeriods.has(id))
+    ? "ready"
+    : "loading";
 
   const allProfilesCombined = useMemo(
     () => aggregateCrossProfileReporting(allProfileSummaries),
@@ -1644,36 +1653,44 @@ export function CrossProfileAnalytics({
         role="tabpanel"
       >
         <section
-          aria-busy={isLoading}
+          aria-busy={headlineReadState === "loading"}
           className="stat-strip"
           aria-label="All-profile headline totals"
         >
-          <article className="stat-card">
-            <span className="eyebrow">Gross P&amp;L</span>
-            <strong>{isLoading ? <ReportingCellLoading label="Loading gross profit and loss" /> : <FinancialValue value={activeProfilesCombined.totals.grossBettingPnl} />}</strong>
-            <span>Sportsbook + Free Bets + Casino</span>
-          </article>
-          <article className="stat-card">
-            <span className="eyebrow">Retained profit</span>
-            <strong>{isLoading ? <ReportingCellLoading label="Loading retained profit" /> : <FinancialValue value={activeProfilesCombined.totals.retainedProfit} />}</strong>
-            <span>Gross P&amp;L after signed withdrawals and costs</span>
-          </article>
-          <article className="stat-card">
-            <span className="eyebrow">Current Account Cash</span>
-            <strong>{isLoading ? <ReportingCellLoading label="Loading current Account cash" /> : <FinancialValue value={trackerRangeActiveProfilesCombined.totals.cashSnapshot} />}</strong>
-            <span>Current bookmaker, exchange, and bank balances</span>
-          </article>
-          <article className="stat-card" data-pd-id="profiles.fees.available-to-withdraw">
-            <span className="eyebrow">Available to Withdraw</span>
-            <strong>{isLoading ? <ReportingCellLoading label="Loading available fees" /> : <FinancialValue value={activeProfilesFeePosition.availableToWithdraw} />}</strong>
-            <span>
-              {isLoading
-                ? "Loading fee position"
-                : activeProfilesFeePosition.crystallisedPeriodCount > 0
-                ? <><FinancialValue value={activeProfilesFeePosition.feesEarned} /> earned · <FinancialValue value={activeProfilesFeePosition.feesWithdrawn} /> withdrawn</>
-                : "No crystallised fee periods in this range"}
-            </span>
-          </article>
+          <FinancialValueReplayGroup>
+            <article className="stat-card">
+              <span className="eyebrow">Gross P&amp;L</span>
+              <strong><FinancialReadValue state={headlineReadState} subject="gross profit and loss" value={activeProfilesCombined.totals.grossBettingPnl} zeroTone="neutral" /></strong>
+              <span>Sportsbook + Free Bets + Casino</span>
+            </article>
+          </FinancialValueReplayGroup>
+          <FinancialValueReplayGroup>
+            <article className="stat-card">
+              <span className="eyebrow">Retained profit</span>
+              <strong><FinancialReadValue state={headlineReadState} subject="retained profit" value={activeProfilesCombined.totals.retainedProfit} zeroTone="neutral" /></strong>
+              <span>Gross P&amp;L after signed withdrawals and costs</span>
+            </article>
+          </FinancialValueReplayGroup>
+          <FinancialValueReplayGroup>
+            <article className="stat-card">
+              <span className="eyebrow">Current Account Cash</span>
+              <strong><FinancialReadValue state={headlineReadState} subject="current Account cash" value={trackerRangeActiveProfilesCombined.totals.cashSnapshot} zeroTone="neutral" /></strong>
+              <span>Current bookmaker, exchange, and bank balances</span>
+            </article>
+          </FinancialValueReplayGroup>
+          <FinancialValueReplayGroup>
+            <article className="stat-card" data-pd-id="profiles.fees.available-to-withdraw">
+              <span className="eyebrow">Available to Withdraw</span>
+              <strong><FinancialReadValue state={headlineReadState} subject="available fees" value={activeProfilesFeePosition.availableToWithdraw} zeroTone="neutral" /></strong>
+              <span>
+                {headlineReadState !== "ready"
+                  ? headlineReadState === "loading" ? "Loading fee position" : "Fee position unavailable"
+                  : activeProfilesFeePosition.crystallisedPeriodCount > 0
+                  ? <><FinancialValue value={activeProfilesFeePosition.feesEarned} /> earned · <FinancialValue value={activeProfilesFeePosition.feesWithdrawn} /> withdrawn</>
+                  : "No crystallised fee periods in this range"}
+              </span>
+            </article>
+          </FinancialValueReplayGroup>
         </section>
         <div className="section-heading-row">
           <div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { FinancialValue, FinancialValueReplayGroup } from "@/components/financial-value";
 import { FinancialHistoryPanel } from "@/components/financial-history-panel";
@@ -376,6 +376,8 @@ export function EachWayExtraPlaceWorkflowShell({
   const isAnyDialogOpen = open || isFilterModalOpen || Boolean(deleteTarget);
   useBodyScrollLock(isAnyDialogOpen);
   useDialogFocusLifecycle(open, editorRef);
+  const filterDialogRef = useRef<HTMLElement>(null);
+  useDialogFocusLifecycle(isFilterModalOpen, filterDialogRef);
   const isDirty = useMemo(
     () => JSON.stringify(form) !== JSON.stringify(pristine),
     [form, pristine],
@@ -1093,41 +1095,43 @@ export function EachWayExtraPlaceWorkflowShell({
         </label>
         <div className="extra-place-toolbar-actions">
           <LedgerAddRowButton label="Add Extra Place row" onClick={openNew} />
-          <button
-            aria-label="Open Extra Place filters"
-            aria-pressed={isFilterModalOpen}
-            className={`icon-button table-filter-button${hasActiveTableControls ? " has-active-table-controls" : ""}`}
-            data-pd-id="extra-place.filter"
-            onClick={() => setIsFilterModalOpen(true)}
-            title="Filter Extra Place rows"
-            type="button"
-          >
-            <span aria-hidden="true" className="material-symbols-outlined">
-              filter_list
-            </span>
-            {hasActiveTableControls ? (
-              <span
-                aria-label={`${activeTableControlCount} active Extra Place filters`}
-                className="table-filter-badge"
-              >
-                {activeTableControlCount > 9 ? "9+" : activeTableControlCount}
+          <span className="table-filter-button-wrap">
+            <button
+              aria-label="Open Extra Place filters"
+              aria-pressed={isFilterModalOpen}
+              className={`icon-button table-filter-button${hasActiveTableControls ? " has-active-table-controls" : ""}`}
+              data-pd-id="extra-place.filter"
+              onClick={() => setIsFilterModalOpen(true)}
+              title="Filter Extra Place rows"
+              type="button"
+            >
+              <span aria-hidden="true" className="material-symbols-outlined">
+                filter_list
               </span>
+              {hasActiveTableControls ? (
+                <span
+                  aria-label={`${activeTableControlCount} active Extra Place filters`}
+                  className="table-filter-badge"
+                >
+                  {activeTableControlCount > 9 ? "9+" : activeTableControlCount}
+                </span>
+              ) : null}
+            </button>
+            {hasActiveTableControls ? (
+              <button
+                aria-label="Clear Extra Place filters"
+                className="table-filter-clear"
+                onClick={() => {
+                  setTableFilters(emptyTableFilters);
+                  setCurrentPage(1);
+                }}
+                type="button"
+              >
+                ×
+              </button>
             ) : null}
-          </button>
+          </span>
         </div>
-        {hasActiveTableControls ? (
-          <button
-            aria-label="Clear Extra Place filters"
-            className="table-filter-clear"
-            onClick={() => {
-              setTableFilters(emptyTableFilters);
-              setCurrentPage(1);
-            }}
-            type="button"
-          >
-            ×
-          </button>
-        ) : null}
       </div>
       <div className="extra-place-table-heading-controls">
         <div
@@ -1498,6 +1502,7 @@ export function EachWayExtraPlaceWorkflowShell({
       {typeof document !== "undefined" && isFilterModalOpen
         ? createPortal(
             <ExtraPlaceFilterDialog
+              dialogRef={filterDialogRef}
               filters={tableFilters}
               onChange={(key, next) => {
                 setTableFilters((current) => ({ ...current, [key]: next }));
@@ -1542,6 +1547,7 @@ function Stat({
   );
 }
 function ExtraPlaceFilterDialog({
+  dialogRef,
   filters,
   onChange,
   onClear,
@@ -1550,6 +1556,7 @@ function ExtraPlaceFilterDialog({
   options,
   visibleColumns,
 }: {
+  dialogRef: RefObject<HTMLElement | null>;
   filters: ExtraPlaceTableFilters;
   onChange: <TKey extends keyof ExtraPlaceTableFilters>(
     key: TKey,
@@ -1589,7 +1596,16 @@ function ExtraPlaceFilterDialog({
         className="modal-panel stack extra-place-filter-dialog"
         data-pd-id="extra-place.filter.dialog"
         onClick={(event) => event.stopPropagation()}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") {
+            event.preventDefault();
+            event.stopPropagation();
+            onClose();
+          }
+        }}
+        ref={dialogRef}
         role="dialog"
+        tabIndex={-1}
       >
         <div className="workflow-panel-header">
           <div className="stack">
@@ -1599,6 +1615,7 @@ function ExtraPlaceFilterDialog({
           <button
             aria-label="Close Extra Place filter controls"
             className="modal-close-button"
+            data-initial-focus
             onClick={onClose}
             type="button"
           >
@@ -1692,7 +1709,7 @@ function ExtraPlaceFilterDialog({
             Place profit and actions always remain visible.
           </small>
         </section>
-        <div className="dialog-actions">
+        <div className="modal-sticky-footer">
           <button
             aria-label="Clear Extra Place filters"
             className="modal-close-button filter-dialog-clear-button"
