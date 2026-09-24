@@ -180,6 +180,7 @@ test("settled Final Value and Advanced controls stay usable throughout a Notes d
   test.setTimeout(180_000);
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.emulateMedia({ colorScheme: "light", reducedMotion: "no-preference" });
+  await page.addInitScript(() => localStorage.setItem("openforge-theme", "light"));
   const profileId = await createProfile(page.request);
   await addAccount(page.request, profileId, "Bet365", "Bookie");
   await addAccount(page.request, profileId, "Smarkets", "Exchange");
@@ -281,6 +282,8 @@ test("settled Final Value and Advanced controls stay usable throughout a Notes d
     expect(persisted.reporting_value).toBe(created.reporting_value);
     expect(updateRequests).toBe(0);
 
+    await page.getByRole("button", { name: "Switch to dark mode" }).click();
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
     await page.setViewportSize({ width: 760, height: 900 });
     await page.emulateMedia({ colorScheme: "dark", reducedMotion: "reduce" });
     await page.getByRole("button", { name: `Copy ${created.sportsbook_bet_id} to free bets` }).click({ timeout: 30_000 });
@@ -309,7 +312,23 @@ test("settled Final Value and Advanced controls stay usable throughout a Notes d
     }));
     expect(compactGeometry.scrollWidth).toBeLessThanOrEqual(compactGeometry.clientWidth + 1);
     await page.screenshot({ path: testInfo.outputPath("settled-editor-compact-dark-reduced-motion.png") });
-    await compactEditor.getByRole("button", { name: "Close sportsbook editor" }).click();
+    await compactSettlement.getByLabel("Notes").fill("Explicit settled note");
+    const savedResponse = page.waitForResponse((response) => response.request().method() === "PUT" &&
+      response.url().endsWith(`/sportsbook-bets/${created.sportsbook_bet_id}`));
+    await compactEditor.getByRole("button", { name: "Save Edits", exact: true }).click();
+    expect((await savedResponse).status()).toBe(200);
+    const saved = await (await page.request.get(
+      `/api/profiles/${profileId}/sportsbook-bets/${created.sportsbook_bet_id}`
+    )).json() as typeof created;
+    expect(saved.user_notes).toBe("Explicit settled note");
+    for (const field of ["bookmaker", "status", "result", "back_stake", "back_odds", "lay_actual",
+      "lay_matched_stake_1", "lay_commission_1", "exchange_name", "date_settled", "reporting_value"] as const) {
+      expect(saved[field]).toBe(created[field]);
+    }
+    expect(updateRequests).toBe(1);
+    if (await compactEditor.isVisible()) {
+      await compactEditor.getByRole("button", { name: "Close sportsbook editor" }).click();
+    }
 
     await page.setViewportSize({ width: 1440, height: 1000 });
     await page.evaluate(() => { document.documentElement.style.fontSize = "200%"; });
@@ -323,6 +342,7 @@ test("settled Final Value and Advanced controls stay usable throughout a Notes d
     const enlargedTrigger = enlargedSettlement.getByRole("button", { name: "Advanced controls" });
     await enlargedTrigger.focus();
     await enlargedTrigger.press("Enter");
+    await expect(enlargedSettlement.getByLabel("Notes")).toHaveValue("Explicit settled note");
     await expect(enlargedSettlement.getByLabel("Manual override value")).toBeInViewport();
     const enlargedGeometry = await enlargedEditor.locator(".workflow-editor-body").evaluate((element) => ({
       clientWidth: element.clientWidth,

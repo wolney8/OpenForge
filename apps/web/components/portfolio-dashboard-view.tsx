@@ -666,6 +666,7 @@ function DashboardChartSurface({
               key={`${point.label}-${index}`}
               onClick={() => setSelectedPointIndex(index)}
               onFocus={() => setSelectedPointIndex(index)}
+              onPointerEnter={() => setSelectedPointIndex(index)}
               onKeyDown={(event) => {
                 if (event.key === "Enter" || event.key === " ") {
                   event.preventDefault();

@@ -212,6 +212,35 @@ describe("dashboard target progress", () => {
 });
 
 describe("dashboard range-aware trends", () => {
+  const cashRows: TrackerSummaryDataset["cashAdjustments"] = ["06", "08"].map((day, index) => ({
+    cash_adjustment_id: `CASH-${day}`, adjustment_date: `2026-07-${day}T12:00:00`,
+    direction: "In", amount: index === 0 ? "2.00" : "3.00", adjustment_type: "TopUp",
+    linked_account: "", description: "Synthetic funding", signed_amount: index === 0 ? "2.00" : "3.00",
+    week_label: "",
+  }));
+
+  it("keeps cash funding out of betting P&L points and their underlying records", () => {
+    const range = resolveDateRange({ preset: "Custom", customStart: "2026-07-06", customEnd: "2026-07-12" });
+    const dataset = emptyDataset();
+    dataset.sportsbookBets = [
+      sportsbookRow({ id: "SB-001", date: "2026-07-06T12:00:00", value: "2.00" }),
+      sportsbookRow({ id: "SB-002", date: "2026-07-08T12:00:00", value: "3.00" }),
+    ];
+    dataset.cashAdjustments = cashRows;
+    const trend = buildDashboardTrendFromDataset({ dataset, range, summary: summaryWithPnl(5) });
+    expect(trend.map((point) => [point.value, point.cumulativeValue])).toEqual([[2, 2], [3, 5]]);
+    expect(buildDashboardDrilldownRows({ dataset, range, pointKey: "2026-07-06" }))
+      .toEqual([{ id: "SB-001", module: "sportsbook-bets", label: "Synthetic match", value: 2 }]);
+  });
+
+  it("shows no betting activity for cash-only funding without inventing a balancing loss", () => {
+    const range = resolveDateRange({ preset: "Custom", customStart: "2026-07-06", customEnd: "2026-07-12" });
+    const dataset = { ...emptyDataset(), cashAdjustments: cashRows };
+    expect(buildDashboardTrendFromDataset({ dataset, range, summary: summaryWithPnl(0) }))
+      .toEqual([{ key: "empty-range", label: "No activity", value: 0, cumulativeValue: 0 }]);
+    expect(buildDashboardDrilldownRows({ dataset, range, pointKey: "2026-07-06" })).toEqual([]);
+  });
+
   it("reconciles a selected point to its underlying records", () => {
     const range = resolveDateRange({ preset: "Custom", customStart: "2026-07-06", customEnd: "2026-07-12" });
     const dataset = emptyDataset();

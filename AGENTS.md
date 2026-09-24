@@ -1,6 +1,6 @@
 # Plum Duff Repository Agent Instructions
 
-Last updated: 2026-09-16
+Last updated: 2026-09-24 09:53 BST
 
 ## Project purpose
 
@@ -195,6 +195,23 @@ Lean working cadence: read only the instructions and source relevant to the acti
 accepted evidence for unchanged code; then reproduce, make the smallest correct fix, run focused
 regressions, and commit/push the isolated change. Expand investigation or testing only when a
 changed dependency or observed failure justifies it.
+
+Issue-led delivery: finish the current verification gap first, preflighting runtime/database identity
+and authorised test-session validity before browser work. Read live issue clarifications and confirm
+the code still has the gap; select at most three related bounded approved fixes (or one complete
+feature) in the existing register. Use one implementation owner and at most one bounded read-only
+reviewer. Deliver reproduction, shared repair, focused regression and the actual saved user flow;
+inspect intermediate UI states, not only success responses. Reuse setup and unchanged evidence,
+run combined checks once on the finished batch, and deploy one coherent authorised build. On a
+specific blocker, record it and continue independent ready work without repeating unchanged failures.
+
+Before every final reply, including partial/blocked runs, append exactly one sequential checkpoint,
+roll over beyond 20 rows, and make Status/Next/Blocked plus local/Preview revisions truthful. Update
+affected audit evidence, changelog and issue comments (or exact pending sync); roadmap only when
+sequencing changes and learning only for a useful lesson. Preserve owner acceptance separately.
+Commit scoped completed work, refresh the verified backup, and leave a precise resume point if
+interrupted. Existing deployment/data/approval limits always prevail; no new environments, broader
+schema, Production work or bulk owner test assignment is implied by this cadence.
 
 When an approved request spans storage, user interface and a saved workflow, deliver it as one useful,
 tested bundle. Small commits may remain separately reviewable, but do not stop at a backend-only

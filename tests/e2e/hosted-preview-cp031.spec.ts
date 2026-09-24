@@ -193,6 +193,92 @@ test("Group B preserves Account access, awards and portable lineage", async ({ p
   await page.request.patch(`/api/profiles/${restoredBody.target_profile_id}`, { data: { status: "Archived" } });
 });
 
+test("chart hover and keyboard inspect the same persisted point without changing money", async ({ page }, testInfo) => {
+  hostedOnly();
+  const { profileId, suffix } = await createProfile(page.request, "chart-hover");
+  await page.clock.setFixedTime(new Date("2026-09-24T12:00:00Z"));
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  const rowsPath = `/api/profiles/${profileId}/sportsbook-bets`;
+  try {
+    const cashPath = `/api/profiles/${profileId}/cash-adjustments`;
+    for (const [day, amount] of [["22", "2.00"], ["23", "3.00"]]) {
+      const response = await page.request.post(cashPath, { data: {
+        adjustment_date: `2026-09-${day}T12:00`, direction: "In", amount,
+        adjustment_type: "TopUp", affects_investment: true, affects_cash_snapshot: true,
+        linked_account: "", description: `Synthetic funding ${day} ${suffix}`,
+      }});
+      expect(response.status()).toBe(201);
+    }
+    const cashBefore = await (await page.request.get(cashPath)).json();
+    await page.goto(`/profiles/${profileId}/tracker/dashboard`);
+    await expect(page.getByText("Loading tracker summaries", { exact: true })).toBeHidden({ timeout: 60_000 });
+    await page.getByRole("button", { name: "Dashboard range shortcut 1W", exact: true }).click();
+    await expect(page.locator(".dashboard-chart-point-detail")).toContainText("No activity");
+    await expect(page.locator('[data-pd-id="dashboard.chart.drilldown"] a')).toHaveCount(0);
+    await addAccount(page.request, profileId, "Bet365", "Bookie");
+    await addAccount(page.request, profileId, "Smarkets", "Exchange");
+    for (const [day, amount] of [["22", "2.00"], ["23", "3.00"]]) {
+      const response = await page.request.post(rowsPath, { data: {
+        date_settled: `2026-09-${day}T12:00`, status: "Settled", result: "Back Won",
+        event_name: `Synthetic point ${day} ${suffix}`, bookmaker: "Bet365", offer_type: "Bet & Get",
+        bet_type: "Single", fixture_type: "Football", match_strategy: "Standard",
+        back_stake: "10.00", back_odds: "2.10", lay_odds_1: "2.20", lay_actual: "9.54",
+        lay_matched_stake_1: "9.54", lay_commission_1: "0.02", exchange_name: "Smarkets",
+        manual_override_value: amount, manual_override_reason: "Synthetic chart inspection oracle",
+      }});
+      expect(response.status()).toBe(201);
+    }
+    const before = await (await page.request.get(rowsPath)).json();
+    await page.goto(`/profiles/${profileId}/tracker/dashboard`);
+    await expect(page.getByText("Loading tracker summaries", { exact: true })).toBeHidden({ timeout: 60_000 });
+    await page.getByRole("button", { name: "Dashboard range shortcut 1W", exact: true }).click();
+    const card = page.locator('[data-pd-id="dashboard.selected-range-performance"]');
+    await expect(card).toHaveAttribute("aria-busy", "false");
+    const points = card.locator("circle[role=button]");
+    await expect(points).toHaveCount(2);
+    const detail = card.locator(".dashboard-chart-point-detail");
+    const firstLabel = (await points.first().getAttribute("aria-label"))!;
+    await points.last().focus();
+    await expect(detail).toContainText("£ 5.00");
+    await points.first().hover();
+    await expect(detail).toContainText(firstLabel.split(":")[0]);
+    await expect(detail.locator(".financial-value")).toHaveAttribute("aria-label", "£ 2.00");
+    await expect(points.first()).toHaveClass(/is-selected/);
+    const records = card.locator('[data-pd-id="dashboard.chart.drilldown"]');
+    await expect(records.getByRole("link")).toHaveCount(1);
+    await expect(records.getByRole("link")).toContainText(`Synthetic point 22 ${suffix}`);
+    await expect(records.getByRole("link")).toContainText("£ 2.00");
+    await points.last().focus();
+    await points.last().press("Enter");
+    await expect(detail).toContainText("£ 5.00");
+    await points.first().focus();
+    await points.first().press("Enter");
+    await expect(detail.locator(".financial-value")).toHaveAttribute("aria-label", "£ 2.00");
+    await page.screenshot({ path: testInfo.outputPath("chart-point-dark-desktop.png") });
+    await records.getByRole("link").click();
+    await expect(page).toHaveURL(/sportsbook-bets\?search=.*source=report-point/, { timeout: 60_000 });
+    await expect(page.getByRole("heading", { name: "Sportsbook Bets", exact: true })).toBeVisible();
+    await page.goBack();
+    await expect(points).toHaveCount(2, { timeout: 60_000 });
+    await page.getByRole("button", { name: "Switch to light mode" }).click();
+    await page.setViewportSize({ width: 760, height: 900 });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await points.last().focus();
+    await page.mouse.move(0, 0);
+    await points.first().hover();
+    await expect(detail.locator(".financial-value")).toHaveAttribute("aria-label", "£ 2.00");
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath("chart-point-light-compact.png") });
+    expect(await (await page.request.get(rowsPath)).json()).toEqual(before);
+    expect(await (await page.request.get(cashPath)).json()).toEqual(cashBefore);
+    expect(errors).toEqual([]);
+  } finally {
+    expect((await page.request.patch(`/api/profiles/${profileId}`, { data: { status: "Archived" } })).ok()).toBeTruthy();
+  }
+});
+
 test("Group C preserves search, empty state, drilldown and return context", async ({ page }) => {
   hostedOnly(); test.setTimeout(360_000);
   await page.goto("/profiles", { waitUntil: "domcontentloaded" });
