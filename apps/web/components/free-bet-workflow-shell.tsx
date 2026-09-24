@@ -36,6 +36,7 @@ import { formatFinancialValue } from "@/lib/financial-display";
 import { LedgerEditorTabPanel, LedgerEditorTabRail } from "@/components/ledger-editor-tabs";
 import { LedgerValueCell } from "@/components/ledger-value-cell";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
+import { LedgerPnlCard, type LedgerReadState } from "@/components/ledger-pnl-card";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
@@ -1280,6 +1281,7 @@ export function FreeBetWorkflowShell({
   const guidedAccessEnabled = isGuidedAccessEnabled(guidedAccessMode);
   const [rows, setRows] = useState<FreeBetRecord[]>([]);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [pnlReadState, setPnlReadState] = useState<LedgerReadState>(null);
   const [accountAuthorities, setAccountAuthorities] = useState<AccountAuthorityRecord[]>([]);
   const [exchangeSettings, setExchangeSettings] = useState<ExchangeCommissionRecord[]>([]);
   const [trackerSettings, setTrackerSettings] = useState<TrackerSettingsRecord | null>(null);
@@ -1464,7 +1466,12 @@ export function FreeBetWorkflowShell({
       setIsInitialLoading(false);
     }
 
-    const nextRows = await fetchJsonAndCache<FreeBetRecord[]>(url);
+    setPnlReadState((current) => current?.profileId === profileId && current.state === "ready"
+      ? current : { profileId, state: cachedRows ? "ready" : "loading" });
+    const nextRows = await fetchJsonAndCache<FreeBetRecord[]>(url).catch((error: unknown) => {
+      if (requestId === loadRowsRequestIdRef.current) setPnlReadState({ profileId, state: "error" });
+      throw error;
+    });
     if (requestId !== loadRowsRequestIdRef.current) {
       return;
     }
@@ -1473,6 +1480,7 @@ export function FreeBetWorkflowShell({
         return;
       }
       setRows(nextRows);
+      setPnlReadState({ profileId, state: "ready" });
       setIsInitialLoading(false);
       const nextSelectedCandidate =
         preferredSelection === undefined ? selectedIdRef.current : preferredSelection;
@@ -3465,11 +3473,12 @@ export function FreeBetWorkflowShell({
             <strong>{quickView.missingExpiryCount} / {quickView.upcomingExpiryCount}</strong>
             <span>Missing Expiry / Upcoming Expiry</span>
           </article>
-          <article className="stat-card">
-            <span className="eyebrow">Free Bets P&L</span>
-            <strong><FinancialValue value={quickView.totalReportingValue} /></strong>
-            <span>Selected-range free-bet P&L</span>
-          </article>
+          <LedgerPnlCard
+            label="Free Bets P&L"
+            description="Selected-range free-bet P&L"
+            value={quickView.totalReportingValue}
+            state={pnlReadState?.profileId === profileId ? pnlReadState.state : "loading"}
+          />
         </section>
         {quickView.financialIssues.length ? (
           <p className="error-text" role="status" data-pd-id="free-bet-money.incomplete">

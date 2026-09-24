@@ -55,6 +55,7 @@ import { FinancialHistoryPanel } from "@/components/financial-history-panel";
 import { LedgerEditorTabPanel, LedgerEditorTabRail } from "@/components/ledger-editor-tabs";
 import { LedgerValueCell } from "@/components/ledger-value-cell";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
+import { LedgerPnlCard, type LedgerReadState } from "@/components/ledger-pnl-card";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
@@ -2909,6 +2910,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   const guidedAccessEnabled = isGuidedAccessEnabled(guidedAccessMode);
   const [rows, setRows] = useState<SportsbookRecord[]>([]);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [pnlReadState, setPnlReadState] = useState<LedgerReadState>(null);
   const [accountAuthorities, setAccountAuthorities] = useState<AccountAuthorityRecord[]>([]);
   const [exchangeSettings, setExchangeSettings] = useState<ExchangeCommissionRecord[]>([]);
   const [trackerSettings, setTrackerSettings] = useState<TrackerSettingsRecord | null>(null);
@@ -3189,11 +3191,17 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
         setIsInitialLoading(false);
       }
 
-      const nextRows = await fetchJsonAndCache<SportsbookRecord[]>(url);
+      setPnlReadState((current) => current?.profileId === profileId && current.state === "ready"
+        ? current : { profileId, state: cachedRows ? "ready" : "loading" });
+      const nextRows = await fetchJsonAndCache<SportsbookRecord[]>(url).catch((error: unknown) => {
+        if (requestId === loadRowsRequestIdRef.current) setPnlReadState({ profileId, state: "error" });
+        throw error;
+      });
       if (requestId !== loadRowsRequestIdRef.current) {
         return;
       }
       setRows(nextRows);
+      setPnlReadState({ profileId, state: "ready" });
       setIsInitialLoading(false);
       const nextSelectedCandidate =
         preferredSelection === undefined ? selectedIdRef.current : preferredSelection;
@@ -7054,11 +7062,12 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
             <strong>{quickView.settlingCount}</strong>
             <span>Rows with a settle datetime</span>
           </article>
-          <article className="stat-card">
-            <span className="eyebrow">Sportsbook P&L</span>
-            <strong><FinancialValue value={quickView.totalReportingValue} /></strong>
-            <span>Selected-range sportsbook P&L</span>
-          </article>
+          <LedgerPnlCard
+            label="Sportsbook P&L"
+            description="Selected-range sportsbook P&L"
+            value={quickView.totalReportingValue}
+            state={pnlReadState?.profileId === profileId ? pnlReadState.state : "loading"}
+          />
         </section>
         <div className="sportsbook-review-bar" aria-label="Sportsbook ledger controls" role="toolbar">
           <label className="field-control table-search-field">

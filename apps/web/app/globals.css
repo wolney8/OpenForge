@@ -2330,7 +2330,7 @@ html[data-theme="dark"] .notification-count-badge {
 .stat-strip {
   display: grid;
   gap: 1rem;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 11.25rem), 1fr));
 }
 
 .dashboard-visual-grid,
@@ -16315,6 +16315,13 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
   .section-heading-row {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  /* Horizontal control width must not become height when the toolbar stacks. */
+  .sportsbook-review-bar > .table-search-field,
+  .sportsbook-review-bar > .table-filter-field {
+    flex-basis: auto;
+    width: 100%;
   }
 
   .table-controls,

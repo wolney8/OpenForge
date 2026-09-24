@@ -26,6 +26,7 @@ import { FinancialHistoryPanel } from "@/components/financial-history-panel";
 import { LedgerEditorTabPanel, LedgerEditorTabRail } from "@/components/ledger-editor-tabs";
 import { LedgerValueCell } from "@/components/ledger-value-cell";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
+import { LedgerPnlCard, type LedgerReadState } from "@/components/ledger-pnl-card";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerQuickActions, type LedgerQuickAction } from "@/components/ledger-quick-actions";
@@ -1749,6 +1750,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
   const guidedAccessEnabled = isGuidedAccessEnabled(guidedAccessMode);
   const [rows, setRows] = useState<CasinoOfferRecord[]>([]);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [pnlReadState, setPnlReadState] = useState<LedgerReadState>(null);
   const [accountAuthorities, setAccountAuthorities] = useState<AccountAuthorityRecord[]>([]);
   const [commonBetCombos, setCommonBetCombos] = useState<CommonBetCombo[]>([]);
   const [quickAddLoadouts, setQuickAddLoadouts] = useState<CasinoQuickAddLoadout[]>([]);
@@ -1905,7 +1907,12 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
         setIsInitialLoading(false);
       }
 
-      const nextRows = await fetchJsonAndCache<CasinoOfferRecord[]>(url);
+      setPnlReadState((current) => current?.profileId === profileId && current.state === "ready"
+        ? current : { profileId, state: cachedRows ? "ready" : "loading" });
+      const nextRows = await fetchJsonAndCache<CasinoOfferRecord[]>(url).catch((error: unknown) => {
+        if (requestId === loadRowsRequestIdRef.current) setPnlReadState({ profileId, state: "error" });
+        throw error;
+      });
       if (requestId !== loadRowsRequestIdRef.current) {
         return;
       }
@@ -1914,6 +1921,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
           return;
         }
         setRows(nextRows);
+        setPnlReadState({ profileId, state: "ready" });
         setIsInitialLoading(false);
         const nextSelectedCandidate =
           preferredSelection === undefined ? selectedIdRef.current : preferredSelection;
@@ -2111,13 +2119,8 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
   const displayedValue = getDisplayedCasinoValueForForm(formState);
   const displayedValueLabel = getDisplayedCasinoValueLabelForForm(formState);
   const hasResolvedCasinoValue = Boolean(formState.calc_net_pnl.trim() || formState.final_net_pnl.trim());
-  const hasAdvancedCasinoContent = Boolean(
-    formState.calc_net_pnl.trim() ||
-      formState.user_notes.trim() ||
-      selectedRow?.calculation_notes.length
-  );
-  const showsAdvancedEditorTab =
-    hasAdvancedCasinoContent || normalizeCasinoOfferType(formState.offer_type) === "Other / Custom";
+  // Notes must be reachable before the first note exists, including settled rows.
+  const showsAdvancedEditorTab = casinoOfferTypeUsesTab(formState.offer_type, "advanced");
   const quickSettlementOptions = useMemo(
     () => resultOptions.filter((option) => option !== "Pending"),
     [resultOptions]
@@ -3720,11 +3723,12 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
             </strong>
             <span>Reward-led rows • Wagering rows</span>
           </article>
-          <article className="stat-card">
-            <span className="eyebrow">Casino Offers P&L</span>
-            <strong><FinancialValue value={quickView.totalResolvedValue} /></strong>
-            <span>Selected-range casino P&L</span>
-          </article>
+          <LedgerPnlCard
+            label="Casino Offers P&L"
+            description="Selected-range casino P&L"
+            value={quickView.totalResolvedValue}
+            state={pnlReadState?.profileId === profileId ? pnlReadState.state : "loading"}
+          />
         </section>
         <div className="sportsbook-review-bar" aria-label="Casino-offer ledger controls" role="toolbar">
           <label className="field-control table-search-field"><span className="visually-hidden">Search casino-offer rows</span><input aria-label="Search casino-offer rows" onChange={(event) => { setQuery(event.target.value); setCurrentPage(1); }} placeholder="Search casino-offer rows" type="search" value={query} /></label>
