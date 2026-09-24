@@ -1,5 +1,15 @@
 # Plum Duff UI Change Register
 
+## CP-042 verified Preview/local batch — 2026-09-24 15:00 BST
+
+| ID / issue | Surface and request | Reproduction target | Signed-off equivalent | Status |
+| --- | --- | --- | --- | --- |
+| PD-FIX-288 / #92 | Extra Places toolbar and filter dialog: contained clear action, readable compact controls and keyboard focus | `.extra-place-toolbar-actions`, `[data-pd-id="extra-place.filter.dialog"]`: active-filter geometry and focus lifecycle | Accounts/Cash `.table-filter-button-wrap`; existing `useDialogFocusLifecycle` and modal actions | COMPLETE — app `cb4c1c4`; isolated and protected Preview geometry/focus/motion/readiness checks pass |
+| PD-FIX-289 / #105 | All-profile headline cards: nearest-card replay and truthful Active-Profile readiness through archived-directory reads | `All-profile headline totals`: label replay, failed active source, unchanged archived refresh | CP-041 `FinancialReadValue`, existing `FinancialValueReplayGroup`; retain existing request scope | COMPLETE — app `cb4c1c4`; isolated and protected Preview geometry/focus/motion/readiness checks pass |
+
+
+CP-041 PD-FIX-284–287 hosted gap closed: four actual Preview checks pass at `7763284`; retained local source/tests were not repeated.
+
 ## CP-041 verified local batch — 2026-09-24 13:52 BST
 
 | ID / issue | Surface and supplied outcome | Observed defect / reference | Signed-off equivalent | Status |

@@ -1,5 +1,95 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
+## CP-042 protected Preview delivery and bounded UI repairs — 2026-09-24 15:00 BST
+
+**Application `cb4c1c4`; CP-041 hosted gap closed at `7763284`; same protected Preview now serves
+`cb4c1c4`.** Standing owner permission is recorded in the existing deployment rules. No Git push,
+main merge, Production change, new environment, schema change or secret change.
+
+### Executed scope and demonstrated defects
+
+| ID / issue | Before | Actual repair and status |
+| --- | --- | --- |
+| PD-FIX-284–287 / #92 #105 | CP-041 was tested locally but blocked from publication | Deployed `7763284` with remotely managed configuration; all four affected authenticated Preview workflows passed (36.8s). No repeated implementation or whole-suite rerun |
+| PD-FIX-288 / #92 | Extra Places clear filter was 467px away from its trigger, growing to 1287px at enlarged text; focus escaped the filter dialog, Escape/return failed, and enlarged actions scrolled out of view | COMPLETE — existing `.table-filter-button-wrap`, parent-owned `useDialogFocusLifecycle`, Escape handler and `.modal-sticky-footer` reused. No new CSS/framework. Search, filters and Account eligibility unchanged |
+| PD-FIX-289 / #105 | Headline-card labels did not replay; archived reads unmounted valid Active totals; an Active source failure left a partial £5 total visible | COMPLETE — one existing replay group per card (all three fee amounts together); readiness requires every Active dataset/settings/fee read. Failed Active reads show unavailable; pending/failed Archived reads preserve confirmed Active values and nodes/cycles |
+
+Only two application files and one synthetic browser specification changed. Financial equations,
+report membership, persistence, fee logic, balances, range interpretation and the shared reduced-motion
+subscription are unchanged. Existing request selection is unchanged: two Active fixtures plus the
+visible archived page, never all 27 fixture Profiles. Cold aggregate loading still waits for the
+existing all-settled read; it shows loading, not an invented amount. No loader redesign.
+
+### Verification and consistency checklist
+
+- CP-041 actual hosted checks: **4/4**, `cp042-cp041-hosted-browser.log`: Profile/Catalogue,
+  Account unknown/loading/zero/badges, Cash rows/range/signed totals, Save/Discard/Notes/reopen,
+  compact layouts, keyboard, both themes, enlarged text, clipboard, reduced and disabled motion.
+- Final new-source isolated browser: **4/4 (1.5m)**, `cp042-final-isolated-browser.log`. Final hosted
+  browser: **4/4**, `cp042-final-hosted-browser.log`. New two-consumer checks plus real Extra Places
+  Notes add/amend/clear, Discard/Save/reopen and weekly-P&L exact totals/drilldown/return context.
+- All-profile card rendering uses deterministic intercepted summary responses under an authenticated
+  synthetic session; fees are not persisted. Extra Places and weekly-P&L workflows use real synthetic
+  Preview records, then archive their Profiles. No normal-owner records used as fixtures.
+- Both themes, 390/760/1440px and 200% text; selected dropdown text, trigger/clear adjacency,
+  page containment, square centred close glyph, keyboard order/trap/Escape/return and footer bounds.
+  Financial checks cover large accounting values, positive/negative/zero/empty Active scope,
+  held/failed reads, intermediate animation bounds, first display, rapid £ 5.00 → £ (5.00) → £ 2.00 changes,
+  nearest-card isolation/all fee values, exact clipboard, unchanged node/cycle across archived
+  failures/search/theme, reduced motion and motion Off. Canonical accessible final value remains
+  exposed; animated digit layers remain hidden. Actual screenshots inspected, including settled
+  values placed below the sticky header. No colour/token changes; established styling reused.
+- **32/32 focused units in six files**, `cp042-focused-units.log`: financial display/readiness,
+  ledger card, cross-Profile load scope/reporting and fee summary. Final nonincremental TypeScript
+  and webpack build exit 0 (`cp042-final-typecheck.log`, `cp042-build.log`). Targeted ESLint exit 0:
+  no errors; existing `allProfilesFeePosition` unused-variable warning only.
+- Accepted Standard/Multi-Lay layout, shared motion/cooldown and unchanged CP-041 wider coverage
+  reuse their retained evidence honestly. No whole-suite/backend/VoiceOver rerun claimed.
+- The initial sandbox browser launch failed with macOS `bootstrap_check_in … Permission denied`;
+  normal approved browser execution succeeded. Baseline logs retain the demonstrated failures.
+  Test selector/ready-state synchronisation corrections are distinguished from source repairs.
+- Consistency-enforcer review completed: Accounts/Cash filter wrapper, existing modal focus/footer
+  and FinancialReadValue/replay are the references. Geometry/actions/keyboard/themes/read states
+  exercised; no new variant, colour, schema or calculation contract required. Read-only code review
+  found no source bug and strengthened archived-failure completion and peer replay assertions.
+
+### Runtime, configuration and remaining boundaries
+
+- CP-041 deployment `AUf9LZT9oDiwSt5ynX6UdqDHwn33`; final deployment
+  `FHGREJ97gsDYXHBBEQcLb3GUTqfJ`, unique host `plum-duff-87ck8acv9-homelab11.vercel.app`.
+  Existing stable alias `https://plum-duff-cp028-preview-homelab11.vercel.app` serves `cb4c1c4`.
+  Unique final health verified before alias change; stable health/protection and browser verified.
+- Anonymous stable URL remains302 to Vercel; application authentication is separate. Runtime role
+  `preview`, database `preview:plum_duff_preview_cp028`, fingerprint `c3b647ca129cf41c`, schema
+  `account-access-v1`, auth required. Only non-secret revision/role/database identity/API-path
+  overrides were transmitted. **All credentials reused remotely; no secret-value retransmission.**
+- `OPENFORGE_NEON_DATABASE_URL` is Preview-only. Existing session secret and Google OAuth bindings
+  include Preview+Production; the OAuth client secret is already flagged by open #96. These specific
+  conflicts were identified before deployment. No export/transfer, scope change or rotation of them
+  occurred. Standing authorisation does not classify shared/flagged credentials as Preview-only.
+- CP-041's first unique-host fetch used a stable-host protection cookie and reached Vercel login;
+  that harness attempt is not PASS. Authenticated Vercel CLI verified unique health, and stable
+  health/browser checks proved the deployed batch. No protection bypass or personal cookies.
+- Local integrated source `cb4c1c4`; all 306 tracked frontend files match isolated/staging source,
+  excluding preserved generated declarations/build info. Existing web3010/API8010 remain running;
+  login200, anonymous data401, healthy normal-owner SQLite fingerprint `7246998d43722066`.
+  Backend is unchanged; launch metadata remains `113d810…+dirty`. No service restart required.
+- Fresh SQLite backup/integrity/foreign-key and all eight owner projections pass unchanged:
+  `cp042-owner-backup.log`, `cp042-owner-verify.log`. Original backups/evidence retained. Source
+  bundle and selected evidence archive are refreshed and hash-verified; secrets/session files and
+  the raw failed-login response are excluded. Final synthetic Preview session revoked 200 → 204 → 401.
+- Git push is still withheld: Git-triggered deployment isolation is unverified. #96 rotation remains
+  separately owner-gated. Fresh authenticated normal-owner browser and VoiceOver are **NOT RUN**;
+  no missing hosted check remains for this bounded batch. #117 scoped owner acceptance is retained,
+  not reopened or replaced with a new owner test assignment.
+
+Next two ready actions:
+1. Reproduce and complete #105 Extra Places P&L/qualifying-loss/budget card readiness and nearest-card replay with synthetic range/loading checks.
+2. Extend #105 coverage to the existing single-Profile Dashboard headline cards, preserving current/final and incomplete-Account meanings; fix only reproduced presentation gaps.
+
+GitHub evidence synced once each: [#92](https://github.com/wolney8/OpenForge/issues/92#issuecomment-5815566459), [#105](https://github.com/wolney8/OpenForge/issues/105#issuecomment-5815568085), [#114](https://github.com/wolney8/OpenForge/issues/114#issuecomment-5815571552). No issue closed.
+
+
 ## CP-041 Account/Profile controls and Account/Cash displays — 2026-09-24 13:52 BST
 
 Application **`7763284d3d78aa8502f79fac5d196220179d4cbc`**, branch `repair/import-history-012`, layers

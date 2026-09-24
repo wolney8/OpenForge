@@ -55,7 +55,7 @@ Before changing markup or CSS, compare the affected control with its canonical e
 | Actions | variant, target size, icon size, ordering, spacing and destructive treatment |
 | Accessibility | semantic role, visible label, accessible name, focus order and keyboard action |
 | Process state | enabled, disabled, loading, success, error and cancellation behaviour |
-| Financial cards | Pending/failed row or range reads are not zero; same-value refresh retains its node/replay cycle; card and table-cell minimums accommodate enlarged accounting values and whole outer badges during motion |
+| Financial cards | Read readiness matches the displayed Profile scope; unrelated Archived reads preserve confirmed Active nodes/cycles, and Active failures cannot become partial totals. Pending/failed row or range reads are not zero; same-value refresh retains its node/replay cycle; card and table-cell minimums accommodate enlarged accounting values and whole outer badges during motion |
 
 If an intentional difference exists, record the workflow reason before implementation. Otherwise,
 use the canonical primitive and computed styling.
@@ -70,6 +70,7 @@ use the canonical primitive and computed styling.
   Labelled targets must wrap/bound their minimum width without shrinking text, hiding controls or
   letting an identity label overflow its shrinking flex target. Record combined stress separately.
 - Portal viewport-level dialogs to `document.body` when an ancestor can constrain fixed positioning.
+- Filter clear/badge controls retain their existing positioned trigger wrapper. Exercise keyboard entry, trapping, Escape and trigger restoration; keep focus lifecycle in the persistent owner.
 - Dialog header and footer remain visible; only the intended body or table viewport scrolls.
 - No dialog child may enlarge the browser viewport or cause page-level horizontal scrolling.
 - Icon-only controls use the canonical centred icon-button primitive, an established Material

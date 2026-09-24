@@ -1,5 +1,10 @@
 # Plum Duff Known UI Pitfalls
 
+## CP-042 additions — 2026-09-24 15:00 BST
+
+- #92 / PD-FIX-288: absolute filter clear controls require the existing positioned filter-button wrapper. Keep modal focus lifecycle in the persistent parent so development effect replay cannot capture a soon-detached close button; exercise Escape and trigger restoration. Reuse the existing sticky footer for enlarged text.
+- #105 / PD-FIX-289: financial read readiness follows the displayed Profile scope. Archived-page loading/failure must not remount confirmed Active totals; a failed Active source must not appear as a complete partial total. Test completed failures and untouched peer replay cycles, not only immediate loading frames.
+
 ## 2026-09-24 13:52 BST: Account/Profile control reflow and financial cell containment
 
 - #92 / PD-FIX-284,287: explicit desktop grid-column slots can create implicit tracks after a compact reflow. Reset the slots as well as the columns, and size the breakpoint against the available container and text. Wrapped filter actions must not pull Search down to their final row; the existing Settings grid aligns peer field groups at the start.

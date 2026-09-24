@@ -1,5 +1,24 @@
 # Plum Duff Next Issue Tracking Register
 
+## CP-042 Preview delivery and bounded UI completion — 2026-09-24 15:00 BST
+
+CP-041 PD-FIX-284–287 now has actual hosted 4/4 evidence at `7763284`. PD-FIX-288 (#92 Extra Places
+filter anchor, focus, Escape and footer) and PD-FIX-289 (#105 all-profile headline replay and Active
+readiness) are COMPLETE at `cb4c1c4`, available in normal local source and the same protected Preview.
+Final isolated 4/4, hosted 4/4, focused units 32/32, types/build pass. Account eligibility, Active/Archived
+selection, financial meaning, request scope and reduced-motion subscription unchanged.
+
+Owner's standing configuration reuse authorisation is recorded in existing deployment rules.
+Provider-managed credentials were reused remotely; no secret values transferred. Shared session/OAuth
+scope and #96 rotation flag remain unchanged. Git push withheld for deployment isolation; fresh owner
+browser and VoiceOver remain unexecuted. Existing #117 acceptance is retained. [Evidence](../audits/platform-quality-audit.md#cp-042-protected-preview-delivery-and-bounded-ui-repairs--2026-09-24-1500-bst).
+
+Next two ready actions:
+1. Reproduce and complete #105 Extra Places P&L/qualifying-loss/budget card readiness and nearest-card replay with synthetic range/loading checks.
+2. Extend #105 coverage to the existing single-Profile Dashboard headline cards, preserving current/final and incomplete-Account meanings; fix only reproduced presentation gaps.
+
+GitHub evidence synced once each: [#92](https://github.com/wolney8/OpenForge/issues/92#issuecomment-5815566459), [#105](https://github.com/wolney8/OpenForge/issues/105#issuecomment-5815568085), [#114](https://github.com/wolney8/OpenForge/issues/114#issuecomment-5815571552). No issue closed.
+
 ## CP-041 Account/Profile/Cash delivery — 2026-09-24 13:52 BST
 
 PD-FIX-284–287 are implemented and locally verified at `7763284`: Profile-directory control reflow,

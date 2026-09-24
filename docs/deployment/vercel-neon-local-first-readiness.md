@@ -1,10 +1,10 @@
 # Vercel and Neon Local-First Readiness
 
-**Last updated:** 2026-09-22 14:22 BST
+**Last updated:** 2026-09-24 15:00 BST
 
 This note records the Vercel-to-Neon activation boundary.
 
-No hosted deployment, migration or secret change is authorised by this document.
+This document records the explicit owner-authorised Preview boundary below; it grants no broader deployment, migration or secret-change permission.
 
 ## Hosted runtime identity contract
 
@@ -32,6 +32,47 @@ Every hosted health/readiness response must safely identify, without credentials
 Preview and Production must use different database identities and separately scoped credentials.
 Port numbers, working directories and Vercel branch names are not database-ownership controls.
 Preview must never fall back to Production storage when configuration is missing or unreachable.
+
+## Standing owner authorisation for this existing protected Preview
+
+Recorded 2026-09-24 15:00 BST. The owner explicitly authorised CP-041 and subsequent already-approved
+incremental repairs on the **same** protected Preview, project and classified database:
+
+- URL: `https://plum-duff-cp028-preview-homelab11.vercel.app`.
+- Vercel project: `plum-duff` / `prj_iFYOQIRMaUz0B7W2YqkEYJP1xNC5`, team `homelab11`.
+- Runtime/database: `preview` / `preview:plum_duff_preview_cp028`; expected fingerprint `c3b647ca129cf41c`.
+- Reuse the existing dedicated Preview database configuration, application session configuration,
+  already-approved Google OAuth configuration and authorised Vercel deployment credentials.
+- Prefer provider-managed bindings. The owner permits transmission of the minimum required,
+  classified Preview configuration to Vercel's authenticated deployment/configuration service
+  where necessary; do not export/retransmit a whole environment file when bindings suffice.
+- An unchanged deployment within these boundaries does **not** need another owner decision.
+  Use the normal secure tooling/approval mechanism. A new denial or newly uncertain credential
+  must be reported specifically; never bypass it.
+
+CP-042 metadata inspection found `OPENFORGE_NEON_DATABASE_URL` scoped only to `preview`, together
+with the Preview runtime identity/endpoints. Existing `OPENFORGE_AUTH_SESSION_SECRET`,
+`OPENFORGE_GOOGLE_OAUTH_CLIENT_ID`, `OPENFORGE_GOOGLE_OAUTH_CLIENT_SECRET` and
+`OPENFORGE_AUTH_OWNER_EMAILS` bindings cover both `preview` and `production`; they must not be
+mislabelled Preview-exclusive. #96 still flags the OAuth client secret for rotation. These specific
+facts were disclosed before deployment. CP-041 deployment reuses the provider-managed bindings
+in place, without reading/exporting/retransmitting their values or changing their scope. Only
+non-secret source revision, Preview role/database identity and `/api` client path are sent as
+per-deployment metadata. Any future proposed credential transfer must separately resolve uncertain,
+Production-shared or #96-flagged ownership; this standing permission does not erase that conflict.
+
+Keep protection and application authentication separate. Use the existing authorised synthetic
+Preview-session mechanism and normal expiry; revoke the verification session afterwards. Verify
+actual source, database, protection and affected authenticated workflows before calling delivery
+verified. The stable-alias protection cookie does not authenticate a new unique deployment host;
+use the authenticated Vercel CLI for that host, then verify the stable protected alias.
+
+No Production/normal-owner database credentials, personal cookies or owner/Google sessions;
+no secrets in outputs, source, client variables, build artefacts or backups; no wider environment
+scope, new credentials, OAuth registration changes, #96 rotation, protection removal, schema
+migration, Production aliases, infrastructure or paid services. Git push stays withheld until
+Git-triggered deployment isolation is independently established. Localhost changes only when an
+incremental source repair requires them, preserving owner data and the existing session gate.
 
 ## Protected Preview approval gate
 

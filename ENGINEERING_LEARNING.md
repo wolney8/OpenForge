@@ -1,6 +1,6 @@
 # Engineering Learning — Plum Duff / OpenForge — Doc ID: EL-CODEX-001
 
-**Last updated:** 2026-09-24 13:52 BST
+**Last updated:** 2026-09-24 15:00 BST
 
 This is a compact notebook of transferable lessons from building Plum Duff. It is not the audit,
 roadmap, backlog or evidence record.
@@ -24,6 +24,9 @@ readiness also lets an unchanged confirmed value survive a refresh without unmou
 
 CP-041 extends this to selected-range totals: rows arriving before their saved range settings are
 not a complete result. Both inputs must be ready before the total is presented.
+
+CP-042: readiness also follows scope. Loading an archived directory page must not invalidate a
+confirmed Active-Profile total; a failed Active source must not produce an apparently complete subtotal.
 
 ### Scope parity
 

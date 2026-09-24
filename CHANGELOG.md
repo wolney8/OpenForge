@@ -10,6 +10,8 @@ No published release is represented by the local milestones below.
 
 ## 2026-09-24
 
+- **2026-09-24 15:00 BST — CP-042:** Published CP-041 with remote configuration reuse, verified four hosted workflows, then delivered Extra Places controls and Active-Profile card readiness/replay at `cb4c1c4`. Four isolated/four hosted regressions and 32 focused units/types/build pass; owner data unchanged; Git push withheld. [Evidence](docs/audits/platform-quality-audit.md#cp-042-protected-preview-delivery-and-bounded-ui-repairs--2026-09-24-1500-bst).
+
 - **2026-09-24 13:52 BST — CP-041:** Delivered Profile-directory reflow, shared Settings alignment and
   Account/Cash readiness/replay/full-value containment at app `7763284`. Final isolated browser
   12/12, web 457/457, types/build pass; normal owner data unchanged. Protected Preview stays
@@ -153,3 +155,9 @@ their original IDs.
 | ID | Timestamp | What changed | Issue | Document |
 | --- | --- | --- | --- | --- |
 | CP-022 | 2026-09-18 14:48 BST | Restored practical owner performance, corrected cash-warning severity and governed synthetic Profile residue | [#116](https://github.com/wolney8/OpenForge/issues/116), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-022-owner-stability-and-data-health-gate--2026-09-18-1448-bst) |
+
+## Project-status rollover — 2026-09-24 15:00 BST
+
+| ID | Timestamp | What changed | Issue | Document |
+| --- | --- | --- | --- | --- |
+| CP-023 | 2026-09-18 15:48 BST | Repaired the session shell and duplicate UI identity, then simplified Multi-Lay without changing its calculation engine | [#116](https://github.com/wolney8/OpenForge/issues/116), [#35](https://github.com/wolney8/OpenForge/issues/35), [#92](https://github.com/wolney8/OpenForge/issues/92) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-023-owner-smoke-session-identity-and-multi-lay-corrections--2026-09-18-1548-bst) |
