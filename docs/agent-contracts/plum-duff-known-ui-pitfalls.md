@@ -1,5 +1,12 @@
 # Plum Duff Known UI Pitfalls
 
+## 2026-09-24 13:52 BST: Account/Profile control reflow and financial cell containment
+
+- #92 / PD-FIX-284,287: explicit desktop grid-column slots can create implicit tracks after a compact reflow. Reset the slots as well as the columns, and size the breakpoint against the available container and text. Wrapped filter actions must not pull Search down to their final row; the existing Settings grid aligns peer field groups at the start.
+- #105 / PD-FIX-285,286: a selected-range total requires both row data and saved range settings. Preserve the same confirmed value on an unchanged refresh; suppress missing/failed results.
+- A financial value can fit while its outer Account badge clips. Test the whole badge against its cell, including the existing minimum width and cell padding at 200% text. Shared display widths must use canonical formatted strings, preserve the preferred pixel width as a minimum and treat missing strings exactly as the rendered value does.
+- Regression: `account-profile-cash-display.spec.ts` measures selected-option text, peer bounds, full financial cells and intermediate motion; it exercises filter scope, known zero/unknown/error, copy, reduced/off motion and Notes Save/Discard/reopen.
+
 ## 2026-09-24 11:56 BST: Ledger toolbar axes and financial-card readiness
 
 - #92 / PD-FIX-281: ledger search inherited `30rem` as height after its toolbar stacked. Test

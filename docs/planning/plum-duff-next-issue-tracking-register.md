@@ -1,5 +1,28 @@
 # Plum Duff Next Issue Tracking Register
 
+## CP-041 Account/Profile/Cash delivery — 2026-09-24 13:52 BST
+
+PD-FIX-284–287 are implemented and locally verified at `7763284`: Profile-directory control reflow,
+Account summary/drawer readiness and replay, Cash selected-range readiness and replay, full table
+accounting-value containment and Catalogue/shared Settings peer alignment. Filtering/archived scope,
+Account eligibility and observed balances, Cash type meaning, explicit Save/Discard, Notes neutrality,
+calculators and weekly-P&L context are preserved. No new request denominator or policy.
+
+Final isolated browser **12/12**, web **457/457**, types/build PASS; targeted lint has no errors and
+one pre-existing Cash unused-variable warning. Normal local source is updated without a restart or
+owner-data changes. API launch metadata remains `113d810…+dirty` because backend code was unchanged.
+Preview remains `113d810`: new deployment and its browser checks are blocked by automatic approval
+review's rejection of sending the existing credential payload to Vercel. Git push is also withheld
+at the unresolved automatic-deployment boundary. The renewed synthetic Preview session is revoked.
+Owner-confirmed #117 Save/Discard stays accepted; fresh owner-browser/VoiceOver are not inferred.
+[Evidence](../audits/platform-quality-audit.md#cp-041-accountprofile-controls-and-accountcash-displays--2026-09-24-1352-bst).
+
+Next two ready actions: #92 Extra Places toolbar geometry; #105 all-profile headline-card grouped
+replay. Resume Preview-only publication only after explicit approval for the rejected credential
+reuse, retaining the existing project/database/protection and no Production or environment changes.
+
+GitHub evidence synced once each: [#92](https://github.com/wolney8/OpenForge/issues/92#issuecomment-5814500571), [#105](https://github.com/wolney8/OpenForge/issues/105#issuecomment-5814501918), [#114](https://github.com/wolney8/OpenForge/issues/114#issuecomment-5814503139). No issue closed.
+
 ## CP-040 verification receipt — 2026-09-24 12:59 BST
 
 PD-FIX-281–283 were already delivered at app `113d810` / records `396acf0`; no duplicate patch

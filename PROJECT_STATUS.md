@@ -1,22 +1,22 @@
 # Project Status — Plum Duff / OpenForge — Doc ID: PS-CODEX-001
 
-**Last updated:** 2026-09-24 12:59 BST · **Status:** 🟢 CP-040 existing #92/#105 delivery recovered and reverified
+**Last updated:** 2026-09-24 13:52 BST · **Status:** 🟢 CP-041 UI slice implemented locally; Preview publication blocked
 
 ## Right now
 
-- **Working on:** recovered and reverified the already completed CP-039 batch, PD-FIX-281–283. App `113d810` still runs in protected Preview and normal localhost; no duplicate application change. Fresh focused unit/browser/types/build checks pass. [Verification evidence](docs/audits/platform-quality-audit.md#cp-040-recovered-delivery-verification--2026-09-24-1259-bst).
-- **Next:** #92 Account Catalogue/Profile-directory toolbar composition; then #105 Account/Cash financial-display consumer coverage. Keep fixes bounded and evidence-led.
-- **Blocked on:** no blocker for the next independent UI work. Fresh authenticated normal-owner browser and VoiceOver remain unexecuted; existing owner-session safety gate remains in force. Git push is withheld because the remote branch triggers Vercel and safe Git-trigger isolation has not been established for this approved Preview boundary. #117 owner acceptance and Production remain separate.
+- **Working on:** completed PD-FIX-284–287: Profile-directory reflow, aligned Catalogue/Settings controls, truthful Account/Cash financial readiness and replay, and complete enlarged accounting cells. App `7763284`; 12/12 final isolated browser regressions, web units/types/build pass. [Evidence](docs/audits/platform-quality-audit.md#cp-041-accountprofile-controls-and-accountcash-displays--2026-09-24-1352-bst).
+- **Next:** #92 Extra Places toolbar composition; then #105 all-profile headline-card replay. Both are bounded existing requests. Preview publication can resume once the rejected credential reuse is explicitly approved.
+- **Blocked on:** automatic approval review rejected the Preview deploy command because it would send existing database/authentication/OAuth credentials to Vercel. No upload/deployment occurred. Git push remains withheld because automatic-deployment isolation is unresolved. Fresh authenticated normal-owner browser and VoiceOver remain unexecuted; existing session safety gate and #117 scoped owner acceptance remain intact.
 
 ## Delivery state
 
 | Area | Evidence state |
 | --- | --- |
-| Local integrated build | Application `113d810`; 399 app/test files match retained tested source. CP-040 changes records only; generated Next/TypeScript files preserved and excluded |
-| Normal `localhost:3010` | Healthy `normal-owner`, canonical SQLite, `account-access-v1`; all eight owner record/history projections unchanged against verified CP-039 backup. Public login/guards pass; no fresh authenticated owner-browser check |
-| Main / origin | No merge or push; branch publication withheld at the Git-triggered deployment boundary; Production untouched |
-| Vercel | Existing protected [Preview](https://plum-duff-cp028-preview-homelab11.vercel.app) still serves `113d810`; current health/protection pass. Retained CP-039 authenticated browser 6/6; revoked synthetic session still returns 401. No redeploy |
-| Owner acceptance | Explicit Save/Discard remains owner-confirmed. CP-039 is engineering evidence, not new owner visual/Google acceptance or blanket closure of #92/#105/#117 |
+| Local integrated source | Application `7763284`; isolated source matches the integration checkout; generated Next/TypeScript changes preserved and excluded |
+| Normal `localhost:3010` / API `8010` | Web serves new CSS signatures through the existing dev process. API unchanged and healthy: launch metadata `113d810…+dirty`, canonical SQLite, `account-access-v1`. No service stopped/restarted; public guards pass; all eight owner-data projections unchanged |
+| Main / origin | Local commits only; no push/merge, Production untouched |
+| Protected Preview | Still `113d810`; health/protection verified. Existing synthetic access was renewed normally and then revoked (200 → 204 → 401). New `7763284` deployment and authenticated Preview regression are **NOT RUN** after approval-review rejection |
+| Owner acceptance | Explicit Save/Discard remains owner-confirmed. No new owner-browser, Google, VoiceOver or blanket #92/#105/#117 acceptance claim |
 
 ## Progress at a glance
 
@@ -29,17 +29,15 @@ These figures measure **#114 audit coverage**, not the percentage of the product
 | Competitor comparisons | 27 / 27 (100%) |
 | Requirements reconciled | 133 / 133 (100%) |
 
-## Next 3 steps
+## Next two executable actions
 
-1. Check #92 Account Catalogue/Profile-directory toolbars against accepted shared composition.
-2. Check #105 Account/Cash financial-display consumers, including unknown/loading and replay state.
-3. Keep broader #111 explorer design, #117 owner acceptance, VoiceOver and Production decisions separate.
+1. Reproduce any remaining #92 Extra Places toolbar drift through the existing ledger-parity path; repair only demonstrated compact/200% text defects.
+2. Complete #105 all-profile headline-card nearest-group replay using existing FinancialValue/MotionReplayGroup and synthetic scope/refresh/copy tests.
 
 ## Checkpoint log
 
 | ID | Timestamp | What changed | Issue | Document |
 | --- | --- | --- | --- | --- |
-| CP-022 | 2026-09-18 14:48 BST | Restored practical owner performance, corrected cash-warning severity and governed synthetic Profile residue | [#116](https://github.com/wolney8/OpenForge/issues/116), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-022-owner-stability-and-data-health-gate--2026-09-18-1448-bst) |
 | CP-023 | 2026-09-18 15:48 BST | Repaired the session shell and duplicate UI identity, then simplified Multi-Lay without changing its calculation engine | [#116](https://github.com/wolney8/OpenForge/issues/116), [#35](https://github.com/wolney8/OpenForge/issues/35), [#92](https://github.com/wolney8/OpenForge/issues/92) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-023-owner-smoke-session-identity-and-multi-lay-corrections--2026-09-18-1548-bst) |
 | CP-024 | 2026-09-19 06:48 BST | Unified Multi-Lay table shells, corrected effective-odds presentation and applied canonical financial meaning to compact results | [#35](https://github.com/wolney8/OpenForge/issues/35), [#92](https://github.com/wolney8/OpenForge/issues/92) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-024-multi-lay-visual-consistency-correction--2026-09-19-0648-bst) |
 | CP-025 | 2026-09-19 07:57 BST | Repaired normal-owner OAuth environment selection, added fail-closed auth readiness and returned failures to the branded login shell | [#62](https://github.com/wolney8/OpenForge/issues/62), [#116](https://github.com/wolney8/OpenForge/issues/116) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-025-owner-blocking-local-google-sign-in--2026-09-19-0757-bst) |
@@ -59,6 +57,8 @@ These figures measure **#114 audit coverage**, not the percentage of the product
 | CP-038 | 2026-09-24 11:08 BST | Delivered reconciled period-P&L with retained scope/point context, fixed compact Report/help geometry and reconciled the tested application locally without changing owner data | [#111](https://github.com/wolney8/OpenForge/issues/111), [#92](https://github.com/wolney8/OpenForge/issues/92), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#cp-038-period-pnl-preset-and-shared-report-geometry--2026-09-24-1108-bst) |
 | CP-039 | 2026-09-24 12:11 BST | Repaired compact ledger toolbars, truthful P&L card readiness/replay and first Casino Notes entry; preserved period-P&L and integrated tested source with unchanged owner data | [#92](https://github.com/wolney8/OpenForge/issues/92), [#105](https://github.com/wolney8/OpenForge/issues/105), [#117](https://github.com/wolney8/OpenForge/issues/117), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Evidence](docs/audits/platform-quality-audit.md#cp-039-ledger-toolbars-and-financial-display--2026-09-24-1211-bst) |
 | CP-040 | 2026-09-24 12:59 BST | Recovered already completed CP-039 source, reran six isolated workflows plus focused unit/types/build checks, and reverified Preview/local identity with unchanged owner data | [#92](https://github.com/wolney8/OpenForge/issues/92), [#105](https://github.com/wolney8/OpenForge/issues/105), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Evidence](docs/audits/platform-quality-audit.md#cp-040-recovered-delivery-verification--2026-09-24-1259-bst) |
+
+| CP-041 | 2026-09-24 13:52 BST | Completed Account/Profile controls and Account/Cash financial displays; 12 isolated workflows pass; local source updated without owner changes, Preview deployment blocked by automatic approval review | [#92](https://github.com/wolney8/OpenForge/issues/92), [#105](https://github.com/wolney8/OpenForge/issues/105), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Evidence](docs/audits/platform-quality-audit.md#cp-041-accountprofile-controls-and-accountcash-displays--2026-09-24-1352-bst) |
 
 ## Reference index
 

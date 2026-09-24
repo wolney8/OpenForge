@@ -1,5 +1,112 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
+## CP-041 Account/Profile controls and Account/Cash displays — 2026-09-24 13:52 BST
+
+Application **`7763284d3d78aa8502f79fac5d196220179d4cbc`**, branch `repair/import-history-012`, layers
+on records `5af14a3`. Existing work was preserved; CP-040 repairs and their unchanged evidence were
+not implemented again. One implementer and one bounded read-only reviewer; no competing source
+writer found. Parent checkout and two pre-existing generated Next/TypeScript changes remain untouched.
+
+### Reproduced defects and bounded repairs
+
+| ID | Actual defect | Shared repair / preserved meaning |
+|---|---|---|
+| PD-FIX-284 / #92 | Profile directory had 86px page overflow at 860px, 451px at 1440px/200% text, collapsed Search at 390px | Existing analytics container reflows the directory grid and resets explicit slot columns. Scope, active/archived selection and date presets unchanged |
+| PD-FIX-285 / #105 | Account summary fabricated four zero FinancialValues while row GET was pending; cards lacked label/background replay; cells clipped enlarged values/outer badges | Shared FinancialReadValue distinguishes read state, existing MotionReplayGroup coordinates cards/drawer, shared canonical text-based column widths retain preferred widths and account badge minimum. Save refresh uses the same read-state path; observed balances remain cash observations |
+| PD-FIX-286 / #105 | Cash fabricated three zero values while rows or saved date range were pending; no card replay; large accounting values exceeded 120/135px table cells | Readiness requires matching rows and range settings; same confirmed value survives refresh. Existing Cash type/sign/scope logic and editable inputs unchanged; shared FinancialValue/replay and text-scaled column width reused |
+| PD-FIX-287 / #92 | Settled Catalogue Search sat 56px below filters at 1000px and 267px below at 200% when Add wrapped | Existing Settings toolbar aligns the start of field groups; inner filter/action bottom alignment retained. Catalogue and Lists/Database/Quick Actions peer checks pass; no new toolbar framework or variant |
+
+The initial three consumers were completed before taking the already-approved Catalogue follow-on.
+Read-state and width helpers add no equations, stored money, schema, dependency or per-value motion
+subscription. No calculation contracts changed. Existing FinancialValue initial-sign, subsequent-delta,
+replay/cooldown, static zero and single accessible final-value semantics remain authoritative.
+Account eligibility and Profile identities are compared before/after Notes saves; Cash amount, signed
+amount, type, direction and governed flags remain identical. Earlier real Cash correction/report
+acceptance remains retained evidence, not a newly executed hosted correction.
+
+### Final verification and actual rendered evidence
+
+- **457/457 web tests in 69 files**, final source: `cp041-final-units-v2.log`. This includes four new
+  read-state tests, existing money safety/formatting, rapid value changes/delta/settling and replay
+  cooldown, plus retained weekly-P&L fixtures. TypeScript no-emit/nonincremental and production
+  webpack build exit **0**: `cp041-final-typecheck-v2.log`, `cp041-final-webpack-build-v2.log`.
+- Targeted ESLint exits **0**: `cp041-final-lint.log`; one pre-existing Cash `_autosaveLabel` warning,
+  no errors. No whole-repository lint claim. No backend change, so the unchanged backend suite was
+  not rerun. Build used existing staging, leaving running `.next` directories untouched.
+- **12/12 combined isolated browser workflows, 2.8m, exit 0**: `cp041-final-combined-browser.log`.
+  Four new Account/Profile/Cash/Catalogue workflows; two accepted Standard/Multi-Lay layout paths;
+  three CP-039 ledger toolbar/P&L cards; shared Report help, weekly-P&L exact records/return context
+  and chart hover/keyboard parity. Existing authorised role `test`, fingerprint `b77091ed2dd46d1d`.
+- New paths cover open → filter/select → values → edit → Discard/Save → reopen. Both themes,
+  390/760/860/1000/1440px as relevant, 200% text, selected-option text measurement, non-overlap,
+  keyboard order/focus and editor footer containment. Account/Cash include true zero, held and
+  failed reads, Account unknown values, Cash saved-range readiness, exact native clipboard output,
+  four animation frames, whole table-value/badge containment, reduced motion and motion disabled.
+  Notes-only saves preserve value nodes/cycles and financial fields. Synthetic Profiles archived.
+- Actual light/dark compact/enlarged renders inspected. Final static screenshots explicitly place
+  values below the sticky header: `cp041-final-accounts-{light-100,dark-200}.png` and
+  `cp041-final-cash-adjustments-{light-100,dark-200}.png`; exact positive and accounting-negative
+  values fully visible. Directory/Catalogue screenshots and geometry live in `cp041-isolated`.
+- Full outer-badge checking found a second real Account clipping case after inner digits fitted:
+  240px badge inside a 216.95px enlarged cell. The Account minimum now includes badge plus padding.
+  New width logic uses the same safe string conversion as existing table rendering for absent money.
+- Intermediate failures are retained honestly: directory fixture initially omitted mandatory core
+  modules (422), corrected; Cash test initially missed its existing explicit Edit/Save Edits controls;
+  one calculator test clicked before theme initialisation, now waits for `.theme-ready`. Default
+  Turbopack rejected staging symlinks; the established webpack build passes. Accounts' deliberate
+  503 also triggers the **pre-existing** identity hook rejection `Unable to load bookmaker brand
+  catalogue.`; test asserts that exact fault then requires zero errors in healthy flow. This existing
+  fault-path rejection is not represented as repaired or a new zero-console-errors claim.
+
+UI implementation/review/consistency checklist satisfied for this local slice: existing tokens,
+primitives and semantics reused; equivalent-pattern search and focused peer geometry executed;
+accessible final text/native keyboard/clipboard preserved; no new motion listener or designer variant.
+The unrouted Account-authority and single-filter onboarding equivalents were source-reviewed; their
+full fresh browser journeys are not claimed. Broader #92/#105 remain open. Known pitfalls/enforcer
+were updated proportionately; one existing learning point now covers rows-plus-range readiness.
+
+### Runtime, publication and owner-data boundary
+
+Normal web **http://localhost:3010** serves new `7763284` CSS signatures through the existing dev
+process. API **http://127.0.0.1:8010** remains unchanged and healthy; its launch metadata still reads
+`113d810…+dirty`. No service was stopped/restarted solely for metadata. Public login/Google link,
+anonymous API 401 and protected Reports redirect pass with zero page errors. Source comparison
+matches 400 tracked app/test files against isolated tested files; generated files excluded.
+
+Before integration, verified private SQLite backup
+`openforge-pre-cp041-local-reconcile-20260924-134124.sqlite3`, SHA-256
+`4a8f3695818102a97e003e82446d001b171de349daff1a284e34744939775c80`.
+After integration: integrity ok, 0 FK violations, all eight complete owner projections unchanged
+(42 Profiles, 175 Accounts, 538 Sportsbook, 291 Free Bet, 123 Extra Place, 90 Casino, 58 Cash,
+307 History). No synthetic owner writes, secret/configuration change or data restore.
+
+Protected Preview remains **`113d810`**, existing alias
+https://plum-duff-cp028-preview-homelab11.vercel.app, role `preview`, dedicated database
+`preview:plum_duff_preview_cp028`, fingerprint `c3b647ca129cf41c`, schema `account-access-v1`.
+Existing authorised synthetic-session renewal succeeded, protection returned anonymous 302 and
+health/authenticated session 200. Dry deployment inspection found 986 source files and no private
+inputs, environment files or tokens. **Automatic approval review rejected the actual deployment
+command before execution**, because it would transmit existing database URLs, authentication/session
+secrets, OAuth credentials and owner emails to Vercel without specific approval for that payload.
+No deployment or upload occurred. Exact missing permission: reuse of that existing credential payload
+for this committed revision's Preview-only deployment to the already configured project/database.
+No workaround or indirect retry was attempted. The renewed synthetic session was then revoked:
+**200 → logout 204 → reuse 401**, `cp041-preview-session-closed.log`.
+
+New-source authenticated Preview checks are **NOT RUN**. Fresh normal-owner authenticated browser
+and VoiceOver remain **NOT RUN** at their existing gates; personal cookies were neither requested
+nor used. User-confirmed #117 explicit Save/Discard acceptance stays recorded; no new acceptance
+or blanket closure. Git push remains withheld independently because safe automatic-deployment
+isolation is unresolved. No main merge, new environment, paid resource, Production or schema change.
+
+Scoped records are committed separately, and existing private source/evidence backups are refreshed
+with a verified Git bundle, hashed evidence archive and manifest. Prior backups are retained; tokens,
+environment files and personal browser storage are excluded. Next two independent ready actions:
+#92 Extra Places toolbar composition; #105 all-profile headline-card grouped replay. Preview
+publication resumes only after the exact rejected credential reuse is approved.
+
+GitHub evidence synced once each: [#92](https://github.com/wolney8/OpenForge/issues/92#issuecomment-5814500571), [#105](https://github.com/wolney8/OpenForge/issues/105#issuecomment-5814501918), [#114](https://github.com/wolney8/OpenForge/issues/114#issuecomment-5814503139). No issue closed.
+
 ## CP-040 recovered delivery verification — 2026-09-24 12:59 BST
 
 The requested pending batch was already implemented in the existing integration worktree:

@@ -1,6 +1,6 @@
 # Engineering Learning — Plum Duff / OpenForge — Doc ID: EL-CODEX-001
 
-**Last updated:** 2026-09-24 12:11 BST
+**Last updated:** 2026-09-24 13:52 BST
 
 This is a compact notebook of transferable lessons from building Plum Duff. It is not the audit,
 roadmap, backlog or evidence record.
@@ -21,6 +21,9 @@ roadmap, backlog or evidence record.
 readiness also lets an unchanged confirmed value survive a refresh without unmounting/replaying it.
 
 **Remember:** Do not manufacture money from the absence of a response.
+
+CP-041 extends this to selected-range totals: rows arriving before their saved range settings are
+not a complete result. Both inputs must be ready before the total is presented.
 
 ### Scope parity
 

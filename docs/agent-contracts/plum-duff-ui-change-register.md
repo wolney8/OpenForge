@@ -1,5 +1,22 @@
 # Plum Duff UI Change Register
 
+## CP-041 verified local batch — 2026-09-24 13:52 BST
+
+| ID / issue | Surface and supplied outcome | Observed defect / reference | Signed-off equivalent | Status |
+|---|---|---|---|---|
+| PD-FIX-284 / #92 | Profile directory controls: readable selected values, peer alignment, wrapping and keyboard access without changing active/archived scope | `.fund-manager-control-bar.is-directory`: 86px page overflow at 860px; 451px at 1440px/200%; explicit grid slots collapse Search at 390px | Existing M3 picker controls and container-aware calculator reflow; retain desktop layout | COMPLETE locally — app `7763284`, focused/combined browser PASS; Preview blocked |
+| PD-FIX-285 / #105 | Account balances: truthful loading/error/zero, full accounting values and nearest-card replay; preserve observed balance meaning and explicit Notes Save/Discard | Held Account GET fabricated four zero values; no card replay groups; fixed-width cells clipped large text and 7.5rem outer badges | CP-039 readiness handling, existing FinancialValue/MotionReplayGroup/stat cards | COMPLETE locally — app `7763284`, focused/combined browser PASS; Preview blocked |
+| PD-FIX-286 / #105 | Cash summaries: truthful selected-range readiness, signed governed values, replay and explicit correction/Notes workflow | Cash quick view shows three false-zero FinancialValues during held GET; no card replay groups; both rows and range settings own readiness | Same shared financial presentation plus current Cash type/range contracts | COMPLETE locally — app `7763284`, focused/combined browser PASS; Preview blocked |
+| PD-FIX-287 / #92 | Account Catalogue search/filter/action peer alignment | At 1000px Search aligns 56px below selects when Add wraps; at 200% difference grows. Settled rendering confirms 56px offset at 1000px and 267px at 200% text | Existing Settings controls and accepted Notification History independent action-row composition | COMPLETE locally — app `7763284`, focused/combined browser PASS; Preview blocked |
+
+Initial scope is three consumers: Profile directory, Profile Accounts and Cash Adjustments.
+Catalogue was completed as the next bounded already-approved item after the initial slice. No equations, membership,
+persistence, balances or eligibility change. The existing isolated runtime verified the source before local integration; owner sessions untouched.
+Reproduction artifacts are private `cp041-before.*`; the first probe cleanup race is harness-only.
+
+
+Final combined browser **12/12**, web **457/457**, types/build pass; both themes, 390–1440px, 200% text, keyboard, exact copy, motion intermediates/reduced/off, Account unknown and explicit Notes Save/Discard/reopen covered. Additional Catalogue fix completed after the initial three consumers. Shared Lists/Database/Quick Actions peer geometry also passes. Normal source is `7763284`; Preview remains `113d810` after automatic approval review rejected credential transmission. Broader issue/owner acceptance remains open.
+
 ## CP-039 active batch — 2026-09-24 11:35 BST
 
 | ID | Surface | Requested outcome | Signed-off equivalent | Status |
