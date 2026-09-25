@@ -753,6 +753,7 @@ def main():
         action="store_true",
         help="CP-012 Profile-scoped import identity and append-only history only",
     )
+    parser.add_argument("--account-observations-only", action="store_true", help="CP-047 atomic Account observations and restore")
     parser.add_argument("--multi-lay-actual-only", action="store_true", help="CP-047 Normal actual recording and portable restore only")
     args = parser.parse_args()
     pg_bin = args.pg_bin.resolve()
@@ -789,6 +790,18 @@ def main():
         import psycopg
         with psycopg.connect(primary) as c:
             record["server_version"] = c.execute("SELECT version()").fetchone()[0]
+        if args.account_observations_only:
+            import pytest
+            import test_account_observations as cases
+            db = configure(primary, str(root))
+            from openforge_api.config import settings
+            settings.auth_required = False
+            settings.account_catalogue_source = str(ROOT / "tests/fixtures/openforge-api-master-catalogue.synthetic.json")
+            with pytest.MonkeyPatch.context() as patcher:
+                patcher.setattr(cases, "configure_temp_database", lambda _: None)
+                cases.test_atomic_observations_retry_isolation_and_restore(root, patcher)
+            record.update(status="PASS", account_observations="Exact observations, same-value, retry/stale, rollback, Profile isolation, editor neutrality and XLSX restore")
+            return
         if args.multi_lay_actual_only:
             record.update(multi_lay_actual_cases(primary, root))
             return

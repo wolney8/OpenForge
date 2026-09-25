@@ -186,6 +186,8 @@ class AccountResponse(AccountPayload):
 
 
 class AccountWritePayload(AccountPayload):
+    expected_updated_at: str | None = Field(default=None, max_length=60)
+
     @field_validator("current_balance", "pending_withdrawal_amount")
     @classmethod
     def validate_money(cls, value: str, info: ValidationInfo) -> str:
@@ -517,6 +519,8 @@ def update_profile_account(
         for field in ("current_balance", "pending_withdrawal_amount", "last_balance_update"):
             if field not in payload.model_fields_set:
                 resolved.pop(field, None)
+        if payload.expected_updated_at is not None:
+            resolved["_expected_updated_at"] = payload.expected_updated_at
         updated = update_account(profile_id, account_id, resolved)
     except AccountMoneyError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error

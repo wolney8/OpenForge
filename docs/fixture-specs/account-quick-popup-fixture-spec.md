@@ -24,3 +24,23 @@ complete.
 - Use synthetic accounts only.
 - Do not include bookmaker credentials or real support transcripts.
 - Final implementation should add Playwright coverage for popup geometry, focus and save behaviour.
+
+
+## CP-047 core observation acceptance
+
+- AQP-008: £208.51 → £208.68 → same £208.68; exact snapshots, +£0.17/£0.00 changes,
+  server timestamps and no Casino/betting P&L; browser and SQLite/PostgreSQL fixtures.
+- AQP-009: identical retry after a newer confirmation returns original receipt plus current Account;
+  changed reuse, stale expected observation and stale full-editor save reject without writes.
+- AQP-010: failure after snapshot insert rolls back current balance, history and audit together;
+  browser rejected confirmation retains the full draft for retry.
+- AQP-011: same-name Accounts in different Profiles never alias; unknown and zero remain distinct;
+  supplied confirmation timestamps and malformed amounts reject.
+- AQP-012: original imported snapshot/time/reason and new confirmations survive real XLSX restore,
+  with canonical Account/snapshot identity remapping and no invented intermediate observations.
+- AQP-013: review from a dirty Sportsbook editor creates zero parent bet writes; Discard/Escape
+  return focus and retain its Notes draft; compact/enlarged fields remain within the panel/footer.
+
+Automated paths: `test_account_observations.py`, `account-observations-workflow.spec.ts`, and the
+existing Account editor/Notes/weekly Reports regression group. Quick-settle, access-state editing,
+activity-count summaries, Free Bets/Casino entry points and trend/freshness remain broader #85/#106.

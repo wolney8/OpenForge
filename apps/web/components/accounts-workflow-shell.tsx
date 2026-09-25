@@ -5,6 +5,7 @@ import { ModalBoundary } from "@/components/modal-boundary";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { apiBaseUrl } from "@/lib/api";
+import { AccountFinancialSummary, AccountReviewButton } from "@/components/account-review-panel";
 import { AccountProviderIdentity } from "@/components/account-provider-identity";
 import { ProfileOpportunityQueue } from "@/components/profile-opportunity-queue";
 import { ConfirmationDialog } from "@/components/confirmation-dialog";
@@ -987,7 +988,7 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
               ? formState.commission_rate
               : undefined,
           status: formState.lifecycle_status,
-          last_balance_update: fromDateTimeLocalValue(formState.last_balance_update),
+          expected_updated_at: isEditing ? selectedRow?.updated_at : undefined,
           access_observed_at: fromDateTimeLocalValue(formState.access_observed_at),
         }),
       });
@@ -1439,30 +1440,7 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
         </div>
           <div className="workflow-editor-body">
             {selectedRow ? (
-              <section className="stat-strip" aria-label="Account summary">
-                <article className="stat-card">
-                  <span className="eyebrow">Status</span>
-                  <strong>{selectedRow.status}</strong>
-                  <p className="lede">Type: {selectedRow.type}</p>
-                </article>
-                <MotionReplayGroup><article className="stat-card">
-                  <span className="eyebrow">Current balance</span>
-                  <strong><FinancialValue value={accountMoneyDisplayValue(selectedRow.current_balance)} /></strong>
-                  <p className="lede">
-                    Pending withdrawal: <FinancialValue value={accountMoneyDisplayValue(selectedRow.pending_withdrawal_amount)} />
-                  </p>
-                </article></MotionReplayGroup>
-                <article className="stat-card">
-                  <span className="eyebrow">Cash total</span>
-                  <strong>{selectedRow.counts_in_cash_total ? "Included" : "Excluded"}</strong>
-                  <p className="lede">
-                    Last update:{" "}
-                    {selectedRow.last_balance_update
-                      ? formatDisplayDate(selectedRow.last_balance_update)
-                      : "—"}
-                  </p>
-                </article>
-              </section>
+              <><AccountFinancialSummary account={selectedRow} /><AccountReviewButton profileId={profileId} accounts={[selectedRow]} accountId={selectedRow.account_id} accountName={selectedRow.account} /></>
             ) : null}
             <form className="form-grid" id="profile-account-editor-form" onSubmit={(event) => void handleSubmit(event)}>
           <label className="field-control">
@@ -1712,12 +1690,7 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
             />
             {accountMoneyError(formState.pending_withdrawal_amount)?<span className="error-text" id="account-pending-withdrawal-error" role="alert">{accountMoneyError(formState.pending_withdrawal_amount)}</span>:null}
           </label>
-          <MaterialDateTimeField
-            dataPdId="accounts.editor.last-balance-update"
-            label="Last balance update"
-            onChange={(value) => setFormState((current) => ({ ...current, last_balance_update: value }))}
-            value={formState.last_balance_update}
-          />
+          <div className="field-control"><span>Last balance update</span><span>{selectedRow?.last_balance_update ? formatDisplayDate(selectedRow.last_balance_update) : "Not confirmed"}</span><small>Recorded by the server when the balance changes or is confirmed.</small></div>
           <MaterialDateField
             dataPdId="accounts.editor.sign-up-date"
             label="Sign-up date"

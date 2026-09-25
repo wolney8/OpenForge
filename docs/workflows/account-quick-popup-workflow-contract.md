@@ -66,3 +66,47 @@ This popup is operational. It is not a replacement for the full Accounts route.
 - recent account context respects the active tracker range
 - popup does not introduce nested-scroll, focus-trap or hidden-footer regressions
 - account quick actions remain distinct from full account-management routes
+
+
+## Core balance observation slice — CP-047 owner-authorised
+
+This bounded slice supersedes the earlier popup autosave wording for balance confirmation only:
+enter an observed amount, optionally enter its genuine reason, then explicitly Confirm balance.
+The bet draft remains independent and unchanged. Account access/restrictions remain visible;
+quick settlement, speculative freshness prompts and trend aggregation are still later scope.
+
+Reuse `balance_snapshots`, Account identity and `account_audit`; no SQL schema addition.
+New observations have `snapshot_type=account-observation-v1:manual-confirmation` or
+`account-observation-v1:account-editor`, canonical Profile/Account IDs, exact penny amount,
+server UTC timestamp in both `snapshot_at`/`created_at`, and genuine free-text reason in `notes`.
+Never backfill an observation from the mutable latest balance or infer an intervening balance.
+Legacy/imported snapshots retain their original type/date and are labelled as such.
+
+Explicit confirmation uses a UUID operation ID as its snapshot identity. Lock the Account and
+atomically append observation, update current balance/server confirmation time, and audit.
+An identical retry returns that same observation, without replaying its older balance after a
+newer confirmation; changed payload under the same ID is rejected. Stale expected balance or
+latest observation ID rejects without writes. Same-value new confirmation has a new timestamp
+and zero balance change. Source is server-selected, never a guessed activity.
+
+Ordinary Account edits append an observation only when a known current balance actually changes;
+Notes/restriction edits do not confirm money. Client-authored confirmation timestamps are ignored.
+Unknown/blank remains unknown; changing to unknown does not manufacture a zero observation.
+Existing import/restore paths preserve their own original provenance and timestamps. Portable
+Profile export/restore preserves existing snapshot IDs through its canonical ID remapping.
+
+Independent fixture: confirm £208.51, confirm £208.68, confirm £208.68 again. History retains all
+three exact observations; changes are unknown, +£0.17 and £0.00. Latest balance £208.68, no Casino
+activity or betting P&L. Cover negative/zero/malformed amounts, stale and changed retries, rollback,
+same-name Account disambiguation, Profile isolation, retained snapshots and real XLSX restoration.
+Use the accepted Account summary, field, table, FinancialValue and native ModalBoundary patterns.
+
+
+Implemented entry points in this slice: Sportsbook table bookmaker, Sportsbook Bet Setup review,
+and the existing Profile Account editor. The Account summary is extracted unchanged and reused.
+Same-name choices use canonical Profile Account IDs and require selection when ambiguous.
+Free Bets/Casino identity entry points remain a named follow-on; no quick settlement is claimed.
+Account editor saves carry their original `updated_at` and reject a newer server version; this
+prevents an old full editor overwriting a subsequent quick confirmation. New server write times
+have microsecond precision. Clearing a balance retains unknown and creates no numeric snapshot;
+older observations remain visible. Existing snapshot source/date labels are retained on restore.

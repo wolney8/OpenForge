@@ -1,6 +1,7 @@
 "use client";
 
 import { MultiLayActualEditor, type MultiLayExecution, type MultiLayActual } from "@/components/multi-lay-actual-editor";
+import { AccountReviewButton } from "@/components/account-review-panel";
 import { ModalBoundary } from "@/components/modal-boundary";
 import { formatApiErrorBody } from "@/lib/api-error";
 import { isFreeBetLinkedToSportsbook } from "@/lib/free-bet-lineage";
@@ -6864,12 +6865,12 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
 
     if (column.key === "bookmaker") {
       return (
-        <BookmakerIdentity
+        <AccountReviewButton profileId={profileId} accounts={accountAuthorities} accountName={value}><BookmakerIdentity
           bookmaker={value}
           catalogueId={catalogueIdForBookmaker(providerIdsByName, value)}
           catalogue={bookmakerCatalogue}
           mode="Brand badge"
-        />
+        /></AccountReviewButton>
       );
     }
 
@@ -7889,6 +7890,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                     ))}
                   </select>
                 </label>
+                <AccountReviewButton profileId={profileId} accounts={accountAuthorities} accountName={formState.bookmaker} />
 	                {specialOfferBookmakerSuggestion ? (
 	                  <div className="field-span-2 special-offer-suggestion-panel">
 	                    <div className="section-heading-row">

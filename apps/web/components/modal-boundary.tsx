@@ -51,7 +51,7 @@ export function ModalBoundary({ children, onDismiss, returnFocusRef }: {
           event.preventDefault(); first.focus({ preventScroll: true });
         }
       }}
-      onCancel={(event) => { event.preventDefault(); onDismiss(); }}>
+      onCancel={(event) => { event.preventDefault(); event.stopPropagation(); onDismiss(); }}>
       {children}
     </dialog>, document.body,
   );

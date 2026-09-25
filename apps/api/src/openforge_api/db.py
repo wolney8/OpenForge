@@ -10781,7 +10781,36 @@ def create_account(profile_id: str, payload: dict[str, Any]) -> AccountRecord:
     return create_account_with_exchange_commission(profile_id, payload, None)
 
 
-def update_account(
+def update_account(profile_id: str, account_id: str, payload: dict[str, Any]) -> AccountRecord | None:
+    # Lock and re-read inside the transaction so balance evidence and latest state commit together.
+    from openforge_api.account_observations import append_observation, observation_time
+    from openforge_api.money_input import validate_account_money_payload
+
+    with connect() as connection, reuse_mutation_connection(connection):
+        suffix = " FOR UPDATE" if postgres_runtime_enabled() else ""
+        row = connection.execute(
+            "SELECT * FROM accounts WHERE profile_id=? AND account_id=?" + suffix,
+            (profile_id, account_id),
+        ).fetchone()
+        if row is None:
+            return None
+        if payload.get("_expected_updated_at") is not None and payload["_expected_updated_at"] != row["updated_at"]:
+            from fastapi import HTTPException
+            raise HTTPException(409, "The Account changed elsewhere. Reopen it before saving; your draft has been retained.")
+        payload = validate_account_money_payload(payload)
+        balance_changed = "current_balance" in payload and payload["current_balance"] != row["current_balance"]
+        pending_changed = "pending_withdrawal_amount" in payload and payload["pending_withdrawal_amount"] != row["pending_withdrawal_amount"]
+        timestamp = observation_time()
+        payload["last_balance_update"] = timestamp if balance_changed or pending_changed else row["last_balance_update"]
+        payload["_server_updated_at"] = timestamp
+        updated = _update_account_fields(profile_id, account_id, payload)
+        if balance_changed and payload["current_balance"]:
+            append_observation(connection, profile_id, account_id, payload["current_balance"],
+                               "", source="account-editor", timestamp=timestamp)
+        return updated
+
+
+def _update_account_fields(
     profile_id: str,
     account_id: str,
     payload: dict[str, Any],
@@ -10820,7 +10849,7 @@ def update_account(
         "platform": payload["platform"],
         "sign_up_date": payload.get("sign_up_date", ""),
         "notes": payload.get("notes", ""),
-        "updated_at": utc_now(),
+        "updated_at": payload.get("_server_updated_at", utc_now()),
     }
     with connect() as connection:
         connection.execute(

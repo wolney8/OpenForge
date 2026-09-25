@@ -5,6 +5,7 @@ import { useRef } from "react";
 import { isExplicitZero, sanitizeDecimalInput } from "@/lib/decimal-input";
 
 type FinancialTextInputProps = {
+  disabled?: boolean;
   ariaDescribedBy?: string;
   ariaInvalid?: boolean;
   ariaLabel: string;
@@ -21,6 +22,7 @@ type FinancialTextInputProps = {
 
 // Keep the currency adornment and editable value in one visual field surface.
 export function FinancialTextInput({
+  disabled = false,
   ariaDescribedBy,
   ariaInvalid,
   ariaLabel,
@@ -40,6 +42,7 @@ export function FinancialTextInput({
     <span className={`adorned-text-input financial-text-input financial-text-input-${valueTone}`}>
       <span aria-hidden="true" className="financial-text-input-prefix">£</span>
       <input
+        disabled={disabled}
         aria-describedby={ariaDescribedBy}
         aria-invalid={ariaInvalid || undefined}
         aria-label={ariaLabel}
