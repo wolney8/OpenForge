@@ -1,6 +1,6 @@
 # Engineering Learning — Plum Duff / OpenForge — Doc ID: EL-CODEX-001
 
-**Last updated:** 2026-09-24 19:46 BST
+**Last updated:** 2026-09-25 09:51 BST
 
 This is a compact notebook of transferable lessons from building Plum Duff. It is not the audit,
 roadmap, backlog or evidence record.
@@ -35,6 +35,10 @@ replace either the visible selection or its cached settings.
 CP-044 (2026-09-24 19:46 BST): optional calculator inputs and required report outputs need different blank rules.
 A missing deduction cannot quietly become zero; an unavailable funding value must not erase known
 retained profit. Preserve each measure's dependency boundary and its governed record membership.
+
+CP-045 (2026-09-25 09:51 BST): a failed source must invalidate every presentation of that result, including
+cached headers and open drawers. Identity/cache updates cannot prove financial readiness. Keep
+independently confirmed fees visible when only their supporting performance preview fails.
 
 ### Scope parity
 

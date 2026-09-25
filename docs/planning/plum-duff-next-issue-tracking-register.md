@@ -1,5 +1,21 @@
 # Plum Duff Next Issue Tracking Register
 
+## CP-045 named #105 coverage complete — 2026-09-25 09:51 BST
+
+PD-FIX-294–296 COMPLETE at`7dc975f`, local3010 and protected Preview. Fee Position/Exposure,
+Profile header/directory/detail and Fee Review/Breakdown are implemented and verified.104 focused,
+13 isolated/13 hosted workflows and types/builds pass. [Evidence](../audits/platform-quality-audit.md#cp-045-named-financial-coverage--2026-09-25-0951-bst).
+Existing equivalents: CP-042 stat/replay groups, CP-043/044 FinancialReadValue, shared required-money
+parser, existing header grid and native ModalBoundary close/focus behaviour. No new design/money scope.
+
+Named implementation/engineering remainder: none. Broader #105 owner acceptance pending; no issue
+closed. #117 acceptance retained; owner browser/VoiceOver unexecuted; Git push isolation and #96
+remain separate. Incomplete all-Profile fees are labelled, preserving known rows and archived scope.
+
+CP-044 #114 publication resolved with explicit permission; historical rejection retained below.
+Standing comments-only scope recorded in AGENTS.md. CP-045 published once to [#92](https://github.com/wolney8/OpenForge/issues/92#issuecomment-5829630799), [#105](https://github.com/wolney8/OpenForge/issues/105#issuecomment-5829629915), [#114](https://github.com/wolney8/OpenForge/issues/114#issuecomment-5829631674).
+Next: #92: repair demonstrated peer-field, validation/help and action alignment in FundManagerAuthoritySettings and AccountAuthoritySettings create/edit forms, using their existing shared controls. Then #92: complete the bounded Profile Settings heading/help and field-reflow slice in TrackerDateSettings and ExchangeCommissionSettings.
+
 ## CP-044 Reports delivery — 2026-09-24 19:46 BST
 
 PD-FIX-292–293 COMPLETE at app`0189434`, normal frontend3010 and the same protected Preview.

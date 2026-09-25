@@ -37,6 +37,9 @@ surfaces and record actual composed-layout, theme, focus, scaling and responsive
 - [x] CP-039 / 2026-09-24 12:11 BST: Sportsbook, Free Bet and Casino shared toolbars — compact
       sizing, action non-overlap, keyboard/filter controls and enlarged-text financial cards verified
       in isolated SQLite and protected Preview on `113d810`. Other consumers remain unchecked.
+- [x] CP-045 / 2026-09-25 09:51 BST: scoped Profile header money reflow and fee-dialog keyboard close/return
+      verified locally/protected Preview`7dc975f`; existing authority forms and Profile Settings
+      heading/help reflow remain the next bounded #92 slices.
 - [ ] Repeated form layouts: peer labels/control edges, validation/help text, action grouping and
       breakpoint reflow.
 - [ ] Repeated page/panel headers: title/action alignment, wrapping, copy density and narrow-layout

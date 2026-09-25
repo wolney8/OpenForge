@@ -1,5 +1,12 @@
 # Plum Duff Known UI Pitfalls
 
+## CP-045 reinforcement — 2026-09-25 09:51 BST
+
+- #105 / PD-FIX-294–296: unknown required fee/liability outputs are not zero; completeness follows original Profile membership without all-Profile fan-out. Guard retained drawer previews and cached headers when the owning read fails, while preserving independently confirmed measures.
+- #92 / PD-FIX-295–296: measure canonical monetary glyphs inside compact headers at200% text; an outer span can fit while its digits clip. Native dialog unmount must close the dialog and restore its connected opener, following ModalBoundary semantics.
+- Regressions: `fee-profile-financial-coverage`, `profile-header-financial-display` and `fee-drawer-financial-coverage` browser specs; required-money/component unit tests. Check first-display completion before comparing replay cycles, and each named group rather than only a peer.
+
+
 ## CP-043 reinforcement — 2026-09-24 16:00 BST
 
 - #105 / PD-FIX-290: readiness belongs to each metric as well as its source/range. Known imported realised P&L does not make missing reference qualifying loss known. Empty successful scope is zero; an incomplete subtotal is unavailable. Preserve original membership and formulas.

@@ -1,6 +1,6 @@
 # Contract: Financial Value Presentation and Motion
 
-_Last updated: 2026-09-24 19:46 BST_
+_Last updated: 2026-09-25 09:51 BST_
 
 ## Status and scope
 
@@ -192,16 +192,22 @@ During a saved-range request, selected-range cards/tables wait using FinancialRe
 formal-history cards/tables retain their independent context. This is a display/readiness boundary,
 not a change to calculations, persistence, reporting membership or financial history.
 
-### Named consumer completion and remainder — CP-044, 2026-09-24 19:46 BST
+### Named consumer completion and remainder — CP-045, 2026-09-25 09:51 BST
 
 | Surface | Implementation state | Verification state / next work |
 | --- | --- | --- |
 | Extra Places P&L / selected qualifying loss / current-week spend and budget | COMPLETE: shared readiness, per-metric completeness and nearest-card replay | CP-043 isolated/hosted: delayed/failed/unknown/zero, correction/Void, range/search, large values, Copy, themes/text/keyboard and motion; preserved Notes workflow |
 | Single-Profile Dashboard headline/financial cards | COMPLETE: period refresh cancellation and failed-summary guard; existing groups retained | CP-043 isolated/hosted: selected Profile/period, rapid changes, distinct cash/P&L/fees, every populated card replay; no layout repair needed |
 | Reports header; selected-range module mix; active Cash module/boundary; latest/formal-period summary cards (`TrackerSummaryShell`) | COMPLETE:15 nearest-card groups and shared selected-period/required-output readiness | CP-044 isolated/hosted: exact totals and independent unknown/zero/cost/funding states; delayed/failed/rapid scope changes; Copy, nearest-only replay, large-value geometry, themes/text/keyboard, intermediate/reduced/off motion. Weekly-P&L/archived/drilldown/return preserved |
-| Fund Manager Fee Position: Available to Withdraw / Fees Withdrawn; Exposure liability (`CrossProfileAnalytics`) | UNIMPLEMENTED nearest-card replay (FinancialValue already adopted) | Reproduce and verify these named cards. CP-042 headline-card/Active-scope evidence stays accepted |
-| Profile command/header metric; directory financial rows; Profile detail balance/P&L/fees | Shared groups IMPLEMENTED | VERIFICATION ONLY: remaining bounded nearest-group/copy/unknown/read-failure matrix. Profile-detail fee fallback under failed reads is a candidate to reproduce, not a confirmed new defect |
-| Fee Period Review dialog/revision values and Fee Centre Breakdown drawer | Shared groups IMPLEMENTED | VERIFICATION ONLY: scoped financial readiness/replay/Copy/compact/reduced-motion cases remain |
+| Fund Manager Fee Position: Available to Withdraw / Fees Withdrawn; Exposure liability (`CrossProfileAnalytics`) | IMPLEMENTED AND VERIFIED: nearest-card replay, scoped readiness and required fee/liability outputs | CP-045 isolated/hosted: failures/incomplete sources, zero/unknown, per-measure preservation, date/closed-month scope, large values/Copy, motion. No implementation or engineering verification outstanding; owner acceptance pending |
+| Profile command/header metric; directory financial rows; Profile detail balance/P&L/fees | IMPLEMENTED AND VERIFIED: failed-header readiness, full accounting-text reflow, Profile-owned cells and same-route return | CP-045 isolated/hosted: every named group replay, exact Copy, unknown/zero/read failures, pending period Save and recovery, compact/enlarged text, keyboard/reopen and reduced/off motion. Owner acceptance pending |
+| Fee Period Review dialog/revision values and Fee Centre Breakdown drawer | IMPLEMENTED AND VERIFIED: required-output parsing, independent stored/preview readiness, late-body ownership, outstanding-summary replay and focus restoration | CP-045 isolated/hosted and12 component tests: every calculation/revision/correction/withdrawal group, monthly Cash scope, failure/unknown/zero, Copy, close/reopen, compact/enlarged themes and motion. Owner acceptance pending |
+
+**Named coverage pass complete:** no implementation or engineering verification remains in the
+finite queue. Broader human acceptance/issue closure stays separate; fresh normal-owner browser and
+VoiceOver speech were not executed. Existing all-Profile Fee Centre membership is unchanged: an unread
+contributor makes the aggregate incomplete, while known Profile rows remain available. Required
+fee/liability outputs preserve unknown per measure; no equation, fee allocation or eligibility change.
 
 The nested `Tracker quick views` and legacy Cash adjustment summary blocks inside `!isDashboardLike` is not an active Dashboard consumer;
 their contradictory inner guards is not counted as unimplemented user-facing scope. `PeriodPnlReport`,

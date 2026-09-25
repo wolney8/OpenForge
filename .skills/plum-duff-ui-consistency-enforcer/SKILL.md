@@ -66,6 +66,7 @@ use the canonical primitive and computed styling.
 - Chart pointer inspection and keyboard inspection must select the same readable date/value and
   records. Verify intermediate points and drilldown use the headline's governed financial scope;
   a matching final total alone cannot validate the chart. Reuse existing detail/FinancialValue UI.
+- Cached headers and open drawers must receive the owning read's failure; identity/cache refreshes cannot restore financial readiness. Preserve independently confirmed measures. Measure canonical glyph bounds as well as the outer financial span during enlarged-text animation, and exercise each named replay group after first display settles.
 - Verify intrinsic header/action sizing with root text enlargement separately from320px reflow.
   Labelled targets must wrap/bound their minimum width without shrinking text, hiding controls or
   letting an identity label overflow its shrinking flex target. Record combined stress separately.

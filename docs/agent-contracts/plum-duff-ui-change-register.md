@@ -1,5 +1,14 @@
 # Plum Duff UI Change Register
 
+## CP-045 named financial coverage — 2026-09-25 09:51 BST
+
+| ID / issue | Surface and bounded repair | Existing equivalent | State |
+| --- | --- | --- | --- |
+| PD-FIX-294 / #105 | Fee Position/Exposure nearest replay, truthful complete scope and required fee/liability outputs | CP-042 stat/replay groups, FinancialReadValue and required-money parser | COMPLETE — local/Preview`7dc975f`, isolated/hosted verified |
+| PD-FIX-295 / #105 #92 | Profile header stale failure/clipping, directory/detail readiness, return to current Profiles tab | Existing summary event, header grid, Profile-owned FinancialReadValue and native tabs | COMPLETE — scope/Copy/replay/motion/geometry/keyboard verified |
+| PD-FIX-296 / #105 #92 | Fee Review/Breakdown unknown/late states, stored-value independence, withdrawal replay and opener focus | Existing shared groups/parser and ModalBoundary close/focus semantics | COMPLETE —12 component and2 isolated/hosted browser checks |
+
+
 ## CP-044 Reports batch — 2026-09-24 19:46 BST
 
 | ID / issue | Named group and requested outcome | Existing equivalent / exact scope | State |

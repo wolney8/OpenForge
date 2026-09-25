@@ -1,5 +1,83 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
+## CP-045 named financial coverage — 2026-09-25 09:51 BST
+
+**The finite #105 implementation and engineering coverage pass is complete at app `7dc975f`,
+served locally and by the existing protected Preview.** Broader owner acceptance/issue closure
+remains separate; #117's recorded scoped acceptance is retained.
+
+| ID / issues | Reproduced gap | Implemented and verified |
+| --- | --- | --- |
+| PD-FIX-294 / #105 | Three Fee Position/Exposure cards lacked nearest-card groups; failed or unread Profile sources could produce complete-looking partial totals; required fee/liability outputs became zero | Existing replay groups and scoped FinancialReadValue readiness. Known Profile rows remain visible; unchanged all-Profile Fee Centre membership shows an incomplete total when any contributor is unread. Required fee/liability reads preserve unknown independently of known P&L/cash |
+| PD-FIX-295 / #105 #92 | Failed warm summary left old header P&L visible; 200% text squeezed209px of accounting text into83px; failed detail fees became zero; returning to the current Profiles route left Fees selected | Existing single summary event now carries readiness, identity/cache refresh cannot undo failure, existing header grid wraps complete money without shrinking, Profile-owned directory/detail guards and same-route tab return |
+| PD-FIX-296 / #105 #92 | Blank fee outputs and absent stored module members became zero; retained preview survived failed parent source; missing withdrawal-summary replay; Escape lost row focus | Shared required-output parser, independent stored/preview readiness and late-body cancellation; existing replay group around read-only withdrawal summary; native dialog close and connected-trigger restoration |
+
+No equations, fee allocation, date/status/type eligibility, archived membership, persistence, Account
+balances, correction/Void or History rules changed. Fee entitlement is not cash/profit and liability
+is not realised loss. Editable withdrawal inputs remain static. No all-Profile request fan-out,
+per-card request, new animation system or per-value reduced-motion listener was introduced.
+
+### Executed checks / UI implementation checklist
+
+- [x] Current contracts and latest #105 clarification read; existing CP-042 cards, CP-043/044
+  readiness, shared FinancialValue/replay and ModalBoundary focus semantics used as equivalents.
+  Independent scoped review checked financial membership and known-value preservation.
+- [x] **104/104** focused tests across nine files; required fee outputs/status, review/drawer
+  components, liabilities, reporting/Profile selection and shared financial display/readiness.
+  Reproduction retained:17 fee summary/status failures,14 liability failures and4 initial drawer
+  failures. A synthetic fixture omitted its required mode; build/type checks caught it, and the
+  final valid Extra Place fixture and final checks pass. No financial formula was changed.
+- [x] **13/13 isolated and13/13 hosted** on fixed application source: seven new fee/Profile
+  workflows, Active-headline regression, Extra Places/Dashboard2, weekly-P&L and Standard/Multi-Lay2.
+  Every named nearest group is exercised, including fee revision/correction/outstanding subgroups.
+- [x] Independent synthetic expected values; positive/negative/zero/unknown, loading/failed/late
+  responses, selected Profile/period and closed fee month, preserved known amounts under partial
+  failure, no archived request fan-out, latest month ownership and successful recovery.
+- [x] Both themes,1440/390px and760px/200% text; actual screenshots inspected, internal canonical
+  and animated glyph containment, currency/signs and exact Clipboard; first display/value change/
+  explicit nearest replay, peer stability, reduced motion and motion Off. Keyboard, Escape, opener
+  focus and reopen covered. One accessible final value, no digit focus/live announcements.
+- [x] Final TypeScript and local webpack/hosted Turbopack builds pass. Targeted lint:0 errors,
+  one unchanged pre-existing unused `allProfilesFeePosition` warning; no new warning introduced.
+- [x] CP-044 Reports evidence reused for unchanged content; its shared header failure/readiness is
+  newly checked. CP-043 Notes neutrality and explicit Save/Discard/reopen remain accepted unchanged;
+  new header period Save/failure rollback and fee close/reopen verified. No unrelated migration
+  campaign or full historical audit rerun.
+- [ ] Fresh authenticated normal-owner browser and actual VoiceOver speech unexecuted; normal-owner
+  execution gate retained. They are broader acceptance checks, not substituted by a health response.
+
+### Availability, limits and retained evidence
+
+- Local3010: all10 changed application modules/styles matched HTTP-served source maps; login200.
+  API8010 is unchanged from `3a7f0a3` and retains `3a7f0a3…+dirty` launch metadata. Frontend/API
+  contracts and healthy normal-owner database identity agree; no service restart for cosmetic labels.
+  At entry only generated `next-env.d.ts` and incremental TypeScript cache were dirty; preserved
+  and excluded from commits. Unrelated parent-checkout work is untouched.
+- Preview: `7dc975f`, role`preview`, database`preview:plum_duff_preview_cp028`, fingerprint
+  `c3b647ca129cf41c`, schema`account-access-v1`, auth required; anonymous302 protection. Unique
+  deployment checked before updating only the existing stable alias.468 application files match
+  staging. Provider-managed configuration reused remotely; no secret transfer/scope change.
+  Preview DB binding stays Preview-only; inherited shared auth/OAuth scopes and #96 remain disclosed.
+- Eight owner projections remain unchanged since CP-044; readable owner SQLite backup verified,
+  integrity/FK checks pass. Synthetic test Profiles archived and Preview session revoked200→204→401.
+  No owner-data mutation, schema/environment/credential/Production change, main merge or Git push.
+- All-Profile Fee Centre totals deliberately remain incomplete while any Profile contribution is
+  unread or failed; known individual rows stay usable. This does not silently filter archived
+  Profiles or introduce an aggregate endpoint/request fan-out. No extra consumer was added to #105.
+- Private `cp045-*` retains reproductions, final tests, screenshot geometry, safe runtime/config
+  receipts, local serving parity, owner hashes and source/evidence backup verification. Environment
+  values, sessions/cookies, raw configuration metadata and live logs are excluded from the backup.
+- CP-044 summary now published to [#114](https://github.com/wolney8/OpenForge/issues/114#issuecomment-5829218066)
+  with explicit owner permission. New concise CP-045 evidence published once: [#92](https://github.com/wolney8/OpenForge/issues/92#issuecomment-5829630799), [#105](https://github.com/wolney8/OpenForge/issues/105#issuecomment-5829629915), [#114](https://github.com/wolney8/OpenForge/issues/114#issuecomment-5829631674).
+  Standing permission in AGENTS.md is comments-only; previous rejection evidence is not rewritten.
+
+Named #105 implementation outstanding: **none**. Named engineering verification outstanding: **none**.
+Broader owner acceptance remains pending; #105 stays open. Git push is still blocked by unverified
+Git-triggered deployment isolation; #96 rotation is separate. No new owner smoke campaign.
+
+Next two executable actions: #92: repair demonstrated peer-field, validation/help and action alignment in FundManagerAuthoritySettings and AccountAuthoritySettings create/edit forms, using their existing shared controls. Then #92: complete the bounded Profile Settings heading/help and field-reflow slice in TrackerDateSettings and ExchangeCommissionSettings.
+
+
 ## CP-044 Reports financial display — 2026-09-24 19:46 BST
 
 **Application `0189434` is served by normal localhost3010 and the existing protected Preview.**

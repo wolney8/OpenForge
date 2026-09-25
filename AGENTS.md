@@ -1,6 +1,6 @@
 # Plum Duff Repository Agent Instructions
 
-Last updated: 2026-09-24 09:53 BST
+Last updated: 2026-09-25 09:51 BST
 
 ## Project purpose
 
@@ -439,6 +439,19 @@ Never allow `PROJECT_STATUS.md` to grow back into the detailed audit or backlog.
   available API credentials, then `gh`; only then use a clearly labelled local fallback.
   Missing `gh` is not missing GitHub. Never request or print credentials. Record a concise
   pending-sync note when live mutation is unavailable and reconcile it when access returns.
+
+### Standing permission for scoped GitHub issue comments
+
+Recorded 2026-09-25 09:51 BST: the owner explicitly authorises the CP-044 delivery comment on
+`wolney8/OpenForge` #114 and concise progress/evidence comments for subsequent already-authorised
+batches on existing #92, #105 and #114 in that repository. Check for an equivalent comment first.
+Permitted: issue/checkpoint IDs, plain-English changes, source revisions, scoped test counts/results,
+local/Preview availability, remaining defects/limitations and next steps. Prefer relevant issue or
+contract links over duplicate long reports. Never publish credentials/cookies/tokens, connection
+strings, private filesystem paths, owner Account/betting/financial data, raw logs/screenshots/dumps
+or private attachments. This permits comments only, not Git push, main merge, Production changes,
+issue closure, deletion or rewriting earlier evidence. Use normal approval tooling; if it rejects a
+comment, retain the exact reason locally and continue independent work without bypassing the gate.
 
 ## Durable request capture
 

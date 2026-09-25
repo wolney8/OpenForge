@@ -1,23 +1,23 @@
 # Project Status — Plum Duff / OpenForge — Doc ID: PS-CODEX-001
 
-**Last updated:** 2026-09-24 19:46 BST · **Status:** 🟢 CP-044 Reports batch delivered locally and to protected Preview
+**Last updated:** 2026-09-25 09:51 BST · **Status:** 🟢 CP-045 named #105 engineering coverage complete
 
 ## Right now
 
-- **Completed:** PD-FIX-292–293:15 Reports financial cards use nearest-card replay; selected-period values wait for Save; required Cash/Casino/Extra Places outputs preserve unknown versus zero and independent financial meanings. App`0189434`. [Evidence](docs/audits/platform-quality-audit.md#cp-044-reports-financial-display--2026-09-24-1946-bst).
-- **Running:** localhost3010 serves both changed modules at`0189434`; protected Preview serves`0189434`. API8010 is unchanged and retains its`3a7f0a3…+dirty` launch label. Owner data unchanged; configuration reused remotely.
-- **Remaining:** finite #105 queue below; Git push withheld for unverified automatic-deployment isolation. #96 rotation separate. Fresh authenticated normal-owner browser/VoiceOver unexecuted; #117 acceptance retained. Additional #114 publication rejected by automatic approval review; local evidence retained and #105 synced.
+- **Completed / working on:** PD-FIX-294–296 delivered at app`7dc975f`: truthful Fee Position/Exposure, Profile header/directory/detail and fee-review/breakdown displays; nearest replay, full header values and dialog focus. [Evidence](docs/audits/platform-quality-audit.md#cp-045-named-financial-coverage--2026-09-25-0951-bst).
+- **Running:** local3010 frontend and protected Preview`7dc975f`. Unchanged API8010 retains`3a7f0a3…+dirty`;10 HTTP-served modules/styles verified. Owner data unchanged; provider-managed configuration reused remotely.
+- **Next:** #92 authority create/edit forms, then Profile Settings headings/help/reflow. Named #105 implementation and engineering verification have no remaining surface.
+- **Blocked / acceptance:** Git push withheld for unverified automatic-deployment isolation; #96 rotation separate. Fresh normal-owner browser/VoiceOver unexecuted and broader #105 owner acceptance pending. #117 acceptance retained. CP-044 #114 publication gap resolved; standing comments-only permission recorded.
 
 ## Delivery state
 
-| Area | Evidence state |
+| Area | Actual state |
 | --- | --- |
-| Application / tests | `0189434`; Reports3/3 hosted. Eight relevant workflows have passing evidence after bounded rechecks; original combined7/8 runs retained. Web48, final types/lint/build pass |
-| Normal localhost3010 / API8010 | Both changed HTTP-served modules match app`0189434`; healthy normal-owner API launch`3a7f0a3…+dirty`, fingerprint`7246998d43722066`. Eight owner projections unchanged; no authenticated owner browser |
-| Isolated3120 / API8046 | Existing test environment and database retained; backend launch label unchanged. Final Reports readiness and relevant workflow rechecks pass |
-| Protected Preview | `0189434`; protection, role/database and actual browser workflows verified; four CP044 Profiles archived, session revoked200→204→401 |
-| Configuration / publication | Provider-managed bindings reused; no secret transfer/scope change. Git push/main/Production withheld. #105 evidence published; extra #114 comment blocked by automatic approval review |
-| Acceptance / backup | #117 scoped acceptance retained; #105 open. Verified owner backup and current source/evidence bundle; earlier archives retained |
+| Application/tests | `7dc975f`;104 focused tests,13 isolated/13 hosted workflows, types and builds pass; lint0 errors/1 pre-existing warning |
+| Local3010 / API8010 |10 changed modules/styles verified over HTTP; healthy API unchanged`3a7f0a3…+dirty`; generated Next/incremental files preserved; no owner browser or unnecessary restart |
+| Protected Preview | `7dc975f`; protection, role/database and actual authenticated screens verified; synthetic Profiles archived/session revoked |
+| Coverage/limitations | Named #105 pass complete; incomplete all-Profile fee sources remain unavailable with known rows retained. Broader owner acceptance remains separate |
+| Publication/backup | CP-044 #114 and CP-045 #92/#105/#114 comments published once. No Git push/main/Production; verified source/evidence backup refreshed and prior archives retained |
 
 ## Progress at a glance
 
@@ -32,17 +32,16 @@ These figures measure **#114 audit coverage**, not the percentage of the product
 
 ## Next two executable actions
 
-1. #105: reproduce and complete nearest-card replay for Fund Manager Fee Position (Available to Withdraw / Fees Withdrawn) and Exposure liability, retaining their governed meanings.
-2. #105: verify Profile command/header, directory and detail financial values for scope/read failures, unknown/zero, nearest-group replay and exact Copy; fix demonstrated gaps only.
+1. #92: repair demonstrated peer-field, validation/help and action alignment in FundManagerAuthoritySettings and AccountAuthoritySettings create/edit forms, using their existing shared controls.
+2. #92: complete the bounded Profile Settings heading/help and field-reflow slice in TrackerDateSettings and ExchangeCommissionSettings.
 
-The remaining verification-only fee consumers are Fee Period Review and Fee Centre Breakdown.
-Implementation and verification are separate in the [finite #105 checklist](docs/contracts/financial-value-presentation-contract.md#rollout-coverage).
+The [finite #105 checklist](docs/contracts/financial-value-presentation-contract.md#rollout-coverage)
+separates implemented/verified surfaces from broader owner acceptance.
 
 ## Checkpoint log
 
 | ID | Timestamp | What changed | Issue | Document |
 | --- | --- | --- | --- | --- |
-| CP-026 | 2026-09-19 12:41 BST | Enforced inline calculator help, one Multi-Lay outer grid and paired semantic Back/Lay surfaces across standalone and embedded consumers | [#35](https://github.com/wolney8/OpenForge/issues/35), [#92](https://github.com/wolney8/OpenForge/issues/92) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-026-calculator-visual-contract-enforcement--2026-09-19-1241-bst) |
 | CP-027 | 2026-09-21 10:44 BST | Recorded owner calculator and Google acceptance, promoted provider re-authentication to PASS and froze the verified local baseline | [#35](https://github.com/wolney8/OpenForge/issues/35), [#62](https://github.com/wolney8/OpenForge/issues/62), [#92](https://github.com/wolney8/OpenForge/issues/92), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-027-owner-acceptance-and-frozen-local-baseline--2026-09-21-1044-bst) |
 | CP-028 | 2026-09-21 13:02 BST | Created an isolated protected Preview, proved hosted runtime/database readiness and recovery, and stopped truthfully at the owner-controlled Google interaction | [#62](https://github.com/wolney8/OpenForge/issues/62), [#114](https://github.com/wolney8/OpenForge/issues/114), [#115](https://github.com/wolney8/OpenForge/issues/115) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-028-protected-hosted-preview-verification--2026-09-21-1302-bst) |
 | CP-029 | 2026-09-21 15:24 BST | Recorded hosted Google PASS, repaired protected authenticated SSR context and stopped the Preview gate on a real Reports render loop | [#62](https://github.com/wolney8/OpenForge/issues/62), [#114](https://github.com/wolney8/OpenForge/issues/114), [#115](https://github.com/wolney8/OpenForge/issues/115) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-029-authenticated-protected-preview-verification--2026-09-21-1524-bst) |
@@ -62,6 +61,7 @@ Implementation and verification are separate in the [finite #105 checklist](docs
 | CP-042 | 2026-09-24 15:00 BST | Deployed CP-041 and verified its missing hosted workflows; repaired Extra Places filter controls and Active-Profile financial-card replay/readiness; local/Preview verified with unchanged owner data | [#92](https://github.com/wolney8/OpenForge/issues/92), [#105](https://github.com/wolney8/OpenForge/issues/105), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Evidence](docs/audits/platform-quality-audit.md#cp-042-protected-preview-delivery-and-bounded-ui-repairs--2026-09-24-1500-bst) |
 | CP-043 | 2026-09-24 16:00 BST | Completed Extra Places summary readiness/replay and Dashboard period/failure handling; six isolated/six hosted workflows pass, local served modules verified, owner data unchanged | [#105](https://github.com/wolney8/OpenForge/issues/105), [#92](https://github.com/wolney8/OpenForge/issues/92), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Evidence](docs/audits/platform-quality-audit.md#cp-043-extra-places-summaries-and-profile-dashboard-cards--2026-09-24-1600-bst) |
 | CP-044 | 2026-09-24 19:46 BST | Completed Reports card replay and truthful selected-range/required-output readiness; verified local/Preview app0189434, passing focused regressions and unchanged owner data | [#105](https://github.com/wolney8/OpenForge/issues/105), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Evidence](docs/audits/platform-quality-audit.md#cp-044-reports-financial-display--2026-09-24-1946-bst) |
+| CP-045 | 2026-09-25 09:51 BST | Finished named Fee Position/Exposure, Profile and fee-dialog financial coverage;13 isolated/hosted workflows pass, local/Preview app7dc975f and unchanged owner data | [#105](https://github.com/wolney8/OpenForge/issues/105), [#92](https://github.com/wolney8/OpenForge/issues/92), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Evidence](docs/audits/platform-quality-audit.md#cp-045-named-financial-coverage--2026-09-25-0951-bst) |
 
 ## Reference index
 
