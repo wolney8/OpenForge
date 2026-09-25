@@ -104,6 +104,9 @@ export const fundManagerNotificationTypes = [
       "Surfaces pending signup, current weekly and near-expiry Profile opportunities without creating ledger rows.",
     timing: "Once per opportunity period while the opportunity is still awaiting action.",
   },
+  { id: "free_bet_expiry", label: "Recorded Free Bet Expiry", description: "Review actual recorded Free Bets approaching their expiry.", timing: "Within the Profile's configurable calendar-day expiry window; unknown dates are not inferred." },
+  { id: "settlement_review", label: "Settlement Reviews", description: "Open placed bets whose settlement has not been recorded.", timing: "While recorded Placed; no overdue threshold or outcome is assumed." },
+  { id: "account_review", label: "Account Evidence Reviews", description: "Review active Accounts with missing balance or unchecked access evidence.", timing: "While the recorded evidence is missing; no balance freshness threshold is assumed." },
   {
     id: "catalogue_transfer_status",
     label: "Account Catalogue Transfers",
@@ -128,6 +131,9 @@ export const defaultFundManagerNotificationPreferences: FundManagerNotificationP
   free_bet_follow_up_reminder: true,
   profile_opportunity_reminder: true,
   catalogue_transfer_status: true,
+  free_bet_expiry: true,
+  settlement_review: true,
+  account_review: true,
 };
 
 const knownFundManagerNotificationTypeIds = new Set<string>(
@@ -590,4 +596,17 @@ export function formatNotificationDue(value: string): string {
     hour: "numeric",
     minute: "2-digit",
   }).format(parsed);
+}
+
+/** Current feed only. Immutable History must never resurrect an obsolete task. */
+export function currentDailyTasks(notifications: FundManagerNotification[]): FundManagerNotification[] {
+  return [...new Map(notifications.filter(item => item.kind === "task" && item.audience === "fund_manager" && item.security_tag === "fund_manager_only").map(item => [item.notification_id, item])).values()];
+}
+
+export function canCompleteNotification(notification: FundManagerNotification): boolean {
+  const profile = encodeURIComponent(notification.profile_id), record = encodeURIComponent(notification.record_id);
+  return notification.kind === "task" && (
+    notification.completion_href === `/profiles/${profile}/sportsbook-bets/${record}/partial-lay-reminder` ||
+    notification.completion_href === `/profiles/${profile}/free-bets/${record}/follow-up-reminder`
+  );
 }

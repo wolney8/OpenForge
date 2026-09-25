@@ -1,11 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { apiBaseUrl } from "@/lib/api";
+import { beginRouteTransition, endRouteTransition } from "@/lib/shell-loading";
 import {
   dismissNotificationIds,
+  currentDailyTasks,
   emptyNotificationViewState,
   filterFundManagerNotificationsForViewer,
   filterNotificationHistory,
@@ -43,12 +46,18 @@ function notificationTypeLabel(type: string): string {
     .replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
-export function NotificationHistoryPage() {
+export function NotificationHistoryPage({ daily = false }: { daily?: boolean }) {
+  const router = useRouter();
+  const [profileFilter, setProfileFilter] = useState("all");
+  const [confirmClearId, setConfirmClearId] = useState("");
+  const [openingId, setOpeningId] = useState("");
+  const refreshVersionRef = useRef(0);
+  const openVersionRef = useRef(0);
   const [notifications, setNotifications] = useState<FundManagerNotification[]>([]);
   const [viewState, setViewState] = useState<NotificationViewState>(loadViewState);
   const [query, setQuery] = useState("");
   const [notificationType, setNotificationType] = useState("all");
-  const [status, setStatus] = useState<NotificationHistoryStatus>("all");
+  const [status, setStatus] = useState<NotificationHistoryStatus>(daily ? "new" : "all");
   const [isLoading, setIsLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
   const [isPersistingState, setIsPersistingState] = useState(false);
@@ -61,6 +70,8 @@ export function NotificationHistoryPage() {
   useEffect(() => {
     let active = true;
     const refresh = async () => {
+      const requestVersion = ++refreshVersionRef.current;
+      if (daily) setIsLoading(true);
       const stateRequestVersion = stateRequestVersionRef.current;
       setNow(new Date());
       try {
@@ -73,13 +84,14 @@ export function NotificationHistoryPage() {
           loadPersistedNotificationPreferences(),
         ]);
         if (!currentResponse.ok) throw new Error("Unable to load notifications");
-        const historyResponse = await fetch(`${apiBaseUrl}/fund-manager/notifications/history`, {
+        if (daily && (!persistedState || !persistedPreferences)) throw new Error("Task state unavailable");
+        const historyResponse = daily ? currentResponse : await fetch(`${apiBaseUrl}/fund-manager/notifications/history`, {
           cache: "no-store",
           credentials: "include",
         });
         if (!historyResponse.ok) throw new Error("Unable to load notification history");
         const remote = (await historyResponse.json()) as FundManagerNotification[];
-        if (!active) return;
+        if (!active || requestVersion !== refreshVersionRef.current) return;
         if (
           persistedState &&
           stateRequestVersion === stateRequestVersionRef.current
@@ -89,21 +101,21 @@ export function NotificationHistoryPage() {
         }
         setNotifications(
           filterFundManagerNotificationsForViewer(
-            [...loadLocalFundManagerNotifications(), ...remote],
+            daily ? currentDailyTasks(remote) : [...loadLocalFundManagerNotifications(), ...remote],
             persistedPreferences ?? loadFundManagerNotificationPreferences()
           )
         );
         setLoadFailed(false);
       } catch {
-        if (!active) return;
+        if (!active || requestVersion !== refreshVersionRef.current) return;
         const local = filterFundManagerNotificationsForViewer(
           loadLocalFundManagerNotifications(),
           loadFundManagerNotificationPreferences()
         );
-        setNotifications(local);
-        setLoadFailed(local.length === 0);
+        setNotifications(daily ? [] : local);
+        setLoadFailed(daily || local.length === 0);
       } finally {
-        if (active) setIsLoading(false);
+        if (active && requestVersion === refreshVersionRef.current) setIsLoading(false);
       }
     };
     const handleRefresh = (event: Event) => {
@@ -124,7 +136,7 @@ export function NotificationHistoryPage() {
       active = false;
       window.removeEventListener(FUND_MANAGER_NOTIFICATIONS_REFRESH_EVENT, handleRefresh);
     };
-  }, []);
+  }, [daily]);
 
   const applyViewState = (next: NotificationViewState) => {
     viewStateRef.current = next;
@@ -172,7 +184,8 @@ export function NotificationHistoryPage() {
     () => [...new Set(notifications.map((notification) => notification.notification_type))].sort(),
     [notifications]
   );
-  const filtered = filterNotificationHistory(notifications, viewState, {
+  const profiles = useMemo(() => [...new Map(notifications.map(item => [item.profile_id, item.profile_name])).entries()].sort((a,b) => a[1].localeCompare(b[1])), [notifications]);
+  const filtered = filterNotificationHistory(notifications.filter(item => !daily || profileFilter === "all" || item.profile_id === profileFilter), viewState, {
     query,
     notificationType,
     status,
@@ -196,6 +209,7 @@ export function NotificationHistoryPage() {
     }
   };
   const clear = (items: FundManagerNotification[]) => {
+    setConfirmClearId("");
     if (items.length) {
       void persistState(
         dismissNotificationIds(
@@ -207,26 +221,56 @@ export function NotificationHistoryPage() {
     }
   };
 
+  const openTask = async (item: FundManagerNotification) => {
+    if (openingId || isLoading) return;
+    const requestVersion = ++refreshVersionRef.current;
+    openVersionRef.current = requestVersion;
+    setOpeningId(item.notification_id);
+    setActionError("");
+    try {
+      const response = await fetch(`${apiBaseUrl}/fund-manager/notifications`, { cache: "no-store", credentials: "include" });
+      if (!response.ok) throw new Error("Unable to recheck task access. Refresh and retry.");
+      const current = currentDailyTasks(await response.json() as FundManagerNotification[]);
+      if (requestVersion !== refreshVersionRef.current) return;
+      setNotifications(current);
+      const fresh = current.find(candidate => candidate.notification_id === item.notification_id);
+      if (!fresh) {
+        setActionError("This task changed or is no longer available to you. The list has refreshed.");
+        return;
+      }
+      markRead([fresh]);
+      beginRouteTransition();
+      router.push(fresh.href);
+    } catch (error) {
+      if (requestVersion === refreshVersionRef.current) {
+        setNotifications([]);
+        setLoadFailed(true);
+        setActionError(error instanceof Error ? error.message : "Unable to open task.");
+      }
+    } finally { if (requestVersion === openVersionRef.current) setOpeningId(""); }
+  };
+
   return (
-    <main className="page-shell stack notification-history-page" data-pd-id="notifications.page">
+    <main className="page-shell stack notification-history-page" data-pd-id={daily ? "tasks.page" : "notifications.page"}>
       <section className="hero-panel split-hero">
         <div className="stack">
           <span className="eyebrow">Fund Manager</span>
-          <h1>Notifications</h1>
-          <p>Read, cleared and completed source notifications remain available here.</p>
+          <h1>{daily ? "Daily tasks" : "Notifications"}</h1>
+          <p>{daily ? "Current reminders and recorded evidence. Open a record to act; clearing a task leaves its source unchanged." : "Read, cleared and completed source notifications remain available here."}</p>
+          <Link className="text-link" href={daily ? "/notifications" : "/tasks"}>{daily ? "Notification History" : "Daily tasks"}</Link>
         </div>
         <aside className="shell-note stack" aria-label="Notification summary">
-          <span className="eyebrow">Unread</span>
-          <strong aria-hidden={isLoading}>{isLoading ? "—" : unreadTotal}</strong>
+          <span className="eyebrow">{daily ? "Needs attention" : "Unread"}</span>
+          <strong aria-hidden={isLoading}>{isLoading || loadFailed ? "—" : daily ? filterNotificationHistory(notifications.filter(item => profileFilter === "all" || item.profile_id === profileFilter), viewState, { query, notificationType, status: "new" }).length : unreadTotal}</strong>
         </aside>
       </section>
 
-      <section aria-label="Notification history" className="content-panel stack" data-pd-id="notifications.history">
+      <section aria-label={daily ? "Current daily tasks" : "Notification history"} className="content-panel stack" data-pd-id="notifications.history">
         <div className="table-toolbar settings-table-toolbar notification-history-toolbar">
           <label className="field-control table-search-field">
-            <span>Search notifications</span>
+            <span>{daily ? "Search tasks" : "Search notifications"}</span>
             <input
-              aria-label="Search notifications by name or context"
+              aria-label={daily ? "Search tasks by name or context" : "Search notifications by name or context"}
               data-pd-id="notifications.history.search"
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Name, profile, ledger, bookmaker or record"
@@ -235,6 +279,7 @@ export function NotificationHistoryPage() {
             />
           </label>
           <div className="settings-table-filter-group notification-history-filter-group">
+            {daily ? <label className="field-control table-filter-field"><span>Profile</span><select aria-label="Filter tasks by Profile" value={profileFilter} onChange={event => setProfileFilter(event.target.value)}><option value="all">All authorised Active Profiles</option>{profileFilter !== "all" && !profiles.some(([id]) => id === profileFilter) ? <option value={profileFilter}>Selected Profile: no current tasks</option> : null}{profiles.map(([id,name]) => <option key={id} value={id}>{name}</option>)}</select></label> : null}
             <label className="field-control table-filter-field">
               <span>Type</span>
               <select
@@ -255,7 +300,7 @@ export function NotificationHistoryPage() {
                 onChange={(event) => setStatus(event.target.value as NotificationHistoryStatus)}
                 value={status}
               >
-                <option value="all">All retained</option>
+                <option value="all">{daily ? "All current" : "All retained"}</option>
                 <option value="new">New</option>
                 <option value="done">Done</option>
                 <option value="cleared">Cleared</option>
@@ -263,10 +308,11 @@ export function NotificationHistoryPage() {
             </label>
           </div>
           <div className="notification-history-actions">
+            {daily ? <button type="button" className="button-link" disabled={isLoading || isPersistingState} data-pd-id="tasks.refresh" onClick={() => window.dispatchEvent(new Event(FUND_MANAGER_NOTIFICATIONS_REFRESH_EVENT))}><span aria-hidden="true" className="material-symbols-outlined">refresh</span>Refresh tasks</button> : null}
             <button
               className="button-link"
               data-pd-id="notifications.history.mark-read"
-              disabled={unread.length === 0 || isPersistingState}
+              disabled={unread.length === 0 || isPersistingState || isLoading || loadFailed}
               onClick={() => markRead(unread)}
               type="button"
             >
@@ -276,8 +322,8 @@ export function NotificationHistoryPage() {
             <button
               className="button-link destructive-action"
               data-pd-id="notifications.history.clear"
-              disabled={clearable.length === 0 || isPersistingState}
-              onClick={() => clear(clearable)}
+              disabled={clearable.length === 0 || isPersistingState || isLoading || loadFailed}
+              onClick={() => daily ? setConfirmClearId("filtered") : clear(clearable)}
               type="button"
             >
               <span aria-hidden="true" className="material-symbols-outlined">clear_all</span>
@@ -286,6 +332,7 @@ export function NotificationHistoryPage() {
           </div>
         </div>
 
+        {daily && confirmClearId === "filtered" ? <div className="notification-clear-confirm" role="group" aria-label="Confirm clear filtered tasks"><span>Clear filtered tasks without changing their records?</span><button className="button-link destructive-action" type="button" onClick={() => clear(clearable)}>Clear</button><button className="button-link" type="button" onClick={() => setConfirmClearId("")}>Cancel</button></div> : null}
         {actionError ? (
           <div className="notification-action-error" role="alert">{actionError}</div>
         ) : null}
@@ -297,18 +344,18 @@ export function NotificationHistoryPage() {
           >
             <LedgerLoadingIndicator
               dataPdId="notifications.history.loading"
-              label="Loading Notifications"
+              label={daily ? "Loading Daily tasks" : "Loading Notifications"}
             />
           </section>
         ) : loadFailed ? (
-          <div className="notification-action-error" role="alert">Notifications are temporarily unavailable.</div>
+          <div className="notification-action-error" role="alert">{daily ? "Daily tasks are temporarily unavailable. Use Refresh tasks to retry." : "Notifications are temporarily unavailable."}</div>
         ) : (
           <>
             <p aria-live="polite" className="notification-history-count" role="status">
-              {filtered.length} retained notification{filtered.length === 1 ? "" : "s"} · {unread.length} unread
+              {filtered.length} {daily ? "current task" : "retained notification"}{filtered.length === 1 ? "" : "s"} · {unread.length} unread
             </p>
             {filtered.length === 0 ? (
-              <div className="notification-empty-state" role="status">No retained notifications match these filters.</div>
+              <div className="notification-empty-state" role="status">{daily ? "No current tasks match these filters." : "No retained notifications match these filters."}</div>
             ) : (
               <div className="notification-history-list" data-pd-id="notifications.history.list">
                 {filtered.map((notification) => {
@@ -318,16 +365,17 @@ export function NotificationHistoryPage() {
                   return (
                     <article
                       className={`notification-card notification-card-${notification.tone}${isUnread ? " is-unread" : ""}`}
-                      data-pd-id={`notifications.history.item.${notification.record_id}`}
+                      data-pd-id={`${daily ? "tasks" : "notifications.history"}.item.${notification.record_id}`}
                       key={notification.notification_id}
                     >
                       <span aria-hidden="true" className="notification-state-dot" />
-                      <Link className="notification-card-link" href={notification.href} onClick={() => markRead([notification])}>
+                      <Link className="notification-card-link" href={notification.href} prefetch={daily ? false : undefined} aria-busy={daily && openingId === notification.notification_id} onClick={(event) => { if (daily) { event.preventDefault(); endRouteTransition(); void openTask(notification); } else markRead([notification]); }}>
                         <strong>{notification.title}</strong>
+                        {daily ? <span>{openingId === notification.notification_id ? "Checking current access…" : "Open record"}</span> : null}
                         <span>{notification.ledger_label} · {notification.bookmaker_label} · {notification.message}</span>
                         <span className="notification-card-meta">{notification.profile_name} · {notificationTypeLabel(notification.notification_type)} · {formatNotificationDue(notification.due_at)}</span>
                       </Link>
-                      {isCleared ? (
+                      {daily && confirmClearId === notification.notification_id ? <div className="notification-clear-confirm" role="group" aria-label="Confirm clear task"><span>Clear task only?</span><button className="button-link destructive-action" type="button" onClick={() => clear([notification])}>Clear</button><button className="button-link" type="button" onClick={() => setConfirmClearId("")}>Cancel</button></div> : isCleared ? (
                         <span className="table-chip table-chip-neutral">Cleared</span>
                       ) : (
                         <button
@@ -335,7 +383,7 @@ export function NotificationHistoryPage() {
                           aria-busy={isPersistingState}
                           className="icon-button notification-card-clear"
                           disabled={isPersistingState}
-                          onClick={() => clear([notification])}
+                          onClick={() => daily ? setConfirmClearId(notification.notification_id) : clear([notification])}
                           type="button"
                         >
                           <span aria-hidden="true" className="material-symbols-outlined">close</span>

@@ -641,7 +641,9 @@ def _validate_domain_rows(parsed: ParsedPortableBackup) -> None:
         if lifecycle not in LIFECYCLE_STATUSES:
             raise PortableRestoreError("Account lifecycle validation failed")
     for row in parsed.sheets["Sportsbook"]:
-        SportsbookBetPayload.model_validate(row)
+        SportsbookBetPayload.model_validate(
+            row, context={"restore_terminal_void_history": True}
+        )
     for row in parsed.sheets["Free Bets"]:
         FreeBetPayload.model_validate(row)
         state = validate_parent_resolution_state(

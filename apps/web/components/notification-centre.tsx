@@ -9,6 +9,7 @@ import {
   filterFundManagerNotificationsForViewer,
   loadLocalFundManagerNotifications,
   dismissNotificationIds,
+  canCompleteNotification,
   emptyNotificationViewState,
   formatUnreadNotificationCount,
   formatNotificationDue,
@@ -319,7 +320,7 @@ export function NotificationCentre() {
   };
 
   const completeTask = async (notification: FundManagerNotification) => {
-    if (notification.kind !== "task") return;
+    if (!canCompleteNotification(notification)) return;
     setCompletingId(notification.notification_id);
     setActionError("");
     try {
@@ -592,7 +593,7 @@ export function NotificationCentre() {
                     </span>
                   </Link>
                   <div className="notification-card-actions">
-                    {!isDone && notification.kind === "task" ? (
+                    {!isDone && canCompleteNotification(notification) ? (
                       <button
                         aria-label={`Mark task done for ${notification.profile_name}`}
                         className="icon-button notification-card-complete"

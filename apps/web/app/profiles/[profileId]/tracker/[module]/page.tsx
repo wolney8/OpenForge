@@ -116,7 +116,7 @@ export default async function TrackerModulePage({
         </section>
       ) : null}
       {module === "accounts" ? (
-        <AccountsWorkflowShell profileId={profile.profileId} />
+        <AccountsWorkflowShell profileId={profile.profileId} initialRecordId={requestedRecord} />
       ) : module === "sportsbook-bets" ? (
         <SportsbookWorkflowShell feeReviewContext={feeReviewContext} initialIssueFilter={requestedIssue} initialQuery={requestedSearch} initialRecordId={requestedRecord} key={`sportsbook:${requestedRecord ?? requestedIssue ?? (requestedRecords.join(",") || "default")}`} profileId={profile.profileId} />
       ) : module === "free-bets" ? (

@@ -122,7 +122,9 @@ def test_active_partial_lay_reminders_feed_fund_manager_notifications(tmp_path: 
     assert feed_response.status_code == 200
     notifications = feed_response.json()
     notification = next(
-        item for item in notifications if item["record_id"] == sportsbook_bet_id
+        item for item in notifications
+        if item["record_id"] == sportsbook_bet_id
+        and item["notification_type"] == "partial_lay_reminder"
     )
     assert notification["audience"] == "fund_manager"
     assert notification["security_tag"] == "fund_manager_only"
@@ -160,6 +162,7 @@ def test_active_partial_lay_reminders_feed_fund_manager_notifications(tmp_path: 
         item
         for item in resolved_feed_response.json()
         if item["record_id"] == sportsbook_bet_id
+        and item["notification_type"] == "partial_lay_reminder"
     )
     assert resolved_notification["task_state"] == "done"
     assert resolved_notification["title"] == "Partial lay recheck completed"
@@ -191,12 +194,14 @@ def test_active_partial_lay_reminders_feed_fund_manager_notifications(tmp_path: 
     assert dismissed_feed.status_code == 200
     assert sportsbook_bet_id not in {
         item["record_id"] for item in dismissed_feed.json()
+        if item["notification_type"] == "partial_lay_reminder"
     }
 
     history_response = client.get("/fund-manager/notifications/history")
     assert history_response.status_code == 200
     retained = [
         item for item in history_response.json() if item["record_id"] == sportsbook_bet_id
+        and item["notification_type"] == "partial_lay_reminder"
     ]
     assert retained
     assert {item["task_state"] for item in retained} == {"new", "done"}
@@ -264,6 +269,7 @@ def test_resolved_partial_lay_notification_expires_after_settlement(tmp_path: Pa
     assert feed_response.status_code == 200
     assert sportsbook_bet_id not in {
         item["record_id"] for item in feed_response.json()
+        if item["notification_type"] == "partial_lay_reminder"
     }
 
 
@@ -322,6 +328,7 @@ def test_free_bet_follow_up_reminders_feed_and_complete_from_notifications(
     assert feed_response.status_code == 200
     notification = next(
         item for item in feed_response.json() if item["record_id"] == free_bet_id
+        and item["notification_type"] == "free_bet_follow_up_reminder"
     )
     assert notification["notification_type"] == "free_bet_follow_up_reminder"
     assert notification["security_tag"] == "fund_manager_only"

@@ -34,6 +34,7 @@ const focusableSelector = [
 const subscribeToPortalAvailability = () => () => undefined;
 
 const navigationItems = [
+  { id: "daily-tasks", href: "/tasks", label: "Daily tasks", icon: "task_alt" },
   { id: "dashboard", href: "/", label: "Dashboard", icon: "space_dashboard" },
   {
     id: "registration-requests",

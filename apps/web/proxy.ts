@@ -32,6 +32,7 @@ export const config = {
     "/performance/:path*",
     "/reports/:path*",
     "/notifications/:path*",
+    "/tasks/:path*",
     "/settings/:path*",
     "/account/:path*",
     "/fund-manager/:path*",

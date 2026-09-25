@@ -2,7 +2,7 @@
 
 import { ModalBoundary } from "@/components/modal-boundary";
 
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { apiBaseUrl } from "@/lib/api";
 import { AccountFinancialSummary, AccountReviewButton } from "@/components/account-review-panel";
@@ -396,7 +396,8 @@ function sortAccountRows(rows: TrackerRow[], sort: AccountSort | null) {
   });
 }
 
-export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
+export function AccountsWorkflowShell({ profileId, initialRecordId }: { profileId: string; initialRecordId?: string }) {
+  const initialRecordOpenedRef = useRef("");
   const [rows, setRows] = useState<AccountRecord[]>([]);
   const [bookmakerCatalogue, setBookmakerCatalogue] = useState<BookmakerCatalogueRecord[]>([]);
   const [masterAccountCatalogue, setMasterAccountCatalogue] = useState<MasterAccountCatalogueRecord[]>([]);
@@ -883,6 +884,21 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
     revealEditor();
     setStatusMessage("");
   }
+
+  const openInitialRecord = useEffectEvent((recordId: string) => {
+    if (!resolvedRows.some(row => row.account_id === recordId)) {
+      setErrorMessage("The requested Account is no longer available in this Profile.");
+      return;
+    }
+    void selectRow(recordId);
+  });
+  useEffect(() => {
+    const key = `${profileId}:${initialRecordId}`;
+    if (!isInitialLoading && initialRecordId && initialRecordOpenedRef.current !== key) {
+      initialRecordOpenedRef.current = key;
+      openInitialRecord(initialRecordId);
+    }
+  }, [profileId, initialRecordId, isInitialLoading]);
 
   async function startNewRow() {
     if (isDirty && !(await confirmDiscardChanges())) {

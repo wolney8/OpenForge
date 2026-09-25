@@ -538,3 +538,72 @@ def test_restore_routes_are_fund_manager_only(
     forbidden = TestClient(app).post("/fund-manager/portable-restores/analyse", json=payload)
     assert forbidden.status_code == 403
     assert forbidden.json() == {"detail": "Fund Manager access is required"}
+
+
+def test_terminal_void_history_restores_without_guessing_missing_odds(tmp_path: Path) -> None:
+    from pydantic import ValidationError
+
+    from openforge_api.sportsbook import SportsbookBetPayload
+
+    configure_database(tmp_path)
+    seed_representative_profile()
+    seed_operational_tracker_settings()
+    legacy = {
+        "sportsbook_bet_id": "TERMINAL-VOID-HISTORY",
+        "event_name": "Synthetic imported terminal history",
+        "bookmaker": "Bookmaker A",
+        "status": "Free Bet Awarded",
+        "result": "Void",
+        "match_strategy": "No Lay",
+        "back_stake": "10.00",
+        "back_odds": "",
+        "lay_actual": "",
+        "manual_override_value": "",
+        "manual_override_reason": "",
+    }
+    # Existing import storage can preserve this terminal row. New placement cannot.
+    with pytest.raises(ValidationError, match="Enter odds"):
+        SportsbookBetPayload.model_validate({**legacy, "restore_terminal_void_history": True})
+    with pytest.raises(ValidationError):
+        SportsbookBetPayload.model_validate(
+            {**legacy, "back_odds": "NaN"}, context={"restore_terminal_void_history": True}
+        )
+    with pytest.raises(ValidationError, match="Enter odds"):
+        SportsbookBetPayload.model_validate(
+            {**legacy, "status": "Placed", "result": "Pending"},
+            context={"restore_terminal_void_history": True},
+        )
+    with pytest.raises(ValidationError, match="Enter the back stake"):
+        SportsbookBetPayload.model_validate(
+            {**legacy, "back_stake": ""}, context={"restore_terminal_void_history": True}
+        )
+    create_sportsbook_bet(
+        "profile-portable-test", {**legacy, "status": "Prospecting", "result": "Pending"}
+    )
+    # Represent the permitted import's preserved terminal fields, without going
+    # through the intentionally stricter native placement API.
+    with connect() as connection:
+        connection.execute(
+            "UPDATE sportsbook_bets SET status='Free Bet Awarded',result='Void' "
+            "WHERE sportsbook_bet_id='TERMINAL-VOID-HISTORY'"
+        )
+    source = build_profile_portable_export("profile-portable-test")
+    analysis = analyse_portable_restore(
+        payload=portable_payload(source.content), owner_email="fund-manager@example.invalid"
+    )
+    assert analysis["status"] == "READY"
+    completed = execute_portable_restore(
+        restore_run_id=analysis["restore_run_id"],
+        owner_email="fund-manager@example.invalid",
+        actor_email="fund-manager@example.invalid",
+    )
+    assert completed["status"] == "COMPLETE"
+    assert completed["attempts"][0]["parity"]["status"] == "PASS"
+    with connect() as connection:
+        restored = connection.execute(
+            "SELECT status,result,match_strategy,back_stake,back_odds,"
+            "lay_actual,manual_override_value "
+            "FROM sportsbook_bets WHERE profile_id=? AND event_name=?",
+            (completed["target_profile_id"], legacy["event_name"]),
+        ).fetchone()
+    assert dict(restored) == {key: legacy[key] for key in restored.keys()}

@@ -62,3 +62,7 @@ logical gate fails closed and removes the newly created Profile.
 Analysis, reference decisions, status reads, and execution require an authenticated Fund Manager
 session. Restore runs are owner-scoped. The uploaded workbook is retained only as normalized,
 validated Profile payload in the application database; raw XLSX bytes and secrets are not stored.
+
+## CP-049 terminal history compatibility
+
+A demonstrated imported Sportsbook record with status Free Bet Awarded, result Void and strategy No Lay may lack historical odds. Portable restore validates enums, entered numeric values, versioned metadata and override reasons, without imposing new-placement completeness on that exact terminal history. An internal restore-only validation context permits missing inputs; no money, odds, outcome or status is rewritten or inferred. Ordinary create/edit placement validation stays strict, including any payload-supplied lookalike context field. Reporting may remain unavailable where original inputs are unknown; recovery is not proof of a known financial total. Synthetic missing-odds roundtrip, malformed-number rejection and unchanged native422 checks are required.

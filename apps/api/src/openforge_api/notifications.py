@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from datetime import UTC, datetime, timedelta
+from urllib.parse import quote
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Request
 from pydantic import BaseModel
@@ -101,9 +104,7 @@ def workbook_import_notifications(email: str) -> list[FundManagerNotificationRes
                 "import_reconciliation_failed",
             }
             is_success = event_kind in {"analysis_complete", "import_complete"}
-            href = (
-                f"/profiles/{row['profile_id']}/imports/{row['import_run_id']}/review"
-            )
+            href = f"/profiles/{row['profile_id']}/imports/{row['import_run_id']}/review"
             notifications.append(
                 FundManagerNotificationResponse(
                     audience="fund_manager",
@@ -178,9 +179,7 @@ def exchange_commission_notifications(
             security_tag="fund_manager_only",
             kind="task",
             task_state="new",
-            notification_id=(
-                f"exchange-commission:{row['profile_id']}:{row['account_id']}"
-            ),
+            notification_id=(f"exchange-commission:{row['profile_id']}:{row['account_id']}"),
             notification_type="exchange_commission_required",
             title="Set Exchange commission",
             ledger_label="Profile Accounts",
@@ -224,17 +223,15 @@ def profile_opportunity_notifications(
             if opportunity.already_created:
                 continue
             defaults = opportunity.defaults
-            reminder_enabled = str(
-                defaults.get("opportunityReminderEnabled", "true")
-            ).casefold() == "true"
+            reminder_enabled = (
+                str(defaults.get("opportunityReminderEnabled", "true")).casefold() == "true"
+            )
             if not reminder_enabled:
                 continue
             expiry = parse_timestamp(str(defaults.get("opportunityExpiry", "")))
             is_expiring = expiry is not None and expiry <= now + timedelta(days=7)
             is_actionable = (
-                opportunity.kind == "Signup"
-                or opportunity.recurrence == "Weekly"
-                or is_expiring
+                opportunity.kind == "Signup" or opportunity.recurrence == "Weekly" or is_expiring
             )
             if not is_actionable:
                 continue
@@ -273,6 +270,172 @@ def profile_opportunity_notifications(
                 )
             )
     return notifications
+
+
+def notification_profile_scope(email: str, *, active_only: bool) -> set[str]:
+    """Preserve local single-owner authority; hosted scope requires explicit links."""
+    owner_filter = (
+        """
+      AND EXISTS (SELECT 1 FROM fund_manager_profile_links link
+                  WHERE link.profile_id=profile.profile_id AND lower(link.email)=lower(?))
+    """
+        if postgres_runtime_enabled()
+        else ""
+    )
+    active_filter = "AND lower(profile.status)='active'" if active_only else ""
+    with connect() as connection:
+        rows = connection.execute(
+            f"SELECT profile.profile_id FROM profiles profile WHERE 1=1 "
+            f"{owner_filter} {active_filter}",
+            (email,) if owner_filter else (),
+        ).fetchall()
+    return {str(row["profile_id"]) for row in rows}
+
+
+def daily_record_notifications(email: str, now: datetime) -> list[FundManagerNotificationResponse]:
+    """Current record evidence in the existing feed; never a second task ledger."""
+    owner_filter = (
+        """
+      AND EXISTS (SELECT 1 FROM fund_manager_profile_links link
+                  WHERE link.profile_id=profile.profile_id AND lower(link.email)=lower(?))
+    """
+        if postgres_runtime_enabled()
+        else ""
+    )
+    params = (email,) if owner_filter else ()
+    tasks: list[FundManagerNotificationResponse] = []
+
+    def task(row, *, kind, title, ledger, route, reasons, basis, due=""):
+        record_id, profile_id = str(row["record_id"]), str(row["profile_id"])
+        version = hashlib.sha256(json.dumps(basis, separators=(",", ":")).encode()).hexdigest()[:20]
+        tasks.append(
+            FundManagerNotificationResponse(
+                audience="fund_manager",
+                security_tag="fund_manager_only",
+                kind="task",
+                task_state="new",
+                notification_id=f"{kind}:{profile_id}:{record_id}:{version}",
+                notification_type=kind,
+                title=title,
+                ledger_label=ledger,
+                bookmaker_label=str(row["label"]),
+                message=reasons,
+                profile_id=profile_id,
+                profile_name=str(row["profile_name"]),
+                record_id=record_id,
+                due_at=due,
+                settles_at="",
+                created_at=str(row["created_at"]),
+                href=(
+                    f"/profiles/{quote(profile_id, safe='')}/tracker/{route}"
+                    f"?record={quote(record_id, safe='')}&source=tasks"
+                ),
+                completion_href="",
+                tone="warning",
+            )
+        )
+
+    with connect() as connection:
+        rewards = connection.execute(
+            f"""
+          SELECT item.free_bet_id AS record_id,item.profile_id,item.bookmaker AS label,
+                 item.expiry_datetime,item.offer_text,item.event_name,item.created_at,
+                 profile.display_name AS profile_name,
+                 COALESCE(settings.free_bet_expiry_alert_window_days,3) AS window_days
+          FROM free_bets item JOIN profiles profile ON profile.profile_id=item.profile_id
+          LEFT JOIN profile_tracker_settings settings ON settings.profile_id=item.profile_id
+          WHERE lower(profile.status)='active'
+            AND item.status IN ('Prospecting','Available','Not Yet Awarded')
+            AND item.result='Pending' {owner_filter}
+        """,
+            params,
+        ).fetchall()
+        for row in rewards:
+            expiry = parse_timestamp(str(row["expiry_datetime"]))
+            # Match the governed Dashboard calendar-day window in the project timezone.
+            local_now = now.astimezone(ZoneInfo("Europe/London"))
+            cutoff = local_now.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(
+                days=int(row["window_days"]) + 1
+            )
+            if expiry is None or expiry < now or expiry >= cutoff:
+                continue
+            task(
+                row,
+                kind="free_bet_expiry",
+                title="Review expiring Free Bet",
+                ledger="Free Bets",
+                route="free-bets",
+                reasons=(
+                    f"{row['event_name'] or row['offer_text'] or row['record_id']}: "
+                    f"recorded expiry falls within this Profile's "
+                    f"{row['window_days']}-day alert window."
+                ),
+                basis=[str(row["expiry_datetime"])],
+                due=str(row["expiry_datetime"]),
+            )
+
+        for table, key, ledger, route in [
+            ("sportsbook_bets", "sportsbook_bet_id", "Sportsbook Bets", "sportsbook-bets"),
+            ("free_bets", "free_bet_id", "Free Bets", "free-bets"),
+        ]:
+            rows = connection.execute(
+                f"""
+              SELECT item.{key} AS record_id,item.profile_id,item.bookmaker AS label,
+                     item.event_name,item.offer_text,item.result,item.date_settled,item.created_at,
+                     profile.display_name AS profile_name
+              FROM {table} item JOIN profiles profile ON profile.profile_id=item.profile_id
+              WHERE lower(profile.status)='active' AND item.status='Placed' {owner_filter}
+            """,
+                params,
+            ).fetchall()
+            for row in rows:
+                result = str(row["result"] or "Not recorded")
+                context = str(row["event_name"] or row["offer_text"] or row["record_id"])
+                date = str(row["date_settled"] or "")
+                task(
+                    row,
+                    kind="settlement_review",
+                    title="Review unsettled bet",
+                    ledger=ledger,
+                    route=route,
+                    reasons=(
+                        f"{context}: recorded Placed; result {result}. "
+                        "Settlement has not been recorded."
+                    ),
+                    basis=[table, date, result],
+                    due=date if parse_timestamp(date) else "",
+                )
+
+        accounts = connection.execute(
+            f"""
+          SELECT item.account_id AS record_id,item.profile_id,item.account AS label,
+                 item.current_balance,item.stake_access,item.promo_access,item.type,item.created_at,
+                 profile.display_name AS profile_name
+          FROM accounts item JOIN profiles profile ON profile.profile_id=item.profile_id
+          WHERE lower(profile.status)='active' AND item.lifecycle_status='Active' {owner_filter}
+        """,
+            params,
+        ).fetchall()
+        for row in accounts:
+            reasons = []
+            if not str(row["current_balance"] or "").strip():
+                reasons.append("Balance not recorded")
+            if str(row["type"]) != "Bank":
+                if row["stake_access"] == "Not Checked":
+                    reasons.append("Stake access not checked")
+                if row["promo_access"] == "Not Checked":
+                    reasons.append("Promo access not checked")
+            if reasons:
+                task(
+                    row,
+                    kind="account_review",
+                    title="Review Account evidence",
+                    ledger="Profile Accounts",
+                    route="accounts",
+                    reasons="; ".join(reasons) + ". No balance age or profit is inferred.",
+                    basis=reasons,
+                )
+    return tasks
 
 
 def backup_reminder_notification(now: datetime) -> FundManagerNotificationResponse | None:
@@ -354,6 +517,7 @@ def list_fund_manager_notifications(
     notifications = workbook_import_notifications(session.email)
     notifications.extend(exchange_commission_notifications(session.email, now))
     notifications.extend(profile_opportunity_notifications(session.email, now))
+    notifications.extend(daily_record_notifications(session.email, now))
     backup_notification = backup_reminder_notification(now)
     if backup_notification is not None:
         notifications.append(backup_notification)
@@ -494,10 +658,15 @@ def list_fund_manager_notifications(
         )
 
     preferences = get_notification_preferences(session.email)
+    active_profiles = notification_profile_scope(session.email, active_only=True)
     permitted = [
         notification
         for notification in notifications
         if preferences.get(notification.notification_type, True)
+        and (
+            notification.profile_id == "fund-manager-local"
+            or notification.profile_id in active_profiles
+        )
     ]
     sorted_notifications = sorted(
         permitted,
@@ -518,13 +687,16 @@ def list_fund_manager_notifications(
 def notification_history(request: Request) -> list[FundManagerNotificationResponse]:
     session = require_request_session(request)
     preferences = get_notification_preferences(session.email)
+    owned_profiles = notification_profile_scope(session.email, active_only=False)
     history: list[FundManagerNotificationResponse] = []
     for payload in list_notification_events(session.email):
         try:
             event = FundManagerNotificationResponse.model_validate(payload)
         except ValueError:
             continue
-        if preferences.get(event.notification_type, True):
+        if preferences.get(event.notification_type, True) and (
+            event.profile_id == "fund-manager-local" or event.profile_id in owned_profiles
+        ):
             history.append(event)
     return history
 
@@ -552,9 +724,7 @@ def update_notification_state(
 @router.get("/preferences", response_model=NotificationPreferencesPayload)
 def notification_preferences(request: Request) -> NotificationPreferencesPayload:
     session = require_request_session(request)
-    return NotificationPreferencesPayload(
-        preferences=get_notification_preferences(session.email)
-    )
+    return NotificationPreferencesPayload(preferences=get_notification_preferences(session.email))
 
 
 @router.put("/preferences", response_model=NotificationPreferencesPayload)

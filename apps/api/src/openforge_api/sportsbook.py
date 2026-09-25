@@ -203,7 +203,7 @@ class SportsbookBetPayload(SportsbookBetFields):
         return nested_money(validate_nested_sportsbook_odds(value))
 
     @model_validator(mode="after")
-    def validate_required_placement_odds(self) -> "SportsbookBetPayload":
+    def validate_required_placement_odds(self, info: ValidationInfo) -> "SportsbookBetPayload":
         requires_placement = (
             self.status in {"Placed", "Settled", "Free Bet Awarded"} or self.result != "Pending"
         )
@@ -223,6 +223,17 @@ class SportsbookBetPayload(SportsbookBetFields):
                     }
                 ],
             )
+
+        # Portable recovery restores an already governed imported terminal record;
+        # it is not a new placement. All numeric/enum/override validators still run.
+        if (
+            isinstance(info.context, dict)
+            and info.context.get("restore_terminal_void_history") is True
+            and self.status == "Free Bet Awarded"
+            and self.result == "Void"
+            and self.match_strategy == "No Lay"
+        ):
+            return self
 
         required_fields: list[tuple[str, str]] = []
         if self.offer_type == "Profit Boost" and self.profit_boost_mode == "percentage":

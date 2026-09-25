@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   defaultFundManagerNotificationPreferences,
+  currentDailyTasks,
+  canCompleteNotification,
   canViewerReceiveNotification,
   dismissNotificationIds,
   emptyNotificationViewState,
@@ -328,9 +330,29 @@ describe("fund manager notification view state", () => {
   });
 
   it("documents timing and Fund Manager-only delivery for every approved source", () => {
-    expect(fundManagerNotificationTypes).toHaveLength(6);
+    expect(fundManagerNotificationTypes).toHaveLength(9);
     for (const notificationType of fundManagerNotificationTypes) {
       expect(notificationType.timing.length).toBeGreaterThan(20);
     }
+  });
+});
+
+
+describe("current daily task projection", () => {
+  it("deduplicates current identities and excludes information and mismatched delivery scope", () => {
+    expect(currentDailyTasks([notifications[0], notifications[0], { ...notifications[1], kind: "information" }, { ...notifications[1], security_tag: "subscriber_allowed" }])).toEqual([notifications[0]]);
+    expect(currentDailyTasks([])).toEqual([]);
+  });
+  it("only allows exact source-owned manual reminder completion endpoints", () => {
+    expect(canCompleteNotification(notifications[0])).toBe(true);
+    expect(canCompleteNotification({ ...notifications[0], completion_href: "" })).toBe(false);
+    expect(canCompleteNotification({ ...notifications[0], completion_href: "/profiles/OTHER/sportsbook-bets/SB-001/partial-lay-reminder" })).toBe(false);
+    expect(canCompleteNotification({ ...notifications[0], completion_href: "https://example.invalid/" })).toBe(false);
+  });
+  it("retains existing cleared and source-done semantics without clearing another task for the same record", () => {
+    const other = { ...notifications[0], notification_id: "different-rule", notification_type: "settlement_review", completion_href: "" };
+    const state = dismissNotificationIds(emptyNotificationViewState, [notifications[0].notification_id]);
+    expect(filterNotificationHistory(currentDailyTasks([notifications[0], other]), state, { query: "", notificationType: "all", status: "new" })).toEqual([other]);
+    expect(filterNotificationHistory([{ ...other, task_state: "done" }], state, { query: "", notificationType: "all", status: "done" })).toHaveLength(1);
   });
 });

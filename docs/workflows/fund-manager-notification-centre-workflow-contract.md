@@ -2,6 +2,22 @@
 
 _Last updated: 2026-09-18 08:32 BST_
 
+## CP-049 approved first Daily tasks slice — 2026-09-25 15:52 BST
+
+The owner approves `/tasks`, a current view of the existing feed, using Notification History controls and durable viewer state. It never reads immutable History as current work. Current tasks are filtered by authorised Active Profile membership before return/event recording; owned archived history may remain visible, revoked access may not. Server route/API authority is rechecked when opening a source.
+
+Additional Fund Manager-only (`fund_manager_only`) sources, each with a Settings preference:
+
+- `free_bet_expiry`: actual recorded Prospecting/Available/Not Yet Awarded Free Bet, Pending result, valid expiry between now and the existing Profile `free_bet_expiry_alert_window_days` cutoff (default3). Identity uses Profile+record+expiry; unknown expiry produces no invented deadline. The separate Combo opportunity7-day look-ahead remains unchanged.
+- `settlement_review`: recorded Placed Sportsbook/Free Bet; source result/date are shown, including not-recorded date. No elapsed-time/staleness threshold or actual outcome inferred. Identity includes Profile+ledger+record+recorded date/result; Notes-only edits do not create an event. Explicit settlement/Void/removal stops the current task. A clear remains effective for the same condition; source evidence change generates a new identity. If the identical condition later returns, its existing clear remains effective; occurrence-aware recurrence/dispositions remain separate #86 work.
+- `account_review`: Active lifecycle Account with no observed balance and/or explicitly Not Checked stake/promo access. Reasons are literal missing evidence, never inferred profit, zero or stale-balance policy. Identity includes canonical Profile/Account and reason set; confirming balance/access removes that reason. No review of not-signed-up/closed/archived Accounts.
+
+Read/Clear remain persisted viewer actions, never settlement, fill, balance confirmation or financial change. Open source is the action for derived tasks; only the existing manual-reminder completion endpoints can complete a reminder. Current New/Done/Cleared filters retain existing semantics; source-resolved derived work disappears from current view and its recorded snapshot remains History. Empty, loading and failed response differ; a failed/obsolete refresh cannot show historical tasks as current. Existing enabled source preferences remain authoritative.
+
+Independent fixtures: Free Bet expiry+2days included at window3, +4 excluded then included at window5; unknown/expired/settled excluded; placed records with blank result/date remain explicit; settled/Void stop emitting; Account blank balance and Not Checked access trigger, genuine0 with checked access does not; same-name Accounts keep separate IDs. Repeated reads create one event, Notes-only updates preserve identity, clear/retry persists, source changes update current tasks, revoked/unlinked/archived scope is denied or excluded as appropriate. Browser covers route actions, Save/Discard/source completion and return, failure/refresh/race, both themes, compact/enlarged text, keyboard and reduced motion.
+
+This replaces the earlier deferral only for these named sources. Broader#86 routines/dispositions, account trends, subscriber tasks, AI and fee/cash alert programmes remain outside this slice. No schema additions or generic event architecture.
+
 ## 1. Workflow name
 
 - Name: Fund Manager notification centre
@@ -108,8 +124,7 @@ the audited reminder state returned by the server. `Resolved` tasks remain under
 | Account Catalogue transfer | An Account Catalogue import or export succeeds or fails; emitted once when the transfer completes | Fund Manager | `fund_manager_only` | Account Catalogue Transfers |
 
 No other source may enter the shared feed without an approved workflow contract, deterministic
-fixtures, a preference label, an audience decision, and a security tag. Automatic free-bet expiry,
-overdue settlement, account-health, cash-adjustment, and fee-review notifications remain deferred.
+fixtures, a preference label, an audience decision, and a security tag. CP-049 adds only the three specifically governed sources above; other automatic account-health, cash-adjustment and fee-review notifications remain deferred.
 
 ## 6. Interaction and accessibility
 
