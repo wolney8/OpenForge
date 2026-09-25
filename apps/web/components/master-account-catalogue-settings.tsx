@@ -6,6 +6,7 @@ import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
 import { StatusToast } from "@/components/status-toast";
+import { useBodyScrollLock, useDialogFocusLifecycle } from "@/lib/ledger-ui";
 import { apiBaseUrl } from "@/lib/api";
 import { formatApiErrorBody } from "@/lib/api-error";
 import { confirmDestructiveAction } from "@/lib/use-unsaved-changes-guard";
@@ -96,6 +97,10 @@ export function MasterAccountCatalogueSettings() {
   const [errorMessage, setErrorMessage] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
   const openButtonRef = useRef<HTMLButtonElement | null>(null);
+  const dialogRef = useRef<HTMLElement | null>(null);
+  const savingRef = useRef(false);
+  useBodyScrollLock(isOpen && Boolean(editingRecord));
+  useDialogFocusLifecycle(isOpen && Boolean(editingRecord), dialogRef);
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
   const importFileRef = useRef<HTMLInputElement | null>(null);
   const [importPreflight, setImportPreflight] = useState<ImportPreflightResult | null>(null);
@@ -129,12 +134,11 @@ export function MasterAccountCatalogueSettings() {
     if (!isOpen) {
       return;
     }
-    closeButtonRef.current?.focus();
     const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !isSaving) {
+      if (event.key === "Escape" && !isSaving && !savingRef.current) {
+        event.preventDefault();
         setEditingRecord(null);
         setIsOpen(false);
-        window.setTimeout(() => openButtonRef.current?.focus(), 0);
       }
     };
     window.addEventListener("keydown", handleEscape);
@@ -183,12 +187,11 @@ export function MasterAccountCatalogueSettings() {
   }
 
   function closeCatalogue() {
-    if (isSaving) {
+    if (isSaving || savingRef.current) {
       return;
     }
     setEditingRecord(null);
     setIsOpen(false);
-    window.setTimeout(() => openButtonRef.current?.focus(), 0);
   }
 
   function beginAdd() {
@@ -382,6 +385,8 @@ export function MasterAccountCatalogueSettings() {
 
   async function saveRecord(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (savingRef.current) return;
+    savingRef.current = true;
     const isNew = !editingRecord?.catalogue_id;
     const payload = {
       ...draft,
@@ -405,12 +410,17 @@ export function MasterAccountCatalogueSettings() {
       if (!response.ok) {
         throw new Error(formatApiErrorBody(await response.text(), "Unable to save account."));
       }
-      await loadCatalogue();
+      const saved = await response.json() as MasterAccountCatalogueRecord;
+      setCatalogue(current => current ? { ...current, records: current.records.some(record => record.catalogue_id === saved.catalogue_id)
+        ? current.records.map(record => record.catalogue_id === saved.catalogue_id ? saved : record)
+        : [...current.records, saved] } : current);
       setEditingRecord(null);
+      setIsOpen(false);
       setStatusMessage(`${payload.brand_name} ${isNew ? "added" : "updated"}.`);
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Unable to save account.");
     } finally {
+      savingRef.current = false;
       setIsSaving(false);
     }
   }
@@ -500,6 +510,7 @@ export function MasterAccountCatalogueSettings() {
             aria-modal="true"
             className="modal-panel workflow-editor-modal account-catalogue-modal"
             data-pd-id="account-catalogue.dialog"
+            ref={dialogRef}
             role="dialog"
           >
             <header className="modal-sticky-header sportsbook-page-header">
@@ -529,7 +540,7 @@ export function MasterAccountCatalogueSettings() {
               isNew={!editingRecord.catalogue_id}
               isSaving={isSaving}
               key={editingRecord.catalogue_id || "new-account"}
-              onBack={() => setEditingRecord(null)}
+              onBack={closeCatalogue}
               onChange={setDraft}
               onSubmit={saveRecord}
               onToggleArchive={() => void toggleArchive(editingRecord)}
@@ -564,7 +575,8 @@ function AccountCatalogueForm({
   }
 
   return (
-    <form className="account-catalogue-form" data-pd-id="account-catalogue.form" onSubmit={onSubmit}>
+    <>
+    <form id="account-catalogue-record-form" className="account-catalogue-form" data-pd-id="account-catalogue.form" onSubmit={onSubmit}>
       <div className="form-grid account-catalogue-form-grid">
         <label className="field-control"><span>Account type</span><select disabled={!isNew} onChange={(event) => update("account_type", event.target.value as MasterAccountType)} value={draft.account_type}>{accountTypes.map((type) => <option key={type}>{type}</option>)}</select></label>
         <label className="field-control"><span>Catalogue ID</span><input onChange={(event) => update("catalogue_id", event.target.value.toUpperCase())} placeholder="Generated from brand when blank" readOnly={!isNew} value={draft.catalogue_id} /></label>
@@ -609,17 +621,18 @@ function AccountCatalogueForm({
         </fieldset>
       </div>
       {draft.evidence.length ? <p className="table-status">{draft.evidence.length} verified evidence source{draft.evidence.length === 1 ? "" : "s"} retained.</p> : null}
-      <footer className="modal-sticky-footer">
+    </form>
+      <footer className="modal-sticky-footer workflow-editor-modal-footer">
         <div className="tracker-nav">
           <button className="button-link" disabled={isSaving} onClick={onBack} type="button">Back to Catalogue</button>
           {!isNew ? <button className={draft.status === "Active" ? "danger-button" : "button-link"} data-pd-id="account-catalogue.archive" disabled={isSaving} onClick={onToggleArchive} type="button">{draft.status === "Active" ? "Archive Account" : "Restore Account"}</button> : null}
         </div>
-        <button className="modal-primary-button" disabled={isSaving} type="submit">
+        <button className="modal-primary-button" disabled={isSaving} form="account-catalogue-record-form" type="submit">
           {isSaving ? <span aria-hidden="true" className="button-spinner" /> : null}
           <span>{isSaving ? "Saving Account" : isNew ? "Add Account" : "Save Account"}</span>
         </button>
       </footer>
-    </form>
+    </>
   );
 }
 

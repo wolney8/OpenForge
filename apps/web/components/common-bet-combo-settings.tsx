@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { StatusToast } from "@/components/status-toast";
+import { formatApiErrorBody } from "@/lib/api-error";
 import { apiBaseUrl } from "@/lib/api";
 import { useBodyScrollLock, useDialogFocusLifecycle } from "@/lib/ledger-ui";
 import {
@@ -108,6 +109,7 @@ export function CommonBetComboSettings() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const dialogRef = useRef<HTMLElement | null>(null);
+  const savingRef = useRef(false);
 
   useBodyScrollLock(isOpen);
   useDialogFocusLifecycle(isOpen, dialogRef);
@@ -184,38 +186,47 @@ export function CommonBetComboSettings() {
     setIsOpen(true);
   }
 
-  function closeDialog() {
+  const closeDialog = useCallback(() => {
+    if (savingRef.current) return;
     setIsOpen(false);
     setDraft(null);
     setBookmakerSearch("");
     setError("");
-  }
+  }, []);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") { event.preventDefault(); closeDialog(); }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isOpen, closeDialog]);
 
   async function save() {
-    if (!draft?.name.trim()) return;
+    if (!draft?.name.trim() || savingRef.current) return;
+    savingRef.current = true;
     setIsSaving(true);
     setError("");
     const isEditing = Boolean(draft.preset_id);
-    const response = await fetch(
-      isEditing
-        ? `${apiBaseUrl}/fund-manager/common-bet-combos/${draft.preset_id}`
-        : `${apiBaseUrl}/fund-manager/common-bet-combos`,
-      {
-        method: isEditing ? "PUT" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(draft),
-      }
-    );
-    if (!response.ok) {
-      setError(await response.text());
+    try {
+      const response = await fetch(
+        `${apiBaseUrl}/fund-manager/common-bet-combos${isEditing ? `/${draft.preset_id}` : ""}`,
+        { method: isEditing ? "PUT" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(draft) },
+      );
+      if (!response.ok) throw new Error(formatApiErrorBody(await response.text(), "Common bet combo could not be saved."));
+      const saved = await response.json() as CommonBetCombo;
+      setRows(current => current.some(row => row.preset_id === saved.preset_id)
+        ? current.map(row => row.preset_id === saved.preset_id ? saved : row) : [...current, saved]);
+      setMessage(`${isEditing ? "Updated" : "Added"} ${saved.name}.`);
+      setIsOpen(false);
+      setDraft(null);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Common bet combo could not be saved.");
+    } finally {
+      savingRef.current = false;
       setIsSaving(false);
-      return;
     }
-    setMessage(`${isEditing ? "Updated" : "Added"} ${draft.name}.`);
-    setIsOpen(false);
-    setDraft(null);
-    await load();
-    setIsSaving(false);
   }
 
   return (
@@ -252,7 +263,7 @@ export function CommonBetComboSettings() {
           <section aria-label={draft?.preset_id ? "Edit common bet combo" : "Add common bet combo"} aria-modal="true" className="modal-panel workflow-editor-modal fund-manager-settings-modal settings-adaptive-modal common-bet-combo-modal" data-pd-id="common-bet-combos.dialog" ref={dialogRef} role="dialog" tabIndex={-1}>
             <header className="workflow-editor-modal-header">
               <div><span className="eyebrow">Fund Manager Settings</span><h2>{draft?.preset_id ? "Edit Quick Action" : "Add Quick Action"}</h2></div>
-              <button aria-label="Close common bet combos" className="modal-close-button" onClick={closeDialog} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button>
+              <button aria-label="Close common bet combos" className="modal-close-button" disabled={isSaving} onClick={closeDialog} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button>
             </header>
             <div className="workflow-editor-modal-body stack common-bet-combo-body settings-management-modal-body">
               {error ? <p className="error-text" role="alert">{error}</p> : null}
