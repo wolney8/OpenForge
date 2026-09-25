@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page, type Locator } from "@playwright/test";
 
 test.use({ actionTimeout: 15_000, hasTouch: true });
 async function createProfile(page: Page, suffix: string) {
@@ -38,6 +38,14 @@ async function openDefaults(page: Page, id: string) {
 async function archive(page: Page, ids: string[]) {
   await page.unrouteAll({ behavior: "ignoreErrors" });
   for (const id of ids) expect((await page.request.patch(`/api/profiles/${id}`, { data: { status: "Archived" } })).ok()).toBeTruthy();
+}
+
+async function saveAndWait(page: Page, path: string, button: Locator) {
+  const confirmed = page.waitForResponse(response => response.url().endsWith(path) && response.request().method() === "PUT");
+  await button.click();
+  expect((await confirmed).ok()).toBeTruthy();
+  await expect(button.locator(".button-spinner")).toHaveCount(0);
+  await expect(button).toBeDisabled();
 }
 
 test("Profile Defaults headings keep help and fields usable in both themes and compact text", async ({ page }, info) => {
@@ -125,7 +133,7 @@ test("Profile Defaults retain immediate and explicit saves, failure recovery and
     await tracker.getByRole("spinbutton", { name: "Mug-bet cadence days", exact: true }).fill("21");
     await expect(save).toBeEnabled();
     expect((await (await page.request.get(path)).json()).mug_bet_frequency_days).not.toBe(21);
-    await save.click(); await expect(save).toBeDisabled();
+    await saveAndWait(page, path, save);
     expect((await (await page.request.get(path)).json()).mug_bet_frequency_days).toBe(21);
     await tracker.getByRole("spinbutton", { name: "Free-bet expiry alert window days", exact: true }).fill("5");
     await page.route("**" + path, route => route.request().method() === "PUT"
@@ -134,7 +142,7 @@ test("Profile Defaults retain immediate and explicit saves, failure recovery and
     await expect(save).toBeEnabled();
     await expect(tracker.getByRole("spinbutton", { name: "Free-bet expiry alert window days", exact: true })).toHaveValue("5");
     expect((await (await page.request.get(path)).json()).free_bet_expiry_alert_window_days).not.toBe(5);
-    await page.unroute("**" + path); await save.click(); await expect(save).toBeDisabled();
+    await page.unroute("**" + path); await saveAndWait(page, path, save);
     await page.locator('[data-pd-id="profile-settings.defaults.guided-entry-mode"]').selectOption("off");
     const commission = page.getByRole("region", { name: "Exchange commission settings", exact: true });
     const field = commission.getByLabel("Smarkets", { exact: true });
@@ -182,8 +190,7 @@ test("Profile Defaults recover from network failures without stranding Saving", 
     await expect(tracker.getByRole("button", { name: "Save", exact: true })).toBeEnabled({ timeout: 1500 });
     await expect(tracker.getByRole("alert")).toContainText("Unable to save tracker settings", { timeout: 1500 });
     await page.unroute(`**/api/profiles/${id}/tracker-settings`);
-    await tracker.getByRole("button", { name: "Save", exact: true }).click();
-    await expect(tracker.getByRole("button", { name: "Save", exact: true })).toBeDisabled();
+    await saveAndWait(page, `/api/profiles/${id}/tracker-settings`, tracker.getByRole("button", { name: "Save", exact: true }));
     expect((await (await page.request.get(`/api/profiles/${id}/tracker-settings`)).json()).active_date_preset).toBe("Last Week");
     await openDefaults(commissionPage, id);
     const commission = commissionPage.getByRole("region", { name: "Exchange commission settings", exact: true });
