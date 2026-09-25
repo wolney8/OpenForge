@@ -10,6 +10,8 @@ No published release is represented by the local milestones below.
 
 ## 2026-09-25
 
+- **2026-09-25 21:38 BST — CP-050:** Complete source accounting and shared import/lifecycle/review repairs at`7da4d44` local/Preview; full private import remains explicitly source-decision gated. [Evidence](docs/audits/platform-quality-audit.md#cp-050-full-source-accounting-and-import-repairs--2026-09-25-2138-bst).
+
 - **2026-09-25 16:55 BST — CP-049:** Delivered first current Daily tasks and terminal-Void restore compatibility at09ef37e locally/Preview. Selected workbook privately rehearsed; full cutover retains named source/target decisions. [Evidence](docs/audits/platform-quality-audit.md#cp-049-private-import-rehearsal-and-daily-tasks--2026-09-25-1655-bst).
 
 - **2026-09-25 15:26 BST — CP-048:** Completed Catalogue/Combo create/edit recovery and focus at `a3afdfc`, local/protected Preview;52 API/74 web and8 isolated/8 hosted pass. Added FS-CODEX-001 and reconciled117 issues; private workbook rehearsal awaits source choice. [Evidence](docs/audits/platform-quality-audit.md#cp-048-personal-readiness-and-reference-forms--2026-09-25-1526-bst).
@@ -199,3 +201,9 @@ their original IDs.
 | ID | Timestamp | What changed | Issue | Document |
 | --- | --- | --- | --- | --- |
 | CP-029-R | 2026-09-22 08:02 BST | Recovered retained execution evidence: deployed source and screenshots exist, the hosted Playwright gate failed, and financial/recovery claims were inherited from CP-028 rather than rerun | [#62](https://github.com/wolney8/OpenForge/issues/62), [#114](https://github.com/wolney8/OpenForge/issues/114), [#115](https://github.com/wolney8/OpenForge/issues/115) | [Recovery evidence](docs/audits/platform-quality-audit.md#cp-029-evidence-recovery-correction--2026-09-22-0802-bst) |
+
+### Checkpoint row retained from current status
+
+| ID | Timestamp | What changed | Issue | Document |
+| --- | --- | --- | --- | --- |
+| CP-030 | 2026-09-22 11:57 BST | Repaired the Reports reduced-motion update loop and proved a hosted £6→£5 Cash Adjustment through History, Reports, reload and idempotent retry | [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#cp-030-reports-repair-and-hosted-cash-correction-proof--2026-09-22-1157-bst) |

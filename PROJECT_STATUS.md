@@ -1,38 +1,34 @@
 # Project Status — Plum Duff / OpenForge — Doc ID: PS-CODEX-001
 
-**Last updated:** 2026-09-25 16:55 BST · **Status:** 🟢 CP-049 Daily tasks delivered; personal cutover needs source decisions
+**Last updated:** 2026-09-25 21:38 BST · **Status:** 🟠 CP-050 importer repairs delivered; full personal import awaits explicit source decisions
 
 ## Right now
 
-- **Completed:** `/tasks` brings recorded Free Bet expiry, unsettled bets and missing Account evidence into one Profile-filtered view, with reasons, exact source links, durable clear/History and current-access checks. Existing infrastructure reused; no schema. [Evidence](docs/audits/platform-quality-audit.md#cp-049-private-import-rehearsal-and-daily-tasks--2026-09-25-1655-bst).
-- **Private rehearsal:** Will selected `WO_MB_Tracker_3Sept2026_1013AM.xlsx`. Original unchanged; compatible subset passed edit/Save/Discard/reopen, simulated settlement/correction, Reports and export/restore/retry. Full import rejects six Account mappings and seven incomplete ledger rows before writes. Three subset Sportsbook values remain unknown, not zero. Private totals/row decisions retained locally.
-- **Personal configuration:** explicit 0% management/0% investment works; genuine commission/costs remain. Fee settings do not establish ownership/access. No normal Profile changed or workbook imported there.
-- **Running:** frontend local3010 and protected Preview `09ef37e`; changed local API8010 `09ef37e…+dirty` after canonical restart. Four HTTP-served modules, role/database/schema and 19 unchanged owner projections verified. Dirty files are the two retained generated Next/typecheck files. CP-049 records SHA is in the verified backup receipt.
-- **Retained:** named forms and #105 engineering complete; #117 scoped acceptance and CP-047 workflows remain. [FEATURE_STATUS](FEATURE_STATUS.md) separates usable scope from proposals. Optional Account-popup expansion and cosmetic work stay on hold.
+- **Completed:** every selected-source record and every CP-049 exclusion has a private row disposition, destination/dependency trace and reason. The pre-simulation known-subtotal difference is explained; no guessed commission, outcome or override. [Evidence](docs/audits/platform-quality-audit.md#cp-050-full-source-accounting-and-import-repairs--2026-09-25-2138-bst) · [Feature status](FEATURE_STATUS.md).
+- **Repairs:** shared legacy Account mapping, exact numeric XLSX odds, cached-result/override distinction, terminal Void readiness, complete review visibility and Save/reopen, Casino reason persistence and enlarged review containment. No schema or historical-record rewrite.
+- **Personal gate:** full original validation presents20 review rows together; zero operational imports. Private decision table identifies exact access fields/providers, contradictory/missing actual-lay evidence and unexplained Casino finals. Full successful rehearsal and normal target/action remain unapproved; original and CP-049 evidence unchanged. Personal fees remain explicitly0%/0%, separate from commission/ownership.
+- **Running:** frontend/API `7da4d44` on normal3010/8010 and protected Preview. Normal API label `7da4d44…+dirty` reflects only retained generated Next/typecheck files; actual HTTP-served CSS/API identity/schema verified. Records commit follows this checkpoint; exact SHA is in the verified backup receipt. Git push withheld; [#114 summary](https://github.com/wolney8/OpenForge/issues/114#issuecomment-5839246156) published once.
 
-## Delivery state
+## Delivery and remaining gates
 
 | Area | Actual state |
 | --- | --- |
-| Tests |46 API / 70 web; 7 actual workflows and 6 fixture-backed notification UI checks in each isolated/hosted environment; types/build pass; targeted lint pass, pre-existing Ruff debt retained |
-| Recovery / safety |Terminal Void restore preserves missing odds and known stake; private 8-step browser chain and post-action restore pass. Eight synthetic Preview Profiles archived, session revoked; provider bindings reused remotely |
-| Blockers |Full workbook source decisions and exact normal target/action; #96, Git-triggered deployment isolation, fresh normal-owner browser and VoiceOver remain separate. AI and invited-request role/storage approval absent |
-| Records |[#114 summary](https://github.com/wolney8/OpenForge/issues/114#issuecomment-5835300512) published once; source/evidence backup verified; private workbook evidence kept outside that archive |
-
-Audit measures remain87/87 assessments,23/24 journeys exercised/passing,27/27 comparisons and133/133 requirements reviewed; they do not measure feature completion.
+| Checks |175 API pass,2 intentional private-source skips; API/web types and local/hosted builds pass. Isolated import review/confirmation plus2 shared regressions pass; hosted review/staging/explicit capability rejection plus2 shared regressions pass |
+| Precise limitation |Per-ledger confirmation needs the existing local SQLite backup; PostgreSQL Preview now returns409 before writes instead of500. Hosted per-ledger successful confirmation is unavailable, not PASS. Governed full-workbook checkpoints are a separate path |
+| Safety |Verified normal backup;19 owner projections unchanged, integrity/FK pass; no owner-browser session, normal import, schema, Production or credential change. Provider-managed configuration reused remotely |
+| Blockers |Source decisions and their exact approved mapping application/full rehearsal; then normal target/action confirmation. #96, Git deployment isolation, fresh normal-owner browser and VoiceOver remain separate; AI/subscriber proposals unchanged |
 
 ## Next two executable actions
 
-1. #12/#104/#109: use the retained private reconciliation to resolve the six Account and seven incomplete-row decisions explicitly, expose any missing review choices, then rerun the full selected-workbook rehearsal. Do not substitute the narrower per-ledger subset for a full import.
-2. #12/#23: after that full gate, present the exact personal target Profile, create/merge/replace behaviour, duplicate treatment and verified backup/recovery for one normal-cutover confirmation. Existing personal 0%/0% is a fee arrangement, not an access grant.
+1. #12/#104/#109: collect the single private decision-table response, apply only approved access/provider/historical choices with original provenance and revalidation. Account review currently exposes the errors; generic historical acceptance cannot clear Account field validation. Complete the approved mapping path, then rehearse the whole selected source privately, including Reports and restore.
+2. #12/#23: after full-source reconciliation passes, present the exact personal Profile, create/merge/replace action, duplicate handling and verified backup/recovery for one normal-cutover confirmation. No normal writes are authorised now.
 
-[Resume here](docs/planning/plum-duff-next-issue-tracking-register.md#resume-here--cp-049-complete) retains files, commands, results and permissions. #86's recurring-condition/disposition/routine expansion, AI and subscriber onboarding stay explicitly bounded.
+[Resume here](docs/planning/plum-duff-next-issue-tracking-register.md#resume-here--cp-050-import-gate) has exact files, tests, evidence and boundaries. Daily tasks stays delivered; no optional feature programme started. Audit coverage figures remain unchanged and do not measure import readiness.
 
 ## Checkpoint log
 
 | ID | Timestamp | What changed | Issue | Document |
 | --- | --- | --- | --- | --- |
-| CP-030 | 2026-09-22 11:57 BST | Repaired the Reports reduced-motion update loop and proved a hosted £6→£5 Cash Adjustment through History, Reports, reload and idempotent retry | [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#cp-030-reports-repair-and-hosted-cash-correction-proof--2026-09-22-1157-bst) |
 | CP-031 | 2026-09-22 14:22 BST | Completed the supported authenticated Preview workflows and repaired archived-Profile amplification in lineage and Account eligibility reads | [#114](https://github.com/wolney8/OpenForge/issues/114), [#115](https://github.com/wolney8/OpenForge/issues/115) | [Audit evidence](docs/audits/platform-quality-audit.md#cp-031-authenticated-protected-preview-completion--2026-09-22-1422-bst) |
 | CP-032 | 2026-09-22 16:33 BST | Removed the remaining hosted connection/region latency and integrated all tested shared Preview repairs into healthy normal localhost without changing owner data | [#114](https://github.com/wolney8/OpenForge/issues/114), [#115](https://github.com/wolney8/OpenForge/issues/115) | [Audit evidence](docs/audits/platform-quality-audit.md#cp-032-hosted-performance-and-local-reconciliation--2026-09-22-1633-bst) |
 | CP-033 | 2026-09-23 15:13 BST | Repaired action-scoped Notes editing for existing ledger rows, retained historical Account/financial meaning and removed cold-request schema-lock contention on Preview | [#117](https://github.com/wolney8/OpenForge/issues/117), [#91](https://github.com/wolney8/OpenForge/issues/91), [#36](https://github.com/wolney8/OpenForge/issues/36), [#92](https://github.com/wolney8/OpenForge/issues/92), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#cp-033-owner-blocking-ledger-edit-repair--2026-09-23-1513-bst) |
@@ -52,6 +48,7 @@ Audit measures remain87/87 assessments,23/24 journeys exercised/passing,27/27 co
 | CP-047 | 2026-09-25 14:11 BST | Delivered Normal Multi-Lay actual fills through settlement/History/Reports/restore and atomic Account balance review/history; local/Preview e2d70e0, 7 isolated/7 hosted workflows, unchanged owner data | [#36](https://github.com/wolney8/OpenForge/issues/36), [#38](https://github.com/wolney8/OpenForge/issues/38), [#85](https://github.com/wolney8/OpenForge/issues/85), [#106](https://github.com/wolney8/OpenForge/issues/106) | [Evidence](docs/audits/platform-quality-audit.md#cp-047-operational-multi-lay-and-account-observations--2026-09-25-1411-bst) |
 | CP-048 | 2026-09-25 15:26 BST | Completed Catalogue/Combo form repairs and feature sitrep; reconciled117 issues, proved personal 0%/0% fees with synthetic tests; private workbook source choice pending; local/Preview a3afdfc | [#92](https://github.com/wolney8/OpenForge/issues/92), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Evidence](docs/audits/platform-quality-audit.md#cp-048-personal-readiness-and-reference-forms--2026-09-25-1526-bst) |
 | CP-049 | 2026-09-25 16:55 BST | Delivered current Daily tasks and terminal-Void restore repair; selected workbook rehearsed privately with full-import source blockers explicit; local/Preview09ef37e, owner data unchanged | [#86](https://github.com/wolney8/OpenForge/issues/86), [#94](https://github.com/wolney8/OpenForge/issues/94), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Evidence](docs/audits/platform-quality-audit.md#cp-049-private-import-rehearsal-and-daily-tasks--2026-09-25-1655-bst) |
+| CP-050 | 2026-09-25 21:38 BST | Accounted for every selected-source row, explained the known-subtotal difference and repaired shared import/lifecycle/review defects; full private import remains source-decision gated | [#12/#104/#109](https://github.com/wolney8/OpenForge/issues/104), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Evidence](docs/audits/platform-quality-audit.md#cp-050-full-source-accounting-and-import-repairs--2026-09-25-2138-bst) |
 
 ## Reference index
 

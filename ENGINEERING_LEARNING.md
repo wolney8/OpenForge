@@ -1,6 +1,6 @@
 # Engineering Learning — Plum Duff / OpenForge — Doc ID: EL-CODEX-001
 
-**Last updated:** 2026-09-25 16:55 BST
+**Last updated:** 2026-09-25 21:38 BST
 
 This is a compact notebook of transferable lessons from building Plum Duff. It is not the audit,
 roadmap, backlog or evidence record.
@@ -10,6 +10,8 @@ roadmap, backlog or evidence record.
 - Keep a headline, its chart and its underlying records within the same financial scope.
 
 ## Concepts worth remembering
+
+CP-050: reconcile unique source rows and identical pre-action known-value sets before comparing totals. A successful subset cannot explain omissions, and a cached result cannot supply missing commission. Validation errors must remain reviewable without being mistaken for import permission.
 
 CP-049: a displayed task is a snapshot, so recheck its current authority before acting and reject older replies. A recovered historical record is also a snapshot: preserve its genuine unknowns without relaxing validation for new placements.
 

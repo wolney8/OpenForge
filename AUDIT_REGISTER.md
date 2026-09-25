@@ -1,6 +1,6 @@
 # Audit Register — Plum Duff / OpenForge — Doc ID: AR-CODEX-001
 
-**Last updated:** 2026-09-25 16:55 BST
+**Last updated:** 2026-09-25 21:38 BST
 
 This is the owner-facing index for audit evidence. The
 [platform quality audit](docs/audits/platform-quality-audit.md) remains the detailed authority.
@@ -21,6 +21,7 @@ These are coverage measures, not percentages of the product finished.
 
 | ID | Plain-English problem | State | Repair / integration state | Issue |
 | --- | --- | --- | --- | --- |
+| CP-050 / PD-FIX-305–307 / PERSONAL-READINESS-001 | Complete source accounting and import-gate correctness | ENGINEERING REPAIRS DELIVERED; full personal import awaits decisions |7da4d44 local/Preview;175 API, scoped browsers/types/builds pass. Hosted per-ledger confirmation explicitly409/zero writes; no full private import or normal cutover claim. [Evidence](docs/audits/platform-quality-audit.md#cp-050-full-source-accounting-and-import-repairs--2026-09-25-2138-bst) | [#12/#104/#109](https://github.com/wolney8/OpenForge/issues/104), [#114](https://github.com/wolney8/OpenForge/issues/114) |
 | CP-049 / FUND-MANAGER-TASK-DECK-001 / PD-FIX-304 | Useful Daily tasks and private import recovery | CURRENT TASK SLICE COMPLETE; full personal cutover blocked on named source decisions |09ef37e local/Preview;46 API/70 web,7 actual+6 fixture-backed checks each; private8-step subset chain/restore PASS, full import422/zero writes; unchanged owner data. [Evidence](docs/audits/platform-quality-audit.md#cp-049-private-import-rehearsal-and-daily-tasks--2026-09-25-1655-bst) | [#86](https://github.com/wolney8/OpenForge/issues/86), [#94](https://github.com/wolney8/OpenForge/issues/94), [#114](https://github.com/wolney8/OpenForge/issues/114) |
 | CP-048 / PD-FIX-302–303 / PERSONAL-READINESS-001 | Catalogue/Combo forms; personal workflow readiness | FORMS COMPLETE; private import awaits source choice | App`a3afdfc` local/Preview;52 API/74 web,8 isolated/8 hosted, types/lint/build.117 issues mapped in [FEATURE_STATUS](FEATURE_STATUS.md); no new owner-blocking security/report defect demonstrated. Private workbook totals/rehearsal unexecuted. [Evidence](docs/audits/platform-quality-audit.md#cp-048-personal-readiness-and-reference-forms--2026-09-25-1526-bst) | [#92](https://github.com/wolney8/OpenForge/issues/92), [#114](https://github.com/wolney8/OpenForge/issues/114) |
 | CP-047 / PD-FIX-114 / ACCOUNT-AUDIT-001 / ACCOUNT-BALANCE-HISTORY-001 | Operational Normal Multi-Lay and core Account review/observation history | BOUNDED SLICES COMPLETE locally/Preview | App `e2d70e0`;107 API/89 web,7 isolated/7 hosted, PostgreSQL retry/restore, types/build/lint; no schema or owner-data changes. Wider configurations/entry points/trends remain. [Evidence](docs/audits/platform-quality-audit.md#cp-047-operational-multi-lay-and-account-observations--2026-09-25-1411-bst) | [#36/#38](https://github.com/wolney8/OpenForge/issues/38), [#85/#106](https://github.com/wolney8/OpenForge/issues/106) |

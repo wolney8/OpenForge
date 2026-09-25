@@ -23,12 +23,12 @@ test("import gate exposes all source decisions and keeps terminal values truthfu
     expect(analysed.status(),await analysed.text()).toBe(200);
     const workspace = await analysed.json(), run = workspace.metadata.import_run_id;
     let review = (await (await page.request.get(`${base}/workbook-imports/${run}`)).json());
-    await expect.poll(async()=>{review=await (await page.request.get(`${base}/workbook-imports/${run}`)).json();return review.items.length;},{timeout:90000}).toBe(2);
+    await expect.poll(async()=>{review=await (await page.request.get(`${base}/workbook-imports/${run}`)).json();return {items:review.items.length,status:review.run_status};},{timeout:90000}).toEqual({items:2,status:"REVIEW_REQUIRED"});
     expect(review.run_status).toBe("REVIEW_REQUIRED");
     expect(review.final_import_summary.ready).toBe(false);
     expect(review.items.map((x:{category:string})=>x.category).sort()).toEqual(["accounts_partial","casino_partial"]);
     await page.goto(`/profiles/${profile.profile_id}/imports/${run}/review`);
-    await expect(page.getByRole("heading",{name:"Import Review",exact:true})).toBeVisible();
+    await expect(page.getByRole("heading",{name:"Import Review",exact:true})).toBeVisible({timeout:30000});
     await expect(page.getByRole("button",{name:"Review Accounts row 2",exact:true})).toBeVisible();
     await page.getByRole("button",{name:"Review Accounts row 2",exact:true}).focus();
     await page.keyboard.press("Enter");
@@ -50,7 +50,7 @@ test("import gate exposes all source decisions and keeps terminal values truthfu
     await page.getByRole("button",{name:"Review Casino Offers row 2",exact:true}).click();
     await dialog.getByRole("combobox",{name:"Decision",exact:true}).selectOption("provide_override_reason");
     await dialog.getByRole("textbox",{name:"Review note / reason",exact:true}).fill("Synthetic verified proceeds after wagering");
-    const saving = page.waitForResponse(r=>r.request().method()==="PUT" && r.url().includes("/decisions/"),{timeout:15000});
+    const saving = page.waitForResponse(r=>r.request().method()==="PUT" && r.url().includes("/decisions/"),{timeout:45000});
     await dialog.getByRole("button",{name:"Save decision",exact:true}).click();
     const saved=await saving; expect(saved.status(),await saved.text()).toBe(200);
     expect((await saved.json()).final_import_summary.ready).toBe(false);

@@ -1,5 +1,31 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
+## CP-050 full-source accounting and import repairs — 2026-09-25 21:38 BST
+
+Application `7da4d44` is delivered locally and to the existing protected Preview. PD-FIX-305 / PERSONAL-READINESS-001 repairs import consistency; PD-FIX-306 addresses only reproduced import-review overflow; PD-FIX-307 fails closed on an unsupported hosted local-backup path. Full selected-workbook import remains source-decision gated, not PASS. No schema, normal operational write, private upload or Git push.
+
+### Source accounting and financial truth
+
+Every source row has one private disposition, CP-049 destination identity where imported, exact omission reason and Account/parent dependencies. Repeated validation messages are not additional excluded records. Larger Account omissions primarily came from generic/full legacy-vocabulary and exact provider-normalisation drift; remaining unknown access/provider choices are explicit. Sportsbook omissions distinguish true non-executed opportunities, false comparison-final override errors, historical EP routing, one actual-lay contradiction and exact numeric XML representation. Settled Free Bet missing Exchange/rate and Casino literal-final reason gaps remain decisions, not drafts or invented history.
+
+The known-subtotal difference is completely explained from retained PRE-SIMULATION rows/XML/formulas: two source-known losses have no actual Exchange/commission and remain engine-unknown; an unrelated zero Void wrongly required odds. No cached result was forced into current calculations. Final original validation collects20 review rows with zero operational writes and stable analysis retry. No approved mapping/exclusion or complete successful rehearsal claimed. Private original, CP-049 snapshot and hashes are unchanged.
+
+### Implemented and verified checklist
+
+- [x] Shared Account canonicalisation reuses accepted legacy status/channel mappings and unique type-scoped punctuation identity, never fuzzy matching. Blank PendingSignUp balances stay unknown; original fields remain provenance.
+- [x] Numeric XLSX cells using exponent notation retain exact Decimal value without accepting exponent strings as user-input syntax; oversized exponents stay unexpanded. Cached Sportsbook finals no longer pretend to be manual overrides; explicit overrides still require reasons.
+- [x] Narrow terminal NoLay Void readiness resolves genuine zero while absent reference/scenario inputs remain unknown; explicit override/reason semantics preserved. Missing actual Exchange/rate remains blocked, not0%.
+- [x] All Account field errors are visible even with a known provider; every actionable review item can save without permitting import. Unrepresented validation failures remain FAILED and final Account validation still gates approval. Casino final-reason parity is shared, and the supplied reason persists in existing UserNotes rather than a nonexistent SQL column; date errors no longer masquerade as missing offer labels.
+- [x] UI-review/consistency skills applied: existing single-column minmax grid/action flex-wrap reused; no new primitives or redesign. Actual1440/390px,760px200%, themes, keyboard, reduced motion, dialog/footer/internal/page containment verified. Nearby Account value/editor and Extra Places filter/focus/geometry checks pass. Shared FinancialValue, calculators and Save/Discard unaffected evidence reused.
+- [x]175 API tests PASS,2 intentional private-source skips; API84 modules/web TypeScript and local webpack/hosted builds PASS. Five pre-existing targeted Ruff findings, zero introduced. Dependency symlink setup prevented default pnpm/Turbopack checks; existing binaries/webpack passed without installation or dependency reset.
+- [x] Actual isolated review Save/reopen, native staging/confirmation, exact numeric value/zero and ledger reopen PASS. Hosted review Save/reopen and staging PASS; per-ledger confirmation initially500 because its required local SQLite backup is unavailable. The final shared guard returns409 before writes and is verified with an empty ledger. **Successful hosted per-ledger confirmation is unexecuted/unavailable**, not a passing workflow. Both nearest shared regressions pass on Preview; unaffected UI evidence reused.
+
+### Delivery, limitations and next action
+
+Provider-managed19 bindings reused remotely; existing shared/rotation-flagged values were not exported/retransmitted or rescoped. Protection302, authenticated synthetic session, final source/preview role/database fingerprint/schema verified. No Production alias. Canonical local restart retained the compatible schema and generated files after verified backup; actual served CSS/API,19 unchanged owner projections and integrity/FK pass. Synthetic Profiles archived and test session revoked200→204→401. Fresh authenticated normal-owner browser and VoiceOver remain unexecuted.
+
+Remaining: explicit source decisions; approved Account/access override application with provenance/revalidation (generic historical acceptance cannot clear it); complete full private workflow and reconciliation; then exact normal Profile/action/duplicates/backup confirmation. Personal0/0 preserved, fees grant no access. #105 engineering-complete and#117 scoped acceptance retained; Daily tasks delivered, AI/subscriber proposals unchanged. [Safe duplicate-checked#114 comment](https://github.com/wolney8/OpenForge/issues/114#issuecomment-5839246156) and verified backup receipt carry only scope/status evidence. Private per-row and financial material remains excluded from publication/source archives.
+
 ## CP-049 private import rehearsal and Daily tasks — 2026-09-25 16:55 BST
 
 Application `09ef37e` runs on local3010 and protected Preview; local API now09ef37e…+dirty after the required canonical restart. No schema/calculation change, Git push, Production change or normal workbook import. #105 engineering completion and#117 scoped owner acceptance remain intact.
