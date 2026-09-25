@@ -39,8 +39,10 @@ from openforge_api.cash_adjustments import CashAdjustmentPayload
 from openforge_api.cash_adjustments import build_response as build_cash_adjustment_response
 from openforge_api.casino_offers import CasinoOfferPayload
 from openforge_api.casino_offers import build_response as build_casino_offer_response
+from openforge_api.config import settings
 from openforge_api.db import (
     AccountRecord,
+    BackupSnapshotRecord,
     CashAdjustmentRecord,
     CasinoOfferRecord,
     FreeBetRecord,
@@ -2471,6 +2473,19 @@ def delete_profile_import_batch(profile_id: str, import_batch_id: str) -> Respon
     return Response(status_code=204)
 
 
+def _verified_ledger_import_backup(import_batch_id: str) -> BackupSnapshotRecord:
+    # Per-ledger confirmation requires its existing full local SQLite backup.
+    # Hosted workbook import has a separate governed Profile checkpoint path.
+    if settings.database_mode.strip().lower() in {"neon", "postgres", "postgresql"}:
+        raise HTTPException(
+            status_code=409,
+            detail=("Per-ledger confirmation requires a verified local SQLite backup. "
+                    "Use local import or the governed Profile workbook import workflow; "
+                    "no records were imported."),
+        )
+    return create_verified_local_backup(reason=f"Pre-import backup for batch {import_batch_id}")
+
+
 @router.post(
     "/{import_batch_id}/confirm-sportsbook",
     response_model=ImportConfirmationResponse,
@@ -2502,7 +2517,7 @@ def confirm_profile_sportsbook_import(
             detail="Only new, compatible rows from this batch can be selected",
         )
 
-    backup = create_verified_local_backup(reason=f"Pre-import backup for batch {import_batch_id}")
+    backup = _verified_ledger_import_backup(import_batch_id)
     try:
         imported_ids = confirm_sportsbook_import_batch(
             profile_id=profile_id,
@@ -2555,7 +2570,7 @@ def confirm_profile_free_bet_import(
             detail="Only new, compatible rows from this batch can be selected",
         )
 
-    backup = create_verified_local_backup(reason=f"Pre-import backup for batch {import_batch_id}")
+    backup = _verified_ledger_import_backup(import_batch_id)
     try:
         imported_ids = confirm_free_bet_import_batch(
             profile_id=profile_id,
@@ -2608,7 +2623,7 @@ def confirm_profile_casino_offer_import(
             detail="Only new, compatible rows from this batch can be selected",
         )
 
-    backup = create_verified_local_backup(reason=f"Pre-import backup for batch {import_batch_id}")
+    backup = _verified_ledger_import_backup(import_batch_id)
     try:
         imported_ids = confirm_casino_offer_import_batch(
             profile_id=profile_id,
@@ -2661,7 +2676,7 @@ def confirm_profile_cash_adjustment_import(
             detail="Only new, compatible rows from this batch can be selected",
         )
 
-    backup = create_verified_local_backup(reason=f"Pre-import backup for batch {import_batch_id}")
+    backup = _verified_ledger_import_backup(import_batch_id)
     try:
         imported_ids = confirm_cash_adjustment_import_batch(
             profile_id=profile_id,
@@ -2714,7 +2729,7 @@ def confirm_profile_account_import(
             detail="Only new or changed compatible rows from this batch can be selected",
         )
 
-    backup = create_verified_local_backup(reason=f"Pre-import backup for batch {import_batch_id}")
+    backup = _verified_ledger_import_backup(import_batch_id)
     try:
         imported_ids = confirm_account_import_batch(
             profile_id=profile_id,

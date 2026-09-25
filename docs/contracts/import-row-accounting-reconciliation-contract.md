@@ -59,3 +59,5 @@ The full workbook path intentionally retains non-executed opportunity records as
 A settled/placed positive actual Sportsbook lay without an Exchange is a shared import review error: its commission cannot be resolved from cached P&L. Casino review reasons are stored in existing UserNotes; no new reason column is introduced.
 
 Account validation failures represented by review items enter REVIEW_REQUIRED, not a failed analysis job. Decisions can be saved without approving an import; Account validation still blocks approval/execution until explicitly resolved. Unrepresented validation failures remain failed.
+
+Per-ledger confirmation retains its verified full LOCAL SQLite-backup prerequisite. On PostgreSQL it returns409 before backup or writes, with the governed Profile workbook-import workflow identified separately. Dry-run/review remain available; do not present a PostgreSQL per-ledger confirmation as tested/supported or bypass the backup gate.

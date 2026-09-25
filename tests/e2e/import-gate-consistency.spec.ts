@@ -63,6 +63,12 @@ test("import gate exposes all source decisions and keeps terminal values truthfu
     expect(batch.rows.every((x:{errors:unknown[]})=>x.errors.length===0)).toBe(true);
     expect(batch.rows.find((x:{source_record_id:string})=>x.source_record_id==="SYNTHETIC-ODDS").mapped_fields.back_odds).toBe("25000002");
     const imported=await page.request.post(`${base}/imports/${batch.import_batch_id}/confirm-sportsbook`,{data:{confirmed:true,selected_staged_row_ids:batch.rows.map((x:{import_staged_row_id:string})=>x.import_staged_row_id)}});
+    if (health.database_engine === "postgresql") {
+      expect(imported.status(),await imported.text()).toBe(409);
+      expect(await imported.text()).toContain("verified local SQLite backup");
+      expect(await (await page.request.get(`${base}/sportsbook-bets`)).json()).toEqual([]);
+      return; // Hosted local-backup capability gap is explicit; no successful confirmation claimed.
+    }
     expect(imported.status(),await imported.text()).toBe(200);
     const rows=await (await page.request.get(`${base}/sportsbook-bets`)).json();
     expect(rows.find((x:{event_name:string})=>x.event_name==="Synthetic Void").reporting_value).toBe("0.00");

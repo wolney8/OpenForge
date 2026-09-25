@@ -305,3 +305,19 @@ def test_casino_missing_date_is_not_mislabelled_as_missing_offer():
     _, errors = map_casino_offer_import_fields(fields)
     assert any("date_started:" in error["message"] for error in errors)
     assert _issue_types(errors, fields, "casino") == ["override_missing_reason"]
+
+
+@pytest.mark.parametrize("mode", ["neon", "postgres", "postgresql"])
+def test_hosted_ledger_confirmation_never_attempts_local_backup(monkeypatch, mode):
+    from fastapi import HTTPException
+
+    from openforge_api import imports
+
+    monkeypatch.setattr(imports.settings, "database_mode", mode)
+    def prohibited_backup(**kwargs):
+        pytest.fail("Hosted per-ledger confirmation must not begin local backup or writes")
+    monkeypatch.setattr(imports, "create_verified_local_backup", prohibited_backup)
+    with pytest.raises(HTTPException) as error:
+        imports._verified_ledger_import_backup("SYNTHETIC-BATCH")
+    assert error.value.status_code == 409
+    assert "no records were imported" in error.value.detail
