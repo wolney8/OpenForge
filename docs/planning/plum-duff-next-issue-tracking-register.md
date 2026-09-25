@@ -1,5 +1,11 @@
 # Plum Duff Next Issue Tracking Register
 
+## CP-046 #92 forms and Profile Defaults complete — 2026-09-25 11:38 BST
+
+PD-FIX-297–299 COMPLETE at app`9e7cbd2`, local3010 and protected Preview. Actual screens: Tracker Lists Add/Edit Value; active Profile Accounts Create/Edit account; Profile Settings → Defaults. The obsolete Choose Accounts target was corrected by verifying the mounted route; no duplicate editor introduced.10 isolated/10 hosted workflows,35 web+1 API test/types/build/lint pass; owner financial/Settings/reference projections unchanged. Shared browser writes are intercepted; real shared API persistence uses disposable storage. #105 remains engineering-complete; #117 acceptance retained. [Evidence](docs/audits/platform-quality-audit.md#cp-046-settings-forms-and-account-editor--2026-09-25-1138-bst).
+
+Published once: [#92](https://github.com/wolney8/OpenForge/issues/92#issuecomment-5831013170), [#114](https://github.com/wolney8/OpenForge/issues/114#issuecomment-5831014342). Git push remains withheld; normal-owner browser/VoiceOver and broader acceptance are unexecuted/separate. Next: #92: verify the Account Catalogue Add/Edit Account form matrix using intercepted shared-reference writes; repair only demonstrated gaps. Then #92: verify Common Bet Combos Add/Edit Combo in Quick Actions against the same form, failure and focus matrix; preserve shared ownership.
+
 ## CP-045 named #105 coverage complete — 2026-09-25 09:51 BST
 
 PD-FIX-294–296 COMPLETE at`7dc975f`, local3010 and protected Preview. Fee Position/Exposure,

@@ -1,5 +1,15 @@
 # Plum Duff UI Change Register
 
+## CP-046 forms and Profile Defaults — 2026-09-25 11:38 BST
+
+| ID / issue | Actual screen and repair | Existing equivalent / final state |
+| --- | --- | --- |
+| PD-FIX-297 / #92 | Tracker Lists Add/Edit Value: readable selection, adaptive dialog and recoverable saves | Existing Settings shell/fields/inline table; COMPLETE locally/Preview`9e7cbd2`; three isolated/hosted workflows; global browser mutations intercepted |
+| PD-FIX-298 / #92 | Profile Accounts Create/Edit account: complete footer and reachable focused fields | Existing simple header/modal scroll boundary/native form; COMPLETE locally/Preview; Create/validation/Save/Revert/Discard/reopen/ownership pass; retired Choose Accounts untouched |
+| PD-FIX-299 / #92 | Profile Settings → Defaults: six title/help units, readable Default exchange and safe failed saves | Existing calculator heading geometry/ContextHelp/confirmation; COMPLETE locally/Preview; immediate/explicit save, scope/reload/HTTP/network/touch/keyboard pass |
+
+No implementation or engineering verification remains in this named batch. Broader owner acceptance remains separate; #105 named engineering coverage is unchanged. [Evidence](docs/audits/platform-quality-audit.md#cp-046-settings-forms-and-account-editor--2026-09-25-1138-bst).
+
 ## CP-045 named financial coverage — 2026-09-25 09:51 BST
 
 | ID / issue | Surface and bounded repair | Existing equivalent | State |

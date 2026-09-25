@@ -1,5 +1,13 @@
 # Plum Duff Known UI Pitfalls
 
+## CP-046 form ownership and focus — 2026-09-25 11:38 BST
+
+- Verify the mounted route before editing a historical component target; AccountAuthoritySettings was retired in favour of the Profile Accounts workflow.
+- A sticky footer constrained by a long form can remain below its own scroll viewport while its first button is visible. Measure every action and focused control against clipping ancestors. Keep simple Account title/close headers free of unused ledger stepper tracks; use the existing header/body/footer ownership and native `form` attribute when actions sit outside the form.
+- Treat native textarea caret focus separately from whole-field scroll reachability; do not shrink an accepted field to satisfy an artificial focus assertion.
+- Network rejection must release Saving and retain the draft. Confirmation errors belong inside the open dialog. Native selected text capacity already excludes its arrow padding; do not subtract it twice.
+- Regression: `tracker-list-settings.spec.ts`, `profile-account-form-alignment.spec.ts`, `profile-settings-reflow.spec.ts`.
+
 ## CP-045 reinforcement — 2026-09-25 09:51 BST
 
 - #105 / PD-FIX-294–296: unknown required fee/liability outputs are not zero; completeness follows original Profile membership without all-Profile fan-out. Guard retained drawer previews and cached headers when the owning read fails, while preserving independently confirmed measures.

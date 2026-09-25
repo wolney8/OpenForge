@@ -1,5 +1,37 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
+## CP-046 Settings forms and Account editor — 2026-09-25 11:38 BST
+
+**The two named #92 tasks are implemented and engineering-verified at `9e7cbd2`, local3010 and the existing protected Preview.** No implementation or engineering check remains in this batch. #105's named coverage stays complete; broader owner acceptance and #117's recorded scoped acceptance are unchanged.
+
+| ID / actual screen | Demonstrated gap and repair | Verification |
+| --- | --- | --- |
+| PD-FIX-297 / Tracker Lists Add/Edit Value | Long selected List clipped; rejected fetch stranded Saving; confirmed save exposed a duplicate table inside the dialog. Existing adaptive Settings shell, readable concise option text and compact gutters; catch/finally, pending controls and authoritative saved row return to the inline list | Three browser workflows: blank/422/network/pending/retry, create/edit/status, cancel/reopen, keyboard order/focus return, 320px–1440px and 200% text |
+| PD-FIX-298 / Profile Accounts Create/Edit account | Previously named Choose Accounts is unmounted. Active editor clipped Revert/Cancel by10.45px at200% and covered focused fields. Existing simple title/close header and modal-owned footer replace unused ledger header tracks and incorrect form-owned sticky containment; native form attribute preserves submission/validation | Create/invalid value/Save/reopen, readonly provider metadata, Revert/Discard/return focus; all footer targets, field bounds and native Notes caret visibility/full-field scroll reachability; Catalogue unchanged |
+| PD-FIX-299 / Profile Settings → Defaults: Date Range and Tracker Defaults / Profile commission defaults | Heading help absent; default-exchange label clipped; network errors stranded saving; commission failure appeared behind its confirmation. Existing ContextHelp plus a neutral alias of calculator heading geometry, full wrapped-title tooltip anchor, concise redundant option wording and visible apply/save instructions; errors retain drafts and appear in the active confirmation | Three browser workflows: six heading/help units, click/touch/keyboard/reduced motion, HTTP/network failure/retry, immediate versus explicit save, reload/revisit and Profile A/B isolation |
+
+### Completed implementation checklist and evidence
+
+- [x] Existing mounted routes/ownership and live #92 clarifications checked; no retired Choose Accounts revival. Tracker Lists remains shared reference data, Account relationships and defaults remain Profile-owned; device/Profile guidance retains its existing scope.
+- [x] Existing fields, tokens, simple header, adaptive Settings dialog, native form validation and shared help reused. `section-title-with-help` shares the accepted calculator geometry; its neutral name avoids importing calculator semantics into Settings. No new form/animation framework.
+- [x] **10/10 isolated and10/10 hosted** browser workflows on the final source, **35/35** focused web cases and **1/1** isolated shared-authority API regression; types, targeted lint and webpack/hosted builds pass. The confirmed-save harness was corrected for hosted latency at test revision`043d669` and rechecked with three isolated Settings workflows. No unrelated historical suite rerun.
+- [x] Actual light/dark rendering, 320/390px compact Tracker Lists, 390px Account/Settings, 760px at200% text, keyboard/focus/internal clipping, touch and reduced motion inspected. Shared calculator inline help/Standard/Multi-Lay and explicit ledger Notes Save/Discard regressions pass. CP-045 financial evidence reused unchanged.
+- [x] All global Tracker List browser writes are deterministic in-memory route fixtures in both environments. The real shared create/update/archive API is verified with a disposable test database. No live shared catalogue/reference writes are claimed or performed. Profile workflow persistence uses only synthetic Profiles, archived afterwards.
+- [ ] Fresh authenticated normal-owner browser and VoiceOver speech remain unexecuted under the existing gate; neither is labelled PASS. Broader #92/#105 owner acceptance remains separate.
+
+### Running source, safety and retained evidence
+
+Local3010 serves all five changed modules/styles verified over HTTP. API8010 source is unchanged from `3a7f0a3` and retains its `3a7f0a3…+dirty` launch label; its normal-owner role, database fingerprint and schema match the existing runtime. No cosmetic restart. Only original generated Next/incremental files were dirty at entry; excluded and preserved. Parent checkout work remains untouched.
+
+Protected Preview serves `9e7cbd2d9bd504f4f375dde1a5e4a8378e82b966`; anonymous302 protection, authenticated application session, role`preview`, database`preview:plum_duff_preview_cp028`, fingerprint`c3b647ca129cf41c`, schema`account-access-v1`.469 application files matched existing staging. Provider-managed configuration reused remotely; no secret retransmission/scope change. Existing shared authentication/OAuth scopes remain disclosed; #96 remains separate. Only the existing Preview alias changed.
+
+Eight financial/identity and nine Settings/reference owner-table projections match the pre-change verified backup; integrity/FK checks pass. Synthetic Profiles archived; Preview session revoked. Source/evidence backup refreshed, prior backups retained. No schema, new environment, credentials, Production, main merge or Git push.
+
+Retained private `cp046-*` contains initial reproductions, focused/combined logs, geometry/screenshots, source hashes, health/configuration scope and owner verification. The superseded combined run recorded8 passes plus touch-hover screenshot and transient development-manifest failures during late repair; only final fixed-source10/10 is counted. The first hosted pass was9/10 because disabled Save was mistaken for a completed save; the harness now waits for the confirmed PUT and spinner completion, with no application change. Native textarea focus reveals its editing line; separately scrolling proves the entire field reachable, without inventing a field-height defect.
+
+Published concise evidence once to [#92](https://github.com/wolney8/OpenForge/issues/92#issuecomment-5831013170), [#114](https://github.com/wolney8/OpenForge/issues/114#issuecomment-5831014342); no issue closure. Git push remains withheld for unverified automatic-deployment isolation. Next: #92: verify the Account Catalogue Add/Edit Account form matrix using intercepted shared-reference writes; repair only demonstrated gaps. Then #92: verify Common Bet Combos Add/Edit Combo in Quick Actions against the same form, failure and focus matrix; preserve shared ownership. These are named verification targets, not asserted defects or additional functionality.
+
+
 ## CP-045 named financial coverage — 2026-09-25 09:51 BST
 
 **The finite #105 implementation and engineering coverage pass is complete at app `7dc975f`,

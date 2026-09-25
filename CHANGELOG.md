@@ -10,6 +10,8 @@ No published release is represented by the local milestones below.
 
 ## 2026-09-25
 
+- **2026-09-25 11:38 BST — CP-046:** Completed the named #92 forms/Defaults batch at`9e7cbd2`, local/protected Preview;10/10 isolated/hosted,35 web+1 API, types/build/lint pass; owner data unchanged. [Evidence](docs/audits/platform-quality-audit.md#cp-046-settings-forms-and-account-editor--2026-09-25-1138-bst).
+
 - **2026-09-25 09:51 BST — CP-045:** Finished named #105 coverage at`7dc975f`, local/protected Preview.13/13 isolated and hosted,104 focused tests/types/builds pass; owner data unchanged. #114 publication resolved. Broader acceptance and Git push remain separate. [Evidence](docs/audits/platform-quality-audit.md#cp-045-named-financial-coverage--2026-09-25-0951-bst).
 
 ## 2026-09-24
@@ -172,3 +174,9 @@ their original IDs.
 | CP-024 | 2026-09-19 06:48 BST | Unified Multi-Lay table shells, corrected effective-odds presentation and applied canonical financial meaning to compact results | [#35](https://github.com/wolney8/OpenForge/issues/35), [#92](https://github.com/wolney8/OpenForge/issues/92) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-024-multi-lay-visual-consistency-correction--2026-09-19-0648-bst) |
 | CP-025 | 2026-09-19 07:57 BST | Repaired normal-owner OAuth environment selection, added fail-closed auth readiness and returned failures to the branded login shell | [#62](https://github.com/wolney8/OpenForge/issues/62), [#116](https://github.com/wolney8/OpenForge/issues/116) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-025-owner-blocking-local-google-sign-in--2026-09-19-0757-bst) |
 | CP-026 | 2026-09-19 12:41 BST | Enforced inline calculator help, one Multi-Lay outer grid and paired semantic Back/Lay surfaces across standalone and embedded consumers | [#35](https://github.com/wolney8/OpenForge/issues/35), [#92](https://github.com/wolney8/OpenForge/issues/92) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-026-calculator-visual-contract-enforcement--2026-09-19-1241-bst) |
+
+### Checkpoint rolled from Project Status during CP-046
+
+| ID | Timestamp | What changed | Issue | Document |
+| --- | --- | --- | --- | --- |
+| CP-027 | 2026-09-21 10:44 BST | Recorded owner calculator and Google acceptance, promoted provider re-authentication to PASS and froze the verified local baseline | [#35](https://github.com/wolney8/OpenForge/issues/35), [#62](https://github.com/wolney8/OpenForge/issues/62), [#92](https://github.com/wolney8/OpenForge/issues/92), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-027-owner-acceptance-and-frozen-local-baseline--2026-09-21-1044-bst) |

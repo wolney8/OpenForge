@@ -1,6 +1,6 @@
 # Audit Register — Plum Duff / OpenForge — Doc ID: AR-CODEX-001
 
-**Last updated:** 2026-09-25 09:51 BST
+**Last updated:** 2026-09-25 11:38 BST
 
 This is the owner-facing index for audit evidence. The
 [platform quality audit](docs/audits/platform-quality-audit.md) remains the detailed authority.
@@ -21,6 +21,7 @@ These are coverage measures, not percentages of the product finished.
 
 | ID | Plain-English problem | State | Repair / integration state | Issue |
 | --- | --- | --- | --- | --- |
+| PD-FIX-297–299 / CP-046 | Tracker Lists save recovery, Account form/footer focus and Profile Defaults heading/help | IMPLEMENTED AND VERIFIED locally/Preview | App`9e7cbd2`;10 isolated/10 hosted,35 web+1 API/types/build/lint pass; unchanged owner data. [Evidence](docs/audits/platform-quality-audit.md#cp-046-settings-forms-and-account-editor--2026-09-25-1138-bst) | [#92](https://github.com/wolney8/OpenForge/issues/92) |
 | PD-FIX-294–296 / CP-045 | Named Fee Position/Exposure, Profile and fee-dialog coverage | IMPLEMENTED AND VERIFIED locally/Preview | App`7dc975f`;104 focused tests,13 isolated/13 hosted, types/builds pass; unchanged owner data; #114 publication resolved. [Evidence](docs/audits/platform-quality-audit.md#cp-045-named-financial-coverage--2026-09-25-0951-bst) | [#105](https://github.com/wolney8/OpenForge/issues/105), [#92](https://github.com/wolney8/OpenForge/issues/92) |
 | PD-FIX-292–293 / CP-044 | Reports missed card replay, displayed stale period money and converted missing Cash costs into a complete retained total | COMPLETE locally and protected Preview | App`0189434`; Reports3/3 hosted, eight relevant workflows pass after bounded rechecks,48 web tests/types/build; unchanged owner data. #105 synced; additional #114 comment rejected by automatic approval review. [Evidence](docs/audits/platform-quality-audit.md#cp-044-reports-financial-display--2026-09-24-1946-bst) | [#105](https://github.com/wolney8/OpenForge/issues/105) |
 | PD-FIX-290–291 / CP-043 | Extra Places premature/partial zero and missing card replay; Dashboard delayed-period overwrite and failed-cache display | COMPLETE locally and protected Preview | App `3a7f0a3`; isolated6/6, hosted6/6, restored2/2, web46/calculation5, types/lint/build; actual local served source and unchanged owner data. [Evidence](docs/audits/platform-quality-audit.md#cp-043-extra-places-summaries-and-profile-dashboard-cards--2026-09-24-1600-bst) | [#105](https://github.com/wolney8/OpenForge/issues/105), [#92](https://github.com/wolney8/OpenForge/issues/92) |
