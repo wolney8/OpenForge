@@ -1365,3 +1365,13 @@ as unavailable and propagate only to dependent measures. Preserve exact type/dat
 known independent costs/funding and explicit source zero. Keep selected-range values waiting while
 settings save, including breakdown/watchlist cells; all-period formal history stays independently
 ready. Regressions: `tracker-summary.test.ts` and `reports-financial-display.spec.ts`.
+
+## CP-047: enlarged editor body versus footer
+
+Horizontal containment does not prove a field is usable. At 200% text the workflow header and sticky footer could leave about60px for the body. Preserve the existing outer-modal overflow fallback and enough body height for a whole field. `multi-lay-actual-workflow.spec.ts` now focuses an actual input and asserts its complete rectangle clears the footer in desktop, compact and enlarged layouts.
+
+## CP-047: portal forms retain React event ancestry
+
+A panel rendered through a portal can still bubble submit/click events to its source ledger form or row. An Account confirmation must stop its submit at the Account form; the review backdrop stops row clicks and the shared ModalBoundary contains native Cancel. The Account browser regression asserts zero bet writes, retained Notes draft, topmost Escape and trigger focus return.
+
+CP-047 also fixes the shared workflow body’s implicit grid column: use `minmax(0, 1fr)` so a nested history table cannot enlarge the whole Account panel. Inspect internal scroll bounds as well as page overflow.

@@ -1,6 +1,6 @@
 # Engineering Learning — Plum Duff / OpenForge — Doc ID: EL-CODEX-001
 
-**Last updated:** 2026-09-25 11:38 BST
+**Last updated:** 2026-09-25 14:11 BST
 
 This is a compact notebook of transferable lessons from building Plum Duff. It is not the audit,
 roadmap, backlog or evidence record.
@@ -10,6 +10,8 @@ roadmap, backlog or evidence record.
 - Keep a headline, its chart and its underlying records within the same financial scope.
 
 ## Concepts worth remembering
+
+CP-047: a retry receipt proves an action already happened; it must not replay its old balance over newer state. Return the original observation alongside the current Account. Portal forms likewise retain React event ancestry: explicitly contain child submission and assert zero parent writes.
 
 CP-046: a visible Save button does not prove a usable form. Check the other actions and the focused field against the actual scroll boundary; fix ownership before reducing field sizes.
 

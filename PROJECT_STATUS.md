@@ -1,27 +1,27 @@
 # Project Status — Plum Duff / OpenForge — Doc ID: PS-CODEX-001
 
-**Last updated:** 2026-09-25 11:38 BST · **Status:** 🟢 CP-046 named #92 forms and Profile Defaults complete
+**Last updated:** 2026-09-25 14:11 BST · **Status:** 🟢 CP-047 two bounded feature slices delivered
 
 ## Right now
 
-- **Completed:** Tracker Lists Add/Edit Value, Profile Accounts Create/Edit account and Profile Settings → Defaults repaired/verified at app`9e7cbd2`. Retired Choose Accounts stays unmounted. [Evidence](docs/audits/platform-quality-audit.md#cp-046-settings-forms-and-account-editor--2026-09-25-1138-bst).
-- **Running:** local3010 frontend and protected Preview`9e7cbd2`; five HTTP-served modules/styles verified. Unchanged API8010 retains`3a7f0a3…+dirty`. Records: CP-046; prior records`f4c6440`; final records SHA is in the verified backup receipt.
-- **Remaining:** no implementation/engineering gap in this named batch. Next #92 verification is Account Catalogue Add/Edit Account and Quick Actions Common Bet Combos Add/Edit Combo; no defect assumed. #105 named engineering coverage remains complete.
-- **Blocked / acceptance:** Git push withheld for unverified automatic-deployment isolation; #96 separate. Fresh normal-owner browser/VoiceOver unexecuted; broader #92/#105 owner acceptance pending. #117 acceptance retained.
+- **Completed:** Normal Multi-Lay plan → actual fills → settlement → History/Reports/restore; Sportsbook/Account review → explicit balance confirmation → observation history → unchanged bet draft. [Evidence](docs/audits/platform-quality-audit.md#cp-047-operational-multi-lay-and-account-observations--2026-09-25-1411-bst).
+- **Running:** local3010 frontend and protected Preview `e2d70e0`; nine HTTP-served modules/styles verified. Changed API8010 `e2d70e0…+dirty`; only retained generated TypeScript files are dirty. Records: CP-047; prior records `f81f929`; final records SHA is in the verified backup receipt.
+- **Remaining:** neither delivered core slice has an implementation/engineering gap. Other Multi-Lay reward/backing/market configurations, Free Bets/Casino review entry points and wider Account settlement/freshness/trends remain named scope. #105 engineering completion and #117 scoped acceptance retained.
+- **Blocked / acceptance:** Git push withheld for unverified automatic-deployment isolation; #96 separate. Fresh normal-owner browser and VoiceOver unexecuted; broader owner acceptance remains separate. No owner migration or test writes.
 
 ## Delivery state
 
 | Area | Actual state |
 | --- | --- |
-| Application/tests | `9e7cbd2`;35 focused web +1 isolated API test,10 isolated/10 hosted workflows; types/builds/lint pass |
-| Local3010 / API8010 | Five changed modules/styles verified over HTTP; healthy unchanged normal-owner API; generated files preserved; no owner browser/restart |
-| Protected Preview | `9e7cbd2`; protection/runtime/database and authenticated screens verified; provider bindings reused remotely; synthetic Profiles archived/session revoked |
-| Scope/limits | Shared Tracker List browser writes intercepted; real API persistence checked in disposable storage. Profile-only saves verified live with synthetic data. No owner/shared reference changes |
-| Records/publication/backup | CP-046; #92/#114 concise comments published once. Source/evidence and prior backup hashes verified. No Git push/main/Production |
+| Application/tests | `2ef119f` Multi-Lay + `e2d70e0` Accounts;107 API/89 web;7 isolated/7 hosted workflows; types, targeted lint and hosted build pass |
+| Local3010 / API8010 | Actual served source and normal-owner identity verified;19 data/audit projections unchanged; legacy calculation compatibility passes; no schema change |
+| Protected Preview | `e2d70e0`; protection, role, database and authenticated screens verified; provider bindings reused remotely; synthetic Profiles archived/session revoked |
+| Storage/recovery | Existing versioned planning JSON and observation/audit tables reused; disposable SQLite/PostgreSQL retry, rollback, concurrency and portable restore pass |
+| Records/publication/backup | CP-047; #36/#38/#85/#106/#92/#114 concise comments published once; source/evidence and prior backup hashes verified; no push/main/Production |
 
 ## Progress at a glance
 
-These figures measure **#114 audit coverage**, not the percentage of the product finished.
+These figures measure **#114 audit coverage**, not product completion. The wider Multi-Lay task remains partial.
 
 | Review area | Current coverage |
 | --- | ---: |
@@ -32,16 +32,15 @@ These figures measure **#114 audit coverage**, not the percentage of the product
 
 ## Next two executable actions
 
-1. #92: verify the Account Catalogue Add/Edit Account form matrix using intercepted shared-reference writes; repair only demonstrated gaps.
-2. #92: verify Common Bet Combos Add/Edit Combo in Quick Actions against the same form, failure and focus matrix; preserve shared ownership.
+1. #85: reuse the delivered Account review panel from Free Bets and Casino Account/bookmaker entry points, preserving each ledger draft and canonical Profile/Account identity.
+2. #92: finish the queued Account Catalogue Add/Edit Account and Quick Actions Common Bet Combos Add/Edit Combo checks with intercepted shared-reference writes; fix demonstrated defects only.
 
-The [#92 checklist](docs/agent-contracts/plum-duff-ui-audit-backlog.md#ui-consistency-001-retrospective-checklist) names verification and acceptance separately. [#105 coverage](docs/contracts/financial-value-presentation-contract.md#rollout-coverage) remains engineering-complete.
+[Resume here](docs/planning/plum-duff-next-issue-tracking-register.md#resume-here--cp-047-complete) retains exact files, commands and unsupported configurations. [#105 coverage](docs/contracts/financial-value-presentation-contract.md#rollout-coverage) remains engineering-complete.
 
 ## Checkpoint log
 
 | ID | Timestamp | What changed | Issue | Document |
 | --- | --- | --- | --- | --- |
-| CP-028 | 2026-09-21 13:02 BST | Created an isolated protected Preview, proved hosted runtime/database readiness and recovery, and stopped truthfully at the owner-controlled Google interaction | [#62](https://github.com/wolney8/OpenForge/issues/62), [#114](https://github.com/wolney8/OpenForge/issues/114), [#115](https://github.com/wolney8/OpenForge/issues/115) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-028-protected-hosted-preview-verification--2026-09-21-1302-bst) |
 | CP-029 | 2026-09-21 15:24 BST | Recorded hosted Google PASS, repaired protected authenticated SSR context and stopped the Preview gate on a real Reports render loop | [#62](https://github.com/wolney8/OpenForge/issues/62), [#114](https://github.com/wolney8/OpenForge/issues/114), [#115](https://github.com/wolney8/OpenForge/issues/115) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-029-authenticated-protected-preview-verification--2026-09-21-1524-bst) |
 | CP-029-R | 2026-09-22 08:02 BST | Recovered retained execution evidence: deployed source and screenshots exist, the hosted Playwright gate failed, and financial/recovery claims were inherited from CP-028 rather than rerun | [#62](https://github.com/wolney8/OpenForge/issues/62), [#114](https://github.com/wolney8/OpenForge/issues/114), [#115](https://github.com/wolney8/OpenForge/issues/115) | [Recovery evidence](docs/audits/platform-quality-audit.md#cp-029-evidence-recovery-correction--2026-09-22-0802-bst) |
 | CP-030 | 2026-09-22 11:57 BST | Repaired the Reports reduced-motion update loop and proved a hosted £6→£5 Cash Adjustment through History, Reports, reload and idempotent retry | [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#cp-030-reports-repair-and-hosted-cash-correction-proof--2026-09-22-1157-bst) |
@@ -61,6 +60,7 @@ The [#92 checklist](docs/agent-contracts/plum-duff-ui-audit-backlog.md#ui-consis
 | CP-044 | 2026-09-24 19:46 BST | Completed Reports card replay and truthful selected-range/required-output readiness; verified local/Preview app0189434, passing focused regressions and unchanged owner data | [#105](https://github.com/wolney8/OpenForge/issues/105), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Evidence](docs/audits/platform-quality-audit.md#cp-044-reports-financial-display--2026-09-24-1946-bst) |
 | CP-045 | 2026-09-25 09:51 BST | Finished named Fee Position/Exposure, Profile and fee-dialog financial coverage;13 isolated/hosted workflows pass, local/Preview app7dc975f and unchanged owner data | [#105](https://github.com/wolney8/OpenForge/issues/105), [#92](https://github.com/wolney8/OpenForge/issues/92), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Evidence](docs/audits/platform-quality-audit.md#cp-045-named-financial-coverage--2026-09-25-0951-bst) |
 | CP-046 | 2026-09-25 11:38 BST | Completed Tracker Lists, active Profile Account create/edit and Profile Defaults reflow/failure recovery;10 isolated/10 hosted workflows, local/Preview app9e7cbd2, owner data unchanged | [#92](https://github.com/wolney8/OpenForge/issues/92), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Evidence](docs/audits/platform-quality-audit.md#cp-046-settings-forms-and-account-editor--2026-09-25-1138-bst) |
+| CP-047 | 2026-09-25 14:11 BST | Delivered Normal Multi-Lay actual fills through settlement/History/Reports/restore and atomic Account balance review/history; local/Preview e2d70e0, 7 isolated/7 hosted workflows, unchanged owner data | [#36](https://github.com/wolney8/OpenForge/issues/36), [#38](https://github.com/wolney8/OpenForge/issues/38), [#85](https://github.com/wolney8/OpenForge/issues/85), [#106](https://github.com/wolney8/OpenForge/issues/106) | [Evidence](docs/audits/platform-quality-audit.md#cp-047-operational-multi-lay-and-account-observations--2026-09-25-1411-bst) |
 
 ## Reference index
 

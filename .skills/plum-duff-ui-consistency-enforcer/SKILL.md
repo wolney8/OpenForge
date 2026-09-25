@@ -385,3 +385,6 @@ Selected-record modal gate: assert Delete/Revert and navigation action rectangle
 not just empty Add geometry. Test focus after Save becomes disabled, nested confirmation Tab/Shift-Tab
 on actual controls, associated errors inside the active Matching panel, preserved draft and real retry.
 Hold a reference response while editing settlement; assert queued intent and actual commission persist.
+
+- CP-047 reinforcement: enlarged text checks must assert a focused field is fully visible above the sticky footer; horizontal overflow alone can miss an unusably short editor body. Reuse the existing modal overflow fallback.
+- CP-047 reinforcement: nested portal workflows need a zero-parent-write assertion. Contain child submit/click/Cancel events while preserving topmost Tab/Escape and return focus.

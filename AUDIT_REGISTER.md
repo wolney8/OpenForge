@@ -1,6 +1,6 @@
 # Audit Register — Plum Duff / OpenForge — Doc ID: AR-CODEX-001
 
-**Last updated:** 2026-09-25 11:38 BST
+**Last updated:** 2026-09-25 14:11 BST
 
 This is the owner-facing index for audit evidence. The
 [platform quality audit](docs/audits/platform-quality-audit.md) remains the detailed authority.
@@ -21,6 +21,7 @@ These are coverage measures, not percentages of the product finished.
 
 | ID | Plain-English problem | State | Repair / integration state | Issue |
 | --- | --- | --- | --- | --- |
+| CP-047 / PD-FIX-114 / ACCOUNT-AUDIT-001 / ACCOUNT-BALANCE-HISTORY-001 | Operational Normal Multi-Lay and core Account review/observation history | BOUNDED SLICES COMPLETE locally/Preview | App `e2d70e0`;107 API/89 web,7 isolated/7 hosted, PostgreSQL retry/restore, types/build/lint; no schema or owner-data changes. Wider configurations/entry points/trends remain. [Evidence](docs/audits/platform-quality-audit.md#cp-047-operational-multi-lay-and-account-observations--2026-09-25-1411-bst) | [#36/#38](https://github.com/wolney8/OpenForge/issues/38), [#85/#106](https://github.com/wolney8/OpenForge/issues/106) |
 | PD-FIX-297–299 / CP-046 | Tracker Lists save recovery, Account form/footer focus and Profile Defaults heading/help | IMPLEMENTED AND VERIFIED locally/Preview | App`9e7cbd2`;10 isolated/10 hosted,35 web+1 API/types/build/lint pass; unchanged owner data. [Evidence](docs/audits/platform-quality-audit.md#cp-046-settings-forms-and-account-editor--2026-09-25-1138-bst) | [#92](https://github.com/wolney8/OpenForge/issues/92) |
 | PD-FIX-294–296 / CP-045 | Named Fee Position/Exposure, Profile and fee-dialog coverage | IMPLEMENTED AND VERIFIED locally/Preview | App`7dc975f`;104 focused tests,13 isolated/13 hosted, types/builds pass; unchanged owner data; #114 publication resolved. [Evidence](docs/audits/platform-quality-audit.md#cp-045-named-financial-coverage--2026-09-25-0951-bst) | [#105](https://github.com/wolney8/OpenForge/issues/105), [#92](https://github.com/wolney8/OpenForge/issues/92) |
 | PD-FIX-292–293 / CP-044 | Reports missed card replay, displayed stale period money and converted missing Cash costs into a complete retained total | COMPLETE locally and protected Preview | App`0189434`; Reports3/3 hosted, eight relevant workflows pass after bounded rechecks,48 web tests/types/build; unchanged owner data. #105 synced; additional #114 comment rejected by automatic approval review. [Evidence](docs/audits/platform-quality-audit.md#cp-044-reports-financial-display--2026-09-24-1946-bst) | [#105](https://github.com/wolney8/OpenForge/issues/105) |
@@ -65,7 +66,7 @@ These are coverage measures, not percentages of the product finished.
 | Native Sportsbook save, placement, correction and report | Passed locally | Shared History is present; full correction UI breadth is still ledger-specific |
 | Generated Free Bet awards | Passed locally | Fresh split award, lost/concurrent/changed retry, child settlement, History, protected removal and portable native-ID remapping pass |
 | Profit Boost and conditional Cashback | Passed on the integrated local application | Split award-group receipt linkage remains limited |
-| Multi-Lay create, save and reopen | Partial | Richer reward modes and per-leg actual placement are not complete |
+| Multi-Lay create, save and reopen | Partial overall; Normal slice passes locally/Preview | CP-047 completes Normal actual changed-odds fills, settlement, correction, History/Reports/restore. Other backing/reward/multiple-market configurations remain unsupported |
 | Blackjack session to one Casino activity | Passed locally | Hosted and owner acceptance are not claimed |
 | Portable Profile restore, report, re-export and cleanup | Passed locally | Hosted recovery is not inferred |
 | Full Profile workbook import and recovery | Passed locally | Authenticated six-sheet #109 import, award lineage/retry, £7.18 settlement/report, export and portable restore/native-ID remap pass |

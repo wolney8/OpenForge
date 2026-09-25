@@ -453,6 +453,10 @@ or private attachments. This permits comments only, not Git push, main merge, Pr
 issue closure, deletion or rewriting earlier evidence. Use normal approval tooling; if it rejects a
 comment, retain the exact reason locally and continue independent work without bypassing the gate.
 
+Recorded 2026-09-25 14:11 BST — CP-047 feature delivery scope:
+
+The owner authorises concise existing-issue progress/evidence comments on #36/#38/#85/#106 in wolney8/OpenForge under the same secret/private-data exclusions and duplicate-comment checks as #92/#105/#114. This grants no code push, merge or issue closure. Necessary additive versioned storage for the Normal Multi-Lay and core Account observation slices may be tested on disposable SQLite/PostgreSQL; the existing protected Preview may receive it only after migration, compatibility, retry/restore and backup/identity checks pass. No normal-owner or Production migration is authorised; preserve local3010 source/schema compatibility.
+
 ## Durable request capture
 
 - Capture every distinct user idea, defect, and requested outcome in the existing canonical

@@ -1,6 +1,6 @@
 # Project Roadmap — Plum Duff / OpenForge — Doc ID: PR-CODEX-001
 
-**Last updated:** 2026-09-24 11:08 BST
+**Last updated:** 2026-09-25 14:11 BST
 
 ## Product goal
 
@@ -34,9 +34,15 @@ and saved return context, with #92 compact Report/help/header repairs. Preview a
 share application `516baf5`; direct authenticated normal-owner browser recheck remains unexecuted,
 while isolated SQLite and authenticated Preview evidence pass.
 
-**Next outcome:** verify remaining approved #92 toolbar composition and #105 FinancialValue/motion
-consumers, repairing demonstrated bounded gaps. Production readiness remains paused. No release
-or completion of the general #111 analytics roadmap is implied.
+**Completed feature slices (CP-047):** Normal Multi-Lay actual fills through settlement, correction,
+History/Reports and restore; Sportsbook/Account review with atomic balance confirmation and core
+observation history. Application `e2d70e0` runs locally and on protected Preview. Existing storage
+was sufficient; no SQL migration. #105's named engineering pass remains complete.
+
+**Next outcome:** extend the existing Account review entry points to Free Bets/Casino (#85), then
+finish the two queued #92 Catalogue/Combo form checks. Wider Account freshness/trends/settlement,
+unsupported Multi-Lay backing/reward/market configurations and general #111 analytics remain
+separate scope. Production readiness remains paused.
 
 ## Local defect / completeness
 
@@ -52,7 +58,7 @@ or completion of the general #111 analytics roadmap is implied.
   authenticated browser evidence while main and hosted environments remain unchanged.
 - Preserve the completed Account, ledger-write, award, Blackjack and calculator safeguards.
 - Preserve the complete authenticated #109 workbook/award and Global Search/Quick Action journeys.
-- Keep bounded local gaps visible: richer Multi-Lay placement/reward modes, changed-odds fills,
+- Keep bounded local gaps visible: unsupported Multi-Lay backing/reward/multiple-market configurations,
   later #111 controls and other explicitly planned features are not audit failures.
 
 ## Hosted acceptance
@@ -87,7 +93,7 @@ or completion of the general #111 analytics roadmap is implied.
   ([#70](https://github.com/wolney8/OpenForge/issues/70), [#82](https://github.com/wolney8/OpenForge/issues/82), [#85](https://github.com/wolney8/OpenForge/issues/85), [#106](https://github.com/wolney8/OpenForge/issues/106)).
 - Daily tasks and explainable advisory support
   ([#25–#31](https://github.com/wolney8/OpenForge/issues), [#86](https://github.com/wolney8/OpenForge/issues/86)).
-- Remaining calculator/ledger gaps, including richer Multi-Lay placement and changed-odds fills.
+- Remaining calculator/ledger gaps, including unsupported Multi-Lay backing/reward/multiple-market configurations; Normal changed-odds fills are delivered.
 - Subscriber access, billing and governed AI capabilities when their contracts are approved.
 
 ## Deferred / decision required

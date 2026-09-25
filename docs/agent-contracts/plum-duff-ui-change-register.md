@@ -1,5 +1,14 @@
 # Plum Duff UI Change Register
 
+## CP-047 feature workflow containment — 2026-09-25 14:11 BST
+
+| ID / issue | Actual screen and repair | Existing equivalent / final state |
+| --- | --- | --- |
+| PD-FIX-300 / #92 | Enlarged Multi-Lay/ledger editor: keep a whole focused field above the footer | Existing CP-046 modal scroll boundary and fallback; COMPLETE locally/Preview. Focused input/footer geometry, Notes/Reports and accepted calculator paths pass |
+| PD-FIX-301 / #85 / #92 | Account review must not submit/close its parent bet or overflow its compact grid | Existing Account summary, FinancialValue and ModalBoundary; event containment and shared minmax column. COMPLETE locally/Preview: zero parent writes, retained draft, failure/retry, Copy, Discard/Escape/focus, light/dark/compact/200%/reduced motion |
+
+No new form or animation system. Seven isolated/seven hosted affected workflows pass. Named #92 Catalogue/Combo verification remains queued; #105 coverage remains engineering-complete. [Evidence](docs/audits/platform-quality-audit.md#cp-047-operational-multi-lay-and-account-observations--2026-09-25-1411-bst).
+
 ## CP-046 forms and Profile Defaults — 2026-09-25 11:38 BST
 
 | ID / issue | Actual screen and repair | Existing equivalent / final state |
