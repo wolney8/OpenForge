@@ -1,6 +1,6 @@
 # Workflow Contract: Fund Manager Notification Centre
 
-_Last updated: 2026-09-18 08:32 BST_
+_Last updated: 2026-09-25 16:55 BST_
 
 ## CP-049 approved first Daily tasks slice — 2026-09-25 15:52 BST
 

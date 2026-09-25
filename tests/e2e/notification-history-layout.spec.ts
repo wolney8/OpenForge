@@ -35,7 +35,7 @@ async function installSyntheticNotificationHistory(page: Page) {
       await route.fulfill({ json: { preferences: {} } });
       return;
     }
-    if (pathname.endsWith("/fund-manager/notifications")) {
+    if (pathname.endsWith("/fund-manager/notifications") || pathname.endsWith("/fund-manager/notifications/history")) {
       await route.fulfill({
         json: [
           {

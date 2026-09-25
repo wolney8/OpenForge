@@ -1,5 +1,9 @@
 # Plum Duff UI Change Register
 
+## CP-049 Daily tasks — 2026-09-25 16:55 BST
+
+FUND-MANAGER-TASK-DECK-001 / #86: COMPLETE first current-evidence slice at09ef37e local/Preview. Reused Notification History cards/toolbar, Account editor and authenticated shell. Profile filtering, current-source routing/recheck, stale-response exclusion, durable clear/retry/History, compact/enlarged themes, keyboard/reduced motion and internal geometry pass. Seven actual workflows plus six fixture-backed notification checks per environment; no money animation/schema changes. Deferred route checks release the existing shell lock until valid navigation begins. Broader routines/dispositions/recurrence, normal-owner browser and VoiceOver remain explicit. [Evidence](../../docs/audits/platform-quality-audit.md#cp-049-private-import-rehearsal-and-daily-tasks--2026-09-25-1655-bst).
+
 ## CP-048 remaining reference forms — 2026-09-25 15:26 BST
 
 | ID / issue | Actual screen and demonstrated repair | Existing equivalent / final state |

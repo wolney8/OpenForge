@@ -10,6 +10,8 @@ No published release is represented by the local milestones below.
 
 ## 2026-09-25
 
+- **2026-09-25 16:55 BST — CP-049:** Delivered first current Daily tasks and terminal-Void restore compatibility at09ef37e locally/Preview. Selected workbook privately rehearsed; full cutover retains named source/target decisions. [Evidence](docs/audits/platform-quality-audit.md#cp-049-private-import-rehearsal-and-daily-tasks--2026-09-25-1655-bst).
+
 - **2026-09-25 15:26 BST — CP-048:** Completed Catalogue/Combo create/edit recovery and focus at `a3afdfc`, local/protected Preview;52 API/74 web and8 isolated/8 hosted pass. Added FS-CODEX-001 and reconciled117 issues; private workbook rehearsal awaits source choice. [Evidence](docs/audits/platform-quality-audit.md#cp-048-personal-readiness-and-reference-forms--2026-09-25-1526-bst).
 
 - **2026-09-25 14:11 BST — CP-047:** Delivered bounded Normal Multi-Lay actual settlement and Account review/observation history at `e2d70e0`, local/protected Preview.107 API/89 web,7 isolated/7 hosted, disposable PostgreSQL retry/rollback/restore, types/build/lint pass; no SQL migration or owner data changes. [Evidence](docs/audits/platform-quality-audit.md#cp-047-operational-multi-lay-and-account-observations--2026-09-25-1411-bst).
@@ -191,3 +193,9 @@ their original IDs.
 | ID | Timestamp | What changed | Issue | Document |
 | --- | --- | --- | --- | --- |
 | CP-029 | 2026-09-21 15:24 BST | Recorded hosted Google PASS, repaired protected authenticated SSR context and stopped the Preview gate on a real Reports render loop | [#62](https://github.com/wolney8/OpenForge/issues/62), [#114](https://github.com/wolney8/OpenForge/issues/114), [#115](https://github.com/wolney8/OpenForge/issues/115) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-029-authenticated-protected-preview-verification--2026-09-21-1524-bst) |
+
+## Project Status rollover — 2026-09-25 16:55 BST
+
+| ID | Timestamp | What changed | Issue | Document |
+| --- | --- | --- | --- | --- |
+| CP-029-R | 2026-09-22 08:02 BST | Recovered retained execution evidence: deployed source and screenshots exist, the hosted Playwright gate failed, and financial/recovery claims were inherited from CP-028 rather than rerun | [#62](https://github.com/wolney8/OpenForge/issues/62), [#114](https://github.com/wolney8/OpenForge/issues/114), [#115](https://github.com/wolney8/OpenForge/issues/115) | [Recovery evidence](docs/audits/platform-quality-audit.md#cp-029-evidence-recovery-correction--2026-09-22-0802-bst) |

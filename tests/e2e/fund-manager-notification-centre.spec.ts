@@ -259,7 +259,7 @@ test("dropdown clear hides attention while retained history shows the cleared so
     window.localStorage.removeItem("plum-duff:fund-manager-notifications:v1");
     window.localStorage.setItem("openforge-theme", "dark");
   });
-  await page.route("**/fund-manager/notifications", async (route) => {
+  await page.route(/\/fund-manager\/notifications(?:\/history)?$/, async (route) => {
     await route.fulfill({
       json: [
         {

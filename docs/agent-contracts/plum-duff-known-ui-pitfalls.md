@@ -1,5 +1,9 @@
 # Plum Duff Known UI Pitfalls
 
+## CP-049 deferred source actions — 2026-09-25 16:55 BST
+
+The shell observes internal links in capture phase. An async access check must release that pending route lock until navigation is actually approved, then use the shared transition primitive. Version the open response against refresh too; a resolved/revoked task must not return from a slower reply. Regression: held task-open response, actual source settlement, newer refresh, then old response release; no forced clicks or stale navigation.
+
 ## CP-048 reference-form reinforcement — 2026-09-25 15:26 BST
 
 - A confirmed write must not depend on a second list read to count as success; use the confirmed response and keep rejected writes recoverable. Guard pending close synchronously as well as disabling buttons.
