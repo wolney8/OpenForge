@@ -1326,7 +1326,15 @@ def _apply_decision(
         if overrides.get("strategy"):
             payload["match_strategy"] = overrides["strategy"]
         if overrides.get("manual_override_reason"):
-            payload["manual_override_reason"] = overrides["manual_override_reason"]
+            if "final_net_pnl" in payload and "manual_override_value" not in payload:
+                # Casino's governed reason field is UserNotes, not a new SQL column.
+                prior_note = str(payload.get("user_notes") or "").strip()
+                reason = str(overrides["manual_override_reason"]).strip()
+                payload["user_notes"] = "\n".join(
+                    note for note in (prior_note, reason) if note
+                )
+            else:
+                payload["manual_override_reason"] = overrides["manual_override_reason"]
         if decision.get("action") in {
             "historical_imported_calculation",
             "historical_imported_behavior",

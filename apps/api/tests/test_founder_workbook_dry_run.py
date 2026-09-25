@@ -227,7 +227,7 @@ def test_betdragon_alias_resolves_to_existing_dragonbet_and_preserves_source(
     assert errors == []
     assert mapped["account"] == "DragonBet"
     assert mapped["lifecycle_status"] == "Pending Sign Up"
-    assert mapped["current_balance"] == "0.00"
+    assert mapped["current_balance"] == ""
     assert mapped["counts_in_cash_total"] is False
 
 
@@ -342,7 +342,7 @@ def test_legacy_account_values_are_normalized_without_erasing_source_semantics()
     ]
 
 
-def test_pending_signup_account_without_source_balance_uses_zero_point_in_time_balance(
+def test_pending_signup_account_without_source_balance_remains_unknown(
     monkeypatch,
 ) -> None:
     monkeypatch.setattr(
@@ -364,7 +364,7 @@ def test_pending_signup_account_without_source_balance_uses_zero_point_in_time_b
     assert mapped["status"] == "Pending Sign Up"
     assert mapped["lifecycle_status"] == "Pending Sign Up"
     assert mapped["restrictions"] == []
-    assert mapped["current_balance"] == "0.00"
+    assert mapped["current_balance"] == ""
     assert mapped["counts_in_cash_total"] is False
 
 

@@ -1,5 +1,10 @@
 # Plum Duff Known UI Pitfalls
 
+## Import-review reflow — CP-050
+
+A shrinking outer grid needs a `minmax(0, 1fr)` track as well as `min-width: 0`; an action row must wrap when enlarged labels no longer fit, regardless of the pixel breakpoint. Reuse the existing shared toolbar action primitive. Regression: `import-gate-consistency.spec.ts` checks real import review at desktop,390px and760px/200% text, both themes/reduced motion; do not count intentionally scrollable table/stepper contents as page overflow.
+
+
 ## CP-049 deferred source actions — 2026-09-25 16:55 BST
 
 The shell observes internal links in capture phase. An async access check must release that pending route lock until navigation is actually approved, then use the shared transition primitive. Version the open response against refresh too; a resolved/revoked task must not return from a slower reply. Regression: held task-open response, actual source settlement, newer refresh, then old response release; no forced clicks or stale navigation.

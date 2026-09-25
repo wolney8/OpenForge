@@ -64,8 +64,8 @@ boundary as the other issue #12 ledgers.
 ## Financial and Data Safety
 
 - `CurrentBalance` is imported exactly as entered after decimal validation. A workbook blank remains
-  blank except for `Pending Sign Up`, where it is deterministically represented as `0.00` because
-  no funded account exists yet. A Pending Sign Up account is excluded from cash totals and remains
+  blank, including `Pending Sign Up`: an unobserved balance is not an observed zero. A Pending
+  Sign Up account is excluded from cash totals and remains
   eligible for the existing opt-in signup Opportunity workflow. No P&L calculation may replace it.
 - `PendingWithdrawalAmount` is not converted into a cash adjustment.
 - No silent rounding, currency conversion, or sign correction.

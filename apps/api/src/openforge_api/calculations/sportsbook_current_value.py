@@ -374,6 +374,31 @@ def calculate_sportsbook_current_value(
     manual_lay_mode = calculation_input.match_strategy in {"Custom", "Partial Lay"}
     review_required_strategy = calculation_input.match_strategy in REVIEW_REQUIRED_STRATEGIES
 
+    # Terminal No Lay Void is known independently of historical placement odds.
+    # Keep absent reference/scenario inputs absent and preserve explicit overrides.
+    if (not uses_current_value and not counts_as_open and no_lay_mode
+            and calculation_input.result == "Void" and back_odds is None):
+        override = parse_decimal(calculation_input.manual_override_value)
+        final = quantize_money(override) if override is not None else Decimal("0.00")
+        return SportsbookCalculationResult(
+            profile_id=calculation_input.profile_id, record_id=calculation_input.record_id,
+            calculation_state=("review_required" if override is not None
+                               and not calculation_input.manual_override_reason.strip()
+                               else "resolved"),
+            calculation_notes=("Terminal No Lay Void result.", *(
+                ("Manual override requires a reason for auditability.",)
+                if override is not None and not calculation_input.manual_override_reason.strip()
+                else ()
+            )),
+            match_rating=None, reference_lay_stake_standard=None,
+            reference_lay_stake_underlay=None, reference_lay_stake_overlay=None,
+            actual_lay_stake_1=None, calculated_liability_1=None,
+            scenario_pnl_if_back_wins=None, scenario_pnl_if_lay_wins=None,
+            projected_current_pnl=None, actual_net_pnl=Decimal("0.00"),
+            final_net_pnl=final, reporting_value=final, lay_status="Not Laid",
+            counts_as_open=False, is_overdue=False,
+        )
+
     if back_stake is None or back_odds is None:
         override_result = _manual_override_fallback(
             calculation_input,

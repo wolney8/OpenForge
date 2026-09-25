@@ -889,11 +889,18 @@ def _analyse_workbook_job(
         validation_blocked_count = int(
             summary.get("readiness", {}).get("validation_blocked_rows", 0)
         )
+        # A mapped review item is an actionable validation failure, not a failed
+        # analysis job. Approval still checks every Account validation blocker.
+        account_review_rows = {
+            item["source_row"] for item in items if item["source_sheet"] == "Accounts"
+        }
+        unreviewable_validation = any(
+            row.get("errors") and row["source_row"] not in account_review_rows
+            for row in result.get("accounts", {}).get("validation_rows", [])
+        )
         status = (
-            "FAILED"
-            if validation_blocked_count
-            else "REVIEW_REQUIRED"
-            if items
+            "FAILED" if unreviewable_validation
+            else "REVIEW_REQUIRED" if items
             else "DRY_RUN_READY"
         )
         events = [
@@ -904,7 +911,7 @@ def _analyse_workbook_job(
                 f"{total_rows} source rows were analysed.",
             ),
         ]
-        if validation_blocked_count:
+        if unreviewable_validation:
             events.append(
                 _event(
                     "analysis_failed",
@@ -931,7 +938,7 @@ def _analyse_workbook_job(
             job=_analysis_job_state(
                 stage=(
                     "Validation failed"
-                    if validation_blocked_count
+                    if unreviewable_validation
                     else "Review ready"
                     if items
                     else "Analysis complete"
@@ -943,7 +950,7 @@ def _analyse_workbook_job(
                 error=(
                     f"{validation_blocked_count} Account row(s) failed field validation. "
                     "No Profile data was imported."
-                    if validation_blocked_count
+                    if unreviewable_validation
                     else ""
                 ),
             ),

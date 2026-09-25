@@ -254,11 +254,11 @@ def _issue_types(errors: list[dict[str, Any]], fields: dict[str, Any], ledger: s
         issues.append("advanced_lay")
     if "at most 200" in messages:
         issues.append("text_length")
-    if "manual_override_reason" in messages:
+    if "manual_override_reason" in messages or "override_reason_required" in codes:
         issues.append("override_missing_reason")
     if "input should be" in messages and not _first(fields, "Strategy", "MatchStrategy"):
         issues.append("missing_strategy")
-    if ledger == "casino" and "at least 1 character" in messages:
+    if ledger == "casino" and "offer_name:" in messages and "at least 1 character" in messages:
         issues.append("missing_offer_name")
     return issues or [f"{ledger}_partial"]
 
@@ -339,9 +339,15 @@ def _build_items() -> tuple[dict[str, Any], list[dict[str, Any]]]:
     }
     account_validation = {row["source_row"]: row for row in validation.get("accounts", [])}
     for source_row, row in account_rows.items():
-        if _first(row.fields, "Account") not in missing_names:
-            continue
         validation_row = account_validation[source_row]
+        errors = validation_row.get("errors", [])
+        missing_provider = _first(row.fields, "Account") in missing_names
+        if not missing_provider and not errors:
+            continue
+        issues = (["missing_provider"] if missing_provider else []) + [
+            str(error["code"]) for error in errors
+            if error.get("code") != "account_catalogue_match_required"
+        ]
         items.append(
             _review_item(
                 checksum=checksum,
@@ -350,11 +356,16 @@ def _build_items() -> tuple[dict[str, Any], list[dict[str, Any]]]:
                 source_row=source_row,
                 source_record_id=row.source_record_id,
                 fields=row.fields,
-                issue_types=["missing_provider"],
-                reason="Provider is not resolved in the global Account Catalogue.",
-                target="Existing provider, validated catalogue candidate, or historical provider",
+                issue_types=issues,
+                reason="; ".join(
+                    (["Provider is not resolved in the global Account Catalogue."]
+                     if missing_provider else [])
+                    + [str(error.get("message", "")) for error in errors]
+                ),
+                target=("Existing provider, validated catalogue candidate, or historical provider"
+                        if missing_provider else "Account field mapping review"),
                 confidence="blocked",
-                category="missing_provider",
+                category="missing_provider" if missing_provider else "accounts_partial",
             )
         )
 
@@ -445,9 +456,15 @@ def build_review_items_from_dry_run(
         int(row["source_row"]): row for row in result["accounts"].get("validation_rows", [])
     }
     for source_row, row in account_rows.items():
-        if _first(row.fields, "Account") not in missing_names:
-            continue
         validation_row = account_validation[source_row]
+        errors = validation_row.get("errors", [])
+        missing_provider = _first(row.fields, "Account") in missing_names
+        if not missing_provider and not errors:
+            continue
+        issues = (["missing_provider"] if missing_provider else []) + [
+            str(error["code"]) for error in errors
+            if error.get("code") != "account_catalogue_match_required"
+        ]
         items.append(
             _review_item(
                 checksum=checksum,
@@ -456,11 +473,16 @@ def build_review_items_from_dry_run(
                 source_row=source_row,
                 source_record_id=row.source_record_id,
                 fields=row.fields,
-                issue_types=["missing_provider"],
-                reason="Provider is not resolved in the global Account Catalogue.",
-                target="Existing provider, validated catalogue candidate, or historical provider",
+                issue_types=issues,
+                reason="; ".join(
+                    (["Provider is not resolved in the global Account Catalogue."]
+                     if missing_provider else [])
+                    + [str(error.get("message", "")) for error in errors]
+                ),
+                target=("Existing provider, validated catalogue candidate, or historical provider"
+                        if missing_provider else "Account field mapping review"),
                 confidence="blocked",
-                category="missing_provider",
+                category="missing_provider" if missing_provider else "accounts_partial",
             )
         )
 
@@ -623,7 +645,7 @@ def _reconciliation(
     pnl_impact = sum(float(item["value"]) for item in impact_items)
     blocking = counts["UNREVIEWED"] + counts["BLOCKED"]
     return {
-        "original_partial_count": metadata["original_partial_count"],
+        "original_partial_count": len(partial_items),
         "resolved_partial_count": len(partial_items) - remaining_partial,
         "remaining_partial_count": remaining_partial,
         "excluded_count": len(excluded_ids),

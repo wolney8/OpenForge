@@ -3256,6 +3256,7 @@ html[data-theme="dark"] .notification-count-badge {
 /* Founder import review reuses ledger controls while retaining source/audit context. */
 .founder-import-review {
   min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .session-bootstrap-shell {
@@ -11983,6 +11984,12 @@ body:has(.extra-place-ledger.extra-place-theme-back-lay) .extra-place-editor-mod
   display: flex;
   align-items: center;
   gap: 0.65rem;
+}
+
+.extra-place-toolbar-actions {
+  max-inline-size: 100%;
+  min-inline-size: 0;
+  flex-wrap: wrap;
 }
 
 .extra-place-table-heading-controls {

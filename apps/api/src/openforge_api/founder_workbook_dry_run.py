@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import re
 from collections import Counter
 from dataclasses import asdict, dataclass
 from datetime import date, datetime, timedelta
@@ -25,6 +24,8 @@ from openforge_api.imports import (
     CASH_ADJUSTMENT_SOURCE_MAP,
     CASINO_OFFER_SOURCE_MAP,
     FREE_BET_SOURCE_MAP,
+    LEGACY_ACCOUNT_CHANNEL_MAP,
+    LEGACY_ACCOUNT_STATUS_MAP,
     SPORTSBOOK_SOURCE_MAP,
     is_historical_free_bet_void_zero_import,
     is_historical_void_zero_import,
@@ -33,6 +34,8 @@ from openforge_api.imports import (
     map_casino_offer_import_fields,
     map_free_bet_import_fields,
     map_sportsbook_import_fields,
+    normalize_legacy_account_fields,
+    normalize_provider_name,
 )
 from openforge_api.xlsx_import import (
     NS,
@@ -145,16 +148,6 @@ LEDGERS = (
         (),
     ),
 )
-
-LEGACY_ACCOUNT_STATUS_MAP = {
-    "Restricted": "Bonus Restricted",
-    "Dormant": "Inactive",
-}
-LEGACY_ACCOUNT_CHANNEL_MAP = {"App Only": "Mobile"}
-
-
-def normalize_provider_name(value: str) -> str:
-    return re.sub(r"[^a-z0-9]+", "", value.casefold())
 
 
 def resolve_provider(
@@ -374,19 +367,6 @@ def _profile_settings(
             mapping["transformation"] = "decimal currency normalization"
     return mappings
 
-
-def normalize_legacy_account_fields(fields: JsonObject) -> tuple[JsonObject, list[str]]:
-    normalized = dict(fields)
-    transformations: list[str] = []
-    legacy_status = str(normalized.get("Status", "")).strip()
-    if legacy_status in LEGACY_ACCOUNT_STATUS_MAP:
-        normalized["Status"] = LEGACY_ACCOUNT_STATUS_MAP[legacy_status]
-        transformations.append(f"Status {legacy_status} -> {normalized['Status']}")
-    legacy_channel = str(normalized.get("Channel", "")).strip()
-    if legacy_channel in LEGACY_ACCOUNT_CHANNEL_MAP:
-        normalized["Channel"] = LEGACY_ACCOUNT_CHANNEL_MAP[legacy_channel]
-        transformations.append(f"Channel {legacy_channel} -> {normalized['Channel']}")
-    return normalized, transformations
 
 
 def _account_report(content: bytes, catalogue: MasterAccountCatalogue) -> JsonObject:

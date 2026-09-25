@@ -45,3 +45,17 @@ a row from reconciliation.
 - A five-row batch with action counts totalling four reports `mismatch` and cannot confirm.
 - Confirmed imported and operator-skipped counts still total the original source row count.
 
+
+## CP-050 validation parity
+
+Full-workbook and per-ledger maps share established Restricted → Bonus Restricted, Dormant → Inactive and App Only → Mobile compatibility; exact unique punctuation/case provider normalisation is allowed, never fuzzy matching. Unknown access vocabulary stays an explicit review decision. Pending sign-up does not manufacture a zero balance from a blank.
+
+Numeric XLSX cells may encode exact decimal values in scientific notation: expand those numeric cells using Decimal without rounding, with a bounded expansion. Text-cell/manual odds keep strict syntax validation. Original workbook checksum/raw file and source-cell identity retain provenance.
+
+Sportsbook FinalNetPnL is comparison evidence, not an override; only explicit ManualOverrideValue requires its reason. Casino FinalNetPnL retains the existing explanatory UserNotes requirement in both routes. Every Account validation error must appear in review, even if its provider already resolves. These repairs do not weaken native settlement validation or approve source decisions.
+
+The full workbook path intentionally retains non-executed opportunity records as source evidence with no financial transaction, and can route historical Extra Place records to their separate imported-historical destination. The generic Sportsbook confirmation writes ordinary Sportsbook rows only; it must not silently turn these into placed bets or flatten missing Extra Place terms. Its native-only restriction is distinct from an unresolved source decision.
+
+A settled/placed positive actual Sportsbook lay without an Exchange is a shared import review error: its commission cannot be resolved from cached P&L. Casino review reasons are stored in existing UserNotes; no new reason column is introduced.
+
+Account validation failures represented by review items enter REVIEW_REQUIRED, not a failed analysis job. Decisions can be saved without approving an import; Account validation still blocks approval/execution until explicitly resolved. Unrepresented validation failures remain failed.

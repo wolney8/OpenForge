@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from decimal import Decimal, InvalidOperation
 from io import BytesIO
 from typing import Callable, Literal, TypeAlias, cast
 from xml.etree import ElementTree as ET
@@ -178,6 +179,16 @@ def read_cell_value(
     style_index = int(cell.attrib.get("s", "0"))
     if style_index in date_style_indexes:
         return excel_serial_to_iso(raw_value)
+    # Excel numeric cells may use exponent notation. This is representation,
+    # not permissive manual odds parsing; text cells keep their original syntax.
+    if cell_type in {"", "n"} and "e" in raw_value.casefold():
+        try:
+            numeric = Decimal(raw_value)
+            exponent = numeric.as_tuple().exponent
+            if numeric.is_finite() and isinstance(exponent, int) and -100 <= exponent <= 100:
+                return format(numeric, "f")
+        except InvalidOperation:
+            pass
     return raw_value
 
 

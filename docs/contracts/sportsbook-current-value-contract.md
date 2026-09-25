@@ -354,3 +354,7 @@ Error/blank handling:
 - follow-up required before implementation:
   - confirm no-lay mug-bet treatment
   - confirm `Mixed` result handling
+
+### Terminal No Lay readiness — CP-050 clarification
+
+An already terminal No Lay Void has a known zero actual/final/reporting value even if historical back odds are absent. Do not invent reference/scenario inputs. Preserve an explicitly reasoned manual override and keep open/contradictory rows on their existing path. Native placement validation and malformed numeric rejection remain unchanged. Missing Exchange commission for a settled lay remains unknown; cached workbook P&L alone does not establish commission.

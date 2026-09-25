@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from base64 import b64decode
 from binascii import Error as Base64Error
 from collections import Counter
@@ -583,6 +584,31 @@ def cash_adjustment_export_row(profile_id: str, row: CashAdjustmentRecord) -> di
     }
 
 
+LEGACY_ACCOUNT_STATUS_MAP = {
+    "Restricted": "Bonus Restricted",
+    "Dormant": "Inactive",
+}
+LEGACY_ACCOUNT_CHANNEL_MAP = {"App Only": "Mobile"}
+
+
+def normalize_provider_name(value: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "", value.casefold())
+
+
+def normalize_legacy_account_fields(fields: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
+    normalized = dict(fields)
+    transformations: list[str] = []
+    legacy_status = str(normalized.get("Status", "")).strip()
+    if legacy_status in LEGACY_ACCOUNT_STATUS_MAP:
+        normalized["Status"] = LEGACY_ACCOUNT_STATUS_MAP[legacy_status]
+        transformations.append(f"Status {legacy_status} -> {normalized['Status']}")
+    legacy_channel = str(normalized.get("Channel", "")).strip()
+    if legacy_channel in LEGACY_ACCOUNT_CHANNEL_MAP:
+        normalized["Channel"] = LEGACY_ACCOUNT_CHANNEL_MAP[legacy_channel]
+        transformations.append(f"Channel {legacy_channel} -> {normalized['Channel']}")
+    return normalized, transformations
+
+
 def resolve_account_catalogue_record(
     account_name: str,
     account_type: str,
@@ -594,21 +620,22 @@ def resolve_account_catalogue_record(
     }.get(account_type)
     if expected_type is None:
         return None
-    normalized_name = account_name.strip().casefold()
-    alias_id = ACCOUNT_PROVIDER_ALIASES.get((expected_type.casefold(), normalized_name))
-    return next(
-        (
-            record
-            for record in load_master_account_catalogue().records
-            if record.account_type == expected_type
-            and (
-                record.catalogue_id == alias_id
-                or normalized_name
-                in {record.brand_name.casefold(), record.short_display_name.casefold()}
-            )
-        ),
-        None,
-    )
+    folded = account_name.strip().casefold()
+    candidates = [record for record in load_master_account_catalogue().records
+                  if record.account_type == expected_type]
+    exact = [record for record in candidates if folded in
+             {record.brand_name.casefold(), record.short_display_name.casefold()}]
+    if exact:
+        return exact[0] if len(exact) == 1 else None
+    alias_id = ACCOUNT_PROVIDER_ALIASES.get((expected_type.casefold(), folded))
+    aliases = [record for record in candidates if record.catalogue_id == alias_id]
+    if aliases:
+        return aliases[0] if len(aliases) == 1 else None
+    normalized = normalize_provider_name(account_name)
+    matches = [record for record in candidates if normalized and normalized in
+               {normalize_provider_name(record.brand_name),
+                normalize_provider_name(record.short_display_name)}]
+    return matches[0] if len(matches) == 1 else None
 
 
 def account_export_row(profile_id: str, row: AccountRecord) -> dict[str, object]:
@@ -1420,6 +1447,19 @@ def map_sportsbook_import_fields(
 
     errors: list[dict[str, str]] = []
     match_strategy = field_text(mapped, "match_strategy")
+    if (status in {"Placed", "Settled", "Free Bet Awarded"}
+            and result != "Void" and match_strategy != "No Lay"
+            and not field_text(mapped, "exchange_name")):
+        try:
+            has_actual_lay = any(
+                Decimal(field_text(mapped, field) or "0") > 0
+                for field in ("lay_actual", "lay_matched_stake_1")
+            )
+        except InvalidOperation:
+            has_actual_lay = False  # Numeric validation below reports malformed values.
+        if has_actual_lay:
+            errors.append(issue("actual_lay_exchange_required",
+                                "An actual lay needs its Exchange before commission can resolve."))
     outcome_count = field_text(fields, "OutcomeCount")
     has_advanced_branch = match_strategy != "No Lay" and any(
         field_text(fields, name) for name in SPORTSBOOK_ADVANCED_BRANCH_FIELDS
@@ -1558,13 +1598,17 @@ def map_casino_offer_import_fields(
     }.items():
         mapped[field_name] = _shorten_import_text(mapped.get(field_name, ""), limit)
     errors: list[dict[str, str]] = []
+    if field_text(mapped, "final_net_pnl") and not field_text(mapped, "user_notes"):
+        errors.append(issue("override_reason_required",
+                            "A casino final value requires an explanatory UserNotes entry."))
     try:
         CasinoOfferPayload.model_validate(mapped)
     except ValidationError as error:
         errors.append(
             issue(
                 "invalid_casino_offer_payload",
-                "; ".join(item["msg"] for item in error.errors()),
+                "; ".join(f"{'.'.join(map(str, item['loc']))}: {item['msg']}"
+                          for item in error.errors()),
             )
         )
     return mapped, errors
@@ -1597,11 +1641,12 @@ def map_account_import_fields(
     list[dict[str, str]],
     list[dict[str, str]],
 ]:
+    fields, transformations = normalize_legacy_account_fields(fields)
     mapped: dict[str, JsonScalar] = {
         target: fields.get(source, "") for source, target in ACCOUNT_SOURCE_MAP.items()
     }
     errors: list[dict[str, str]] = []
-    warnings: list[dict[str, str]] = []
+    warnings = [issue("legacy_account_vocabulary", message) for message in transformations]
     promotion_types_raw = field_text(mapped, "available_promotion_types")
     promotion_types = [
         value.strip()
@@ -1660,10 +1705,6 @@ def map_account_import_fields(
         mapped["restrictions"] = restrictions
     except ValueError as error:
         errors.append(issue("invalid_account_state", str(error)))
-    if field_text(mapped, "status").casefold() == "pending sign up" and not field_text(
-        mapped, "current_balance"
-    ):
-        mapped["current_balance"] = "0.00"
     if field_text(mapped, "status").casefold() == "pending sign up":
         mapped["counts_in_cash_total"] = False
     catalogue = resolve_account_catalogue_record(account_name, account_type)
@@ -1867,7 +1908,9 @@ def stage_import_rows(
                     )
                 )
 
-            status = field_text(row.fields, "status", "Status")
+            status = field_text(mapped_fields, "status") or field_text(
+                row.fields, "status", "Status"
+            )
             allowed_statuses = VALID_STATUSES.get(source_sheet)
             if allowed_statuses is not None and status and status not in allowed_statuses:
                 errors.append(
@@ -1881,7 +1924,7 @@ def stage_import_rows(
                 row.fields,
                 "manual_override_value",
                 "ManualOverrideValue",
-                "FinalNetPnL",
+                *( ("FinalNetPnL",) if source_sheet != "Sportsbook Bets" else () ),
             )
             override_reason = field_text(
                 row.fields, "manual_override_reason", "ManualOverrideReason"
@@ -1895,7 +1938,8 @@ def stage_import_rows(
                 source_sheet == "Free Bets"
                 and is_historical_free_bet_void_zero_import(row.fields)
             )
-            if override_value and not override_reason and not historical_void_zero:
+            if (override_value and not override_reason and not historical_void_zero
+                    and not any(error["code"] == "override_reason_required" for error in errors)):
                 errors.append(
                     issue(
                         "override_reason_required",
