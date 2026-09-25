@@ -286,6 +286,35 @@ def calculate_sportsbook_current_value(
     *,
     as_of_date: date,
 ) -> SportsbookCalculationResult:
+    from dataclasses import asdict
+    from openforge_api.multi_lay_actual import execution_from, calculate_actual
+    execution = execution_from(calculation_input.multi_lay_outcomes_json)
+    if execution is not None:
+        legs = json.loads(calculation_input.multi_lay_outcomes_json)
+        if legs[0].get("calculationVersion") != "multi-lay-v2" or calculation_input.offer_type != "Bet & Get" or calculation_input.match_strategy not in {"Multilay", "Multilay-Underlay"}:
+            raise ValueError("Actual Multi-Lay requires a supported versioned Normal plan.")
+        actual = calculate_actual(asdict(calculation_input), legs, execution)
+        def actual_money(name: str) -> Decimal | None:
+            return Decimal(actual[name]) if actual[name] is not None else None
+
+        settled_date = parse_iso_date(calculation_input.date_settled)
+        return SportsbookCalculationResult(
+            profile_id=calculation_input.profile_id, record_id=calculation_input.record_id,
+            calculation_state="resolved", calculation_notes=tuple(actual["calculation_notes"]),
+            match_rating=None, reference_lay_stake_standard=None, reference_lay_stake_underlay=None,
+            reference_lay_stake_overlay=None, actual_lay_stake_1=None,
+            calculated_liability_1=actual_money("calculated_liability_1"),
+            scenario_pnl_if_back_wins=actual_money("scenario_pnl_if_back_wins"),
+            scenario_pnl_if_lay_wins=actual_money("scenario_pnl_if_lay_wins"),
+            scenario_pnl_if_outcome_2_wins=actual_money("scenario_pnl_if_outcome_2_wins"),
+            scenario_pnl_if_outcome_3_wins=actual_money("scenario_pnl_if_outcome_3_wins"),
+            projected_current_pnl=actual_money("projected_current_pnl"),
+            actual_net_pnl=actual_money("actual_net_pnl"),
+            final_net_pnl=actual_money("final_net_pnl"),
+            reporting_value=actual_money("reporting_value"),
+            lay_status=actual["lay_status"], counts_as_open=actual["counts_as_open"],
+            is_overdue=bool(actual["counts_as_open"] and settled_date is not None and settled_date < as_of_date),
+        )
     notes: list[str] = []
     counts_as_open = calculation_input.status in OPEN_STATUSES
     uses_current_value = (

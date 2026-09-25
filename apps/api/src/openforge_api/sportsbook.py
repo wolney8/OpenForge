@@ -88,6 +88,24 @@ ResultValue = Literal[
     "Lose",
     "No Selection Won",
     "Lay Won + Cashback",
+    "Outcome 1 Won",
+    "Outcome 4 Won",
+    "Outcome 5 Won",
+    "Outcome 6 Won",
+    "Outcome 7 Won",
+    "Outcome 8 Won",
+    "Outcome 9 Won",
+    "Outcome 10 Won",
+    "Outcome 11 Won",
+    "Outcome 12 Won",
+    "Outcome 13 Won",
+    "Outcome 14 Won",
+    "Outcome 15 Won",
+    "Outcome 16 Won",
+    "Outcome 17 Won",
+    "Outcome 18 Won",
+    "Outcome 19 Won",
+    "Outcome 20 Won",
     "Outcome 2 Won",
     "Outcome 3 Won",
     "Void",
@@ -147,6 +165,7 @@ class SportsbookBetFields(BaseModel):
 
 
 class SportsbookBetPayload(SportsbookBetFields):
+    multi_lay_correction_reason: str = Field(default="", max_length=1000)
     @field_validator(*MONEY_FIELDS, mode="before")
     @classmethod
     def validate_money(cls, value: Any, info: ValidationInfo) -> str:
@@ -236,6 +255,7 @@ class SportsbookBetPayload(SportsbookBetFields):
 
 class SportsbookBetResponse(SportsbookBetFields):
     multi_lay_reference: dict[str, Any] | None = None
+    multi_lay_actual: dict[str, Any] | None = None
     sportsbook_bet_id: str
     profile_id: str
     created_at: str
@@ -276,6 +296,7 @@ class SportsbookBetResponse(SportsbookBetFields):
 
 class SportsbookCalculationPreviewResponse(BaseModel):
     multi_lay_reference: dict[str, Any] | None = None
+    multi_lay_actual: dict[str, Any] | None = None
     lay_commission_1: str | None
     calculation_state: str
     calculation_notes: list[str]
@@ -586,12 +607,12 @@ def multi_lay_planning_reference(values: dict[str, Any]) -> dict[str, Any]:
         return {}
     if version != "multi-lay-v2":
         raise ValueError("Unsupported Multi-Lay planning calculation version.")
+    execution = primary.get("execution")
     ids = [entry.get("id") for entry in entries]
-    if ids[0] != "outcome1" or len(set(ids)) != len(ids):
+    if any(not isinstance(i, str) or not i for i in ids) or ids[0] != "outcome1" or len(set(ids)) != len(ids):
         raise ValueError("V2 planning requires ordered, uniquely identified outcome legs.")
     if (
-        values.get("status") not in {"Prospecting", "Not Placed"}
-        or values.get("result") != "Pending"
+        (execution is None and (values.get("status") not in {"Prospecting", "Not Placed"} or values.get("result") != "Pending"))
         or values.get("match_strategy") not in {"Multilay", "Multilay-Underlay"}
         or values.get("offer_type") != "Bet & Get"
         or values.get("lay_actual")
@@ -644,7 +665,7 @@ def multi_lay_planning_reference(values: dict[str, Any]) -> dict[str, Any]:
     if primary["layOdds"] != values["lay_odds_1"]:
         raise ValueError("Primary planning lay odds must match the native row.")
     reference = preview_multi_lay(payload).model_dump(mode="json")
-    return {
+    result = {
         "multi_lay_reference": reference,
         "calculation_state": "resolved",
         "calculation_notes": ["Versioned planning references only; no recognised cash P&L."],
@@ -668,6 +689,10 @@ def multi_lay_planning_reference(values: dict[str, Any]) -> dict[str, Any]:
         "reporting_value": None,
         "lay_status": "Not Laid",
     }
+    if execution is not None:
+        from openforge_api.multi_lay_actual import calculate_actual
+        result.update(calculate_actual(values, entries, execution))
+    return result
 
 
 def _build_response(
@@ -826,6 +851,12 @@ def validate_write_payload(
             )
         if account.lifecycle_status == "Archived" or account.status == "Archived":
             raise HTTPException(status_code=409, detail=f"{field}: Account is archived")
+    from openforge_api.multi_lay_actual import validate_account
+    try:
+        if account_fields_to_validate is None or "multi_lay_outcomes_json" in account_fields_to_validate:
+            validate_account(profile_id, parsed.multi_lay_outcomes_json, parsed.exchange_name)
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
     from openforge_api.lay_plan import validate_plan_write
     from openforge_api.sportsbook_offer_metadata import validate_offer_metadata
     return validate_offer_metadata(

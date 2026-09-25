@@ -125,3 +125,51 @@ stakes `£16.33 / £13.56`, first liability `£24.49`, all totals `£18.39`, and
 `£18.39 / £18.38 / £18.39`, and maximum exposure `£10.94`; therefore this penny-boundary case is
 an explicit 1p external mismatch, not a parity claim. The source bundle applies binary-number
 rounding at the half-penny boundary.
+
+
+## Normal actual recording v1 — owner-authorised CP-047 slice
+
+This additive opt-in supersedes only the v2 prohibition on actual recording. Historical v1
+and saved v2 reference plans retain their existing equations. Supported: Normal Bet & Get,
+Standard/Underlay, 2–20 mutually exclusive outcomes, **one canonical Profile Exchange Account
+and one explicitly named exchange market**. Multiple markets/Accounts, SNR, Money Back,
+boost/reward/Custom/Overlay actual recording remain unsupported, never silently flattened.
+
+Storage uses `outcome1.execution` in existing `multi_lay_outcomes_json`: version
+`multi-lay-actual-v1`, optimistic `revision`, canonical `exchangeAccountId`, explicit `market`,
+explicit decimal `commission`, `fills` (`id`, `outcomeId`, `stake`, `odds`) and `unmatched`
+map containing an explicit non-negative amount for every outcome. No new SQL schema. Empty
+fills means no recorded matches; it is not inferred from Copy or reference stakes. Beginning
+actual recording is explicit; saving requires Placed/Pending or Settled/a named outcome,
+None of the named outcomes (`Lay Won`), or Void. Settlement requires zero outstanding unmatched
+orders and a settlement date. Back stake/odds remain the explicitly recorded bookmaker bet.
+
+Every fill has positive penny stake, decimal odds >=1.01 and unique ID. Commission is explicitly
+confirmed once for this market and applies to every fill, never independently to fills.
+For outcome i, sum exact Decimal fill liabilities `stake*(odds-1)` and matched stakes before
+rounding. Exchange gross = all other outcome stakes minus outcome-i liability; when none wins,
+gross = all stakes. Commission = round-half-up(max(gross,0)*rate, penny), applied ONCE per market.
+Exchange net = rounded gross minus commission. Bookmaker cash = back stake*(odds-1) if any
+named outcome wins, otherwise -back stake; round components half-up to pennies. Actual scenario
+cash = bookmaker plus exchange net; current open value = minimum scenario cash. Settlement
+selects the explicitly named scenario, or zero for whole-bet Void. Gross reserved exchange
+exposure = max(0, each outcome liability minus other stakes), rounded half-up. Unmatched orders
+are displayed separately and never contribute to current/settled P&L or actual exposure.
+No suggested remaining-stake subtraction is used at changed odds: the actual scenario/exposure
+is recomputed from every recorded fill. Reference planner values remain labelled reference.
+
+After actual recording, reference outcome IDs/labels/odds/back terms and actual Account/market
+identity are locked; new fills can be appended while Placed. Changing/removing saved fills,
+commission or settled result requires the existing reasoned correction path, retaining previous
+history. Revision conflicts reject stale saves; identical retry is idempotent. Canonical Account
+identity belongs to this Profile; changing live commission defaults never changes saved actuals.
+History is evidence, never another report transaction. Existing portable export/restore must
+preserve/remap Account identity and this versioned payload, including retained history.
+
+Independent acceptance oracle (synthetic): back£10@4; outcome1 fills£6@2.5+£4@3
+(stake10/liability17), outcome2 £8@4 (stake8/liability24); same market commission5%.
+Outcome1 gross -9 → total£21; outcome2 gross -14 → total£16; neither gross18 minus
+commission0.90 minus back10 → £7.10. Gross exposure£14. With no fills and explicit unmatched
+zero, back-only scenarios£30/-£10 and exposure£0; no placement inferred. Whole Void£0.
+Malformed/missing inputs, unknown outcomes, other Profile Accounts, stale revision and
+unmatched settlement fail without writes. Corrections, retry and restored Reports count once.

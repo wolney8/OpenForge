@@ -1,5 +1,6 @@
 "use client";
 
+import { MultiLayActualEditor, type MultiLayExecution, type MultiLayActual } from "@/components/multi-lay-actual-editor";
 import { ModalBoundary } from "@/components/modal-boundary";
 import { formatApiErrorBody } from "@/lib/api-error";
 import { isFreeBetLinkedToSportsbook } from "@/lib/free-bet-lineage";
@@ -191,7 +192,7 @@ const guidedFieldFallbackMessages: Record<GuidedEntryFieldKey, string> = {
   lay_odds_1: "Enter The Lay Odds.",
   lay_actual: "Confirm The Lay Actual.",
   multi_lay_outcomes: "Complete The Multi-Lay Outcome Names And Odds.",
-  multi_lay_placements: "Copy Or Confirm Each Multi-Lay Branch Placement.",
+  multi_lay_placements: "Record Actual Multi-Lay Branch Placements.",
   settlement: "Confirm The Settlement Date And Outcome.",
   free_bet_bridge: "Create The Free Bet.",
 };
@@ -259,6 +260,7 @@ type SportsbookRecord = {
   reference_lay_stake_standard: string | null;
   reference_lay_stake_underlay: string | null;
   reference_lay_stake_overlay: string | null;
+  multi_lay_actual?: MultiLayActual | null;
   calculated_liability_1: string | null;
   scenario_pnl_if_back_wins: string | null;
   scenario_pnl_if_lay_wins: string | null;
@@ -301,6 +303,7 @@ type LinkedFreeBetRecord = {
 };
 
 type SportsbookFormState = {
+  multi_lay_correction_reason?: string;
   lay_plan_json?: string | null;
   profit_boost_source_json?: string | null;
   conditional_benefit_json?: string | null;
@@ -405,6 +408,7 @@ type ScenarioBranchLabels = {
 type MultiLayPlacementState = "pending" | "placed";
 
 type MultiLayOutcomeInput = {
+  execution?: MultiLayExecution;
   commission?: string;
   calculationVersion?: string;
   backingType?: string;
@@ -421,6 +425,7 @@ type MultiLayOutcomeInput = {
 };
 
 type MultiLayPrimaryPlacementState = {
+  execution?: MultiLayExecution;
   commission?: string;
   calculationVersion?: string;
   backingType?: string;
@@ -531,6 +536,7 @@ type SportsbookCalculationPreview = {
   reference_lay_stake_standard: string | null;
   reference_lay_stake_underlay: string | null;
   reference_lay_stake_overlay: string | null;
+  multi_lay_actual?: MultiLayActual | null;
   calculated_liability_1: string | null;
   scenario_pnl_if_back_wins: string | null;
   scenario_pnl_if_lay_wins: string | null;
@@ -1582,6 +1588,7 @@ function serializeMultiLayOutcomes(
     [
       {
         id: "outcome1",
+        ...(primaryPlacement.execution ? { execution: primaryPlacement.execution } : {}),
         ...(primaryPlacement.calculationVersion ? { calculationVersion: primaryPlacement.calculationVersion, backingType: primaryPlacement.backingType, commission: primaryPlacement.commission } : {}),
         label: getMultiLayOutcomeLabel(outcome1Label),
         layOdds: formState.lay_odds_1,
@@ -1652,6 +1659,7 @@ function parseMultiLayOutcomes(
             : createMultiLayOutcomeId(index + 1);
 
         const normalized = {
+          execution: record.execution,
           commission: typeof record.commission === "string" ? record.commission : undefined,
           calculationVersion: typeof record.calculationVersion === "string" ? record.calculationVersion : undefined,
           backingType: typeof record.backingType === "string" ? record.backingType : undefined,
@@ -1676,6 +1684,7 @@ function parseMultiLayOutcomes(
 
         if (resolvedId === "outcome1") {
           primaryPlacement = {
+            execution: normalized.execution,
             commission: normalized.commission,
             calculationVersion: normalized.calculationVersion,
             backingType: normalized.backingType,
@@ -3671,6 +3680,12 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   const offerPlanningCommission = activeLayPlan?.commission ?? resolvedCommission;
 
   const resultOptions = useMemo(() => {
+    if (multiLayPrimaryPlacement.execution) return [
+      { value: "Pending", label: "Pending" },
+      { value: "Lay Won", label: "None of the named outcomes" },
+      ...[{ label: multiLayOutcome1Label }, ...multiLayOutcomes].map((leg, index) => ({ value: `Outcome ${index + 1} Won`, label: `${leg.label} wins` })),
+      { value: "Void", label: "Whole bet Void" },
+    ];
     const options = getSportsbookResultOptions(
       formState.offer_type,
       formState.match_strategy,
@@ -3691,7 +3706,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       ];
     }
     return options;
-  }, [formState.bonus_trigger, formState.match_strategy, formState.offer_type, formState.result]);
+  }, [formState.bonus_trigger, formState.match_strategy, formState.offer_type, formState.result, multiLayPrimaryPlacement.execution, multiLayOutcome1Label, multiLayOutcomes]);
   const quickSettlementOptions = useMemo(
     () =>
       resultOptions
@@ -3716,7 +3731,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     setFormState((current) => ({ ...current, back_stake: next.backStake, back_odds: next.backOdds, lay_odds_1: legs[0].layOdds, exchange_name: next.exchange,
       match_strategy: next.strategy === "standard" ? "Multilay" : next.strategy === "underlay" ? "Multilay-Underlay" : current.match_strategy }));
     setMultiLayOutcome1Label(legs[0].label);
-    setMultiLayPrimaryPlacement({ ...createDefaultMultiLayPrimaryPlacementState(), calculationVersion: "multi-lay-v2", backingType: next.backingType, commission: legs[0].commission });
+    setMultiLayPrimaryPlacement(current => ({ ...createDefaultMultiLayPrimaryPlacementState(), execution: current.execution, calculationVersion: "multi-lay-v2", backingType: next.backingType, commission: legs[0].commission }));
     setMultiLayOutcomes(legs.slice(1).map((leg, index) => ({ id: createMultiLayOutcomeId(index + 2), ...leg })));
   }, []);
   const canUseFootballSettlesAssist =
@@ -4077,8 +4092,9 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
         canCreateFreeBet: canUseFreeBetBridge,
         freeBetCreated: freeBetBridgeComplete,
         multiLayOutcomes: guidedEntryOutcomes,
+        actualMultiLayRecorded: Boolean(multiLayPrimaryPlacement.execution?.exchangeAccountId && multiLayPrimaryPlacement.execution.market && multiLayPrimaryPlacement.execution.commission !== "" && Object.values(multiLayPrimaryPlacement.execution.unmatched).every(value => value !== "") && multiLayPrimaryPlacement.execution.fills.every(fill => fill.stake !== "" && fill.odds !== "")),
       }),
-    [canUseFreeBetBridge, formState, freeBetBridgeComplete, guidedEntryOutcomes]
+    [canUseFreeBetBridge, formState, freeBetBridgeComplete, guidedEntryOutcomes, multiLayPrimaryPlacement.execution]
   );
   const safeGuidedEntry = useMemo(() => {
     if (guidedEntry.state === "complete") {
@@ -4483,7 +4499,9 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     activeMatchRatingPercentValue === null
       ? null
       : getMatchRatingInterpretation(activeMatchRatingPercentValue);
-  const editorLayStatus = isNoLayStrategy
+  const editorLayStatus = usesV2MultiLayPlanning
+    ? multiLayPrimaryPlacement.execution ? activePreviewCalculation?.lay_status ?? "Check actual inputs" : "Reference plan"
+    : isNoLayStrategy
     ? "Fully Laid"
     : usesMultiLayStrategy
       ? visibleMultiLayPlacementStatus
@@ -8251,6 +8269,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                     <span>Hedge calculator</span>
                     <select
                       aria-label="Sportsbook hedge calculator"
+                      disabled={Boolean(multiLayPrimaryPlacement.execution)}
                       onChange={(event) =>
                         applyLayWorkflowMode(event.target.value === "multi-lay" ? "Multilay" : "Standard")
                       }
@@ -8275,7 +8294,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                         formState.maximum_bonus || formState.manual_override_value || partialLayLegs.length ||
                         multiLayPrimaryPlacement.placementState === "placed" || multiLayPrimaryPlacement.placedMatchedStake ||
                         multiLayOutcomes.some((entry) => entry.placementState === "placed" || entry.placedMatchedStake))}
-                      title="New Normal Standard/Underlay reference plan only. Placement and settlement remain unsupported."
+                      title="Normal Standard/Underlay reference plan with explicit actual recording."
                       onClick={() => {
                         setMultiLayPrimaryPlacement((current) => ({ ...current,
                           calculationVersion: "multi-lay-v2", backingType: "normal",
@@ -8290,7 +8309,24 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                       Use v2 per-leg commission planning
                     </button>
                   ) : null}
-                {usesV2MultiLayPlanning ? <MultiLayCalculator planning key={selectedId || "new-v2"} exchanges={exchangeSettings.map((entry) => ({ catalogue_id: entry.exchange_name, name: entry.exchange_name, default_commission_rate: entry.commission_rate }))} onState={updateVersionedPlanner} search={versionedPlannerSearch} /> : <>
+                {usesV2MultiLayPlanning ? <><p className="field-help">Reference plan — actual matches are recorded separately below.</p><fieldset className="section-fieldset" disabled={Boolean(multiLayPrimaryPlacement.execution)}><MultiLayCalculator planning key={selectedId || "new-v2"} exchanges={exchangeSettings.map((entry) => ({ catalogue_id: entry.exchange_name, name: entry.exchange_name, default_commission_rate: entry.commission_rate }))} onState={updateVersionedPlanner} search={versionedPlannerSearch} /></fieldset>
+                  <MultiLayActualEditor accounts={accountAuthorities}
+                    legs={[{ id: "outcome1", label: multiLayOutcome1Label }, ...multiLayOutcomes]}
+                    execution={multiLayPrimaryPlacement.execution}
+                    savedExecution={selectedSportsbookRow ? parseMultiLayOutcomes(selectedSportsbookRow.multi_lay_outcomes_json, { outcome1Label: selectedSportsbookRow.multi_lay_outcome_1_name, layOdds1: selectedSportsbookRow.lay_odds_1, exchangeName: selectedSportsbookRow.exchange_name, layActual: selectedSportsbookRow.lay_actual }).primaryPlacement.execution : undefined}
+                    actual={activePreviewCalculation?.multi_lay_actual}
+                    correctionReason={formState.multi_lay_correction_reason ?? ""}
+                    onCorrectionReason={value => setFormState(current => ({ ...current, multi_lay_correction_reason: value }))}
+                    onChange={execution => {
+                      setMultiLayPrimaryPlacement(current => ({ ...current, execution }));
+                      const account = accountAuthorities.find(a => a.account_id === execution.exchangeAccountId);
+                      if (account) setFormState(current => ({ ...current, exchange_name: account.account }));
+                    }}
+                    onStart={() => {
+                      setFormState(current => ({ ...current, status: "Placed" }));
+                      setMultiLayPrimaryPlacement(current => ({ ...current, execution: { version: "multi-lay-actual-v1", revision: 0, exchangeAccountId: "", market: "", commission: "", fills: [], unmatched: Object.fromEntries(["outcome1", ...multiLayOutcomes.map(l => l.id)].map(id => [id, ""])) } }));
+                    }} />
+                </> : <>
                 <div className="calculator-panel-shell">
                   <div className="calculator-panel-heading">
                       <div className="calculator-panel-heading-row">
@@ -10168,6 +10204,8 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                     >
                       {settlementHasFinalOutcome ? (
                         <><div className="settlement-outcome-primary"><span className="eyebrow">Final value</span><strong>{renderPreviewFinancialValue(settlementPrimaryValue)}</strong></div><div className="settlement-outcome-status"><span className="summary-label">Outcome</span><strong>{formState.result}</strong></div></>
+                      ) : activePreviewCalculation.multi_lay_actual ? (
+                        <CalculatorOutcomes inspectionId="sportsbook.calculator.actual-outcomes" rows={activePreviewCalculation.multi_lay_actual.scenarios.map(s => ({ ...s, copyableTotal: true }))} />
                       ) : usesMultiLayStrategy && multiLayPlannerSummary ? (
                         <CalculatorOutcomes inspectionId="sportsbook.calculator.outcomes" rows={multiLayResultsGridRows.map((row, index) => ({ key: row.key, label: row.outcomeLabel, tone: index === 0 ? "primary" : "exchange", total: row.profit }))} summary={<span>Current value <CalculatorOutcomeValueDisplay label="Current value" value={settlementPrimaryValue} /></span>} />
                       ) : (

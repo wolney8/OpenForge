@@ -4433,6 +4433,8 @@ def update_sportsbook_bet(
         {**existing.__dict__, **payload},
         account_fields_to_validate=account_fields_to_validate,
     )
+    if payload.get("multi_lay_correction_reason", "").strip():
+        history_metadata.update(_history_reason=payload["multi_lay_correction_reason"].strip(), _history_operation="corrected")
     payload.update(history_metadata)
     commissions = get_profile_exchange_commission_map(profile_id)
 
@@ -4494,12 +4496,21 @@ def update_sportsbook_bet(
             updated["conditional_benefit_json"],
             kind="conditional_benefit",
         )
+        from openforge_api.multi_lay_actual import guard_update, execution_from
+        updated["multi_lay_outcomes_json"] = guard_update(dict(current), updated, correction=bool(history_metadata.get("_history_reason")))
         linked = connection.execute("SELECT free_bet_id FROM free_bets WHERE profile_id=? AND origin_qual_bet_id=? LIMIT 1", (profile_id, sportsbook_bet_id)).fetchone()
         operation = connection.execute("SELECT audit_id FROM sportsbook_bet_audit WHERE profile_id=? AND sportsbook_bet_id=? AND action IN ('award_operation','award_child_removed') LIMIT 1", (profile_id, sportsbook_bet_id)).fetchone()
         qualifying_activity = current["offer_type"] in {"Bet & Get", "Sign up / Welcome", "Reload", "Refund", "Cashback"} and current["status"] in {"Placed", "Settled", "Free Bet Awarded"}
         if (linked or operation or qualifying_activity) and (payload["status"] == "Prospecting" or (current["result"] != "Pending" and payload["result"] == "Pending") or (qualifying_activity and payload["offer_type"] != current["offer_type"])):
             from fastapi import HTTPException
             raise HTTPException(status_code=409, detail="Linked awards protect the qualifying result. Review the award history before reversing its source.")
+        if execution_from(updated["multi_lay_outcomes_json"]) and all(
+            (json.loads(current[key]) == json.loads(value) if key == "multi_lay_outcomes_json" else current[key] == value)
+            for key, value in updated.items() if key != "updated_at"
+        ):
+            saved = map_row(current)
+            (prepare_response or prepare_write_response)(saved, commissions)
+            return saved
         connection.execute(
             """
             UPDATE sportsbook_bets
@@ -4597,6 +4608,7 @@ def update_sportsbook_bet(
         assert stored is not None
         operation = str(payload.get("_history_operation") or (
             "settled" if current["status"] != "Settled" and updated["status"] == "Settled"
+            else "placement_recorded" if not execution_from(current["multi_lay_outcomes_json"]) and execution_from(updated["multi_lay_outcomes_json"])
             else "placement_recorded" if not str(current["lay_actual"] or current["lay_matched_stake_1"]).strip() and str(updated["lay_actual"] or updated["lay_matched_stake_1"]).strip()
             else "edited"
         ))

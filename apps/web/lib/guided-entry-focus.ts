@@ -58,6 +58,7 @@ export type SportsbookGuidedEntryInput = {
   settlementDate?: string;
   canCreateFreeBet?: boolean;
   freeBetCreated?: boolean;
+  actualMultiLayRecorded?: boolean;
   multiLayOutcomes?: Array<{
     label?: string;
     name?: string;
@@ -133,7 +134,7 @@ function fieldMessage(field: GuidedEntryFieldKey): string {
     case "multi_lay_outcomes":
       return "Complete The Multi-Lay Outcome Names And Odds.";
     case "multi_lay_placements":
-      return "Copy Or Confirm Each Multi-Lay Branch Placement.";
+      return "Record Actual Multi-Lay Branch Placements.";
     case "settlement":
       return "Confirm The Settlement Date And Outcome.";
     case "free_bet_bridge":
@@ -255,7 +256,7 @@ export function getSportsbookGuidedEntry(input: SportsbookGuidedEntryInput): Gui
       (outcome) =>
         outcome.placementState === "placed" && isPositiveNumber(outcome.placedMatchedStake)
     );
-    if (placedOutcomes.length < completedOutcomes.length) {
+    if (!input.actualMultiLayRecorded && placedOutcomes.length < completedOutcomes.length) {
       return buildResult(
         "ready",
         "multi_lay_placements",

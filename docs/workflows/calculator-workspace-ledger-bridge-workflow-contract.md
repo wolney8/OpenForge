@@ -95,7 +95,7 @@ activity is always `Single`.
 | Standard: Bonus Lock-In Free Bet SNR advanced; Free Bet SR | `BLOCKED — SOURCE MODE UNSUPPORTED` | None | None | None | Capital-target endpoint/SR reward basis is not governed; API fails closed |
 | Standard: Profit Boost, displayed / return-derived / profit-derived / percentage-derived | `CONVERTIBLE NOW` | Sportsbook Prospecting | Multi / Bookie + Exchange | Convert to opportunity | Native displayed/percentage path; temporary return/profit derivation is preserved in source and applied as explicit derived odds |
 | Multi-Lay v1: Standard / Underlay, two or three outcomes | `CONVERTIBLE NOW` | Sportsbook Prospecting | Multi / Bookie + Exchange | Convert to opportunity | Legacy native fields preserve the historical branches and one uniform commission |
-| Multi-Lay v2: Normal, no boost/reward, Standard / Underlay, two-to-20 outcomes | `CONVERTIBLE NOW` | Sportsbook Prospecting | Multi / Bookie + Exchange | Convert to opportunity | Versioned planning JSON preserves every named leg and its canonical commission ratio; actual per-leg placement and settlement remain unavailable |
+| Multi-Lay v2: Normal, no boost/reward, Standard / Underlay, two-to-20 outcomes | `CONVERTIBLE NOW` | Sportsbook Prospecting | Multi / Bookie + Exchange | Convert to opportunity | Versioned planning JSON preserves every named leg and its canonical commission ratio; explicit actual fills and settlement now use the bounded single-market contract below |
 | Extra Place / Each Way | `CONVERTIBLE NOW` | Each Way / Extra Place Prospecting | Multi / Bookie + Exchange | Convert to opportunity | Native mode, terms, places and win/place legs |
 | Sequential Lay: Standard / Lock In | `BLOCKED — DESTINATION CONTRACT MISSING` | None | None | None | Sportsbook cannot persist ordered conditional legs |
 | Early Payout / 2UP: Exchange Lay / 2-Way Dutch | `BLOCKED — DESTINATION CONTRACT MISSING` | None | None | None | Existing Draft contract does not persist modelled trigger, live position, slider and part backs losslessly |
@@ -191,8 +191,11 @@ fields and retains one uniform commission. Versioned Multi-Lay v2 planning accep
 outcomes and preserves each leg's canonical commission ratio for the bounded Normal, no-boost/
 reward, Standard/Underlay slice. Browser evidence covers a native three-leg mixed-commission
 save/reopen; conversion/idempotency is API-tested and the 20-leg boundary is contract/code-tested.
-No current ledger fields represent actual per-leg placement or settlement, so those actions and
-the richer SNR/refund/boost/Overlay/Custom configurations remain fail-closed. The standalone
+CP-047 adds explicit versioned actual fills inside the existing planning JSON for Normal
+Standard/Underlay, one canonical Exchange Account and one named market. Actual odds/stakes and
+market commission govern current/settled cash, History and portable restore; Copy remains read-only.
+See [actual recording contract](../contracts/multi-lay-reference-contract.md#normal-actual-recording-v1--owner-authorised-cp-047-slice).
+SNR/refund/boost/Overlay/Custom actual configurations and multiple markets remain fail-closed. The standalone
 response exposes the canonical engine's stake, liability and scenario value per branch plus the
 no-selection and conservative matched results. Each Way / Extra
 Place delegates to `each-way-extra-place-ledger-contract`; place fraction and explicit place counts

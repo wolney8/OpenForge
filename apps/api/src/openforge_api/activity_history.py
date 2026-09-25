@@ -30,6 +30,21 @@ class FinancialHistoryResponse(BaseModel):
     operation_id: str
 
 
+def history_snapshot(serialized: str) -> dict[str, Any] | None:
+    """Read-only projection of versioned actual cash; never rewrite stored history."""
+    value: dict[str, Any] | None = json.loads(serialized)
+    if value is not None and value.get("multi_lay_outcomes_json"):
+        from openforge_api.multi_lay_actual import execution_from, calculate_actual
+        actual = execution_from(value["multi_lay_outcomes_json"])
+        if actual is not None:
+            try:
+                calculated = calculate_actual(value, json.loads(value["multi_lay_outcomes_json"]), actual)
+                value["multi_lay_actual_value"] = calculated["reporting_value"]
+            except (ValueError, ArithmeticError, KeyError):
+                value["multi_lay_actual_value"] = None
+    return value
+
+
 @router.get("/{ledger_type}/{activity_id}", response_model=list[FinancialHistoryResponse])
 def list_profile_financial_history(
     profile_id: str,
@@ -47,8 +62,8 @@ def list_profile_financial_history(
             operation=item.operation,
             recorded_at=item.recorded_at,
             schema_version=item.schema_version,
-            before_snapshot=json.loads(item.before_snapshot_json),
-            after_snapshot=json.loads(item.after_snapshot_json),
+            before_snapshot=history_snapshot(item.before_snapshot_json),
+            after_snapshot=history_snapshot(item.after_snapshot_json),
             source_identity=json.loads(item.source_identity_json),
             provenance=json.loads(item.provenance_json),
             reason=item.reason,

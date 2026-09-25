@@ -718,6 +718,25 @@ def import_history_cases(dsn, runtime):
     }
 
 
+def multi_lay_actual_cases(dsn: str, root: Path) -> dict:
+    """Run the exact independent API/History/portable-restore assertions on PostgreSQL."""
+    import pytest
+    import test_calculator_conversions as fixture
+    from test_multi_lay_actual import test_api_plan_actual_reopen_settlement_history_and_isolation
+    from openforge_api.config import settings
+    db = configure(dsn, str(root))
+    settings.auth_required = False
+    settings.account_catalogue_source = str(ROOT / "tests/fixtures/openforge-api-master-catalogue.synthetic.json")
+    with db.connect() as connection:
+        connection.execute("INSERT INTO profiles VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                           ("profile-demo-002", "Synthetic other Profile", "OTHER-002", "Active", "2026-09-01", "0", "0", "0"))
+        connection.commit()
+    with pytest.MonkeyPatch.context() as patcher:
+        patcher.setattr(fixture, "configure_temp_database", lambda _: None)
+        test_api_plan_actual_reopen_settlement_history_and_isolation(root, patcher)
+    return {"status": "PASS", "multi_lay_actual": "Plan, changed-price fills, stale rejection, rollback, settlement, correction retry, Profile isolation and XLSX restore parity"}
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--pg-bin", required=True, type=Path, help="Explicit local server-tool directory; no inherited DSN")
@@ -734,6 +753,7 @@ def main():
         action="store_true",
         help="CP-012 Profile-scoped import identity and append-only history only",
     )
+    parser.add_argument("--multi-lay-actual-only", action="store_true", help="CP-047 Normal actual recording and portable restore only")
     args = parser.parse_args()
     pg_bin = args.pg_bin.resolve()
     def pg(name):
@@ -769,6 +789,9 @@ def main():
         import psycopg
         with psycopg.connect(primary) as c:
             record["server_version"] = c.execute("SELECT version()").fetchone()[0]
+        if args.multi_lay_actual_only:
+            record.update(multi_lay_actual_cases(primary, root))
+            return
         if args.core_plans_only:
             record.update(core_plan_cases(primary, root))
             return

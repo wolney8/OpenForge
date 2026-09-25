@@ -11,6 +11,7 @@ import {
   type FinancialHistoryEvent,
   type FinancialHistoryLedger,
 } from "@/lib/financial-history";
+import { commissionRatioToPercentage } from "@/lib/commission-input";
 import { formatHumanDisplayDate } from "@/lib/tracker-summary";
 
 type FinancialHistoryPanelProps = {
@@ -18,6 +19,21 @@ type FinancialHistoryPanelProps = {
   ledger: FinancialHistoryLedger;
   profileId: string;
 };
+
+function RecordedMultiLayFills({ snapshot }: { snapshot: Record<string, unknown> | null }) {
+  let legs: Array<{ id: string; label: string; execution?: import("@/components/multi-lay-actual-editor").MultiLayExecution }>;
+  try { legs = JSON.parse(String(snapshot?.multi_lay_outcomes_json ?? "[]")); } catch { return null; }
+  if (!Array.isArray(legs)) return null;
+  const actual = legs.find(l => l && typeof l === "object" && l.id === "outcome1")?.execution;
+  if (actual?.version !== "multi-lay-actual-v1" || !Array.isArray(actual.fills) || actual.fills.some(f => !f || typeof f.stake !== "string" || typeof f.odds !== "string" || !Number.isFinite(Number(f.stake)))) return null;
+  return <details className="stack-tight"><summary>Recorded fills</summary>
+    <p>{String(snapshot?.exchange_name ?? "Exchange")} · {actual.market} · Market commission {commissionRatioToPercentage(actual.commission)}%</p>
+    <div className="table-scroll"><table className="data-table"><thead><tr><th>Outcome</th><th>Matched stake</th><th>Actual odds</th></tr></thead>
+      <tbody>{actual.fills.map(fill => <tr key={fill.id}><td>{legs.find(l => l.id === fill.outcomeId)?.label ?? fill.outcomeId}</td><td><FinancialValue animate={false} value={Number(fill.stake)} /></td><td>{fill.odds}</td></tr>)}</tbody>
+    </table></div>
+    {actual.fills.length === 0 ? <p>No recorded fills.</p> : null}
+  </details>;
+}
 
 export function FinancialHistoryPanel({ activityId, ledger, profileId }: FinancialHistoryPanelProps) {
   const [events, setEvents] = useState<FinancialHistoryEvent[] | null>(null);
@@ -89,6 +105,7 @@ export function FinancialHistoryPanel({ activityId, ledger, profileId }: Financi
                     <span>{event.operation === "corrected" ? "Corrected result" : "Recorded value"} <FinancialValue animate={false} value={after} /></span>
                   </div>
                 ) : null}
+                {ledger === "sportsbook" ? <RecordedMultiLayFills snapshot={event.after_snapshot} /> : null}
                 {event.reason ? <p><span className="summary-label">Reason</span> {event.reason}</p> : null}
               </li>
             );

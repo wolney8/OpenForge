@@ -30,6 +30,7 @@ export type AccountSummaryRecord = {
 };
 
 export type SportsbookSummaryRecord = {
+  multi_lay_actual?: { exchange_exposure: string } | null;
   calculation_state?: string;
   calculation_notes?: string[];
   sportsbook_bet_id: string;
@@ -886,7 +887,7 @@ export function summarizeTrackerData(
     ).length;
 
   const currentLiability =
-    openSportsbook.reduce((sum, row) => sum + readSummaryMoney(row.calculated_liability_1), 0) +
+    openSportsbook.reduce((sum, row) => sum + readSummaryMoney(row.multi_lay_actual?.exchange_exposure ?? row.calculated_liability_1), 0) +
     openFreeBets.reduce((sum, row) => sum + readSummaryMoney(row.calculated_liability_1), 0) +
     openEachWayExtraPlaces.reduce(
       (sum, row) => sum + readSummaryMoney(row.win_liability) + readSummaryMoney(row.place_liability),

@@ -846,3 +846,15 @@ describe.each(["sportsbook", "free-bets"] as const)("%s required liability outpu
     expect(result.profitQuickView.overallPnl).toBe(12.5);
   });
 });
+
+
+it("uses the operational Multi-Lay market reservation, not primary-fill liability", () => {
+  const source: TrackerSummaryDataset = { ...dataset, freeBets: [], eachWayExtraPlaces: [], sportsbookBets: [{
+    ...dataset.sportsbookBets[0], status: "Placed", result: "Pending", counts_as_open: true,
+    calculated_liability_1: "17.00", multi_lay_actual: { exchange_exposure: "14.00" },
+    projected_current_pnl: "7.10", final_net_pnl: null, reporting_value: "7.10",
+  }] };
+  const result = summarizeTrackerData(source, resolveDateRange({ preset: "All Dates", today: new Date("2026-07-01T10:00:00Z") }), new Date("2026-07-01T10:00:00Z"));
+  expect(result.betsQuickView.currentLiability).toBe(14);
+  expect(result.profitQuickView.sportsbook.reportingValue).toBe(7.1);
+});

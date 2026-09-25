@@ -997,6 +997,9 @@ def _resolved_rows(
                 if sheet_name != spec.name or not row.get(field):
                     continue
                 row[field] = identity_maps.get(domain, {}).get(str(row[field]), row[field])
+            if spec.name == "Sportsbook" and row.get("multi_lay_outcomes_json"):
+                from openforge_api.multi_lay_actual import remap_account
+                row["multi_lay_outcomes_json"] = remap_account(str(row["multi_lay_outcomes_json"]), identity_maps.get("account", {}))
             if spec.name in {"Sportsbook", "Free Bets"} and row.get("lay_plan_json"):
                 from openforge_api.lay_plan import parse_plan
                 plan = parse_plan(str(row["lay_plan_json"]))
@@ -1062,6 +1065,9 @@ def _resolved_rows(
                     value = json.loads(str(raw))
                     if isinstance(value, dict):
                         value["profile_id"] = target_profile_id
+                        if value.get("multi_lay_outcomes_json"):
+                            from openforge_api.multi_lay_actual import remap_account
+                            value["multi_lay_outcomes_json"] = remap_account(value["multi_lay_outcomes_json"], identity_maps.get("account", {}))
                         for id_field, id_domain in (
                             ("sportsbook_bet_id", "sportsbook_bet"),
                             ("free_bet_id", "free_bet"),
@@ -1291,6 +1297,9 @@ def _normalized_projection(
             for (sheet_name, field), domain in FOREIGN_ID_FIELDS.items():
                 if sheet_name == spec.name and row.get(field):
                     row[field] = inverse.get(domain, {}).get(str(row[field]), row[field])
+            if spec.name == "Sportsbook" and row.get("multi_lay_outcomes_json"):
+                from openforge_api.multi_lay_actual import remap_account
+                row["multi_lay_outcomes_json"] = remap_account(str(row["multi_lay_outcomes_json"]), inverse.get("account", {}), strict=False)
             if spec.name in {"Sportsbook", "Free Bets"} and row.get("lay_plan_json"):
                 from openforge_api.lay_plan import parse_plan
                 plan = parse_plan(str(row["lay_plan_json"]))
@@ -1321,6 +1330,9 @@ def _normalized_projection(
                     if isinstance(value, dict):
                         if value.get("profile_id") == target_profile_id:
                             value["profile_id"] = source_profile_id
+                        if value.get("multi_lay_outcomes_json"):
+                            from openforge_api.multi_lay_actual import remap_account
+                            value["multi_lay_outcomes_json"] = remap_account(value["multi_lay_outcomes_json"], inverse.get("account", {}), strict=False)
                         for id_field, id_domain in (
                             ("sportsbook_bet_id", "sportsbook_bet"),
                             ("free_bet_id", "free_bet"),

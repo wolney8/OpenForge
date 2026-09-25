@@ -13513,7 +13513,8 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
     justify-content: flex-start;
   }
   .workflow-editor-body {
-    min-height: min(10rem, 30dvh);
+    /* Reserve room for fields as well as the enlarged sticky action footer. */
+    min-height: min(20rem, 60dvh);
   }
 }
 

@@ -106,6 +106,7 @@ function clearMultiLayPlacementState(serializedOutcomes: string): string {
         }
         return {
           ...entry,
+          execution: undefined,
           placedExchange: "",
           placedLayOdds: "",
           placedMatchedStake: "",

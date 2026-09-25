@@ -60,6 +60,7 @@ export function snapshotFinancialValue(
   if (ledger === "casino") {
     return numeric(text(snapshot, "final_net_pnl")) ?? numeric(text(snapshot, "calc_net_pnl"));
   }
+  if (ledger === "sportsbook") return numeric(text(snapshot, "multi_lay_actual_value"));
   if (ledger === "extra_place") {
     return numeric(text(snapshot, "imported_historical_pnl"));
   }
