@@ -1,5 +1,11 @@
 # Plum Duff Known UI Pitfalls
 
+## CP-048 reference-form reinforcement — 2026-09-25 15:26 BST
+
+- A confirmed write must not depend on a second list read to count as success; use the confirmed response and keep rejected writes recoverable. Guard pending close synchronously as well as disabling buttons.
+- Apply existing dialog focus/body-lock hooks to catalogue editors too. Test edit-mode fields at200% against their own footer, not only Add or page overflow; keep footer actions associated through native `form` ownership.
+- Regression: `catalogue-combo-form-readiness.spec.ts`; CP-046 equivalents and CP-047 parent-draft workflows retained.
+
 ## CP-046 form ownership and focus — 2026-09-25 11:38 BST
 
 - Verify the mounted route before editing a historical component target; AccountAuthoritySettings was retired in favour of the Profile Accounts workflow.

@@ -1,6 +1,6 @@
 # Plum Duff Repository Agent Instructions
 
-Last updated: 2026-09-25 09:51 BST
+Last updated: 2026-09-25 15:26 BST
 
 ## Project purpose
 
@@ -290,6 +290,7 @@ When the task involves:
 
 - audit evidence, testing or findings: read `AUDIT_REGISTER.md`, then only the linked detailed audit
   sections required;
+- feature capabilities or personal-use readiness: read `FEATURE_STATUS.md` (FS-CODEX-001), then the linked canonical requirements/evidence;
 - roadmap, priorities or feature sequencing: read `PROJECT_ROADMAP.md`, then the linked canonical
   planning documents required;
 - individual requirements: use the canonical request register and relevant GitHub issue;
@@ -300,6 +301,7 @@ When the task involves:
 Update these documents at their own boundary:
 
 - `PROJECT_STATUS.md`: every substantive completed task or checkpoint;
+- `FEATURE_STATUS.md`: when capability, availability or priority changes; keep the owner view about 80–120 lines and issue-level detail in the existing register;
 - `AUDIT_REGISTER.md`: only when audit coverage, evidence, findings or complete-workflow state changes;
 - `PROJECT_ROADMAP.md`: only when milestones, priorities, dependencies or deliberate deferrals change;
 - `ENGINEERING_LEARNING.md`: only when a transferable project lesson is added or materially refined;

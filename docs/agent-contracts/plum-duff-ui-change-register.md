@@ -1,5 +1,14 @@
 # Plum Duff UI Change Register
 
+## CP-048 remaining reference forms — 2026-09-25 15:26 BST
+
+| ID / issue | Actual screen and demonstrated repair | Existing equivalent / final state |
+| --- | --- | --- |
+| PD-FIX-302 / #92 | Account Catalogue Add/Edit Account: Tab escaped, edit field hid under footer at 200%, Back retained modal state | CP-046 shared focus/body-lock and native external form footer; COMPLETE local/Preview `a3afdfc` |
+| PD-FIX-303 / #92 | Common Bet Combos Add/Edit Combo: rejected fetch stranded Saving; pending dialog could close | CP-046 draft/error/pending guard and existing focus lifecycle; COMPLETE local/Preview `a3afdfc` |
+
+Two focused form journeys plus8 isolated/8 hosted combined workflows pass. Shared-reference browser writes intercepted;25 disposable API tests prove real persistence/validation. Create/edit, native validation,503/network retry, pending close,Save/Cancel/reopen, trigger focus,Tab, light/dark 1440/390/760 at 200%, internal clipping and reduced motion verified. No remaining implementation or engineering verification in this named batch. Broader owner acceptance, normal-owner browser and VoiceOver remain separate; #105 remains engineering-complete. [Evidence](../../docs/audits/platform-quality-audit.md#cp-048-personal-readiness-and-reference-forms--2026-09-25-1526-bst).
+
 ## CP-047 feature workflow containment — 2026-09-25 14:11 BST
 
 | ID / issue | Actual screen and repair | Existing equivalent / final state |

@@ -10,6 +10,8 @@ No published release is represented by the local milestones below.
 
 ## 2026-09-25
 
+- **2026-09-25 15:26 BST — CP-048:** Completed Catalogue/Combo create/edit recovery and focus at `a3afdfc`, local/protected Preview;52 API/74 web and8 isolated/8 hosted pass. Added FS-CODEX-001 and reconciled117 issues; private workbook rehearsal awaits source choice. [Evidence](docs/audits/platform-quality-audit.md#cp-048-personal-readiness-and-reference-forms--2026-09-25-1526-bst).
+
 - **2026-09-25 14:11 BST — CP-047:** Delivered bounded Normal Multi-Lay actual settlement and Account review/observation history at `e2d70e0`, local/protected Preview.107 API/89 web,7 isolated/7 hosted, disposable PostgreSQL retry/rollback/restore, types/build/lint pass; no SQL migration or owner data changes. [Evidence](docs/audits/platform-quality-audit.md#cp-047-operational-multi-lay-and-account-observations--2026-09-25-1411-bst).
 
 - **2026-09-25 11:38 BST — CP-046:** Completed the named #92 forms/Defaults batch at`9e7cbd2`, local/protected Preview;10/10 isolated/hosted,35 web+1 API, types/build/lint pass; owner data unchanged. [Evidence](docs/audits/platform-quality-audit.md#cp-046-settings-forms-and-account-editor--2026-09-25-1138-bst).
@@ -183,3 +185,9 @@ their original IDs.
 | --- | --- | --- | --- | --- |
 | CP-027 | 2026-09-21 10:44 BST | Recorded owner calculator and Google acceptance, promoted provider re-authentication to PASS and froze the verified local baseline | [#35](https://github.com/wolney8/OpenForge/issues/35), [#62](https://github.com/wolney8/OpenForge/issues/62), [#92](https://github.com/wolney8/OpenForge/issues/92), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-027-owner-acceptance-and-frozen-local-baseline--2026-09-21-1044-bst) |
 | CP-028 | 2026-09-21 13:02 BST | Created an isolated protected Preview, proved hosted runtime/database readiness and recovery, and stopped truthfully at the owner-controlled Google interaction | [#62](https://github.com/wolney8/OpenForge/issues/62), [#114](https://github.com/wolney8/OpenForge/issues/114), [#115](https://github.com/wolney8/OpenForge/issues/115) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-028-protected-hosted-preview-verification--2026-09-21-1302-bst) |
+
+### Checkpoint rolled from Project Status during CP-048
+
+| ID | Timestamp | What changed | Issue | Document |
+| --- | --- | --- | --- | --- |
+| CP-029 | 2026-09-21 15:24 BST | Recorded hosted Google PASS, repaired protected authenticated SSR context and stopped the Preview gate on a real Reports render loop | [#62](https://github.com/wolney8/OpenForge/issues/62), [#114](https://github.com/wolney8/OpenForge/issues/114), [#115](https://github.com/wolney8/OpenForge/issues/115) | [Audit evidence](docs/audits/platform-quality-audit.md#current-cp-029-authenticated-protected-preview-verification--2026-09-21-1524-bst) |

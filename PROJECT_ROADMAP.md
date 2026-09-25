@@ -1,6 +1,6 @@
 # Project Roadmap — Plum Duff / OpenForge — Doc ID: PR-CODEX-001
 
-**Last updated:** 2026-09-25 14:11 BST
+**Last updated:** 2026-09-25 15:26 BST
 
 ## Product goal
 
@@ -39,10 +39,11 @@ History/Reports and restore; Sportsbook/Account review with atomic balance confi
 observation history. Application `e2d70e0` runs locally and on protected Preview. Existing storage
 was sufficient; no SQL migration. #105's named engineering pass remains complete.
 
-**Next outcome:** extend the existing Account review entry points to Free Bets/Casino (#85), then
-finish the two queued #92 Catalogue/Combo form checks. Wider Account freshness/trends/settlement,
-unsupported Multi-Lay backing/reward/market configurations and general #111 analytics remain
-separate scope. Production readiness remains paused.
+**Current milestone (CP-048):** personal daily-use readiness. Named Catalogue/Combo form repairs are delivered at`a3afdfc`, local/Preview. [FEATURE_STATUS](FEATURE_STATUS.md) separates listed usable scope from partial/planned features; all 117 issues map to the existing register. No whole-product readiness claim.
+
+**Next three outcomes:** (1) resolve the pending workbook source choice and rehearse privately into isolated LOCAL storage, then approve the exact personal 0/0 target/import action and backup; (2) useful deterministic tasks from existing evidence/rules/reasons/record links, resolving the current 3/7-day expiry distinction; (3) minimal invited request/review with separately approved Profile linkage/access roles/storage. AI evidence explanation is a separate provider/data/spend decision.
+
+Optional Free Bets/Casino Account-review entry points and cosmetic expansion are on hold behind this owner priority. Wider Account freshness/trends/settlement, unsupported Multi-Lay configurations and general analytics remain named scope. No new schema, normal-data import, public signup, paid AI or Production release authorised.
 
 ## Local defect / completeness
 

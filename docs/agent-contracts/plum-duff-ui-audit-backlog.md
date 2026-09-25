@@ -49,7 +49,7 @@ surfaces and record actual composed-layout, theme, focus, scaling and responsive
 
 - [x] Tracker Lists Add/Edit Value; Profile Accounts Create/Edit account; Profile Settings Defaults headings/help: implementation and engineering verification COMPLETE at`9e7cbd2`.10 isolated/hosted workflows; no missing check in this named batch. [Evidence](docs/audits/platform-quality-audit.md#cp-046-settings-forms-and-account-editor--2026-09-25-1138-bst).
 - **Implementation outstanding in this batch:** none. AccountAuthoritySettings/Choose Accounts is unmounted; active AccountsWorkflowShell was verified/repaired instead.
-- **Named engineering verification next:** Account Catalogue Add/Edit Account and Quick Actions Common Bet Combos Add/Edit Combo. These are existing repeated-form consumers within #92; defects are not assumed. Their toolbars already have CP-041 evidence.
+- **Named engineering verification completed CP-048 (2026-09-25 15:26 BST):** Account Catalogue Add/Edit Account and Common Bet Combos Add/Edit Combo, PD-FIX-302/303, repaired and proved at`a3afdfc` locally/Preview. No named form implementation or engineering check remains; broader historical unchecked families below/above are not implicitly accepted. [Evidence](../../docs/audits/platform-quality-audit.md#cp-048-personal-readiness-and-reference-forms--2026-09-25-1526-bst).
 - **Acceptance:** broader #92 owner acceptance remains outstanding. Fresh normal-owner browser/VoiceOver not run under the standing gate. #105 named implementation/engineering checks stay complete with their existing acceptance limits; #117 scoped acceptance remains recorded.
 
 ## Completed during initial hardening pass
