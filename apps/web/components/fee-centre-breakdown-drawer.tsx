@@ -2,11 +2,13 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { apiBaseUrl } from "@/lib/api";
+import { readSummaryMoney } from "@/lib/tracker-summary";
 import {
   feeCentreStateLabels,
   type FeeCentreRow,
 } from "@/lib/fee-centre-status";
 import { FinancialValue, FinancialValueReplayGroup } from "./financial-value";
+import { FinancialReadValue } from "./financial-read-value";
 import { LedgerLoadingIndicator } from "./ledger-loading-indicator";
 
 type FeePreview = {
@@ -24,13 +26,13 @@ type FeePreview = {
 };
 
 type ModuleTotals = {
-  sportsbook: string;
-  free_bet: string;
-  casino: string;
+  sportsbook?: string;
+  free_bet?: string;
+  casino?: string;
 };
 
 type FeeCentreBreakdownDrawerProps = {
-  cashAdjustmentTotal: number;
+  cashAdjustmentTotal: number | null;
   month: string;
   monthLabel: string;
   onClose: () => void;
@@ -40,10 +42,12 @@ type FeeCentreBreakdownDrawerProps = {
   profileId: string;
   profileName: string;
   result: FeeCentreRow;
+  sourceState?: "loading" | "ready" | "error";
 };
 
-function optionalMoney(value: string | null | undefined, fallback = "Not prepared") {
-  return value === null || value === undefined ? fallback : <FinancialValue value={Number(value)} />;
+function optionalMoney(value: string | null | undefined, fallback = "Unavailable") {
+  const parsed = readSummaryMoney(value);
+  return Number.isFinite(parsed) ? <FinancialValue value={parsed} /> : fallback;
 }
 
 function monthBounds(month: string) {
@@ -60,9 +64,9 @@ function persistedModuleTotals(value: string | undefined): ModuleTotals | null {
     const parsed = JSON.parse(value) as { module_totals?: Partial<ModuleTotals> };
     if (!parsed.module_totals) return null;
     return {
-      sportsbook: parsed.module_totals.sportsbook ?? "0.00",
-      free_bet: parsed.module_totals.free_bet ?? "0.00",
-      casino: parsed.module_totals.casino ?? "0.00",
+      sportsbook: parsed.module_totals.sportsbook,
+      free_bet: parsed.module_totals.free_bet,
+      casino: parsed.module_totals.casino,
     };
   } catch {
     return null;
@@ -80,33 +84,43 @@ export function FeeCentreBreakdownDrawer({
   profileId,
   profileName,
   result,
+  sourceState = "ready",
 }: FeeCentreBreakdownDrawerProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [preview, setPreview] = useState<FeePreview | null>(null);
   const [error, setError] = useState("");
-  const canReview = result.state !== "open" && result.state !== "not_applicable";
-  const revision = result.period?.current_revision;
+  const canReview = sourceState === "ready" && result.state !== "unavailable" && result.state !== "open" && result.state !== "not_applicable";
+  const revision = sourceState === "ready" ? result.period?.current_revision : undefined;
   const storedModuleTotals = useMemo(
     () => persistedModuleTotals(revision?.fee_base_breakdown_json),
     [revision?.fee_base_breakdown_json]
   );
-  const moduleTotals = storedModuleTotals ?? (preview ? {
-    sportsbook: preview.sportsbook_total,
-    free_bet: preview.free_bet_total,
-    casino: preview.casino_total,
+  const readyPreview = sourceState === "ready" ? preview : null;
+  const moduleTotals = storedModuleTotals ?? (readyPreview ? {
+    sportsbook: readyPreview.sportsbook_total,
+    free_bet: readyPreview.free_bet_total,
+    casino: readyPreview.casino_total,
   } : null);
-  const settledProfit = revision?.eligible_period_profit ?? preview?.eligible_period_profit;
-  const openingLoss = revision?.opening_loss_carryforward ?? preview?.opening_loss_carryforward;
-  const feeBase = revision?.fee_base ?? preview?.fee_base;
-  const managementFee = revision?.management_fee_amount ?? preview?.management_fee_amount;
-  const investmentFee = revision?.investment_fee_amount ?? preview?.investment_fee_amount;
-  const totalFee = revision?.total_fee_due ?? preview?.total_fee_due;
+  const settledProfit = revision?.eligible_period_profit ?? readyPreview?.eligible_period_profit;
+  const openingLoss = revision?.opening_loss_carryforward ?? readyPreview?.opening_loss_carryforward;
+  const feeBase = revision?.fee_base ?? readyPreview?.fee_base;
+  const managementFee = revision?.management_fee_amount ?? readyPreview?.management_fee_amount;
+  const investmentFee = revision?.investment_fee_amount ?? readyPreview?.investment_fee_amount;
+  const totalFee = revision?.total_fee_due ?? readyPreview?.total_fee_due;
+  const unresolvedLabel = sourceState === "loading" ? "Loading…"
+    : sourceState === "error" || storedModuleTotals || preview || error ? "Unavailable"
+    : canReview ? "Loading…" : "Not prepared";
 
   useEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog) return;
+    const trigger = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     if (open && !dialog.open) dialog.showModal();
     if (!open && dialog.open) dialog.close();
+    return () => {
+      if (dialog.open) dialog.close();
+      if (trigger?.isConnected) trigger.focus({ preventScroll: true });
+    };
   }, [open]);
 
   useEffect(() => {
@@ -125,7 +139,8 @@ export function FeeCentreBreakdownDrawer({
     })
       .then(async (response) => {
         if (!response.ok) throw new Error(`Fee breakdown failed with status ${response.status}`);
-        setPreview((await response.json()) as FeePreview);
+        const nextPreview = (await response.json()) as FeePreview;
+        if (!controller.signal.aborted) setPreview(nextPreview);
       })
       .catch((reason: unknown) => {
         if (!controller.signal.aborted) {
@@ -147,7 +162,7 @@ export function FeeCentreBreakdownDrawer({
       onClick={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
-      onClose={onClose}
+      onClose={(event) => { if (!event.currentTarget.open) onClose(); }}
       ref={dialogRef}
     >
       <div className="profile-details-drawer-content stack">
@@ -169,7 +184,8 @@ export function FeeCentreBreakdownDrawer({
         </header>
 
         <span className={`table-status fee-centre-state fee-centre-state-${result.state}`}>
-          {feeCentreStateLabels[result.state]}
+          {sourceState === "ready" ? feeCentreStateLabels[result.state]
+            : sourceState === "loading" ? "Loading fee position…" : "Fee position unavailable"}
         </span>
 
         {!storedModuleTotals && canReview && !preview && !error ? (
@@ -181,14 +197,14 @@ export function FeeCentreBreakdownDrawer({
         <section className="profile-drawer-section stack-tight">
           <h3>Monthly Performance</h3>
           <dl className="profile-detail-list">
-            <div><dt>Sportsbook / Qualifying Bets</dt><dd>{optionalMoney(moduleTotals?.sportsbook)}</dd></div>
-            <div><dt>Free Bets</dt><dd>{optionalMoney(moduleTotals?.free_bet)}</dd></div>
-            <div><dt>Casino Offers</dt><dd>{optionalMoney(moduleTotals?.casino)}</dd></div>
+            <div><dt>Sportsbook / Qualifying Bets</dt><dd>{optionalMoney(moduleTotals?.sportsbook, unresolvedLabel)}</dd></div>
+            <div><dt>Free Bets</dt><dd>{optionalMoney(moduleTotals?.free_bet, unresolvedLabel)}</dd></div>
+            <div><dt>Casino Offers</dt><dd>{optionalMoney(moduleTotals?.casino, unresolvedLabel)}</dd></div>
             <div>
               <dt>Cash Adjustments <small>Excluded from fee base</small></dt>
-              <dd><FinancialValue value={cashAdjustmentTotal} /></dd>
+              <dd><FinancialValue value={cashAdjustmentTotal ?? NaN} /></dd>
             </div>
-            <div><dt>Settled Profit</dt><dd><strong>{optionalMoney(settledProfit)}</strong></dd></div>
+            <div><dt>Settled Profit</dt><dd><strong>{optionalMoney(settledProfit, unresolvedLabel)}</strong></dd></div>
           </dl>
         </section>
         </FinancialValueReplayGroup>
@@ -197,11 +213,11 @@ export function FeeCentreBreakdownDrawer({
         <section className="profile-drawer-section stack-tight">
           <h3>Fee Calculation</h3>
           <dl className="profile-detail-list">
-            <div><dt>Opening Loss Carryforward</dt><dd>{optionalMoney(openingLoss)}</dd></div>
-            <div><dt>Fee Base</dt><dd>{optionalMoney(feeBase)}</dd></div>
-            <div><dt>Management Fee</dt><dd>{optionalMoney(managementFee)}</dd></div>
-            <div><dt>Investment Fee</dt><dd>{optionalMoney(investmentFee)}</dd></div>
-            <div><dt>Total Fee</dt><dd><strong>{optionalMoney(totalFee)}</strong></dd></div>
+            <div><dt>Opening Loss Carryforward</dt><dd>{optionalMoney(openingLoss, unresolvedLabel)}</dd></div>
+            <div><dt>Fee Base</dt><dd>{optionalMoney(feeBase, unresolvedLabel)}</dd></div>
+            <div><dt>Management Fee</dt><dd>{optionalMoney(managementFee, unresolvedLabel)}</dd></div>
+            <div><dt>Investment Fee</dt><dd>{optionalMoney(investmentFee, unresolvedLabel)}</dd></div>
+            <div><dt>Total Fee</dt><dd><strong>{optionalMoney(totalFee, unresolvedLabel)}</strong></dd></div>
           </dl>
         </section>
         </FinancialValueReplayGroup>
@@ -210,9 +226,9 @@ export function FeeCentreBreakdownDrawer({
         <section className="profile-drawer-section stack-tight">
           <h3>Withdrawal Position</h3>
           <dl className="profile-detail-list">
-            <div><dt>Fees Earned</dt><dd>{result.period?.state === "crystallised" ? <FinancialValue value={result.feesEarned} /> : "Not confirmed"}</dd></div>
-            <div><dt>Fees Withdrawn</dt><dd>{result.period?.state === "crystallised" ? <FinancialValue value={result.feesWithdrawn} /> : "—"}</dd></div>
-            <div><dt>Available to Withdraw</dt><dd><strong>{result.period?.state === "crystallised" ? <FinancialValue value={result.availableToWithdraw} /> : "—"}</strong></dd></div>
+            <div><dt>Fees Earned</dt><dd>{sourceState !== "ready" || result.period?.state === "crystallised" ? <FinancialReadValue state={sourceState} subject="Fees earned" value={result.feesEarned} /> : "Not confirmed"}</dd></div>
+            <div><dt>Fees Withdrawn</dt><dd>{sourceState !== "ready" || result.period?.state === "crystallised" ? <FinancialReadValue state={sourceState} subject="Fees withdrawn" value={result.feesWithdrawn} /> : "—"}</dd></div>
+            <div><dt>Available to Withdraw</dt><dd><strong>{sourceState !== "ready" || result.period?.state === "crystallised" ? <FinancialReadValue state={sourceState} subject="Available fees" value={result.availableToWithdraw} /> : "—"}</strong></dd></div>
           </dl>
         </section>
         </FinancialValueReplayGroup>

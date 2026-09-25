@@ -152,3 +152,96 @@ describe("fee-period summary", () => {
     });
   });
 });
+
+describe("authoritative fee output readiness", () => {
+  const rangeStart = new Date("2026-06-01T00:00:00");
+  const rangeEnd = new Date("2026-07-31T23:59:59");
+  const summarize = (source: FeePeriodApiRecord[]) =>
+    summarizeFeePeriods(source, rangeStart, rangeEnd);
+
+  it.each([null, undefined, "", "  ", "invalid", "Infinity"])(
+    "keeps each missing or invalid output %s independent from known fee measures",
+    (value) => {
+      const missingEarned = structuredClone(periods);
+      Object.assign(missingEarned[0]!.current_revision, { total_fee_due: value });
+      expect(summarize(missingEarned)).toEqual({
+        estimatedFees: 15, feesEarned: NaN, availableToWithdraw: 40, feesWithdrawn: 10,
+        readyPeriodCount: 1, crystallisedPeriodCount: 1,
+      });
+
+      const missingAvailable = structuredClone(periods);
+      Object.assign(missingAvailable[0]!, { fee_outstanding_amount: value });
+      expect(summarize(missingAvailable)).toEqual({
+        estimatedFees: 15, feesEarned: 50, availableToWithdraw: NaN, feesWithdrawn: 10,
+        readyPeriodCount: 1, crystallisedPeriodCount: 1,
+      });
+
+      const missingWithdrawn = structuredClone(periods);
+      Object.assign(missingWithdrawn[0]!, { fee_withdrawn_amount: value });
+      expect(summarize(missingWithdrawn)).toEqual({
+        estimatedFees: 15, feesEarned: 50, availableToWithdraw: 40, feesWithdrawn: NaN,
+        readyPeriodCount: 1, crystallisedPeriodCount: 1,
+      });
+
+      const missingEstimate = structuredClone(periods);
+      Object.assign(missingEstimate[1]!.current_revision, { total_fee_due: value });
+      expect(summarize(missingEstimate)).toEqual({
+        estimatedFees: NaN, feesEarned: 50, availableToWithdraw: 40, feesWithdrawn: 10,
+        readyPeriodCount: 1, crystallisedPeriodCount: 1,
+      });
+    }
+  );
+
+  it("does not turn partial Profile or period sums into complete fee amounts", () => {
+    const incomplete = structuredClone(periods);
+    Object.assign(incomplete[0]!, { fee_outstanding_amount: null });
+    const combined = combineFeePositions([summarize(incomplete), summarize(periods)]);
+    expect(combined).toEqual({
+      estimatedFees: 30, feesEarned: 100, availableToWithdraw: NaN, feesWithdrawn: 20,
+      readyPeriodCount: 2, crystallisedPeriodCount: 2,
+    });
+    expect(summarize([...periods, ...incomplete]).availableToWithdraw).toBeNaN();
+  });
+
+  it.each(["month", "year"] as const)(
+    "preserves independent earned and awaiting-confirmation %s report values",
+    (granularity) => {
+      const source = structuredClone(periods);
+      source[1]!.period_start = source[0]!.period_start;
+      source[1]!.period_end = source[0]!.period_end;
+      const key = granularity === "month" ? "2026-06" : "2026";
+      Object.assign(source[0]!.current_revision, { total_fee_due: null });
+      expect(summarizeFeePeriodsForReports(source, granularity).get(key)).toEqual({
+        feesEarned: NaN, awaitingConfirmation: 15,
+        crystallisedPeriodCount: 1, readyPeriodCount: 1,
+      });
+      source[0]!.current_revision.total_fee_due = "50.00";
+      source[1]!.current_revision.total_fee_due = "";
+      expect(summarizeFeePeriodsForReports(source, granularity).get(key)).toEqual({
+        feesEarned: 50, awaitingConfirmation: NaN,
+        crystallisedPeriodCount: 1, readyPeriodCount: 1,
+      });
+    }
+  );
+
+  it("retains authoritative zero and ignores outputs outside their state or date membership", () => {
+    const source = structuredClone(periods);
+    source[0]!.current_revision.total_fee_due = "0.00";
+    source[0]!.fee_outstanding_amount = "0.00";
+    source[0]!.fee_withdrawn_amount = "0.00";
+    // Pending fee cash outputs do not contribute to crystallised amounts.
+    Object.assign(source[1]!, { fee_outstanding_amount: null, fee_withdrawn_amount: null });
+    const outOfRange = structuredClone(periods[0]!);
+    outOfRange.period_start = "2026-08-01";
+    outOfRange.period_end = "2026-08-31";
+    Object.assign(outOfRange.current_revision, { total_fee_due: null });
+    const unknownState = structuredClone(outOfRange);
+    unknownState.period_start = "2026-06-01";
+    unknownState.period_end = "2026-06-30";
+    unknownState.state = "review_required";
+    expect(summarize([...source, outOfRange, unknownState])).toEqual({
+      estimatedFees: 15, feesEarned: 0, availableToWithdraw: 0, feesWithdrawn: 0,
+      readyPeriodCount: 1, crystallisedPeriodCount: 1,
+    });
+  });
+});

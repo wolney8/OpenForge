@@ -29,8 +29,8 @@ import {
 import { saveTrackerDatePreset } from "@/lib/tracker-settings-client";
 import { buildOperationalLedgerHref } from "@/lib/operational-actions";
 import {
-  TRACKER_HEADER_SUMMARY_READY_EVENT,
-  type TrackerHeaderSummaryReadyDetail,
+  TRACKER_HEADER_SUMMARY_UPDATED_EVENT,
+  type TrackerHeaderSummaryDetail,
 } from "@/lib/tracker-data-events";
 import {
   formatHumanDisplayDate,
@@ -486,19 +486,20 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
   ]);
 
   useEffect(() => {
-    if (!summary) return;
-    const detail: TrackerHeaderSummaryReadyDetail = {
+    if (!summary && !errorMessage) return;
+    const detail: TrackerHeaderSummaryDetail = {
       profileId,
-      overallPnl: summary.profitQuickView.overallPnl,
+      state: errorMessage ? "error" : isTrackerRangeSaving ? "loading" : "ready",
+      overallPnl: summary?.profitQuickView.overallPnl ?? null,
       profileRangeLabel: formatResolvedDateRange(resolvedRange),
       profileRangeDetail: formatResolvedDateRangeContext(resolvedRange),
     };
     window.dispatchEvent(
-      new CustomEvent<TrackerHeaderSummaryReadyDetail>(TRACKER_HEADER_SUMMARY_READY_EVENT, {
+      new CustomEvent<TrackerHeaderSummaryDetail>(TRACKER_HEADER_SUMMARY_UPDATED_EVENT, {
         detail,
       })
     );
-  }, [profileId, resolvedRange, summary]);
+  }, [errorMessage, isTrackerRangeSaving, profileId, resolvedRange, summary]);
 
   const selectedRangeReadState = isTrackerRangeSaving ? "loading" : "ready";
 

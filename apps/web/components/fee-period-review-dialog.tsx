@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { apiBaseUrl } from "@/lib/api";
-import { formatMoney } from "@/lib/tracker-summary";
+import { formatMoney, readSummaryMoney } from "@/lib/tracker-summary";
 import {
   getClosedMonthOptions,
   getPreviousMonthValue,
@@ -69,8 +69,9 @@ function monthBounds(value: string) {
   };
 }
 
-function money(value: string | null, unresolvedLabel = "Unavailable") {
-  return value === null ? unresolvedLabel : <FinancialValue value={Number(value)} />;
+function money(value: string | null | undefined, unresolvedLabel = "Unavailable") {
+  const parsed = readSummaryMoney(value);
+  return Number.isFinite(parsed) ? <FinancialValue value={parsed} /> : unresolvedLabel;
 }
 
 function blockerLabel(reason: string) {
@@ -174,8 +175,13 @@ export function FeePeriodReviewDialog({
   useEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog) return;
+    const trigger = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     if (open && !dialog.open) dialog.showModal();
     if (!open && dialog.open) dialog.close();
+    return () => {
+      if (dialog.open) dialog.close();
+      if (trigger?.isConnected) trigger.focus({ preventScroll: true });
+    };
   }, [open]);
 
   useEffect(() => {
@@ -193,8 +199,11 @@ export function FeePeriodReviewDialog({
     })
       .then(async (response) => {
         if (!response.ok) throw new Error(`Fee preview failed with status ${response.status}`);
-        setPreview((await response.json()) as FeePeriodPreview);
-        setPreviewMonth(month);
+        const nextPreview = (await response.json()) as FeePeriodPreview;
+        if (!controller.signal.aborted) {
+          setPreview(nextPreview);
+          setPreviewMonth(month);
+        }
       })
       .catch((reason: unknown) => {
         if (!controller.signal.aborted) {
@@ -213,9 +222,12 @@ export function FeePeriodReviewDialog({
     )
       .then(async (response) => {
         if (!response.ok) throw new Error("Revision audit could not be loaded");
-        setRevisions((await response.json()) as FeePeriodRevisionApiRecord[]);
-        setRevisionsPeriodId(existingPeriod.fee_period_id);
-        setRevisionAuditError("");
+        const nextRevisions = (await response.json()) as FeePeriodRevisionApiRecord[];
+        if (!controller.signal.aborted) {
+          setRevisions(nextRevisions);
+          setRevisionsPeriodId(existingPeriod.fee_period_id);
+          setRevisionAuditError("");
+        }
       })
       .catch((reason: unknown) => {
         if (!controller.signal.aborted) {
@@ -435,7 +447,7 @@ export function FeePeriodReviewDialog({
         event.preventDefault();
         onClose();
       }}
-      onClose={onClose}
+      onClose={(event) => { if (!event.currentTarget.open) onClose(); }}
       ref={dialogRef}
     >
       <header className="modal-sticky-header section-heading-row">
@@ -559,9 +571,9 @@ export function FeePeriodReviewDialog({
                               <time dateTime={revision.created_at}>{formatAuditDate(revision.created_at)}</time>
                             </div>
                             <dl className="fee-revision-values">
-                              <div><dt>Settled Profit</dt><dd><FinancialValue value={Number(revision.eligible_period_profit)} /></dd></div>
-                              <div><dt>Fee Base</dt><dd><FinancialValue value={Number(revision.fee_base)} /></dd></div>
-                              <div><dt>Total Fee</dt><dd><FinancialValue value={Number(revision.total_fee_due)} /></dd></div>
+                              <div><dt>Settled Profit</dt><dd>{money(revision.eligible_period_profit)}</dd></div>
+                              <div><dt>Fee Base</dt><dd>{money(revision.fee_base)}</dd></div>
+                              <div><dt>Total Fee</dt><dd>{money(revision.total_fee_due)}</dd></div>
                             </dl>
                             <p><strong>Reason:</strong> {revision.change_reason || "Initial monthly fee review"}</p>
                             <small>Recorded by {revision.created_by}</small>
@@ -577,7 +589,7 @@ export function FeePeriodReviewDialog({
                           {(existingPeriod.corrections ?? []).map((correction) => (
                             <FinancialValueReplayGroup key={correction.fee_correction_id}><li>
                               <strong>{correction.adjustment_type === "fee_credit" ? "Fee Credit" : "Fee Debit"}</strong>
-                              <span><FinancialValue value={Number(correction.amount)} /> · {correction.state}</span>
+                              <span>{money(correction.amount)} · {correction.state}</span>
                               <small>{correction.reason}</small>
                             </li></FinancialValueReplayGroup>
                           ))}
@@ -590,6 +602,7 @@ export function FeePeriodReviewDialog({
             ) : null}
 
             {existingPeriod?.state === "crystallised" ? (
+              <FinancialValueReplayGroup>
               <section
                 aria-labelledby="fee-period-withdrawal-title"
                 className="content-subpanel stack-tight"
@@ -650,6 +663,7 @@ export function FeePeriodReviewDialog({
                   </label>
                 </div>
               </section>
+              </FinancialValueReplayGroup>
             ) : null}
 
             {existingPeriod?.state === "crystallised" ? (

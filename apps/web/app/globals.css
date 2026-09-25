@@ -1423,6 +1423,11 @@ html[data-theme="dark"] .fund-manager-avatar {
   white-space: nowrap;
 }
 
+.summary-menu-copy > .summary-menu-subtitle {
+  overflow: visible;
+  white-space: normal;
+}
+
 .summary-menu-subtitle {
   display: inline-flex;
   align-items: center;
@@ -1433,6 +1438,9 @@ html[data-theme="dark"] .fund-manager-avatar {
 }
 
 .summary-menu-subtitle > span:first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1441,6 +1449,10 @@ html[data-theme="dark"] .fund-manager-avatar {
 .summary-menu-separator {
   flex: 0 0 auto;
   color: var(--muted);
+}
+
+.summary-menu-financial-value {
+  flex: 0 0 auto;
 }
 
 .summary-menu-financial-value,
@@ -16309,9 +16321,33 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
   }
 
   .summary-menu-button {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    row-gap: 0.15rem;
     flex: 1 1 auto;
     width: 100%;
     max-width: none;
+  }
+
+  .summary-menu-copy {
+    display: contents;
+  }
+
+  .summary-menu-copy > strong {
+    grid-column: 1;
+    grid-row: 1;
+    min-width: 0;
+  }
+
+  .summary-menu-subtitle {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    flex-wrap: wrap;
+  }
+
+  .summary-menu-icon {
+    grid-column: 2;
+    grid-row: 1;
   }
 
   .modal-panel.workflow-editor-modal {

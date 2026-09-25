@@ -1,3 +1,5 @@
+import { readSummaryMoney } from "./tracker-summary";
+
 export type FeePeriodApiRecord = {
   fee_period_id: string;
   profile_id: string;
@@ -183,11 +185,6 @@ export function buildFeeBlockerHref(
   return `/profiles/${profileId}/tracker/${route}?search=${encodedRecordId}&record=${encodedRecordId}&source=fee-review`;
 }
 
-function parseMoney(value: string): number {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
-}
-
 function dateValue(value: string, endOfDay = false): number {
   const suffix = endOfDay ? "T23:59:59.999" : "T00:00:00.000";
   return new Date(`${value.slice(0, 10)}${suffix}`).getTime();
@@ -208,15 +205,15 @@ export function summarizeFeePeriods(
 
   return included.reduce<FeePositionSummary>(
     (summary, period) => {
-      const totalDue = parseMoney(period.current_revision.total_fee_due);
+      const totalDue = readSummaryMoney(period.current_revision.total_fee_due);
       if (period.state === "ready_to_crystallise") {
         summary.estimatedFees += totalDue;
         summary.readyPeriodCount += 1;
       }
       if (period.state === "crystallised") {
         summary.feesEarned += totalDue;
-        summary.availableToWithdraw += parseMoney(period.fee_outstanding_amount);
-        summary.feesWithdrawn += parseMoney(period.fee_withdrawn_amount);
+        summary.availableToWithdraw += readSummaryMoney(period.fee_outstanding_amount);
+        summary.feesWithdrawn += readSummaryMoney(period.fee_withdrawn_amount);
         summary.crystallisedPeriodCount += 1;
       }
       return summary;
@@ -266,7 +263,7 @@ export function summarizeFeePeriodsForReports(
       crystallisedPeriodCount: 0,
       readyPeriodCount: 0,
     };
-    const amount = parseMoney(period.current_revision.total_fee_due);
+    const amount = readSummaryMoney(period.current_revision.total_fee_due);
     if (period.state === "crystallised") {
       current.feesEarned += amount;
       current.crystallisedPeriodCount += 1;

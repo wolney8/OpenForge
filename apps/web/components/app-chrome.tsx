@@ -38,8 +38,8 @@ import {
 } from "@/lib/tracker-summary";
 import {
   TRACKER_DATA_UPDATED_EVENT,
-  TRACKER_HEADER_SUMMARY_READY_EVENT,
-  type TrackerHeaderSummaryReadyDetail,
+  TRACKER_HEADER_SUMMARY_UPDATED_EVENT,
+  type TrackerHeaderSummaryDetail,
 } from "@/lib/tracker-data-events";
 import { TRACKER_SETTINGS_UPDATED_EVENT } from "@/lib/tracker-settings-client";
 import {
@@ -92,6 +92,7 @@ type HeaderSummaryState = {
   profileRangeLabel: string;
   profileSubtitle: string;
   overallPnl: number | null;
+  readState: "loading" | "ready" | "error";
 };
 
 const profileTrackerMenuRoutes = [
@@ -323,8 +324,8 @@ function AppChromeContent({
   }, [activeProfileId]);
 
   useEffect(() => {
-    const applyReadySummary = (event: Event) => {
-      const detail = (event as CustomEvent<TrackerHeaderSummaryReadyDetail>).detail;
+    const applySummary = (event: Event) => {
+      const detail = (event as CustomEvent<TrackerHeaderSummaryDetail>).detail;
       if (detail.profileId !== activeProfileId) return;
       setHeaderSummary((current) => ({
         profileId: detail.profileId,
@@ -333,15 +334,16 @@ function AppChromeContent({
             ? current.profileName
             : activeProfiles.find((profile) => profile.profile_id === detail.profileId)?.display_name ??
               "Selected profile",
-        overallPnl: detail.overallPnl,
+        overallPnl: detail.state === "ready" ? detail.overallPnl : null,
+        readState: detail.state,
         profileRangeDetail: detail.profileRangeDetail,
         profileRangeLabel: detail.profileRangeLabel,
         profileSubtitle: detail.profileRangeLabel,
       }));
     };
-    window.addEventListener(TRACKER_HEADER_SUMMARY_READY_EVENT, applyReadySummary);
+    window.addEventListener(TRACKER_HEADER_SUMMARY_UPDATED_EVENT, applySummary);
     return () => {
-      window.removeEventListener(TRACKER_HEADER_SUMMARY_READY_EVENT, applyReadySummary);
+      window.removeEventListener(TRACKER_HEADER_SUMMARY_UPDATED_EVENT, applySummary);
     };
   }, [activeProfileId, activeProfiles]);
 
@@ -412,22 +414,23 @@ function AppChromeContent({
         const rangeLabel = formatResolvedDateRange(resolvedRange);
         const rangeDetail = formatResolvedDateRangeContext(resolvedRange);
 
-        setHeaderSummary((current) => ({
-          profileId: activeProfileId,
-          profileName: profile.display_name,
-          profileRangeDetail: rangeDetail,
-          profileRangeLabel: rangeLabel,
-          profileSubtitle: rangeLabel,
-          overallPnl:
-            // Never relabel a previous total with a newly selected range while
-            // its profile-wide summary is still loading.
-            overallPnl === null &&
-            current?.profileId === activeProfileId &&
-            current.profileRangeLabel === rangeLabel &&
-            current.profileRangeDetail === rangeDetail
-              ? current.overallPnl
-              : overallPnl,
-        }));
+        setHeaderSummary((current) => {
+          const sameScope = current?.profileId === activeProfileId &&
+            current.profileRangeLabel === rangeLabel && current.profileRangeDetail === rangeDetail;
+          // Identity/cache refreshes cannot make a failed or pending page read ready.
+          const preserveReadState = current?.profileId === activeProfileId &&
+            (current.readState === "error" || (sameScope && current.readState === "loading"));
+          return {
+            profileId: activeProfileId,
+            profileName: profile.display_name,
+            profileRangeDetail: rangeDetail,
+            profileRangeLabel: rangeLabel,
+            profileSubtitle: rangeLabel,
+            overallPnl: preserveReadState ? null : overallPnl === null && sameScope
+              ? current.overallPnl : overallPnl,
+            readState: preserveReadState ? current.readState : "ready",
+          };
+        });
 
         return resolvedRange;
       };
@@ -523,6 +526,7 @@ function AppChromeContent({
         profileRangeLabel: "Header summary unavailable",
         profileSubtitle: "Header summary unavailable",
         overallPnl: null,
+        readState: "error",
       });
     });
 
@@ -595,7 +599,9 @@ function AppChromeContent({
       ? headerSummary.overallPnl
       : null;
   const profileSummaryLoading =
-    isInsideProfile && headerSummary?.profileId !== activeProfileId;
+    isInsideProfile && (headerSummary?.profileId !== activeProfileId || headerSummary.readState === "loading");
+  const profileSummaryUnavailable =
+    isInsideProfile && headerSummary?.profileId === activeProfileId && headerSummary.readState === "error";
   const recentProfileName =
     activeProfiles.find((profile) => profile.profile_id === activeProfileId)?.display_name ??
     (headerSummary?.profileId === activeProfileId ? headerSummary.profileName : "");
@@ -720,6 +726,8 @@ function AppChromeContent({
                           <span aria-hidden="true" className="button-spinner" />
                           <span>Loading Profile summary</span>
                         </>
+                      ) : profileSummaryUnavailable ? (
+                        <span>Profile summary unavailable</span>
                       ) : (
                         <span>Total P&amp;L for {profileRangeLabel}</span>
                       )}

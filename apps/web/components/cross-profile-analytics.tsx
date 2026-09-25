@@ -478,7 +478,8 @@ export function CrossProfileAnalytics({
 
     const hasCompleteCriticalCache =
       cachedDatasets.size === requestedProfiles.length &&
-      cachedTrackerSettings.size === requestedProfiles.length;
+      cachedTrackerSettings.size === requestedProfiles.length &&
+      cachedFeePeriods.size === requestedProfiles.length;
 
     // React state updates from effects remain asynchronous, but the task is
     // cancelled if the request settles first. This prevents a delayed loading
@@ -664,11 +665,18 @@ export function CrossProfileAnalytics({
 
   // Directory-only reads must not hide or replay confirmed Active-Profile totals.
   // A missing/failed Active source is not an authoritative zero or partial total.
-  const headlineReadState = failures.some((failure) => activeProfileIds.includes(failure.profileId))
-    ? "error"
-    : activeProfileIds.every((id) => datasets.has(id) && trackerSettings.has(id) && feePeriods.has(id))
-    ? "ready"
-    : "loading";
+  const profileReadState = (ids: string[], kind: "summary" | "fees" = "summary"): "loading" | "ready" | "error" => {
+    if (failures.some((failure) => ids.includes(failure.profileId))) return "error";
+    const missing = ids.filter((id) => kind === "fees" ? !feePeriods.has(id) : !datasets.has(id) || !trackerSettings.has(id));
+    if (missing.length === 0) return "ready";
+    // Preserve Fee Centre's existing all-Profile membership without requesting
+    // every archived Profile or silently presenting the loaded subset as complete.
+    return missing.some((id) => !requestedProfileIds.includes(id)) ? "error" : "loading";
+  };
+  const headlineReadState = profileReadState(activeProfileIds);
+  const activeFeeReadState = profileReadState(activeProfileIds, "fees");
+  const selectedReadState = profileReadState(selectedProfileIds);
+  const feeCentreReadState = profileReadState(profileRecords.map((profile) => profile.profileId), "fees");
 
   const allProfilesCombined = useMemo(
     () => aggregateCrossProfileReporting(allProfileSummaries),
@@ -772,11 +780,11 @@ export function CrossProfileAnalytics({
     });
   }, [feeCentreMonth]);
   const feeBreakdownCashAdjustmentTotal = useMemo(() => {
-    if (!feeBreakdownProfileId) return 0;
+    if (!feeBreakdownProfileId) return Number.NaN;
     const dataset = datasets.get(feeBreakdownProfileId);
     return dataset
       ? summarizeTrackerData(dataset, feeCentreRange).reportingModel.selectedRange.cashAdjustments
-      : 0;
+      : Number.NaN;
   }, [datasets, feeBreakdownProfileId, feeCentreRange]);
   const selectedFeePeriods = useMemo(
     () =>
@@ -941,6 +949,10 @@ export function CrossProfileAnalytics({
   }
 
   function selectTab(tab: AnalyticsTab) {
+    if (tab === initialTab) {
+      setActiveTab(tab);
+      return;
+    }
     if (tab === "profiles") {
       beginRouteTransition();
       router.push("/profiles");
@@ -1194,12 +1206,11 @@ export function CrossProfileAnalytics({
           {failures
             .filter((failure) => selectedProfileIds.includes(failure.profileId))
             .map((failure) => failure.displayName)
-            .join(", ")} are excluded from totals.
+            .join(", ")} are unavailable. Summary cards require complete reads; other breakdowns contain only the known Profile rows.
         </div>
       ) : null}
 
-      {!isLoading ? (
-        <section
+      <section
           aria-label="Combined portfolio visual summary"
           className="portfolio-dashboard-view portfolio-dashboard-compact profiles-visual-header"
           data-pd-id="profiles.visual-summary"
@@ -1214,7 +1225,7 @@ export function CrossProfileAnalytics({
               <span className="badge">{preset}</span>
             </div>
             <strong className="dashboard-hero-value">
-              <FinancialValue
+              <FinancialReadValue state={selectedReadState} subject="combined profit and loss"
                 label="Combined selected range profit and loss"
                 value={combined.totals.grossBettingPnl}
               />
@@ -1226,15 +1237,15 @@ export function CrossProfileAnalytics({
               </span>
               <span>
                 <small>Retained Profit</small>
-                <FinancialValue value={combined.totals.retainedProfit} />
+                <FinancialReadValue state={selectedReadState} subject="retained profit" value={combined.totals.retainedProfit} />
               </span>
               <span>
                 <small>Cash Snapshot</small>
-                <FinancialValue value={trackerRangeActiveProfilesCombined.totals.cashSnapshot} />
+                <FinancialReadValue state={headlineReadState} subject="Account cash" value={trackerRangeActiveProfilesCombined.totals.cashSnapshot} />
               </span>
               <span>
                 <small>Fee Position</small>
-                <FinancialValue value={activeProfilesFeePosition.availableToWithdraw} />
+                <FinancialReadValue state={activeFeeReadState} subject="fee position" value={activeProfilesFeePosition.availableToWithdraw} />
               </span>
             </div>
           </article>
@@ -1249,32 +1260,23 @@ export function CrossProfileAnalytics({
             <dl className="dashboard-focus-list">
               <div>
                 <dt>Sportsbook</dt>
-                <dd>{combined.profileRows.reduce((total, row) => total + row.sportsbookActionCount, 0)}</dd>
+                <dd>{selectedReadState === "ready" ? combined.profileRows.reduce((total, row) => total + row.sportsbookActionCount, 0) : selectedReadState === "loading" ? "Loading…" : "Unavailable"}</dd>
               </div>
               <div>
                 <dt>Free Bets</dt>
-                <dd>{combined.profileRows.reduce((total, row) => total + row.freeBetActionCount, 0)}</dd>
+                <dd>{selectedReadState === "ready" ? combined.profileRows.reduce((total, row) => total + row.freeBetActionCount, 0) : selectedReadState === "loading" ? "Loading…" : "Unavailable"}</dd>
               </div>
               <div>
                 <dt>Casino</dt>
-                <dd>{combined.profileRows.reduce((total, row) => total + row.casinoActionCount, 0)}</dd>
+                <dd>{selectedReadState === "ready" ? combined.profileRows.reduce((total, row) => total + row.casinoActionCount, 0) : selectedReadState === "loading" ? "Loading…" : "Unavailable"}</dd>
               </div>
               <div>
                 <dt>Extra Place</dt>
-                <dd>{combined.profileRows.reduce((total, row) => total + row.extraPlaceActionCount, 0)}</dd>
+                <dd>{selectedReadState === "ready" ? combined.profileRows.reduce((total, row) => total + row.extraPlaceActionCount, 0) : selectedReadState === "loading" ? "Loading…" : "Unavailable"}</dd>
               </div>
             </dl>
           </article>
         </section>
-      ) : activeTab === "profiles" ? (
-        <section
-          aria-busy="true"
-          className="portfolio-dashboard-view profile-reporting-secondary-loader"
-          data-pd-id="profiles.financial-summary.loading"
-        >
-          <LedgerLoadingIndicator label="Loading Profile financial summaries" />
-        </section>
-      ) : null}
 
       <div
         aria-label="Fund Manager profile and analytics sections"
@@ -1301,7 +1303,7 @@ export function CrossProfileAnalytics({
         ))}
       </div>
 
-      {!isLoading ? (
+      {!isLoading || activeTab === "fees" || activeTab === "exposure" ? (
         <>
           {activeTab === "fees" ? (
             <section
@@ -1312,27 +1314,32 @@ export function CrossProfileAnalytics({
               role="tabpanel"
             >
               <section className="stat-strip" aria-label="Fund Manager fee position">
+                <FinancialValueReplayGroup>
                 <article className="stat-card">
                   <span className="eyebrow">Available to Withdraw</span>
-                  <strong><FinancialValue value={allTimeFeePosition.availableToWithdraw} /></strong>
+                  <strong><FinancialReadValue state={feeCentreReadState} subject="available fees" value={allTimeFeePosition.availableToWithdraw} /></strong>
                   <span>Confirmed and not yet withdrawn</span>
                 </article>
+                </FinancialValueReplayGroup>
                 <article className="stat-card">
                   <span className="eyebrow">Waiting for Confirmation</span>
-                  <strong>{feeCentreRows.filter((row) => row.result.state === "waiting_for_confirmation").length}</strong>
+                  <strong>{feeCentreReadState === "ready" ? feeCentreRows.filter((row) => row.result.state === "waiting_for_confirmation").length : feeCentreReadState === "loading" ? "Loading…" : "Unavailable"}</strong>
                   <span>Prepared reviews for the selected month</span>
                 </article>
                 <article className="stat-card">
                   <span className="eyebrow">Review Required</span>
-                  <strong>{feeCentreRows.filter((row) => row.result.state === "review_required").length}</strong>
+                  <strong>{feeCentreReadState === "ready" ? feeCentreRows.filter((row) => row.result.state === "review_required").length : feeCentreReadState === "loading" ? "Loading…" : "Unavailable"}</strong>
                   <span>Profiles not yet prepared for the selected month</span>
                 </article>
+                <FinancialValueReplayGroup>
                 <article className="stat-card">
                   <span className="eyebrow">Fees Withdrawn</span>
-                  <strong><FinancialValue value={allTimeFeePosition.feesWithdrawn} /></strong>
+                  <strong><FinancialReadValue state={feeCentreReadState} subject="withdrawn fees" value={allTimeFeePosition.feesWithdrawn} /></strong>
                   <span>Audited fee cash movements</span>
                 </article>
+                </FinancialValueReplayGroup>
               </section>
+              {feeCentreReadState === "error" ? <p className="muted">The all-Profile fee total is incomplete. Known Profile amounts remain available below; unread or failed Profiles are not treated as zero.</p> : null}
               <section className="content-subpanel stack">
                 <div className="section-heading-row">
                   <div>
@@ -1354,7 +1361,8 @@ export function CrossProfileAnalytics({
                     </thead>
                     <tbody>
                       {feeCentreRows.map(({ profile, result }) => {
-                        const canReview = result.state !== "open" && result.state !== "not_applicable";
+                        const readState = profileReadState([profile.profileId], "fees");
+                        const canReview = readState === "ready" && result.state !== "unavailable" && result.state !== "open" && result.state !== "not_applicable";
                         const actionLabel = result.state === "review_required"
                           ? "Review Fees"
                           : result.state === "waiting_for_confirmation"
@@ -1382,12 +1390,12 @@ export function CrossProfileAnalytics({
                             <td><strong>{profile.displayName}</strong><br /><small>{profile.profileCode}</small></td>
                             <td>
                               <span className={`table-status fee-centre-state fee-centre-state-${result.state}`}>
-                                {feeCentreStateLabels[result.state]}
+                                {readState === "ready" ? feeCentreStateLabels[result.state] : readState === "loading" ? "Loading…" : "Unavailable"}
                               </span>
                             </td>
-                            <td>{result.period?.state === "crystallised" ? <FinancialValue value={result.feesEarned} /> : "—"}</td>
-                            <td>{result.period?.state === "crystallised" ? <FinancialValue value={result.feesWithdrawn} /> : "—"}</td>
-                            <td>{result.period?.state === "crystallised" ? <FinancialValue value={result.availableToWithdraw} /> : "—"}</td>
+                            <td>{readState !== "ready" || result.period?.state === "crystallised" ? <FinancialReadValue state={readState} subject="fees" value={result.feesEarned} /> : "—"}</td>
+                            <td>{readState !== "ready" || result.period?.state === "crystallised" ? <FinancialReadValue state={readState} subject="fees" value={result.feesWithdrawn} /> : "—"}</td>
+                            <td>{readState !== "ready" || result.period?.state === "crystallised" ? <FinancialReadValue state={readState} subject="fees" value={result.availableToWithdraw} /> : "—"}</td>
                             <td>
                               <button
                                 aria-label={`${actionLabel} for ${profile.displayName}, ${feeCentreMonth}`}
@@ -1423,17 +1431,19 @@ export function CrossProfileAnalytics({
               <section className="stat-strip" aria-label="Combined exposure totals">
                 <article className="stat-card">
                   <span className="eyebrow">Open / overdue</span>
-                  <strong>{combined.totals.openBets} / {combined.totals.overdueBets}</strong>
+                  <strong>{selectedReadState === "ready" ? `${combined.totals.openBets} / ${combined.totals.overdueBets}` : selectedReadState === "loading" ? "Loading…" : "Unavailable"}</strong>
                   <span>Profile-scoped rows combined</span>
                 </article>
+                <FinancialValueReplayGroup>
                 <article className="stat-card">
                   <span className="eyebrow">Current liability</span>
-                  <strong><FinancialValue value={combined.totals.currentLiability} /></strong>
+                  <strong><FinancialReadValue state={selectedReadState} subject="current liability" value={combined.totals.currentLiability} /></strong>
                   <span>Open sportsbook, free-bet, and each-way exposure</span>
                 </article>
+                </FinancialValueReplayGroup>
                 <article className="stat-card">
                   <span className="eyebrow">Expiring free bets</span>
-                  <strong>{combined.totals.expiringFreeBetCount}</strong>
+                  <strong>{selectedReadState === "ready" ? combined.totals.expiringFreeBetCount : selectedReadState === "loading" ? "Loading…" : "Unavailable"}</strong>
                   <span>Available rows inside alert windows</span>
                 </article>
               </section>
@@ -1681,10 +1691,10 @@ export function CrossProfileAnalytics({
           <FinancialValueReplayGroup>
             <article className="stat-card" data-pd-id="profiles.fees.available-to-withdraw">
               <span className="eyebrow">Available to Withdraw</span>
-              <strong><FinancialReadValue state={headlineReadState} subject="available fees" value={activeProfilesFeePosition.availableToWithdraw} zeroTone="neutral" /></strong>
+              <strong><FinancialReadValue state={activeFeeReadState} subject="available fees" value={activeProfilesFeePosition.availableToWithdraw} zeroTone="neutral" /></strong>
               <span>
-                {headlineReadState !== "ready"
-                  ? headlineReadState === "loading" ? "Loading fee position" : "Fee position unavailable"
+                {activeFeeReadState !== "ready"
+                  ? activeFeeReadState === "loading" ? "Loading fee position" : "Fee position unavailable"
                   : activeProfilesFeePosition.crystallisedPeriodCount > 0
                   ? <><FinancialValue value={activeProfilesFeePosition.feesEarned} /> earned · <FinancialValue value={activeProfilesFeePosition.feesWithdrawn} /> withdrawn</>
                   : "No crystallised fee periods in this range"}
@@ -1804,10 +1814,10 @@ export function CrossProfileAnalytics({
                         </span>
                       </span>
                     </td>
-                    <td>{profile.summary ? <FinancialValue value={profile.summary.grossBettingPnl} /> : isLoading ? <ReportingCellLoading label={`Loading ${profile.displayName} profit and loss`} /> : failedProfileIds.has(profile.profileId) ? "Unavailable" : <FinancialValue value={0} />}</td>
+                    <td><FinancialReadValue state={profileReadState([profile.profileId])} subject="profit and loss" value={profile.summary?.grossBettingPnl ?? Number.NaN} /></td>
                     <td>
                       <span className="table-status">
-                        {isLoading ? <ReportingCellLoading label={`Loading ${profile.displayName} fee position`} /> : failedProfileIds.has(profile.profileId) ? "Unavailable" : <FinancialValue value={feePositionByProfile.get(profile.profileId)?.availableToWithdraw ?? 0} />}
+                        <FinancialReadValue state={profileReadState([profile.profileId], "fees")} subject="fee position" value={feePositionByProfile.get(profile.profileId)?.availableToWithdraw ?? Number.NaN} />
                       </span>
                     </td>
                     <td>{profile.summary ? profile.summary.openBets : isLoading ? <ReportingCellLoading label={`Loading ${profile.displayName} open positions`} /> : failedProfileIds.has(profile.profileId) ? "Unavailable" : 0}</td>
@@ -1889,6 +1899,7 @@ export function CrossProfileAnalytics({
       {feeBreakdownRow ? (
         <FeeCentreBreakdownDrawer
           cashAdjustmentTotal={feeBreakdownCashAdjustmentTotal}
+          sourceState={profileReadState([feeBreakdownRow.profile.profileId], "fees")}
           key={`${feeBreakdownRow.profile.profileId}-${feeCentreMonth}`}
           month={feeCentreMonth}
           monthLabel={feeCentreMonthLabel}
@@ -1956,10 +1967,10 @@ export function CrossProfileAnalytics({
             <section className="profile-drawer-section stack-tight" data-pd-id="profiles.drawer.fee-position">
               <h3>Fee Position</h3>
               <dl className="profile-detail-list">
-                <div><dt>Estimated Fees</dt><dd>{isLoading ? <ReportingCellLoading label="Loading estimated fees" /> : <FinancialValue value={detailFeePosition?.estimatedFees ?? 0} />}</dd></div>
-                <div><dt>Fees Earned</dt><dd>{isLoading ? <ReportingCellLoading label="Loading fees earned" /> : <FinancialValue value={detailFeePosition?.feesEarned ?? 0} />}</dd></div>
-                <div><dt>Available to Withdraw</dt><dd>{isLoading ? <ReportingCellLoading label="Loading fees available to withdraw" /> : <FinancialValue value={detailFeePosition?.availableToWithdraw ?? 0} />}</dd></div>
-                <div><dt>Fees Withdrawn</dt><dd>{isLoading ? <ReportingCellLoading label="Loading withdrawn fees" /> : <FinancialValue value={detailFeePosition?.feesWithdrawn ?? 0} />}</dd></div>
+                <div><dt>Estimated Fees</dt><dd><FinancialReadValue state={profileReadState([detailProfile.profileId], "fees")} subject="estimated fees" value={detailFeePosition?.estimatedFees ?? Number.NaN} /></dd></div>
+                <div><dt>Fees Earned</dt><dd><FinancialReadValue state={profileReadState([detailProfile.profileId], "fees")} subject="fees earned" value={detailFeePosition?.feesEarned ?? Number.NaN} /></dd></div>
+                <div><dt>Available to Withdraw</dt><dd><FinancialReadValue state={profileReadState([detailProfile.profileId], "fees")} subject="fees available to withdraw" value={detailFeePosition?.availableToWithdraw ?? Number.NaN} /></dd></div>
+                <div><dt>Fees Withdrawn</dt><dd><FinancialReadValue state={profileReadState([detailProfile.profileId], "fees")} subject="withdrawn fees" value={detailFeePosition?.feesWithdrawn ?? Number.NaN} /></dd></div>
               </dl>
               <button
                 className="button-link"

@@ -886,8 +886,8 @@ export function summarizeTrackerData(
     ).length;
 
   const currentLiability =
-    openSportsbook.reduce((sum, row) => sum + (row.calculation_state === "review_required" && row.calculated_liability_1 == null ? NaN : parseMoney(row.calculated_liability_1)), 0) +
-    openFreeBets.reduce((sum, row) => sum + (row.calculation_state === "review_required" && row.calculated_liability_1 == null ? NaN : parseMoney(row.calculated_liability_1)), 0) +
+    openSportsbook.reduce((sum, row) => sum + readSummaryMoney(row.calculated_liability_1), 0) +
+    openFreeBets.reduce((sum, row) => sum + readSummaryMoney(row.calculated_liability_1), 0) +
     openEachWayExtraPlaces.reduce(
       (sum, row) => sum + readSummaryMoney(row.win_liability) + readSummaryMoney(row.place_liability),
       0

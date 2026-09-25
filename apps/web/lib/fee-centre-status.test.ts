@@ -61,4 +61,43 @@ describe("fee centre status", () => {
       deriveFeeCentreRow({ ...common, trackingStartDate: "2026-07-01", periods: [] }).state
     ).toBe("not_applicable");
   });
+
+  it.each([null, undefined, "", "  ", "invalid", "Infinity"])(
+    "does not infer a withdrawal status from missing or invalid output %s",
+    (value) => {
+      const missingAvailable = period({ fee_withdrawn_amount: "5.00" });
+      Object.assign(missingAvailable, { fee_outstanding_amount: value });
+      const availableResult = deriveFeeCentreRow({ ...common, periods: [missingAvailable] });
+      expect(availableResult.state).toBe("unavailable");
+      expect(availableResult.availableToWithdraw).toBeNaN();
+      expect(availableResult.feesEarned).toBe(20);
+      expect(availableResult.feesWithdrawn).toBe(5);
+
+      const missingWithdrawn = period();
+      Object.assign(missingWithdrawn, { fee_withdrawn_amount: value });
+      const withdrawnResult = deriveFeeCentreRow({ ...common, periods: [missingWithdrawn] });
+      expect(withdrawnResult.state).toBe("unavailable");
+      expect(withdrawnResult.feesWithdrawn).toBeNaN();
+      expect(withdrawnResult.feesEarned).toBe(20);
+      expect(withdrawnResult.availableToWithdraw).toBe(20);
+    }
+  );
+
+  it("keeps independently known withdrawal outputs when earned fees are unavailable", () => {
+    const source = period({ fee_withdrawn_amount: "5.00", fee_outstanding_amount: "15.00" });
+    Object.assign(source.current_revision, { total_fee_due: null });
+    const result = deriveFeeCentreRow({ ...common, periods: [source] });
+    expect(result.feesEarned).toBeNaN();
+    expect(result.feesWithdrawn).toBe(5);
+    expect(result.availableToWithdraw).toBe(15);
+  });
+
+  it("does not classify a zero outstanding amount as done when withdrawals are unknown", () => {
+    const source = period({ fee_outstanding_amount: "0.00" });
+    Object.assign(source, { fee_withdrawn_amount: null });
+    const result = deriveFeeCentreRow({ ...common, periods: [source] });
+    expect(result.state).toBe("unavailable");
+    expect(result.availableToWithdraw).toBe(0);
+    expect(result.feesWithdrawn).toBeNaN();
+  });
 });

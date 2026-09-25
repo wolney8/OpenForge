@@ -777,3 +777,72 @@ describe("Reports required output readiness", () => {
     result=summarizeTrackerData(source,range);expect(result.profitQuickView.eachWayExtraPlaces.finalValue).toBe(7);
   });
 });
+
+describe.each(["sportsbook", "free-bets"] as const)("%s required liability output", (module) => {
+  const range = resolveDateRange({ preset: "Custom", customStart: "2026-07-01", customEnd: "2026-07-31" });
+  function fixture(): TrackerSummaryDataset {
+    const openValue = {
+      status: "Placed", result: "Pending", date_settled: "2026-07-01T12:00:00",
+      counts_as_open: true, calculation_state: "resolved", calculated_liability_1: "15.00",
+      reporting_value: "12.50", projected_current_pnl: "12.50", final_net_pnl: null,
+      calculation_notes: ["The audited manual override remains the authoritative reporting value."],
+    };
+    return {
+      accounts: [dataset.accounts[0]!],
+      sportsbookBets: module === "sportsbook" ? [{ ...dataset.sportsbookBets[0]!, ...openValue }] : [],
+      freeBets: module === "free-bets" ? [{ ...dataset.freeBets[0]!, ...openValue }] : [],
+      casinoOffers: [], cashAdjustments: [], eachWayExtraPlaces: [],
+    };
+  }
+
+  it.each([null, "", "  ", "invalid", "Infinity"])(
+    "retains known historical P&L while required liability %s stays unavailable",
+    (value) => {
+      const source = fixture();
+      const row = source.sportsbookBets[0] ?? source.freeBets[0]!;
+      row.calculated_liability_1 = value;
+      const result = summarizeTrackerData(source, range);
+      expect(result.betsQuickView.currentLiability).toBeNaN();
+      expect(result.profitQuickView.overallPnl).toBe(12.5);
+      expect(result.reportingModel.selectedRange.openCurrentValue).toBe(12.5);
+      expect(result.accountQuickView.cashSnapshot).toBe(100);
+    }
+  );
+
+  it("does not infer zero liability from an incomplete calculation state", () => {
+    const source = fixture();
+    const row = source.sportsbookBets[0] ?? source.freeBets[0]!;
+    Object.assign(row, { calculation_state: "incomplete", calculated_liability_1: null,
+      reporting_value: null, projected_current_pnl: null });
+    expect(summarizeTrackerData(source, range).betsQuickView.currentLiability).toBeNaN();
+  });
+
+  it("keeps zero, known liability and existing open/date membership authoritative", () => {
+    const source = fixture();
+    const row = source.sportsbookBets[0] ?? source.freeBets[0]!;
+    expect(summarizeTrackerData(source, range).betsQuickView.currentLiability).toBe(15);
+    row.calculated_liability_1 = "0.00";
+    expect(summarizeTrackerData(source, range).betsQuickView.currentLiability).toBe(0);
+    row.calculated_liability_1 = null;
+    row.counts_as_open = false;
+    expect(summarizeTrackerData(source, range).betsQuickView.currentLiability).toBe(0);
+    row.counts_as_open = true;
+    row.date_settled = "2026-08-01T12:00:00";
+    expect(summarizeTrackerData(source, range).betsQuickView.currentLiability).toBe(0);
+  });
+
+  it("never exposes a known partial liability as the complete sum", () => {
+    const source = fixture();
+    const row = source.sportsbookBets[0] ?? source.freeBets[0]!;
+    row.calculated_liability_1 = null;
+    source.eachWayExtraPlaces = [{
+      each_way_extra_place_id: "EP-KNOWN", mode: "Extra Place", placed_at: "2026-07-01T12:00:00",
+      runner: "Synthetic runner", race: "Synthetic race", bookmaker: "Bookie A",
+      status: "Placed", result: "Pending", current_value: "0.00", final_value: null,
+      win_liability: "5.00", place_liability: "2.50",
+    }];
+    const result = summarizeTrackerData(source, range);
+    expect(result.betsQuickView.currentLiability).toBeNaN();
+    expect(result.profitQuickView.overallPnl).toBe(12.5);
+  });
+});
