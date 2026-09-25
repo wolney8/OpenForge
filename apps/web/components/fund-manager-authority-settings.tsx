@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { apiBaseUrl } from "@/lib/api";
+import { formatApiErrorBody } from "@/lib/api-error";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
@@ -18,7 +19,7 @@ type AuthorityRow = {
 };
 
 const authorityLabels: Record<string, string> = {
-  offer_name: "Sportsbook and free-bet offer names",
+  offer_name: "Sportsbook / Free Bet offers",
   casino_offer_name: "Casino offer names",
   offer_type: "Offer types",
   bet_type: "Bet types",
@@ -52,6 +53,7 @@ export function FundManagerAuthoritySettings() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const dialogRef = useRef<HTMLElement | null>(null);
+  const savingRef = useRef(false);
 
   useBodyScrollLock(isOpen);
   useDialogFocusLifecycle(isOpen, dialogRef);
@@ -86,6 +88,7 @@ export function FundManagerAuthoritySettings() {
   const visibleRows = sortedRows.slice((page - 1) * pageSize, page * pageSize);
 
   function openCreate() {
+    setError("");
     setEditing(null);
     setIsCreating(true);
     setDraftType(typeFilter);
@@ -95,6 +98,7 @@ export function FundManagerAuthoritySettings() {
   }
 
   function openEdit(row: AuthorityRow) {
+    setError("");
     setIsCreating(false);
     setEditing(row);
     setDraftType(row.lookup_type);
@@ -105,41 +109,52 @@ export function FundManagerAuthoritySettings() {
 
   async function saveAuthority() {
     const value = draftValue.trim();
-    if (!value) return;
+    if (!value || savingRef.current) return;
+    savingRef.current = true;
     setIsSaving(true);
     setError("");
     const url = editing
       ? apiBaseUrl + "/fund-manager/lookup-values/" + editing.lookup_value_id
       : apiBaseUrl + "/fund-manager/lookup-values";
-    const response = await fetch(url, {
-      method: editing ? "PUT" : "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        lookup_type: draftType,
-        option_value: value,
-        status: draftStatus,
-        sort_order: editing?.sort_order ?? filteredRows.length,
-      }),
-    });
-    if (!response.ok) {
-      setError(await response.text());
+    try {
+      const response = await fetch(url, {
+        method: editing ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          lookup_type: draftType,
+          option_value: value,
+          status: draftStatus,
+          sort_order: editing?.sort_order ?? filteredRows.length,
+        }),
+      });
+      if (!response.ok) {
+        throw new Error(formatApiErrorBody(await response.text(), "Tracker list value could not be saved."));
+      }
+      const saved = await response.json() as AuthorityRow;
+      setRows((current) => current.some(row => row.lookup_value_id === saved.lookup_value_id)
+        ? current.map(row => row.lookup_value_id === saved.lookup_value_id ? saved : row)
+        : [...current, saved]);
+      setMessage((editing ? "Updated " : "Added ") + value + ".");
+      setEditing(null);
+      setIsCreating(false);
+      setIsOpen(false);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Tracker list value could not be saved.");
+    } finally {
+      savingRef.current = false;
       setIsSaving(false);
-      return;
     }
-    setMessage((editing ? "Updated " : "Added ") + value + ".");
-    setEditing(null);
-    setIsCreating(false);
-    await loadRows();
-    setIsSaving(false);
   }
 
   function closeEditor() {
+    if (savingRef.current) return;
     setEditing(null);
     setIsCreating(false);
     setIsOpen(false);
   }
 
   const closeDialog = useCallback(() => {
+    if (savingRef.current) return;
     setEditing(null);
     setIsCreating(false);
     setIsOpen(false);
@@ -168,7 +183,7 @@ export function FundManagerAuthoritySettings() {
           <article className="stat-card"><span>Current List</span><strong>{rows.filter((row) => row.lookup_type === typeFilter).length}</strong><small>{authorityLabels[typeFilter]}</small></article>
         </section>
         {isLoading && !rows.length ? <LedgerLoadingIndicator label="Loading tracker lists" /> : null}
-        {error ? <p className="error-text" role="alert">{error}</p> : null}
+        {error && !isOpen ? <p className="error-text" role="alert">{error}</p> : null}
         <div className="table-toolbar settings-table-toolbar fund-manager-authority-toolbar"><label className="field-control table-search-field"><span>Search</span><input aria-label="Search Fund Manager tracker list" data-pd-id="fund-manager-authorities.search" onChange={(event) => { setSearch(event.target.value); setPage(1); }} type="search" value={search} /></label><div className="settings-table-filter-group"><label className="field-control table-filter-field"><span>List</span><select data-pd-id="fund-manager-authorities.list-filter" onChange={(event) => { setTypeFilter(event.target.value); setPage(1); }} value={typeFilter}>{Object.entries(authorityLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><button className="modal-primary-button icon-text-action" data-pd-id="fund-manager-authorities.add" onClick={openCreate} type="button"><span aria-hidden="true" className="material-symbols-outlined">add</span><span>Add Value</span></button></div></div>
         <LedgerPagination ariaLabel="Tracker Lists" currentPage={page} onPageChange={setPage} onPageSizeChange={(next) => { setPageSize(next); setPage(1); }} pageCount={pageCount} pageSize={pageSize} position="top" totalRows={sortedRows.length} />
         <LedgerTableScroll dataPdId="fund-manager-authorities.settings-table"><table className="data-table"><thead><tr><th aria-sort={sortDirection === "asc" ? "ascending" : "descending"}><button aria-label={`Sort tracker list ${sortDirection === "asc" ? "descending" : "ascending"}`} className="table-sort-button is-active" onClick={() => setSortDirection((current) => current === "asc" ? "desc" : "asc")} type="button">Value<span aria-hidden="true" className="material-symbols-outlined">{sortDirection === "asc" ? "arrow_upward" : "arrow_downward"}</span></button></th><th>Status</th><th>Action</th></tr></thead><tbody>{visibleRows.map((row) => <tr key={row.lookup_value_id}><td>{row.option_value}</td><td><span className="table-chip">{row.status}</span></td><td><button aria-label={`Edit ${row.option_value}`} className="icon-button" onClick={() => openEdit(row)} type="button"><span aria-hidden="true" className="material-symbols-outlined">edit</span></button></td></tr>)}</tbody></table></LedgerTableScroll>
@@ -176,10 +191,10 @@ export function FundManagerAuthoritySettings() {
       </section>
       {isOpen && typeof document !== "undefined" ? createPortal(
         <div className="modal-backdrop modal-backdrop-elevated">
-          <section aria-label="Manage Fund Manager tracker lists" aria-modal="true" className="modal-panel workflow-editor-modal fund-manager-settings-modal" data-pd-id="fund-manager-authorities.dialog" ref={dialogRef} role="dialog" tabIndex={-1}>
+          <section aria-label="Manage Fund Manager tracker lists" aria-modal="true" className="modal-panel workflow-editor-modal fund-manager-settings-modal settings-adaptive-modal" data-pd-id="fund-manager-authorities.dialog" ref={dialogRef} role="dialog" tabIndex={-1}>
             <header className="workflow-editor-modal-header">
               <div><span className="eyebrow">Fund Manager Settings</span><h2>Tracker Lists</h2></div>
-              <button aria-label="Close tracker lists" className="modal-close-button" onClick={closeDialog} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button>
+              <button aria-label="Close tracker lists" className="modal-close-button" disabled={isSaving} onClick={closeDialog} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button>
             </header>
             <div className="workflow-editor-modal-body stack fund-manager-authority-body">
               {isLoading ? <LedgerLoadingIndicator label="Loading tracker lists" /> : null}
@@ -200,10 +215,10 @@ export function FundManagerAuthoritySettings() {
                 </>
               ) : null}
               {editing || isCreating ? (
-                <div className="form-grid fund-manager-authority-editor" data-pd-id="fund-manager-authorities.editor">
-                  <label className="field-control"><span>List</span><select data-pd-id="fund-manager-authorities.editor.list" onChange={(event) => setDraftType(event.target.value)} value={draftType}>{Object.entries(authorityLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-                  <label className="field-control"><span>Value</span><input data-pd-id="fund-manager-authorities.editor.value" maxLength={120} onChange={(event) => setDraftValue(event.target.value)} value={draftValue} /></label>
-                  <label className="field-control"><span>Status</span><select data-pd-id="fund-manager-authorities.editor.status" onChange={(event) => setDraftStatus(event.target.value as "Active" | "Archived")} value={draftStatus}><option>Active</option><option>Archived</option></select></label>
+                <div className="form-grid settings-dialog-form-grid fund-manager-authority-editor" data-pd-id="fund-manager-authorities.editor">
+                  <label className="field-control"><span>List</span><select data-pd-id="fund-manager-authorities.editor.list" disabled={isSaving} onChange={(event) => setDraftType(event.target.value)} value={draftType}>{Object.entries(authorityLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+                  <label className="field-control"><span>Value</span><input aria-describedby={!draftValue.trim() ? "fund-manager-authorities.value-help" : undefined} data-pd-id="fund-manager-authorities.editor.value" disabled={isSaving} maxLength={120} onChange={(event) => setDraftValue(event.target.value)} value={draftValue} />{!draftValue.trim() ? <small id="fund-manager-authorities.value-help">Enter a value to save.</small> : null}</label>
+                  <label className="field-control"><span>Status</span><select data-pd-id="fund-manager-authorities.editor.status" disabled={isSaving} onChange={(event) => setDraftStatus(event.target.value as "Active" | "Archived")} value={draftStatus}><option>Active</option><option>Archived</option></select></label>
                 </div>
               ) : null}
             </div>

@@ -1421,7 +1421,7 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
               if (event.target === event.currentTarget) void closeEditor();
             }}>
       <section aria-label={selectedId ? "Edit account" : "Create account"} aria-modal="true" className="content-panel stack workflow-editor-panel modal-panel workflow-editor-modal accounts-editor-modal" onMouseDown={(event) => event.stopPropagation()} ref={editorRef} role="dialog" tabIndex={-1}>
-        <div className="workflow-panel-header workflow-editor-header">
+        <div className="workflow-panel-header">
           <div className="stack">
             <span className="eyebrow">{selectedId ? "Edit account" : "Create account"}</span>
             <strong>{selectedId ?? "New account row"}</strong>
@@ -1464,7 +1464,7 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
                 </article>
               </section>
             ) : null}
-            <form className="form-grid" onSubmit={(event) => void handleSubmit(event)}>
+            <form className="form-grid" id="profile-account-editor-form" onSubmit={(event) => void handleSubmit(event)}>
           <label className="field-control">
             <span>Account</span>
             {selectedId ? (
@@ -1758,9 +1758,11 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
             />
           </label>
               {errorMessage ? <p className="field-span-2 error-text" role="alert">{errorMessage}</p> : null}
-              <div className="field-span-2 workflow-editor-footer" data-pd-id="accounts.editor.footer">
+            </form>
+          </div>
+              <div className="workflow-editor-footer" data-pd-id="accounts.editor.footer">
                 <div className="workflow-editor-footer-primary">
-                <button className="modal-primary-button" disabled={isPending || isSaving || isArchiving || Boolean(accountMoneyError(formState.current_balance)) || Boolean(accountMoneyError(formState.pending_withdrawal_amount))} type="submit">
+                <button className="modal-primary-button" disabled={isPending || isSaving || isArchiving || Boolean(accountMoneyError(formState.current_balance)) || Boolean(accountMoneyError(formState.pending_withdrawal_amount))} form="profile-account-editor-form" type="submit">
                   {isSaving ? <span aria-hidden="true" className="button-spinner" /> : null}
                   <span>{isSaving ? "Saving" : selectedId ? "Save" : "Create"}</span>
                 </button>
@@ -1774,8 +1776,6 @@ export function AccountsWorkflowShell({ profileId }: { profileId: string }) {
                 <button className="review-chip" disabled={isPending || isSaving || isArchiving} onClick={() => void closeEditor()} type="button">Cancel</button>
                 </div>
               </div>
-            </form>
-          </div>
       </section>
             </div>
             </ModalBoundary>,

@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiBaseUrl } from "@/lib/api";
+import { formatApiErrorBody } from "@/lib/api-error";
+import { ContextHelp } from "@/components/context-help";
 import { normalizeBonusRetentionPercentForUi } from "@/lib/tracker-settings";
 import {
   normalizeDashboardDisplayMode,
@@ -193,41 +195,45 @@ export function TrackerDateSettings({ profileId }: Props) {
 
     setIsSaving(true);
     setErrorMessage("");
-    const response = await fetch(`${apiBaseUrl}/profiles/${profileId}/tracker-settings`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        active_date_preset: nextSettings.active_date_preset,
-        custom_start_date: nextSettings.custom_start_date,
-        custom_end_date: nextSettings.custom_end_date,
-        range_back_days: nextSettings.range_back_days,
-        range_forward_days: nextSettings.range_forward_days,
-        mug_bet_frequency_days: nextSettings.mug_bet_frequency_days,
-        free_bet_expiry_alert_window_days: nextSettings.free_bet_expiry_alert_window_days,
-        use_global_date_range_toggle: nextSettings.use_global_date_range_toggle,
-        this_month_mode: nextSettings.this_month_mode,
-        default_free_bet_underlay_factor: nextSettings.default_free_bet_underlay_factor,
-        default_free_bet_overlay_factor: nextSettings.default_free_bet_overlay_factor,
-        default_bonus_retention_percent: nextSettings.default_bonus_retention_percent,
-        default_exchange_name: nextSettings.default_exchange_name,
-        dashboard_view_mode: nextSettings.dashboard_view_mode,
-        weekly_profit_target: nextSettings.weekly_profit_target,
-        monthly_profit_target: nextSettings.monthly_profit_target,
-        annual_profit_target: nextSettings.annual_profit_target,
-        weekly_extra_place_loss_budget: nextSettings.weekly_extra_place_loss_budget,
-      }),
-    });
+    try {
+      const response = await fetch(`${apiBaseUrl}/profiles/${profileId}/tracker-settings`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          active_date_preset: nextSettings.active_date_preset,
+          custom_start_date: nextSettings.custom_start_date,
+          custom_end_date: nextSettings.custom_end_date,
+          range_back_days: nextSettings.range_back_days,
+          range_forward_days: nextSettings.range_forward_days,
+          mug_bet_frequency_days: nextSettings.mug_bet_frequency_days,
+          free_bet_expiry_alert_window_days: nextSettings.free_bet_expiry_alert_window_days,
+          use_global_date_range_toggle: nextSettings.use_global_date_range_toggle,
+          this_month_mode: nextSettings.this_month_mode,
+          default_free_bet_underlay_factor: nextSettings.default_free_bet_underlay_factor,
+          default_free_bet_overlay_factor: nextSettings.default_free_bet_overlay_factor,
+          default_bonus_retention_percent: nextSettings.default_bonus_retention_percent,
+          default_exchange_name: nextSettings.default_exchange_name,
+          dashboard_view_mode: nextSettings.dashboard_view_mode,
+          weekly_profit_target: nextSettings.weekly_profit_target,
+          monthly_profit_target: nextSettings.monthly_profit_target,
+          annual_profit_target: nextSettings.annual_profit_target,
+          weekly_extra_place_loss_budget: nextSettings.weekly_extra_place_loss_budget,
+        }),
+      });
 
-    if (!response.ok) {
-      setErrorMessage(await response.text());
+      if (!response.ok) {
+        throw new Error(formatApiErrorBody(await response.text(), "Unable to save tracker settings."));
+      }
+
+      const saved = normalizeTrackerSettingsRecord((await response.json()) as TrackerSettingsRecord);
+      setSettings(saved);
+      setPristineSettings(saved);
+    } catch (error) {
+      setErrorMessage(error instanceof Error && !(error instanceof TypeError)
+        ? error.message : "Unable to save tracker settings. Please try again.");
+    } finally {
       setIsSaving(false);
-      return;
     }
-
-    const saved = normalizeTrackerSettingsRecord((await response.json()) as TrackerSettingsRecord);
-    setSettings(saved);
-    setPristineSettings(saved);
-    setIsSaving(false);
   }
 
   async function saveSettings() {
@@ -269,13 +275,17 @@ export function TrackerDateSettings({ profileId }: Props) {
   }
 
   return (
-    <section className="content-subpanel stack" aria-label="Tracker date settings">
+    <section className="content-subpanel stack" aria-label="Tracker date settings" data-pd-id="profile-settings.defaults">
       <div className="section-heading-row">
         <div className="stack">
           <span className="eyebrow">Profile defaults</span>
-          <h2 className="section-title">Date Range and Tracker Defaults</h2>
+          <h2 className="section-title section-title-with-help" data-pd-id="profile-settings.defaults.heading">
+            <span>Date Range and Tracker Defaults</span>
+            <ContextHelp label="About date range and tracker defaults" text="Choose the reporting period, reminders, dashboard targets and calculator defaults for this Profile." />
+          </h2>
         </div>
       </div>
+      <p className="field-hint">Applies to this Profile. Selections save immediately. Other fields use Save unless the Custom date range is selected.</p>
       {settings ? (
         <section className="stat-strip" aria-label="Tracker date setting summary">
           <article className="stat-card">
@@ -325,7 +335,7 @@ export function TrackerDateSettings({ profileId }: Props) {
       {settings ? (
         <div className="stack">
           <section className="content-subpanel stack" aria-label="Date range controls">
-            <h3>Date Range</h3>
+            <h3 className="section-title-with-help" data-pd-id="profile-settings.defaults.range.heading"><span>Date Range</span><ContextHelp label="About date range" text="Choose a tracker date preset, or use Custom to enter its start and end dates. Range offsets apply to tracker summaries." /></h3>
             <div className="form-grid">
               <label className="field-control">
                 <span>Active date preset</span>
@@ -412,7 +422,7 @@ export function TrackerDateSettings({ profileId }: Props) {
           </section>
 
           <section className="content-subpanel stack" aria-label="Dashboard targets">
-            <h3>Dashboard Targets</h3>
+            <h3 className="section-title-with-help" data-pd-id="profile-settings.defaults.targets.heading"><span>Dashboard Targets</span><ContextHelp label="About dashboard targets" text="Choose the dashboard view and optional profit targets for this Profile. Empty target fields remain unset." /></h3>
             <div className="form-grid">
               <label className="field-control">
                 <span>Dashboard view mode</span>
@@ -479,7 +489,7 @@ export function TrackerDateSettings({ profileId }: Props) {
           </section>
 
           <section className="content-subpanel stack" aria-label="Operational defaults">
-            <h3>Operational Defaults</h3>
+            <h3 className="section-title-with-help" data-pd-id="profile-settings.defaults.operational.heading"><span>Operational Defaults</span><ContextHelp label="About operational defaults" text="Set reminder windows, the preferred Exchange and ledger guidance for this Profile. Most used active uses this Profile’s most-used active Exchange." /></h3>
             <div className="form-grid">
               <label className="field-control">
                 <span>Mug-bet cadence days</span>
@@ -544,7 +554,7 @@ export function TrackerDateSettings({ profileId }: Props) {
                   }
                   value={settings.default_exchange_name}
                 >
-                  <option value="">Most used active exchange</option>
+                  <option value="">Most used active</option>
                   {exchangeOptions.map((exchange) => (
                     <option key={exchange} value={exchange}>{exchange}</option>
                   ))}
@@ -589,7 +599,7 @@ export function TrackerDateSettings({ profileId }: Props) {
           </section>
 
           <section className="content-subpanel stack" aria-label="Calculator defaults">
-            <h3>Calculator Defaults</h3>
+            <h3 className="section-title-with-help" data-pd-id="profile-settings.defaults.calculator.heading"><span>Calculator Defaults</span><ContextHelp label="About calculator defaults" text="Set the default free-bet underlay, overlay and bonus retention inputs for this Profile." /></h3>
             <div className="form-grid">
               <label className="field-control">
                 <span>Default free-bet underlay factor</span>

@@ -2,8 +2,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { ContextHelp } from "@/components/context-help";
 import { ConfirmationDialog } from "@/components/confirmation-dialog";
 import { apiBaseUrl } from "@/lib/api";
+import { formatApiErrorBody } from "@/lib/api-error";
 import { FUND_MANAGER_NOTIFICATIONS_REFRESH_EVENT } from "@/lib/notifications";
 import { dispatchTrackerDataUpdated } from "@/lib/tracker-data-events";
 import { useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
@@ -75,30 +77,40 @@ export function ExchangeCommissionSettings({ profileId, onSaved }: Props) {
     if (!row || !isValidCommission(commissionRate)) return;
     setSaveStates((current) => ({ ...current, [exchangeName]: "saving" }));
     setErrorMessage("");
-    const response = await fetch(`${apiBaseUrl}/profiles/${profileId}/exchange-commissions`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ exchange_name: row.exchange_name, commission_rate: commissionRate.trim() }),
-    });
-    if (!response.ok) {
-      setSaveStates((current) => ({ ...current, [exchangeName]: "error" }));
-      setErrorMessage(await response.text());
-      return;
+    let savedSuccessfully = false;
+    try {
+      const response = await fetch(`${apiBaseUrl}/profiles/${profileId}/exchange-commissions`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ exchange_name: row.exchange_name, commission_rate: commissionRate.trim() }),
+      });
+      if (!response.ok) {
+        throw new Error(formatApiErrorBody(await response.text(), "Unable to save exchange commission."));
+      }
+      const saved = (await response.json()) as ExchangeCommissionRecord;
+      setRows((current) => current.map((entry) => entry.exchange_name === exchangeName ? saved : entry));
+      setSavedAt((current) => ({ ...current, [exchangeName]: saved.updated_at }));
+      setSavedRates((current) => ({ ...current, [exchangeName]: saved.commission_rate }));
+      savedSuccessfully = true;
+      dispatchTrackerDataUpdated({ profileId });
+      window.dispatchEvent(new Event(FUND_MANAGER_NOTIFICATIONS_REFRESH_EVENT));
+      setConfirmExchange(null);
+    } catch (error) {
+      setErrorMessage(error instanceof Error && !(error instanceof TypeError)
+        ? error.message : "Unable to save exchange commission. Please try again.");
+    } finally {
+      setSaveStates((current) => ({ ...current, [exchangeName]: savedSuccessfully ? "saved" : "error" }));
     }
-    const saved = (await response.json()) as ExchangeCommissionRecord;
-    setRows((current) => current.map((entry) => entry.exchange_name === exchangeName ? saved : entry));
-    setSavedAt((current) => ({ ...current, [exchangeName]: saved.updated_at }));
-    setSavedRates((current) => ({ ...current, [exchangeName]: saved.commission_rate }));
-    setSaveStates((current) => ({ ...current, [exchangeName]: "saved" }));
-    dispatchTrackerDataUpdated({ profileId });
-    window.dispatchEvent(new Event(FUND_MANAGER_NOTIFICATIONS_REFRESH_EVENT));
-    if (onSaved) await onSaved();
-    setConfirmExchange(null);
+    if (savedSuccessfully && onSaved) await onSaved();
   }, [onSaved, profileId, rows]);
 
   return (
     <section aria-label="Exchange commission settings" className="content-subpanel stack" data-pd-id="profile-settings.commission">
-      <div><span className="eyebrow">Exchange commission</span><h2>Profile commission defaults</h2></div>
+      <div className="stack">
+        <span className="eyebrow">Exchange commission</span>
+        <h2 className="section-title section-title-with-help" data-pd-id="profile-settings.commission.heading"><span>Profile commission defaults</span><ContextHelp label="About Profile commission defaults" text="Enter commission as a decimal fraction: 0.02 means 2%. Confirmed changes apply to this Profile's new calculations." /></h2>
+      </div>
+      <p className="field-hint">Applies to this Profile. Enter a decimal from 0 to 1, then Save commission and confirm.</p>
       {errorMessage ? <p className="error-text" role="alert">{errorMessage}</p> : null}
       {rows.length === 0 ? <p className="field-hint">No Exchange Accounts are attached to this Profile.</p> : (
         <div className="form-grid commission-settings-grid">
@@ -135,6 +147,7 @@ export function ExchangeCommissionSettings({ profileId, onSaved }: Props) {
         busyLabel="Saving"
         confirmLabel="Apply commission"
         confirmTone="primary"
+        error={confirmExchange && saveStates[confirmExchange] === "error" ? errorMessage : undefined}
         description={confirmExchange ? `Apply the entered commission to ${confirmExchange} for this Profile. New calculations will use this Profile-specific value.` : ""}
         onCancel={() => setConfirmExchange(null)}
         onConfirm={() => confirmExchange && void saveRow(confirmExchange)}

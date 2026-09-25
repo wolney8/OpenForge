@@ -7006,8 +7006,15 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
 
 .accounts-editor-modal .workflow-editor-body {
   min-width: 0;
+  min-height: 0;
   overflow-y: auto;
   padding-inline: 1.35rem;
+}
+
+.accounts-editor-modal > .workflow-panel-header,
+.accounts-editor-modal > .workflow-editor-footer {
+  flex: 0 0 auto;
+  position: static;
 }
 
 .accounts-editor-modal .form-grid {
@@ -8957,7 +8964,8 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   overflow: visible;
 }
 
-.calculator-section-heading {
+.calculator-section-heading,
+.section-title-with-help {
   align-items: center;
   display: flex;
   flex-wrap: nowrap;
@@ -8966,13 +8974,24 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   min-width: 0;
 }
 
-.calculator-section-heading h3 {
+.section-title-with-help {
+  justify-content: flex-start;
+}
+
+.calculator-section-heading h3,
+.section-title-with-help > span {
   margin: 0;
   min-width: 0;
 }
 
-.calculator-section-heading > .context-help {
+.calculator-section-heading > .context-help,
+.section-title-with-help > .context-help {
   flex: 0 0 auto;
+}
+
+.section-title-with-help > .context-help {
+  align-items: center;
+  align-self: stretch;
 }
 
 .calculator-reference-card-heading {
@@ -13918,6 +13937,11 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
   align-self: center;
 }
 
+/* The authority body owns scrolling; its content-sized outer shell does not. */
+.modal-panel.settings-adaptive-modal:has(> .fund-manager-authority-body) {
+  scrollbar-gutter: auto;
+}
+
 .settings-adaptive-modal .workflow-editor-modal-body,
 .settings-adaptive-modal-body {
   min-width: 0;
@@ -14260,6 +14284,16 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
   min-width: 0;
   max-width: 100%;
   box-sizing: border-box;
+}
+
+@container ledger-editor (max-width: 40rem) {
+  .settings-adaptive-modal .fund-manager-authority-body {
+    padding-inline: 0.75rem;
+  }
+
+  .fund-manager-authority-editor select {
+    padding-inline-end: 2rem;
+  }
 }
 
 @media (max-width: 760px) {
