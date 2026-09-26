@@ -192,14 +192,15 @@ export function ProfileOnboarding() {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
   const [profile, setProfile] = useState({
+    profile_relationship: "",
     display_name: "",
     profile_code: "",
     tracking_start_date: todayIsoDate(),
     active_date_preset: "This Month",
     iteration_number: "1",
     starting_bankroll: "0.00",
-    management_fee_percent: "25.00",
-    investment_fee_percent: "25.00",
+    management_fee_percent: "",
+    investment_fee_percent: "",
     main_bank_catalogue_id: "",
     operating_jurisdiction: profileOnboardingJurisdiction,
   });
@@ -442,6 +443,7 @@ export function ProfileOnboarding() {
   function stageIsValid(target: Stage) {
     if (target === "profile") {
       return Boolean(
+        profile.profile_relationship &&
         profile.display_name.trim() &&
         /^[A-Z0-9-]{3,32}$/.test(profile.profile_code) &&
         isValidPercentagePoints(profile.management_fee_percent) &&
@@ -474,6 +476,9 @@ export function ProfileOnboarding() {
 
   const activeStageIndex = onboardingStages.findIndex((item) => item.id === stage);
   const guidedTarget = useMemo(() => {
+    if (!profile.profile_relationship) {
+      return { stage: "profile" as Stage, field: "relationship", message: "Choose Personal or Managed subscriber." };
+    }
     if (!profile.display_name.trim()) {
       return { stage: "profile" as Stage, field: "display-name", message: "Enter The Display Name." };
     }
@@ -510,6 +515,7 @@ export function ProfileOnboarding() {
     }
     return { stage: "review" as Stage, field: "create-profile", message: "Review The Profile And Create It." };
   }, [
+    profile.profile_relationship,
     profile.display_name,
     profile.investment_fee_percent,
     profile.management_fee_percent,
@@ -688,18 +694,22 @@ export function ProfileOnboarding() {
             </p>
           </section>
           <div className="form-grid">
+            <label className="field-control" data-guided-field="relationship"><span>Profile relationship</span><select aria-describedby="profile-relationship-help" data-pd-id="profile-onboarding.relationship" onChange={(event) => { setIsDirty(true); setProfile((current) => ({ ...current, profile_relationship: event.target.value, management_fee_percent: event.target.value === "Personal" ? "0.00" : "", investment_fee_percent: event.target.value === "Personal" ? "0.00" : "" })); }} value={profile.profile_relationship}><option value="">Choose relationship</option><option>Personal</option><option>Managed subscriber</option></select></label>
+
             <label className={`field-control${guidedTarget.field === "display-name" && !guidedEntryDismissed ? " is-guided-next" : ""}`} data-guided-field="display-name"><span>Display Name</span><input autoComplete="name" autoFocus maxLength={120} onChange={(event) => setProfileValue("display_name", event.target.value)} value={profile.display_name} /></label>
             <label className={`field-control${guidedTarget.field === "profile-code" && !guidedEntryDismissed ? " is-guided-next" : ""}`} data-guided-field="profile-code"><span>Profile Code</span><input maxLength={32} onChange={(event) => setProfileValue("profile_code", event.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, ""))} placeholder="PROFILE-001" value={profile.profile_code} /></label>
-            {setupPath === "fresh" ? <>
+            {<>
               <label className="field-control"><span>Tracking Start Date</span><input max={todayIsoDate()} onChange={(event) => setProfileValue("tracking_start_date", event.target.value)} type="date" value={profile.tracking_start_date} /></label>
               <label className="field-control"><span>Active Date Preset</span><select onChange={(event) => setProfileValue("active_date_preset", event.target.value)} value={profile.active_date_preset}><option>This Week</option><option>Week (Mon-Sun)</option><option>Past 7 Days</option><option>This Month</option><option>This Year</option><option>All Dates</option></select></label>
               <label className="field-control"><span>Iteration Number</span><input inputMode="numeric" min="1" onChange={(event) => setProfileValue("iteration_number", event.target.value.replace(/\D/g, ""))} type="number" value={profile.iteration_number} /></label>
               <label className="field-control"><span>Starting Bankroll</span><FinancialTextInput allowNegative={false} ariaLabel="Starting Bankroll" clearInitialZeroOnFocus dataPdId="profile-onboarding.starting-bankroll" id="profile-onboarding-starting-bankroll" onBlur={() => setProfileValue("starting_bankroll", normalizeTwoDecimals(profile.starting_bankroll))} onChange={(value) => setProfileValue("starting_bankroll", value)} value={profile.starting_bankroll} valueTone={parseAmount(profile.starting_bankroll) > 0 ? "positive" : "neutral"} /></label>
-            </> : null}
-            <label className={`field-control${guidedTarget.field === "management-fee" && !guidedEntryDismissed ? " is-guided-next" : ""}`} data-guided-field="management-fee"><span>Management Fee</span><PercentageTextInput ariaLabel="Management Fee" clearInitialValueOnFocus dataPdId="profile-onboarding.management-fee" id="profile-onboarding-management-fee" onChange={(value) => setProfileValue("management_fee_percent", value)} value={profile.management_fee_percent} valueMode="percentage-points" /></label>
-            <label className={`field-control${guidedTarget.field === "investment-fee" && !guidedEntryDismissed ? " is-guided-next" : ""}`} data-guided-field="investment-fee"><span>Investment Fee</span><PercentageTextInput ariaLabel="Investment Fee" clearInitialValueOnFocus dataPdId="profile-onboarding.investment-fee" id="profile-onboarding-investment-fee" onChange={(value) => setProfileValue("investment_fee_percent", value)} value={profile.investment_fee_percent} valueMode="percentage-points" /></label>
+            </>}
+            <label className={`field-control${guidedTarget.field === "management-fee" && !guidedEntryDismissed ? " is-guided-next" : ""}`} data-guided-field="management-fee"><span>Management Fee</span><PercentageTextInput disabled={profile.profile_relationship === "Personal"} ariaLabel="Management Fee" clearInitialValueOnFocus dataPdId="profile-onboarding.management-fee" id="profile-onboarding-management-fee" onChange={(value) => setProfileValue("management_fee_percent", value)} value={profile.management_fee_percent} valueMode="percentage-points" /></label>
+            <label className={`field-control${guidedTarget.field === "investment-fee" && !guidedEntryDismissed ? " is-guided-next" : ""}`} data-guided-field="investment-fee"><span>Investment Fee</span><PercentageTextInput disabled={profile.profile_relationship === "Personal"} ariaLabel="Investment Fee" clearInitialValueOnFocus dataPdId="profile-onboarding.investment-fee" id="profile-onboarding-investment-fee" onChange={(value) => setProfileValue("investment_fee_percent", value)} value={profile.investment_fee_percent} valueMode="percentage-points" /></label>
             <label className="field-control"><span>Operating Jurisdiction</span><select disabled value={profile.operating_jurisdiction}><option value="GB">United Kingdom (GB)</option></select></label>
           </div>
+          <p className="field-hint" id="profile-relationship-help">{profile.profile_relationship === "Personal" ? "Your own capital and activity. Management and investment fees are 0%. Exchange commission and genuine costs still apply." : "Managed subscriber fees must be entered from the agreed commercial terms. This relationship does not grant login access."}</p>
+          {setupPath === "import" ? <p className="field-hint">Target action: create a new empty Profile, then review the workbook. No existing Profile is merged or replaced.</p> : null}
         </section>
         </LedgerEditorTabPanel>
       ) : null}
@@ -807,7 +817,7 @@ export function ProfileOnboarding() {
         <LedgerEditorTabPanel activeTabId={stage} tabId="review"><section className="analytics-tab-panel stack" data-guided-field="create-profile">
           <h2>Review Profile</h2>
           <div className="stat-grid founder-onboarding-review-grid">
-            <article className="stat-card"><span className="eyebrow">Profile</span><strong>{profile.display_name || "Not set"}</strong><span>{profile.profile_code || "No code"}</span></article>
+            <article className="stat-card"><span className="eyebrow">Profile</span><strong>{profile.display_name || "Not set"}</strong><span>{profile.profile_code || "No code"}</span><span>{profile.profile_relationship} · Fees {profile.management_fee_percent}% / {profile.investment_fee_percent}%</span></article>
             <article className="stat-card"><span className="eyebrow">Setup</span><strong>{setupPath === "import" ? "Workbook import" : "Start fresh"}</strong><span>{setupPath === "import" ? "Dry run and review required" : "Configure now"}</span></article>
             {setupPath === "fresh" ? <>
               <article className="stat-card"><span className="eyebrow">Modules</span><strong>{enabledModules.length}</strong><span>{enabledModules.join(" · ")}</span></article>

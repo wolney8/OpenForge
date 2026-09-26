@@ -33,9 +33,9 @@ linked only to approved Profile IDs and cannot acquire the Fund Manager role thr
 
 Required onboarding inputs:
 
-- profile display name, code, tracking start and fee settings. Management and investment fees
-  default independently to 25%, accept human percentage-point entry, display a `%` suffix and
-  persist two-decimal percentage-point values;
+- explicit Personal / Managed subscriber relationship, profile display name, code, tracking start
+  and fee settings. Personal requires 0%/0%; Managed requires explicitly entered agreed fees.
+  Percentages display a `%` suffix and persist two-decimal percentage-point values;
 - starting bankroll. Until an approved registration form supplies this value, the untouched zero
   default clears on first entry; a future registration value must prefill the same canonical field
   and must not be treated as an untouched default;

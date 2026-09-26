@@ -79,7 +79,7 @@ def seed_representative_profile() -> None:
     timestamp = "2026-09-04T09:30:00+00:00"
     with connect() as connection:
         connection.execute(
-            "INSERT INTO profiles VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO profiles (profile_id, display_name, profile_code, status, tracking_start_date, management_fee_percent, investment_fee_percent, current_cash_snapshot) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 "profile-portable-test",
                 "Synthetic Profile",
@@ -92,7 +92,7 @@ def seed_representative_profile() -> None:
             ),
         )
         connection.execute(
-            "INSERT INTO profiles VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO profiles (profile_id, display_name, profile_code, status, tracking_start_date, management_fee_percent, investment_fee_percent, current_cash_snapshot) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 "profile-unrelated",
                 "Unrelated Profile",

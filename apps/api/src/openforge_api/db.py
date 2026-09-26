@@ -9,6 +9,7 @@ from contextlib import contextmanager, nullcontext
 from contextvars import ContextVar
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from decimal import Decimal
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Callable, Iterator, cast
@@ -937,7 +938,8 @@ def initialize_database(connection: sqlite3.Connection) -> None:
           tracking_start_date TEXT NOT NULL,
           management_fee_percent TEXT NOT NULL,
           investment_fee_percent TEXT NOT NULL,
-          current_cash_snapshot TEXT NOT NULL
+          current_cash_snapshot TEXT NOT NULL,
+          profile_relationship TEXT NOT NULL DEFAULT ''
         );
 
         CREATE TABLE IF NOT EXISTS profile_audit (
@@ -2236,6 +2238,8 @@ def initialize_database(connection: sqlite3.Connection) -> None:
         BEGIN SELECT RAISE(ABORT, 'application schema upgrade required'); END;
         """
     )
+    # Additive relationship v1: legacy rows remain explicitly unclassified.
+    ensure_column(connection, "profiles", "profile_relationship", "TEXT NOT NULL DEFAULT ''")
     ensure_column(
         connection,
         "fund_manager_settings",
@@ -6915,6 +6919,7 @@ class ProfileRecord:
     management_fee_percent: str
     investment_fee_percent: str
     current_cash_snapshot: str
+    profile_relationship: str = ""
 
 
 @dataclass(frozen=True)
@@ -7520,7 +7525,8 @@ def list_profiles() -> list[ProfileRecord]:
               tracking_start_date,
               management_fee_percent,
               investment_fee_percent,
-              current_cash_snapshot
+              current_cash_snapshot,
+              profile_relationship
             FROM profiles
             ORDER BY LOWER(display_name)
             """
@@ -7540,7 +7546,8 @@ def get_profile(profile_id: str) -> ProfileRecord | None:
               tracking_start_date,
               management_fee_percent,
               investment_fee_percent,
-              current_cash_snapshot
+              current_cash_snapshot,
+              profile_relationship
             FROM profiles
             WHERE profile_id = ?
             """,
@@ -7769,8 +7776,8 @@ def create_profile_with_onboarding(
             """
             INSERT INTO profiles (
               profile_id, display_name, profile_code, status, tracking_start_date,
-              management_fee_percent, investment_fee_percent, current_cash_snapshot
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+              management_fee_percent, investment_fee_percent, current_cash_snapshot, profile_relationship
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 profile_id,
@@ -7781,6 +7788,7 @@ def create_profile_with_onboarding(
                 payload.get("management_fee_percent", "0.00"),
                 payload.get("investment_fee_percent", "0.00"),
                 payload["current_cash_snapshot"],
+                payload.get("profile_relationship", ""),
             ),
         )
         connection.execute(
@@ -7947,49 +7955,63 @@ def update_profile_metadata(
     display_name: str | None = None,
     profile_code: str | None = None,
     status: str | None = None,
+    profile_relationship: str | None = None,
     tracking_start_date: str | None = None,
     management_fee_percent: str | None = None,
     investment_fee_percent: str | None = None,
 ) -> ProfileRecord | None:
-    current = get_profile(profile_id)
-    if current is None:
-        return None
+    with connect() as connection, reuse_mutation_connection(connection):
+        if not postgres_runtime_enabled() and not connection.in_transaction:
+            connection.execute("BEGIN IMMEDIATE")
+        suffix = " FOR UPDATE" if postgres_runtime_enabled() else ""
+        row = connection.execute("SELECT * FROM profiles WHERE profile_id = ?" + suffix, (profile_id,)).fetchone()
+        current = map_profile_row(row) if row else None
+        if current is None:
+            return None
 
-    next_display_name = display_name if display_name is not None else current.display_name
-    next_profile_code = profile_code if profile_code is not None else current.profile_code
-    next_status = status if status is not None else current.status
-    next_tracking_start_date = (
-        tracking_start_date if tracking_start_date is not None else current.tracking_start_date
-    )
-    next_management_fee = (
-        management_fee_percent
-        if management_fee_percent is not None
-        else current.management_fee_percent
-    )
-    next_investment_fee = (
-        investment_fee_percent
-        if investment_fee_percent is not None
-        else current.investment_fee_percent
-    )
-    if float(next_management_fee) + float(next_investment_fee) > 100:
-        raise ValueError("Combined management and investment fees cannot exceed 100%")
-
-    changes = {
-        key: {"from": old_value, "to": new_value}
-        for key, old_value, new_value in (
-            ("display_name", current.display_name, next_display_name),
-            ("profile_code", current.profile_code, next_profile_code),
-            ("status", current.status, next_status),
-            ("tracking_start_date", current.tracking_start_date, next_tracking_start_date),
-            ("management_fee_percent", current.management_fee_percent, next_management_fee),
-            ("investment_fee_percent", current.investment_fee_percent, next_investment_fee),
+        next_display_name = display_name if display_name is not None else current.display_name
+        next_profile_code = profile_code if profile_code is not None else current.profile_code
+        next_status = status if status is not None else current.status
+        next_tracking_start_date = (
+            tracking_start_date if tracking_start_date is not None else current.tracking_start_date
         )
-        if old_value != new_value
-    }
-    if not changes:
-        return current
+        next_management_fee = (
+            management_fee_percent
+            if management_fee_percent is not None
+            else current.management_fee_percent
+        )
+        next_investment_fee = (
+            investment_fee_percent
+            if investment_fee_percent is not None
+            else current.investment_fee_percent
+        )
+        if float(next_management_fee) + float(next_investment_fee) > 100:
+            raise ValueError("Combined management and investment fees cannot exceed 100%")
 
-    with connect() as connection:
+        next_relationship = profile_relationship if profile_relationship is not None else current.profile_relationship
+        if next_relationship not in ("", "Personal", "Managed subscriber"):
+            raise ValueError("Choose Personal or Managed subscriber")
+        if next_relationship == "Personal" and (Decimal(next_management_fee) != 0 or Decimal(next_investment_fee) != 0):
+            raise ValueError("Personal Profiles require 0% management and investment fees")
+        if profile_relationship == "Managed subscriber" and current.profile_relationship != profile_relationship and (management_fee_percent is None or investment_fee_percent is None):
+            raise ValueError("Enter both agreed fees when choosing Managed subscriber")
+
+        changes = {
+            key: {"from": old_value, "to": new_value}
+            for key, old_value, new_value in (
+                ("display_name", current.display_name, next_display_name),
+                ("profile_code", current.profile_code, next_profile_code),
+                ("status", current.status, next_status),
+                ("profile_relationship", current.profile_relationship, next_relationship),
+                ("tracking_start_date", current.tracking_start_date, next_tracking_start_date),
+                ("management_fee_percent", current.management_fee_percent, next_management_fee),
+                ("investment_fee_percent", current.investment_fee_percent, next_investment_fee),
+            )
+            if old_value != new_value
+        }
+        if not changes:
+            return current
+
         duplicate = connection.execute(
             "SELECT 1 FROM profiles WHERE profile_code = ? AND profile_id <> ?",
             (next_profile_code, profile_id),
@@ -8000,7 +8022,7 @@ def update_profile_metadata(
             """
             UPDATE profiles
             SET display_name = ?, profile_code = ?, status = ?, tracking_start_date = ?,
-                management_fee_percent = ?, investment_fee_percent = ?
+                management_fee_percent = ?, investment_fee_percent = ?, profile_relationship = ?
             WHERE profile_id = ?
             """,
             (
@@ -8010,6 +8032,7 @@ def update_profile_metadata(
                 next_tracking_start_date,
                 next_management_fee,
                 next_investment_fee,
+                next_relationship,
                 profile_id,
             ),
         )
@@ -8026,7 +8049,7 @@ def update_profile_metadata(
                 json.dumps({"changes": changes}, sort_keys=True),
             ),
         )
-    return get_profile(profile_id)
+        return get_profile(profile_id)
 
 
 def count_profile_audit_rows(profile_id: str) -> int:

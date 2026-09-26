@@ -22,10 +22,10 @@ def test_personal_and_managed_fees_keep_scope_and_historical_rates(tmp_path, per
     # assumed subscriber rate. Personal configuration is the owner's requested 0/0.
     with connect() as connection:
         connection.execute(
-            "UPDATE profiles SET management_fee_percent='0.00', investment_fee_percent='0.00' WHERE profile_id='profile-demo-001'"
+            "UPDATE profiles SET profile_relationship='Personal', management_fee_percent='0.00', investment_fee_percent='0.00' WHERE profile_id='profile-demo-001'"
         )
         connection.execute(
-            "UPDATE profiles SET management_fee_percent='40.00', investment_fee_percent='0.00' WHERE profile_id='profile-demo-002'"
+            "UPDATE profiles SET profile_relationship='Managed subscriber', management_fee_percent='40.00', investment_fee_percent='0.00' WHERE profile_id='profile-demo-002'"
         )
     seed_synthetic_account(profile_id="profile-demo-002", name="Bookmaker A", account_type="Bookie")
     client = TestClient(app)

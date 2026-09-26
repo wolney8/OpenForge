@@ -347,6 +347,9 @@ def _restore_row(spec: SheetSpec, source: Mapping[str, str]) -> dict[str, Any]:
         if field in {"lay_plan_json", "profit_boost_source_json", "conditional_benefit_json"} and field not in source:
             row[field] = None
             continue
+        if spec.name == "Profile" and field == "profile_relationship" and field not in source:
+            row[field] = ""
+            continue
         value = source[field]
         if field in null_fields:
             if value != "":
@@ -427,6 +430,8 @@ def parse_profile_portable_export(content: bytes) -> ParsedPortableBackup:
             {"lay_plan_json", "profit_boost_source_json", "conditional_benefit_json"}
             if spec.name == "Sportsbook" else set()
         )
+        if spec.name == "Profile":
+            optional = {"profile_relationship"}
         header = sheets[spec.name][0]
         missing_optional = {field for field in optional if field not in header}
         if missing_optional and header == [c for c in columns if c not in missing_optional]:
@@ -458,6 +463,11 @@ def parse_profile_portable_export(content: bytes) -> ParsedPortableBackup:
     profile_rows = parsed["Profile"]
     if len(profile_rows) != 1:
         raise PortableRestoreError("Portable backup must contain exactly one Profile row")
+    relationship = profile_rows[0]["profile_relationship"]
+    if relationship not in ("", "Personal", "Managed subscriber"):
+        raise PortableRestoreError("Invalid Profile economic relationship")
+    if relationship == "Personal" and any(Decimal(str(profile_rows[0][field])) != 0 for field in ("management_fee_percent", "investment_fee_percent")):
+        raise PortableRestoreError("Personal Profiles require 0% management and investment fees")
     source_profile_id = str(profile_rows[0]["profile_id"])
     if not source_profile_id or manifest_map.get("source_profile_id") != source_profile_id:
         raise PortableRestoreError("Manifest Profile identity does not match the payload")

@@ -36,7 +36,7 @@ def configure_database(tmp_path: Path) -> None:
             ("profile-demo-002", "SYNTHETIC-B"),
         ):
             connection.execute(
-                "INSERT OR IGNORE INTO profiles VALUES (?,?,?,?,?,?,?,?)",
+                "INSERT OR IGNORE INTO profiles (profile_id, display_name, profile_code, status, tracking_start_date, management_fee_percent, investment_fee_percent, current_cash_snapshot) VALUES (?,?,?,?,?,?,?,?)",
                 (profile_id, profile_id, code, "Active", "2026-01-01", "0", "0", "0"),
             )
     for profile_id in ("profile-demo-001", "profile-demo-002"):

@@ -728,7 +728,7 @@ def multi_lay_actual_cases(dsn: str, root: Path) -> dict:
     settings.auth_required = False
     settings.account_catalogue_source = str(ROOT / "tests/fixtures/openforge-api-master-catalogue.synthetic.json")
     with db.connect() as connection:
-        connection.execute("INSERT INTO profiles VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        connection.execute("INSERT INTO profiles (profile_id, display_name, profile_code, status, tracking_start_date, management_fee_percent, investment_fee_percent, current_cash_snapshot) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                            ("profile-demo-002", "Synthetic other Profile", "OTHER-002", "Active", "2026-09-01", "0", "0", "0"))
         connection.commit()
     with pytest.MonkeyPatch.context() as patcher:
@@ -774,6 +774,55 @@ def workbook_identity_cases(dsn, runtime):
     return {"status": "PASS", "workbook_identity": passed}
 
 
+def profile_relationship_cases(dsn, runtime):
+    import psycopg
+    from openforge_api.postgres_migrations import apply_postgres_migrations
+    db = configure(dsn, str(runtime))
+    client = client_for(dsn, str(runtime))
+    with psycopg.connect(dsn) as c:
+        c.execute("INSERT INTO profiles (profile_id,display_name,profile_code,status,tracking_start_date,management_fee_percent,investment_fee_percent,current_cash_snapshot) VALUES ('legacy','Synthetic','LEGACY','Active','2026-01-01','25','25','17.23')")
+        c.execute("ALTER TABLE profiles DROP COLUMN profile_relationship")
+        before = c.execute("SELECT * FROM profiles ORDER BY profile_id").fetchall()
+    apply_postgres_migrations(dsn)
+    apply_postgres_migrations(dsn)
+    with psycopg.connect(dsn) as c:
+        after = c.execute("SELECT * FROM profiles ORDER BY profile_id").fetchall()
+        assert [r[:-1] for r in after] == before and all(r[-1] == "" for r in after)
+    # A name-only save waits behind a concurrent economic change, then reads the
+    # latest relationship under the row lock instead of writing a stale snapshot.
+    from concurrent.futures import ThreadPoolExecutor
+    import time
+    with ThreadPoolExecutor(max_workers=1) as pool, psycopg.connect(dsn) as locked:
+        locked.execute("SELECT profile_id FROM profiles WHERE profile_id='legacy' FOR UPDATE")
+        pending = pool.submit(db.update_profile_metadata, "legacy", display_name="Renamed synthetic")
+        deadline = time.monotonic() + 5
+        with psycopg.connect(dsn, autocommit=True) as probe:
+            while not probe.execute("SELECT 1 FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock'").fetchone():
+                assert time.monotonic() < deadline, "Concurrent metadata request never reached the lock"
+                time.sleep(0.02)
+        locked.execute("UPDATE profiles SET profile_relationship='Personal',management_fee_percent='0.00',investment_fee_percent='0.00' WHERE profile_id='legacy'")
+        locked.commit()
+        changed = pending.result(timeout=5)
+        assert changed.profile_relationship == "Personal" and changed.management_fee_percent == "0.00"
+    from openforge_api.profile_portable_export import build_profile_portable_export
+    from openforge_api.profile_portable_restore import analyse_portable_restore, execute_portable_restore
+    from test_profile_portable_restore import portable_payload
+    for index, (relationship, fee) in enumerate([("Personal", "0.00"), ("Managed subscriber", "40.00")]):
+        response = client.post("/profiles/onboarding", json={"setup_path":"import", "profile_relationship":relationship, "display_name":"Synthetic relationship", "profile_code":f"PG-REL-{index}", "tracking_start_date":"2026-01-01", "management_fee_percent":fee, "investment_fee_percent":"0.00", "enabled_modules":["sportsbook-bets","free-bets","cash-adjustments"]})
+        assert response.status_code == 201, response.text
+        pid = response.json()["profile"]["profile_id"]
+        backup = build_profile_portable_export(pid)
+        analysis = analyse_portable_restore(payload=portable_payload(backup.content, profile_code=f"PG-RESTORE-{index}"), owner_email=OWNER)
+        assert analysis["status"] == "READY", analysis
+        complete = execute_portable_restore(restore_run_id=analysis["restore_run_id"],owner_email=OWNER,actor_email=OWNER)
+        assert complete["status"] == "COMPLETE", complete
+        restored = db.get_profile(complete["target_profile_id"])
+        assert restored.profile_relationship == relationship and restored.management_fee_percent == fee
+        retry = execute_portable_restore(restore_run_id=analysis["restore_run_id"],owner_email=OWNER,actor_email=OWNER)
+        assert retry["target_profile_id"] == restored.profile_id
+    return {"status":"PASS", "profile_relationship":"additive legacy migration/retry with unchanged financial fields; Personal and Managed creation, portable restore/remap/retry"}
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--pg-bin", required=True, type=Path, help="Explicit local server-tool directory; no inherited DSN")
@@ -793,6 +842,7 @@ def main():
     parser.add_argument("--account-observations-only", action="store_true", help="CP-047 atomic Account observations and restore")
     parser.add_argument("--multi-lay-actual-only", action="store_true", help="CP-047 Normal actual recording and portable restore only")
     parser.add_argument("--workbook-identity-only", action="store_true", help="CP-052 full-workbook destination identities only")
+    parser.add_argument("--profile-relationship-only", action="store_true", help="CP-055 additive relationship and portable recovery only")
     args = parser.parse_args()
     pg_bin = args.pg_bin.resolve()
     def pg(name):
@@ -828,6 +878,9 @@ def main():
         import psycopg
         with psycopg.connect(primary) as c:
             record["server_version"] = c.execute("SELECT version()").fetchone()[0]
+        if args.profile_relationship_only:
+            record.update(profile_relationship_cases(primary, root))
+            return
         if args.account_observations_only:
             import pytest
             import test_account_observations as cases

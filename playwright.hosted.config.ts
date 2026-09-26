@@ -16,6 +16,7 @@ export default defineConfig({
       cookies: [
         ...(sessionToken ? [{
             domain: new URL(baseURL).hostname,
+            expires: -1,
             httpOnly: true,
             name: "pd_session",
             path: "/",
@@ -25,6 +26,7 @@ export default defineConfig({
           } as const] : []),
         ...(vercelBypassCookie ? [{
           domain: new URL(baseURL).hostname,
+          expires: -1,
           httpOnly: true,
           name: "_vercel_jwt",
           path: "/",

@@ -164,6 +164,7 @@ def test_tracker_summary_sources_reuse_one_connection(monkeypatch) -> None:
 
 def profile_onboarding_payload() -> dict[str, object]:
     return {
+        "profile_relationship": "Managed subscriber",
         "display_name": "Synthetic Profile",
         "profile_code": "PROFILE-001",
         "tracking_start_date": "2026-08-01",
@@ -712,7 +713,7 @@ def test_profile_onboarding_creates_settings_and_catalogue_accounts_atomically(
     assert count_profile_audit_rows(profile_id) == 1
 
 
-def test_profile_onboarding_defaults_both_fee_percentages_to_twenty_five(
+def test_profile_onboarding_requires_explicit_managed_fee_percentages(
     tmp_path: Path,
 ) -> None:
     configure_temp_database(tmp_path)
@@ -724,9 +725,9 @@ def test_profile_onboarding_defaults_both_fee_percentages_to_twenty_five(
 
     response = client.post("/profiles/onboarding", json=payload)
 
-    assert response.status_code == 201
-    assert response.json()["profile"]["management_fee_percent"] == "25.00"
-    assert response.json()["profile"]["investment_fee_percent"] == "25.00"
+    assert response.status_code == 422
+    assert "management_fee_percent" in str(response.json())
+    assert "investment_fee_percent" in str(response.json())
 
 
 def test_profile_onboarding_accepts_zero_exchange_commission_and_blank_optional_commissions(

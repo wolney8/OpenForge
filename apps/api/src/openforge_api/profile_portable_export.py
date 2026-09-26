@@ -97,7 +97,7 @@ SHEET_SPECS = (
         "profiles",
         _fields(
             "profile_id display_name profile_code status tracking_start_date "
-            "management_fee_percent investment_fee_percent current_cash_snapshot"
+            "management_fee_percent investment_fee_percent current_cash_snapshot profile_relationship"
         ),
         ("profile_id",),
         decimal_fields=frozenset(
@@ -1125,7 +1125,7 @@ def build_profile_portable_export(
     with connect_read_only() as connection:
         profile_row = connection.execute(
             "SELECT profile_id, display_name, profile_code, status, tracking_start_date, "
-            "management_fee_percent, investment_fee_percent, current_cash_snapshot "
+            "management_fee_percent, investment_fee_percent, current_cash_snapshot, profile_relationship "
             "FROM profiles WHERE profile_id = ?",
             (profile_id,),
         ).fetchone()

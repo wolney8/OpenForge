@@ -27,7 +27,7 @@ def configure_temp_database(tmp_path: Path) -> None:
     with connect() as connection:
         for suffix in ("001", "002"):
             connection.execute(
-                "INSERT INTO profiles VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO profiles (profile_id, display_name, profile_code, status, tracking_start_date, management_fee_percent, investment_fee_percent, current_cash_snapshot) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                 (
                     f"profile-demo-{suffix}",
                     f"Synthetic Profile {suffix}",

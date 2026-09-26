@@ -14,7 +14,7 @@ const catalogue = {
       foreground_colour: "#FFFFFF",
       background_colour: "#B71C1C",
       status: "Active",
-      introduced_at: "2026-08-27T12:00:00Z",
+      introduced_at: "2026-09-26T12:00:00Z",
     },
     {
       catalogue_id: "EXCHANGE-DEMO-001",
@@ -56,7 +56,7 @@ const catalogue = {
       foreground_colour: "#FFFFFF",
       background_colour: "#263238",
       status: "Active",
-      introduced_at: "2026-08-27T12:00:00Z",
+      introduced_at: "2026-09-26T12:00:00Z",
     },
   ],
 };
@@ -85,6 +85,7 @@ const quickActions = [
 ];
 
 test.beforeEach(async ({ page, baseURL }) => {
+  await page.clock.setFixedTime(new Date("2026-09-26T13:00:00Z"));
   const sessionToken = process.env.OPENFORGE_E2E_SESSION_TOKEN;
   if (sessionToken && baseURL) {
     await page.context().addCookies([{
@@ -134,6 +135,7 @@ test("Profile onboarding distinguishes a pending catalogue from an empty catalog
   });
 
   await page.goto("/profiles/new");
+  await page.getByRole("combobox", { name: "Profile relationship", exact: true }).selectOption("Personal");
   await page.getByLabel("Display Name").fill("Loading State Profile");
   await page.getByLabel("Profile Code").fill("loading-001");
   await page.locator("footer").getByRole("button", { name: "Next", exact: true }).click();
@@ -158,6 +160,7 @@ test("Profile onboarding reuses canonical input geometry in both themes", async 
   });
 
   await page.goto("/profiles/new");
+  await page.getByRole("combobox", { name: "Profile relationship", exact: true }).selectOption("Personal");
   const profileCode = page.getByLabel("Profile Code");
   const bankrollSurface = page.getByLabel("Starting Bankroll").locator("..");
   await expect(profileCode).toBeVisible();
@@ -245,15 +248,17 @@ test("Profile onboarding uses catalogue authority and saves optional Quick Actio
   });
 
   await page.goto("/profiles/new");
+  await page.getByRole("combobox", { name: "Profile relationship", exact: true }).selectOption("Personal");
   await expect(page.getByRole("heading", { name: "Create Profile" })).toBeVisible();
   const startingBankroll = page.getByLabel("Starting Bankroll");
   await startingBankroll.click();
   await expect(startingBankroll).toHaveValue("");
   await page.keyboard.type("25.5");
+  await page.getByRole("combobox", { name: "Profile relationship", exact: true }).selectOption("Managed subscriber");
   const managementFee = page.getByLabel("Management Fee");
   const investmentFee = page.getByLabel("Investment Fee");
-  await expect(managementFee).toHaveValue("25.00");
-  await expect(investmentFee).toHaveValue("25.00");
+  await expect(managementFee).toHaveValue("");
+  await expect(investmentFee).toHaveValue("");
   await managementFee.click();
   await expect(managementFee).toHaveValue("");
   await managementFee.fill("30");
@@ -348,6 +353,7 @@ test("Profile onboarding stages block forward navigation until required identity
     await route.fulfill({ contentType: "application/json", body: "[]" });
   });
   await page.goto("/profiles/new");
+  await page.getByRole("combobox", { name: "Profile relationship", exact: true }).selectOption("Personal");
 
   await expect(page.getByRole("tab", { name: "Review" })).toHaveAttribute("aria-disabled", "true");
   await page.locator("footer").getByRole("button", { name: "Next", exact: true }).click();
@@ -363,6 +369,7 @@ test("Profile onboarding requires an Exchange and its commission before continui
     await route.fulfill({ contentType: "application/json", body: "[]" });
   });
   await page.goto("/profiles/new");
+  await page.getByRole("combobox", { name: "Profile relationship", exact: true }).selectOption("Personal");
   await page.getByLabel("Display Name").fill("Synthetic Profile");
   await page.getByLabel("Profile Code").fill("PROFILE-EXCHANGE");
   await page.locator("footer").getByRole("button", { name: "Next", exact: true }).click();
@@ -407,10 +414,12 @@ test("Profile onboarding hands an import setup to the existing Profile workflow"
   });
 
   await page.goto("/profiles/new");
+  await page.getByRole("combobox", { name: "Profile relationship", exact: true }).selectOption("Personal");
   await page.getByLabel("Profile setup path").getByText("Import existing workbook/data").click();
   await page.getByLabel("Display Name").fill("Import Target");
   await page.getByLabel("Profile Code").fill("IMPORT-001");
-  await expect(page.getByLabel("Starting Bankroll")).toHaveCount(0);
+  await expect(page.getByLabel("Starting Bankroll")).toBeVisible();
+  await expect(page.getByLabel("Starting Bankroll")).toHaveValue("0.00");
   await page.locator("footer").getByRole("button", { name: "Next", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Review Profile" })).toBeVisible();
   await expect(page.getByText("The workbook dry run can populate tracking settings")).toBeVisible();
@@ -419,6 +428,9 @@ test("Profile onboarding hands an import setup to the existing Profile workflow"
   await expect(page).toHaveURL(/\/profiles\/profile-import-001\/tracker\/settings\?setup=import#import-export$/);
   expect(submitted).toMatchObject({
     setup_path: "import",
+    profile_relationship: "Personal",
+    management_fee_percent: "0.00",
+    investment_fee_percent: "0.00",
     display_name: "Import Target",
     accounts: [],
     quick_actions: [],
@@ -434,6 +446,7 @@ test("Profile onboarding Cancel uses the shared unsaved-change guard", async ({ 
     await route.fulfill({ contentType: "application/json", body: "[]" });
   });
   await page.goto("/profiles/new");
+  await page.getByRole("combobox", { name: "Profile relationship", exact: true }).selectOption("Personal");
 
   await page.getByLabel("Display Name").fill("Unsaved Profile");
   await page.getByRole("button", { name: "Cancel", exact: true }).click();
@@ -462,6 +475,7 @@ test("Profile onboarding drawer navigation uses one platform guard and closes th
     await dialog.dismiss();
   });
   await page.goto("/profiles/new");
+  await page.getByRole("combobox", { name: "Profile relationship", exact: true }).selectOption("Personal");
 
   await page.getByLabel("Display Name").fill("Unsaved Profile");
   await page.locator('[data-pd-id="app-navigation.trigger"]').click();

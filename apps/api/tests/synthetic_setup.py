@@ -12,7 +12,7 @@ def seed_synthetic_profile(
 ) -> None:
     with connect() as connection:
         connection.execute(
-            "INSERT OR IGNORE INTO profiles VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT OR IGNORE INTO profiles (profile_id, display_name, profile_code, status, tracking_start_date, management_fee_percent, investment_fee_percent, current_cash_snapshot) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 profile_id,
                 display_name,

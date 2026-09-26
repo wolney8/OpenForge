@@ -1,6 +1,6 @@
 # Plum Duff Next Issue Tracking Register
 
-Current continuation: [CP-054 resume](#resume-here--cp-054-operational-handover). Earlier checkpoint sections retain their historical state.
+Current continuation: [CP-055 active batch](#cp-055-approved-sequential-delivery). Earlier checkpoint sections retain their historical state.
 
 ## Resume here — CP-050 import gate
 
@@ -2008,3 +2008,19 @@ Updated 2026-09-26 21:15 BST. **PD-FIX-308 deployment/local reconciliation COMPL
 - Exact open decision: **Has Will ever used ALPHA-001 for genuine personal betting activity beyond test/import work?** Preserve all 39 unresolved records. No merge/archive/delete/September normal import pending answer and separate exact cutover approval. Likely Will—Personal/WILL-PERSONAL with 0%/0%, genuine costs/commission retained; no reclassification inferred from fee percentages.
 - Next TWO: #98/#114 review/capture Will's notebook observations and choose one bounded authorised action; #104/#12/#23 obtain ALPHA-use answer and prepare precise source/target/create/duplicates/backup cutover proposal. AI/subscriber architecture/new audit/merge engine remain on hold. Hosted per-ledger backup limitation, #96, Git-isolation and normal-owner browser gate remain explicit.
 - Safe progress posted to [#104](https://github.com/wolney8/OpenForge/issues/104#issuecomment-5849547987) and [#114](https://github.com/wolney8/OpenForge/issues/114#issuecomment-5849548102); no private records/evidence publication. Outgoing verified source/records/private-evidence backup excludes credentials/runtime environment/session material.
+
+
+## CP-055 approved sequential delivery
+
+Owner-authorised 2026-09-26. Preserve CP-052/053/054 evidence and ALPHA; no real cutover or push.
+
+| Existing scope | Exact outcome / current gap | State |
+| --- | --- | --- |
+| #114 audit reconciliation | Recorded discovery complete; 17/22 original findings fixed in scope, one accepted development-dependency risk, two future-feature remainders, one source-unresolved request group and one external #96 gate. No demonstrated executable Critical/High product defect. Two maintenance groups remain: Ruff style/test debt and large-payload pagination. | COMPLETE classification; acceptance/gates retained |
+| PERSONAL-READINESS-001 / #8/#12/#23 | Persist one economic relationship; existing rows unclassified, explicit new Personal 0/0 or Managed agreed fees; onboarding/import setup and portable recovery. Reuse onboarding fields/stepper and Profile Management financial form. | IMPLEMENTED / verified isolated: 53 API, PostgreSQL migration/concurrency/restore and 11 browser paths; delivery pending |
+| FINANCIAL-ANALYTICS-EXPLORER-001 / #111 | General range/Profile/metric/filter/group/source explorer using current projection; independent London-boundary/count/financial fixtures; existing Reports controls, tables, FinancialValue and drilldown. | IN PROGRESS; Profile slice complete |
+| #107/#116 hygiene | Inspect current counts/provenance; only proven disposable fixtures, preserve ALPHA and evidence. | NOT STARTED; after explorer |
+| #64/#109 authority; #12/#104 Accounts transfer | Reuse shared Bookmaker/Exchange/Bank authority; exact/approved aliases, dry run, scoped portable Accounts round-trip, no global mutation. | NOT STARTED; after hygiene |
+| #14–18/#74 subscriber requests | Distinct invited applicant/request/review/Managed Profile/access; no public activation/funding. | Planned; only after earlier slices |
+
+New permission covers necessary additive versioned relationship storage and isolated SQLite/PostgreSQL checks. Normal local migration requires fresh verified backup, compatibility and unchanged prior financial projections; no automatic legacy relationship classification or fee rewrite. Preview remains synthetic-only. One implementation owner; bounded read-only audit/review assistance only.

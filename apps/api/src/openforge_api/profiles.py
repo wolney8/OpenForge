@@ -37,6 +37,7 @@ class ProfileResponse(BaseModel):
     management_fee_percent: str
     investment_fee_percent: str
     current_cash_snapshot: str
+    profile_relationship: str
 
 
 class ProfileDeletePayload(BaseModel):
@@ -62,6 +63,7 @@ class ProfileRecoveryLifecycleResponse(BaseModel):
 
 
 class ProfileUpdatePayload(BaseModel):
+    profile_relationship: Literal["Personal", "Managed subscriber"] | None = None
     display_name: str | None = Field(default=None, min_length=1, max_length=120)
     profile_code: str | None = Field(
         default=None, min_length=3, max_length=32, pattern=r"^[A-Z0-9-]+$"
@@ -181,14 +183,15 @@ class ProfileOnboardingQuickActionPayload(BaseModel):
 
 
 class ProfileOnboardingCreatePayload(BaseModel):
+    profile_relationship: Literal["Personal", "Managed subscriber"]
     setup_path: Literal["fresh", "import"] = "fresh"
     display_name: str = Field(min_length=1, max_length=120)
     profile_code: str = Field(
         min_length=3, max_length=32, pattern=r"^[A-Z0-9-]+$"
     )
     tracking_start_date: date
-    management_fee_percent: Decimal = Field(default=Decimal("25"), ge=0, le=100)
-    investment_fee_percent: Decimal = Field(default=Decimal("25"), ge=0, le=100)
+    management_fee_percent: Decimal = Field(ge=0, le=100)
+    investment_fee_percent: Decimal = Field(ge=0, le=100)
     active_date_preset: Literal[
         "Today",
         "This Week",
@@ -214,6 +217,8 @@ class ProfileOnboardingCreatePayload(BaseModel):
     def validate_profile_onboarding(self) -> "ProfileOnboardingCreatePayload":
         if self.tracking_start_date > date.today():
             raise ValueError("Tracking start date cannot be in the future")
+        if self.profile_relationship == "Personal" and (self.management_fee_percent != 0 or self.investment_fee_percent != 0):
+            raise ValueError("Personal Profiles require 0% management and investment fees")
         if self.management_fee_percent + self.investment_fee_percent > 100:
             raise ValueError("Combined management and investment fees cannot exceed 100%")
         if not ALWAYS_ON_MODULES.issubset(set(self.enabled_modules)):

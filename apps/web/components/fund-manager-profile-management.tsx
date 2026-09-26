@@ -17,6 +17,7 @@ type ProfileRecord = {
   display_name: string;
   profile_code: string;
   status: string;
+  profile_relationship: string;
   tracking_start_date: string;
   management_fee_percent: string;
   investment_fee_percent: string;
@@ -173,6 +174,7 @@ export function FundManagerProfileManagement({ profileId }: { profileId: string 
   async function saveFees() {
     if (!form) return;
     await patchProfile({
+      profile_relationship: form.profile_relationship || undefined,
       investment_fee_percent: form.investment_fee_percent,
       management_fee_percent: form.management_fee_percent,
     }, "Profile fee settings saved.");
@@ -290,6 +292,7 @@ export function FundManagerProfileManagement({ profileId }: { profileId: string 
           {isArchived ? <p className="field-hint">Archived Profiles are read-only. Restore this Profile to change its settings.</p> : null}
           <FinancialValueReplayGroup><dl className="fund-manager-account-details">
             <div><dt>Status</dt><dd>{profile.status}</dd></div>
+            <div><dt>Economic relationship</dt><dd>{profile.profile_relationship || "Not classified — review required"}</dd></div>
             <div><dt>Current cash snapshot</dt><dd><FinancialValue value={profile.current_cash_snapshot} /></dd></div>
           </dl></FinancialValueReplayGroup>
         </section>
@@ -308,9 +311,12 @@ export function FundManagerProfileManagement({ profileId }: { profileId: string 
         <section aria-labelledby="profile-management-tab-financial" className="analytics-tab-panel stack" hidden={activeSection !== "financial"} id="profile-management-panel-financial" role="tabpanel">
           <div><span className="eyebrow">Financial</span><h2>Fees</h2></div>
           <div className="profile-management-form-grid">
-            <label className="field-control"><span>Management fee (%)</span><input disabled={isSaving || isArchived} max="100" min="0" onChange={(event) => setForm({ ...form, management_fee_percent: event.target.value })} step="0.01" type="number" value={form.management_fee_percent} /></label>
-            <label className="field-control"><span>Investment fee (%)</span><input disabled={isSaving || isArchived} max="100" min="0" onChange={(event) => setForm({ ...form, investment_fee_percent: event.target.value })} step="0.01" type="number" value={form.investment_fee_percent} /></label>
+            <label className="field-control"><span>Profile relationship</span><select data-pd-id="profile-management.relationship" disabled={isSaving || isArchived} onChange={(event) => setForm({ ...form, profile_relationship: event.target.value, management_fee_percent: event.target.value === "Personal" ? "0.00" : "", investment_fee_percent: event.target.value === "Personal" ? "0.00" : "" })} value={form.profile_relationship || ""}><option disabled value="">Not classified — choose relationship</option><option>Personal</option><option>Managed subscriber</option></select></label>
+
+            <label className="field-control"><span>Management fee (%)</span><input disabled={isSaving || isArchived || form.profile_relationship === "Personal"} max="100" min="0" onChange={(event) => setForm({ ...form, management_fee_percent: event.target.value })} step="0.01" type="number" value={form.management_fee_percent} /></label>
+            <label className="field-control"><span>Investment fee (%)</span><input disabled={isSaving || isArchived || form.profile_relationship === "Personal"} max="100" min="0" onChange={(event) => setForm({ ...form, investment_fee_percent: event.target.value })} step="0.01" type="number" value={form.investment_fee_percent} /></label>
           </div>
+          <p className="field-hint">Personal requires 0%/0%; actual commission and costs remain. Managed fees require agreed terms. Saving changes current settings only; historical fee periods and access permissions are unchanged.</p>
           <div className="settings-action-row" data-pd-id="profile-management.financial.actions"><Link className="button-link" href={`/profiles?profile=${profileId}`}>Review fee position</Link><button className="modal-primary-button" disabled={isSaving || isArchived} onClick={() => void saveFees()} type="button">{isSaving ? <span aria-hidden="true" className="button-spinner" /> : null}<span>{isSaving ? "Saving" : "Save fees"}</span></button></div>
         </section>
 

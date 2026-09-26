@@ -12,6 +12,7 @@ import {
 
 type PercentageTextInputProps = {
   ariaLabel: string;
+  disabled?: boolean;
   clearInitialValueOnFocus?: boolean;
   dataPdId: string;
   id: string;
@@ -30,6 +31,7 @@ function toCanonicalValue(value: string, mode: "decimal-rate" | "percentage-poin
 
 export function PercentageTextInput({
   ariaLabel,
+  disabled = false,
   clearInitialValueOnFocus = false,
   dataPdId,
   id,
@@ -52,6 +54,7 @@ export function PercentageTextInput({
   return (
     <span className="adorned-text-input percentage-text-input">
       <input
+        disabled={disabled}
         aria-invalid={invalid}
         aria-label={ariaLabel}
         data-pd-id={dataPdId}

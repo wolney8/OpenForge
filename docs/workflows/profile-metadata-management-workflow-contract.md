@@ -75,3 +75,12 @@ classification, visibility, validation, and audit decisions before implementatio
 - cancel creates no change
 - successful update creates one audit record
 - subscriber-facing routes cannot invoke Fund Manager metadata updates
+
+
+## CP-055 economic relationship (owner approved 2026-09-26)
+
+One persisted `profiles.profile_relationship`: `Personal`, `Managed subscriber`, or empty only for legacy/unreviewed rows and old portable backups. Never infer it from fees, lifecycle or login. New onboarding requires an explicit selection. No new access grant or applicant/contact fields.
+Personal creation defaults to and requires management/investment fees 0%/0%; Managed creation requires both explicit agreed percentages, including a deliberately entered zero. Actual Exchange commission, costs, funding and ledger P&L are unchanged. Relationship/fee edits use the existing audited Profile metadata update; Personal rejects non-zero current fees, and changing to Managed requires both fee values. Immutable historical fee revisions are not rewritten.
+The additive SQLite blueprint and PostgreSQL migration `20260926_007_profile_relationship` add only this field with empty legacy default. Existing financial columns/projections remain identical. Portable Profile export includes it; old backups validate their original checksums first and restore an empty/unreviewed relationship. Invalid or non-zero-fee Personal payloads reject before writes.
+New-workbook setup reuses Add Profile's explicit Import path: relationship, name/code, existing tracking/start fields, fees, then review/create a new empty Profile and analyse the workbook. No implicit merge/replace or real cutover. Prepared owner proposal remains Personal / Will — Personal / WILL-PERSONAL / 0%/0%, unexecuted.
+Independent acceptance: new Personal and explicit Managed creation, malformed/missing relationship and fees, legacy migration/retry, audited updates without historical fee changes, cross-Profile isolation, portable old/new restore and combined reporting. Browser: both creation paths, failure/retry, Cancel, persistence/reopen; themes/compact/enlarged/keyboard/reduced motion using existing controls.

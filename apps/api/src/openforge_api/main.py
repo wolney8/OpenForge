@@ -101,6 +101,11 @@ app.include_router(lookup_values_router)
 
 def _schema_version(connection: object) -> str:
     try:
+        connection.execute("SELECT profile_relationship FROM profiles LIMIT 1").fetchone()  # type: ignore[attr-defined]
+        return "profile-relationship-v1"
+    except Exception:
+        pass
+    try:
         account_columns = connection.execute(  # type: ignore[attr-defined]
             "SELECT stake_access, promo_access FROM accounts LIMIT 1"
         )
