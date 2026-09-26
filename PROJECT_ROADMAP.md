@@ -1,6 +1,6 @@
 # Project Roadmap — Plum Duff / OpenForge — Doc ID: PR-CODEX-001
 
-**Last updated:** 2026-09-26 21:15 BST
+**Last updated:** 2026-09-26 23:29:27 BST
 
 ## Product goal
 
@@ -39,11 +39,11 @@ History/Reports and restore; Sportsbook/Account review with atomic balance confi
 observation history. Application `e2d70e0` runs locally and on protected Preview. Existing storage
 was sufficient; no SQL migration. #105's named engineering pass remains complete.
 
-**Current milestone (CP-054):** operational consolidation complete: accepted application `b6437e8` runs locally and on the same protected Preview; existing owner notebook/model handover is current. Rehearsal/comparison accepted and not repeated. Authenticated hosted importer checks await the missing authorised synthetic-session renewal resource.
+**Current milestone (CP-055):** explicit Personal/Managed relationship, bounded Reports Explorer V1 and Accounts-only authority/portability are implemented and tested locally at `534a5f4`. Additive schema preserves prior data/financial projections and leaves legacy relationships unclassified. Protected Preview remains `b6437e8`: fresh dedicated DB recovery access and synthetic session renewal are missing.
 
-**Next outcomes:** (1) capture and classify Will's concise usability notes without treating proposals as approval; (2) answer whether ALPHA was ever genuine personal activity, then prepare the exact new-personal-Profile cutover for separate approval. Preserve ALPHA without archive/merge/delete/import until that answer. AI/subscriber architecture, a merge engine and another audit remain out of this consolidation scope.
+**Next outcomes:** (1) recover the specific Preview resources, then promote/test the complete slice and inspect remaining synthetic hygiene; (2) answer ALPHA purpose and prepare exact new-Personal cutover for separate approval. No real import, archive, merge or reclassification before approval.
 
-Optional Free Bets/Casino Account-review entry points and cosmetic expansion are on hold behind this owner priority. Wider Account freshness/trends/settlement, unsupported Multi-Lay configurations and general analytics remain named scope. No new schema, normal-data import, public signup, paid AI or Production release authorised.
+Subscriber invitation/request/access remains the existing minimal proposal, awaiting exact state/visibility/role/storage approval. Reuse identities; do not begin a second model. AI/provider/spend remains unapproved. No cosmetic tranche, new audit, merge engine, public signup, Production or Git push.
 
 ## Local defect / completeness
 
@@ -76,10 +76,8 @@ Optional Free Bets/Casino Account-review entry points and cosmetic expansion are
 
 ## Planned product features
 
-- #111's bounded weekly period-P&L Reports preset is implemented; the general
-  metric/granularity/filter model and saved explorer presets still need later design.
-- Account freshness/trend reporting, decision-support tasks, richer Multi-Lay and approved source
-  ingestion remain separately planned.
+- #111 weekly/formal Reports and Explorer V1 range/metric/filter/group/source paths are implemented locally. Reliable historical Sportsbook/Free Bet placement dates are unavailable; counts explicitly use reporting dates. Saved presets and richer analytics remain separate.
+- Account freshness/trends and broader task dispositions remain planned; core observations and Daily Tasks are delivered. Richer Multi-Lay configurations remain explicit unsupported scope.
 
 ## Security / operations
 

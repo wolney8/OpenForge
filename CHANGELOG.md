@@ -1,5 +1,13 @@
 # Changelog — Plum Duff / OpenForge
 
+## CP-055 — 2026-09-26 23:29:27 BST
+
+- Persist explicit Personal/Managed subscriber relationship and guarded fee setup/recovery, with unclassified legacy Profiles preserved.
+- Add Reports Explorer V1 over existing projections: London ranges, canonical filters/grouping, counts/realised values and retained source context; reporting-date basis explicit.
+- Complete local Accounts-only portable fields/provider review/idempotency and correct compact/enlarged review reachability.
+- Local534a5f4 migration preserves prior data; protected Preview staysb6437e8 pending recovery/session resources. No normal personal cutover or push.
+
+
 This file records meaningful completed or integrated milestones and receives older
 `PROJECT_STATUS.md` checkpoint rows when the current log exceeds 20 entries. It is not the backlog,
 roadmap or detailed audit record.

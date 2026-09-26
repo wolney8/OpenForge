@@ -1,36 +1,35 @@
 # Project Status — Plum Duff / OpenForge — Doc ID: PS-CODEX-001
 
-**Last updated:** 2026-09-26 21:15 BST · **Status:** 🟢 CP-054 local/Preview running; personal cutover withheld
+**Last updated:** 2026-09-26 23:29:27 BST · **Status:** CP-055 completed locally; protected Preview promotion blocked
 
 ## Right now
 
-- **Completed:** canonical local frontend/API restored to accepted application `b6437e8`; same protected Preview promoted to that application. Actual HTTP identities, schema, authentication denial/protection and served assets verified. Owner data preserved. [Evidence](docs/audits/platform-quality-audit.md#cp-054-operational-consolidation-and-model-handover--2026-09-26-2115-bst) · [Feature status](FEATURE_STATUS.md).
-- **Working on next:** Will's small usability review and notes; no new feature tranche. The owner notebook and model resume below are current. CP-052 rehearsal and CP-053 comparison remain accepted and were not repeated.
-- **Blocked on:** Has Will ever used ALPHA-001 for genuine personal betting activity beyond test/import work? The 39 records remain unresolved. Preserve ALPHA: no merge, archive, delete or September import. Likely target is a new personal Profile with 0%/0%; actual commission/costs retained.
-- **Verification gap:** changed authenticated Preview import/review/retry screens were not rerun: the previous temporary authorised synthetic-session renewal configuration is absent. Provider protection and application authentication were checked separately. No personal cookies, normal-owner session bypass or export of shared/rotation-flagged secrets.
+- **Delivered locally:** explicit Personal / Managed subscriber relationship, Add Profile/import setup and portable recovery; Reports Explorer V1; Accounts-only reviewed round-trip and canonical provider guards. Audit discovery/reconciliation is complete for its recorded scope; acceptance, maintenance and external gates remain. [Evidence](docs/audits/platform-quality-audit.md#cp-055-personal-foundation-reports-explorer-and-account-authority) · [Feature status](FEATURE_STATUS.md).
+- **Data preserved:** additive relationship migration only; all 67 prior table projections and 42 Profile financial projection results unchanged, including one unchanged archived-fixture read error. Existing relationships remain unclassified. No September import, ALPHA change, fee-period rewrite or normal synthetic writes.
+- **Preview held:** provider-managed dedicated Preview database binding was not returned in usable form for a fresh pre-migration backup. The authorised synthetic app-session renewal resource is separately absent. Existing Preview stays protected/running at `b6437e8`; no CP-055 hosted screen PASS claimed.
+- **Cutover decision:** Has Will ever used ALPHA-001 for genuine personal betting activity beyond test/import work? Preserve its 39 unresolved records; no merge/archive/delete/import. Prepared target: **Personal · Will — Personal · WILL-PERSONAL · 0%/0%**, subject to separate exact cutover approval.
 
 ## Resume here — model handover
 
-| Item | Exact current state |
+| Item | Current state |
 | --- | --- |
-| Working branch/worktree | `feature/normal-multilay-cp047` at `.worktrees/normal-multilay-cp047`; primary checkout remains older with unrelated work |
-| Application / records | App `b6437e81d00fab270caaa94e4a093c663ad9a7b8`. CP-054 records are this branch HEAD; exact outgoing SHA is recorded in primary `data/private/backups/openforge-cp054-verification-20260926-211526.json` after commit; preceding records `1b79127` |
-| Local frontend | [localhost:3010](http://localhost:3010) **running**, source `b6437e8`; actual HTTP asset hash matches the fresh build in `.worktrees/local-plum-duff-integration` |
-| Local API | [localhost:8010](http://localhost:8010/healthz) **running**, `b6437e8+dirty`; dirty files are only generated `next-env.d.ts` and `tsconfig.typecheck.tsbuildinfo`, preserved intentionally |
-| Protected Preview | [existing Preview](https://plum-duff-cp028-preview-homelab11.vercel.app) **running**, frontend/API `b6437e8`; deployment `plum-duff-6vi59artk-homelab11.vercel.app`; unchanged project/alias/protection |
-| Runtime/database | Local `normal-owner`, canonical owner SQLite; Preview `preview`, isolated PostgreSQL `preview:plum_duff_preview_cp028`; both `account-access-v1`. Existing provider-managed configuration reused remotely; no secret transfer |
-| Normal data / processes | All 67 table projections and schema unchanged; fresh verified pre-runtime backup. Local API/frontend left running; process IDs/logs/launch receipt in ignored primary `data/private/runtime/cp054` |
-| Relevant passing evidence | CP-052: 262 API / 4 PostgreSQL / 8 private browser checks and full restore/retry accepted. CP-054: no-migration compatibility copy, actual local/hosted HTTP/source/auth/protection/assets checks; Vercel build/type-check passed. No repeated full suite/rehearsal |
-| Remaining blockers | ALPHA-use answer plus separate cutover approval; missing authorised Preview synthetic-session renewal resource; hosted per-ledger PostgreSQL local-backup limitation; #96 rotation and Git deployment isolation. Fresh normal-owner Google/browser acceptance not performed |
-| Withheld permissions | Normal cutover/merge/archive/delete/reclassification/fee rewrite; schema expansion; personal-cookie use; shared-secret export/credential change; Production/main merge/Git push; new paid services, AI calls or subscriber activation |
+| Branch/worktree | `feature/normal-multilay-cp047`, `.worktrees/normal-multilay-cp047`; primary checkout has unrelated preserved work |
+| Application / records | App `534a5f408db00c9356d46d5bdb9ea27892e96981` (Profile `f81b98d`, Reports `53ca415`, Accounts `534a5f4`); CP-055 records are outgoing branch HEAD, exact SHA in primary `data/private/backups/openforge-cp055-verification.json`; preceding records `e739d1d` |
+| Local frontend | [localhost:3010](http://localhost:3010), **running** `534a5f4`; actual served CSS matches compiled canonical source |
+| Local API | [localhost:8010](http://localhost:8010/healthz), **running** `534a5f4+dirty`; only preserved generated `next-env.d.ts` and `tsconfig.typecheck.tsbuildinfo` differ |
+| Preview | [same protected Preview](https://plum-duff-cp028-preview-homelab11.vercel.app), **running** frontend/API `b6437e8`; CP-055 not served |
+| Identity/schema | Local `normal-owner`, canonical owner SQLite, `profile-relationship-v1`; Preview `preview`, isolated PostgreSQL `preview:plum_duff_preview_cp028`, `account-access-v1`. No secret transfer/scope change |
+| Tests / evidence | Final 129 API, 55 Reports units, 11 Accounts/shared-import browsers; 11 Profile paths passed with targeted harness rechecks; 4 Reports/weekly-preset browsers. Disposable PostgreSQL relationship migration/concurrency/recovery and Accounts persistence pass; API/web types, lint/build pass. Private receipts: primary `data/private/rehearsals/cp055`; launch receipts: `data/private/runtime/cp055` |
+| Exact limitations | Preview recovery/session resources; hosted per-ledger PostgreSQL backup capability; actual historical Sportsbook/Free Bet placement-date reporting unavailable; VoiceOver/fresh normal-owner browser unexecuted; #96 rotation, Git isolation, off-device custody; ALPHA/cutover decision |
+| Withheld | Normal cutover/reclassification/fee rewrite, Production/main merge/Git push, secret changes/export of shared credentials, paid AI/private-data transmission, new subscriber roles/storage/activation. CP-055 relationship schema permission is used, not blanket future expansion |
 
-**FIRST READ:** 1. `PROJECT_STATUS.md`; 2. `FEATURE_STATUS.md`; 3. `FEATURE_STATUS.md` → **Will handover notes — owner editable**; 4. `PROJECT_ROADMAP.md`; 5. canonical request register only for issue-level detail.
-The primary-root Status routes here; primary-root Feature Status is a local link to the same notebook. These deliberate local routing changes are backed up, not a primary-branch commit. Preserve unrelated/generated changes. Source/runtime deployment commands and exact gaps are linked in the [register](docs/planning/plum-duff-next-issue-tracking-register.md#resume-here--cp-054-operational-handover).
+**FIRST READ:** 1. `PROJECT_STATUS.md`; 2. `FEATURE_STATUS.md`; 3. its **Will handover notes — owner editable**; 4. `PROJECT_ROADMAP.md`; 5. canonical request register only for issue detail. [Precise resume](docs/planning/plum-duff-next-issue-tracking-register.md#cp-055-approved-sequential-delivery).
+Primary-root routing still points here/the same owner notebook. Preserve unrelated/generated files and original CP-052/053/054 evidence. No repeat rehearsal/audit.
 
 ## Next two executable actions
 
-1. #98/#114: review Will's notebook entries, classify each BUG / UX CHANGE / NEW FEATURE / QUESTION, retain original wording, link/deduplicate existing requirements and select one bounded authorised action.
-2. #104/#12/#23: obtain the ALPHA-use answer; preserve any genuine activity and present one exact September→WILL-PERSONAL create/duplicate-treatment/0%/0%/backup proposal. Do not execute cutover without its explicit approval.
+1. #114/#115: obtain a secure dedicated Preview DB backup capability and authorised synthetic session renewal; verify fresh recovery, then promote `534a5f4` to the same Preview and run the focused changed-workflow/hygiene checks. No shared-secret export or bypass.
+2. #104/#12/#23: obtain the ALPHA-use answer and prepare the exact September→Personal `WILL-PERSONAL` create/overlap/0%/0%/backup operation for one separate cutover approval; no merge engine or normal import beforehand.
 
 ## Checkpoint log
 
@@ -56,6 +55,7 @@ The primary-root Status routes here; primary-root Feature Status is a local link
 | CP-052 | 2026-09-26 12:25 BST | Completed the approved full private import and fresh recovery; repaired global/native and same-Profile logical identity gaps; normal cutover remains separate | [#104](https://github.com/wolney8/OpenForge/issues/104), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Evidence](docs/audits/platform-quality-audit.md#cp-052-complete-private-rehearsal-and-import-identities--2026-09-26-1225-bst) |
 | CP-053 | 2026-09-26 18:55 BST | Completed read-only legacy Profile/source classification and parent-link review; exact unresolved activity set retained privately, normal cutover remains unapproved | [#104](https://github.com/wolney8/OpenForge/issues/104), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Evidence](docs/audits/platform-quality-audit.md#cp-053-read-only-personal-cutover-preparation--2026-09-26-1855-bst) |
 | CP-054 | 2026-09-26 21:15 BST | Restored latest compatible local runtime, promoted accepted repairs to protected Preview and added an owner notebook/model handover; no personal cutover | [#101](https://github.com/wolney8/OpenForge/issues/101), [#104](https://github.com/wolney8/OpenForge/issues/104), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Evidence](docs/audits/platform-quality-audit.md#cp-054-operational-consolidation-and-model-handover--2026-09-26-2115-bst) |
+| CP-055 | 2026-09-26 23:29:27 BST | Delivered explicit Profile relationships, Reports Explorer V1 and Accounts-only portability locally; additive schema preserves all prior data, Preview promotion held on recovery/session resources | [#111](https://github.com/wolney8/OpenForge/issues/111), [#109](https://github.com/wolney8/OpenForge/issues/109), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Evidence](docs/audits/platform-quality-audit.md#cp-055-personal-foundation-reports-explorer-and-account-authority) |
 
 ## Reference index
 

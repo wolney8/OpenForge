@@ -146,3 +146,13 @@ Complete this for every feature, bug fix, component, fixture-backed UI, route or
 - [ ] Known-mistakes register updated if this fixes a repeated issue.
 - [ ] Every original issue ID reconciled; no item omitted or marked complete without verification.
 - [ ] Lint, typecheck and relevant tests recorded in the completion report.
+
+## CP-055 scoped completion — 2026-09-26 23:29:27 BST
+
+- [x] Contracts, UI skills and existing equivalents read; Profile onboarding/financial fields, current Reports projection/tables/chart/FinancialValue, and per-ledger review modal reused. Stable register IDs309–312 and #111/#109 link the repairs.
+- [x] Existing tokens/actions/names/heading and help retained; no new UI framework, financial animation or motion listener. Native select/input/label/table semantics and focus targets preserved.
+- [x] Personal/Managed validation, failure/Cancel/reload; Reports unknown/zero/failed/rapid scope/drilldown; Accounts actual dry-run/backup/confirm/failure/retry/reopen plus shared ledger regressions pass.
+- [x] Both themes, desktop/390px/760px with200% text, keyboard/reduced motion and actual internal table/checkbox/heading reachability checked. PD312 fixes discovered flex collapse and Select clipping; original screenshot evidence retained. Financial motion contract unchanged and accepted evidence reused.
+- [x] Profile11 paths, Reports4 and final Accounts/shared11 browsers pass; API129/unit55/PG/types/build/lint recorded. Known-pitfalls/enforcer updated; unrelated ledger Save/Discard/accepted calculator flows retained.
+- [ ] Fresh normal-owner browser and VoiceOver spoken-output acceptance: not executed; no restricted-session bypass.
+- [ ] CP-055 hosted UI/hygiene: blocked on fresh dedicated DB recovery and authorised synthetic session resources; old Preview remains live.

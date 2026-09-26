@@ -1,6 +1,6 @@
 # Audit Register — Plum Duff / OpenForge — Doc ID: AR-CODEX-001
 
-**Last updated:** 2026-09-26 21:15 BST
+**Last updated:** 2026-09-26 23:29:27 BST
 
 This is the owner-facing index for audit evidence. The
 [platform quality audit](docs/audits/platform-quality-audit.md) remains the detailed authority.
@@ -17,10 +17,27 @@ These are coverage measures, not percentages of the product finished.
 | Competitor comparisons | 27 / 27 (100%) | 14 documentation, 3 hands-on and 10 reviewed-inaccessible cells; reviewed is not confirmed |
 | Requirements reconciled | 133 / 133 (100%) | Implementation, hosted and owner-acceptance states remain separate |
 
+## Finite remediation classification — CP-055
+
+Whole-platform audit discovery/reconciliation is complete for the recorded scope; remaining entries are acceptance, operational gates or separately tracked feature work.
+
+| Classification | Exact remaining scope |
+| --- | --- |
+| Open Critical/High engineering defect | None demonstrated in supported product scope; not a fresh dependency scan |
+| Open Medium/Low engineering maintenance | Two recorded groups:200 Ruff style/test findings; 600-row payload/pagination capacity |
+| Fixed and verified |17/22 original PD-QA findings:002–008, 011, 014–022. New CP-055 Profile/import repairs verified locally; Preview promotion pending |
+| Accepted risk | PD-QA-001 production paths repaired; five development-only dependency advisories at retained measurement |
+| Manual acceptance only | VoiceOver spoken output, broader owner acceptance; accepted Google/#117 behaviour retained |
+| External/operational gate | PD-QA-013/#96 rotation; Preview fresh DB recovery/session; hosted per-ledger backup capability; Git isolation, off-device custody, personal cutover approval |
+| Feature/source requirement | PD-QA-009 broader Account intelligence; 010 unsupported Multi-Lay; 012/#102 source-unresolved requests retained without invented wording |
+
+No issue closure or new audit. Local #107 selector criteria hold: no disposable test Account labels; archived fixture history deliberately retained. Preview hygiene remains unverified.
+
 ## Current high-priority findings
 
 | ID | Plain-English problem | State | Repair / integration state | Issue |
 | --- | --- | --- | --- | --- |
+| CP-055 / PD-FIX-309–312 | Profile relationship, Explorer V1, Account authority/portability and review reachability | Implemented/verified locally; Preview blocked | `534a5f4`; 129 API, 55 Reports units, scoped browsers/PostgreSQL/types/build. Prior owner data preserved by verified migration. [Evidence](docs/audits/platform-quality-audit.md#cp-055-personal-foundation-reports-explorer-and-account-authority) | [#111](https://github.com/wolney8/OpenForge/issues/111), [#109](https://github.com/wolney8/OpenForge/issues/109), [#114](https://github.com/wolney8/OpenForge/issues/114) |
 | CP-054 / PD-FIX-308 / PERSONAL-READINESS-001 | Operational consolidation/model handover | Local/Preview application running; hosted authenticated importer gap explicit |`b6437e8`; source/schema/data/auth/protection/assets verified; provider config reused. No private cutover or repeated campaign. [Evidence](docs/audits/platform-quality-audit.md#cp-054-operational-consolidation-and-model-handover--2026-09-26-2115-bst) | [#101](https://github.com/wolney8/OpenForge/issues/101), [#104](https://github.com/wolney8/OpenForge/issues/104), [#114](https://github.com/wolney8/OpenForge/issues/114) |
 | CP-053 / PERSONAL-READINESS-001 | Read-only legacy comparison / personal cutover | Comparison COMPLETE; purpose decision BLOCKED |Exact remaining real/test set and all classifications retained privately; parent gaps non-blocking; no code/data change or repeated rehearsal. [Evidence](docs/audits/platform-quality-audit.md#cp-053-read-only-personal-cutover-preparation--2026-09-26-1855-bst) | [#104](https://github.com/wolney8/OpenForge/issues/104), [#114](https://github.com/wolney8/OpenForge/issues/114) |
 | CP-052 / PERSONAL-READINESS-001 / PD-FIX-308 | Complete private source acceptance and destination identities | FULL PRIVATE REHEARSAL PASS; tested local repair |`b6437e8`;262 API,4 PostgreSQL,8 private browser steps and fresh recovery pass. Normal/Preview`7da4d44`; target/merge decision separate. [Evidence](docs/audits/platform-quality-audit.md#cp-052-complete-private-rehearsal-and-import-identities--2026-09-26-1225-bst) | [#104](https://github.com/wolney8/OpenForge/issues/104), [#114](https://github.com/wolney8/OpenForge/issues/114) |
@@ -57,7 +74,7 @@ These are coverage measures, not percentages of the product finished.
 | PD-QA-018 | Imported child records did not always resolve their native parent | Integrated locally / engineering gate passed | Normal 3010 uses Profile + logical namespace + external ID; retry, collision, explicit re-resolution and portable remapping pass | [#12](https://github.com/wolney8/OpenForge/issues/12), [#80](https://github.com/wolney8/OpenForge/issues/80) |
 | PD-QA-021 | Deleting some ledger rows also removed their audit history | Integrated locally / engineering gate passed | Normal 3010 records append-only evidence across five ledgers; reports ignore evidence rows and protected financial deletion is denied; full history UI remains PD-QA-016 | [#80](https://github.com/wolney8/OpenForge/issues/80), [#90](https://github.com/wolney8/OpenForge/issues/90), [#114](https://github.com/wolney8/OpenForge/issues/114) |
 | PD-QA-011 | Notification History lost an earlier event when its live source changed | Integrated locally / focused lifecycle passed | A bounded Profile/user-scoped immutable event store retains readable history; current alert and dismissal state remain separate | [#90](https://github.com/wolney8/OpenForge/issues/90), [#99](https://github.com/wolney8/OpenForge/issues/99) |
-| #111 | Report exploration still lacks later analytics controls | Bounded point, drilldown and weekly period-P&L slices delivered | CP-038 adds the reconciled period-P&L preset; general metric/granularity/explorer-preset semantics remain future design, not delivered by this slice | [#111](https://github.com/wolney8/OpenForge/issues/111) |
+| #111 | Explorer and temporal scope | Explorer V1 delivered locally in CP-055 | Today/week/month/custom, realised P&L/Activities/costs/withdrawals and canonical grouping/drilldown; actual historical placement dates unavailable, saved presets remain | [#111](https://github.com/wolney8/OpenForge/issues/111) |
 | C05 | Changed-odds and multiple-fill coverage beyond supported Normal Multi-Lay | PARTIAL; supported Normal slice complete CP-047 | Actual different-odds fills, one-market commission, remaining exposure/settlement/correction/restore are implemented and regressed CP-048. Unsupported backing/reward/multiple-market configurations remain explicit | [#35](https://github.com/wolney8/OpenForge/issues/35), [#38](https://github.com/wolney8/OpenForge/issues/38) |
 | PD-QA-001 | Dependency advisories affected reachable or development paths | Production remediated locally; five development-only findings accepted pending upstream | Next 16.3.3, sharp 0.35.4 and Vitest 4.1.11 leave zero production advisories; remaining brace-expansion/js-yaml paths are confined to ESLint tooling and forced overrides are not justified | [#115](https://github.com/wolney8/OpenForge/issues/115) |
 | #96 | Provider credentials still require owner/provider rotation | Owner action pending | No secret values are recorded in the audit | [#96](https://github.com/wolney8/OpenForge/issues/96) |
@@ -81,14 +98,14 @@ These are coverage measures, not percentages of the product finished.
 | Cash Adjustment correction and reporting | Passed locally | Linked Account remains an observation while +25→+20 and −7 cash movements report net +13 once; retry/History/validation pass |
 | Native Casino activity | Passed locally | £7 gross less current governed costs reports £6 then corrected £5 once; History and malformed-money rejection pass |
 | Converted Free Bet SNR and retained legacy SR | Passed locally | Conversion, copied reference, distinct actual placement, settlement, readable History, report and reload pass |
-| Profile and combined financial reporting | Passed for canonical journey | Active-only defaults, deliberate archived inclusion, arithmetic/range/breakdowns, point inspection and reconciled-record drilldown pass; later module/metric controls are separate roadmap work |
+| Profile and combined financial reporting | Passed for canonical journey | Active-only defaults, deliberate archived inclusion, arithmetic/range/breakdowns, point inspection and reconciled-record drilldown pass; CP-055 adds local canonical module/metric/group filters; actual historical placement-date counts and saved presets remain |
 | Notification clear and history | Passed locally | Current alert, dismissal and durable historical event remain distinct; retry and viewer isolation pass |
 | Profile lifecycle and recovery | Passed locally | Create, archive, active-navigation exclusion, historical-report retention, recover and empty-Profile deletion boundaries pass |
 | Settings and session recovery | Passed locally | CP-025 re-proves initiation, state, callback, failure and session persistence; CP-027 records Will's successful genuine Google return. VoiceOver remains a separate journey |
 | Realistic 200-record Profile | Passed locally | Navigation, pagination, filter/search, chart and delayed-response recovery pass; hosted capacity remains separate |
 | SQLite backup restore and reopen | Passed for the isolated local copy | Operational/hosted disaster recovery remains separate |
 | Local PostgreSQL transaction, backup and restore | Passed for the isolated test scope | This is not hosted disaster-recovery proof |
-| Runtime/database isolation | Passed locally | Normal 3010 now reports the approved source, `normal-owner` database identity and `import-history-v1` schema |
+| Runtime/database isolation | Passed locally | Normal 3010 now reports the approved source, `normal-owner` database identity and `profile-relationship-v1` schema |
 | Guided onboarding | Passed locally | Validation, save/landing/reopen, discard navigation, narrow layout and 200% text pass; hosted/owner acceptance is not inferred |
 | Large-data stale-response recovery | Passed locally | A delayed older 200-record response cannot repaint the newer report; 503/focus recovery and reload pass |
 | Account access import/export | Passed locally | Canonical #109 fields, structured evidence, eligibility, award lineage and portable restore pass together in the authenticated browser |
@@ -116,7 +133,7 @@ These are coverage measures, not percentages of the product finished.
   genuine hosted OAuth and supported hosted journeys are proven. The 1.30 MB/600-row payload remains
   explicit pagination/capacity debt rather than a current acceptance blocker.
 - #96 credential rotation is owner/provider controlled.
-- Later #111 controls, Google bound-script runtime and other planned features are not local audit PASS
+- Remaining #111 historical placement-date/preset scope, Google bound-script runtime and other planned features are not local audit PASS
   claims and are not treated as hidden defects.
 - Competitor member capabilities remain reviewed-but-unverified where public access is unavailable.
 

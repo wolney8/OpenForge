@@ -1,6 +1,6 @@
 # Engineering Learning — Plum Duff / OpenForge — Doc ID: EL-CODEX-001
 
-**Last updated:** 2026-09-26 12:25 BST
+**Last updated:** 2026-09-26 23:29:27 BST
 
 This is a compact notebook of transferable lessons from building Plum Duff. It is not the audit,
 roadmap, backlog or evidence record.
@@ -10,6 +10,8 @@ roadmap, backlog or evidence record.
 - Keep a headline, its chart and its underlying records within the same financial scope.
 
 ## Concepts worth remembering
+
+CP-055: explicit relationship, reporting date and source identity have different authority. Do not infer ownership from fee percentages or placement time from import timestamps. Portable export headers must match the full field mapper; reviewed updates also need a locked current-state fingerprint. A dialog can fit the page while its internal table collapses—exercise real row selection at enlarged text.
 
 CP-052 (2026-09-26 12:25 BST): identity is Profile + logical namespace + external ID; a content hash detects change and a native ID locates storage. Mixing those roles can both reject a valid cross-Profile import and duplicate changed rows in one Profile. Inspect canonical, legacy and restored paths together; evidence of a shared ID is not proof of shared activity.
 
