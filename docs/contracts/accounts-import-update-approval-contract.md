@@ -1,6 +1,6 @@
 # Accounts Import Update Approval Contract
 
-Last updated: 2026-07-17
+Last updated: 2026-09-26 12:20 BST
 
 ## Status
 
@@ -17,7 +17,7 @@ silently replacing balances, status, dates, notes, or catalogue-derived metadata
 ## Update Identity
 
 - Match by target `profile_id`, source sheet `Accounts`, and stable `AccountID`.
-- A source identity attached to another profile remains blocked.
+- The same external ID in another Profile is independent; it must never supply this Profile’s update target or Account data.
 - If no source-lineage row exists, an exact native `account_id` match may establish lineage only
   when that account belongs to the selected profile.
 - Account names are still resolved against the universal Account Catalogue before diffing.
@@ -58,5 +58,5 @@ silently replacing balances, status, dates, notes, or catalogue-derived metadata
 - individually selected update applies only to the selected profile
 - balance strings round-trip exactly
 - backup, account audit, and source lineage all reference the confirmed update
-- cross-profile identity and invalid catalogue/money values remain blocked
+- cross-Profile target reuse and invalid catalogue/money values remain blocked
 

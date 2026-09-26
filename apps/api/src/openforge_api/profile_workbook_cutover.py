@@ -34,6 +34,7 @@ from openforge_api.db import (
     SportsbookBetRecord,
     connect,
     initialize_database,
+    postgres_runtime_enabled,
 )
 from openforge_api.each_way_extra_places import EachWayExtraPlacePayload
 from openforge_api.each_way_extra_places import build_response as build_extra_place_response
@@ -42,6 +43,10 @@ from openforge_api.postgres_schema import sqlite_type_to_postgres
 from openforge_api.sportsbook import SportsbookBetPayload, list_profile_sportsbook_bets
 from openforge_api.sportsbook import build_response as build_sportsbook_response
 from openforge_api.tracker_settings import DATE_PRESET_VALUES
+from openforge_api.source_identity import (
+    logical_source_namespace, workbook_source_key,
+    existing_import_identities as _existing_import_identities,
+)
 from openforge_api.tracker_summary_sources import get_profile_tracker_summary_sources
 
 PROFILE_TABLES = (
@@ -542,6 +547,288 @@ def _decision_resolution(item: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _source_identity(row: dict[str, Any], ledger: str) -> tuple[str, str, str]:
+    sheets = {
+        "accounts": "Accounts",
+        "sportsbook": "Sportsbook Bets",
+        "free_bets": "Free Bets",
+        "casino": "Casino Offers",
+        "cash_adjustments": "Cash Adjustments",
+    }
+    parsed = workbook_source_key(str(row["import_key"]))
+    sheet = parsed[0] if parsed else sheets[ledger]
+    external_id = str(row.get("source_record_id") or (parsed[1] if parsed else row["import_key"]))
+    return logical_source_namespace(sheet), external_id, parsed[2] if parsed else ""
+
+
+def _lock_import_profile(connection: Any, profile_id: str) -> None:
+    if postgres_runtime_enabled():
+        connection.execute(
+            "SELECT profile_id FROM profiles WHERE profile_id = ? FOR UPDATE", (profile_id,)
+        ).fetchone()
+
+
+def _identity_match(
+    connection: Any,
+    *,
+    profile_id: str,
+    row: dict[str, Any],
+    ledger: str,
+    entity_type: str,
+    identities: dict[tuple[str, str], list[dict[str, Any]]],
+    native_ids: dict[str, set[str]] | None = None,
+) -> dict[str, Any]:
+    namespace, external_id, source_hash = _source_identity(row, ledger)
+    matches = identities.get((namespace, external_id), [])
+    destinations = {(str(item["entity_type"]), str(item["entity_id"])) for item in matches}
+    result: dict[str, Any] = {
+        "profile_id": profile_id,
+        "source_namespace": namespace,
+        "external_id": external_id,
+        "source_row": row.get("source_row"),
+        "import_key": row["import_key"],
+        "destination_entity": entity_type,
+        "existing_destinations": sorted(destinations),
+        "collision_class": None,
+        "treatment": "insert",
+        "blocking": False,
+    }
+    prefixes = {
+        "accounts": "PA",
+        "sportsbook_bet": "SB",
+        "free_bet": "FB",
+        "casino_offer": "CO",
+        "cash_adjustment": "CA",
+        "extra_place": "EP",
+    }
+    result["proposed_destination_id"] = _entity_id(
+        prefixes[entity_type], profile_id, str(row["import_key"])
+    )
+    if matches:
+        same = len(destinations) == 1 and all(
+            item["entity_type"] == entity_type
+            and source_hash
+            and item["source_hash"] == source_hash
+            for item in matches
+        )
+        table, id_column = ENTITY_TABLES[entity_type]
+        destination = next(iter(destinations))[1]
+        exists = (
+            (destination in native_ids[entity_type])
+            if native_ids is not None
+            else connection.execute(
+                f"SELECT 1 FROM {table} WHERE profile_id = ? AND {id_column} = ?",
+                (profile_id, destination),
+            ).fetchone()
+        )
+        result.update(
+            collision_class="A" if same and exists else "B",
+            treatment="reuse" if same and exists else "review_changed_or_ambiguous_identity",
+            blocking=not (same and exists),
+        )
+    else:
+        # Legacy native IDs are evidence to review, never proof of source identity.
+        table, id_column = ENTITY_TABLES[entity_type]
+        existing = (
+            (external_id in native_ids[entity_type])
+            if native_ids is not None
+            else connection.execute(
+                f"SELECT {id_column} FROM {table} WHERE profile_id = ? AND {id_column} = ?",
+                (profile_id, external_id),
+            ).fetchone()
+        )
+        if existing:
+            result.update(
+                collision_class="E",
+                treatment="review_native_identity_without_provenance",
+                existing_destinations=[(entity_type, external_id)],
+                blocking=True,
+            )
+    return result
+
+
+def destination_identity_preflight(
+    connection: Any, *, profile_id: str, plan: dict[str, Any], decisions: dict[str, dict[str, Any]]
+) -> dict[str, Any]:
+    """Account for every source row and report all target conflicts before any writes."""
+    identities = _existing_import_identities(connection, profile_id)
+    native_ids = {
+        entity: {
+            str(row[column])
+            for row in connection.execute(
+                f"SELECT {column} FROM {table} WHERE profile_id = ?",
+                (profile_id,),
+            ).fetchall()
+        }
+        for entity, (table, column) in ENTITY_TABLES.items()
+        if entity
+        in {
+            "accounts",
+            "sportsbook_bet",
+            "free_bet",
+            "casino_offer",
+            "cash_adjustment",
+            "extra_place",
+        }
+    }
+    catalogue = _catalogue_records()
+    existing_accounts = [
+        dict(row)
+        for row in connection.execute(
+            "SELECT account_id, catalogue_id, account, type FROM accounts WHERE profile_id = ?",
+            (profile_id,),
+        ).fetchall()
+    ]
+    active = {
+        str(entry[2]["import_key"]): entry for entry in _ledger_write_entries(plan, decisions)
+    }
+    rows: list[dict[str, Any]] = []
+    logical: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    providers: dict[str, list[dict[str, Any]]] = {}
+    for ledger, sources in [
+        ("accounts", plan.get("accounts", [])),
+        *plan.get("ledgers", {}).items(),
+    ]:
+        for source in sources:
+            key = str(source["import_key"])
+            state = None
+            review_error = ""
+            if ledger == "accounts":
+                try:
+                    state = _reviewed_account_state(source, decisions, catalogue)
+                except (ValueError, KeyError, TypeError) as error:
+                    review_error = str(error)
+                entity_type = "accounts"
+                enabled = state is not None
+            else:
+                entry = active.get(key)
+                entity_type = (
+                    "extra_place"
+                    if entry and entry[0] == "extra_places"
+                    else LEDGER_CONFIG[ledger][2]
+                )
+                enabled = entry is not None
+            result = _identity_match(
+                connection,
+                profile_id=profile_id,
+                row=source,
+                ledger=ledger,
+                entity_type=entity_type,
+                identities=identities,
+                native_ids=native_ids,
+            )
+            if state and result["collision_class"] is None:
+                provider = catalogue[str(state["catalogue_id"])]
+                existing = [
+                    account
+                    for account in existing_accounts
+                    if (
+                        account["catalogue_id"] == state["catalogue_id"]
+                        or (
+                            str(account["account"]).casefold() == provider.brand_name.casefold()
+                            and str(account["type"]).casefold() == str(state["type"]).casefold()
+                        )
+                    )
+                ]
+                if existing:
+                    result.update(
+                        collision_class="E",
+                        blocking=True,
+                        treatment="review_existing_account_without_source_identity",
+                        existing_destinations=[
+                            ("accounts", account["account_id"]) for account in existing
+                        ],
+                    )
+            if result["existing_destinations"]:
+                result["proposed_destination_id"] = result["existing_destinations"][0][1]
+            result["operational"] = enabled
+            if not enabled:
+                result.update(
+                    collision_class=None,
+                    blocking=bool(review_error),
+                    treatment="review"
+                    if review_error
+                    else (
+                        "non_executed_opportunity"
+                        if source.get("action") == "exclude_non_transactional"
+                        else "deferred_provenance"
+                    ),
+                )
+            if review_error:
+                result["reason"] = review_error
+            rows.append(result)
+            if enabled:
+                logical.setdefault((result["source_namespace"], result["external_id"]), []).append(
+                    result
+                )
+                if state:
+                    result["provider_id"] = state["catalogue_id"]
+                    providers.setdefault(str(state["catalogue_id"]), []).append(result)
+    for group in [*logical.values(), *providers.values()]:
+        if len(group) > 1:
+            for result in group:
+                result.update(
+                    collision_class="D", treatment="review_multiple_source_rows", blocking=True
+                )
+    blockers = [row for row in rows if row["blocking"]]
+    return {
+        "ready": not blockers,
+        "source_row_count": len(rows),
+        "rows": rows,
+        "collision_counts": dict(
+            Counter(row["collision_class"] for row in rows if row["collision_class"])
+        ),
+        "blockers": [
+            f"{row['source_namespace']} row {row['source_row']}: {row['treatment']}"
+            for row in blockers
+        ],
+    }
+
+
+def _reuse_import_destination(
+    connection: Any,
+    *,
+    profile_id: str,
+    import_run_id: str,
+    source: dict[str, Any],
+    ledger: str,
+    entity_type: str,
+    identities: dict[tuple[str, str], list[dict[str, Any]]],
+) -> str | None:
+    match = _identity_match(
+        connection,
+        profile_id=profile_id,
+        row=source,
+        ledger=ledger,
+        entity_type=entity_type,
+        identities=identities,
+    )
+    if match["blocking"]:
+        raise ImportCutoverError(f"Source identity requires review: {match['external_id']}")
+    if match["treatment"] != "reuse":
+        return None
+    entity_id = str(match["existing_destinations"][0][1])
+    table, id_column = ENTITY_TABLES[entity_type]
+    current = dict(
+        connection.execute(
+            f"SELECT * FROM {table} WHERE profile_id = ? AND {id_column} = ?",
+            (profile_id, entity_id),
+        ).fetchone()
+    )
+    _audit_write(
+        connection,
+        import_run_id=import_run_id,
+        import_key=str(source["import_key"]),
+        profile_id=profile_id,
+        entity_type=entity_type,
+        entity_id=entity_id,
+        operation="no_op",
+        before=current,
+        after=current,
+    )
+    return entity_id
+
+
 def final_import_summary(
     *, run: dict[str, Any], workspace: dict[str, Any], plan: dict[str, Any] | None
 ) -> dict[str, Any]:
@@ -626,6 +913,9 @@ def final_import_summary(
                 else:
                     planned_ledger_counts[ledger] += 1
     with connect() as connection:
+        identity_preflight = destination_identity_preflight(
+            connection, profile_id=run["profile_id"], plan=plan, decisions=decisions,
+        ) if plan is not None else {"ready": False, "blockers": [], "rows": []}
         profile = connection.execute(
             "SELECT profile_id, display_name FROM profiles WHERE profile_id = ?",
             (run["profile_id"],),
@@ -636,9 +926,15 @@ def final_import_summary(
             and not importable_provider_blockers
             and validation_blocked_count == 0
             and plan is not None
+            and identity_preflight["ready"]
         ),
+        "destination_identity_preflight": identity_preflight,
         "plan_available": plan is not None,
         "blockers": [
+            *[
+                blocker for blocker in identity_preflight["blockers"]
+                if "review_multiple_source_rows" in blocker or "identity" in blocker
+            ],
             *[
                 f"{item['source_sheet']} row {item['source_row']} requires a decision"
                 for item in blocking
@@ -1210,6 +1506,7 @@ def _apply_accounts(
     all_rows: list[dict[str, Any]] | None = None,
     apply_absent_strategy: bool = True,
 ) -> dict[str, int]:
+    _lock_import_profile(connection, profile_id)
     catalogue = _catalogue_records()
     existing_rows = connection.execute(
         "SELECT * FROM accounts WHERE profile_id = ?", (profile_id,)
@@ -1219,11 +1516,20 @@ def _apply_accounts(
     by_name_type = {
         (str(row["account"]).casefold(), str(row["type"]).casefold()): row for row in existing
     }
+    identities = _existing_import_identities(connection, profile_id)
     matched: set[str] = set()
     counts = {"created": 0, "updated": 0, "unchanged": 0, "absent_changed": 0}
     for source in rows:
         state = _reviewed_account_state(source, decisions, catalogue)
         if state is None:
+            continue
+        reused = _reuse_import_destination(
+            connection, profile_id=profile_id, import_run_id=import_run_id, source=source,
+            ledger="accounts", entity_type="accounts", identities=identities,
+        )
+        if reused:
+            matched.add(reused)
+            counts["unchanged"] += 1
             continue
         catalogue_id = str(state["catalogue_id"])
         provider = catalogue[catalogue_id]
@@ -1297,6 +1603,11 @@ def _apply_accounts(
             and str(current[key] if current[key] is not None else "") != str(value)
         }
         if not changed:
+            _audit_write(
+                connection, import_run_id=import_run_id, import_key=str(source["import_key"]),
+                profile_id=profile_id, entity_type="accounts", entity_id=account_id,
+                operation="no_op", before=current, after=current,
+            )
             counts["unchanged"] += 1
             continue
         before = {key: current[key] for key in changed}
@@ -1540,23 +1851,13 @@ def _historical_extra_place_date(source: dict[str, Any], row: dict[str, Any]) ->
 
 
 def _imported_parent_fields(connection: Any, profile_id: str, external_id: str) -> dict[str, Any]:
-    candidates: set[str] = set()
-    if external_id:
-        for source in connection.execute(
-            "SELECT entity_id FROM import_source_records WHERE profile_id = ? "
-            "AND source_namespace = 'sportsbook' AND source_record_id = ? "
-            "AND entity_type = 'sportsbook_bet'",
-            (profile_id, external_id),
-        ).fetchall():
-            candidates.add(str(source["entity_id"]))
-        for source in connection.execute(
-            "SELECT import_key, entity_id FROM profile_import_write_audit WHERE profile_id = ? "
-            "AND entity_type = 'sportsbook_bet' AND rolled_back_at = ''",
-            (profile_id,),
-        ).fetchall():
-            parts = str(source["import_key"]).rsplit(":", 2)
-            if len(parts) == 3 and parts[1] == external_id:
-                candidates.add(str(source["entity_id"]))
+    candidates = {
+        str(item["entity_id"])
+        for item in _existing_import_identities(connection, profile_id).get(
+            ("sportsbook", external_id), []
+        )
+        if external_id and item["entity_type"] == "sportsbook_bet"
+    }
     candidates = {
         candidate
         for candidate in candidates
@@ -1598,6 +1899,7 @@ def _insert_ledger_entry(
     profile_id: str,
     import_run_id: str,
     entry: tuple[str, str, dict[str, Any], dict[str, Any] | None, dict[str, Any] | None],
+    identities: dict[tuple[str, str], list[dict[str, Any]]] | None = None,
 ) -> str:
     target, ledger, row, item, _ep_item = entry
     import_key = str(row["import_key"])
@@ -1607,6 +1909,15 @@ def _insert_ledger_entry(
         (import_run_id, import_key),
     ).fetchone()
     if existing_audit is not None and not str(existing_audit["rolled_back_at"] or ""):
+        return target
+    reused = _reuse_import_destination(
+        connection, profile_id=profile_id, import_run_id=import_run_id, source=row,
+        ledger=ledger,
+        entity_type="extra_place" if target == "extra_places" else LEDGER_CONFIG[ledger][2],
+        identities=(identities if identities is not None
+                    else _existing_import_identities(connection, profile_id)),
+    )
+    if reused:
         return target
     if target == "extra_places":
         source = row.get("source_fields") or {}
@@ -1766,6 +2077,8 @@ def insert_ledger_batch(
         entry for entry in _ledger_write_entries(plan, decisions) if entry[0] == target_ledger
     ]
     batch = entries[offset : offset + limit]
+    _lock_import_profile(connection, profile_id)
+    identities = _existing_import_identities(connection, profile_id)
     inserted = 0
     for entry in batch:
         _insert_ledger_entry(
@@ -1773,6 +2086,7 @@ def insert_ledger_batch(
             profile_id=profile_id,
             import_run_id=import_run_id,
             entry=entry,
+            identities=identities,
         )
         inserted += 1
     return {
@@ -2241,7 +2555,7 @@ def generate_post_import_reconciliation(
     provider_excluded_keys = {
         str(item["import_id"])
         for item in decision_items
-        if item["category"] == "missing_provider"
+        if item["source_sheet"] == "Accounts"
         and item["review_status"] in {"EXCLUDED", "DEFERRED"}
     }
     account_source_accounted = account_plan_keys <= account_audit_keys | provider_excluded_keys
@@ -2444,6 +2758,12 @@ def _apply_write_plan(
     decisions: dict[str, dict[str, Any]],
     absent_strategy: str,
 ) -> tuple[int, dict[str, int], dict[str, int]]:
+    _lock_import_profile(connection, profile_id)
+    identity_check = destination_identity_preflight(
+        connection, profile_id=profile_id, plan=plan, decisions=decisions,
+    )
+    if not identity_check["ready"]:
+        raise ImportCutoverError("; ".join(identity_check["blockers"]))
     try:
         setting_count = _apply_profile_settings(
             connection,
@@ -2741,6 +3061,13 @@ def execute_import(
     workspace: dict[str, Any],
     plan: dict[str, Any],
 ) -> dict[str, Any]:
+    with connect() as connection:
+        written = connection.execute(
+            "SELECT 1 FROM profile_import_write_audit WHERE import_run_id = ? "
+            "AND profile_id = ? AND rolled_back_at = '' LIMIT 1", (import_run_id, profile_id),
+        ).fetchone()
+        if written:
+            raise ImportCutoverError("This approved workbook has already written Profile data")
     summary = final_import_summary(run=run, workspace=workspace, plan=plan)
     if not summary["ready"] or not approved_run_is_retryable(run):
         raise ImportCutoverError("The approved import plan is not ready")

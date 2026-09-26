@@ -737,6 +737,43 @@ def multi_lay_actual_cases(dsn: str, root: Path) -> dict:
     return {"status": "PASS", "multi_lay_actual": "Plan, changed-price fills, stale rejection, rollback, settlement, correction retry, Profile isolation and XLSX restore parity"}
 
 
+def workbook_identity_cases(dsn, runtime):
+    """Run the same bounded synthetic identity regressions on disposable PostgreSQL."""
+    import pytest
+    import psycopg
+    import test_profile_workbook_cutover as cases
+    from openforge_api.config import settings
+    from openforge_api.postgres_migrations import apply_postgres_migrations
+
+    apply_postgres_migrations(dsn)
+    configure(dsn, str(runtime))
+    original_connect = cases.connect
+
+    def pg_connect():
+        settings.database_mode = "postgres"
+        settings.neon_database_url = dsn
+        settings.database_url = "sqlite:///DO-NOT-USE-PQA114.sqlite3"
+        return original_connect()
+
+    passed = []
+    names = [
+        "test_destination_preflight_reports_all_logical_conflicts_before_writes",
+        "test_workbook_identity_retry_changed_payload_and_profile_isolation",
+        "test_portable_identity_is_reused_after_native_id_remapping",
+        "test_missing_source_identity_never_silently_merges_native_activity",
+    ]
+    with pytest.MonkeyPatch.context() as patcher:
+        patcher.setattr(cases, "connect", pg_connect)
+        for index, name in enumerate(names):
+            with psycopg.connect(dsn) as connection:
+                connection.execute("TRUNCATE profiles CASCADE")
+            folder = runtime / f"identity-{index}"
+            folder.mkdir()
+            getattr(cases, name)(folder)
+            passed.append(name)
+    return {"status": "PASS", "workbook_identity": passed}
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--pg-bin", required=True, type=Path, help="Explicit local server-tool directory; no inherited DSN")
@@ -755,6 +792,7 @@ def main():
     )
     parser.add_argument("--account-observations-only", action="store_true", help="CP-047 atomic Account observations and restore")
     parser.add_argument("--multi-lay-actual-only", action="store_true", help="CP-047 Normal actual recording and portable restore only")
+    parser.add_argument("--workbook-identity-only", action="store_true", help="CP-052 full-workbook destination identities only")
     args = parser.parse_args()
     pg_bin = args.pg_bin.resolve()
     def pg(name):
@@ -810,6 +848,9 @@ def main():
             return
         if args.offer_metadata_only:
             record.update(offer_metadata_cases(primary, root))
+            return
+        if args.workbook_identity_only:
+            record.update(workbook_identity_cases(primary, root))
             return
         if args.import_history_only:
             record.update(import_history_cases(primary, root))

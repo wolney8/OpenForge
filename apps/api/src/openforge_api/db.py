@@ -7173,6 +7173,7 @@ class ImportSourceRecord:
     entity_id: str
     imported_at: str
     source_namespace: str = ""
+    requires_workbook_review: bool = False
 
 
 @dataclass(frozen=True)
@@ -9216,7 +9217,26 @@ def get_import_source_record(
             """,
             (profile_id, namespace, source_record_id),
         ).fetchone()
-    return None if row is None else map_import_source_row(row)
+        if row is not None:
+            return map_import_source_row(row)
+        from openforge_api.source_identity import existing_import_identities
+
+        matches = existing_import_identities(connection, profile_id).get(
+            (namespace, source_record_id), []
+        )
+        if not matches:
+            return None
+        destinations = {(item["entity_type"], item["entity_id"]) for item in matches}
+        entity_type, entity_id = next(iter(destinations)) if len(destinations) == 1 else ("", "")
+        # Full-workbook/portable lineage is identity evidence, not a generic batch or
+        # an interchangeable raw/mapped payload hash. The caller must require review.
+        return ImportSourceRecord(
+            source_sheet=str(matches[0].get("source_sheet") or namespace),
+            source_record_id=source_record_id, profile_id=profile_id,
+            source_hash=str(matches[0]["source_hash"]), import_batch_id="",
+            entity_type=str(entity_type), entity_id=str(entity_id), imported_at="",
+            source_namespace=namespace, requires_workbook_review=True,
+        )
 
 
 def reresolve_imported_free_bet_parent(

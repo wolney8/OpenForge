@@ -638,7 +638,7 @@ def _select_rows(connection: Any, spec: SheetSpec, profile_id: str) -> list[dict
     ).fetchall()
     result = [dict(row) for row in rows]
     if spec.name == "Source Identities":
-        from openforge_api.source_identity import logical_source_namespace
+        from openforge_api.source_identity import logical_source_namespace, workbook_source_key
 
         seen = {(str(row["source_namespace"]), str(row["source_record_id"])) for row in result}
         for audit in connection.execute(
@@ -647,8 +647,8 @@ def _select_rows(connection: Any, spec: SheetSpec, profile_id: str) -> list[dict
             "AND rolled_back_at = '' ORDER BY created_at, import_key",
             (profile_id,),
         ).fetchall():
-            parts = str(audit["import_key"]).rsplit(":", 2)
-            if len(parts) != 3 or audit["entity_type"] not in {
+            parts = workbook_source_key(str(audit["import_key"]))
+            if parts is None or audit["entity_type"] not in {
                 "accounts",
                 "sportsbook_bet",
                 "free_bet",

@@ -1986,7 +1986,15 @@ def stage_import_rows(
                     # retry or linkage result.
                     if existing is not None and existing.profile_id != profile_id:
                         existing = None
-                    if existing is not None and existing.source_hash == source_hash:
+                    if existing is not None and existing.requires_workbook_review:
+                        errors.append(issue(
+                            "explicit_update_required",
+                            "This source identity belongs to a reviewed full-workbook import "
+                            "or restore. "
+                            "Use that review context; a per-ledger import cannot "
+                            "silently replace it.",
+                        ))
+                    elif existing is not None and existing.source_hash == source_hash:
                         action = "no_op"
                     elif existing is not None:
                         if mapping_version == "accounts-v1":
@@ -2010,13 +2018,8 @@ def stage_import_rows(
                     elif mapping_version == "sportsbook-v1":
                         native_row = get_sportsbook_bet_by_id(source_record_id)
                         if native_row is not None and native_row.profile_id != profile_id:
-                            errors.append(
-                                issue(
-                                    "cross_profile_source_collision",
-                                    "This sportsbook identity belongs to another profile.",
-                                )
-                            )
-                        elif native_row is not None:
+                            native_row = None
+                        if native_row is not None:
                             native_fields = sportsbook_mapped_fields(native_row)
                             if canonical_source_hash(native_fields) == source_hash:
                                 action = "no_op"
@@ -2036,13 +2039,8 @@ def stage_import_rows(
                             free_bet_native_row is not None
                             and free_bet_native_row.profile_id != profile_id
                         ):
-                            errors.append(
-                                issue(
-                                    "cross_profile_source_collision",
-                                    "This free-bet identity belongs to another profile.",
-                                )
-                            )
-                        elif free_bet_native_row is not None:
+                            free_bet_native_row = None
+                        if free_bet_native_row is not None:
                             native_fields = free_bet_mapped_fields(free_bet_native_row)
                             if canonical_source_hash(native_fields) == source_hash:
                                 action = "no_op"
@@ -2062,13 +2060,8 @@ def stage_import_rows(
                             casino_native_row is not None
                             and casino_native_row.profile_id != profile_id
                         ):
-                            errors.append(
-                                issue(
-                                    "cross_profile_source_collision",
-                                    "This casino-offer identity belongs to another profile.",
-                                )
-                            )
-                        elif casino_native_row is not None:
+                            casino_native_row = None
+                        if casino_native_row is not None:
                             native_fields = casino_offer_mapped_fields(casino_native_row)
                             if canonical_source_hash(native_fields) == source_hash:
                                 action = "no_op"
@@ -2088,13 +2081,8 @@ def stage_import_rows(
                             cash_adjustment_native_row is not None
                             and cash_adjustment_native_row.profile_id != profile_id
                         ):
-                            errors.append(
-                                issue(
-                                    "cross_profile_source_collision",
-                                    "This cash-adjustment identity belongs to another profile.",
-                                )
-                            )
-                        elif cash_adjustment_native_row is not None:
+                            cash_adjustment_native_row = None
+                        if cash_adjustment_native_row is not None:
                             native_fields = cash_adjustment_mapped_fields(
                                 cash_adjustment_native_row
                             )
@@ -2116,13 +2104,8 @@ def stage_import_rows(
                             account_native_row is not None
                             and account_native_row.profile_id != profile_id
                         ):
-                            errors.append(
-                                issue(
-                                    "cross_profile_source_collision",
-                                    "This account identity belongs to another profile.",
-                                )
-                            )
-                        elif account_native_row is not None:
+                            account_native_row = None
+                        if account_native_row is not None:
                             native_fields = account_mapped_fields(account_native_row)
                             if canonical_source_hash(native_fields) == source_hash:
                                 action = "no_op"

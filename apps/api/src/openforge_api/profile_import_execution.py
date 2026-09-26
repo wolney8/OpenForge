@@ -20,6 +20,7 @@ from openforge_api.profile_workbook_cutover import (
     _profile_state_checksum,
     _profile_state_manifest,
     final_import_summary,
+    destination_identity_preflight,
     generate_post_import_operational_health,
     generate_post_import_reconciliation,
     insert_ledger_batch,
@@ -744,6 +745,13 @@ def advance_import_execution(
             completed_units = int(execution["completed_units"])
             next_stage = stage
             next_cursor = cursor
+
+            if stage in {"PREPARING", "PROFILE_SETTINGS"}:
+                identities = destination_identity_preflight(
+                    connection, profile_id=profile_id, plan=plan, decisions=decisions,
+                )
+                if not identities["ready"]:
+                    raise ImportCutoverError("; ".join(identities["blockers"]))
 
             if stage == "PREPARING":
                 checkpoint = connection.execute(

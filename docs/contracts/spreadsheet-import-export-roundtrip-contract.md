@@ -1,6 +1,6 @@
 # Workflow Contract: Spreadsheet Import and Export Round Trip
 
-_Last updated: 2026-07-17_
+_Last updated: 2026-09-26 12:20 BST_
 
 ## Status and sources
 
@@ -45,10 +45,10 @@ The current source pack and calculation contracts outrank an older workbook expo
 
 ## Duplicate and update rules
 
-- Identity key: target `profile_id` + source sheet + source record id.
+- Identity key: target `profile_id` + logical source namespace + external source record id. Sheet aliases resolve through the existing namespace mapping.
 - Re-importing the same unchanged source row is idempotent.
 - A changed source row requires an explicit update decision and an audit diff.
-- A source id already attached to another profile is a blocking isolation error.
+- The same external source id may coexist in different Profiles. Never link a parent or destination across Profiles; source-id equality alone is not a duplicate.
 - No fuzzy matching may update financial rows automatically.
 - A row deselected during confirmation is retained as `skipped_by_operator` in batch audit.
 - Only an unconfirmed dry-run review may be deleted. Confirmed import audit cannot be deleted.
@@ -87,7 +87,7 @@ The current source pack and calculation contracts outrank an older workbook expo
 - valid profile-targeted import
 - unknown header/status and invalid date dry-run errors
 - idempotent re-import
-- cross-profile source-id collision
+- independent cross-Profile source identities and denied cross-Profile parent links
 - manual override without reason blocked
 - derived helper fields recomputed
 - export/import round trip preserves entered and settlement fields

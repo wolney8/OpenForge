@@ -282,7 +282,7 @@ def ledger_row(
 ) -> dict[str, object]:
     return {
         "source_row": 2,
-        "source_record_id": f"source-{ledger}",
+        "source_record_id": f"source-{import_key}",
         "import_key": import_key,
         "action": "insert",
         "migration_state": "mapped",
@@ -1962,3 +1962,291 @@ def test_imported_free_bet_notes_are_neutral_but_financial_edits_still_validate(
         update_free_bet(PROFILE_ID, native_id, {"lay_actual": "5.00"})
     assert rejected.value.status_code == 422
     assert get_free_bet(PROFILE_ID, native_id).lay_actual == "4.00"
+
+
+def identity_plan() -> dict[str, object]:
+    plan = synthetic_plan()
+    plan["accounts"] = []
+    row = plan["ledgers"]["sportsbook"][0]
+    row.update(
+        source_record_id="EXTERNAL:001",
+        import_key="Sportsbook Bets:EXTERNAL:001:" + "a" * 20,
+    )
+    plan["ledgers"] = {"sportsbook": [row]}
+    return plan
+
+
+def test_destination_preflight_reports_all_logical_conflicts_before_writes(
+    tmp_path: Path,
+) -> None:
+    from copy import deepcopy
+
+    from openforge_api.profile_workbook_cutover import destination_identity_preflight
+
+    configure_cutover_database(tmp_path)
+    plan = identity_plan()
+    row = plan["ledgers"]["sportsbook"][0]
+    duplicate = deepcopy(row)
+    duplicate.update(source_row=9, import_key="Sportsbook:EXTERNAL:001:" + "b" * 20)
+    plan["ledgers"]["sportsbook"].append(duplicate)
+    with connect() as connection:
+        result = destination_identity_preflight(
+            connection, profile_id=PROFILE_ID, plan=plan, decisions={}
+        )
+        assert result["source_row_count"] == 2
+        assert result["collision_counts"] == {"D": 2}
+        assert not result["ready"]
+        assert (
+            connection.execute("SELECT count(*) FROM sportsbook_bets").fetchone()[0]
+            == 0
+        )
+
+
+def test_workbook_identity_retry_changed_payload_and_profile_isolation(
+    tmp_path: Path,
+) -> None:
+    from copy import deepcopy
+
+    from openforge_api.profile_workbook_cutover import (
+        _insert_ledger_entry,
+        destination_identity_preflight,
+    )
+
+    configure_cutover_database(tmp_path)
+    plan = identity_plan()
+    run, _workspace = run_and_workspace()
+    persist_run_and_plan(run, plan)
+    with connect() as connection:
+        entry = _ledger_write_entries(plan, {})[0]
+        _insert_ledger_entry(
+            connection, profile_id=PROFILE_ID, import_run_id=RUN_ID, entry=entry
+        )
+        retry = destination_identity_preflight(
+            connection, profile_id=PROFILE_ID, plan=plan, decisions={}
+        )
+        assert retry["ready"] and retry["collision_counts"] == {"A": 1}
+        _insert_ledger_entry(
+            connection, profile_id=PROFILE_ID, import_run_id=RUN_ID, entry=entry
+        )
+        assert (
+            connection.execute("SELECT count(*) FROM sportsbook_bets").fetchone()[0]
+            == 1
+        )
+        changed = deepcopy(plan)
+        changed["ledgers"]["sportsbook"][0]["import_key"] = (
+            "Sportsbook:EXTERNAL:001:" + "b" * 20
+        )
+        blocked = destination_identity_preflight(
+            connection, profile_id=PROFILE_ID, plan=changed, decisions={}
+        )
+        assert not blocked["ready"] and blocked["collision_counts"] == {"B": 1}
+        with pytest.raises(ImportCutoverError, match="identity requires review"):
+            _insert_ledger_entry(
+                connection,
+                profile_id=PROFILE_ID,
+                import_run_id=RUN_ID,
+                entry=_ledger_write_entries(changed, {})[0],
+            )
+        other = destination_identity_preflight(
+            connection, profile_id="another-profile", plan=changed, decisions={}
+        )
+        assert other["ready"] and not other["collision_counts"]
+        assert not other["rows"][0]["existing_destinations"]
+        connection.execute(
+            "INSERT INTO profiles SELECT 'another-profile', display_name, 'OTHER', status, "
+            "tracking_start_date, management_fee_percent, investment_fee_percent, "
+            "current_cash_snapshot FROM profiles WHERE profile_id = ?",
+            (PROFILE_ID,),
+        )
+        original_run = dict(
+            connection.execute(
+                "SELECT * FROM profile_import_runs WHERE import_run_id = ?", (RUN_ID,)
+            ).fetchone()
+        )
+        original_run.update(
+            import_run_id="another-import-run", profile_id="another-profile"
+        )
+        from openforge_api.profile_workbook_cutover import _insert_row
+
+        _insert_row(connection, "profile_import_runs", original_run)
+        _insert_ledger_entry(
+            connection,
+            profile_id="another-profile",
+            import_run_id="another-import-run",
+            entry=entry,
+        )
+        assert (
+            connection.execute("SELECT count(*) FROM sportsbook_bets").fetchone()[0]
+            == 2
+        )
+        assert (
+            len(
+                {
+                    str(row[0])
+                    for row in connection.execute(
+                        "SELECT profile_id FROM sportsbook_bets"
+                    ).fetchall()
+                }
+            )
+            == 2
+        )
+
+    from openforge_api.db import get_import_source_record
+
+    evidence = get_import_source_record(PROFILE_ID, "sportsbook", "EXTERNAL:001")
+    assert evidence is not None and evidence.requires_workbook_review
+    assert evidence.source_hash == "a" * 20
+    other_evidence = get_import_source_record(
+        "another-profile", "sportsbook", "EXTERNAL:001"
+    )
+    assert other_evidence is not None and other_evidence.entity_id != evidence.entity_id
+
+
+def test_portable_identity_is_reused_after_native_id_remapping(tmp_path: Path) -> None:
+    from openforge_api.profile_workbook_cutover import (
+        _existing_import_identities,
+        _identity_match,
+        _insert_ledger_entry,
+        _reuse_import_destination,
+    )
+    from openforge_api.source_identity import workbook_source_key
+
+    configure_cutover_database(tmp_path)
+    plan = identity_plan()
+    run, _workspace = run_and_workspace()
+    persist_run_and_plan(run, plan)
+    with connect() as connection:
+        entry = _ledger_write_entries(plan, {})[0]
+        _insert_ledger_entry(
+            connection, profile_id=PROFILE_ID, import_run_id=RUN_ID, entry=entry
+        )
+        original = dict(connection.execute("SELECT * FROM sportsbook_bets").fetchone())
+        native_id = original["sportsbook_bet_id"]
+        connection.execute(
+            "UPDATE sportsbook_bets SET sportsbook_bet_id = 'remapped-native', "
+            "user_notes = 'Later note'"
+        )
+        # Model the restored identity map independently of the legacy audit's runtime ID.
+        restored = {
+            ("sportsbook", "EXTERNAL:001"): [
+                {
+                    "entity_type": "sportsbook_bet",
+                    "entity_id": "remapped-native",
+                    "source_hash": "a" * 20,
+                }
+            ]
+        }
+        match = _identity_match(
+            connection,
+            profile_id=PROFILE_ID,
+            row=entry[2],
+            ledger="sportsbook",
+            entity_type="sportsbook_bet",
+            identities=restored,
+        )
+        assert match["collision_class"] == "A"
+        reused = _reuse_import_destination(
+            connection,
+            profile_id=PROFILE_ID,
+            import_run_id=RUN_ID,
+            source=entry[2],
+            ledger="sportsbook",
+            entity_type="sportsbook_bet",
+            identities=restored,
+        )
+        assert reused == "remapped-native" and reused != native_id
+        assert (
+            connection.execute("SELECT count(*) FROM sportsbook_bets").fetchone()[0]
+            == 1
+        )
+        assert (
+            connection.execute("SELECT user_notes FROM sportsbook_bets").fetchone()[0]
+            == "Later note"
+        )
+        assert workbook_source_key(entry[2]["import_key"])[1] == "EXTERNAL:001"
+        assert _existing_import_identities(connection, PROFILE_ID)[
+            ("sportsbook", "EXTERNAL:001")
+        ]
+
+
+def test_missing_source_identity_never_silently_merges_native_activity(
+    tmp_path: Path,
+) -> None:
+    from openforge_api.profile_workbook_cutover import (
+        _insert_ledger_entry,
+        destination_identity_preflight,
+    )
+
+    configure_cutover_database(tmp_path)
+    plan = identity_plan()
+    run, _workspace = run_and_workspace()
+    persist_run_and_plan(run, plan)
+    with connect() as connection:
+        _insert_ledger_entry(
+            connection,
+            profile_id=PROFILE_ID,
+            import_run_id=RUN_ID,
+            entry=_ledger_write_entries(plan, {})[0],
+        )
+        connection.execute(
+            "UPDATE sportsbook_bets SET sportsbook_bet_id = 'EXTERNAL:001'"
+        )
+        connection.execute(
+            "UPDATE profile_import_write_audit SET "
+            "rolled_back_at = 'fixture-without-source-evidence'"
+        )
+        result = destination_identity_preflight(
+            connection, profile_id=PROFILE_ID, plan=plan, decisions={}
+        )
+        assert not result["ready"] and result["collision_counts"] == {"E": 1}
+
+
+def test_deferred_duplicate_account_is_source_accounted_without_second_account(
+    tmp_path: Path,
+) -> None:
+    from copy import deepcopy
+
+    configure_cutover_database(tmp_path)
+    plan = synthetic_plan()
+    duplicate = deepcopy(plan["accounts"][0])
+    duplicate.update(import_key="accounts:deferred", source_row=8)
+    plan["accounts"].append(duplicate)
+    run, workspace = run_and_workspace()
+    workspace["items"].append(
+        {
+            "item_id": "deferred-account",
+            "import_id": duplicate["import_key"],
+            "source_sheet": "Accounts",
+            "source_row": 8,
+            "source_record_id": "DEMO-ACCOUNT-8",
+            "category": "accounts_partial",
+            "review_status": "DEFERRED",
+            "decision": {
+                "action": "defer",
+                "note": "Keep the earlier source Account operational.",
+            },
+            "context": {},
+            "issue_types": ["duplicate_provider_account"],
+        }
+    )
+    persist_run_and_plan(run, plan)
+    approve_synthetic_preflight(run, workspace, plan)
+    result = execute_import(
+        profile_id=PROFILE_ID,
+        import_run_id=RUN_ID,
+        actor_email="founder@example.invalid",
+        run=load_persisted_run(run),
+        workspace=workspace,
+        plan=plan,
+    )
+    assert result["status"] == "COMPLETE"
+    assert result["post_import_reconciliation"]["integrity"][
+        "all_expected_source_rows_accounted_for"
+    ]
+    with connect() as connection:
+        assert (
+            connection.execute(
+                "SELECT count(*) FROM accounts WHERE profile_id=?", (PROFILE_ID,)
+            ).fetchone()[0]
+            == 1
+        )

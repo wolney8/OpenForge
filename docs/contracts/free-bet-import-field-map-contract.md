@@ -1,6 +1,6 @@
 # Contract: Free Bet Import Field Map
 
-_Last updated: 2026-07-16_
+_Last updated: 2026-09-26 12:20 BST_
 
 ## Status and scope
 
@@ -20,7 +20,7 @@ authority.
 - `FreeBetID` is the stable source identity.
 - Confirmed rows receive a Plum Duff `free_bet_id`; source identity remains in import lineage.
 - Identity is scoped by `profile_id` and source sheet.
-- A source identity already registered to another profile blocks the row.
+- The same external source ID in another Profile is independent; parent and destination links must remain within the target Profile.
 - Re-importing unchanged entered fields is a no-op.
 - Changed existing rows remain blocked until an explicit audited update workflow exists.
 

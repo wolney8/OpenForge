@@ -1,6 +1,6 @@
 # Contract: Import Row Accounting Reconciliation
 
-_Last updated: 2026-09-26 11:11 BST_
+_Last updated: 2026-09-26 12:20 BST_
 
 ## Status and scope
 
@@ -75,3 +75,10 @@ Terminal historical Free Bet acceptance and portable recovery use an internal va
 Full-workbook Free Bet parent links resolve only against existing same-Profile source identities or full-import write audit; missing/ambiguous parents remain explicit. Portable source identities and review destinations use remapped native IDs, including ambiguous parent candidate evidence. Non-executed opportunity provenance uses the existing reconciliation JSON; it never creates a financial activity. The existing backup format/storage is reused without schema additions.
 
 Source Exchange commission settings remain an explicit verified Profile setup step before a final import. Personal 0%/0% fees do not supply Exchange commission. A rehearsal lacking those source-backed settings cannot label unavailable recalculated values as genuine zero.
+
+
+## CP-052 destination identity preflight
+
+Before writes, classify every planned source row against Profile + logical namespace + external ID, including deferred rows and non-executed opportunities. A: identical recorded source, reuse without overwriting later operational edits; B: same-Profile identity with changed/uncertain content or destination, block for explicit review; C: another Profile is independent (private cutover comparison only); D: multiple active source rows for one logical identity/provider destination, block together; E: native destination with no matching source identity, surface for review. Deferred rows have no operational destination. Recheck under the write transaction. Never use a content hash as identity, infer equivalence between raw and mapped hash formats, or silently merge financial activity. Existing same-run retries remain idempotent. Portable source identities retain their source meaning while native IDs remap. No schema expansion or normal data cutover.
+
+The per-ledger native-ID fallback must ignore another Profile’s row, while same-Profile native matches retain their existing no-op/update review rules. Per-ledger review recognises full-workbook and restored provenance but does not equate raw workbook hashes with generic mapped hashes: it requires the original governed review context, preventing a cross-path duplicate. Generic changed-Account updates retain their separate individually approved contract. Profile portable recovery requires compatible shared references; a fresh storage rehearsal recreates the existing shared reference configuration through its API before restoring Profile data, without approving missing-reference removals.

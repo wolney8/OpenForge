@@ -650,7 +650,7 @@ def test_cash_adjustment_xlsx_confirm_export_and_reimport_is_idempotent(
     assert repeated.json()["summary"] == {"no_op": len(parsed.rows)}
 
 
-def test_cash_adjustment_xlsx_blocks_cross_profile_native_identity(
+def test_cash_adjustment_xlsx_keeps_cross_profile_external_identity_independent(
     tmp_path: Path,
 ) -> None:
     configure_temp_database(tmp_path)
@@ -700,10 +700,23 @@ def test_cash_adjustment_xlsx_blocks_cross_profile_native_identity(
 
     assert dry_run.status_code == 201
     row = dry_run.json()["rows"][0]
-    assert row["staged_action"] == "blocked"
-    assert any(
-        issue["code"] == "cross_profile_source_collision" for issue in row["errors"]
+    assert row["staged_action"] == "insert"
+    assert row["errors"] == []
+    batch = dry_run.json()
+    confirmed = client.post(
+        f"/profiles/profile-demo-002/imports/{batch['import_batch_id']}/confirm-cash-adjustments",
+        json={"confirmed": True, "selected_staged_row_ids": [row["import_staged_row_id"]]},
     )
+    assert confirmed.status_code == 200, confirmed.text
+    other_rows = client.get("/profiles/profile-demo-002/cash-adjustments").json()
+    imported = next(
+        item for item in other_rows if item["description"] == "Synthetic identity owner"
+    )
+    assert imported["cash_adjustment_id"] != source_id
+    original = client.get(f"/profiles/profile-demo-001/cash-adjustments/{source_id}").json()
+    assert original["amount"] == "50.00"
+    wrong_profile = client.get(f"/profiles/profile-demo-002/cash-adjustments/{source_id}")
+    assert wrong_profile.status_code == 404
 
 
 def synthetic_account_export(
