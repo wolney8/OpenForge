@@ -1,6 +1,6 @@
 # Project Roadmap — Plum Duff / OpenForge — Doc ID: PR-CODEX-001
 
-**Last updated:** 2026-09-26 12:25 BST
+**Last updated:** 2026-09-26 18:55 BST
 
 ## Product goal
 
@@ -39,9 +39,9 @@ History/Reports and restore; Sportsbook/Account review with atomic balance confi
 observation history. Application `e2d70e0` runs locally and on protected Preview. Existing storage
 was sufficient; no SQL migration. #105's named engineering pass remains complete.
 
-**Current milestone (CP-052):** complete private import, financial/source reconciliation and fresh recovery pass. Scoped identity repairs are tested locally at`b6437e8`; deploy/reconcile through the existing safe path next. Normal cutover depends on how legacy Profile activity should carry forward; preserve later records/history. [FEATURE_STATUS](FEATURE_STATUS.md) remains the short feature view.
+**Current milestone (CP-053):** read-only legacy/source comparison completed; accepted full private rehearsal is unchanged. Resolve the exact private real/test-purpose set, then approve the concrete separate personal Profile operation. Missing historical parents are non-blocking. No merge engine or automatic reclassification.
 
-**Next three outcomes:** (1) deliver tested identity repairs and settle the legacy Profile target strategy; (2) confirm exact personal0/0 target/action and recovery after any required reviewed-merge implementation; (3) implement the existing minimal invited-request proposal only after its separate role/state/storage approval. Daily tasks now covers its first governed sources; richer routines/dispositions stay bounded. AI remains an independent provider/data/spend/advisory choice. The3-day recorded Free Bet and7-day Combo windows are different concepts, not a pending contradiction.
+**Next three outcomes:** (1) resolve the bounded purpose decision from the completed private evidence; (2) reconcile tested source/runtime and execute one specifically approved personal cutover with verified recovery; (3) use the existing ledger/Reports/Daily tasks for ordinary personal operation. Optional AI/subscriber work remains separate and is not part of this import gate.
 
 Optional Free Bets/Casino Account-review entry points and cosmetic expansion are on hold behind this owner priority. Wider Account freshness/trends/settlement, unsupported Multi-Lay configurations and general analytics remain named scope. No new schema, normal-data import, public signup, paid AI or Production release authorised.
 

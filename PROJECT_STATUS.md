@@ -1,36 +1,35 @@
 # Project Status — Plum Duff / OpenForge — Doc ID: PS-CODEX-001
 
-**Last updated:** 2026-09-26 12:25 BST · **Status:** 🟢 CP-052 full private rehearsal PASS; normal cutover unapproved
+**Last updated:** 2026-09-26 18:55 BST · **Status:** 🟠 CP-053 comparison complete; cutover purpose decision pending
 
 ## Right now
 
-- **Completed:** applied the remaining approved Account decision through checksum/fingerprint-bound review. Every source row is accounted for; pre-simulation financial reconciliation, accepted historical values, Save/Discard, settlement/correction, History/Reports and fresh restore/retry pass. [Evidence](docs/audits/platform-quality-audit.md#cp-052-complete-private-rehearsal-and-import-identities--2026-09-26-1225-bst) · [Feature status](FEATURE_STATUS.md).
-- **Identity repair:** complete destination preflight distinguishes source identity from content/native IDs. Cross-Profile equality is independent; changed/ambiguous same-Profile identity and duplicate source destinations require review. The old per-ledger global native-ID check is removed; workbook/restore provenance cannot be bypassed through per-ledger import.
-- **Source / running:** tested local application `b6437e8`; not deployed. Normal3010 frontend assets and8010 API still serve `7da4d44` (API retains generated-file `+dirty` label); protected Preview health/source/role/database and302 protection reverified at`7da4d44`. Original synthetic3120/8046 restored. Records SHA follows in the verified backup receipt; Git push withheld.
-- **Blocked on:** one normal-target classification: carry existing legacy Profile activity into personal use, or keep it separate as demo/test. No old workbook choice is pending. Full conflict merge/replace is not implemented; do not lose later edits/history or silently count duplicated activity.
-- **Safety:** original private workbook unchanged/local only;19 normal-data projections and existing recovery backup verified unchanged. No normal import, schema, fee rewrite, Production, credentials or secret transfer. [#104](https://github.com/wolney8/OpenForge/issues/104#issuecomment-5845847594) and [#114](https://github.com/wolney8/OpenForge/issues/114#issuecomment-5845849115) updated once.
+- **Completed:** read-only classification of every legacy Profile Account/ledger record, later seed edits and supporting history against accepted September rehearsal evidence. Missing historical parents are non-blocking. Exact classifications and the unresolved manual-entry set are retained privately. [Evidence](docs/audits/platform-quality-audit.md#cp-053-read-only-personal-cutover-preparation--2026-09-26-1855-bst) · [Feature status](FEATURE_STATUS.md).
+- **Blocked on:** whether the specifically listed uncorroborated entries/financial edits represent real owner activity or testing. Zero confirmed unique activity is not proof of none. No original source approval is reopened; CP-052 remains accepted.
+- **Proposed:** preserve legacy records/history; create a separate personal Profile with explicit0%/0% only after resolving the remaining purpose evidence and obtaining one exact cutover approval. No merge engine or replacement is needed or authorised for this review.
+- **Source / runtime:** application unchanged`b6437e8`, branch records baseline`630b681`; this checkpoint changes records only. CP-052 last verified local/Preview`7da4d44`. Current local3010/8010 listeners are absent and API connection was refused; no current local serving claim. Preview evidence is reused, not rechecked/deployed. No service or database was changed during this read-only task.
+- **Safety:** normal database and original workbook byte hashes unchanged; reused CP-052 evidence and recovery backup hashes match. No application edits, tests/rehearsal reruns, operational writes, archive/import, credentials, push or deployment. Generated changes remain untouched. [#104](https://github.com/wolney8/OpenForge/issues/104#issuecomment-5848519702) / [#114](https://github.com/wolney8/OpenForge/issues/114#issuecomment-5848520166) safely updated.
 
 ## Delivery and remaining gates
 
 | Area | Actual state |
 | --- | --- |
-| Engineering |262 affected API tests pass,2 intentional source skips;4 disposable PostgreSQL identity checks;84 API files type-check;changed-line lint pass (79 retained baseline findings) |
-| Private workflow |8 browser steps;both themes, compact/enlarged, keyboard/reduced motion; fresh database restore with compatible shared references; historical decisions/parent links/native-ID remapping and retry verified |
-| Unexecuted / separate |No CP-052 hosted workflow or normal-owner browser check; unchanged frontend build evidence reused. Hosted per-ledger confirmation still lacks its required local SQLite backup on PostgreSQL. #96 and Git isolation remain |
-| Portability |Profile backup retains source identity and review evidence; compatible global Catalogue configuration is an explicit recovery prerequisite. No missing-reference removal was self-approved |
+| CP-053 evidence | Complete private comparison, one focused independent read-only review, parent checks and evidence/hash preservation; no new defect established |
+| CP-052 | Full private rehearsal PASS and source fixes retained; its test/restore/browser evidence reused without repeating the campaign |
+| Cutover | Concrete new-Profile operation/recovery prepared conditionally; unresolved purpose classification must precede real import approval |
+| Separate limits | Tested importer source not reconciled to normal/Preview; local runtime currently unavailable; hosted per-ledger PostgreSQL backup limitation, #96 and Git isolation remain |
 
 ## Next two executable actions
 
-1. #104/#114: deliver `b6437e8` through the existing protected-Preview synthetic-only path, then controlled local reconciliation with backup/source/schema checks; no private workbook upload.
-2. #12/#23: use the owner’s legacy-Profile classification to prepare the exact personal target/action and recovery proposal. If existing activity is real, implement/test explicit conflict merge before seeking normal cutover approval; never replace later history.
+1. #104: obtain the single purpose decision for the exact private unresolved set; retain identified real records and revise only their carry-forward proposal if any. Do not rerun CP-052 or build a merge engine.
+2. #12/#23: once classification is settled, obtain one explicit source→personal target/create→legacy archive/reporting scope→backup approval. Reconcile the tested application through existing safe runtime controls before any authorised normal import.
 
-[Resume here](docs/planning/plum-duff-next-issue-tracking-register.md#resume-here--cp-052-destination-identity-gate) links exact private evidence, files and checks. Daily tasks remains delivered; named#105 engineering coverage and#117 scoped acceptance stay intact. AI/subscriber proposals remain separate.
+[Resume here](docs/planning/plum-duff-next-issue-tracking-register.md#resume-here--cp-053-read-only-cutover-preparation). Daily tasks and completed#105/#117 scope remain accepted; UI, AI/subscriber work and optional expansion remain on hold.
 
 ## Checkpoint log
 
 | ID | Timestamp | What changed | Issue | Document |
 | --- | --- | --- | --- | --- |
-| CP-033 | 2026-09-23 15:13 BST | Repaired action-scoped Notes editing for existing ledger rows, retained historical Account/financial meaning and removed cold-request schema-lock contention on Preview | [#117](https://github.com/wolney8/OpenForge/issues/117), [#91](https://github.com/wolney8/OpenForge/issues/91), [#36](https://github.com/wolney8/OpenForge/issues/36), [#92](https://github.com/wolney8/OpenForge/issues/92), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#cp-033-owner-blocking-ledger-edit-repair--2026-09-23-1513-bst) |
 | CP-034 | 2026-09-23 17:56 BST | Completed browser Notes add/amend/clear across five ledgers, corrected Cash note-history semantics and reconciled the verified shared repair into normal localhost without changing owner financial data | [#117](https://github.com/wolney8/OpenForge/issues/117), [#91](https://github.com/wolney8/OpenForge/issues/91), [#36](https://github.com/wolney8/OpenForge/issues/36), [#92](https://github.com/wolney8/OpenForge/issues/92), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#cp-034-five-ledger-note-editing-and-local-reconciliation--2026-09-23-1756-bst) |
 | CP-035 | 2026-09-23 20:06 BST | Replaced ordinary ledger autosave with one explicit draft, Save, Revert and three-way close contract across five editors | [#117](https://github.com/wolney8/OpenForge/issues/117), [#92](https://github.com/wolney8/OpenForge/issues/92), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#cp-035-explicit-ledger-save-and-discard--2026-09-23-2006-bst) |
 | CP-036 | 2026-09-24 08:35 BST | Separated Notes drafts from calculation-preview identity and added one shared, editor-owned disclosure reveal behaviour | [#117](https://github.com/wolney8/OpenForge/issues/117), [#92](https://github.com/wolney8/OpenForge/issues/92) | [Audit evidence](docs/audits/platform-quality-audit.md#cp-036-settled-editor-stability-and-disclosure-visibility--2026-09-24-0835-bst) |
@@ -50,6 +49,7 @@
 | CP-050 | 2026-09-25 21:38 BST | Accounted for every selected-source row, explained the known-subtotal difference and repaired shared import/lifecycle/review defects; full private import remains source-decision gated | [#12/#104/#109](https://github.com/wolney8/OpenForge/issues/104), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Evidence](docs/audits/platform-quality-audit.md#cp-050-full-source-accounting-and-import-repairs--2026-09-25-2138-bst) |
 | CP-051 | 2026-09-26 11:11 BST | Applied approved source decisions, repaired historical recovery/Notes/identity handling and blocked a newly exposed duplicate Account conflict before writes; full private acceptance remains gated | [#12/#104/#109](https://github.com/wolney8/OpenForge/issues/104), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Evidence](docs/audits/platform-quality-audit.md#cp-051-approved-import-decisions-and-full-private-rehearsal--2026-09-26-1111-bst) |
 | CP-052 | 2026-09-26 12:25 BST | Completed the approved full private import and fresh recovery; repaired global/native and same-Profile logical identity gaps; normal cutover remains separate | [#104](https://github.com/wolney8/OpenForge/issues/104), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Evidence](docs/audits/platform-quality-audit.md#cp-052-complete-private-rehearsal-and-import-identities--2026-09-26-1225-bst) |
+| CP-053 | 2026-09-26 18:55 BST | Completed read-only legacy Profile/source classification and parent-link review; exact unresolved activity set retained privately, normal cutover remains unapproved | [#104](https://github.com/wolney8/OpenForge/issues/104), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Evidence](docs/audits/platform-quality-audit.md#cp-053-read-only-personal-cutover-preparation--2026-09-26-1855-bst) |
 
 ## Reference index
 

@@ -10,6 +10,8 @@ No published release is represented by the local milestones below.
 
 ## 2026-09-26
 
+- **2026-09-26 18:55 BST — CP-053:** Read-only legacy activity comparison and parent-gap review complete. Private purpose uncertainty remains explicit; no code/data changes or repeated rehearsal. [Evidence](docs/audits/platform-quality-audit.md#cp-053-read-only-personal-cutover-preparation--2026-09-26-1855-bst).
+
 - **2026-09-26 12:25 BST — CP-052:** Full private import/recovery acceptance passes; scoped identity/retry/reconciliation repairs at`b6437e8` are tested locally. Normal/Preview remain`7da4d44`; no normal cutover. [Evidence](docs/audits/platform-quality-audit.md#cp-052-complete-private-rehearsal-and-import-identities--2026-09-26-1225-bst).
 
 - **2026-09-26 11:11 BST — CP-051:** Tested local importer/recovery repair at`76fcb51`; approved source decisions applied privately, new conflicting Account rows block final acceptance. Normal/Preview remain`7da4d44`. [Evidence](docs/audits/platform-quality-audit.md#cp-051-approved-import-decisions-and-full-private-rehearsal--2026-09-26-1111-bst).
@@ -227,3 +229,9 @@ their original IDs.
 | ID | Timestamp | What changed | Issue | Document |
 | --- | --- | --- | --- | --- |
 | CP-032 | 2026-09-22 16:33 BST | Removed the remaining hosted connection/region latency and integrated all tested shared Preview repairs into healthy normal localhost without changing owner data | [#114](https://github.com/wolney8/OpenForge/issues/114), [#115](https://github.com/wolney8/OpenForge/issues/115) | [Audit evidence](docs/audits/platform-quality-audit.md#cp-032-hosted-performance-and-local-reconciliation--2026-09-22-1633-bst) |
+
+## Project Status rollover — 2026-09-26 18:55 BST
+
+| ID | Timestamp | What changed | Issue | Document |
+| --- | --- | --- | --- | --- |
+| CP-033 | 2026-09-23 15:13 BST | Repaired action-scoped Notes editing for existing ledger rows, retained historical Account/financial meaning and removed cold-request schema-lock contention on Preview | [#117](https://github.com/wolney8/OpenForge/issues/117), [#91](https://github.com/wolney8/OpenForge/issues/91), [#36](https://github.com/wolney8/OpenForge/issues/36), [#92](https://github.com/wolney8/OpenForge/issues/92), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#cp-033-owner-blocking-ledger-edit-repair--2026-09-23-1513-bst) |

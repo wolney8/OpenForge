@@ -1,6 +1,6 @@
 # Plum Duff Next Issue Tracking Register
 
-Current continuation: [CP-052 resume](#resume-here--cp-052-destination-identity-gate). Earlier checkpoint sections retain their historical state.
+Current continuation: [CP-053 resume](#resume-here--cp-053-read-only-cutover-preparation). Earlier checkpoint sections retain their historical state.
 
 ## Resume here — CP-050 import gate
 
@@ -1982,3 +1982,16 @@ Updated 2026-09-26 12:25 BST. **PERSONAL-READINESS-001: full private rehearsal C
 - Cutover: NEW Profile is identity-safe but combined old/new activity may duplicate meaning. Existing target has legacy conflicts requiring explicit review; full financial merge/replace is not implemented. Preserve every later record/history. ONE owner classification pending: carry the legacy Profile into real personal use, or keep it as demo/test. No normal creation/import/merge/replace/archive/reclassification is authorised.
 - Next: #104/#114 deploy/reconcile the tested shared repair through existing protected Preview/local safety checks using synthetic data only; #12/#23 turn the target classification into one exact personal0/0 target/action/recovery proposal, implementing reviewed merge first if required. Hosted per-ledger PostgreSQL confirmation still requires unavailable local SQLite backup; do not bypass it. AI/subscriber/UI programmes remain separate/on hold.
 - Sync: [#104](https://github.com/wolney8/OpenForge/issues/104#issuecomment-5845847594), [#114](https://github.com/wolney8/OpenForge/issues/114#issuecomment-5845849115) published once; no push, deployment or issue closure.
+
+## Resume here — CP-053 read-only cutover preparation
+
+Updated 2026-09-26 18:55 BST. **PERSONAL-READINESS-001 / #104/#114: comparison COMPLETE; cutover BLOCKED on precise private real/test-purpose evidence.** This supersedes the prior broad legacy-Profile classification question with a fully enumerated remaining set. No code, merge engine, identity investigation or repeated CP052 tests/rehearsal.
+
+- Branch`feature/normal-multilay-cp047`; application`b6437e8`, starting records`630b681`; records-only commit follows. Unrelated tsbuildinfo and dependency symlinks retained.
+- Exact evidence: ignored primary`data/private/rehearsals/cp053/alpha-comparison-private.md`, all-record JSON/CSV, post-seed changes, supporting-record snapshot, independent read-only parent/classification review and integrity receipts. Accepted CP052 pre-simulation source/restore evidence reused; seven referenced artifact hashes plus original workbook/normal backup verified. Normal database byte-identical before/after.
+- Decisions: prior source approvals remain final; missing historical parents are non-blocking and remain explicitly missing. No confirmed unique owner activity is not equivalent to none while uncorroborated entries remain. Exact source/provider/content comparison, not native ID or timestamp equality alone, drives classification. The retained May-named seed was loaded in July; its filename is not a business date.
+- Proposed target: exact unused personal name/code in the private proposal; create new, explicit0%/0%, preserve/archive legacy Profile only after approval and avoid combined duplicate reporting. No replace or generic merge. If any unresolved entry is genuine, preserve its exact ID/history and revise the bounded carry-forward proposal first.
+- Checks performed: private read-only comparison script and completeness assertions; one reviewer; missing-parent lookup and retained evidence/backup/source byte hashes. No financial recalculation or test campaign, no UI/browser/session actions. No application defect established.
+- Runtime: no normal3010/8010 listeners; authorised read-only8010 health returned connection refused. Last verified app`7da4d44`; no startup/source reconciliation in this expressly read-only scope. Preview last verified`7da4d44`, not rechecked or deployed. Runtime restoration/source compatibility remains a prerequisite for subsequent writes.
+- Next exact action: resolve the named private purpose set, then obtain one specific cutover approval. Do not ask for original workbook/mapping decisions again. No normal creation/import/archive/reclassification, schema, deploy, push, service switch or fee rewrite performed.
+- Public sync: [#104](https://github.com/wolney8/OpenForge/issues/104#issuecomment-5848519702) and [#114](https://github.com/wolney8/OpenForge/issues/114#issuecomment-5848520166) updated once after duplicate checks; no private row/count/financial evidence published. Backup receipt records the outgoing records revision.

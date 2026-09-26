@@ -1,13 +1,13 @@
 # Feature Status — Plum Duff / OpenForge — Doc ID: FS-CODEX-001
 
-**Last updated:** 2026-09-26 12:25 BST
+**Last updated:** 2026-09-26 18:55 BST
 
 ## Personal daily-use readiness
 
-**Full private rehearsal PASS; normal import remains unapproved.** CP-052 applies all source decisions, accounts for the complete source and reconciles pre-simulation values.
-Historical results, Notes, settlement/correction, Reports and fresh restore/retry pass; original data remains unchanged.
-Cross-Profile source-ID equality is independent; same-Profile legacy activity still needs a deliberate target strategy preserving later records.
-Full financial conflict merge/replace is not implemented. One classification remains: carry legacy Profile records into personal use, or keep them separate as demo/test.
+**Full private rehearsal remains accepted; normal cutover is blocked on exact legacy-record purpose evidence.** CP-053 completes a read-only comparison of every legacy Account/ledger record and post-seed change.
+Known fixtures, earlier source activity and uncorroborated manual records are separated privately. No genuine unique activity is confirmed; the unresolved set cannot be treated as zero.
+The two missing historical qualifying-parent references are non-blocking; their settled rewards retain explicit missing lineage.
+A new personal Profile with preserved legacy history is the conditional recommendation; no merge engine, replacement, archive or normal import was performed.
 Private source details and complete row-level evidence remain local.
 For personal use explicitly choose management fee 0% and investment fee 0%; retain actual Exchange commission and costs.
 Current onboarding defaults 25%/25% are unsuitable for Will's personal arrangement. No existing Profile was reclassified.
@@ -16,7 +16,8 @@ Normal-owner browser/VoiceOver, [#96](https://github.com/wolney8/OpenForge/issue
 ## Feature overview
 
 States describe the listed scope, not whole-issue closure. Local means localhost:3010; Preview is protected and synthetic-only.
-Application `7da4d44` still serves local3010/Preview. CP-052 commit`b6437e8` is tested locally only:262 API checks,4 PostgreSQL identity checks/types and8 private browser steps; no new hosted claim.
+Last verified local/Preview application is`7da4d44`; CP-053 found no local3010/8010 listener and API connection refused. Preview is not reverified in this read-only batch.
+CP-052 application`b6437e8` and its accepted checks remain unchanged; no tests or rehearsal repeated.
 Local confirmation is proven; PostgreSQL per-ledger confirmation needs a local backup and explicitly returns409 without writes.
 Full-workbook review/checkpoint capability remains separate. Fresh authenticated normal-owner interaction is unexecuted.
 
@@ -24,7 +25,7 @@ Full-workbook review/checkpoint capability remains separate. Fresh authenticated
 | --- | --- | --- | --- |
 | Profile ownership/access | **Partial**: isolated Profiles, Fund Manager links, Active/Archived lifecycle; local/Preview | Personal/Managed subscriber is not stored ownership or an auth role; subscriber grants absent | [#8](https://github.com/wolney8/OpenForge/issues/8) [#13](https://github.com/wolney8/OpenForge/issues/13) [#14–18](https://github.com/wolney8/OpenForge/issues/14) [#74](https://github.com/wolney8/OpenForge/issues/74) |
 | Fees | **Ready in listed scope**: preview/crystallise/reopen/correct/withdraw and immutable revisions; local/Preview | Explicit personal 0/0; managed rates need agreement. Fresh whole fee-operation browser acceptance differs from display proof | [#23](https://github.com/wolney8/OpenForge/issues/23) [#24](https://github.com/wolney8/OpenForge/issues/24) |
-| Workbook import | **Partial**: mapped review, controlled import/checkpoint/reconciliation and retry; synthetic local/Preview proof | Complete private rehearsal passes; normal target/action remains separate. Full conflict merge/replace unsupported | [#12](https://github.com/wolney8/OpenForge/issues/12) [#104](https://github.com/wolney8/OpenForge/issues/104) [#109](https://github.com/wolney8/OpenForge/issues/109) |
+| Workbook import | **Partial**: mapped review, controlled import/checkpoint/reconciliation and retry; synthetic local/Preview proof | Private rehearsal accepted; complete legacy comparison leaves exact real/test-purpose decision before target/action approval. No merge engine planned | [#12](https://github.com/wolney8/OpenForge/issues/12) [#104](https://github.com/wolney8/OpenForge/issues/104) [#109](https://github.com/wolney8/OpenForge/issues/109) |
 | Export/restore | **Ready in listed scope**: portable Profile XLSX, canonical identity/history, CP-047 additions and terminal Void recovery | Working-workbook/Google-script compatibility and incremental merge remain bounded gaps | [#12](https://github.com/wolney8/OpenForge/issues/12) [#94](https://github.com/wolney8/OpenForge/issues/94) [#95](https://github.com/wolney8/OpenForge/issues/95) |
 | Accounts/restrictions | **Ready in listed scope**: Profile Accounts, shared Catalogue, lifecycle/stake/promo access and eligibility | Wider capability intelligence and quick Account actions remain partial | [#70](https://github.com/wolney8/OpenForge/issues/70) [#82](https://github.com/wolney8/OpenForge/issues/82) [#85](https://github.com/wolney8/OpenForge/issues/85) [#109](https://github.com/wolney8/OpenForge/issues/109) |
 | Balance observations | **Partial**: exact server-timed, atomic/retry-safe confirmations/history from Sportsbook and Accounts; local/Preview | Free Bets/Casino entry points, freshness and trends; balance changes are not P&L | [#85](https://github.com/wolney8/OpenForge/issues/85) [#106](https://github.com/wolney8/OpenForge/issues/106) |
@@ -72,14 +73,15 @@ A persisted owner/beneficiary relationship and owner-income aggregate need an ex
 - Full pre-simulation known financial subtotals and the earlier exact Sportsbook scope reconcile. Personal fees are0%/0%; source-backed Exchange settings remain separate. Missing original evidence remains missing.
 - Historical approvals survive Notes/reopen/Reports. Full-source relationships, source identities, review decisions, native-ID remapping and fresh restore/retry pass. Missing source parents stay explicitly missing; no guessed links.
 - Hosted limitation: per-ledger confirmation's required full local SQLite backup is unavailable on PostgreSQL. It now rejects clearly before writes; governed full-workbook import has a separate Profile checkpoint path. This is documented capability scope, not divergent financial rules.
-- Normal target/action: **unconfirmed**. All reported overlaps are older native IDs in another Profile, not a new-Profile identity block. Complete destination review also exposes existing-provider matches. Real legacy activity must be preserved and not double-counted; full conflict merge/replace is not assumed. Portable restore creates a new Profile with compatible shared references.
+- Normal target/action: **unapproved**. Proposed separate personal Profile,0%/0%, with legacy data/history preserved and excluded from active personal totals only after authorisation. Exact candidate identity/action and unresolved set are in the private CP-053 report. Identity-safe import does not prove that existing manual activity may be omitted.
+- CP-053 accounts for every current operational record plus retained history/configuration/staging; post-seed edits are explicit. Missing parents are historical lineage gaps, not reasons to invent transactions or reject settled children.
 - Cutover approval must state: selected source → exact Profile → create/merge/replace → duplicate handling → checksum-verified backup and tested rollback. No normal writes authorised now.
 
 ## Next three delivery outcomes
 
-1. **Deliver tested import protection:** deploy/reconcile CP-052 through the authorised synthetic Preview and local backup/compatibility process; full private rehearsal is complete.
-2. **Controlled personal cutover:** confirm the exact target/action, explicit 0%/0% and recovery once full rehearsal passes; use Daily tasks for supported current evidence.
-3. **Controlled subscriber request:** approve the existing minimal invite/request and separate linkage/access boundary, then prove denied/unlinked/cross-Profile access before rollout.
+1. **Resolve the exact legacy purpose set:** one owner decision on specifically identified manual records/financial edits; preserve all evidence and any genuine activity.
+2. **Controlled personal cutover:** after that decision, approve the exact create/archive/reporting/backup action, reconcile tested source through existing runtime gates and import only when authorised.
+3. **Daily personal operation:** use the imported ledger, explicit Save/Discard, Reports and existing Daily tasks; AI/subscriber proposals stay separate.
 
 ## Separate approval boundaries
 

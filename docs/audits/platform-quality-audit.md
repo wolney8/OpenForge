@@ -5541,3 +5541,17 @@ Verification on final source:262 affected API pass/2 intentional source skips;4 
 Availability and limitations: actual normal3010 frontend assets/8010 API`7da4d44` (API generated-file+dirty) and protected Preview`7da4d44`, role/database identities and302 protection reverified. Original isolated3120/8046 restored. CP052 is not served there yet; no hosted workflow or normal-owner authenticated browser claim, no unnecessary frontend rebuild. Normal19 projections, integrity/FK and existing recovery backup checksum unchanged; original source/previous evidence preserved. Hosted per-ledger PostgreSQL confirmation's local-backup limitation remains. New Profile, merge and replacement options are distinguished privately; preserve post-source activity, no normal cutover. Owner’s legacy-Profile classification is separate from this completed import-source gate.
 
 Publication: [#104](https://github.com/wolney8/OpenForge/issues/104#issuecomment-5845847594), [#114](https://github.com/wolney8/OpenForge/issues/114#issuecomment-5845849115), safe summaries only. No Git push, main merge, schema/Production/credential change or private hosted upload. Records and verified source/evidence backup include a precise CP052 resume point.
+
+## CP-053 read-only personal cutover preparation — 2026-09-26 18:55 BST
+
+PERSONAL-READINESS-001 / #104/#114: all current legacy Account/ledger records compared with retained approved source/rehearsal data, original seed and audit history. Every operational record receives one A/B/C/D/E disposition; supporting history/staging/configuration is accounted separately. Private record identities, amounts and exact counts remain in ignored evidence.
+
+No confirmed genuine unique owner activity is established, but an exact uncorroborated manual-entry/financial-edit set remains. Test designations and retained fixture payloads establish synthetic records; names and timestamps alone do not establish ownership or purpose. One independent bounded read-only review refined a classification and checked parent semantics. No code defect was established and no CP052 test, rehearsal or identity investigation was repeated.
+
+The two missing parent references are absent from both selected source and normal native/source/restore identities. Accepted CP052 settled-child financial/restore evidence is retained; explicit missing lineage is non-blocking. No fabricated parent or cross-Profile link.
+
+Conditional recommendation: create a distinct personal Profile with0%/0% after resolving the exact purpose set and a separate cutover approval; preserve legacy history and explicitly control combined reporting. No merge engine or replace is proposed. If any record is genuine, preserve its exact identity/history and revise only the necessary carry-forward proposal. Exact private target/code availability checked without writes.
+
+Normal database/workbook hashes remain unchanged; seven used CP052artifact hashes and the retained normal recovery backup match. Application stays`b6437e8`; CP053is records-only. Current3010/8010listeners absent,8010connection refused; normal last verified`7da4d44`, Preview last verified`7da4d44` without new hosted claim. No services or data changed. Source/evidence backup refreshed at handoff; push withheld.
+
+**CUTOVER PREPARATION: BLOCKED — real/test purpose of the exact privately listed records is not established.** Full private rehearsal remains PASS/accepted. No fresh owner smoke campaign.
