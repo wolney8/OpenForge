@@ -44,6 +44,10 @@ ALLOWED_OVERRIDE_FIELDS = {
     "manual_override_reason",
     "offer_name",
     "strategy",
+    "stake_access",
+    "promo_access",
+    "offer_type",
+    "result",
 }
 
 PROVIDER_ACTIONS = {
@@ -679,6 +683,47 @@ def _allowed_actions(item: dict[str, Any]) -> set[str]:
 
 def _decision_overrides(item: dict[str, Any], payload: ReviewDecisionPayload) -> dict[str, Any]:
     overrides = dict(payload.override_fields)
+    access_fields = set(overrides) & {"stake_access", "promo_access"}
+    classification_fields = set(overrides) & {"offer_type", "result"}
+    if access_fields:
+        from typing import get_args
+
+        from openforge_api.accounts import PromoAccessValue, StakeAccessValue
+
+        allowed = {
+            "stake_access": get_args(StakeAccessValue),
+            "promo_access": get_args(PromoAccessValue),
+        }
+        if (
+            item["category"] != "accounts_partial"
+            or payload.action != "edit_mapping"
+            or not payload.note.strip()
+            or any(overrides[key] not in allowed[key] for key in access_fields)
+        ):
+            raise HTTPException(
+                status_code=422,
+                detail="Account access requires a scoped, reasoned canonical mapping",
+            )
+    if classification_fields:
+        if (
+            item["source_sheet"] != "Sportsbook Bets"
+            or payload.action != "edit_mapping"
+            or not payload.note.strip()
+            or overrides.get("offer_type") != "Mug Bet"
+            or overrides.get("strategy") != "No Lay"
+            or overrides.get("result") != "Lose"
+        ):
+            raise HTTPException(
+                status_code=422,
+                detail="This mapping requires an explicit confirmed Mug Bet / No Lay losing result",
+            )
+    if (
+        payload.action in {"historical_imported_calculation", "historical_imported_behavior"}
+        and not payload.note.strip()
+    ):
+        raise HTTPException(
+            status_code=422, detail="Historical acceptance requires a review reason"
+        )
     if payload.action in {
         "historical_imported_calculation",
         "historical_extra_place",
@@ -735,6 +780,7 @@ def put_founder_import_review_decision(
         "catalogue_id": payload.catalogue_id.strip(),
         "note": payload.note.strip(),
         "override_fields": _decision_overrides(item, payload),
+        "source_fields": item.get("source_fields", {}),
         "actor": _principal_email(request),
         "created_at": existing.get("created_at", now),
         "updated_at": now,

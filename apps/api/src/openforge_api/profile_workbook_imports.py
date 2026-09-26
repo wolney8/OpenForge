@@ -1550,6 +1550,7 @@ def put_profile_workbook_import_decision(
         "catalogue_id": payload.catalogue_id.strip(),
         "note": payload.note.strip(),
         "override_fields": _decision_overrides(item, payload),
+        "source_fields": item.get("source_fields", {}),
         "actor": session.email,
         "created_at": item.get("decision", {}).get("created_at", now)
         if item.get("decision")

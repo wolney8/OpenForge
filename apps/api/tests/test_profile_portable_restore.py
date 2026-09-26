@@ -607,3 +607,34 @@ def test_terminal_void_history_restores_without_guessing_missing_odds(tmp_path: 
             (completed["target_profile_id"], legacy["event_name"]),
         ).fetchone()
     assert dict(restored) == {key: legacy[key] for key in restored.keys()}
+
+
+def test_historical_restore_acceptance_requires_matching_destination_value_and_lineage() -> None:
+    from openforge_api.profile_portable_restore import _has_reviewed_terminal_value
+
+    decision = {
+        "action": "historical_imported_calculation",
+        "status": "REVIEWED_ACCEPTED",
+        "note": "Owner accepted historical source",
+        "destination": {"entity_id": "FB-SYNTHETIC"},
+        "accepted_value": "7.25",
+    }
+    evidence = {
+        "decision_json": json.dumps(decision),
+        "workbook_checksum": "a" * 64,
+        "import_run_id": "synthetic-run",
+    }
+    parsed = SimpleNamespace(
+        sheets={
+            "Review Decisions": [evidence],
+            "Workbook Lineage": [{"workbook_checksum": "a" * 64, "import_run_id": "synthetic-run"}],
+        }
+    )
+    row = {"manual_override_value": "7.25"}
+    assert _has_reviewed_terminal_value(parsed, row, "FB-SYNTHETIC")
+    assert not _has_reviewed_terminal_value(parsed, row, "FB-OTHER")
+    assert not _has_reviewed_terminal_value(
+        parsed, {"manual_override_value": "8.00"}, "FB-SYNTHETIC"
+    )
+    evidence["workbook_checksum"] = "b" * 64
+    assert not _has_reviewed_terminal_value(parsed, row, "FB-SYNTHETIC")

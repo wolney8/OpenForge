@@ -61,3 +61,17 @@ A settled/placed positive actual Sportsbook lay without an Exchange is a shared 
 Account validation failures represented by review items enter REVIEW_REQUIRED, not a failed analysis job. Decisions can be saved without approving an import; Account validation still blocks approval/execution until explicitly resolved. Unrepresented validation failures remain failed.
 
 Per-ledger confirmation retains its verified full LOCAL SQLite-backup prerequisite. On PostgreSQL it returns409 before backup or writes, with the governed Profile workbook-import workflow identified separately. Dry-run/review remain available; do not present a PostgreSQL per-ledger confirmation as tested/supported or bypass the backup gate.
+
+
+## CP-051 scoped approval application and portable evidence
+
+Owner decisions are approved for the selected checksum and exact source identities only. Apply scoped Account access overrides, defer unresolved providers without operational rows, retain reasoned owner-accepted terminal source results and explicitly classify the confirmed No Lay Mug Bet. Preserve raw source/decision timestamps separately from activity dates in existing review lineage; portable recovery must retain that evidence. No schema expansion, ordinary-placement validation relaxation or normal cutover is authorised. Validate effective Account state in readiness, preflight and writes; blank balances remain unknown. Historical Free Bet recovery may relax missing placement evidence only with matching immutable reviewed import provenance and a valid terminal override. Rehearsal totals are captured before disposable workflow simulations.
+
+
+Account access overrides are canonical, reasoned and specific to a review item; deferred providers never create Profile Accounts. Multiple source rows resolving to one provider require an explicit operational-row decision before approval. No last-row-wins lifecycle or balance replacement is permitted. Full-import blank balances remain unknown.
+
+Terminal historical Free Bet acceptance and portable recovery use an internal validation context tied to the saved review action, precise accepted value, destination and workbook lineage. Public new financial writes retain strict requirements. Notes-only updates compare against the stored record and retain its financial/parent state. Owner approval lives separately from freely editable Notes and original activity dates.
+
+Full-workbook Free Bet parent links resolve only against existing same-Profile source identities or full-import write audit; missing/ambiguous parents remain explicit. Portable source identities and review destinations use remapped native IDs, including ambiguous parent candidate evidence. Non-executed opportunity provenance uses the existing reconciliation JSON; it never creates a financial activity. The existing backup format/storage is reused without schema additions.
+
+Source Exchange commission settings remain an explicit verified Profile setup step before a final import. Personal 0%/0% fees do not supply Exchange commission. A rehearsal lacking those source-backed settings cannot label unavailable recalculated values as genuine zero.

@@ -420,6 +420,21 @@ def _account_report(content: bytes, catalogue: MasterAccountCatalogue) -> JsonOb
                 "source_fields": dict(row.fields),
             }
         )
+    for candidate in validation_rows:
+        provider_id = candidate.get("catalogue_id")
+        matches = [
+            row for row in validation_rows if provider_id and row.get("catalogue_id") == provider_id
+        ]
+        if len(matches) > 1:
+            candidate["errors"].append(
+                {
+                    "field": "catalogue_id",
+                    "code": "duplicate_provider_account",
+                    "message": ("Multiple source Accounts resolve to one Profile provider; "
+                        "explicitly choose the operational row and defer the others"),
+                }
+            )
+            candidate["action"] = "blocked"
     resolution_counts = Counter(item.classification for item in resolutions)
     pending_withdrawals = sum(
         (_decimal(row.fields.get("PendingWithdrawalAmount")) or Decimal("0")) for row in parsed.rows

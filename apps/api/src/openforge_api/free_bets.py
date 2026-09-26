@@ -122,7 +122,7 @@ class FreeBetPayload(FreeBetFields):
         return validate_free_bet_date(value)
 
     @model_validator(mode="after")
-    def validate_override_reason(self) -> "FreeBetPayload":
+    def validate_override_reason(self, info: ValidationInfo) -> "FreeBetPayload":
         if self.manual_override_value and not self.manual_override_reason.strip():
             msg = "manual_override_reason is required when manual_override_value is provided"
             raise ValueError(msg)
@@ -140,7 +140,15 @@ class FreeBetPayload(FreeBetFields):
             or self.lay_matched_stake_1
             and Decimal(self.lay_matched_stake_1) > 0
         ):
-            if not self.lay_odds_1 or not self.exchange_name:
+            reviewed_terminal = (
+                isinstance(info.context, dict)
+                and info.context.get("reviewed_historical_terminal") is True
+                and self.status == "Settled"
+                and self.result != "Pending"
+                and bool(self.manual_override_value)
+                and bool(self.manual_override_reason.strip())
+            )
+            if (not self.lay_odds_1 or not self.exchange_name) and not reviewed_terminal:
                 raise ValueError("lay_odds_1 and exchange_name are required for an actual lay")
         return self
 
@@ -459,6 +467,7 @@ def validate_write_payload(
     payload: dict[str, object],
     *,
     account_fields_to_validate: set[str] | None = None,
+    notes_only: bool = False,
 ) -> dict[str, object]:
     """Shared new-business-write policy; historical restore/read models remain separate."""
     profile = get_profile(profile_id)
@@ -467,7 +476,11 @@ def validate_write_payload(
     if profile.status == "Archived":
         raise HTTPException(status_code=409, detail="Profile is archived")
     try:
-        parsed = FreeBetPayload.model_validate(payload)
+        parsed = (
+            FreeBetFields.model_validate(payload)
+            if notes_only
+            else FreeBetPayload.model_validate(payload)
+        )
     except ValidationError as error:
         raise HTTPException(status_code=422, detail=error.errors(include_context=False)) from error
     accounts = list_accounts(profile_id)
@@ -489,11 +502,13 @@ def validate_write_payload(
     resolution_state = str(payload.get("origin_qual_bet_resolution_state") or "")
     native_parent_id = str(payload.get("origin_qual_bet_native_id") or "")
     relationship_id = native_parent_id or (
-        parsed.origin_qual_bet_id
-        if resolution_state in {"", "not_applicable", "resolved"}
-        else ""
+        parsed.origin_qual_bet_id if resolution_state in {"", "not_applicable", "resolved"} else ""
     )
-    if relationship_id and get_sportsbook_bet(profile_id, relationship_id) is None:
+    if (
+        not notes_only
+        and relationship_id
+        and get_sportsbook_bet(profile_id, relationship_id) is None
+    ):
         raise HTTPException(
             status_code=422, detail="origin_qual_bet_id: source does not belong to this Profile"
         )

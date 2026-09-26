@@ -401,6 +401,7 @@ def build_base_write_plan(result: dict[str, Any]) -> dict[str, Any]:
                 "provider_match_method",
                 "account_type",
                 "mapped_profile_state",
+                "source_record_id",
             )
         }
         for row in result["accounts"].get("validation_rows", [])
@@ -444,6 +445,8 @@ def build_base_write_plan(result: dict[str, Any]) -> dict[str, Any]:
                         for key in HISTORICAL_EP_SOURCE_FIELDS | provenance_fields
                         if key in source
                     }
+                    if row.get("action") != "exclude_non_transactional"
+                    else dict(source)
                 }
             )
     return {
@@ -552,18 +555,40 @@ def final_import_summary(
         for item in provider_items
         if item["review_status"] not in {"EXCLUDED", "DEFERRED"} and not _resolved_provider(item)
     ]
-    account_validation_blockers = [
-        row
-        for row in (plan or {}).get("accounts", [])
-        if row.get("action") == "blocked" or row.get("errors")
-    ]
-    # Plans persisted before account validation metadata was added still carry the
-    # dry-run readiness count. Treat that count as authoritative rather than
-    # silently allowing an invalid Account to disappear from a mixed workbook.
-    validation_blocked_count = max(
-        len(account_validation_blockers),
-        int(run.get("summary", {}).get("readiness", {}).get("validation_blocked_rows", 0)),
-    )
+    decisions = _decision_map(workspace)
+    account_validation_blockers = []
+    catalogue = _catalogue_records()
+    for row in (plan or {}).get("accounts", []):
+        try:
+            _reviewed_account_state(row, decisions, catalogue)
+        except (ValueError, KeyError, TypeError) as error:
+            account_validation_blockers.append({**row, "review_error": str(error)})
+    effective_providers: dict[str, dict[str, Any]] = {}
+    for row in (plan or {}).get("accounts", []):
+        try:
+            state = _reviewed_account_state(row, decisions, catalogue)
+        except (ValueError, KeyError, TypeError):
+            continue
+        if state is None:
+            continue
+        provider_id = str(state["catalogue_id"])
+        if provider_id in effective_providers:
+            previous = effective_providers[provider_id]
+            account_validation_blockers.append(
+                {
+                    **row,
+                    "review_error": (f"same provider as source row {previous['source_row']}; "
+                        "choose one operational Account and defer the other"),
+                }
+            )
+        effective_providers[provider_id] = row
+    validation_blocked_count = len(account_validation_blockers)
+    # Older plans without field-validation metadata must be re-analysed.
+    if any("errors" not in row for row in (plan or {}).get("accounts", [])):
+        validation_blocked_count = max(
+            validation_blocked_count,
+            int(run.get("summary", {}).get("readiness", {}).get("validation_blocked_rows", 0)),
+        )
     account_changes = run["summary"].get("accounts", {}).get("change_reconciliation", {})
     ledger_summaries = run["summary"].get("ledgers", {})
     financial = run.get("reconciliation", {})
@@ -623,7 +648,8 @@ def final_import_summary(
                 for item in importable_provider_blockers
             ],
             *[
-                f"Accounts row {row.get('source_row', 'unknown')} failed field validation"
+                (f"Accounts row {row.get('source_row', 'unknown')} failed field validation: "
+                f"{row.get('review_error', 'unresolved source error')}")
                 for row in account_validation_blockers
             ],
             *(
@@ -1108,11 +1134,6 @@ def _account_write_state(
         raise ImportCutoverError(str(error)) from error
     state = {column: source_state.get(column) for column in ACCOUNT_WRITE_COLUMNS}
     current_balance = source_state.get("current_balance")
-    if (
-        str(lifecycle_status).casefold() == "pending sign up"
-        and not str(current_balance or "").strip()
-    ):
-        current_balance = "0.00"
     state.update(
         {
             "catalogue_id": catalogue_id,
@@ -1131,6 +1152,49 @@ def _account_write_state(
             "access_source": source_state.get("access_source") or "workbook_import",
             "access_observed_at": source_state.get("access_observed_at") or "",
         }
+    )
+    return state
+
+
+def _reviewed_account_state(
+    source: dict[str, Any], decisions: dict[str, dict[str, Any]], catalogue: dict[str, Any]
+) -> dict[str, Any] | None:
+    items = [
+        item for item in decisions.values() if str(item["import_id"]) == str(source["import_key"])
+    ]
+    if any(item["review_status"] in {"DEFERRED", "EXCLUDED"} for item in items):
+        return None
+    provider_item = next((item for item in items if item["category"] == "missing_provider"), None)
+    catalogue_id = str(source.get("catalogue_id") or _resolved_provider(provider_item))
+    provider = catalogue.get(catalogue_id)
+    if provider is None:
+        raise ImportCutoverError(f"Account row {source['source_row']} has no global provider")
+    unresolved_errors = [
+        error
+        for error in source.get("errors", [])
+        if error.get("code") != "duplicate_provider_account"
+    ]
+    if (
+        unresolved_errors or (source.get("action") == "blocked" and not source.get("errors"))
+    ) and not any(
+        (item.get("decision") or {}).get("action") in {"edit_mapping", "map_existing_provider"}
+        for item in items
+    ):
+        raise ImportCutoverError("Resolve the original Account validation errors")
+    mapped = dict(source["mapped_profile_state"])
+    for item in items:
+        decision = item.get("decision") or {}
+        if item["category"] == "accounts_partial" and decision.get("action") == "edit_mapping":
+            mapped.update(
+                {
+                    key: value
+                    for key, value in decision.get("override_fields", {}).items()
+                    if key in {"stake_access", "promo_access"}
+                }
+            )
+    state = _account_write_state(mapped, catalogue_id=catalogue_id, provider=provider)
+    AccountPayload.model_validate(
+        {**state, "restrictions": json.loads(str(state["restrictions_json"]))}
     )
     return state
 
@@ -1158,18 +1222,11 @@ def _apply_accounts(
     matched: set[str] = set()
     counts = {"created": 0, "updated": 0, "unchanged": 0, "absent_changed": 0}
     for source in rows:
-        item = _decision_for(decisions, str(source["import_key"]), category="missing_provider")
-        if item and item["review_status"] in {"EXCLUDED", "DEFERRED"}:
+        state = _reviewed_account_state(source, decisions, catalogue)
+        if state is None:
             continue
-        catalogue_id = str(source.get("catalogue_id") or _resolved_provider(item))
-        provider = catalogue.get(catalogue_id)
-        if provider is None:
-            raise ImportCutoverError(f"Account row {source['source_row']} has no global provider")
-        state = _account_write_state(
-            dict(source["mapped_profile_state"]),
-            catalogue_id=catalogue_id,
-            provider=provider,
-        )
+        catalogue_id = str(state["catalogue_id"])
+        provider = catalogue[catalogue_id]
         try:
             if provider.account_type == "Bookmaker":
                 bookmaker = connection.execute(
@@ -1325,6 +1382,9 @@ def _apply_decision(
             payload["offer_name"] = overrides["offer_name"]
         if overrides.get("strategy"):
             payload["match_strategy"] = overrides["strategy"]
+        for field in ("offer_type", "result"):
+            if overrides.get(field):
+                payload[field] = overrides[field]
         if overrides.get("manual_override_reason"):
             if "final_net_pnl" in payload and "manual_override_value" not in payload:
                 # Casino's governed reason field is UserNotes, not a new SQL column.
@@ -1339,7 +1399,12 @@ def _apply_decision(
             "historical_imported_calculation",
             "historical_imported_behavior",
         }:
-            source_pnl = str(row.get("imported_current_pnl") or row.get("source_pnl") or "")
+            source_pnl = str(
+                row.get("realised_pnl")
+                or row.get("source_pnl")
+                or row.get("imported_current_pnl")
+                or ""
+            )
             if "manual_override_value" in payload and source_pnl:
                 payload["manual_override_value"] = source_pnl
                 payload["manual_override_reason"] = str(
@@ -1474,6 +1539,59 @@ def _historical_extra_place_date(source: dict[str, Any], row: dict[str, Any]) ->
     )
 
 
+def _imported_parent_fields(connection: Any, profile_id: str, external_id: str) -> dict[str, Any]:
+    candidates: set[str] = set()
+    if external_id:
+        for source in connection.execute(
+            "SELECT entity_id FROM import_source_records WHERE profile_id = ? "
+            "AND source_namespace = 'sportsbook' AND source_record_id = ? "
+            "AND entity_type = 'sportsbook_bet'",
+            (profile_id, external_id),
+        ).fetchall():
+            candidates.add(str(source["entity_id"]))
+        for source in connection.execute(
+            "SELECT import_key, entity_id FROM profile_import_write_audit WHERE profile_id = ? "
+            "AND entity_type = 'sportsbook_bet' AND rolled_back_at = ''",
+            (profile_id,),
+        ).fetchall():
+            parts = str(source["import_key"]).rsplit(":", 2)
+            if len(parts) == 3 and parts[1] == external_id:
+                candidates.add(str(source["entity_id"]))
+    candidates = {
+        candidate
+        for candidate in candidates
+        if connection.execute(
+            "SELECT 1 FROM sportsbook_bets WHERE profile_id = ? AND sportsbook_bet_id = ?",
+            (profile_id, candidate),
+        ).fetchone()
+    }
+    state = (
+        "not_applicable"
+        if not external_id
+        else "resolved"
+        if len(candidates) == 1
+        else "ambiguous"
+        if candidates
+        else "missing"
+    )
+    return {
+        "origin_qual_bet_source_namespace": "sportsbook" if external_id else "",
+        "origin_qual_bet_native_id": next(iter(candidates)) if state == "resolved" else "",
+        "origin_qual_bet_resolution_state": state,
+        "origin_qual_bet_resolution_json": _json(
+            {
+                "schema_version": 1,
+                "basis": "profile_scoped_import_source"
+                if candidates
+                else "no_profile_scoped_parent_at_import"
+                if external_id
+                else "no_parent",
+                "candidate_native_ids": sorted(candidates),
+            }
+        ),
+    }
+
+
 def _insert_ledger_entry(
     connection: Any,
     *,
@@ -1599,6 +1717,12 @@ def _insert_ledger_entry(
         "updated_at": now,
     }
     record = _preserve_unresolved_open_value(connection, record, row)
+    if ledger == "free_bets":
+        record.update(
+            _imported_parent_fields(
+                connection, profile_id, str(record.get("origin_qual_bet_id") or "").strip()
+            )
+        )
     try:
         _insert_row(connection, table, record)
         _audit_write(
@@ -2441,22 +2565,8 @@ def validate_import_approval_preflight(
     catalogue = _catalogue_records()
     account_rows_validated = 0
     for source in plan["accounts"]:
-        item = _decision_for(decisions, str(source["import_key"]), category="missing_provider")
-        if item and item["review_status"] in {"EXCLUDED", "DEFERRED"}:
+        if _reviewed_account_state(source, decisions, catalogue) is None:
             continue
-        catalogue_id = str(source.get("catalogue_id") or _resolved_provider(item))
-        provider = catalogue.get(catalogue_id)
-        if provider is None:
-            raise ImportCutoverError(
-                f"Account row {source['source_row']} has no global provider"
-            )
-        state = _account_write_state(
-            dict(source["mapped_profile_state"]),
-            catalogue_id=catalogue_id,
-            provider=provider,
-        )
-        restrictions = json.loads(str(state.pop("restrictions_json")))
-        AccountPayload.model_validate({**state, "restrictions": restrictions})
         account_rows_validated += 1
 
     ledger_counts: Counter[str] = Counter()
@@ -2497,9 +2607,25 @@ def validate_import_approval_preflight(
             payload = _apply_decision(payload, row, item)
             payload = _apply_formal_report_date(payload, row, ledger)
             if ledger == "sportsbook":
-                SportsbookBetPayload.model_validate(payload)
+                SportsbookBetPayload.model_validate(
+                    payload,
+                    context={
+                        "restore_terminal_void_history": bool(
+                            row.get("automatic_historical_void_zero")
+                        )
+                    },
+                )
             elif ledger == "free_bets":
-                FreeBetPayload.model_validate(payload)
+                FreeBetPayload.model_validate(
+                    payload,
+                    context={
+                        "reviewed_historical_terminal": bool(
+                            item
+                            and (item.get("decision") or {}).get("action")
+                            in {"historical_imported_calculation", "historical_imported_behavior"}
+                        )
+                    },
+                )
             elif ledger == "casino":
                 CasinoOfferPayload.model_validate(payload)
             else:

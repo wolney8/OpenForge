@@ -27,8 +27,8 @@ from openforge_api.cash_adjustments import CashAdjustmentPayload
 from openforge_api.casino_offers import CasinoOfferPayload
 from openforge_api.db import connect, postgres_runtime_enabled
 from openforge_api.each_way_extra_places import EachWayExtraPlacePayload
-from openforge_api.free_bets import FreeBetPayload
 from openforge_api.financial_history import mutation_hash
+from openforge_api.free_bets import FreeBetPayload
 from openforge_api.profile_portable_export import (
     EXPORT_FORMAT_VERSION,
     NULL_FIELDS_COLUMN,
@@ -43,11 +43,11 @@ from openforge_api.profile_portable_export import (
     _sha256,
     build_profile_portable_export,
 )
+from openforge_api.profile_workbook_cutover import generate_post_import_operational_health
 from openforge_api.source_identity import (
     validate_parent_resolution_state,
     validate_source_namespace,
 )
-from openforge_api.profile_workbook_cutover import generate_post_import_operational_health
 from openforge_api.sportsbook import SportsbookBetPayload
 
 RESTORE_CONTRACT_VERSION = "profile-portable-restore-v1"
@@ -617,6 +617,29 @@ def _global_reference_reviews(parsed: ParsedPortableBackup) -> list[dict[str, An
     return sorted(reviews.values(), key=lambda row: (row["reference_domain"], row["reference_id"]))
 
 
+def _has_reviewed_terminal_value(
+    parsed: ParsedPortableBackup, row: dict[str, Any], entity_id: str
+) -> bool:
+    for evidence in parsed.sheets.get("Review Decisions", ()):
+        decision = json.loads(str(evidence.get("decision_json") or "{}"))
+        if (
+            decision.get("action")
+            not in {"historical_imported_calculation", "historical_imported_behavior"}
+            or decision.get("status") not in {"REVIEWED_ACCEPTED", "REVIEWED_OVERRIDDEN"}
+            or not str(decision.get("note") or "").strip()
+            or (decision.get("destination") or {}).get("entity_id") != entity_id
+            or decision.get("accepted_value") != row.get("manual_override_value")
+        ):
+            continue
+        if any(
+            lineage.get("workbook_checksum") == evidence.get("workbook_checksum")
+            and lineage.get("import_run_id") == evidence.get("import_run_id")
+            for lineage in parsed.sheets.get("Workbook Lineage", ())
+        ):
+            return True
+    return False
+
+
 def _validate_domain_rows(parsed: ParsedPortableBackup) -> None:
     for row in parsed.sheets["Accounts"]:
         restrictions_value = row.get("restrictions_json") or "[]"
@@ -641,11 +664,16 @@ def _validate_domain_rows(parsed: ParsedPortableBackup) -> None:
         if lifecycle not in LIFECYCLE_STATUSES:
             raise PortableRestoreError("Account lifecycle validation failed")
     for row in parsed.sheets["Sportsbook"]:
-        SportsbookBetPayload.model_validate(
-            row, context={"restore_terminal_void_history": True}
-        )
+        SportsbookBetPayload.model_validate(row, context={"restore_terminal_void_history": True})
     for row in parsed.sheets["Free Bets"]:
-        FreeBetPayload.model_validate(row)
+        FreeBetPayload.model_validate(
+            row,
+            context={
+                "reviewed_historical_terminal": _has_reviewed_terminal_value(
+                    parsed, row, str(row["free_bet_id"])
+                )
+            },
+        )
         state = validate_parent_resolution_state(
             str(row.get("origin_qual_bet_resolution_state") or "not_applicable")
         )
@@ -1013,10 +1041,28 @@ def _resolved_rows(
                 from openforge_api.sportsbook_offer_metadata import parse_conditional_benefit
                 benefit = parse_conditional_benefit(str(row["conditional_benefit_json"]))
                 if benefit and benefit.linked_awarded_credit_id:
-                    child_id = identity_maps.get("free_bet", {}).get(benefit.linked_awarded_credit_id)
+                    child_id = identity_maps.get("free_bet", {}).get(
+                        benefit.linked_awarded_credit_id
+                    )
                     if not child_id:
-                        raise PortableRestoreError("conditional benefit awarded-credit identity cannot be resolved")
-                    row["conditional_benefit_json"] = benefit.model_copy(update={"linked_awarded_credit_id": child_id}).model_dump_json()
+                        raise PortableRestoreError(
+                            "conditional benefit awarded-credit identity cannot be resolved"
+                        )
+                    row["conditional_benefit_json"] = benefit.model_copy(
+                        update={"linked_awarded_credit_id": child_id}
+                    ).model_dump_json()
+            if spec.name == "Free Bets":
+                evidence = json.loads(str(row.get("origin_qual_bet_resolution_json") or "{}"))
+                if evidence.get("candidate_native_ids"):
+                    evidence["candidate_native_ids"] = [
+                        identity_maps.get("sportsbook_bet", {}).get(str(candidate), str(candidate))
+                        for candidate in evidence["candidate_native_ids"]
+                    ]
+                if evidence.get("selected_native_id"):
+                    evidence["selected_native_id"] = identity_maps.get("sportsbook_bet", {}).get(
+                        str(evidence["selected_native_id"]), str(evidence["selected_native_id"])
+                    )
+                row["origin_qual_bet_resolution_json"] = _canonical_json(evidence)
             if spec.name == "Profile":
                 row["profile_id"] = target_profile_id
                 row["display_name"] = target_display_name
@@ -1052,6 +1098,18 @@ def _resolved_rows(
                 row["entity_id"] = identity_maps.get(identity_domain, {}).get(
                     portable_entity_id, portable_entity_id
                 )
+            if spec.name == "Review Decisions":
+                decision = json.loads(str(row.get("decision_json") or "{}"))
+                destination = decision.get("destination") or {}
+                domain = ENTITY_IDENTITY_DOMAINS.get(
+                    str(destination.get("entity_type") or ""),
+                    str(destination.get("entity_type") or ""),
+                )
+                old_id = str(destination.get("entity_id") or "")
+                if old_id:
+                    destination["entity_id"] = identity_maps.get(domain, {}).get(old_id, old_id)
+                    decision["destination"] = destination
+                    row["decision_json"] = _canonical_json(decision)
             if spec.name == "Financial History":
                 ledger_type = str(row.get("ledger_type") or "")
                 history_domain = HISTORY_ACTIVITY_DOMAINS.get(ledger_type)

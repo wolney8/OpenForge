@@ -260,10 +260,13 @@ def test_invalid_account_row_blocks_the_complete_workbook_write_plan(
     summary = final_import_summary(run=run, workspace=workspace, plan=plan)
 
     assert summary["ready"] is False
-    assert summary["blockers"] == ["Accounts row 2 failed field validation"]
+    assert summary["blockers"] == [
+        "Accounts row 2 failed field validation: Resolve the original Account validation errors"
+    ]
     with pytest.raises(
         ImportCutoverError,
-        match="Accounts row 2 failed field validation. Approval was not granted",
+        match=("Accounts row 2 failed field validation: "
+               "Resolve the original Account validation errors. Approval was not granted"),
     ):
         validate_import_approval_preflight(
             profile_id=PROFILE_ID,
@@ -1752,3 +1755,210 @@ def test_staged_failure_restores_checkpoint_and_remains_retryable(
             ).fetchone()[0]
             == second_active
         )
+
+
+def test_reviewed_access_and_deferred_provider_share_account_preflight(tmp_path: Path) -> None:
+    from openforge_api.profile_workbook_cutover import _catalogue_records, _reviewed_account_state
+
+    configure_cutover_database(tmp_path)
+    row = synthetic_plan()["accounts"][0]
+    row.update(action="blocked", errors=[{"field": "promo_access"}])
+    row["mapped_profile_state"]["promo_access"] = "Unknown"
+    decision = {
+        "import_id": row["import_key"],
+        "category": "accounts_partial",
+        "review_status": "REVIEWED_OVERRIDDEN",
+        "decision": {"action": "edit_mapping", "override_fields": {"promo_access": "Not Checked"}},
+    }
+    with pytest.raises(ValueError):
+        _reviewed_account_state(row, {}, _catalogue_records())
+    state = _reviewed_account_state(row, {"review": decision}, _catalogue_records())
+    assert state["promo_access"] == "Not Checked"
+    assert row["mapped_profile_state"]["promo_access"] == "Unknown"
+    decision["review_status"] = "DEFERRED"
+    row["catalogue_id"] = "unresolved"
+    assert _reviewed_account_state(row, {"review": decision}, _catalogue_records()) is None
+
+
+def test_pending_signup_blank_balance_stays_unknown(tmp_path: Path) -> None:
+    from openforge_api.profile_workbook_cutover import _catalogue_records
+
+    configure_cutover_database(tmp_path)
+    provider = next(iter(_catalogue_records().values()))
+    state = _account_write_state(
+        {"status": "Pending Sign Up", "current_balance": ""},
+        catalogue_id=provider.catalogue_id,
+        provider=provider,
+    )
+    assert state["current_balance"] == ""
+
+
+def test_historical_acceptance_uses_final_source_not_current_reference() -> None:
+    payload = {"manual_override_value": "", "manual_override_reason": ""}
+    row = {"realised_pnl": "-2.34", "source_pnl": "-2.34", "imported_current_pnl": "8.90"}
+    item = {
+        "decision": {
+            "action": "historical_imported_calculation",
+            "note": "Owner accepted source result",
+        }
+    }
+    result = _apply_decision(payload, row, item)
+    assert result["manual_override_value"] == "-2.34"
+    assert result["manual_override_reason"] == "Owner accepted source result"
+
+
+def test_historical_free_bet_context_does_not_relax_new_placements() -> None:
+    from openforge_api.free_bets import FreeBetPayload
+
+    payload = dict(
+        bookmaker="Bookmaker A",
+        event_name="Synthetic event",
+        status="Settled",
+        result="Lay Won",
+        retention_mode="SNR",
+        match_strategy="Standard",
+        free_bet_value="10",
+        back_odds="4",
+        lay_actual="8",
+        lay_odds_1="4.2",
+        exchange_name="",
+        manual_override_value="7.25",
+        manual_override_reason="Owner accepted source result",
+    )
+    with pytest.raises(ValueError, match="exchange_name"):
+        FreeBetPayload.model_validate(payload)
+    assert (
+        FreeBetPayload.model_validate(
+            payload, context={"reviewed_historical_terminal": True}
+        ).manual_override_value
+        == "7.25"
+    )
+    with pytest.raises(ValueError):
+        FreeBetPayload.model_validate(
+            {**payload, "status": "Placed"}, context={"reviewed_historical_terminal": True}
+        )
+    with pytest.raises(ValueError):
+        FreeBetPayload.model_validate(
+            {**payload, "lay_odds_1": "broken"}, context={"reviewed_historical_terminal": True}
+        )
+
+
+def test_duplicate_provider_source_rows_cannot_silently_replace_account(tmp_path: Path) -> None:
+    from copy import deepcopy
+
+    configure_cutover_database(tmp_path)
+    plan = synthetic_plan()
+    duplicate = deepcopy(plan["accounts"][0])
+    duplicate.update(source_row=8, import_key="Accounts:duplicate:synthetic")
+    duplicate["mapped_profile_state"].update(
+        status="Pending Sign Up", lifecycle_status="Pending Sign Up", current_balance=""
+    )
+    plan["accounts"].append(duplicate)
+    run, workspace = run_and_workspace()
+    summary = final_import_summary(run=run, workspace=workspace, plan=plan)
+    assert not summary["ready"]
+    assert any("same provider as source row" in blocker for blocker in summary["blockers"])
+
+
+def test_review_overrides_reject_cross_domain_access_and_unreasoned_acceptance() -> None:
+    from fastapi import HTTPException
+
+    from openforge_api.founder_import_review import ReviewDecisionPayload, _decision_overrides
+
+    item = {"category": "free_bets_partial", "source_sheet": "Free Bets"}
+    payload = ReviewDecisionPayload(
+        item_id="review-synthetic-1234",
+        source_fingerprint="a" * 64,
+        action="edit_mapping",
+        note="Synthetic review",
+        override_fields={"promo_access": "Full"},
+    )
+    with pytest.raises(HTTPException):
+        _decision_overrides(item, payload)
+    with pytest.raises(HTTPException):
+        _decision_overrides(
+            item,
+            ReviewDecisionPayload(
+                item_id="review-synthetic-1234",
+                source_fingerprint="a" * 64,
+                action="historical_imported_calculation",
+            ),
+        )
+
+
+def test_full_workbook_parent_resolution_is_profile_scoped_and_never_guesses(
+    tmp_path: Path,
+) -> None:
+    from openforge_api.profile_workbook_cutover import (
+        _imported_parent_fields,
+        _insert_ledger_entry,
+    )
+
+    configure_cutover_database(tmp_path)
+    run, workspace = run_and_workspace()
+    plan = synthetic_plan()
+    persist_run_and_plan(run, plan)
+    with connect() as connection:
+        assert (
+            _imported_parent_fields(connection, PROFILE_ID, "DEMO-PARENT")[
+                "origin_qual_bet_resolution_state"
+            ]
+            == "missing"
+        )
+        assert (
+            _imported_parent_fields(connection, PROFILE_ID, "")["origin_qual_bet_resolution_state"]
+            == "not_applicable"
+        )
+        row = plan["ledgers"]["sportsbook"][0]
+        row["import_key"] = "Sportsbook Bets:DEMO-PARENT:" + "a" * 20
+        _insert_ledger_entry(
+            connection,
+            profile_id=PROFILE_ID,
+            import_run_id=RUN_ID,
+            entry=("sportsbook", "sportsbook", row, None, None),
+        )
+        resolved = _imported_parent_fields(connection, PROFILE_ID, "DEMO-PARENT")
+        assert resolved["origin_qual_bet_resolution_state"] == "resolved"
+        assert resolved["origin_qual_bet_native_id"]
+        assert (
+            _imported_parent_fields(connection, "other-profile", "DEMO-PARENT")[
+                "origin_qual_bet_resolution_state"
+            ]
+            == "missing"
+        )
+
+
+def test_imported_free_bet_notes_are_neutral_but_financial_edits_still_validate(
+    tmp_path: Path,
+) -> None:
+    from fastapi import HTTPException
+
+    from openforge_api.db import get_free_bet, update_free_bet
+    from openforge_api.profile_workbook_cutover import _entity_id, _insert_ledger_entry
+
+    configure_cutover_database(tmp_path)
+    run, workspace = run_and_workspace()
+    plan = synthetic_plan()
+    persist_run_and_plan(run, plan)
+    row = plan["ledgers"]["free_bets"][0]
+    row["mapped_payload"].update(
+        match_strategy="Standard", lay_actual="4.00", lay_odds_1="3.20", exchange_name=""
+    )
+    with connect() as connection:
+        _insert_ledger_entry(
+            connection,
+            profile_id=PROFILE_ID,
+            import_run_id=RUN_ID,
+            entry=("free_bets", "free_bets", row, None, None),
+        )
+    native_id = _entity_id("FB", PROFILE_ID, row["import_key"])
+    before = get_free_bet(PROFILE_ID, native_id)
+    for note in ("Synthetic addition", "Synthetic amendment", ""):
+        changed = update_free_bet(PROFILE_ID, native_id, {"user_notes": note})
+        assert changed.user_notes == note
+        assert changed.manual_override_value == before.manual_override_value
+        assert changed.exchange_name == ""
+    with pytest.raises(HTTPException) as rejected:
+        update_free_bet(PROFILE_ID, native_id, {"lay_actual": "5.00"})
+    assert rejected.value.status_code == 422
+    assert get_free_bet(PROFILE_ID, native_id).lay_actual == "4.00"

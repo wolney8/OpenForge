@@ -637,6 +637,43 @@ def _select_rows(connection: Any, spec: SheetSpec, profile_id: str) -> list[dict
         (profile_id,),
     ).fetchall()
     result = [dict(row) for row in rows]
+    if spec.name == "Source Identities":
+        from openforge_api.source_identity import logical_source_namespace
+
+        seen = {(str(row["source_namespace"]), str(row["source_record_id"])) for row in result}
+        for audit in connection.execute(
+            "SELECT import_key, entity_type, entity_id, created_at "
+            "FROM profile_import_write_audit WHERE profile_id = ? "
+            "AND rolled_back_at = '' ORDER BY created_at, import_key",
+            (profile_id,),
+        ).fetchall():
+            parts = str(audit["import_key"]).rsplit(":", 2)
+            if len(parts) != 3 or audit["entity_type"] not in {
+                "accounts",
+                "sportsbook_bet",
+                "free_bet",
+                "casino_offer",
+                "cash_adjustment",
+                "extra_place",
+            }:
+                continue
+            sheet, source_id, source_hash = parts
+            namespace = logical_source_namespace(sheet)
+            if (namespace, source_id) in seen:
+                continue
+            result.append(
+                {
+                    "source_namespace": namespace,
+                    "source_sheet": sheet,
+                    "source_record_id": source_id,
+                    "profile_id": profile_id,
+                    "source_hash": source_hash,
+                    "entity_type": audit["entity_type"],
+                    "entity_id": audit["entity_id"],
+                    "imported_at": audit["created_at"],
+                }
+            )
+            seen.add((namespace, source_id))
     if spec.name in {"Source Identities", "Workbook Lineage"}:
         result.extend(_restored_provenance_rows(connection, profile_id, spec.name))
         result.sort(key=lambda row: tuple(str(row.get(field) or "") for field in spec.order_by))
@@ -777,6 +814,23 @@ def _review_decisions(connection: Any, profile_id: str) -> tuple[SheetSpec, list
         (profile_id,),
     ).fetchall()
     result = [dict(row) for row in rows]
+    for row in result:
+        decision = json.loads(str(row["decision_json"]))
+        write = connection.execute(
+            "SELECT entity_type, entity_id, after_json FROM profile_import_write_audit "
+            "WHERE import_run_id = ? AND import_key = ? AND rolled_back_at = ''",
+            (row["import_run_id"], str(decision.get("import_id") or "")),
+        ).fetchone()
+        if write:
+            after = json.loads(str(write["after_json"]))
+            decision["destination"] = {
+                "entity_type": write["entity_type"],
+                "entity_id": write["entity_id"],
+            }
+            decision["accepted_value"] = after.get(
+                "manual_override_value", after.get("final_net_pnl", "")
+            )
+        row["decision_json"] = _canonical_json(decision)
     result.extend(_restored_provenance_rows(connection, profile_id, "Review Decisions"))
     result.sort(
         key=lambda row: tuple(str(row.get(field) or "") for field in REVIEW_DECISIONS_SPEC.order_by)
@@ -808,6 +862,20 @@ def _reconciliation_rows(
         record = dict(run)
         attempt = latest_attempt.get(str(record["import_run_id"]), {})
         attempt_reconciliation = json.loads(str(attempt.get("reconciliation_json") or "{}"))
+        reconciliation = json.loads(str(record["reconciliation_json"] or "{}"))
+        plan_row = connection.execute(
+            "SELECT plan_json FROM profile_import_write_plans WHERE import_run_id = ?",
+            (record["import_run_id"],),
+        ).fetchone()
+        if plan_row:
+            plan = json.loads(str(plan_row["plan_json"]))
+            reconciliation["nonexecuted_opportunities"] = [
+                entry
+                for entries in plan.get("ledgers", {}).values()
+                for entry in entries
+                if entry.get("action") == "exclude_non_transactional"
+            ]
+        record["reconciliation_json"] = _canonical_json(reconciliation)
         rows.append(
             {
                 "import_run_id": record["import_run_id"],

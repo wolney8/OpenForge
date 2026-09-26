@@ -5661,11 +5661,18 @@ def update_free_bet(
         for key in ("bookmaker", "exchange_name")
         if key in payload and payload[key] != getattr(existing, key)
     }
+    notes_only = all(
+        key == "user_notes"
+        or key.startswith("_history_")
+        or value == getattr(existing, key, object())
+        for key, value in payload.items()
+    )
     payload = capture_first_placement_commission(existing, payload)
     payload = validate_write_payload(
         profile_id,
         {**existing.__dict__, **payload},
         account_fields_to_validate=account_fields_to_validate,
+        notes_only=notes_only,
     )
     payload.update(history_metadata)
     tracker_settings = get_profile_tracker_settings(profile_id)
