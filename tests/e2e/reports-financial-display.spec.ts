@@ -18,7 +18,7 @@ async function setup(page:Page) {
   const health=await(await page.request.get(process.env.OPENFORGE_E2E_HEALTH_URL||"/healthz")).json();expect(["test","preview"]).toContain(health.runtime_role);
   if(health.runtime_role==="preview")expect(health.database_identity).toBe("preview:plum_duff_preview_cp028");
   expect((await page.request.get("/api/auth/session")).status()).toBe(200);
-  const suffix=Date.now();const r=await page.request.post("/api/profiles/onboarding",{data:{accounts:[],display_name:`Synthetic CP044 Reports ${suffix}`,profile_code:`C44-${suffix}`,enabled_modules:["sportsbook-bets","free-bets","casino-offers","cash-adjustments","each-way-extra-places"],quick_actions:[],setup_path:"import",tracking_start_date:"2026-09-01"}});expect(r.status(),await r.text()).toBe(201);const id=(await r.json()).profile.profile_id;
+  const suffix=Date.now();const r=await page.request.post("/api/profiles/onboarding",{data:{accounts:[],display_name:`Synthetic CP044 Reports ${suffix}`,profile_code:`C44-${suffix}`,enabled_modules:["sportsbook-bets","free-bets","casino-offers","cash-adjustments","each-way-extra-places"],quick_actions:[],setup_path:"import",profile_relationship:"Personal",management_fee_percent:"0",investment_fee_percent:"0",tracking_start_date:"2026-09-01"}});expect(r.status(),await r.text()).toBe(201);const id=(await r.json()).profile.profile_id;
   const path=`/api/profiles/${id}/tracker-summary-sources`;
   const source=populate(await(await page.request.get(path)).json());
   return {id,path,source,url:`/profiles/${id}/tracker/reports`};

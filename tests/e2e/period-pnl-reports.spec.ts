@@ -44,7 +44,7 @@ test("period P&L reconciles source records and retains selected scope, week and 
     const response = await page.request.post("/api/profiles/onboarding", { data: {
       accounts: [], display_name: "Synthetic CP038 " + label + " " + suffix, profile_code: "C38-" + ids.length + "-" + suffix,
       enabled_modules: ["sportsbook-bets", "free-bets", "cash-adjustments"], quick_actions: [],
-      setup_path: "import", tracking_start_date: "2026-09-01",
+      setup_path: "import", profile_relationship: "Personal", management_fee_percent: "0", investment_fee_percent: "0", tracking_start_date: "2026-09-01",
     }});
     expect(response.status(), await response.text()).toBe(201);
     const id = (await response.json()).profile.profile_id as string; ids.push(id);

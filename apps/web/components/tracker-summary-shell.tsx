@@ -4,6 +4,7 @@ import { AccountMoneyStatus } from "@/components/account-money-status";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ReportExplorer } from "@/components/report-explorer";
 import { PeriodPnlReport } from "@/components/period-pnl-report";
 import { apiBaseUrl } from "@/lib/api";
 import { AccessScopeBadge } from "@/components/access-scope-badge";
@@ -1319,6 +1320,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
                       )),
               })}
 
+              {data ? <ReportExplorer contextKey={profileId} state={selectedRangeReadState} scopes={[{profileId,label:"This Profile",dataset:data}]} /> : null}
               {data ? <PeriodPnlReport rows={summary.weeklyReports} contextKey={profileId}
                 scopes={[{ profileId, label: "This Profile", dataset: data }]} /> : null}
               {renderReportTable({ title: "Weekly reports", rows: summary.weeklyReports })}

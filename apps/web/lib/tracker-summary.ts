@@ -30,6 +30,8 @@ export type AccountSummaryRecord = {
 };
 
 export type SportsbookSummaryRecord = {
+  bet_type?: string;
+  fixture_type?: string;
   multi_lay_actual?: { exchange_exposure: string } | null;
   calculation_state?: string;
   calculation_notes?: string[];
@@ -56,6 +58,9 @@ export type SportsbookSummaryRecord = {
 };
 
 export type FreeBetSummaryRecord = {
+  bet_type?: string;
+  offer_type?: string;
+  fixture_type?: string;
   calculation_state?: string;
   calculation_notes?: string[];
   free_bet_id: string;
@@ -78,6 +83,7 @@ export type FreeBetSummaryRecord = {
 };
 
 export type CasinoSummaryRecord = {
+  offer_type?: string;
   casino_offer_id: string;
   bookmaker: string;
   offer_name: string;

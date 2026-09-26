@@ -190,3 +190,44 @@ Formal report fields retain their existing signed-value semantics:
 - Action links do not mutate rows, settle bets, or bypass the destination workflow's profile scope.
 - A future multi-profile offer action must hand off to the approved sequential multi-profile-entry
   contract. Combined reporting must never create or bulk-confirm operational rows directly.
+
+## CP-055 Reports / Activity explorer V1
+
+Owner-authorised scope: reuse the summary response and canonical row outputs; no new calculation
+engine or report requests. The existing weekly/formal report remains unchanged.
+
+- Ranges Today, This Week (Monday–Sunday), This Month and inclusive Custom use Europe/London
+  calendar dates. Date-only/local workbook dates retain their stated calendar day; offset timestamps
+  convert to London. No browser-timezone-dependent boundaries.
+- Realised betting P&L sums authoritative final values of settled/terminal-void betting records,
+  once per Profile/module/native ID. Missing final values remain unknown; no projected fallback.
+  Cash funding/balances/History never contribute. Cash costs and withdrawals use their existing
+  governed signed types as separate optional metrics; no invented owner-income measure.
+- Activity count counts current operational records (Sportsbook/Free Bet Placed or Settled,
+  Casino Started/In Progress/Settled, Extra Place Placed/Settled, Cash adjustments). Void/cancelled
+  and prospecting/unplaced awards are excluded from counts; a Void's genuine financial result may
+  still contribute to realised P&L. One record, never a lay leg/history event.
+- **Date basis is reporting date**, not a claim about actual placement time: Sportsbook/Free Bets
+  date_settled, Casino date_settling, Extra Place placed_at, Cash adjustment_date. SB/FB lack an
+  independently recorded placement date. Exact historical “placed this week” remains unavailable;
+  never substitute created_at/import/history time. Missing reporting dates are shown as undated
+  candidates and make the selected-range result incomplete, with a labelled known subtotal retained.
+- Filters/grouping expose only canonical fields: recorded bookmaker/provider, module, bet type,
+  offer type, fixture type, status and result. Missing category values are labelled Not recorded.
+  No fuzzy provider resolution or claimed Account ID when a ledger stores only bookmaker text.
+- Combined scope reuses authorised Profile selection, including deliberate archived inclusion.
+  Failed/loading selected data cannot display cached totals as current. Empty ready scope is zero.
+  Personal/Managed combined P&L is Profile performance, not Fund Manager income or fee entitlement.
+- Range/filter/group/expanded source selection persists using existing UI preference storage.
+  Source links retain owning Profile and ledger/native ID; browser Back restores explorer context.
+
+Independent fixtures before implementation: London midnight and DST week/month boundaries;
+settled +12.34 and -2.34 =10.00, genuine zero; unknown final makes total unavailable while known
+subtotal stays10.00; prospecting/Void excluded from counts; corrected canonical row counted once;
+Personal+Managed aggregate without applying fees; undated row prevents a complete range total;
+empty range, provider/type filters, failed/rapid scope and browser drilldown/return.
+
+Authoritative financial outputs are already currency values at two-decimal precision. Aggregate in
+integer pennies, then divide by100 for display; no new per-record financial rounding or equation.
+The existing Sportsbook No Lay + None/Mug Bet cash-return win branch is unchanged; explorer uses
+its governed final output and must not claim independent recalculation or resolve that old caveat.

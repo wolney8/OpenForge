@@ -3,6 +3,7 @@ import { FinancialReadValue } from "@/components/financial-read-value";
 import { AccountMoneyStatus } from "@/components/account-money-status";
 
 import Link from "next/link";
+import { ReportExplorer } from "@/components/report-explorer";
 import { PeriodPnlReport } from "@/components/period-pnl-report";
 import { usePersistedState } from "@/lib/ledger-ui";
 import { restoreReportProfileSelection, type ReportProfileSelection } from "@/lib/report-profile-selection";
@@ -1548,6 +1549,8 @@ export function CrossProfileAnalytics({
             id="analytics-panel-reports"
             role="tabpanel"
           >
+          <ReportExplorer contextKey="combined" state={selectedReadState}
+            scopes={profileRecords.filter((p)=>selectedProfileIds.includes(p.profileId)).flatMap(p=>{const dataset=datasets.get(p.profileId);return dataset?[{profileId:p.profileId,label:p.displayName,dataset}]:[];})} />
           <PeriodPnlReport rows={formalCombined.weeklyReports} contextKey="combined"
             scopes={profileRecords.filter((profile) => selectedProfileIds.includes(profile.profileId))
               .flatMap((profile) => {
