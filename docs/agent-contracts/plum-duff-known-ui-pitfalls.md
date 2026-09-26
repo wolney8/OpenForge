@@ -1390,3 +1390,7 @@ Horizontal containment does not prove a field is usable. At 200% text the workfl
 A panel rendered through a portal can still bubble submit/click events to its source ledger form or row. An Account confirmation must stop its submit at the Account form; the review backdrop stops row clicks and the shared ModalBoundary contains native Cancel. The Account browser regression asserts zero bet writes, retained Notes draft, topmost Escape and trigger focus return.
 
 CP-047 also fixes the shared workflow body’s implicit grid column: use `minmax(0, 1fr)` so a nested history table cannot enlarge the whole Account panel. Inspect internal scroll bounds as well as page overflow.
+
+## CP-055: Per-ledger review table collapsed vertically
+
+A viewport-bounded flex modal allowed its table viewport to shrink to zero while enlarged header/footer content overlapped. Keep direct review sections non-shrinking and the parent vertically scrollable; use the existing typography-aware static chrome fallback at compact/enlarged container widths. Prove real row selection and backup acknowledgement are reachable, not merely page overflow. Accounts portability browser checks cover both themes and200% text; the shared per-ledger suite protects other consumers.

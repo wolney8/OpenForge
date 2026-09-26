@@ -8,7 +8,7 @@ from binascii import Error as Base64Error
 from collections import Counter
 from datetime import date, datetime
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
-from typing import Any, Callable, Literal
+from typing import Any, Callable, Literal, cast
 
 from fastapi import APIRouter, HTTPException, Response
 from pydantic import BaseModel, Field, ValidationError
@@ -412,31 +412,11 @@ def cash_adjustment_mapped_fields(row: object) -> dict[str, JsonScalar]:
 
 
 def account_mapped_fields(row: AccountRecord) -> dict[str, JsonScalar]:
-    record = row.__dict__
-    try:
-        restrictions = json.loads(record["restrictions_json"])
-    except json.JSONDecodeError:
-        restrictions = []
-    return {
-        "account_id": None,
-        "bookmaker_id": None,
-        "account": record["account"],
-        "type": record["type"],
-        "counts_in_cash_total": record["counts_in_cash_total"],
-        "channel": record["channel"],
-        "status": record["status"],
-        "lifecycle_status": record["lifecycle_status"],
-        "restrictions": restrictions if isinstance(restrictions, list) else [],
-        "stake_access": record["stake_access"],
-        "promo_access": record["promo_access"],
-        "current_balance": record["current_balance"],
-        "pending_withdrawal_amount": record["pending_withdrawal_amount"],
-        "last_balance_update": record["last_balance_update"],
-        "group_name": record["group_name"],
-        "platform": record["platform"],
-        "sign_up_date": record["sign_up_date"],
-        "notes": record["notes"],
-    }
+    mapped, errors, _ = map_account_import_fields(cast(dict[str, JsonScalar], account_export_row(row.profile_id, row)))
+    if errors:
+        # Existing invalid data remains reviewable rather than being normalised away.
+        return dict(row.__dict__)
+    return mapped
 
 
 def sportsbook_export_row(profile_id: str, row: object) -> dict[str, object]:
@@ -633,11 +613,7 @@ def resolve_account_catalogue_record(
     aliases = [record for record in candidates if record.catalogue_id == alias_id]
     if aliases:
         return aliases[0] if len(aliases) == 1 else None
-    normalized = normalize_provider_name(account_name)
-    matches = [record for record in candidates if normalized and normalized in
-               {normalize_provider_name(record.brand_name),
-                normalize_provider_name(record.short_display_name)}]
-    return matches[0] if len(matches) == 1 else None
+    return None
 
 
 def account_export_row(profile_id: str, row: AccountRecord) -> dict[str, object]:
@@ -654,6 +630,12 @@ def account_export_row(profile_id: str, row: AccountRecord) -> dict[str, object]
         restriction_details = {}
     return {
         "AccountID": source.source_record_id if source else record["account_id"],
+        "SourceNamespace": "account",
+        "CatalogueID": record.get("catalogue_id") or (catalogue.catalogue_id if catalogue else ""),
+        "Lifecycle Status": record["lifecycle_status"],
+        "Signup Offer Status": record["signup_offer_status"],
+        "Restrictions": ", ".join(json.loads(record["restrictions_json"] or "[]")),
+        "CommissionRate": get_profile_exchange_commission(profile_id, record["account"]) if record["type"] == "Exchange" else "",
         "Account": record["account"],
         "Type": record["type"],
         "Counts In Cash Total": record["counts_in_cash_total"],
@@ -1648,6 +1630,12 @@ def map_account_import_fields(
         target: fields.get(source, "") for source, target in ACCOUNT_SOURCE_MAP.items()
     }
     errors: list[dict[str, str]] = []
+    if field_text(fields, "SourceNamespace") not in ("", "account"):
+        errors.append(issue("invalid_account_namespace", "Accounts source namespace must be account."))
+    mapped["signup_offer_status"] = field_text(fields, "Signup Offer Status") or "Unknown"
+    commission = field_text(fields, "CommissionRate")
+    mapped["commission_rate"] = commission or None
+    mapped["access_source"] = field_text(fields, "Access Source") or "workbook_import"
     warnings = [issue("legacy_account_vocabulary", message) for message in transformations]
     promotion_types_raw = field_text(mapped, "available_promotion_types")
     promotion_types = [
@@ -1700,8 +1688,8 @@ def map_account_import_fields(
     try:
         lifecycle_status, restrictions = resolve_account_lifecycle_and_restrictions(
             status=field_text(mapped, "status"),
-            lifecycle_status=None,
-            restrictions=[],
+            lifecycle_status=field_text(fields, "Lifecycle Status") or None,
+            restrictions=[v.strip() for v in field_text(fields, "Restrictions").split(",") if v.strip()],
         )
         mapped["lifecycle_status"] = lifecycle_status
         mapped["restrictions"] = restrictions
@@ -1709,12 +1697,15 @@ def map_account_import_fields(
         errors.append(issue("invalid_account_state", str(error)))
     if field_text(mapped, "status").casefold() == "pending sign up":
         mapped["counts_in_cash_total"] = False
-    catalogue = resolve_account_catalogue_record(account_name, account_type)
+    catalogue_id = field_text(fields, "CatalogueID")
+    expected_type = "Bookmaker" if account_type == "Bookie" else account_type
+    catalogue = next((r for r in load_master_account_catalogue().records
+                      if r.catalogue_id == catalogue_id and r.account_type == expected_type), None) if catalogue_id else resolve_account_catalogue_record(account_name, account_type)
     if catalogue is None:
         errors.append(
             issue(
                 "account_catalogue_match_required",
-                "Account must match a known Account Catalogue record of the same type.",
+                "Account must match an exact provider or approved alias of the same type. Review or create the provider explicitly in Fund Manager Account Catalogue, then repeat dry-run.",
             )
         )
     elif catalogue.status != "Active":
@@ -1749,6 +1740,7 @@ def map_account_import_fields(
                     )
                 )
         mapped.update(
+            catalogue_id=catalogue.catalogue_id,
             account=catalogue.brand_name,
             group_name=catalogue.operator_group,
             platform=catalogue.platform,
@@ -1781,11 +1773,20 @@ def map_account_import_fields(
     try:
         validated = AccountPayload.model_validate(
             {**mapped, "restriction_details": restriction_details}
-        ).model_dump()
+        ).model_dump(mode="json")
         validated["restriction_details_json"] = json.dumps(
             validated.pop("restriction_details"), sort_keys=True
         )
         mapped = {key: validated[key] for key in validated}
+        mapped["commission_rate"] = None
+        if commission:
+            try:
+                rate = Decimal(commission)
+                if account_type != "Exchange" or not rate.is_finite() or not 0 <= rate <= 1:
+                    raise InvalidOperation
+                mapped["commission_rate"] = str(rate)
+            except InvalidOperation:
+                errors.append(issue("invalid_account_commission", "CommissionRate must be an explicit Exchange rate between 0 and 1."))
     except ValidationError as error:
         errors.append(
             issue(
@@ -2135,6 +2136,39 @@ def stage_import_rows(
             }
         )
 
+    if mapping_version == "accounts-v1":
+        existing_accounts = list_accounts(profile_id)
+        providers: dict[tuple[str, str], list[dict[str, Any]]] = {}
+        for staged in staged_rows:
+            mapped = staged["mapped_fields"]
+            key = (str(mapped.get("type", "")), str(mapped.get("catalogue_id") or mapped.get("account", "")).casefold())
+            providers.setdefault(key, []).append(staged)
+        for group in providers.values():
+            conflict = len({r["source_record_id"] for r in group}) > 1
+            for staged in group:
+                mapped = staged["mapped_fields"]
+                if staged["staged_action"] == "update":
+                    source = get_import_source_record(profile_id, "account", staged["source_record_id"])
+                    target_id = source.entity_id if source is not None else staged["source_record_id"]
+                    target = get_account(profile_id, target_id)
+                    if target is not None:
+                        current_fields = account_mapped_fields(target)
+                        mapped["_reviewed_target_hash"] = canonical_source_hash(current_fields)
+                        if target.type == "Exchange" and mapped.get("commission_rate") is None and current_fields.get("commission_rate") is not None:
+                            staged["staged_action"] = "blocked"
+                            staged["errors"].append(issue("account_commission_review_required",
+                                "Source commission is missing but this Profile has a configured Exchange rate. Review that rate explicitly; import will not erase or invent commission."))
+                occupied = staged["staged_action"] == "insert" and any(
+                    a.type == mapped.get("type") and (
+                        bool(a.catalogue_id) and a.catalogue_id == mapped.get("catalogue_id")
+                        or a.account.strip().casefold() == str(mapped.get("account", "")).strip().casefold()
+                    ) for a in existing_accounts
+                )
+                if conflict or occupied:
+                    staged["staged_action"] = "blocked"
+                    staged["errors"].append(issue("account_destination_conflict",
+                        "Multiple source rows target one provider." if conflict else
+                        "This Profile already has this provider under another source identity. Review the existing Account; no automatic merge."))
     return staged_rows
 
 
@@ -2160,7 +2194,7 @@ def serialize_batch(
             )
             if existing is not None and existing.profile_id == batch.profile_id:
                 existing_mapped_fields = account_mapped_fields(existing)
-        proposed_mapped_fields = json.loads(staged["mapped_payload_json"])
+        proposed_mapped_fields = {key: value for key, value in json.loads(staged["mapped_payload_json"]).items() if not key.startswith("_reviewed_")}
         field_diffs = {
             key: ImportFieldDiffResponse(
                 before=existing_mapped_fields.get(key),

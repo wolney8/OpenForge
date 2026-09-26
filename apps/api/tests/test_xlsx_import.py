@@ -957,8 +957,8 @@ def test_unselected_account_update_is_skipped_while_selected_insert_commits(
                     "source_record_id": "DEMO-ACCOUNT-NEW-002",
                     "source_row": 3,
                     "fields": {
-                        "Account": "Smarkets",
-                        "Type": "Exchange",
+                        "Account": "Bookmaker B",
+                        "Type": "Bookie",
                         "Counts In Cash Total": True,
                         "Channel": "Online",
                         "Status": "Active",

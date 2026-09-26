@@ -13890,6 +13890,7 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
   max-width: calc(100vw - 2rem);
   max-height: calc(100dvh - 2rem);
   overflow-x: hidden;
+  overflow-y: auto;
   resize: none;
 }
 
@@ -15016,6 +15017,7 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
 }
 
 .spreadsheet-review-modal > * {
+  flex-shrink: 0;
   min-width: 0;
   max-width: 100%;
 }
@@ -15132,7 +15134,7 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
 
 .spreadsheet-review-table {
   width: 100%;
-  min-width: 860px;
+  min-width: max(860px, 60rem);
   table-layout: fixed;
 }
 
@@ -15143,7 +15145,7 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
 
 .spreadsheet-review-table th:first-child,
 .spreadsheet-review-table td:first-child {
-  width: 4.25rem;
+  width: 6.25rem;
   text-align: center;
 }
 
@@ -15492,6 +15494,14 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
   justify-content: flex-end;
   background: color-mix(in srgb, var(--surface) 96%, transparent);
   backdrop-filter: blur(12px);
+}
+
+/* Match the shared enlarged-editor fallback: rows remain reachable when chrome wraps. */
+@container ledger-editor (max-width: 60rem) {
+  .spreadsheet-review-header,
+  .spreadsheet-review-actions {
+    position: static;
+  }
 }
 
 .spreadsheet-action-reason {

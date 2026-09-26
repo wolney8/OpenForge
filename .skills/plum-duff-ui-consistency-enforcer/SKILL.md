@@ -390,3 +390,5 @@ Hold a reference response while editing settlement; assert queued intent and act
 - CP-047 reinforcement: nested portal workflows need a zero-parent-write assertion. Contain child submit/click/Cancel events while preserving topmost Tab/Escape and return focus.
 
 - CP-048 (2026-09-25 15:26 BST): reference editors must prove rejected-fetch retry and no pending dismissal, plus Edit-mode Tab containment/trigger return and enlarged focused-field/footer geometry. Use confirmed mutation responses independently of list refresh. Shared browser writes must use intercepted fixtures; test actual persistence separately in disposable storage.
+
+- In viewport-bounded import dialogs, assert the internal row viewport has useful height and actually select a row and reach its acknowledgement at compact/enlarged text. Page-level overflow alone cannot detect flex collapse or sticky chrome covering rows.

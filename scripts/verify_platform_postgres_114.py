@@ -823,6 +823,52 @@ def profile_relationship_cases(dsn, runtime):
     return {"status":"PASS", "profile_relationship":"additive legacy migration/retry with unchanged financial fields; Personal and Managed creation, portable restore/remap/retry"}
 
 
+def accounts_portability_cases(dsn, runtime, pg_bin):
+    import base64
+    from openforge_api.config import settings
+    from openforge_api import db
+    from openforge_api.main import app
+    from fastapi.testclient import TestClient
+    configure(dsn, str(runtime))
+    settings.auth_required = False
+    settings.account_catalogue_source = str(ROOT / 'tests/fixtures/openforge-api-master-catalogue.synthetic.json')
+    client = TestClient(app)
+    ids=[]
+    for index in range(3):
+        response=client.post('/profiles/onboarding',json={'setup_path':'import','display_name':'Synthetic Accounts PG','profile_code':f'PG-AC-{index}','profile_relationship':'Personal','management_fee_percent':'0','investment_fee_percent':'0','tracking_start_date':'2026-09-01','enabled_modules':['sportsbook-bets','free-bets','cash-adjustments'],'accounts':[],'quick_actions':[]})
+        assert response.status_code==201,response.text
+        ids.append(response.json()['profile']['profile_id'])
+    payload={'account':'Smarkets','type':'Exchange','status':'Active','channel':'Online','current_balance':'','commission_rate':'0.02','stake_access':'Not Checked','promo_access':'Not Checked'}
+    original=client.post(f'/profiles/{ids[0]}/accounts',json=payload);assert original.status_code==201,original.text
+    exported=client.get(f'/profiles/{ids[0]}/imports/accounts/export.xlsx');assert exported.status_code==200
+    def stage(pid):
+        response=client.post(f'/profiles/{pid}/imports/xlsx/dry-run',json={'source_filename':'synthetic-pg-accounts.xlsx','ledger':'accounts','content_base64':base64.b64encode(exported.content).decode()})
+        assert response.status_code==201,response.text
+        return response.json()
+    batch=stage(ids[1]);assert batch['error_count']==0,batch
+    # Real disposable PostgreSQL recovery point; production route's SQLite-only gate is not bypassed.
+    dump=runtime/'accounts-before.dump'
+    command(str(pg_bin/'pg_dump'),'-d',dsn,'-Fc','-f',str(dump))
+    command(str(pg_bin/'pg_restore'),'--list',str(dump))
+    backup=db.create_backup_snapshot_record({'created_at':db.utc_now(),'backup_scope':'disposable-test-postgres','schema_version':'profile-relationship-v1','storage_path':str(dump),'status':'verified','notes':'Synthetic persistence adapter proof; hosted confirmation gate unchanged','checksum_sha256':hashlib.sha256(dump.read_bytes()).hexdigest(),'byte_size':dump.stat().st_size,'integrity_check':'pg_restore --list passed'})
+    imported=db.confirm_account_import_batch(profile_id=ids[1],import_batch_id=batch['import_batch_id'],backup_snapshot_id=backup.backup_snapshot_id,selected_staged_row_ids={r['import_staged_row_id']for r in batch['rows']})
+    assert len(imported)==1 and imported[0]!=original.json()['account_id']
+    assert db.get_profile_exchange_commission(ids[1],'Smarkets')=='0.02'
+    assert stage(ids[1])['summary']=={'no_op':1}
+    delayed=stage(ids[2]);assert delayed['summary']=={'insert':1}
+    assert client.post(f'/profiles/{ids[2]}/accounts',json=payload).status_code==201
+    before=len(db.list_accounts(ids[2]))
+    try:
+        db.confirm_account_import_batch(profile_id=ids[2],import_batch_id=delayed['import_batch_id'],backup_snapshot_id=backup.backup_snapshot_id,selected_staged_row_ids={r['import_staged_row_id']for r in delayed['rows']})
+        raise AssertionError('Stale duplicate destination committed')
+    except db.DuplicateProfileAccountError:
+        pass
+    assert len(db.list_accounts(ids[2]))==before==1
+    # Sequential retry reaches the same persistence guard under PostgreSQL row locking.
+    assert client.post(f'/profiles/{ids[2]}/accounts',json=payload).status_code==409
+    return {'status':'PASS','accounts_portability':'PostgreSQL actual API export/dry-run, verified dump, atomic persistence/native remap/commission/retry and stale duplicate rollback; hosted confirmation backup limitation retained'}
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--pg-bin", required=True, type=Path, help="Explicit local server-tool directory; no inherited DSN")
@@ -843,6 +889,7 @@ def main():
     parser.add_argument("--multi-lay-actual-only", action="store_true", help="CP-047 Normal actual recording and portable restore only")
     parser.add_argument("--workbook-identity-only", action="store_true", help="CP-052 full-workbook destination identities only")
     parser.add_argument("--profile-relationship-only", action="store_true", help="CP-055 additive relationship and portable recovery only")
+    parser.add_argument("--accounts-portability-only", action="store_true", help="CP055 Accounts identity and portable persistence")
     args = parser.parse_args()
     pg_bin = args.pg_bin.resolve()
     def pg(name):
@@ -878,6 +925,9 @@ def main():
         import psycopg
         with psycopg.connect(primary) as c:
             record["server_version"] = c.execute("SELECT version()").fetchone()[0]
+        if args.accounts_portability_only:
+            record.update(accounts_portability_cases(primary, root, pg_bin))
+            return
         if args.profile_relationship_only:
             record.update(profile_relationship_cases(primary, root))
             return

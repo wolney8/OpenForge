@@ -10324,7 +10324,8 @@ def confirm_account_import_batch(
     selected_staged_row_ids: set[str],
 ) -> list[str]:
     imported_ids: list[str] = []
-    with connect() as connection:
+    with connect() as connection, reuse_mutation_connection(connection):
+        lock_profile_account_authority(connection, profile_id)
         batch = connection.execute(
             "SELECT * FROM import_batches WHERE profile_id = ? AND import_batch_id = ?",
             (profile_id, import_batch_id),
@@ -10393,6 +10394,18 @@ def confirm_account_import_batch(
                 ).fetchone()
                 if existing is None:
                     raise ValueError("Changed account target was not found for this profile")
+                from openforge_api.imports import account_mapped_fields, canonical_source_hash
+                if payload.get("_reviewed_target_hash") != canonical_source_hash(account_mapped_fields(map_account_row(existing))):
+                    raise ValueError("Account changed after review; repeat Accounts dry-run before approving an update")
+            ensure_unique_profile_provider(connection, profile_id, payload,
+                                           excluding=target_account_id if is_update else "")
+            # Review may precede Catalogue edits. Recheck the same canonical authority before writes.
+            from openforge_api.account_catalogue_source import load_master_account_catalogue
+            provider = next((p for p in load_master_account_catalogue().records
+                             if p.catalogue_id == payload.get("catalogue_id")), None)
+            expected_type = "Bookmaker" if payload["type"] == "Bookie" else payload["type"]
+            if provider is None or provider.account_type != expected_type or provider.brand_name != payload["account"]:
+                raise ValueError("Provider authority changed after review; repeat Accounts dry-run")
             record = {
                 "account_id": target_account_id if is_update else f"AC-{uuid4().hex[:8].upper()}",
                 "profile_id": profile_id,
@@ -10492,6 +10505,8 @@ def confirm_account_import_batch(
                     "previous_record": dict(existing) if existing is not None else None,
                 },
             )
+            if record["type"] == "Exchange" and payload.get("commission_rate") is not None:
+                upsert_profile_exchange_commission(profile_id, record["account"], str(payload["commission_rate"]))
             if source is None:
                 connection.execute(
                     """
@@ -10720,6 +10735,26 @@ def get_account_by_id(account_id: str) -> AccountRecord | None:
     return None if row is None else map_account_row(row)
 
 
+def lock_profile_account_authority(connection: Any, profile_id: str) -> None:
+    if postgres_runtime_enabled():
+        connection.execute("SELECT profile_id FROM profiles WHERE profile_id = ? FOR UPDATE", (profile_id,)).fetchone()
+    elif not connection.in_transaction:
+        connection.execute("BEGIN IMMEDIATE")
+
+
+def ensure_unique_profile_provider(connection: Any, profile_id: str, payload: dict[str, Any], *, excluding: str = "") -> None:
+    candidates = connection.execute(
+        "SELECT account_id, catalogue_id, account FROM accounts WHERE profile_id = ? AND type = ?",
+        (profile_id, payload["type"]),
+    ).fetchall()
+    for row in candidates:
+        if row["account_id"] != excluding and (
+            (payload.get("catalogue_id") and row["catalogue_id"] == payload["catalogue_id"])
+            or str(row["account"]).strip().casefold() == str(payload["account"]).strip().casefold()
+        ):
+            raise DuplicateProfileAccountError("This Profile already has this provider. Review its existing Account; no automatic merge.")
+
+
 def create_account_with_exchange_commission(
     profile_id: str,
     payload: dict[str, Any],
@@ -10758,6 +10793,8 @@ def create_account_with_exchange_commission(
         "updated_at": utc_now(),
     }
     with connect() as connection:
+        lock_profile_account_authority(connection, profile_id)
+        ensure_unique_profile_provider(connection, profile_id, payload)
         connection.execute(
             """
             INSERT INTO accounts (

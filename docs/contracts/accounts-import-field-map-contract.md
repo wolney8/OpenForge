@@ -172,3 +172,30 @@ and the last-checked timestamp; a fresh restore validates and reopens them uncha
   otherwise operational Account
 - unchanged export/re-import is a no-op
 - selected rows import only after verified backup; unselected rows remain audited as skipped
+
+## CP-055 Accounts-only portability and authority
+
+Use the existing Accounts import/export selector, review table, individual update approval and
+atomic confirmation. Shared authority already supports Bookmaker, Exchange and Bank; no new table.
+Export all existing access/restriction/evidence fields, lifecycle/signup state, explicit Exchange
+commission and canonical CatalogueID. Optional new columns preserve old workbook compatibility.
+A stable provider ID must exist with the same type; otherwise use exact name/display name or the
+approved type-scoped alias map only. No punctuation-stripping/similarity fallback. Unmatched rows
+remain blocked; open the explicit Fund Manager Catalogue editor and repeat dry-run after review.
+Profile+account namespace+external AccountID stays unchanged. Native destination IDs are newly
+allocated in a fresh Profile; an exported AccountID is source provenance, never a native target in
+another Profile. Existing reviewed whole-workbook identities retain their separate context.
+Source duplicates targeting a provider, or unrelated existing provider relationships, are surfaced
+before writes; no silent merge. Confirmation rechecks current Profile provider ownership atomically.
+Exchange commission is optional source evidence; blank stays missing and never means zero. Known
+commission persists in existing Profile exchange settings within the Account import transaction.
+An update with missing source commission against a known configured rate requires explicit review and is blocked; it neither silently retains a misleading proposed blank nor erases the rate.
+Old files without lifecycle/restriction fields retain governed legacy vocabulary; new exports
+carry explicit values. Account transfers do not copy betting ledgers or global Catalogue contents.
+Balance observations/history remain in full portable Profile backups; Accounts-only transfers carry
+the latest recorded balance/time and source evidence, and must not invent earlier observations.
+
+Independent acceptance: restricted unknown-balance Account A→freshProfileB retains capability,
+provider identity, evidence, Notes and native remapping; Exchange2% remains2%; retry no-op; explicit
+changed-row approval; malformed/wrongtype/unmatched blocked; two source identities for one provider
+blocked before writes; Catalogue unchanged; source Profile untouched; SQLite/PostgreSQL atomic guard.

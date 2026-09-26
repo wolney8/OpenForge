@@ -1,5 +1,8 @@
 import { expect, type Page, test } from "@playwright/test";
 
+const apiBase = process.env.OPENFORGE_E2E_BASE_URL ? "/api" : "http://127.0.0.1:8010";
+const routeBase = process.env.OPENFORGE_E2E_BASE_URL ? "**/api" : apiBase;
+
 const profileId = "profile-demo-001";
 const batchId = "IMPORT-PLAYWRIGHT";
 
@@ -253,15 +256,15 @@ function accountUpdateBatch(status = "dry_run_ready") {
 
 async function openSpreadsheetTransfer(page: Page) {
   await page.goto(`/profiles/${profileId}/tracker/settings`);
-  await page.getByRole("tab", { name: "Spreadsheet Transfer" }).click();
-  await expect(page.getByRole("heading", { name: "Spreadsheet transfer" })).toBeVisible();
+  await page.getByRole("tab", { name: "Import/Export", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Import/Export", exact: true })).toBeVisible();
 }
 
 test("profile settings reviews and explicitly confirms a sportsbook XLSX import", async ({
   page,
 }) => {
   let batchStatus = "dry_run_ready";
-  await page.route(`http://127.0.0.1:8010/profiles/${profileId}/imports**`, async (route) => {
+  await page.route(`${routeBase}/profiles/${profileId}/imports**`, async (route) => {
     const request = route.request();
     const path = new URL(request.url()).pathname;
     if (request.method() === "POST" && path.endsWith("/xlsx/dry-run")) {
@@ -312,7 +315,7 @@ test("profile settings reviews and explicitly confirms a sportsbook XLSX import"
   await expect(page.getByText("Export XLSX", { exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "Export Sportsbook Bets XLSX" })).toHaveAttribute(
     "href",
-    `http://127.0.0.1:8010/profiles/${profileId}/imports/sportsbook/export.xlsx`,
+    `${apiBase}/profiles/${profileId}/imports/sportsbook/export.xlsx`,
   );
 
   const fileInput = page.locator('[data-pd-id="spreadsheet-transfer.import-file"]');
@@ -393,7 +396,7 @@ test("profile settings reviews and explicitly confirms a sportsbook XLSX import"
 });
 
 test("workbook detection corrects a mismatched spreadsheet selection", async ({ page }) => {
-  await page.route(`http://127.0.0.1:8010/profiles/${profileId}/imports**`, async (route) => {
+  await page.route(`${routeBase}/profiles/${profileId}/imports**`, async (route) => {
     const request = route.request();
     const path = new URL(request.url()).pathname;
     if (request.method() === "POST" && path.endsWith("/xlsx/dry-run")) {
@@ -405,7 +408,7 @@ test("workbook detection corrects a mismatched spreadsheet selection", async ({ 
   });
 
   await openSpreadsheetTransfer(page);
-  const ledger = page.getByLabel("Spreadsheet transfer ledger");
+  const ledger = page.getByLabel("Import/export ledger");
   await ledger.selectOption("free-bets");
   await page.locator('[data-pd-id="spreadsheet-transfer.import-file"]').setInputFiles({
     buffer: Buffer.from("synthetic sportsbook XLSX"),
@@ -422,7 +425,7 @@ test("free-bet spreadsheet selection uses the free-bet review and confirmation p
   page,
 }) => {
   let batchStatus = "dry_run_ready";
-  await page.route(`http://127.0.0.1:8010/profiles/${profileId}/imports**`, async (route) => {
+  await page.route(`${routeBase}/profiles/${profileId}/imports**`, async (route) => {
     const request = route.request();
     const path = new URL(request.url()).pathname;
     if (request.method() === "POST" && path.endsWith("/xlsx/dry-run")) {
@@ -460,11 +463,11 @@ test("free-bet spreadsheet selection uses the free-bet review and confirmation p
   });
 
   await openSpreadsheetTransfer(page);
-  const ledger = page.getByLabel("Spreadsheet transfer ledger");
+  const ledger = page.getByLabel("Import/export ledger");
   await ledger.selectOption("free-bets");
   await expect(page.getByRole("link", { name: "Export Free Bets XLSX" })).toHaveAttribute(
     "href",
-    `http://127.0.0.1:8010/profiles/${profileId}/imports/free-bets/export.xlsx`,
+    `${apiBase}/profiles/${profileId}/imports/free-bets/export.xlsx`,
   );
 
   await page.locator('[data-pd-id="spreadsheet-transfer.import-file"]').setInputFiles({
@@ -488,7 +491,7 @@ test("casino-offer spreadsheet selection uses the casino review and confirmation
   page,
 }) => {
   let batchStatus = "dry_run_ready";
-  await page.route(`http://127.0.0.1:8010/profiles/${profileId}/imports**`, async (route) => {
+  await page.route(`${routeBase}/profiles/${profileId}/imports**`, async (route) => {
     const request = route.request();
     const path = new URL(request.url()).pathname;
     if (request.method() === "POST" && path.endsWith("/xlsx/dry-run")) {
@@ -527,10 +530,10 @@ test("casino-offer spreadsheet selection uses the casino review and confirmation
   });
 
   await openSpreadsheetTransfer(page);
-  await page.getByLabel("Spreadsheet transfer ledger").selectOption("casino-offers");
+  await page.getByLabel("Import/export ledger").selectOption("casino-offers");
   await expect(page.getByRole("link", { name: "Export Casino Offers XLSX" })).toHaveAttribute(
     "href",
-    `http://127.0.0.1:8010/profiles/${profileId}/imports/casino-offers/export.xlsx`,
+    `${apiBase}/profiles/${profileId}/imports/casino-offers/export.xlsx`,
   );
   await page.locator('[data-pd-id="spreadsheet-transfer.import-file"]').setInputFiles({
     buffer: Buffer.from("synthetic intercepted casino XLSX"),
@@ -554,7 +557,7 @@ test("cash-adjustment spreadsheet selection uses the cash review and confirmatio
   page,
 }) => {
   let batchStatus = "dry_run_ready";
-  await page.route(`http://127.0.0.1:8010/profiles/${profileId}/imports**`, async (route) => {
+  await page.route(`${routeBase}/profiles/${profileId}/imports**`, async (route) => {
     const request = route.request();
     const path = new URL(request.url()).pathname;
     if (request.method() === "POST" && path.endsWith("/xlsx/dry-run")) {
@@ -594,10 +597,10 @@ test("cash-adjustment spreadsheet selection uses the cash review and confirmatio
   });
 
   await openSpreadsheetTransfer(page);
-  await page.getByLabel("Spreadsheet transfer ledger").selectOption("cash-adjustments");
+  await page.getByLabel("Import/export ledger").selectOption("cash-adjustments");
   await expect(page.getByRole("link", { name: "Export Cash Adjustments XLSX" })).toHaveAttribute(
     "href",
-    `http://127.0.0.1:8010/profiles/${profileId}/imports/cash-adjustments/export.xlsx`,
+    `${apiBase}/profiles/${profileId}/imports/cash-adjustments/export.xlsx`,
   );
   await page.locator('[data-pd-id="spreadsheet-transfer.import-file"]').setInputFiles({
     buffer: Buffer.from("synthetic intercepted cash-adjustment XLSX"),
@@ -622,7 +625,7 @@ test("account spreadsheet selection uses the account review and confirmation pat
   page,
 }) => {
   let batchStatus = "dry_run_ready";
-  await page.route(`http://127.0.0.1:8010/profiles/${profileId}/imports**`, async (route) => {
+  await page.route(`${routeBase}/profiles/${profileId}/imports**`, async (route) => {
     const request = route.request();
     const path = new URL(request.url()).pathname;
     if (request.method() === "POST" && path.endsWith("/xlsx/dry-run")) {
@@ -663,10 +666,10 @@ test("account spreadsheet selection uses the account review and confirmation pat
   });
 
   await openSpreadsheetTransfer(page);
-  await page.getByLabel("Spreadsheet transfer ledger").selectOption("accounts");
+  await page.getByLabel("Import/export ledger").selectOption("accounts");
   await expect(page.getByRole("link", { name: "Export Accounts XLSX" })).toHaveAttribute(
     "href",
-    `http://127.0.0.1:8010/profiles/${profileId}/imports/accounts/export.xlsx`,
+    `${apiBase}/profiles/${profileId}/imports/accounts/export.xlsx`,
   );
   await page.locator('[data-pd-id="spreadsheet-transfer.import-file"]').setInputFiles({
     buffer: Buffer.from("synthetic intercepted accounts XLSX"),
@@ -687,7 +690,7 @@ test("account spreadsheet selection uses the account review and confirmation pat
 });
 
 test("row-accounting mismatch is visible and blocks import confirmation", async ({ page }) => {
-  await page.route(`http://127.0.0.1:8010/profiles/${profileId}/imports**`, async (route) => {
+  await page.route(`${routeBase}/profiles/${profileId}/imports**`, async (route) => {
     const request = route.request();
     const path = new URL(request.url()).pathname;
     if (request.method() === "POST" && path.endsWith("/xlsx/dry-run")) {
@@ -710,7 +713,7 @@ test("row-accounting mismatch is visible and blocks import confirmation", async 
   });
 
   await openSpreadsheetTransfer(page);
-  await page.getByLabel("Spreadsheet transfer ledger").selectOption("accounts");
+  await page.getByLabel("Import/export ledger").selectOption("accounts");
   await page.locator('[data-pd-id="spreadsheet-transfer.import-file"]').setInputFiles({
     buffer: Buffer.from("synthetic incomplete accounts XLSX"),
     mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -730,7 +733,7 @@ test("row-accounting mismatch is visible and blocks import confirmation", async 
 
 test("changed account rows require individual diff review and selection", async ({ page }) => {
   let batchStatus = "dry_run_ready";
-  await page.route(`http://127.0.0.1:8010/profiles/${profileId}/imports**`, async (route) => {
+  await page.route(`${routeBase}/profiles/${profileId}/imports**`, async (route) => {
     const request = route.request();
     const path = new URL(request.url()).pathname;
     if (request.method() === "POST" && path.endsWith("/xlsx/dry-run")) {
@@ -766,7 +769,7 @@ test("changed account rows require individual diff review and selection", async 
   });
 
   await openSpreadsheetTransfer(page);
-  await page.getByLabel("Spreadsheet transfer ledger").selectOption("accounts");
+  await page.getByLabel("Import/export ledger").selectOption("accounts");
   await page.locator('[data-pd-id="spreadsheet-transfer.import-file"]').setInputFiles({
     buffer: Buffer.from("synthetic changed accounts XLSX"),
     mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -809,7 +812,7 @@ test("changed account rows require individual diff review and selection", async 
 
 test("an unconfirmed spreadsheet review can be removed from settings history", async ({ page }) => {
   let removed = false;
-  await page.route(`http://127.0.0.1:8010/profiles/${profileId}/imports**`, async (route) => {
+  await page.route(`${routeBase}/profiles/${profileId}/imports**`, async (route) => {
     const request = route.request();
     if (request.method() === "DELETE") {
       removed = true;
@@ -841,7 +844,7 @@ test("an unconfirmed spreadsheet review can be removed from settings history", a
 });
 
 test("spreadsheet review history follows the selected ledger", async ({ page }) => {
-  await page.route(`http://127.0.0.1:8010/profiles/${profileId}/imports**`, async (route) => {
+  await page.route(`${routeBase}/profiles/${profileId}/imports**`, async (route) => {
     await route.fulfill({
       body: JSON.stringify([
         { ...batch("confirmed"), import_batch_id: "IMPORT-SPORTSBOOK" },
@@ -856,7 +859,7 @@ test("spreadsheet review history follows the selected ledger", async ({ page }) 
   });
 
   await openSpreadsheetTransfer(page);
-  const ledger = page.getByLabel("Spreadsheet transfer ledger");
+  const ledger = page.getByLabel("Import/export ledger");
   await expect(page.getByText("synthetic-sportsbook.xlsx", { exact: true })).toBeVisible();
   const confirmedDelete = page.getByRole("button", {
     name: "Delete unavailable for imported review synthetic-sportsbook.xlsx",

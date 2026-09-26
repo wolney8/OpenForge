@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -464,6 +465,7 @@ export function ProfileSpreadsheetTransfer({ profileId }: { profileId: string })
               ) : null}
               <span className="spreadsheet-review-context">{profileId} • {activeBatch.source_filename}</span>
             </div>
+            {batchLedger(activeBatch) === "accounts" && activeBatch.rows.some((row) => row.errors.some((error) => error.code === "account_catalogue_match_required")) ? <p className="field-hint">Unmatched providers need an explicit Catalogue decision. <Link href="/settings#catalogue" target="_blank" rel="noopener noreferrer">Review Account Catalogue (new tab)</Link>, then repeat this dry-run. Importing Accounts never changes shared provider metadata.</p> : null}
             <div className="spreadsheet-review-controls">
               <label className="field-control table-search-field spreadsheet-search-control">
                 <span className="visually-hidden">Search import review rows</span>
