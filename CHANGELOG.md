@@ -10,6 +10,8 @@ No published release is represented by the local milestones below.
 
 ## 2026-09-26
 
+- **2026-09-26 12:25 BST — CP-052:** Full private import/recovery acceptance passes; scoped identity/retry/reconciliation repairs at`b6437e8` are tested locally. Normal/Preview remain`7da4d44`; no normal cutover. [Evidence](docs/audits/platform-quality-audit.md#cp-052-complete-private-rehearsal-and-import-identities--2026-09-26-1225-bst).
+
 - **2026-09-26 11:11 BST — CP-051:** Tested local importer/recovery repair at`76fcb51`; approved source decisions applied privately, new conflicting Account rows block final acceptance. Normal/Preview remain`7da4d44`. [Evidence](docs/audits/platform-quality-audit.md#cp-051-approved-import-decisions-and-full-private-rehearsal--2026-09-26-1111-bst).
 
 ## 2026-09-25
@@ -218,3 +220,10 @@ their original IDs.
 | ID | Timestamp | What changed | Issue | Document |
 | --- | --- | --- | --- | --- |
 | CP-031 | 2026-09-22 14:22 BST | Completed the supported authenticated Preview workflows and repaired archived-Profile amplification in lineage and Account eligibility reads | [#114](https://github.com/wolney8/OpenForge/issues/114), [#115](https://github.com/wolney8/OpenForge/issues/115) | [Audit evidence](docs/audits/platform-quality-audit.md#cp-031-authenticated-protected-preview-completion--2026-09-22-1422-bst) |
+
+
+### Project Status checkpoint rollover — 2026-09-26 12:25 BST
+
+| ID | Timestamp | What changed | Issue | Document |
+| --- | --- | --- | --- | --- |
+| CP-032 | 2026-09-22 16:33 BST | Removed the remaining hosted connection/region latency and integrated all tested shared Preview repairs into healthy normal localhost without changing owner data | [#114](https://github.com/wolney8/OpenForge/issues/114), [#115](https://github.com/wolney8/OpenForge/issues/115) | [Audit evidence](docs/audits/platform-quality-audit.md#cp-032-hosted-performance-and-local-reconciliation--2026-09-22-1633-bst) |

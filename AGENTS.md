@@ -1,6 +1,6 @@
 # Plum Duff Repository Agent Instructions
 
-Last updated: 2026-09-25 15:26 BST
+Last updated: 2026-09-26 12:25 BST
 
 ## Project purpose
 
@@ -458,6 +458,8 @@ comment, retain the exact reason locally and continue independent work without b
 Recorded 2026-09-25 14:11 BST — CP-047 feature delivery scope:
 
 The owner authorises concise existing-issue progress/evidence comments on #36/#38/#85/#106 in wolney8/OpenForge under the same secret/private-data exclusions and duplicate-comment checks as #92/#105/#114. This grants no code push, merge or issue closure. Necessary additive versioned storage for the Normal Multi-Lay and core Account observation slices may be tested on disposable SQLite/PostgreSQL; the existing protected Preview may receive it only after migration, compatibility, retry/restore and backup/identity checks pass. No normal-owner or Production migration is authorised; preserve local3010 source/schema compatibility.
+
+Recorded 2026-09-26 12:25 BST — CP-052 import gate: the owner also authorises concise safe progress/evidence comments on existing #104 and #114 for this approved import work, under the same privacy exclusions and duplicate checks above. This grants no code push, deployment, issue closure or normal-data cutover.
 
 ## Durable request capture
 

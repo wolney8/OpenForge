@@ -1,6 +1,6 @@
 # Project Roadmap — Plum Duff / OpenForge — Doc ID: PR-CODEX-001
 
-**Last updated:** 2026-09-25 21:38 BST
+**Last updated:** 2026-09-26 12:25 BST
 
 ## Product goal
 
@@ -39,9 +39,9 @@ History/Reports and restore; Sportsbook/Account review with atomic balance confi
 observation history. Application `e2d70e0` runs locally and on protected Preview. Existing storage
 was sufficient; no SQL migration. #105's named engineering pass remains complete.
 
-**Current milestone (CP-050):** complete personal import source accounting and demonstrated importer repairs, delivered at`7da4d44` local/Preview. All exclusions and the pre-simulation financial difference are explained privately.20 source review rows, approved mapping application and full original-workbook rehearsal remain; no normal cutover. Daily tasks stays delivered and no optional programme starts. [FEATURE_STATUS](FEATURE_STATUS.md) is the short feature view.
+**Current milestone (CP-052):** complete private import, financial/source reconciliation and fresh recovery pass. Scoped identity repairs are tested locally at`b6437e8`; deploy/reconcile through the existing safe path next. Normal cutover depends on how legacy Profile activity should carry forward; preserve later records/history. [FEATURE_STATUS](FEATURE_STATUS.md) remains the short feature view.
 
-**Next three outcomes:** (1) resolve named source decisions and rehearse the full selected workbook privately; (2) confirm the exact personal0/0 target/action/duplicates and backup before normal cutover; (3) implement the existing minimal invited-request proposal only after its separate role/state/storage approval. Daily tasks now covers its first governed sources; richer routines/dispositions stay bounded. AI remains an independent provider/data/spend/advisory choice. The3-day recorded Free Bet and7-day Combo windows are different concepts, not a pending contradiction.
+**Next three outcomes:** (1) deliver tested identity repairs and settle the legacy Profile target strategy; (2) confirm exact personal0/0 target/action and recovery after any required reviewed-merge implementation; (3) implement the existing minimal invited-request proposal only after its separate role/state/storage approval. Daily tasks now covers its first governed sources; richer routines/dispositions stay bounded. AI remains an independent provider/data/spend/advisory choice. The3-day recorded Free Bet and7-day Combo windows are different concepts, not a pending contradiction.
 
 Optional Free Bets/Casino Account-review entry points and cosmetic expansion are on hold behind this owner priority. Wider Account freshness/trends/settlement, unsupported Multi-Lay configurations and general analytics remain named scope. No new schema, normal-data import, public signup, paid AI or Production release authorised.
 
