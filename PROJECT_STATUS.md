@@ -1,36 +1,41 @@
 # Project Status — Plum Duff / OpenForge — Doc ID: PS-CODEX-001
 
-**Last updated:** 2026-09-26 18:55 BST · **Status:** 🟠 CP-053 comparison complete; cutover purpose decision pending
+**Last updated:** 2026-09-26 21:15 BST · **Status:** 🟢 CP-054 local/Preview running; personal cutover withheld
 
 ## Right now
 
-- **Completed:** read-only classification of every legacy Profile Account/ledger record, later seed edits and supporting history against accepted September rehearsal evidence. Missing historical parents are non-blocking. Exact classifications and the unresolved manual-entry set are retained privately. [Evidence](docs/audits/platform-quality-audit.md#cp-053-read-only-personal-cutover-preparation--2026-09-26-1855-bst) · [Feature status](FEATURE_STATUS.md).
-- **Blocked on:** whether the specifically listed uncorroborated entries/financial edits represent real owner activity or testing. Zero confirmed unique activity is not proof of none. No original source approval is reopened; CP-052 remains accepted.
-- **Proposed:** preserve legacy records/history; create a separate personal Profile with explicit0%/0% only after resolving the remaining purpose evidence and obtaining one exact cutover approval. No merge engine or replacement is needed or authorised for this review.
-- **Source / runtime:** application unchanged`b6437e8`, branch records baseline`630b681`; this checkpoint changes records only. CP-052 last verified local/Preview`7da4d44`. Current local3010/8010 listeners are absent and API connection was refused; no current local serving claim. Preview evidence is reused, not rechecked/deployed. No service or database was changed during this read-only task.
-- **Safety:** normal database and original workbook byte hashes unchanged; reused CP-052 evidence and recovery backup hashes match. No application edits, tests/rehearsal reruns, operational writes, archive/import, credentials, push or deployment. Generated changes remain untouched. [#104](https://github.com/wolney8/OpenForge/issues/104#issuecomment-5848519702) / [#114](https://github.com/wolney8/OpenForge/issues/114#issuecomment-5848520166) safely updated.
+- **Completed:** canonical local frontend/API restored to accepted application `b6437e8`; same protected Preview promoted to that application. Actual HTTP identities, schema, authentication denial/protection and served assets verified. Owner data preserved. [Evidence](docs/audits/platform-quality-audit.md#cp-054-operational-consolidation-and-model-handover--2026-09-26-2115-bst) · [Feature status](FEATURE_STATUS.md).
+- **Working on next:** Will's small usability review and notes; no new feature tranche. The owner notebook and model resume below are current. CP-052 rehearsal and CP-053 comparison remain accepted and were not repeated.
+- **Blocked on:** Has Will ever used ALPHA-001 for genuine personal betting activity beyond test/import work? The 39 records remain unresolved. Preserve ALPHA: no merge, archive, delete or September import. Likely target is a new personal Profile with 0%/0%; actual commission/costs retained.
+- **Verification gap:** changed authenticated Preview import/review/retry screens were not rerun: the previous temporary authorised synthetic-session renewal configuration is absent. Provider protection and application authentication were checked separately. No personal cookies, normal-owner session bypass or export of shared/rotation-flagged secrets.
 
-## Delivery and remaining gates
+## Resume here — model handover
 
-| Area | Actual state |
+| Item | Exact current state |
 | --- | --- |
-| CP-053 evidence | Complete private comparison, one focused independent read-only review, parent checks and evidence/hash preservation; no new defect established |
-| CP-052 | Full private rehearsal PASS and source fixes retained; its test/restore/browser evidence reused without repeating the campaign |
-| Cutover | Concrete new-Profile operation/recovery prepared conditionally; unresolved purpose classification must precede real import approval |
-| Separate limits | Tested importer source not reconciled to normal/Preview; local runtime currently unavailable; hosted per-ledger PostgreSQL backup limitation, #96 and Git isolation remain |
+| Working branch/worktree | `feature/normal-multilay-cp047` at `.worktrees/normal-multilay-cp047`; primary checkout remains older with unrelated work |
+| Application / records | App `b6437e81d00fab270caaa94e4a093c663ad9a7b8`. CP-054 records are this branch HEAD; exact outgoing SHA is recorded in primary `data/private/backups/openforge-cp054-verification-20260926-211526.json` after commit; preceding records `1b79127` |
+| Local frontend | [localhost:3010](http://localhost:3010) **running**, source `b6437e8`; actual HTTP asset hash matches the fresh build in `.worktrees/local-plum-duff-integration` |
+| Local API | [localhost:8010](http://localhost:8010/healthz) **running**, `b6437e8+dirty`; dirty files are only generated `next-env.d.ts` and `tsconfig.typecheck.tsbuildinfo`, preserved intentionally |
+| Protected Preview | [existing Preview](https://plum-duff-cp028-preview-homelab11.vercel.app) **running**, frontend/API `b6437e8`; deployment `plum-duff-6vi59artk-homelab11.vercel.app`; unchanged project/alias/protection |
+| Runtime/database | Local `normal-owner`, canonical owner SQLite; Preview `preview`, isolated PostgreSQL `preview:plum_duff_preview_cp028`; both `account-access-v1`. Existing provider-managed configuration reused remotely; no secret transfer |
+| Normal data / processes | All 67 table projections and schema unchanged; fresh verified pre-runtime backup. Local API/frontend left running; process IDs/logs/launch receipt in ignored primary `data/private/runtime/cp054` |
+| Relevant passing evidence | CP-052: 262 API / 4 PostgreSQL / 8 private browser checks and full restore/retry accepted. CP-054: no-migration compatibility copy, actual local/hosted HTTP/source/auth/protection/assets checks; Vercel build/type-check passed. No repeated full suite/rehearsal |
+| Remaining blockers | ALPHA-use answer plus separate cutover approval; missing authorised Preview synthetic-session renewal resource; hosted per-ledger PostgreSQL local-backup limitation; #96 rotation and Git deployment isolation. Fresh normal-owner Google/browser acceptance not performed |
+| Withheld permissions | Normal cutover/merge/archive/delete/reclassification/fee rewrite; schema expansion; personal-cookie use; shared-secret export/credential change; Production/main merge/Git push; new paid services, AI calls or subscriber activation |
+
+**FIRST READ:** 1. `PROJECT_STATUS.md`; 2. `FEATURE_STATUS.md`; 3. `FEATURE_STATUS.md` → **Will handover notes — owner editable**; 4. `PROJECT_ROADMAP.md`; 5. canonical request register only for issue-level detail.
+The primary-root Status routes here; primary-root Feature Status is a local link to the same notebook. These deliberate local routing changes are backed up, not a primary-branch commit. Preserve unrelated/generated changes. Source/runtime deployment commands and exact gaps are linked in the [register](docs/planning/plum-duff-next-issue-tracking-register.md#resume-here--cp-054-operational-handover).
 
 ## Next two executable actions
 
-1. #104: obtain the single purpose decision for the exact private unresolved set; retain identified real records and revise only their carry-forward proposal if any. Do not rerun CP-052 or build a merge engine.
-2. #12/#23: once classification is settled, obtain one explicit source→personal target/create→legacy archive/reporting scope→backup approval. Reconcile the tested application through existing safe runtime controls before any authorised normal import.
-
-[Resume here](docs/planning/plum-duff-next-issue-tracking-register.md#resume-here--cp-053-read-only-cutover-preparation). Daily tasks and completed#105/#117 scope remain accepted; UI, AI/subscriber work and optional expansion remain on hold.
+1. #98/#114: review Will's notebook entries, classify each BUG / UX CHANGE / NEW FEATURE / QUESTION, retain original wording, link/deduplicate existing requirements and select one bounded authorised action.
+2. #104/#12/#23: obtain the ALPHA-use answer; preserve any genuine activity and present one exact September→WILL-PERSONAL create/duplicate-treatment/0%/0%/backup proposal. Do not execute cutover without its explicit approval.
 
 ## Checkpoint log
 
 | ID | Timestamp | What changed | Issue | Document |
 | --- | --- | --- | --- | --- |
-| CP-034 | 2026-09-23 17:56 BST | Completed browser Notes add/amend/clear across five ledgers, corrected Cash note-history semantics and reconciled the verified shared repair into normal localhost without changing owner financial data | [#117](https://github.com/wolney8/OpenForge/issues/117), [#91](https://github.com/wolney8/OpenForge/issues/91), [#36](https://github.com/wolney8/OpenForge/issues/36), [#92](https://github.com/wolney8/OpenForge/issues/92), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#cp-034-five-ledger-note-editing-and-local-reconciliation--2026-09-23-1756-bst) |
 | CP-035 | 2026-09-23 20:06 BST | Replaced ordinary ledger autosave with one explicit draft, Save, Revert and three-way close contract across five editors | [#117](https://github.com/wolney8/OpenForge/issues/117), [#92](https://github.com/wolney8/OpenForge/issues/92), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#cp-035-explicit-ledger-save-and-discard--2026-09-23-2006-bst) |
 | CP-036 | 2026-09-24 08:35 BST | Separated Notes drafts from calculation-preview identity and added one shared, editor-owned disclosure reveal behaviour | [#117](https://github.com/wolney8/OpenForge/issues/117), [#92](https://github.com/wolney8/OpenForge/issues/92) | [Audit evidence](docs/audits/platform-quality-audit.md#cp-036-settled-editor-stability-and-disclosure-visibility--2026-09-24-0835-bst) |
 | CP-037 | 2026-09-24 10:00 BST | Closed the authenticated settled-editor gap, repaired chart hover and betting-P&L scope, and enforced concise issue-led delivery with unchanged owner data | [#117](https://github.com/wolney8/OpenForge/issues/117), [#111](https://github.com/wolney8/OpenForge/issues/111), [#92](https://github.com/wolney8/OpenForge/issues/92), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#cp-037-issue-led-settled-editor-and-chart-verification--2026-09-24-1000-bst) |
@@ -50,6 +55,7 @@
 | CP-051 | 2026-09-26 11:11 BST | Applied approved source decisions, repaired historical recovery/Notes/identity handling and blocked a newly exposed duplicate Account conflict before writes; full private acceptance remains gated | [#12/#104/#109](https://github.com/wolney8/OpenForge/issues/104), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Evidence](docs/audits/platform-quality-audit.md#cp-051-approved-import-decisions-and-full-private-rehearsal--2026-09-26-1111-bst) |
 | CP-052 | 2026-09-26 12:25 BST | Completed the approved full private import and fresh recovery; repaired global/native and same-Profile logical identity gaps; normal cutover remains separate | [#104](https://github.com/wolney8/OpenForge/issues/104), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Evidence](docs/audits/platform-quality-audit.md#cp-052-complete-private-rehearsal-and-import-identities--2026-09-26-1225-bst) |
 | CP-053 | 2026-09-26 18:55 BST | Completed read-only legacy Profile/source classification and parent-link review; exact unresolved activity set retained privately, normal cutover remains unapproved | [#104](https://github.com/wolney8/OpenForge/issues/104), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Evidence](docs/audits/platform-quality-audit.md#cp-053-read-only-personal-cutover-preparation--2026-09-26-1855-bst) |
+| CP-054 | 2026-09-26 21:15 BST | Restored latest compatible local runtime, promoted accepted repairs to protected Preview and added an owner notebook/model handover; no personal cutover | [#101](https://github.com/wolney8/OpenForge/issues/101), [#104](https://github.com/wolney8/OpenForge/issues/104), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Evidence](docs/audits/platform-quality-audit.md#cp-054-operational-consolidation-and-model-handover--2026-09-26-2115-bst) |
 
 ## Reference index
 

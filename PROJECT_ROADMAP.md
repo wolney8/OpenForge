@@ -1,6 +1,6 @@
 # Project Roadmap — Plum Duff / OpenForge — Doc ID: PR-CODEX-001
 
-**Last updated:** 2026-09-26 18:55 BST
+**Last updated:** 2026-09-26 21:15 BST
 
 ## Product goal
 
@@ -39,9 +39,9 @@ History/Reports and restore; Sportsbook/Account review with atomic balance confi
 observation history. Application `e2d70e0` runs locally and on protected Preview. Existing storage
 was sufficient; no SQL migration. #105's named engineering pass remains complete.
 
-**Current milestone (CP-053):** read-only legacy/source comparison completed; accepted full private rehearsal is unchanged. Resolve the exact private real/test-purpose set, then approve the concrete separate personal Profile operation. Missing historical parents are non-blocking. No merge engine or automatic reclassification.
+**Current milestone (CP-054):** operational consolidation complete: accepted application `b6437e8` runs locally and on the same protected Preview; existing owner notebook/model handover is current. Rehearsal/comparison accepted and not repeated. Authenticated hosted importer checks await the missing authorised synthetic-session renewal resource.
 
-**Next three outcomes:** (1) resolve the bounded purpose decision from the completed private evidence; (2) reconcile tested source/runtime and execute one specifically approved personal cutover with verified recovery; (3) use the existing ledger/Reports/Daily tasks for ordinary personal operation. Optional AI/subscriber work remains separate and is not part of this import gate.
+**Next outcomes:** (1) capture and classify Will's concise usability notes without treating proposals as approval; (2) answer whether ALPHA was ever genuine personal activity, then prepare the exact new-personal-Profile cutover for separate approval. Preserve ALPHA without archive/merge/delete/import until that answer. AI/subscriber architecture, a merge engine and another audit remain out of this consolidation scope.
 
 Optional Free Bets/Casino Account-review entry points and cosmetic expansion are on hold behind this owner priority. Wider Account freshness/trends/settlement, unsupported Multi-Lay configurations and general analytics remain named scope. No new schema, normal-data import, public signup, paid AI or Production release authorised.
 

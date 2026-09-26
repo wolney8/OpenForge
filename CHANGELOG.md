@@ -10,6 +10,8 @@ No published release is represented by the local milestones below.
 
 ## 2026-09-26
 
+- **2026-09-26 21:15 BST — CP-054:** Accepted application `b6437e8` now runs locally and on the existing protected Preview; owner data unchanged. Added owner notebook/model handover; authenticated hosted importer check gap and personal cutover remain explicit. [Evidence](docs/audits/platform-quality-audit.md#cp-054-operational-consolidation-and-model-handover--2026-09-26-2115-bst).
+
 - **2026-09-26 18:55 BST — CP-053:** Read-only legacy activity comparison and parent-gap review complete. Private purpose uncertainty remains explicit; no code/data changes or repeated rehearsal. [Evidence](docs/audits/platform-quality-audit.md#cp-053-read-only-personal-cutover-preparation--2026-09-26-1855-bst).
 
 - **2026-09-26 12:25 BST — CP-052:** Full private import/recovery acceptance passes; scoped identity/retry/reconciliation repairs at`b6437e8` are tested locally. Normal/Preview remain`7da4d44`; no normal cutover. [Evidence](docs/audits/platform-quality-audit.md#cp-052-complete-private-rehearsal-and-import-identities--2026-09-26-1225-bst).
@@ -235,3 +237,9 @@ their original IDs.
 | ID | Timestamp | What changed | Issue | Document |
 | --- | --- | --- | --- | --- |
 | CP-033 | 2026-09-23 15:13 BST | Repaired action-scoped Notes editing for existing ledger rows, retained historical Account/financial meaning and removed cold-request schema-lock contention on Preview | [#117](https://github.com/wolney8/OpenForge/issues/117), [#91](https://github.com/wolney8/OpenForge/issues/91), [#36](https://github.com/wolney8/OpenForge/issues/36), [#92](https://github.com/wolney8/OpenForge/issues/92), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#cp-033-owner-blocking-ledger-edit-repair--2026-09-23-1513-bst) |
+
+## Project Status rollover — 2026-09-26 21:15 BST
+
+| ID | Timestamp | What changed | Issue | Document |
+| --- | --- | --- | --- | --- |
+| CP-034 | 2026-09-23 17:56 BST | Completed browser Notes add/amend/clear across five ledgers, corrected Cash note-history semantics and reconciled the verified shared repair into normal localhost without changing owner financial data | [#117](https://github.com/wolney8/OpenForge/issues/117), [#91](https://github.com/wolney8/OpenForge/issues/91), [#36](https://github.com/wolney8/OpenForge/issues/36), [#92](https://github.com/wolney8/OpenForge/issues/92), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#cp-034-five-ledger-note-editing-and-local-reconciliation--2026-09-23-1756-bst) |

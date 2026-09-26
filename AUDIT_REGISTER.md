@@ -1,6 +1,6 @@
 # Audit Register — Plum Duff / OpenForge — Doc ID: AR-CODEX-001
 
-**Last updated:** 2026-09-26 18:55 BST
+**Last updated:** 2026-09-26 21:15 BST
 
 This is the owner-facing index for audit evidence. The
 [platform quality audit](docs/audits/platform-quality-audit.md) remains the detailed authority.
@@ -21,6 +21,7 @@ These are coverage measures, not percentages of the product finished.
 
 | ID | Plain-English problem | State | Repair / integration state | Issue |
 | --- | --- | --- | --- | --- |
+| CP-054 / PD-FIX-308 / PERSONAL-READINESS-001 | Operational consolidation/model handover | Local/Preview application running; hosted authenticated importer gap explicit |`b6437e8`; source/schema/data/auth/protection/assets verified; provider config reused. No private cutover or repeated campaign. [Evidence](docs/audits/platform-quality-audit.md#cp-054-operational-consolidation-and-model-handover--2026-09-26-2115-bst) | [#101](https://github.com/wolney8/OpenForge/issues/101), [#104](https://github.com/wolney8/OpenForge/issues/104), [#114](https://github.com/wolney8/OpenForge/issues/114) |
 | CP-053 / PERSONAL-READINESS-001 | Read-only legacy comparison / personal cutover | Comparison COMPLETE; purpose decision BLOCKED |Exact remaining real/test set and all classifications retained privately; parent gaps non-blocking; no code/data change or repeated rehearsal. [Evidence](docs/audits/platform-quality-audit.md#cp-053-read-only-personal-cutover-preparation--2026-09-26-1855-bst) | [#104](https://github.com/wolney8/OpenForge/issues/104), [#114](https://github.com/wolney8/OpenForge/issues/114) |
 | CP-052 / PERSONAL-READINESS-001 / PD-FIX-308 | Complete private source acceptance and destination identities | FULL PRIVATE REHEARSAL PASS; tested local repair |`b6437e8`;262 API,4 PostgreSQL,8 private browser steps and fresh recovery pass. Normal/Preview`7da4d44`; target/merge decision separate. [Evidence](docs/audits/platform-quality-audit.md#cp-052-complete-private-rehearsal-and-import-identities--2026-09-26-1225-bst) | [#104](https://github.com/wolney8/OpenForge/issues/104), [#114](https://github.com/wolney8/OpenForge/issues/114) |
 | CP-051 / PERSONAL-READINESS-001 / PD-FIX-305 | Applied source approvals; duplicate-provider overwrite, historical Notes/recovery and parent identity gaps | TESTED LOCAL REPAIR; final private acceptance BLOCKED on one new source choice |`76fcb51` local commit only;257 API,8 private browser steps, API types/changed-line lint. Fresh full validation blocks before writes; normal/Preview remain`7da4d44`. [Evidence](docs/audits/platform-quality-audit.md#cp-051-approved-import-decisions-and-full-private-rehearsal--2026-09-26-1111-bst) | [#12/#104/#109](https://github.com/wolney8/OpenForge/issues/104), [#114](https://github.com/wolney8/OpenForge/issues/114) |

@@ -1,25 +1,26 @@
 # Feature Status — Plum Duff / OpenForge — Doc ID: FS-CODEX-001
 
-**Last updated:** 2026-09-26 18:55 BST
+**Last updated:** 2026-09-26 21:15 BST
 
-## Personal daily-use readiness
+## Operational summary
 
-**Full private rehearsal remains accepted; normal cutover is blocked on exact legacy-record purpose evidence.** CP-053 completes a read-only comparison of every legacy Account/ledger record and post-seed change.
-Known fixtures, earlier source activity and uncorroborated manual records are separated privately. No genuine unique activity is confirmed; the unresolved set cannot be treated as zero.
-The two missing historical qualifying-parent references are non-blocking; their settled rewards retain explicit missing lineage.
-A new personal Profile with preserved legacy history is the conditional recommendation; no merge engine, replacement, archive or normal import was performed.
-Private source details and complete row-level evidence remain local.
-For personal use explicitly choose management fee 0% and investment fee 0%; retain actual Exchange commission and costs.
-Current onboarding defaults 25%/25% are unsuitable for Will's personal arrangement. No existing Profile was reclassified.
-Normal-owner browser/VoiceOver, [#96](https://github.com/wolney8/OpenForge/issues/96) rotation and Git-triggered deployment isolation remain separate named gates.
+| Area | Current state |
+| --- | --- |
+| LOCAL | **Running**: frontend 3010 / API 8010, application `b6437e8`; normal owner SQLite and all operational records preserved; no September import |
+| PROTECTED PREVIEW | **Running**: [existing protected Preview](https://plum-duff-cp028-preview-homelab11.vercel.app), frontend/API `b6437e8`; isolated synthetic-only PostgreSQL; provider-managed configuration reused |
+| PERSONAL CUTOVER | **Blocked**: Has Will ever used ALPHA-001 for genuine personal betting activity beyond test/import work? Preserve ALPHA; no merge/archive/delete/import until answered and the exact cutover is approved |
+| CORE DAILY USE | Accounts, Sportsbook, Free Bets, Casino, Cash, Reports and Daily Tasks: **Ready in scope**. Calculators: **Partial** as detailed below |
+| AI / SUBSCRIBERS / PRODUCTION | AI: **Planned, not active**. Subscribers: **Planned/decision-ready, not active**. Production: **Not deployed** |
+
+Accepted CP-052 rehearsal and CP-053 comparison are unchanged. The 39 unresolved records remain unresolved; no genuine ALPHA-only activity is confirmed.
+Likely personal target: **Will — Personal / WILL-PERSONAL**, September workbook, explicit 0% management / 0% investment, actual Exchange commission and costs retained. Fees do not determine ownership/access.
+Missing historical parents remain explicit and non-blocking. Normal Google/session interaction, VoiceOver, #96 rotation and Git deployment isolation remain separate limitations.
 
 ## Feature overview
 
 States describe the listed scope, not whole-issue closure. Local means localhost:3010; Preview is protected and synthetic-only.
-Last verified local/Preview application is`7da4d44`; CP-053 found no local3010/8010 listener and API connection refused. Preview is not reverified in this read-only batch.
-CP-052 application`b6437e8` and its accepted checks remain unchanged; no tests or rehearsal repeated.
-Local confirmation is proven; PostgreSQL per-ledger confirmation needs a local backup and explicitly returns409 without writes.
-Full-workbook review/checkpoint capability remains separate. Fresh authenticated normal-owner interaction is unexecuted.
+CP-054 verifies local source/schema/data/auth gates and Preview build/source/role/protection/login/assets. Authenticated changed-import screens remain unverified because the temporary synthetic-session renewal resource is missing; accepted CP-052 evidence is reused.
+Hosted per-ledger confirmation still returns 409 before writes when its required local SQLite backup is unavailable; full-workbook checkpoints are a separate path.
 
 | Feature group | Usable now and where | Missing / decision | Linked issues |
 | --- | --- | --- | --- |
@@ -56,32 +57,21 @@ Full-workbook review/checkpoint capability remains separate. Fresh authenticated
 
 ## Personal and managed meaning
 
-Personal / Managed subscriber describes the economic relationship, not lifecycle, login role or subscription tier.
-No redundant flag is needed to configure a selected personal Profile financially: 0% management plus 0% investment fee.
-A managed Profile needs its own agreed rates; existing test fixture 40%/0% is not a proposed subscriber price.
-Personal positive, zero and negative results retain their sign; funding, Account observations and fees stay separate.
-Independent API tests prove zero personal fees and immutable fee revisions; Report tests preserve costs/signs and selection.
-Do not add managed gross P&L to Will's income or count both fee entitlement and its withdrawal as earnings.
-A persisted owner/beneficiary relationship and owner-income aggregate need an explicit contract/schema decision.
+Personal / Managed subscriber is an economic relationship, not lifecycle, login role or subscription tier. Personal fees are explicitly 0%/0%; existing onboarding defaults must not be inherited.
+Retain profit/loss signs, costs and Exchange commission; funding and observed balances are separate. Do not count personal profit again as Fund Manager fee income.
+Managed rates require agreement. Persisted owner/beneficiary relationships and owner-income aggregation remain separate contract/schema decisions; existing Profiles/fee periods are unchanged.
 
 ## Workbook import readiness
 
-- Exact selected source: `WO_MB_Tracker_3Sept2026_1013AM.xlsx`; SHA-256 `7033776336f0216becee420a5cf5a6bd248c69fb5b121d3e3ddb111e803c6e1a`; original unchanged. May was not parsed/merged; no newer file needed for this rehearsal.
-- Supported source areas: Accounts, Dashboard/Settings, Sportsbook Bets, Free Bets, Casino Offers, Cash Adjustments and Reports; Extra Place provenance/terms remain governed separately.
-- All original and later source decisions are approved and applied via API, tied to checksum, namespace and row fingerprints. No blanket access mapping or cached-value trust rule.
-- Every source row is accounted for privately exactly once: operational destinations, deferred provenance and non-executed opportunities. The duplicate Account decision is resolved; complete final import and reconciliation pass.
-- Full pre-simulation known financial subtotals and the earlier exact Sportsbook scope reconcile. Personal fees are0%/0%; source-backed Exchange settings remain separate. Missing original evidence remains missing.
-- Historical approvals survive Notes/reopen/Reports. Full-source relationships, source identities, review decisions, native-ID remapping and fresh restore/retry pass. Missing source parents stay explicitly missing; no guessed links.
-- Hosted limitation: per-ledger confirmation's required full local SQLite backup is unavailable on PostgreSQL. It now rejects clearly before writes; governed full-workbook import has a separate Profile checkpoint path. This is documented capability scope, not divergent financial rules.
-- Normal target/action: **unapproved**. Proposed separate personal Profile,0%/0%, with legacy data/history preserved and excluded from active personal totals only after authorisation. Exact candidate identity/action and unresolved set are in the private CP-053 report. Identity-safe import does not prove that existing manual activity may be omitted.
-- CP-053 accounts for every current operational record plus retained history/configuration/staging; post-seed edits are explicit. Missing parents are historical lineage gaps, not reasons to invent transactions or reject settled children.
-- Cutover approval must state: selected source → exact Profile → create/merge/replace → duplicate handling → checksum-verified backup and tested rollback. No normal writes authorised now.
+- Approved source: `WO_MB_Tracker_3Sept2026_1013AM.xlsx`, SHA-256 `7033776336f0216becee420a5cf5a6bd248c69fb5b121d3e3ddb111e803c6e1a`; original/local-only. All source decisions remain approved and checksum/fingerprint-bound.
+- CP-052 full source/financial reconciliation, historical treatment, Notes/reopen, settlement/correction, Reports and fresh restore/retry PASS. Source identity/native remapping and missing-parent provenance retained; compatible shared Catalogue required for recovery.
+- CP-053 legacy comparison COMPLETE; exact unresolved purpose set retained privately. No repeated comparison is needed. Ask only the ALPHA-use question above; preserve all records/history meanwhile.
+- Normal cutover remains unapproved. Any later approval must specify source→exact target/create action→duplicate/legacy reporting treatment→fresh verified backup and recovery. No assumed merge/replace, fee rewrite or hosted private-workbook upload.
 
-## Next three delivery outcomes
+## Next delivery outcomes
 
-1. **Resolve the exact legacy purpose set:** one owner decision on specifically identified manual records/financial edits; preserve all evidence and any genuine activity.
-2. **Controlled personal cutover:** after that decision, approve the exact create/archive/reporting/backup action, reconcile tested source through existing runtime gates and import only when authorised.
-3. **Daily personal operation:** use the imported ledger, explicit Save/Discard, Reports and existing Daily tasks; AI/subscriber proposals stay separate.
+1. Review Will's notes below: classify BUG / UX CHANGE / NEW FEATURE / QUESTION, link existing requirements and select only a bounded approved next action.
+2. Resolve the ALPHA-use decision, then present one exact personal import proposal; perform no normal cutover beforehand.
 
 ## Separate approval boundaries
 
@@ -90,13 +80,20 @@ Required additions remain invitation token hashes/expiry/revocation, request/app
 Profile linkage and access become effective only through their explicit approved grant, separate from the request, commercial terms and funding. No public signup, identity documents, bookmaker credentials, billing or automatic funding.
 **Existing AI proposal:** explain verified task evidence with source references, uncertainty and deterministic failure fallback. Decide provider/model, approved data fields, spending limit and permitted advisory action; no paid call/private-data transmission authorised. Deterministic Daily tasks is not AI.
 
-## New ideas / decisions — editable by Will
+## Will handover notes — owner editable
 
-- Idea / outcome wanted:
-- Priority and example:
-- Decision or constraint:
+This section is Will's scratchpad for observations and requests. Entries are not approved implementation scope until reviewed.
+Use: `- [ ] YYYY-MM-DD | PRIORITY | Screen/feature — note`. Priority can be High, Medium or Low; no issue number or technical analysis is needed.
+Example only: `- [ ] 2026-09-26 | High | Sportsbook editor — Account selector feels too slow when entering a new bet.`
+The next AI owns classification (BUG / UX CHANGE / NEW FEATURE / QUESTION), existing issue links, deduplication, plans and tests. Never delete an original note or silently change its meaning. When implemented, tick it and link the issue/checkpoint; if rejected/superseded, retain it and explain why.
 
-Ideas here are proposals, not automatic implementation approval.
+### Bugs / fixes
+
+### Changes / refinements
+
+### New features / additions
+
+### Questions / decisions
 
 ## Complete detail and evidence
 
