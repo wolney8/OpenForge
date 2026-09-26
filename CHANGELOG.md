@@ -8,6 +8,10 @@ roadmap or detailed audit record.
 
 No published release is represented by the local milestones below.
 
+## 2026-09-26
+
+- **2026-09-26 11:11 BST — CP-051:** Tested local importer/recovery repair at`76fcb51`; approved source decisions applied privately, new conflicting Account rows block final acceptance. Normal/Preview remain`7da4d44`. [Evidence](docs/audits/platform-quality-audit.md#cp-051-approved-import-decisions-and-full-private-rehearsal--2026-09-26-1111-bst).
+
 ## 2026-09-25
 
 - **2026-09-25 21:38 BST — CP-050:** Complete source accounting and shared import/lifecycle/review repairs at`7da4d44` local/Preview; full private import remains explicitly source-decision gated. [Evidence](docs/audits/platform-quality-audit.md#cp-050-full-source-accounting-and-import-repairs--2026-09-25-2138-bst).
@@ -207,3 +211,10 @@ their original IDs.
 | ID | Timestamp | What changed | Issue | Document |
 | --- | --- | --- | --- | --- |
 | CP-030 | 2026-09-22 11:57 BST | Repaired the Reports reduced-motion update loop and proved a hosted £6→£5 Cash Adjustment through History, Reports, reload and idempotent retry | [#114](https://github.com/wolney8/OpenForge/issues/114) | [Audit evidence](docs/audits/platform-quality-audit.md#cp-030-reports-repair-and-hosted-cash-correction-proof--2026-09-22-1157-bst) |
+
+
+### Project Status checkpoint rollover — 2026-09-26 11:11 BST
+
+| ID | Timestamp | What changed | Issue | Document |
+| --- | --- | --- | --- | --- |
+| CP-031 | 2026-09-22 14:22 BST | Completed the supported authenticated Preview workflows and repaired archived-Profile amplification in lineage and Account eligibility reads | [#114](https://github.com/wolney8/OpenForge/issues/114), [#115](https://github.com/wolney8/OpenForge/issues/115) | [Audit evidence](docs/audits/platform-quality-audit.md#cp-031-authenticated-protected-preview-completion--2026-09-22-1422-bst) |

@@ -1,13 +1,13 @@
 # Feature Status — Plum Duff / OpenForge — Doc ID: FS-CODEX-001
 
-**Last updated:** 2026-09-25 21:38 BST
+**Last updated:** 2026-09-26 11:11 BST
 
 ## Personal daily-use readiness
 
-**Not ready for a full normal-data import yet.** CP-050 accounts for every selected-source row and exclusion.
-Full original validation collects20 review rows; no new operational import or accepted mapping exists.
-The pre-simulation financial difference is explained as different known-value sets, with a terminal-Void defect repaired.
-Private exact row/field/provider decisions and original evidence stay local; the compatible subset is not full-import proof.
+**Not ready for a normal-data import yet.** CP-051 applied all original source decisions and reconciled the full private candidate's known financial values.
+A newly demonstrated pair of conflicting Accounts shared one provider; final-source validation now blocks this silent overwrite.
+Historical approval/Notes/recovery and eight private browser steps pass; complete corrected-import acceptance awaits that one new source choice.
+Private exact source evidence remains local; the initial candidate is not a full rehearsal PASS.
 Existing activity must not be duplicated; incremental conflict merge is not assumed to be supported.
 For personal use explicitly choose management fee 0% and investment fee 0%; retain actual Exchange commission and costs.
 Current onboarding defaults 25%/25% are unsuitable for Will's personal arrangement. No existing Profile was reclassified.
@@ -16,7 +16,7 @@ Normal-owner browser/VoiceOver, [#96](https://github.com/wolney8/OpenForge/issue
 ## Feature overview
 
 States describe the listed scope, not whole-issue closure. Local means localhost:3010; Preview is protected and synthetic-only.
-Application `7da4d44` serves locally and on protected Preview;175 API tests/types/builds and scoped browser checks pass.
+Application `7da4d44` still serves local3010/Preview. CP-051 commit`76fcb51` is tested locally only:257 API checks/types, private browser/recovery evidence; no new hosted claim.
 Local confirmation is proven; PostgreSQL per-ledger confirmation needs a local backup and explicitly returns409 without writes.
 Full-workbook review/checkpoint capability remains separate. Fresh authenticated normal-owner interaction is unexecuted.
 
@@ -24,7 +24,7 @@ Full-workbook review/checkpoint capability remains separate. Fresh authenticated
 | --- | --- | --- | --- |
 | Profile ownership/access | **Partial**: isolated Profiles, Fund Manager links, Active/Archived lifecycle; local/Preview | Personal/Managed subscriber is not stored ownership or an auth role; subscriber grants absent | [#8](https://github.com/wolney8/OpenForge/issues/8) [#13](https://github.com/wolney8/OpenForge/issues/13) [#14–18](https://github.com/wolney8/OpenForge/issues/14) [#74](https://github.com/wolney8/OpenForge/issues/74) |
 | Fees | **Ready in listed scope**: preview/crystallise/reopen/correct/withdraw and immutable revisions; local/Preview | Explicit personal 0/0; managed rates need agreement. Fresh whole fee-operation browser acceptance differs from display proof | [#23](https://github.com/wolney8/OpenForge/issues/23) [#24](https://github.com/wolney8/OpenForge/issues/24) |
-| Workbook import | **Partial**: mapped review, controlled import/checkpoint/reconciliation and retry; synthetic local/Preview proof | All-source accounting complete;20 review rows and approved mapping application/full rehearsal pending; no normal target/action approved | [#12](https://github.com/wolney8/OpenForge/issues/12) [#104](https://github.com/wolney8/OpenForge/issues/104) [#109](https://github.com/wolney8/OpenForge/issues/109) |
+| Workbook import | **Partial**: mapped review, controlled import/checkpoint/reconciliation and retry; synthetic local/Preview proof | Original decisions applied; one new Account-source conflict, final complete rehearsal and overlap-safe normal target/action remain | [#12](https://github.com/wolney8/OpenForge/issues/12) [#104](https://github.com/wolney8/OpenForge/issues/104) [#109](https://github.com/wolney8/OpenForge/issues/109) |
 | Export/restore | **Ready in listed scope**: portable Profile XLSX, canonical identity/history, CP-047 additions and terminal Void recovery | Working-workbook/Google-script compatibility and incremental merge remain bounded gaps | [#12](https://github.com/wolney8/OpenForge/issues/12) [#94](https://github.com/wolney8/OpenForge/issues/94) [#95](https://github.com/wolney8/OpenForge/issues/95) |
 | Accounts/restrictions | **Ready in listed scope**: Profile Accounts, shared Catalogue, lifecycle/stake/promo access and eligibility | Wider capability intelligence and quick Account actions remain partial | [#70](https://github.com/wolney8/OpenForge/issues/70) [#82](https://github.com/wolney8/OpenForge/issues/82) [#85](https://github.com/wolney8/OpenForge/issues/85) [#109](https://github.com/wolney8/OpenForge/issues/109) |
 | Balance observations | **Partial**: exact server-timed, atomic/retry-safe confirmations/history from Sportsbook and Accounts; local/Preview | Free Bets/Casino entry points, freshness and trends; balance changes are not P&L | [#85](https://github.com/wolney8/OpenForge/issues/85) [#106](https://github.com/wolney8/OpenForge/issues/106) |
@@ -67,17 +67,17 @@ A persisted owner/beneficiary relationship and owner-income aggregate need an ex
 
 - Exact selected source: `WO_MB_Tracker_3Sept2026_1013AM.xlsx`; SHA-256 `7033776336f0216becee420a5cf5a6bd248c69fb5b121d3e3ddb111e803c6e1a`; original unchanged. May was not parsed/merged; no newer file needed for this rehearsal.
 - Supported source areas: Accounts, Dashboard/Settings, Sportsbook Bets, Free Bets, Casino Offers, Cash Adjustments and Reports; Extra Place provenance/terms remain governed separately.
-- Full original validation:20 explicit review rows, zero operational imports. Four Account rows contain six literal Unknown access cells; two providers lack evidence-backed Catalogue matches; actual-lay evidence and Casino final-value reasons need explicit source decisions.
-- CP-049 omissions are completely accounted for privately: established legacy Account normalisation and cached-result validation drift are repaired; proven non-executed opportunities retain provenance and historical Extra Places use their governed destination. No missing parent, balance, commission or outcome is invented.
-- Known-subtotal difference: two missing-commission results remain unavailable; a genuine terminal Void now resolves to zero. Different known-row sets explain the difference; no forced matching or post-simulation comparison.
-- New proof: shared mapping/numeric representation/lifecycle fixtures; actual review Save/reopen, local confirmation/persistence, failure protection and compact/enlarged themes/keyboard/reduced motion. CP-049's compatible-subset daily-use/recovery chain is retained evidence, not a new full-workbook PASS.
+- Original twenty review decisions are approved and applied via API, tied to checksum and row fingerprints. No blanket Unknown mapping or cached-value trust rule.
+- Every source row is accounted for privately: corrected readiness distinguishes accepted records, the new conflicting Account pair, deferred providers and non-executed opportunities. Initial candidate destination counts are separate evidence, not final acceptance.
+- Full candidate known financial subtotals match; exact earlier Sportsbook scope now reconciles. Personal fees are0%/0%; five source-backed Exchange settings remain separate explicit setup. Missing original evidence remains missing.
+- Thirteen historical approvals survive Notes add/amend/clear, reopening and Reports. Portable approval/source identity, restore/retry and private eight-step browser chain verified. Full-import parent-link repair has synthetic coverage; final accepted full-source write/relationship verification remains gated.
 - Hosted limitation: per-ledger confirmation's required full local SQLite backup is unavailable on PostgreSQL. It now rejects clearly before writes; governed full-workbook import has a separate Profile checkpoint path. This is documented capability scope, not divergent financial rules.
-- Normal target/action: **unconfirmed**. Recommend a separately confirmed new personal Profile only if it will not duplicate existing activity; no existing-Profile merge/replace is assumed. Existing full-import review/backup/checkpoint/rollback applies; portable restore itself always creates a new Profile.
+- Normal target/action: **unconfirmed**. A read-only normal check found existing source-ID overlaps; creating a fresh personal copy is unsafe without their explicit disposition. No existing-Profile merge/replace is assumed. Existing full-import review/backup/checkpoint/rollback applies; portable restore itself always creates a new Profile.
 - Cutover approval must state: selected source → exact Profile → create/merge/replace → duplicate handling → checksum-verified backup and tested rollback. No normal writes authorised now.
 
 ## Next three delivery outcomes
 
-1. **Full personal rehearsal:** resolve the named source review decisions and reconcile the full selected workbook without guessed inputs.
+1. **Full personal rehearsal:** resolve the one new conflicting Account pair, then verify the corrected complete import and source relationships without guessed inputs.
 2. **Controlled personal cutover:** confirm the exact target/action, explicit 0%/0% and recovery once full rehearsal passes; use Daily tasks for supported current evidence.
 3. **Controlled subscriber request:** approve the existing minimal invite/request and separate linkage/access boundary, then prove denied/unlinked/cross-Profile access before rollout.
 
