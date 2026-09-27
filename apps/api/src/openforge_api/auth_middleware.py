@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from starlette.datastructures import Headers
 from starlette.responses import JSONResponse
-from starlette.types import ASGIApp, Receive, Scope, Send
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from openforge_api.auth import SESSION_COOKIE_NAME, validate_request_session
 from openforge_api.config import settings
@@ -16,17 +16,35 @@ class OwnerAuthenticationMiddleware:
         self.app = app
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        if scope["type"] != "http" or not settings.authentication_required:
+        if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
 
         path = _application_path(scope)
-        if path in PUBLIC_PATHS or path.startswith(PUBLIC_PREFIXES):
+        original_send = send
+
+        async def private_send(message: Message) -> None:
+            if message["type"] == "http.response.start":
+                message["headers"] = [
+                    (key, value)
+                    for key, value in message.get("headers", [])
+                    if key.lower() != b"cache-control"
+                ] + [(b"cache-control", b"private, no-store")]
+            await original_send(message)
+
+        if path.startswith(("/subscriber/", "/fund-manager/subscribers/", "/auth/")):
+            send = private_send
+        if path in PUBLIC_PATHS or (
+            path.startswith(PUBLIC_PREFIXES) and path != "/auth/security-preference"
+        ):
             await self.app(scope, receive, send)
             return
 
         cookie_header = Headers(scope=scope).get("cookie", "")
         session = validate_request_session(_cookie_value(cookie_header, SESSION_COOKIE_NAME))
+        if session is None and not settings.authentication_required:
+            await self.app(scope, receive, send)
+            return
         if session is None:
             response = JSONResponse(
                 {"detail": "Access unavailable"},
@@ -36,6 +54,11 @@ class OwnerAuthenticationMiddleware:
             await response(scope, receive, send)
             return
 
+        if session.role != "fund_manager" and not path.startswith("/subscriber/"):
+            await JSONResponse({"detail": "Access unavailable"}, status_code=403)(
+                scope, receive, send
+            )
+            return
         scope.setdefault("state", {})["auth_session"] = session
         await self.app(scope, receive, send)
 

@@ -16,7 +16,8 @@ function decodeBase64Url(value: string): Uint8Array {
 export async function verifyFounderSessionToken(
   token: string,
   secret: string,
-  ownerEmails: string
+  ownerEmails: string,
+  subscriber = false
 ): Promise<boolean> {
   if (!token || Buffer.byteLength(secret, "utf8") < 32) return false;
   const [encodedPayload, encodedSignature, extra] = token.split(".");
@@ -46,9 +47,9 @@ export async function verifyFounderSessionToken(
     return (
       payload.iss === "plum-duff-api" &&
       payload.aud === "plum-duff" &&
-      payload.role === "fund_manager" &&
+      (subscriber ? ["prospective_subscriber", "managed_subscriber_read_only"].includes(payload.role ?? "") : payload.role === "fund_manager") &&
       typeof payload.email === "string" &&
-      allowedOwners.has(payload.email.toLocaleLowerCase()) &&
+      (subscriber || allowedOwners.has(payload.email.toLocaleLowerCase())) &&
       typeof payload.exp === "number" &&
       payload.exp > Math.floor(Date.now() / 1000)
     );

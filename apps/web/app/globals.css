@@ -9565,6 +9565,7 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 }
 
 .copyable-financial-value {
+  position: relative;
   align-items: center;
   display: inline-flex;
   gap: 0.4rem;

@@ -156,3 +156,16 @@ Complete this for every feature, bug fix, component, fixture-backed UI, route or
 - [x] Profile11 paths, Reports4 and final Accounts/shared11 browsers pass; API129/unit55/PG/types/build/lint recorded. Known-pitfalls/enforcer updated; unrelated ledger Save/Discard/accepted calculator flows retained.
 - [ ] Fresh normal-owner browser and VoiceOver spoken-output acceptance: not executed; no restricted-session bypass.
 - [ ] CP-055 hosted UI/hygiene: blocked on fresh dedicated DB recovery and authorised synthetic session resources; old Preview remains live.
+
+## CP-056 invited subscribers
+
+- Existing Profile form/page primitives, action groups, FinancialValue and ledger
+  scroll wrapper reused; subscriber shell intentionally omits all operator chrome.
+- Synthetic manager/applicant browser sequence covers Save failure/retry, Discard,
+  response, approval/link/grant separation, read-only statement and revocation.
+- Compact/enlarged, themes, keyboard/Copy, reduced motion, actual populated-table
+  containment and private-note denial PASS, including delayed allowed response after
+  revocation. Source-bound invite entry, audit transitions and strict session roles
+  passed focused review. No owner-data test.
+- Fresh normal-owner Google interaction, VoiceOver and hosted Preview remain distinct
+  unexecuted acceptance/resource checks; no replacement manual correctness campaign.

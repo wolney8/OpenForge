@@ -193,8 +193,6 @@ def postgres_runtime_enabled() -> bool:
 
 
 def upsert_fund_manager_user(*, email: str, google_subject: str, display_name: str) -> None:
-    if not postgres_runtime_enabled():
-        return
     timestamp = utc_now()
     with connect() as connection:
         connection.execute(
@@ -925,6 +923,9 @@ def connect_read_only() -> Iterator[Any]:
 
 
 def initialize_database(connection: sqlite3.Connection) -> None:
+    from openforge_api.subscriber_schema import SCHEMA
+
+    connection.executescript(SCHEMA)
     connection.create_function(
         "openforge_schema_capability", 0, lambda: "import-history-v1"
     )

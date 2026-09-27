@@ -122,6 +122,7 @@ function isAuthenticatedApplicationPath(pathname: string): boolean {
 
 export function AppChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  if (pathname === "/invite" || pathname.startsWith("/subscriber")) return <><a className="skip-link" href="#main-content">Skip to content</a><header className="calculator-popout-toolbar"><Link href="/subscriber">Plum Duff · Subscriber</Link><ThemeToggle /><button className="button-link" onClick={async () => { await fetch("/api/auth/logout", { method: "POST" }); window.location.replace("/login"); }}>Sign out</button></header>{children}</>;
   const isCalculatorPopout = pathname === "/calculator";
   const isPublicAuthRoute =
     pathname === "/login" ||

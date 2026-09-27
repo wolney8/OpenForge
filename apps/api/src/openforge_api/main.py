@@ -44,6 +44,8 @@ from openforge_api.profiles import recovery_router as profile_recovery_router
 from openforge_api.profiles import router as profiles_router
 from openforge_api.runtime_safety import validate_runtime_contract
 from openforge_api.sportsbook import router as sportsbook_router
+from openforge_api.subscribers import applicant as subscriber_applicant
+from openforge_api.subscribers import manager as subscriber_manager
 from openforge_api.tracker_settings import router as tracker_settings_router
 from openforge_api.tracker_summary_sources import router as tracker_summary_sources_router
 from openforge_api.workbook_template_export import router as workbook_template_export_router
@@ -61,6 +63,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.include_router(subscriber_manager)
+app.include_router(subscriber_applicant)
 app.include_router(profiles_router)
 app.include_router(profile_recovery_router)
 app.include_router(profile_portable_export_router)
@@ -100,6 +104,12 @@ app.include_router(lookup_values_router)
 
 
 def _schema_version(connection: object) -> str:
+    try:
+        query = "SELECT 1 FROM subscriber_applications LIMIT 1"
+        connection.execute(query).fetchone()  # type: ignore[attr-defined]
+        return "invited-subscribers-v1"
+    except Exception:
+        pass
     try:
         connection.execute("SELECT profile_relationship FROM profiles LIMIT 1").fetchone()  # type: ignore[attr-defined]
         return "profile-relationship-v1"

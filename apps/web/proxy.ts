@@ -10,7 +10,8 @@ function authenticationRequired() {
 }
 
 export async function proxy(request: NextRequest) {
-  if (!authenticationRequired()) return NextResponse.next();
+  const subscriberPath = request.nextUrl.pathname.startsWith("/subscriber");
+  if (!authenticationRequired() && !subscriberPath && !request.cookies.has(AUTH_SESSION_COOKIE)) return NextResponse.next();
 
   const token = request.cookies.get(AUTH_SESSION_COOKIE)?.value ?? "";
   const isAuthenticated = await verifyFounderSessionToken(
@@ -18,7 +19,10 @@ export async function proxy(request: NextRequest) {
     process.env.OPENFORGE_AUTH_SESSION_SECRET ?? "",
     process.env.OPENFORGE_AUTH_OWNER_EMAILS ?? ""
   );
-  if (isAuthenticated) return NextResponse.next();
+  const isSubscriber = await verifyFounderSessionToken(token, process.env.OPENFORGE_AUTH_SESSION_SECRET ?? "", "", true);
+  if (subscriberPath && isSubscriber) return NextResponse.next();
+  if (isSubscriber) return NextResponse.redirect(new URL("/subscriber", request.url));
+  if (isAuthenticated && !subscriberPath) return NextResponse.next();
 
   const loginUrl = new URL("/login", request.url);
   loginUrl.searchParams.set("next", `${request.nextUrl.pathname}${request.nextUrl.search}`);
@@ -29,12 +33,14 @@ export const config = {
   matcher: [
     "/",
     "/profiles/:path*",
+    "/subscriber/:path*",
     "/performance/:path*",
     "/reports/:path*",
     "/notifications/:path*",
     "/tasks/:path*",
     "/settings/:path*",
     "/account/:path*",
+    "/calculator",
     "/fund-manager/:path*",
     "/imports/:path*",
   ],

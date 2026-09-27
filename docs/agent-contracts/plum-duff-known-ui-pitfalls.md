@@ -1394,3 +1394,9 @@ CP-047 also fixes the shared workflow body’s implicit grid column: use `minmax
 ## CP-055: Per-ledger review table collapsed vertically
 
 A viewport-bounded flex modal allowed its table viewport to shrink to zero while enlarged header/footer content overlapped. Keep direct review sections non-shrinking and the parent vertically scrollable; use the existing typography-aware static chrome fallback at compact/enlarged container widths. Prove real row selection and backup acknowledgement are reachable, not merely page overflow. Accounts portability browser checks cover both themes and200% text; the shared per-ledger suite protects other consumers.
+
+- CP-056: a copyable value's absolutely positioned live feedback must be anchored
+  to that value (`position: relative`). Otherwise feedback for offscreen table
+  columns can enlarge the document despite the visible table being scroll-contained.
+  Reproduced on the new subscriber statement table; verify populated columns, not
+  only the empty state. Existing shared ledger scroll controls remain the reference.

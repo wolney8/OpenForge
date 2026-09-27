@@ -57,3 +57,13 @@ describe("verifyFounderSessionToken", () => {
     ).resolves.toBe(false);
   });
 });
+
+it("keeps subscriber sessions out of operator routes and recognises only contracted roles", async () => {
+  for (const role of ["prospective_subscriber", "managed_subscriber_read_only"]) {
+    const token = tokenFor({ aud: "plum-duff", iss: "plum-duff-api", email: "applicant@example.invalid", role, exp: Math.floor(Date.now()/1000)+600 });
+    expect(await verifyFounderSessionToken(token, secret, "applicant@example.invalid")).toBe(false);
+    expect(await verifyFounderSessionToken(token, secret, "", true)).toBe(true);
+  }
+  const token = tokenFor({ aud: "plum-duff", iss: "plum-duff-api", email: "applicant@example.invalid", role: "subscriber_self_service", exp: Math.floor(Date.now()/1000)+600 });
+  expect(await verifyFounderSessionToken(token, secret, "", true)).toBe(false);
+});

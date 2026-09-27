@@ -124,3 +124,11 @@ Deferred future UI path:
 5. verify disallowed actions are hidden or blocked
 6. if managed subscriber, verify edit attempt is denied
 7. if self-service subscriber, verify allowed self-service workflow entry points appear
+
+## CP-056 implemented bounded projection
+
+The owner-approved invited read-only slice is defined in the CP-056 addendum of
+[the registration contract](../contracts/subscriber-registration-and-funding-review-contract.md).
+Live grants are rechecked for every API read; legacy operator endpoints default-deny.
+The UI rejects obsolete responses after refresh/revocation. Broader subscriber
+performance/progress and self-service editing are not implied by this delivery.

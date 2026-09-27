@@ -7,7 +7,7 @@ import json
 import logging
 import secrets
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
 from urllib.parse import urlencode
 
@@ -126,6 +126,7 @@ def create_session_token(
     now: int | None = None,
     secret: str | None = None,
     session_id: str | None = None,
+    role: str = "fund_manager",
 ) -> str:
     issued_at = int(time.time()) if now is None else now
     resolved_session_id = session_id or secrets.token_urlsafe(32)
@@ -142,7 +143,7 @@ def create_session_token(
             subject=subject,
             email=email.casefold(),
             name=name,
-            role="fund_manager",
+            role=role,
             issued_at=issued_at,
             expires_at=expires_at,
         ).as_dict(),
@@ -156,7 +157,8 @@ def read_session_token(token: str, *, secret: str | None = None) -> AuthSession 
         payload is None
         or payload.get("iss") != "plum-duff-api"
         or payload.get("aud") != "plum-duff"
-        or payload.get("role") != "fund_manager"
+        or payload.get("role")
+        not in {"fund_manager", "prospective_subscriber", "managed_subscriber_read_only"}
     ):
         return None
     try:
@@ -177,8 +179,18 @@ def read_session_token(token: str, *, secret: str | None = None) -> AuthSession 
 
 def validate_request_session(token: str, *, now: int | None = None) -> AuthSession | None:
     session = read_session_token(token)
-    if session is None or session.email.casefold() not in settings.owner_emails:
+    if session is None:
         return None
+    if session.role == "fund_manager":
+        if session.email.casefold() not in settings.owner_emails:
+            return None
+    else:
+        from openforge_api.subscribers import subscriber_role
+
+        role = subscriber_role(session.email, session.subject)
+        if role is None:
+            return None
+        session = replace(session, role=role)
     checked_at = int(time.time()) if now is None else now
     if not validate_fund_manager_session(
         session_id=session.session_id,
@@ -220,6 +232,32 @@ def _login_error_response(error: str) -> RedirectResponse:
 
 @router.get("/google/login")
 def google_login(next: str | None = None) -> RedirectResponse:
+    return _google_login(next)
+
+
+class InviteLoginPayload(BaseModel):
+    token: str
+
+
+@router.post("/invite-login")
+def invite_login(payload: InviteLoginPayload) -> Response:
+    from openforge_api.subscribers import invitation_for_token
+
+    invitation = invitation_for_token(payload.token)
+    redirect = _google_login(
+        "/subscriber",
+        {"invitation_id": invitation["invitation_id"], "token_hash": invitation["token_hash"]},
+    )
+    response = JSONResponse({"url": redirect.headers["location"]})
+    response.headers.append(
+        "set-cookie", redirect.headers["set-cookie"]
+    ) if "set-cookie" in redirect.headers else None
+    return response
+
+
+def _google_login(
+    next: str | None = None, invitation: dict[str, str] | None = None
+) -> RedirectResponse:
     if not settings.google_oauth_client_id or not settings.google_oauth_client_secret:
         logger.error("Google OAuth client configuration is incomplete")
         return _login_error_response("oauth_configuration_unavailable")
@@ -233,6 +271,7 @@ def google_login(next: str | None = None) -> RedirectResponse:
     state_token = _sign_payload(
         {
             "state": state,
+            "invitation": invitation,
             "verifier": verifier,
             "next": _safe_next_path(next),
             "exp": int(time.time()) + 600,
@@ -332,29 +371,51 @@ async def google_callback(
         identity = {}
     subject = str(identity.get("sub", "")).strip()
     email = str(identity.get("email", "")).strip().casefold()
-    if not subject or not identity.get("email_verified") or email not in settings.owner_emails:
+    if not subject or identity.get("email_verified") is not True:
         response = RedirectResponse("/login?error=not_authorized", status_code=302)
         response.delete_cookie(OAUTH_STATE_COOKIE_NAME, path="/")
         return response
 
+    role = "fund_manager" if email in settings.owner_emails else "prospective_subscriber"
     try:
-        upsert_fund_manager_user(
-            email=email,
-            google_subject=subject,
-            display_name=str(identity.get("name", email)),
-        )
+        if role == "fund_manager":
+            upsert_fund_manager_user(
+                email=email, google_subject=subject, display_name=str(identity.get("name", email))
+            )
+        else:
+            from openforge_api.subscribers import accept_invitation, subscriber_identity
+
+            invitation = state_payload.get("invitation")
+            if invitation:
+                accept_invitation(
+                    invitation["invitation_id"],
+                    invitation["token_hash"],
+                    email,
+                    subject,
+                    str(identity.get("name", email)),
+                )
+            elif not subscriber_identity(email, subject):
+                raise HTTPException(403, "Access unavailable")
         session_token = create_session_token(
             subject=subject,
             email=email,
             name=str(identity.get("name", email)),
+            role=role,
         )
+    except HTTPException:
+        response = _login_error_response("not_authorized")
+        response.delete_cookie(OAUTH_STATE_COOKIE_NAME, path="/")
+        return response
     except Exception:
         logger.exception("Google OAuth callback could not persist the local session")
         response = _login_error_response("oauth_session_failed")
         response.delete_cookie(OAUTH_STATE_COOKIE_NAME, path="/")
         return response
     response = RedirectResponse(
-        _safe_next_path(str(state_payload.get("next", ""))), status_code=302
+        _safe_next_path(str(state_payload.get("next", "")))
+        if role == "fund_manager"
+        else "/subscriber",
+        status_code=302,
     )
     response.delete_cookie(OAUTH_STATE_COOKIE_NAME, path="/")
     response.set_cookie(
@@ -386,7 +447,9 @@ def get_session(request: Request) -> JSONResponse:
             "name": session.name,
             "role": session.role,
             "expires_at": session.expires_at,
-            "linked_profile_ids": list_fund_manager_profile_links(session.email),
+            "linked_profile_ids": list_fund_manager_profile_links(session.email)
+            if session.role == "fund_manager"
+            else [],
             "session_policy": policy,
         }
     )
@@ -406,6 +469,8 @@ def logout(request: Request) -> Response:
 @router.get("/security-preference")
 def get_security_preference(request: Request) -> dict[str, Any]:
     session = require_request_session(request)
+    if session.role != "fund_manager":
+        raise HTTPException(403, "Access unavailable")
     return get_fund_manager_security_preference(session.email)
 
 
@@ -432,6 +497,8 @@ def record_activity(request: Request) -> dict[str, Any]:
 @router.put("/security-preference")
 def put_security_preference(request: Request, payload: SecurityPreferencePayload) -> dict[str, Any]:
     session = require_request_session(request)
+    if session.role != "fund_manager":
+        raise HTTPException(403, "Access unavailable")
     try:
         preference = upsert_fund_manager_security_preference(
             email=session.email,

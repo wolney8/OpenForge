@@ -1,0 +1,2 @@
+import { SubscriberInvite } from "@/components/subscriber-workflow";
+export default function Page() { return <SubscriberInvite />; }

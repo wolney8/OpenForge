@@ -284,3 +284,46 @@ Every registration, document review and funding decision must record:
 - whether Fund-Manager-provided float is legally/accounting-approved
 - whether float recovery is fee uplift, repayment-first, fixed fee, or manual-only
 - whether there should be validation/minimums for subscriber self-funding amounts
+
+## CP-056 approved invited workflow
+
+Owner approval: CP-056, 2026-09-27. This bounded implementation supersedes the
+implementation-deferred gate for invitations, minimal applications, review, explicit
+Managed Profile linkage and read-only grants only. Documents, public registration,
+funding operations and self-service editing remain excluded.
+
+- Existing Google verified identity, signed session, inactivity/revocation and owner
+  allowlist remain authoritative. Non-owner first authentication requires an active
+  invitation bound to its exact email and Google subject. Existing identity storage
+  is reused on both SQLite/PostgreSQL; no second identity or Profile model.
+- Invitations store token hashes, creator, expiry and acceptance/revocation separately.
+  Links use a fragment (not a logged query string); no automated email is sent.
+- Applications retain display name, verified email, optional phone, country/region,
+  applicant message, optional self-funding amount and a funding-request boolean.
+  Monetary metadata never creates a balance, Cash Adjustment or funding approval.
+- States: draft → submitted → needs_more_information → submitted; reviewer may
+  approve or decline a submitted request. Applicant may withdraw before approval.
+  Approved and declined requests are terminal review decisions. Link and grant are
+  separate explicit commands. Profile creation is Pending, Managed subscriber with
+  explicit fees, no funded balance, no automatic activation. Existing links require
+  Managed relationship, non-archived state and no different linked applicant.
+- Append-only events separate applicant-visible messages from private manager notes.
+  Commands use actor + request ID + canonical payload hash; retries do not repeat
+  writes, changed payloads conflict, expected versions reject stale transitions.
+- Subscriber routes default-deny all legacy operator endpoints. Granted read-only
+  projection contains Profile name/code/status/start date, current explicit fee terms
+  and confirmed (crystallised) period statement dates and financial values only:
+  eligible settled fee-base profit, management/investment fee amounts and total fee.
+  These are fee statements, not cash balances or a claim of complete betting P&L.
+  Draft/reopened statements, private notes, operational records and other Profiles
+  are excluded. No confirmed statement is an empty state, never an invented zero.
+- Grant revocation takes effect on every subsequent read and retains Profile/history.
+  Profile portable restore does not transfer invitations, identities or grants.
+- Additive migration008 creates workflow tables and the SQLite counterpart of the
+  existing Google identity table. Normal migration requires verified backup and
+  unchanged prior financial/data projections. No real invitation is created by tests.
+
+CP-056 audit receipts retain the exact command decision, actor role, contract version,
+prior/new application version/status/link and prior/new grant state. Public History
+shows the decision and applicant message; raw receipts and private notes stay private.
+Closed declined/withdrawn requests may be archived without deletion.
