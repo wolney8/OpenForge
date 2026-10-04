@@ -5,8 +5,14 @@ import { AccountMoneyStatus } from "@/components/account-money-status";
 import Link from "next/link";
 import { ReportExplorer } from "@/components/report-explorer";
 import { PeriodPnlReport } from "@/components/period-pnl-report";
+import { LedgerPagination } from "@/components/ledger-pagination";
 import { usePersistedState } from "@/lib/ledger-ui";
-import { restoreReportProfileSelection, type ReportProfileSelection } from "@/lib/report-profile-selection";
+import {
+  profileIdsForReportScope,
+  resolveReportProfileSelection,
+  type ReportProfileScopeMode,
+  type ReportProfileSelection,
+} from "@/lib/report-profile-selection";
 import { useRouter } from "next/navigation";
 import { type ComponentProps, useEffect, useMemo, useRef, useState } from "react";
 import { apiBaseUrl } from "@/lib/api";
@@ -14,7 +20,11 @@ import { beginRouteTransition, beginShellLoading, endShellLoading } from "@/lib/
 import { AccessScopeBadge } from "./access-scope-badge";
 import { FinancialValue as PlatformFinancialValue, FinancialValueReplayGroup, FinancialValueReplayRow } from "./financial-value";
 import { JsonRequestError, readCachedJson } from "@/lib/client-json-cache";
-import { fetchTrackerSummarySources } from "@/lib/tracker-summary-sources";
+import {
+  fetchCombinedTrackerSummarySources,
+  fetchTrackerSummarySources,
+  type TrackerSummarySources,
+} from "@/lib/tracker-summary-sources";
 import { resolveCrossProfileSummaryLoadIds } from "@/lib/cross-profile-load-scope";
 import {
   aggregateCrossProfileReporting,
@@ -101,6 +111,8 @@ const analyticsTabs: { id: AnalyticsTab; label: string }[] = [
 ];
 
 const directoryPageSize = 8;
+const reportProfilePickerPageSize = 16;
+const reportProfileTableDefaultPageSize = 16;
 const profileStatusOptions = ["Active", "Pending", "Inactive", "Paused", "Archived"];
 
 function normalizeProfileStatus(status: string) {
@@ -118,6 +130,12 @@ type ProfileLoadFailure = {
   displayName: string;
   message: string;
   status?: number;
+};
+
+type ProfileSourceLoadResult = {
+  profile: ProfileDescriptor;
+  sources?: TrackerSummarySources;
+  error?: unknown;
 };
 
 function ReportingCellLoading({ label }: { label: string }) {
@@ -149,6 +167,8 @@ function ReportTable({
   const [periodKey, setPeriodKey] = useState("");
   const [financialFilter, setFinancialFilter] =
     useState<FormalReportFinancialFilter>("all");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(16);
   const periodNoun = feeGranularity === "week" ? "weeks" : feeGranularity === "month" ? "months" : "years";
   const periodLimits = feeGranularity === "week" ? [3, 6, 12] : feeGranularity === "month" ? [3, 6, 12] : [3, 5];
   const filteredRows = filterFormalReportRows({
@@ -165,6 +185,11 @@ function ReportTable({
       return !(feeValues?.get(row.periodKey)?.crystallisedPeriodCount);
     },
   });
+  const pageCount = Math.max(1, Math.ceil(filteredRows.length / pageSize));
+  const visibleRows = filteredRows.slice(
+    (Math.min(page, pageCount) - 1) * pageSize,
+    Math.min(page, pageCount) * pageSize,
+  );
 
   return (
     <section className="content-subpanel stack">
@@ -181,6 +206,7 @@ function ReportTable({
                 onChange={(event) => {
                   setMaximumPeriods(event.target.value);
                   setPeriodKey("");
+                  setPage(1);
                 }}
                 value={maximumPeriods}
               >
@@ -198,7 +224,7 @@ function ReportTable({
               <select
                 aria-label={`${title} specific period`}
                 data-pd-id={`formal-reports.${feeGranularity}.specific-period`}
-                onChange={(event) => setPeriodKey(event.target.value)}
+                onChange={(event) => { setPeriodKey(event.target.value); setPage(1); }}
                 value={periodKey}
               >
                 <option value="">Any {feeGranularity}</option>
@@ -215,7 +241,7 @@ function ReportTable({
               <select
                 aria-label={`${title} financial result`}
                 data-pd-id={`formal-reports.${feeGranularity}.financial-result`}
-                onChange={(event) => setFinancialFilter(event.target.value as FormalReportFinancialFilter)}
+                onChange={(event) => { setFinancialFilter(event.target.value as FormalReportFinancialFilter); setPage(1); }}
                 value={financialFilter}
               >
                 <option value="all">All results</option>
@@ -231,6 +257,9 @@ function ReportTable({
           </label>
         </div>
       </div>
+      <LedgerPagination ariaLabel={title} currentPage={Math.min(page, pageCount)}
+        onPageChange={setPage} onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
+        pageCount={pageCount} pageSize={pageSize} position="top" totalRows={filteredRows.length} />
       <div className="table-shell">
         <table>
           <thead>
@@ -252,7 +281,7 @@ function ReportTable({
                 <td colSpan={9}>No formal report periods match these filters.</td>
               </tr>
             ) : (
-              filteredRows.map((row) => {
+              visibleRows.map((row) => {
                 const feeValue = feeValues?.get(row.periodKey);
                 const indicativeFeeValue = indicativeFeeValues?.get(row.periodKey);
                 const feeLabel =
@@ -299,6 +328,9 @@ function ReportTable({
           </tbody>
         </table>
       </div>
+      <LedgerPagination ariaLabel={title} currentPage={Math.min(page, pageCount)}
+        onPageChange={setPage} onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
+        pageCount={pageCount} pageSize={pageSize} position="bottom" totalRows={filteredRows.length} />
     </section>
   );
 }
@@ -372,14 +404,22 @@ export function CrossProfileAnalytics({
   );
   const [savedReportProfileIds, setSavedReportProfileIds] = usePersistedState<ReportProfileSelection | null>(
     "openforge-report-profile-selection", null);
+  const resolvedReportSelection = useMemo(
+    () => resolveReportProfileSelection(savedReportProfileIds, profiles),
+    [profiles, savedReportProfileIds]
+  );
   const selectedProfileIds = useMemo(() => {
     if (initialTab !== "reports") return localProfileIds;
-    return restoreReportProfileSelection(savedReportProfileIds, profiles, activeProfileIds);
-  }, [activeProfileIds, initialTab, localProfileIds, profiles, savedReportProfileIds]);
-  const setSelectedProfileIds = (next: string[] | ((ids: string[]) => string[])) => {
+    return resolvedReportSelection.selectedIds;
+  }, [initialTab, localProfileIds, resolvedReportSelection.selectedIds]);
+  const setSelectedProfileIds = (
+    next: string[] | ((ids: string[]) => string[]),
+    scope: ReportProfileScopeMode = "custom",
+  ) => {
     const ids = typeof next === "function" ? next(selectedProfileIds) : next;
     if (initialTab === "reports") setSavedReportProfileIds({ selectedIds: ids,
-      archivedIds: ids.filter((id) => profiles.some((profile) => profile.profileId === id && normalizeProfileStatus(profile.status) === "Archived")) });
+      archivedIds: ids.filter((id) => profiles.some((profile) => profile.profileId === id && normalizeProfileStatus(profile.status) === "Archived")),
+      scope });
     else setLocalProfileIds(ids);
   };
   const [datasets, setDatasets] = useState<Map<string, TrackerSummaryDataset>>(new Map());
@@ -391,6 +431,12 @@ export function CrossProfileAnalytics({
   const [directoryQuery, setDirectoryQuery] = useState("");
   const [directoryStatus, setDirectoryStatus] = useState<DirectoryStatus>(initialDirectoryStatus);
   const [directoryPage, setDirectoryPage] = useState(1);
+  const [reportProfilePickerQuery, setReportProfilePickerQuery] = useState("");
+  const [reportProfilePickerPage, setReportProfilePickerPage] = useState(1);
+  const [reportProfileTableQuery, setReportProfileTableQuery] = useState("");
+  const [reportProfileTableSort, setReportProfileTableSort] = useState("pnl-desc");
+  const [reportProfileTablePage, setReportProfileTablePage] = useState(1);
+  const [reportProfileTablePageSize, setReportProfileTablePageSize] = useState(reportProfileTableDefaultPageSize);
   const [pinnedProfileIds, setPinnedProfileIds] = useState<string[]>([]);
   const [detailProfileId, setDetailProfileId] = useState<string | null>(initialDetailProfileId ?? null);
   const [drawerNavigationLabel, setDrawerNavigationLabel] = useState("");
@@ -498,27 +544,31 @@ export function CrossProfileAnalytics({
     }, 0);
     if (!hasCompleteCriticalCache && initialTab !== "profiles") beginShellLoading();
 
-    void Promise.allSettled(
-      requestedProfiles.map(async (profile) => {
+    const loadProfiles = async (): Promise<ProfileSourceLoadResult[]> => {
+      if (initialTab === "reports") {
+        const sourcesByProfile = await fetchCombinedTrackerSummarySources(
+          resolvedReportSelection.scope,
+          requestedProfiles.map((profile) => profile.profileId),
+          { signal: controller.signal },
+        );
+        return requestedProfiles.map((profile) => {
+          const sources = sourcesByProfile.get(profile.profileId);
+          if (!sources) throw new Error(`Combined Reports source omitted ${profile.profileId}`);
+          return { profile, sources };
+        });
+      }
+      const settled = await Promise.allSettled(requestedProfiles.map(async (profile) => {
         const sources = await fetchTrackerSummarySources(profile.profileId, {
           signal: controller.signal,
         });
-        return {
-          profile,
-          dataset: {
-            accounts: sources.accounts,
-            sportsbookBets: sources.sportsbookBets,
-            freeBets: sources.freeBets,
-            casinoOffers: sources.casinoOffers,
-            cashAdjustments: sources.cashAdjustments,
-            eachWayExtraPlaces: sources.eachWayExtraPlaces,
-            balanceSnapshots: sources.balanceSnapshots,
-          },
-          periods: sources.feePeriods,
-          settings: sources.trackerSettings,
-        };
-      })
-    ).then((results) => {
+        return { profile, sources };
+      }));
+      return settled.map((result, index) => result.status === "fulfilled"
+        ? result.value
+        : { profile: requestedProfiles[index]!, error: result.reason });
+    };
+
+    void loadProfiles().then((results) => {
       if (controller.signal.aborted) {
         return;
       }
@@ -531,19 +581,26 @@ export function CrossProfileAnalytics({
       const nextFeePeriods = new Map<string, FeePeriodApiRecord[]>();
       const nextTrackerSettings = new Map<string, TrackerSettingsRecord>();
       const nextFailures: ProfileLoadFailure[] = [];
-      results.forEach((result, index) => {
-        const profile = requestedProfiles[index];
-        if (result.status === "fulfilled") {
-          nextDatasets.set(profile.profileId, result.value.dataset);
-          nextFeePeriods.set(profile.profileId, result.value.periods);
-          nextTrackerSettings.set(profile.profileId, result.value.settings);
+      results.forEach((result) => {
+        const profile = result.profile;
+        if (result.sources) {
+          nextDatasets.set(profile.profileId, {
+            accounts: result.sources.accounts,
+            sportsbookBets: result.sources.sportsbookBets,
+            freeBets: result.sources.freeBets,
+            casinoOffers: result.sources.casinoOffers,
+            cashAdjustments: result.sources.cashAdjustments,
+            eachWayExtraPlaces: result.sources.eachWayExtraPlaces,
+            balanceSnapshots: result.sources.balanceSnapshots,
+          });
+          nextFeePeriods.set(profile.profileId, result.sources.feePeriods);
+          nextTrackerSettings.set(profile.profileId, result.sources.trackerSettings);
         } else {
           nextFailures.push({
             profileId: profile.profileId,
             displayName: profile.displayName,
-            message:
-              result.reason instanceof Error ? result.reason.message : "Unknown profile load error",
-            status: result.reason instanceof JsonRequestError ? result.reason.status : undefined,
+            message: result.error instanceof Error ? result.error.message : "Unknown profile load error",
+            status: result.error instanceof JsonRequestError ? result.error.status : undefined,
           });
         }
       });
@@ -553,6 +610,17 @@ export function CrossProfileAnalytics({
       setFailures(nextFailures);
       setIsLoading(false);
       if (!hasCompleteCriticalCache && initialTab !== "profiles") endShellLoading();
+    }).catch((reason: unknown) => {
+      if (controller.signal.aborted) return;
+      if (stateTimer !== null) window.clearTimeout(stateTimer);
+      setFailures(requestedProfiles.map((profile) => ({
+        profileId: profile.profileId,
+        displayName: profile.displayName,
+        message: reason instanceof Error ? reason.message : "Unknown profile load error",
+        status: reason instanceof JsonRequestError ? reason.status : undefined,
+      })));
+      setIsLoading(false);
+      if (!hasCompleteCriticalCache && initialTab !== "profiles") endShellLoading();
     });
 
     return () => {
@@ -560,7 +628,7 @@ export function CrossProfileAnalytics({
       if (stateTimer !== null) window.clearTimeout(stateTimer);
       if (!hasCompleteCriticalCache && initialTab !== "profiles") endShellLoading();
     };
-  }, [initialTab, profiles, requestedProfileIds, loadRevision]);
+  }, [initialTab, profiles, requestedProfileIds, loadRevision, resolvedReportSelection.scope]);
 
   useEffect(() => {
     const retryableFailures = failures.filter((failure) => failure.status !== 404);
@@ -679,6 +747,27 @@ export function CrossProfileAnalytics({
   const selectedReadState = profileReadState(selectedProfileIds);
   const feeCentreReadState = profileReadState(profileRecords.map((profile) => profile.profileId), "fees");
 
+  const reportScopeMode = initialTab === "reports" ? resolvedReportSelection.scope : "custom";
+  const reportScopeLabel = reportScopeMode === "active"
+    ? `${selectedProfileIds.length} Active ${selectedProfileIds.length === 1 ? "Profile" : "Profiles"}`
+    : reportScopeMode === "inactive"
+      ? `${selectedProfileIds.length} Inactive ${selectedProfileIds.length === 1 ? "Profile" : "Profiles"}`
+      : reportScopeMode === "all"
+        ? `All Profiles · ${selectedProfileIds.length}`
+        : `Custom · ${selectedProfileIds.length} ${selectedProfileIds.length === 1 ? "Profile" : "Profiles"}`;
+  const reportPickerProfiles = useMemo(() => {
+    const query = reportProfilePickerQuery.trim().toLowerCase();
+    return profileRecords
+      .filter((profile) => !query || profile.displayName.toLowerCase().includes(query) ||
+        profile.profileCode.toLowerCase().includes(query))
+      .toSorted((left, right) => left.displayName.localeCompare(right.displayName));
+  }, [profileRecords, reportProfilePickerQuery]);
+  const reportPickerPageCount = Math.max(1, Math.ceil(reportPickerProfiles.length / reportProfilePickerPageSize));
+  const visibleReportPickerProfiles = reportPickerProfiles.slice(
+    (Math.min(reportProfilePickerPage, reportPickerPageCount) - 1) * reportProfilePickerPageSize,
+    Math.min(reportProfilePickerPage, reportPickerPageCount) * reportProfilePickerPageSize,
+  );
+
   const allProfilesCombined = useMemo(
     () => aggregateCrossProfileReporting(allProfileSummaries),
     [allProfileSummaries]
@@ -715,10 +804,6 @@ export function CrossProfileAnalytics({
     [feePeriods, profileRecords, resolvedRange.end, resolvedRange.start]
   );
 
-  const allProfilesFeePosition = useMemo(
-    () => combineFeePositions([...feePositionByProfile.values()]),
-    [feePositionByProfile]
-  );
   const activeProfilesFeePosition = useMemo(
     () => combineFeePositions(
       activeProfileIds.flatMap((profileId) => {
@@ -889,6 +974,29 @@ export function CrossProfileAnalytics({
     (directoryPage - 1) * directoryPageSize,
     directoryPage * directoryPageSize
   );
+  const reportProfileRows = useMemo(() => {
+    const query = reportProfileTableQuery.trim().toLowerCase();
+    return combined.profileRows
+      .filter((row) => !query || row.displayName.toLowerCase().includes(query) ||
+        row.profileCode.toLowerCase().includes(query))
+      .toSorted((left, right) => {
+        if (reportProfileTableSort === "profile-asc") return left.displayName.localeCompare(right.displayName);
+        if (reportProfileTableSort === "pnl-asc") {
+          if (!Number.isFinite(left.grossBettingPnl)) return Number.isFinite(right.grossBettingPnl) ? 1 : left.displayName.localeCompare(right.displayName);
+          if (!Number.isFinite(right.grossBettingPnl)) return -1;
+          return left.grossBettingPnl - right.grossBettingPnl || left.displayName.localeCompare(right.displayName);
+        }
+        if (reportProfileTableSort === "open-desc") return right.openBets - left.openBets || left.displayName.localeCompare(right.displayName);
+        if (!Number.isFinite(left.grossBettingPnl)) return Number.isFinite(right.grossBettingPnl) ? 1 : left.displayName.localeCompare(right.displayName);
+        if (!Number.isFinite(right.grossBettingPnl)) return -1;
+        return right.grossBettingPnl - left.grossBettingPnl || left.displayName.localeCompare(right.displayName);
+      });
+  }, [combined.profileRows, reportProfileTableQuery, reportProfileTableSort]);
+  const reportProfileTablePageCount = Math.max(1, Math.ceil(reportProfileRows.length / reportProfileTablePageSize));
+  const visibleReportProfileRows = reportProfileRows.slice(
+    (Math.min(reportProfileTablePage, reportProfileTablePageCount) - 1) * reportProfileTablePageSize,
+    Math.min(reportProfileTablePage, reportProfileTablePageCount) * reportProfileTablePageSize,
+  );
   const detailProfile = profileRecords.find((profile) => profile.profileId === detailProfileId);
   const detailSummary = trackerRangeProfileSummaries.find(
     (profile) => profile.profileId === detailProfileId
@@ -1033,32 +1141,61 @@ export function CrossProfileAnalytics({
         className={`fund-manager-control-bar${activeTab === "profiles" ? " is-directory" : " is-analytics"}`}
       >
         {activeTab !== "profiles" && activeTab !== "fees" ? (
-        <details className="profile-report-picker fund-manager-control-slot-profile">
+        <details className="profile-report-picker fund-manager-control-slot-profile" data-pd-id="reports.profile-scope">
         <summary>
           <span aria-hidden="true" className="material-symbols-outlined">
             group
           </span>
-          Profiles
-          <span className="profile-picker-count">
-            {selectedProfileIds.length} of {profileRecords.length}
-          </span>
+          <span>{initialTab === "reports" ? "Profile Scope" : "Profiles"}</span>
+          <span className="profile-picker-count">{initialTab === "reports" ? reportScopeLabel : `${selectedProfileIds.length} of ${profileRecords.length}`}</span>
         </summary>
         <fieldset>
-          <legend>Profiles included in combined analytics</legend>
-          <div className="profile-picker-actions">
-            <p className="field-hint profile-picker-guidance">
-              Active Profiles are included by default. Select an archived Profile deliberately to include its retained history.
-            </p>
-            <button
-              className="button-link"
-              onClick={() => setSelectedProfileIds(activeProfileIds)}
-              type="button"
-            >
-              Select active
-            </button>
-          </div>
-          <div className="profile-picker-options">
-            {profileRecords.map((profile) => {
+          <legend>{initialTab === "reports" ? "Profiles Included In Reports" : "Profiles included in combined analytics"}</legend>
+          {initialTab === "reports" ? <>
+          <label className="m3-picker-field report-profile-scope-mode">
+            <span className="m3-picker-label">Profile scope</span>
+            <span className="m3-picker-control">
+              <span aria-hidden="true" className="material-symbols-outlined">filter_alt</span>
+              <select
+                aria-label="Report Profile scope"
+                onChange={(event) => {
+                  const scope = event.target.value as ReportProfileScopeMode;
+                  if (scope === "custom") {
+                    setSelectedProfileIds(selectedProfileIds, "custom");
+                  } else {
+                    setSelectedProfileIds(profileIdsForReportScope(scope, profileRecords), scope);
+                  }
+                  setReportProfilePickerPage(1);
+                  setReportProfileTablePage(1);
+                }}
+                value={reportScopeMode}
+              >
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+                <option value="all">All</option>
+                <option value="custom">Custom</option>
+              </select>
+            </span>
+          </label>
+          <p className="field-hint profile-picker-guidance">
+            Active Profiles are the default. Inactive includes retained non-Active Profiles only when deliberately selected.
+          </p>
+          {reportScopeMode === "custom" ? <>
+          <label className="m3-picker-field report-profile-picker-search">
+            <span className="m3-picker-label">Find a Profile</span>
+            <span className="m3-picker-control">
+              <span aria-hidden="true" className="material-symbols-outlined">search</span>
+              <input aria-label="Search Report Profiles" type="search" value={reportProfilePickerQuery}
+                onChange={(event) => { setReportProfilePickerQuery(event.target.value); setReportProfilePickerPage(1); }} />
+            </span>
+          </label>
+          <p className="field-hint">{selectedProfileIds.length} selected · showing at most {reportProfilePickerPageSize} Profiles per page.</p>
+          <button className="button-link" disabled={reportPickerProfiles.length === 0}
+            onClick={() => { setSelectedProfileIds(reportPickerProfiles.map((profile) => profile.profileId), "custom"); setReportProfileTablePage(1); }} type="button">
+            Use Matching Profiles
+          </button>
+          <div className="profile-picker-options" data-pd-id="reports.profile-scope.options">
+            {visibleReportPickerProfiles.map((profile) => {
               const isSelected = selectedProfileIds.includes(profile.profileId);
               return (
                 <label className={`profile-filter-chip${isSelected ? " is-selected" : ""}`} key={profile.profileId}>
@@ -1074,6 +1211,31 @@ export function CrossProfileAnalytics({
               );
             })}
           </div>
+          {reportPickerProfiles.length === 0 ? <p role="status">No Profiles match this search.</p> : null}
+          <div className="directory-pagination" aria-label="Custom Profile selection pagination">
+            <button className="button-link" disabled={reportProfilePickerPage <= 1}
+              onClick={() => setReportProfilePickerPage((page) => Math.max(1, page - 1))} type="button">Previous</button>
+            <span>Page {Math.min(reportProfilePickerPage, reportPickerPageCount)} of {reportPickerPageCount}</span>
+            <button className="button-link" disabled={reportProfilePickerPage >= reportPickerPageCount}
+              onClick={() => setReportProfilePickerPage((page) => Math.min(reportPickerPageCount, page + 1))} type="button">Next</button>
+          </div>
+          </> : null}
+          </> : <>
+          <div className="profile-picker-actions">
+            <p className="field-hint profile-picker-guidance">Active Profiles are included by default.</p>
+            <button className="button-link" onClick={() => setSelectedProfileIds(activeProfileIds)} type="button">Select active</button>
+          </div>
+          <div className="profile-picker-options">
+            {profileRecords.map((profile) => {
+              const isSelected = selectedProfileIds.includes(profile.profileId);
+              return <label className={`profile-filter-chip${isSelected ? " is-selected" : ""}`} key={profile.profileId}>
+                <input aria-label={`${profile.displayName} ${profile.profileCode}`} checked={isSelected}
+                  disabled={isSelected && selectedProfileIds.length === 1} onChange={() => toggleProfile(profile.profileId)} type="checkbox" />
+                <span>{profile.displayName}{normalizeProfileStatus(profile.status) === "Archived" ? " (Archived)" : ""}</span><small>{profile.profileCode}</small>
+              </label>;
+            })}
+          </div>
+          </>}
         </fieldset>
         </details>
         ) : null}
@@ -1132,7 +1294,7 @@ export function CrossProfileAnalytics({
             </span>
           </label>
         ) : null}
-        {activeTab !== "reports" && activeTab !== "fees" ? (
+        {activeTab !== "fees" ? (
         <div className="compact-report-controls fund-manager-control-slot-range">
           <label className="m3-picker-field">
             <span className="m3-picker-label">Date range</span>
@@ -1206,8 +1368,9 @@ export function CrossProfileAnalytics({
           </strong>{" "}
           {failures
             .filter((failure) => selectedProfileIds.includes(failure.profileId))
+            .slice(0, 3)
             .map((failure) => failure.displayName)
-            .join(", ")} are unavailable. Summary cards require complete reads; other breakdowns contain only the known Profile rows.
+            .join(", ")}{failures.filter((failure) => selectedProfileIds.includes(failure.profileId)).length > 3 ? " and others" : ""} are unavailable. Summary cards require complete reads; other breakdowns contain only the known Profile rows.
         </div>
       ) : null}
 
@@ -1233,7 +1396,7 @@ export function CrossProfileAnalytics({
             </strong>
             <div className="dashboard-point-rail profiles-command-rail" aria-label="Fund Manager command metrics">
               <span>
-                <small>Active Profiles</small>
+                <small>{activeTab === "reports" ? "Profiles In Scope" : "Active Profiles"}</small>
                 {selectedProfileIds.length}
               </span>
               <span>
@@ -1242,7 +1405,7 @@ export function CrossProfileAnalytics({
               </span>
               <span>
                 <small>Cash Snapshot</small>
-                <FinancialReadValue state={headlineReadState} subject="Account cash" value={trackerRangeActiveProfilesCombined.totals.cashSnapshot} />
+                <FinancialReadValue state={activeTab === "reports" ? selectedReadState : headlineReadState} subject="Account cash" value={activeTab === "reports" ? combined.totals.cashSnapshot : trackerRangeActiveProfilesCombined.totals.cashSnapshot} />
               </span>
               <span>
                 <small>Fee Position</small>
@@ -1549,14 +1712,49 @@ export function CrossProfileAnalytics({
             id="analytics-panel-reports"
             role="tabpanel"
           >
-          <ReportExplorer contextKey="combined" state={selectedReadState}
-            scopes={profileRecords.filter((p)=>selectedProfileIds.includes(p.profileId)).flatMap(p=>{const dataset=datasets.get(p.profileId);return dataset?[{profileId:p.profileId,label:p.displayName,dataset}]:[];})} />
           <PeriodPnlReport rows={formalCombined.weeklyReports} contextKey="combined"
+            scopeLabel={reportScopeLabel}
             scopes={profileRecords.filter((profile) => selectedProfileIds.includes(profile.profileId))
               .flatMap((profile) => {
                 const dataset = datasets.get(profile.profileId);
                 return dataset ? [{ profileId: profile.profileId, label: profile.displayName, dataset }] : [];
               })} />
+          <section className="content-subpanel stack" data-pd-id="reports.category-breakdown">
+            <div className="section-heading-row"><div><span className="eyebrow">Selected Range</span><h3>P&amp;L Breakdown</h3></div></div>
+            <p className="field-hint">{reportScopeLabel} · {preset}. Existing governed category values; cash movements remain separate.</p>
+            <div className="table-shell"><table className="profile-analytics-table">
+              <thead><tr><th scope="col">Category</th><th scope="col">Records</th><th scope="col">P&amp;L</th></tr></thead>
+              <tbody>{combined.moduleBreakdown.length ? combined.moduleBreakdown.map((row) => (
+                <FinancialValueReplayRow key={row.moduleKey}><td>{row.label}</td><td>{row.rowCount}</td><td><FinancialReadValue state={selectedReadState} subject={`${row.label} profit and loss`} value={row.reportingValue} /></td></FinancialValueReplayRow>
+              )) : <tr><td colSpan={3}>No report categories are in this scope and range.</td></tr>}</tbody>
+            </table></div>
+          </section>
+          <details className="content-subpanel report-progressive-section" data-pd-id="reports.explorer-disclosure">
+            <summary><span><strong>Trend And Activity Explorer</strong><small>Change metric, grouping and canonical filters</small></span></summary>
+            <ReportExplorer contextKey="combined" state={selectedReadState} scopeLabel={reportScopeLabel}
+              scopes={profileRecords.filter((p)=>selectedProfileIds.includes(p.profileId)).flatMap(p=>{const dataset=datasets.get(p.profileId);return dataset?[{profileId:p.profileId,label:p.displayName,dataset}]:[];})} />
+          </details>
+          <section className="content-subpanel stack" data-pd-id="reports.profile-performance">
+            <div className="section-heading-row formal-report-section-heading">
+              <div><span className="eyebrow">Profile Comparison</span><h3>Profile Performance</h3></div>
+              <div className="compact-report-controls formal-report-section-controls reports-profile-controls">
+                <label className="m3-picker-field"><span className="m3-picker-label">Find a Profile</span><span className="m3-picker-control"><span aria-hidden="true" className="material-symbols-outlined">search</span><input aria-label="Search Profile Performance" type="search" value={reportProfileTableQuery} onChange={(event) => { setReportProfileTableQuery(event.target.value); setReportProfileTablePage(1); }} /></span></label>
+                <label className="m3-picker-field"><span className="m3-picker-label">Sort Profiles</span><span className="m3-picker-control"><span aria-hidden="true" className="material-symbols-outlined">sort</span><select aria-label="Sort Profile Performance" value={reportProfileTableSort} onChange={(event) => { setReportProfileTableSort(event.target.value); setReportProfileTablePage(1); }}><option value="pnl-desc">P&amp;L High To Low</option><option value="pnl-asc">P&amp;L Low To High</option><option value="profile-asc">Profile A–Z</option><option value="open-desc">Open Items High To Low</option></select></span></label>
+              </div>
+            </div>
+            <LedgerPagination ariaLabel="Profile Performance" currentPage={Math.min(reportProfileTablePage, reportProfileTablePageCount)} onPageChange={setReportProfileTablePage} onPageSizeChange={(size) => { setReportProfileTablePageSize(size); setReportProfileTablePage(1); }} pageCount={reportProfileTablePageCount} pageSize={reportProfileTablePageSize} position="top" totalRows={reportProfileRows.length} />
+            <div className="table-shell"><table className="profile-analytics-table"><thead><tr><th scope="col">Profile</th><th scope="col">Status</th><th scope="col">Betting P&amp;L</th><th scope="col">Retained Profit</th><th scope="col">Open Items</th><th scope="col">Report</th></tr></thead><tbody>
+              {visibleReportProfileRows.length ? visibleReportProfileRows.map((row) => <FinancialValueReplayRow key={row.profileId} data-pd-id={`reports.profile.${row.profileId}`}>
+                <td><strong>{row.displayName}</strong><br /><small>{row.profileCode}</small></td><td><span className="table-chip">{normalizeProfileStatus(row.status)}</span></td>
+                <td><FinancialReadValue state={profileReadState([row.profileId])} subject={`${row.displayName} betting profit and loss`} value={row.grossBettingPnl} /></td><td><FinancialReadValue state={profileReadState([row.profileId])} subject={`${row.displayName} retained profit`} value={row.retainedProfit} /></td><td>{row.openBets}</td>
+                <td><Link className="report-value-link" href={`/profiles/${row.profileId}/tracker/reports?source=combined-reports`}><span className="material-symbols-outlined" aria-hidden="true">open_in_new</span>View Report</Link></td>
+              </FinancialValueReplayRow>) : <tr><td colSpan={6}>No Profiles match this scope and search.</td></tr>}
+            </tbody></table></div>
+            <LedgerPagination ariaLabel="Profile Performance" currentPage={Math.min(reportProfileTablePage, reportProfileTablePageCount)} onPageChange={setReportProfileTablePage} onPageSizeChange={(size) => { setReportProfileTablePageSize(size); setReportProfileTablePage(1); }} pageCount={reportProfileTablePageCount} pageSize={reportProfileTablePageSize} position="bottom" totalRows={reportProfileRows.length} />
+          </section>
+          <details className="content-subpanel report-progressive-section" data-pd-id="reports.formal-detail">
+          <summary><span><strong>Detailed Formal Reports</strong><small>Weekly, monthly, yearly and balance history</small></span></summary>
+          <div className="stack report-progressive-content">
           <ReportTable
             feeGranularity="week"
             feeHeading="Indicative Fee Impact"
@@ -1652,6 +1850,8 @@ export function CrossProfileAnalytics({
               </table>
             </div>
           </section>
+          </div>
+          </details>
           </section>
           ) : null}
         </>

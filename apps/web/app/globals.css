@@ -2073,6 +2073,172 @@ html[data-theme="dark"] .notification-count-badge {
   min-width: 0;
 }
 
+.daily-tasks-page .content-panel > *,
+.daily-task-tabs {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.daily-task-tabs > button {
+  display: inline-flex;
+  flex: 1 0 max-content;
+  min-height: 3rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 750;
+}
+
+.daily-task-tabs > button:hover,
+.daily-task-tabs > button.is-active {
+  background: var(--primary-soft);
+  color: var(--primary-strong);
+}
+
+.daily-task-tabs > button:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.daily-task-tabs > button > span {
+  min-width: 1.65rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  background: var(--surface-container-high);
+  color: var(--text);
+  font-size: 0.78rem;
+}
+
+.daily-task-toolbar,
+.daily-task-primary-controls,
+.daily-task-filter-grid,
+.daily-task-table-scroll,
+.daily-task-name {
+  min-width: 0;
+}
+
+.daily-task-primary-controls {
+  align-items: end;
+}
+
+.daily-task-filter-disclosure {
+  padding: 0;
+  overflow: hidden;
+}
+
+.daily-task-filter-disclosure > summary {
+  min-height: 2.75rem;
+  padding: 0.8rem 1rem;
+  cursor: pointer;
+  font-weight: 750;
+}
+
+.daily-task-filter-disclosure > summary:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: -3px;
+}
+
+.daily-task-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+  padding: 0 1rem 1rem;
+}
+
+.daily-task-table {
+  min-width: 78rem;
+}
+
+.daily-task-table th,
+.daily-task-table td {
+  vertical-align: top;
+}
+
+.daily-task-table th:nth-child(2) {
+  min-width: 18rem;
+}
+
+.daily-task-name {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.daily-task-name small,
+.daily-task-name details p {
+  color: var(--muted);
+}
+
+.daily-task-name details summary {
+  width: max-content;
+  max-width: 100%;
+  cursor: pointer;
+  color: var(--primary-strong);
+  font-weight: 700;
+}
+
+.daily-task-name details p {
+  max-width: 38rem;
+  margin: 0.35rem 0 0;
+  overflow-wrap: anywhere;
+}
+
+.daily-task-priority,
+.daily-task-due {
+  white-space: nowrap;
+}
+
+.daily-task-priority-high,
+.daily-task-due-overdue {
+  border-color: color-mix(in srgb, var(--danger) 55%, var(--outline));
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.daily-task-priority-medium,
+.daily-task-due-today {
+  border-color: color-mix(in srgb, var(--warning) 55%, var(--outline));
+  background: color-mix(in srgb, var(--warning) 13%, var(--surface-container));
+  color: var(--text);
+}
+
+.daily-task-priority-low,
+.daily-task-due-upcoming,
+.daily-task-due-completed {
+  background: var(--surface-container-high);
+  color: var(--muted);
+}
+
+.daily-task-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--action-group-gap);
+}
+
+.daily-task-actions .button-link,
+.daily-task-actions .icon-button {
+  min-height: 2.75rem;
+}
+
+@media (max-width: 860px) {
+  .daily-task-filter-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .daily-task-filter-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 @media (max-width: 860px) {
   .notification-history-actions {
     justify-content: flex-start;
@@ -3687,6 +3853,46 @@ html[data-theme="dark"] .notification-count-badge {
 .profile-picker-options {
   display: grid;
   gap: 0.55rem;
+}
+
+.report-profile-scope-mode,
+.report-profile-picker-search {
+  width: 100%;
+  margin-bottom: 0.75rem;
+}
+
+.report-progressive-section {
+  padding: 0;
+  overflow: clip;
+}
+
+.report-progressive-section > summary {
+  min-height: 3.5rem;
+  padding: 1rem 1.1rem;
+  cursor: pointer;
+}
+
+.report-progressive-section > summary > span {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.report-progressive-section > summary small {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.report-progressive-section[open] > summary {
+  border-bottom: 1px solid var(--outline);
+}
+
+.report-progressive-section > [data-pd-id="reports.explorer"],
+.report-progressive-content {
+  margin: 1rem;
+}
+
+.reports-profile-controls {
+  grid-template-columns: repeat(2, minmax(12rem, 1fr));
 }
 
 .profile-filter-chip {

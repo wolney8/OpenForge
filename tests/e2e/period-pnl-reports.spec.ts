@@ -30,8 +30,9 @@ test("period P&L reconciles source records and retains selected scope, week and 
   test.skip(process.env.OPENFORGE_HOSTED_PREVIEW_GATE !== "true", "Explicit isolated/Preview acceptance only");
   test.setTimeout(300_000);
   const health = await (await page.request.get(process.env.OPENFORGE_E2E_HEALTH_URL || "/healthz")).json();
-  expect(["test", "preview"]).toContain(health.runtime_role);
+  expect(["test", "preview", "candidate"]).toContain(health.runtime_role);
   if (health.runtime_role === "preview") expect(health.database_identity).toBe("preview:plum_duff_preview_cp028");
+  if (health.runtime_role === "candidate") expect(health.database_identity).toBe("cp058-owner-review-synthetic");
   expect((await page.request.get("/api/auth/session")).status()).toBe(200);
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
@@ -137,17 +138,18 @@ test("period P&L reconciles source records and retains selected scope, week and 
     await page.goto("/reports");
     await expect(preset).toBeVisible({ timeout: 90_000 });
     const picker = page.locator(".profile-report-picker");
+    await expect(picker.locator("summary")).toContainText(/\d+ Active Profiles?/);
+    await expect(picker.locator("summary")).not.toContainText("Synthetic CP038 A " + suffix);
     await picker.locator("summary").click();
-    await expect(picker.getByRole("checkbox").filter({ visible: true }).last()).toBeVisible();
+    await picker.getByLabel("Report Profile scope").selectOption("custom");
+    await picker.getByLabel("Search Report Profiles").fill(suffix);
+    await picker.getByRole("button", { name: "Use Matching Profiles" }).click();
+    await expect(picker.getByRole("checkbox").filter({ visible: true })).toHaveCount(3);
     const archivedBox = picker.locator("label").filter({ hasText: "Synthetic CP038 Archived " + suffix }).getByRole("checkbox");
-    await expect(archivedBox).not.toBeChecked();
+    await expect(archivedBox).toBeChecked();
     const aBox = picker.locator("label").filter({ hasText: "Synthetic CP038 A " + suffix }).getByRole("checkbox");
     const bBox = picker.locator("label").filter({ hasText: "Synthetic CP038 B " + suffix }).getByRole("checkbox");
-    await aBox.check(); await bBox.check();
-    for (const checkbox of await picker.getByRole("checkbox").all()) {
-      const label = await checkbox.locator("..").innerText();
-      if (!label.includes("Synthetic CP038 A " + suffix) && !label.includes("Synthetic CP038 B " + suffix) && await checkbox.isChecked()) await checkbox.uncheck();
-    }
+    await expect(aBox).toBeChecked(); await expect(bBox).toBeChecked(); await archivedBox.uncheck();
     await picker.locator("summary").click();
     await week.fill("2026-09-21");
     await expect(total).toHaveAttribute("aria-label", "£ 2.00", { timeout: 60_000 });

@@ -230,6 +230,7 @@ def test_entire_flow_retry_privacy_and_no_financial_movement(environment):
         ("GET", "/fund-manager/preferences"),
         ("GET", "/bookmaker-catalogue"),
         ("GET", "/profiles/other/tracker-summary-sources"),
+        ("POST", "/reports/combined-summary-sources"),
         ("GET", "/search"),
         ("POST", "/profiles/other/sportsbook-bets"),
         ("PATCH", "/profiles/other/free-bets/one"),

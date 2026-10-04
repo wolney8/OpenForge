@@ -1,12 +1,14 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   defaultFundManagerNotificationPreferences,
+  deriveDailyTaskView,
   currentDailyTasks,
   canCompleteNotification,
   canViewerReceiveNotification,
   dismissNotificationIds,
   emptyNotificationViewState,
   filterNotificationsByPreferences,
+  filterAndSortDailyTasks,
   filterNotificationHistory,
   filterFundManagerNotificationsForViewer,
   formatUnreadNotificationCount,
@@ -19,6 +21,7 @@ import {
   normalizeFundManagerNotificationPreferences,
   normalizeNotificationViewState,
   persistNotificationState,
+  restoreNotificationIds,
   type FundManagerNotification,
 } from "./notifications";
 
@@ -182,6 +185,43 @@ describe("fund manager notification view state", () => {
       doneNotification,
     ]);
     expect(getUnreadNotificationCount([doneNotification], emptyNotificationViewState)).toBe(0);
+  });
+
+  it("classifies deterministic tasks into Today, Upcoming, Overdue and Completed without inventing confidence", () => {
+    const now = new Date("2026-07-23T12:00:00Z");
+    const today = deriveDailyTaskView(notifications[0], emptyNotificationViewState, now);
+    const upcoming = deriveDailyTaskView({ ...notifications[0], notification_id: "UPCOMING", due_at: "2026-07-24T12:00:00Z" }, emptyNotificationViewState, now);
+    const overdue = deriveDailyTaskView(notifications[1], emptyNotificationViewState, now);
+    const completedState = dismissNotificationIds(emptyNotificationViewState, [notifications[0].notification_id]);
+    const completed = deriveDailyTaskView(notifications[0], completedState, now);
+    const undated = deriveDailyTaskView({ ...notifications[0], notification_id: "UNDATED", due_at: "", notification_type: "account_review" }, emptyNotificationViewState, now);
+
+    expect(today).toMatchObject({ dueState: "today", priority: "medium", source: "deterministic", confidence: null });
+    expect(upcoming.dueState).toBe("upcoming");
+    expect(overdue).toMatchObject({ dueState: "overdue", priority: "high" });
+    expect(completed.dueState).toBe("completed");
+    expect(undated).toMatchObject({ dueState: "today", dueLabel: "Ready now · no deadline", priority: "low" });
+  });
+
+  it("filters Daily Tasks by Profile, bookmaker, type, source and search then sorts predictably", () => {
+    const now = new Date("2026-07-23T12:00:00Z");
+    const tasks = [
+      deriveDailyTaskView(notifications[0], emptyNotificationViewState, now),
+      deriveDailyTaskView({ ...notifications[0], notification_id: "NOTICE-003", profile_id: "PROFILE-003", profile_name: "User 003", bookmaker_label: "Bookmaker C", notification_type: "account_review", due_at: "" }, emptyNotificationViewState, now),
+    ];
+    const base = { dueState: "today" as const, profileId: "all", bookmaker: "all", notificationType: "all", source: "all" as const, query: "", sort: "priority" as const };
+    expect(filterAndSortDailyTasks(tasks, base).map((task) => task.notification.notification_id)).toEqual(["NOTICE-001", "NOTICE-003"]);
+    expect(filterAndSortDailyTasks(tasks, { ...base, profileId: "PROFILE-003" })).toHaveLength(1);
+    expect(filterAndSortDailyTasks(tasks, { ...base, bookmaker: "Bookmaker A" })).toHaveLength(1);
+    expect(filterAndSortDailyTasks(tasks, { ...base, notificationType: "account_review" })).toHaveLength(1);
+    expect(filterAndSortDailyTasks(tasks, { ...base, source: "deterministic" })).toHaveLength(2);
+    expect(filterAndSortDailyTasks(tasks, { ...base, query: "User 003" })).toHaveLength(1);
+    expect(filterAndSortDailyTasks(tasks, { ...base, sort: "profile" }).map((task) => task.notification.profile_name)).toEqual(["User 001", "User 003"]);
+  });
+
+  it("restores only the selected completed task identity", () => {
+    const state = dismissNotificationIds(emptyNotificationViewState, ["NOTICE-001", "NOTICE-002"]);
+    expect(restoreNotificationIds(state, ["NOTICE-001"]).dismissedIds).toEqual(["NOTICE-002"]);
   });
 
   it("advances one reminder through due-day, four-hour and two-hour attention stages", () => {

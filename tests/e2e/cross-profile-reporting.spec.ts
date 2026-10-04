@@ -12,16 +12,6 @@ test("Fund Manager Profiles exposes future Subscriber and access boundaries with
 });
 
 const apiBaseUrl = "http://127.0.0.1:8010";
-const profileIds = ["profile-demo-001", "profile-demo-002"];
-const sourcePaths = [
-  "accounts",
-  "sportsbook-bets",
-  "free-bets",
-  "casino-offers",
-  "cash-adjustments",
-  "balance-snapshots",
-  "fee-periods",
-];
 
 function mockFeePeriod(profileId: string) {
   const crystallised = profileId === "profile-demo-001";
@@ -44,16 +34,11 @@ function mockFeePeriod(profileId: string) {
 }
 
 function waitForCombinedSources(page: Page) {
-  return Promise.all(
-    profileIds.flatMap((profileId) =>
-      sourcePaths.map((path) =>
-        page.waitForResponse(
-          (response) =>
-            response.url() === `${apiBaseUrl}/profiles/${profileId}/${path}` && response.ok(),
-          { timeout: 60_000 }
-        )
-      )
-    )
+  return page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname.endsWith("/reports/combined-summary-sources")
+      && response.ok(),
+    { timeout: 60_000 }
   );
 }
 
@@ -178,7 +163,11 @@ test("profiles exposes aggregate-only cross-profile reporting", async ({ page })
   await expect(feesTabReviewDialog).toBeHidden();
 
   await analytics.getByRole("tab", { name: "Formal Reports" }).click();
-  await expect(analytics.getByLabel("Date range")).toHaveCount(0);
+  await expect(analytics.getByLabel("Date range")).toBeVisible();
+  await expect(analytics.getByRole("heading", { name: "Period P&L" })).toBeVisible();
+  await expect(analytics.getByRole("heading", { name: "P&L Breakdown" })).toBeVisible();
+  await expect(analytics.getByRole("heading", { name: "Profile Performance" })).toBeVisible();
+  await analytics.locator('[data-pd-id="reports.formal-detail"] > summary').click();
   await expect(analytics.getByRole("heading", { name: "Combined Weekly Reports" })).toBeVisible();
   await expect(analytics.getByRole("heading", { name: "Combined Monthly Reports" })).toBeVisible();
   await expect(analytics.getByRole("heading", { name: "Combined Yearly Reports" })).toBeVisible();
@@ -231,7 +220,7 @@ test("profiles exposes aggregate-only cross-profile reporting", async ({ page })
   await analytics.locator("details.profile-report-picker > summary").click();
   await analytics.getByRole("checkbox", { name: /BRAVO-002/ }).uncheck();
   await expect(analytics.locator("details.profile-report-picker > summary")).toContainText("1 of 2");
-  await analytics.getByRole("button", { name: "Select all" }).click();
+  await analytics.getByRole("button", { name: "Select active" }).click();
   await expect(analytics.locator("details.profile-report-picker > summary")).toContainText("2 of 2");
   await analytics.locator("details.profile-report-picker > summary").click();
 

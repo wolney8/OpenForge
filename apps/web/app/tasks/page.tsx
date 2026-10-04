@@ -1,5 +1,5 @@
-import { NotificationHistoryPage } from "@/components/notification-history-page";
+import { DailyTasksPage as DailyTasksWorkspace } from "@/components/daily-tasks-page";
 
 export default function DailyTasksPage() {
-  return <NotificationHistoryPage daily />;
+  return <DailyTasksWorkspace />;
 }

@@ -16,8 +16,8 @@ type Selection = { maximum: string; week: string; filter: string; point: string 
 const defaults: Selection = { maximum: "all", week: "", filter: "all", point: "" };
 const filters = ["all", "positive-pnl", "negative-pnl"];
 
-export function PeriodPnlReport({ rows, scopes, contextKey }: {
-  rows: ReportRow[]; scopes: Scope[]; contextKey: string;
+export function PeriodPnlReport({ rows, scopes, contextKey, scopeLabel }: {
+  rows: ReportRow[]; scopes: Scope[]; contextKey: string; scopeLabel?: string;
 }) {
   // Existing UI preference storage, not a saved-preset/domain object.
   const [stored, setSelection] = usePersistedState<Selection>(
@@ -75,7 +75,7 @@ export function PeriodPnlReport({ rows, scopes, contextKey }: {
       </div>
     </div>
     <p className="field-hint">Weekly betting P&amp;L · before management fees · includes eligible current values.
-      {" "}Scope: {scopes.map((scope) => scope.label).join(", ") || "No Profiles"}.
+      {" "}Scope: {scopeLabel ?? (scopes.map((scope) => scope.label).join(", ") || "No Profiles")}.
       {" "}{selection.week ? "Week commencing " + formatHumanDisplayDate(selection.week, false) + " (Monday–Sunday)." : "All selected weeks (Monday–Sunday)."}
     </p>
     <dl className="dashboard-focus-list">

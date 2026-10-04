@@ -399,6 +399,119 @@ export function getVisibleNotifications(
 
 export type NotificationHistoryStatus = "all" | "new" | "done" | "cleared";
 
+export type DailyTaskDueState = "today" | "upcoming" | "overdue" | "completed";
+export type DailyTaskPriority = "high" | "medium" | "low";
+export type DailyTaskSource = "deterministic" | "recurring" | "ai";
+export type DailyTaskSort = "priority" | "due" | "profile" | "bookmaker";
+
+export type DailyTaskView = {
+  notification: FundManagerNotification;
+  dueState: DailyTaskDueState;
+  dueLabel: string;
+  priority: DailyTaskPriority;
+  source: DailyTaskSource;
+  confidence: number | null;
+  evidence: string;
+};
+
+function londonDateKey(value: Date): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/London",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(value);
+}
+
+export function deriveDailyTaskView(
+  notification: FundManagerNotification,
+  viewState: NotificationViewState,
+  now: Date = new Date()
+): DailyTaskView {
+  const completed =
+    notification.task_state === "done" || isNotificationCleared(notification, viewState);
+  const parsedDue = new Date(notification.due_at);
+  const hasDue = notification.due_at.trim().length > 0 && !Number.isNaN(parsedDue.getTime());
+  const todayKey = londonDateKey(now);
+  const dueKey = hasDue ? londonDateKey(parsedDue) : "";
+  const dueState: DailyTaskDueState = completed
+    ? "completed"
+    : !hasDue
+      ? "today"
+      : dueKey < todayKey
+        ? "overdue"
+        : dueKey === todayKey
+          ? "today"
+          : "upcoming";
+  const priority: DailyTaskPriority = completed
+    ? "low"
+    : dueState === "overdue"
+      ? "high"
+      : notification.notification_type === "free_bet_expiry" && dueState === "today"
+        ? "high"
+        : notification.notification_type === "account_review"
+          ? "low"
+          : "medium";
+  const dueLabel = completed
+    ? "Completed"
+    : hasDue
+      ? formatNotificationDue(notification.due_at)
+      : "Ready now · no deadline";
+  return {
+    notification,
+    dueState,
+    dueLabel,
+    priority,
+    source: "deterministic",
+    confidence: null,
+    evidence: notification.message,
+  };
+}
+
+const priorityRank: Record<DailyTaskPriority, number> = { high: 0, medium: 1, low: 2 };
+
+export function filterAndSortDailyTasks(
+  tasks: DailyTaskView[],
+  options: {
+    dueState: DailyTaskDueState;
+    profileId: string;
+    bookmaker: string;
+    notificationType: string;
+    source: DailyTaskSource | "all";
+    query: string;
+    sort: DailyTaskSort;
+  }
+): DailyTaskView[] {
+  const normalizedQuery = options.query.trim().toLocaleLowerCase();
+  const filtered = tasks.filter((task) => {
+    const item = task.notification;
+    if (task.dueState !== options.dueState) return false;
+    if (options.profileId !== "all" && item.profile_id !== options.profileId) return false;
+    if (options.bookmaker !== "all" && item.bookmaker_label !== options.bookmaker) return false;
+    if (options.notificationType !== "all" && item.notification_type !== options.notificationType) return false;
+    if (options.source !== "all" && task.source !== options.source) return false;
+    if (!normalizedQuery) return true;
+    return [item.title, item.message, item.profile_name, item.ledger_label, item.bookmaker_label, item.record_id]
+      .some((value) => value.toLocaleLowerCase().includes(normalizedQuery));
+  });
+  return [...filtered].sort((left, right) => {
+    const a = left.notification;
+    const b = right.notification;
+    if (options.sort === "profile") {
+      return a.profile_name.localeCompare(b.profile_name) || a.title.localeCompare(b.title);
+    }
+    if (options.sort === "bookmaker") {
+      return a.bookmaker_label.localeCompare(b.bookmaker_label) || a.profile_name.localeCompare(b.profile_name);
+    }
+    const leftDue = Date.parse(a.due_at);
+    const rightDue = Date.parse(b.due_at);
+    const dueOrder = (Number.isNaN(leftDue) ? Number.MAX_SAFE_INTEGER : leftDue) -
+      (Number.isNaN(rightDue) ? Number.MAX_SAFE_INTEGER : rightDue);
+    if (options.sort === "due") return dueOrder || a.title.localeCompare(b.title);
+    return priorityRank[left.priority] - priorityRank[right.priority] || dueOrder || a.title.localeCompare(b.title);
+  });
+}
+
 export function isNotificationCleared(
   notification: FundManagerNotification,
   viewState: NotificationViewState
@@ -583,6 +696,17 @@ export function dismissNotificationIds(
   return {
     readKeys: [...viewState.readKeys],
     dismissedIds: [...new Set([...viewState.dismissedIds, ...notificationIds])],
+  };
+}
+
+export function restoreNotificationIds(
+  viewState: NotificationViewState,
+  notificationIds: string[]
+): NotificationViewState {
+  const restored = new Set(notificationIds);
+  return {
+    readKeys: [...viewState.readKeys],
+    dismissedIds: viewState.dismissedIds.filter((id) => !restored.has(id)),
   };
 }
 

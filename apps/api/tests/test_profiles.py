@@ -8,13 +8,13 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-from fastapi.testclient import TestClient
-from pydantic import ValidationError
-
 from apps.api.tests.synthetic_setup import (
     seed_synthetic_account,
     seed_synthetic_profile,
 )
+from fastapi.testclient import TestClient
+from pydantic import ValidationError
+
 from openforge_api import tracker_summary_sources
 from openforge_api.config import settings
 from openforge_api.db import (
@@ -160,6 +160,136 @@ def test_tracker_summary_sources_reuse_one_connection(monkeypatch) -> None:
         "tracker_settings",
     }
     assert events == ["connect", "reuse"]
+
+
+def test_combined_tracker_summary_sources_resolve_scope_and_match_individual_reads(
+    tmp_path: Path,
+) -> None:
+    configure_temp_database(tmp_path)
+    configure_profile_catalogue(tmp_path)
+    settings.environment = "local"
+    settings.auth_required = False
+    with connect() as connection:
+        connection.execute(
+            "UPDATE profiles SET status = 'Archived' WHERE profile_id = ?",
+            ("profile-demo-002",),
+        )
+    client = TestClient(app)
+
+    active = client.post(
+        "/reports/combined-summary-sources",
+        json={"scope": "active", "profile_ids": []},
+    )
+    assert active.status_code == 200
+    assert active.json()["profile_ids"] == ["profile-demo-001"]
+    assert active.json()["sources"]["profile-demo-001"] == client.get(
+        "/profiles/profile-demo-001/tracker-summary-sources"
+    ).json()
+
+    inactive = client.post(
+        "/reports/combined-summary-sources",
+        json={"scope": "inactive", "profile_ids": []},
+    )
+    assert inactive.status_code == 200
+    assert inactive.json()["profile_ids"] == ["profile-demo-002"]
+
+    all_profiles = client.post(
+        "/reports/combined-summary-sources",
+        json={"scope": "all", "profile_ids": []},
+    )
+    assert all_profiles.status_code == 200
+    assert set(all_profiles.json()["profile_ids"]) == {
+        "profile-demo-001",
+        "profile-demo-002",
+    }
+
+    custom = client.post(
+        "/reports/combined-summary-sources",
+        json={"scope": "custom", "profile_ids": ["profile-demo-002"]},
+    )
+    assert custom.status_code == 200
+    assert custom.json()["profile_ids"] == ["profile-demo-002"]
+
+
+def test_combined_tracker_summary_sources_fail_closed_for_mixed_unknown_scope(
+    tmp_path: Path,
+) -> None:
+    configure_temp_database(tmp_path)
+    configure_profile_catalogue(tmp_path)
+    settings.environment = "local"
+    settings.auth_required = False
+    client = TestClient(app)
+
+    response = client.post(
+        "/reports/combined-summary-sources",
+        json={
+            "scope": "custom",
+            "profile_ids": ["profile-demo-001", "unavailable-profile"],
+        },
+    )
+
+    assert response.status_code == 403
+    assert response.json() == {"detail": "One or more Profiles are unavailable"}
+
+
+def test_combined_tracker_summary_sources_use_one_connection_for_64_profiles(
+    monkeypatch,
+) -> None:
+    profile_ids = [f"PROFILE-{index:02d}" for index in range(64)]
+    events: list[str] = []
+    reads: list[str] = []
+    connection = object()
+
+    @contextmanager
+    def shared_connection():
+        events.append("connect")
+        yield connection
+
+    @contextmanager
+    def reuse_connection(value):
+        assert value is connection
+        events.append("reuse")
+        yield
+
+    def reader(profile_id: str) -> list[str]:
+        reads.append(profile_id)
+        return [profile_id]
+
+    monkeypatch.setattr(tracker_summary_sources, "connect", shared_connection)
+    monkeypatch.setattr(tracker_summary_sources, "reuse_mutation_connection", reuse_connection)
+    monkeypatch.setattr(
+        tracker_summary_sources,
+        "list_profiles",
+        lambda: [
+            SimpleNamespace(profile_id=profile_id, status="Active")
+            for profile_id in profile_ids
+        ],
+    )
+    for name in (
+        "list_profile_accounts",
+        "list_profile_sportsbook_bets",
+        "list_profile_free_bets",
+        "list_profile_casino_offers",
+        "list_profile_cash_adjustments",
+        "list_profile_each_way_extra_places",
+        "list_profile_balance_snapshots",
+        "list_profile_fee_periods",
+        "get_tracker_settings",
+    ):
+        monkeypatch.setattr(tracker_summary_sources, name, reader)
+
+    result = asyncio.run(
+        tracker_summary_sources.get_combined_tracker_summary_sources(
+            tracker_summary_sources.CombinedTrackerSummaryRequest(
+                scope="custom", profile_ids=profile_ids
+            )
+        )
+    )
+
+    assert result["profile_ids"] == profile_ids
+    assert len(result["sources"]) == 64
+    assert events == ["connect", "reuse"]
+    assert len(reads) == 64 * 9
 
 
 def profile_onboarding_payload() -> dict[str, object]:

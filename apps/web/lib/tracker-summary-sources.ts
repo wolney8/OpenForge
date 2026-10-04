@@ -2,7 +2,7 @@
 
 import type { FeePeriodApiRecord } from "./fee-period-summary";
 import { apiBaseUrl } from "./api";
-import { fetchJsonAndCache, writeCachedJson } from "./client-json-cache";
+import { fetchJsonAndCache, JsonRequestError, writeCachedJson } from "./client-json-cache";
 import type {
   AccountSummaryRecord,
   BalanceSnapshotSummaryRecord,
@@ -43,15 +43,19 @@ type ApiTrackerSummarySources = {
   tracker_settings: TrackerSummarySettingsRecord;
 };
 
-export async function fetchTrackerSummarySources(
+export type CombinedTrackerSummaryScope = "active" | "inactive" | "all" | "custom";
+
+type ApiCombinedTrackerSummarySources = {
+  scope: CombinedTrackerSummaryScope;
+  profile_ids: string[];
+  sources: Record<string, ApiTrackerSummarySources>;
+};
+
+function mapTrackerSummarySources(
   profileId: string,
-  options: { signal?: AbortSignal } = {}
-): Promise<TrackerSummarySources> {
+  response: ApiTrackerSummarySources,
+): TrackerSummarySources {
   const base = `${apiBaseUrl}/profiles/${profileId}`;
-  const response = await fetchJsonAndCache<ApiTrackerSummarySources>(
-    `${base}/tracker-summary-sources`,
-    options
-  );
   const sources: TrackerSummarySources = {
     accounts: response.accounts,
     sportsbookBets: response.sportsbook_bets,
@@ -74,4 +78,39 @@ export async function fetchTrackerSummarySources(
   writeCachedJson(`${base}/fee-periods`, sources.feePeriods);
   writeCachedJson(`${base}/tracker-settings`, sources.trackerSettings);
   return sources;
+}
+
+export async function fetchTrackerSummarySources(
+  profileId: string,
+  options: { signal?: AbortSignal } = {}
+): Promise<TrackerSummarySources> {
+  const base = `${apiBaseUrl}/profiles/${profileId}`;
+  const response = await fetchJsonAndCache<ApiTrackerSummarySources>(
+    `${base}/tracker-summary-sources`,
+    options
+  );
+  return mapTrackerSummarySources(profileId, response);
+}
+
+export async function fetchCombinedTrackerSummarySources(
+  scope: CombinedTrackerSummaryScope,
+  profileIds: string[],
+  options: { signal?: AbortSignal } = {},
+): Promise<Map<string, TrackerSummarySources>> {
+  const response = await fetch(`${apiBaseUrl}/reports/combined-summary-sources`, {
+    method: "POST",
+    cache: "no-store",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ scope, profile_ids: profileIds }),
+    signal: options.signal,
+  });
+  if (!response.ok) throw new JsonRequestError(response.status);
+  const payload = (await response.json()) as ApiCombinedTrackerSummarySources;
+  return new Map(
+    payload.profile_ids.map((profileId) => {
+      const source = payload.sources[profileId];
+      if (!source) throw new Error(`Combined Reports source omitted ${profileId}`);
+      return [profileId, mapTrackerSummarySources(profileId, source)] as const;
+    }),
+  );
 }

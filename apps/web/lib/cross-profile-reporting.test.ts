@@ -180,4 +180,29 @@ describe("aggregateCrossProfileReporting", () => {
     expect(archivedResult.profileRows.find((row) => row.profileId === "PROFILE-001")?.status)
       .toBe("Archived");
   });
+
+  it("preserves authoritative composed totals for a 64-Profile scope", () => {
+    const population = Array.from({ length: 64 }, (_, index) => ({
+      ...inputs[index % inputs.length]!,
+      profileId: `PROFILE-${String(index).padStart(2, "0")}`,
+    }));
+
+    const result = aggregateCrossProfileReporting(population);
+    const authoritativeGross = population.reduce(
+      (sum, profile) => sum + profile.summary.reportingModel.selectedRange.grossBettingPnl,
+      0,
+    );
+    const authoritativeRetained = population.reduce(
+      (sum, profile) => sum + profile.summary.reportingModel.selectedRange.retainedProfit,
+      0,
+    );
+
+    expect(result.profileRows).toHaveLength(64);
+    expect(result.totals.grossBettingPnl).toBe(authoritativeGross);
+    expect(result.totals.retainedProfit).toBe(authoritativeRetained);
+    expect(result.moduleBreakdown.find((row) => row.moduleKey === "sportsbook")?.reportingValue)
+      .toBe(population.reduce((sum, profile) => sum + (
+        profile.summary.moduleBreakdown.find((row) => row.moduleKey === "sportsbook")?.reportingValue ?? 0
+      ), 0));
+  });
 });

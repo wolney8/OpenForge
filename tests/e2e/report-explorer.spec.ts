@@ -38,11 +38,14 @@ test("Explorer: actual Personal/Managed records, filters, grouping, return and t
   await explorer.getByLabel('Explorer range').selectOption('This Month');await expect(total.locator('.financial-value')).toHaveAttribute('aria-label','£ 12.34');
   await page.goto('/reports');
   const picker=page.locator('.profile-report-picker');await picker.locator('summary').click();
-  for(const box of await picker.getByRole('checkbox').all()){const label=await box.getAttribute('aria-label')??await box.locator('..').innerText();await box.setChecked(label.includes(`Synthetic explorer 0 ${suffix}`)||label.includes(`Synthetic explorer 1 ${suffix}`));}
+  await picker.getByLabel('Report Profile scope').selectOption('custom');await picker.getByLabel('Search Report Profiles').fill(String(suffix));
+  await picker.getByRole('button',{name:'Use Matching Profiles'}).click();
+  await picker.locator('label').filter({hasText:`Synthetic explorer 2 ${suffix}`}).getByRole('checkbox').uncheck();
   await picker.locator('summary').click();await expect(total.locator('.financial-value')).toHaveAttribute('aria-label','£ 10.00',{timeout:60000});
+  await page.locator('[data-pd-id="reports.explorer-disclosure"] > summary').click();
   await picker.locator('summary').click();
   await picker.locator('label').filter({hasText:`Synthetic explorer 2 ${suffix}`}).getByRole('checkbox').check();await picker.locator('summary').click();await expect(total.locator('.financial-value')).toHaveAttribute('aria-label','£ 17.00');
-  const path=`**/profiles/${b}/tracker-summary-sources`;let seen=false;let release!:()=>void;const held=new Promise<void>(r=>release=r);
+  const path="**/reports/combined-summary-sources";let seen=false;let release!:()=>void;const held=new Promise<void>(r=>release=r);
   await page.route(path,async route=>{seen=true;await held;await route.continue();});await page.reload();await expect.poll(()=>seen).toBe(true);await expect(total.locator('.financial-value')).toHaveCount(0);release();await expect(total.locator('.financial-value')).toHaveAttribute('aria-label','£ 17.00');await page.unroute(path);
   await page.route(path,r=>r.fulfill({status:503,json:{detail:'Synthetic failed Profile'}}));await page.reload();await expect(total).toContainText('Unavailable');await expect(total.locator('.financial-value')).toHaveCount(0);await page.unroute(path);
  }finally{await page.unrouteAll({behavior:'ignoreErrors'});for(const id of ids)await request.patch(`/api/profiles/${id}`,{data:{status:'Archived'}});}
