@@ -38,6 +38,34 @@ it("loads a 64-Profile Reports scope through one combined request", async () => 
     method: "POST",
     body: JSON.stringify({ scope: "custom", profile_ids: profileIds }),
   }));
-  expect(result.size).toBe(64);
-  expect(result.get("PROFILE-63")?.trackerSettings.active_date_preset).toBe("Week (Mon-Sun)");
+  expect(result.sources.size).toBe(64);
+  expect(result.sources.get("PROFILE-63")?.trackerSettings.active_date_preset).toBe("Week (Mon-Sun)");
+  expect(result.failures).toEqual([]);
+});
+
+it("preserves a combined per-Profile validation failure without fabricating a source", async () => {
+  const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+    scope: "all",
+    profile_ids: ["PROFILE-VALID", "PROFILE-MALFORMED"],
+    sources: { "PROFILE-VALID": emptySource },
+    failures: [{
+      profile_id: "PROFILE-MALFORMED",
+      status: 500,
+      code: "source_validation_failed",
+    }],
+  }), { status: 200, headers: { "Content-Type": "application/json" } }));
+  vi.stubGlobal("fetch", fetchMock);
+
+  const result = await fetchCombinedTrackerSummarySources(
+    "all",
+    ["PROFILE-VALID", "PROFILE-MALFORMED"],
+  );
+
+  expect(result.sources.has("PROFILE-VALID")).toBe(true);
+  expect(result.sources.has("PROFILE-MALFORMED")).toBe(false);
+  expect(result.failures).toEqual([{
+    profileId: "PROFILE-MALFORMED",
+    status: 500,
+    code: "source_validation_failed",
+  }]);
 });

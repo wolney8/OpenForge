@@ -546,13 +546,22 @@ export function CrossProfileAnalytics({
 
     const loadProfiles = async (): Promise<ProfileSourceLoadResult[]> => {
       if (initialTab === "reports") {
-        const sourcesByProfile = await fetchCombinedTrackerSummarySources(
+        const combinedResult = await fetchCombinedTrackerSummarySources(
           resolvedReportSelection.scope,
           requestedProfiles.map((profile) => profile.profileId),
           { signal: controller.signal },
         );
         return requestedProfiles.map((profile) => {
-          const sources = sourcesByProfile.get(profile.profileId);
+          const sources = combinedResult.sources.get(profile.profileId);
+          const failure = combinedResult.failures.find(
+            (candidate) => candidate.profileId === profile.profileId,
+          );
+          if (!sources && failure) {
+            return {
+              profile,
+              error: new JsonRequestError(failure.status),
+            };
+          }
           if (!sources) throw new Error(`Combined Reports source omitted ${profile.profileId}`);
           return { profile, sources };
         });

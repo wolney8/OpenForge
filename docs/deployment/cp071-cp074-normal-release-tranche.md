@@ -1,6 +1,6 @@
 # CP-071/CP-072/CP-074 Normal Release Tranche
 
-Last checked: 2026-10-04 12:14:56 BST (Europe/London)
+Last checked: 2026-10-04 13:02:35 BST (Europe/London)
 
 ## Release identity
 
@@ -16,6 +16,10 @@ Last checked: 2026-10-04 12:14:56 BST (Europe/London)
 - Aggregate-first Reports with Active Profiles as the default scope, deliberate Inactive, All and
   Custom scopes, a bounded Profile comparison table and preserved drilldown context.
 - One server-authorised combined Reports summary projection for broad Profile scopes.
+- CP-076 compatibility handling preserves the former per-Profile reporting failure boundary: a
+  Profile whose stored source no longer satisfies a response contract is returned as
+  `source_validation_failed`; valid authorised Profile sources remain available, while complete
+  summary values remain unavailable until every selected Profile is ready.
 
 ## Explicit exclusions
 
@@ -28,7 +32,7 @@ Last checked: 2026-10-04 12:14:56 BST (Europe/London)
 
 This tranche changes no database schema, migration, financial calculation or workbook format. It
 uses existing task evidence and existing governed reporting projections. Normal data must remain
-unchanged during deployment.
+unchanged during deployment. Malformed numeric text is neither coerced nor included as zero.
 
 ## Known pre-existing Normal defect
 
@@ -42,17 +46,25 @@ tables. The defect remains separately tracked and is not part of this schema-fre
 
 Checks run against this exact branch:
 
-- 535 web unit/component tests passed across 73 files, including deterministic 64-Profile
+- 536 web unit/component tests passed across 73 files, including deterministic 64-Profile
   financial equivalence and one-request combined loading.
-- 15 focused API authorization/combined-Reports tests passed; 12 isolated backup, package,
-  verification and restore tests passed.
+- Seven focused combined/individual Reports API tests and 12 subscriber route-denial cases passed.
+  The malformed regression covers `bad` and a second non-numeric money string without changing the
+  stored value.
 - Daily Tasks compact lifecycle/filter/pagination smoke passed. Its actual record deep-link,
   permission, state persistence and refresh journey passed on an isolated rerun.
-- Aggregate-first Reports with 64 Profiles passed; two real-data Explorer/drilldown/return tests
-  and the Period P&L reconciliation journey passed.
+- Aggregate-first Reports with 64 Profiles and the malformed-Profile UI boundary passed. Two
+  real-data Explorer/drilldown/return tests and the Period P&L reconciliation journey passed.
+- The verified pre-release Normal backup reproduced the original boundary: the individual endpoint
+  returns 500 for the archived synthetic Profile. Corrected combined Active, Inactive, All and
+  Custom calls return 200; 41 valid Profile payloads exactly match their individual endpoints and
+  the malformed Profile is identified without contributing a fabricated value.
 - Full web typecheck and production build passed. Focused ESLint and Ruff passed.
 - The unchanged Normal Profile-deletion invariant failure was reproduced separately and was not
   included in the passing totals.
+
+The first promotion attempt was rolled back to `a874b03` after the retained archived synthetic
+Casino record exposed the combined-request failure. This replacement release has not been promoted.
 
 ## Backup and rollback
 

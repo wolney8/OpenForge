@@ -29,6 +29,24 @@ const emptySources = {
   },
 };
 
+const syntheticSession = {
+  authenticated: true,
+  email: "release-smoke@example.invalid",
+  expires_at: 4102444800,
+  name: "Release Smoke",
+  role: "fund_manager",
+  session_policy: {
+    absolute_expires_at: 4102444800,
+    auto_logout_enabled: false,
+    effective_expires_at: 4102444800,
+    inactivity_expires_at: null,
+    last_activity_at: 1791100000,
+    preference_configured: true,
+    timeout_minutes: 30,
+    valid_now: true,
+  },
+};
+
 test("Reports stays aggregate-first with 64 authorised Profiles", async ({ page }) => {
   test.setTimeout(120_000);
   await page.addInitScript(() => {
@@ -39,6 +57,12 @@ test("Reports stays aggregate-first with 64 authorised Profiles", async ({ page 
   let legacySummaryReads = 0;
   await page.route("**/api/**", async (route) => {
     const pathname = new URL(route.request().url()).pathname;
+    if (pathname === "/api/auth/session") {
+      await route.fulfill({ json: syntheticSession }); return;
+    }
+    if (pathname === "/api/auth/activity") {
+      await route.fulfill({ status: 200, json: { session_policy: syntheticSession.session_policy } }); return;
+    }
     if (pathname === "/api/profiles") {
       await route.fulfill({ json: profiles }); return;
     }
@@ -105,4 +129,51 @@ test("Reports stays aggregate-first with 64 authorised Profiles", async ({ page 
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
   await page.getByLabel("Search Profile Performance").focus();
   await expect(page.getByLabel("Search Profile Performance")).toBeFocused();
+});
+
+test("Reports keeps valid Profile evidence while a malformed Profile remains unavailable", async ({ page }) => {
+  const scopedProfiles = [profiles[0]!, profiles.at(-1)!];
+  await page.addInitScript(() => {
+    localStorage.setItem("openforge-report-profile-selection", JSON.stringify({
+      scope: "all",
+      selectedIds: [],
+      archivedIds: [],
+    }));
+  });
+  await page.route("**/api/**", async (route) => {
+    const pathname = new URL(route.request().url()).pathname;
+    if (pathname === "/api/auth/session") {
+      await route.fulfill({ json: syntheticSession }); return;
+    }
+    if (pathname === "/api/auth/activity") {
+      await route.fulfill({ status: 200, json: { session_policy: syntheticSession.session_policy } }); return;
+    }
+    if (pathname === "/api/profiles") {
+      await route.fulfill({ json: scopedProfiles }); return;
+    }
+    if (pathname === "/api/reports/combined-summary-sources") {
+      await route.fulfill({ json: {
+        scope: "all",
+        profile_ids: scopedProfiles.map((profile) => profile.profile_id),
+        sources: { [scopedProfiles[0].profile_id]: emptySources },
+        failures: [{
+          profile_id: scopedProfiles[1].profile_id,
+          status: 500,
+          code: "source_validation_failed",
+        }],
+      } }); return;
+    }
+    await route.continue();
+  });
+
+  await page.goto("/reports");
+  await expect(page.locator('[data-pd-id="reports.profile-scope"] summary')).toContainText(
+    "All Profiles · 2",
+  );
+  const sourceFailure = page.locator(".validation-message").filter({ hasText: "profile load failed" });
+  await expect(sourceFailure).toContainText("1 profile load failed");
+  await expect(sourceFailure).toContainText("Summary cards require complete reads");
+  await expect(sourceFailure).toContainText(scopedProfiles[1].display_name);
+  await expect(page.locator(`[data-pd-id="reports.profile.${scopedProfiles[0].profile_id}"]`)).toBeVisible();
+  await expect(page.locator(`[data-pd-id="reports.profile.${scopedProfiles[1].profile_id}"]`)).toHaveCount(0);
 });

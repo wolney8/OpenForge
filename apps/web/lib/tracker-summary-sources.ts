@@ -49,6 +49,22 @@ type ApiCombinedTrackerSummarySources = {
   scope: CombinedTrackerSummaryScope;
   profile_ids: string[];
   sources: Record<string, ApiTrackerSummarySources>;
+  failures?: {
+    profile_id: string;
+    status: number;
+    code: "source_validation_failed";
+  }[];
+};
+
+export type CombinedTrackerSummaryFailure = {
+  profileId: string;
+  status: number;
+  code: "source_validation_failed";
+};
+
+export type CombinedTrackerSummaryResult = {
+  sources: Map<string, TrackerSummarySources>;
+  failures: CombinedTrackerSummaryFailure[];
 };
 
 function mapTrackerSummarySources(
@@ -96,7 +112,7 @@ export async function fetchCombinedTrackerSummarySources(
   scope: CombinedTrackerSummaryScope,
   profileIds: string[],
   options: { signal?: AbortSignal } = {},
-): Promise<Map<string, TrackerSummarySources>> {
+): Promise<CombinedTrackerSummaryResult> {
   const response = await fetch(`${apiBaseUrl}/reports/combined-summary-sources`, {
     method: "POST",
     cache: "no-store",
@@ -106,11 +122,21 @@ export async function fetchCombinedTrackerSummarySources(
   });
   if (!response.ok) throw new JsonRequestError(response.status);
   const payload = (await response.json()) as ApiCombinedTrackerSummarySources;
-  return new Map(
-    payload.profile_ids.map((profileId) => {
+  const failures = (payload.failures ?? []).map((failure) => ({
+    profileId: failure.profile_id,
+    status: failure.status,
+    code: failure.code,
+  }));
+  const failedProfileIds = new Set(failures.map((failure) => failure.profileId));
+  const sources = new Map(
+    payload.profile_ids.flatMap((profileId) => {
       const source = payload.sources[profileId];
-      if (!source) throw new Error(`Combined Reports source omitted ${profileId}`);
-      return [profileId, mapTrackerSummarySources(profileId, source)] as const;
+      if (!source) {
+        if (failedProfileIds.has(profileId)) return [];
+        throw new Error(`Combined Reports source omitted ${profileId}`);
+      }
+      return [[profileId, mapTrackerSummarySources(profileId, source)] as const];
     }),
   );
+  return { sources, failures };
 }

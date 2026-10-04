@@ -4,7 +4,7 @@ import asyncio
 from typing import Any, Literal
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 
 from openforge_api.accounts import list_profile_accounts
 from openforge_api.balance_snapshots import list_profile_balance_snapshots
@@ -49,6 +49,33 @@ def _read_profile_snapshot(profile_id: str) -> dict[str, Any]:
         get_tracker_settings,
     )
     return dict(zip(keys, (reader(profile_id) for reader in readers), strict=True))
+
+
+def _read_combined_profile_snapshots(
+    profile_ids: list[str],
+) -> tuple[dict[str, dict[str, Any]], list[dict[str, object]]]:
+    """Preserve the legacy per-Profile failure boundary in one combined read.
+
+    Before the combined transport, the browser used ``Promise.allSettled`` for
+    individual Profile snapshots. A legacy row that no longer passes a signed-off
+    response contract therefore made that Profile unavailable without converting
+    malformed money or hiding the failure behind a partial complete total.
+    """
+
+    sources: dict[str, dict[str, Any]] = {}
+    failures: list[dict[str, object]] = []
+    for profile_id in profile_ids:
+        try:
+            sources[profile_id] = _read_profile_snapshot(profile_id)
+        except ValidationError:
+            failures.append(
+                {
+                    "profile_id": profile_id,
+                    "status": 500,
+                    "code": "source_validation_failed",
+                }
+            )
+    return sources, failures
 
 
 def _resolve_profile_ids(payload: CombinedTrackerSummaryRequest) -> list[str]:
@@ -100,13 +127,14 @@ async def get_combined_tracker_summary_sources(
 
     profile_ids = _resolve_profile_ids(payload)
 
-    def read_snapshot() -> dict[str, dict[str, Any]]:
+    def read_snapshot() -> tuple[dict[str, dict[str, Any]], list[dict[str, object]]]:
         with connect() as connection, reuse_mutation_connection(connection):
-            return {profile_id: _read_profile_snapshot(profile_id) for profile_id in profile_ids}
+            return _read_combined_profile_snapshots(profile_ids)
 
-    sources = await asyncio.to_thread(read_snapshot)
+    sources, failures = await asyncio.to_thread(read_snapshot)
     return {
         "scope": payload.scope,
         "profile_ids": profile_ids,
         "sources": sources,
+        "failures": failures,
     }

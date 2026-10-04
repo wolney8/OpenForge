@@ -211,6 +211,108 @@ def test_combined_tracker_summary_sources_resolve_scope_and_match_individual_rea
     assert custom.json()["profile_ids"] == ["profile-demo-002"]
 
 
+@pytest.mark.parametrize("malformed_value", ["bad", "£not-money"])
+def test_combined_reports_preserve_legacy_profile_failure_boundary_for_malformed_casino_money(
+    tmp_path: Path,
+    malformed_value: str,
+) -> None:
+    configure_temp_database(tmp_path)
+    configure_profile_catalogue(tmp_path)
+    settings.environment = "local"
+    settings.auth_required = False
+    client = TestClient(app)
+    valid_payload = {
+        "date_started": "2026-10-01T10:15:00",
+        "date_settling": "2026-10-01T12:45:00",
+        "bookmaker": "Bookmaker A",
+        "offer_type": "Free Spins",
+        "offer_name": "Synthetic reporting compatibility",
+        "own_cash_committed": "5.00",
+        "cash_returned": "12.50",
+        "settlement_other_costs": "0.50",
+        "status": "Settled",
+        "result": "Win",
+        "final_net_pnl": "7.00",
+    }
+    valid = client.post(
+        "/profiles/profile-demo-001/casino-offers",
+        json=valid_payload,
+    )
+    malformed = client.post(
+        "/profiles/profile-demo-002/casino-offers",
+        json={**valid_payload, "offer_name": "Synthetic malformed reporting row"},
+    )
+    assert valid.status_code == 201
+    assert malformed.status_code == 201
+    malformed_id = malformed.json()["casino_offer_id"]
+    with connect() as connection:
+        connection.execute(
+            "UPDATE casino_offers SET settlement_other_costs = ? WHERE casino_offer_id = ?",
+            (malformed_value, malformed_id),
+        )
+        connection.execute(
+            "UPDATE profiles SET status = 'Archived' WHERE profile_id = ?",
+            ("profile-demo-002",),
+        )
+
+    production_style_client = TestClient(app, raise_server_exceptions=False)
+    individual = production_style_client.get(
+        "/profiles/profile-demo-002/tracker-summary-sources"
+    )
+    assert individual.status_code == 500
+
+    active = client.post(
+        "/reports/combined-summary-sources",
+        json={"scope": "active", "profile_ids": []},
+    )
+    inactive = client.post(
+        "/reports/combined-summary-sources",
+        json={"scope": "inactive", "profile_ids": []},
+    )
+    all_profiles = client.post(
+        "/reports/combined-summary-sources",
+        json={"scope": "all", "profile_ids": []},
+    )
+    custom = client.post(
+        "/reports/combined-summary-sources",
+        json={"scope": "custom", "profile_ids": ["profile-demo-002"]},
+    )
+
+    assert active.status_code == 200
+    assert set(active.json()["sources"]) == {"profile-demo-001"}
+    assert active.json()["failures"] == []
+    assert active.json()["sources"]["profile-demo-001"] == client.get(
+        "/profiles/profile-demo-001/tracker-summary-sources"
+    ).json()
+
+    expected_failure = [{
+        "profile_id": "profile-demo-002",
+        "status": 500,
+        "code": "source_validation_failed",
+    }]
+    assert inactive.status_code == 200
+    assert inactive.json()["profile_ids"] == ["profile-demo-002"]
+    assert inactive.json()["sources"] == {}
+    assert inactive.json()["failures"] == expected_failure
+    assert all_profiles.status_code == 200
+    assert all_profiles.json()["profile_ids"] == [
+        "profile-demo-001",
+        "profile-demo-002",
+    ]
+    assert set(all_profiles.json()["sources"]) == {"profile-demo-001"}
+    assert all_profiles.json()["failures"] == expected_failure
+    assert custom.status_code == 200
+    assert custom.json()["sources"] == {}
+    assert custom.json()["failures"] == expected_failure
+
+    with connect() as connection:
+        stored_value = connection.execute(
+            "SELECT settlement_other_costs FROM casino_offers WHERE casino_offer_id = ?",
+            (malformed_id,),
+        ).fetchone()["settlement_other_costs"]
+    assert stored_value == malformed_value
+
+
 def test_combined_tracker_summary_sources_fail_closed_for_mixed_unknown_scope(
     tmp_path: Path,
 ) -> None:
