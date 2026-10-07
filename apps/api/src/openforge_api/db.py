@@ -1709,6 +1709,10 @@ def initialize_database(connection: sqlite3.Connection) -> None:
           profit_boost_mode TEXT NOT NULL DEFAULT '',
           profit_boost_source_json TEXT,
           conditional_benefit_json TEXT,
+          offer_group_id TEXT NOT NULL DEFAULT '',
+          bet_role TEXT NOT NULL DEFAULT 'Standalone',
+          wagering_contribution TEXT NOT NULL DEFAULT '',
+          promotion_json TEXT,
           base_back_odds TEXT NOT NULL DEFAULT '',
           profit_boost_percent TEXT NOT NULL DEFAULT '',
           maximum_boost_winnings TEXT NOT NULL DEFAULT '',
@@ -2367,6 +2371,10 @@ def initialize_database(connection: sqlite3.Connection) -> None:
     ensure_column(connection, "sportsbook_bets", "profit_boost_mode", "TEXT NOT NULL DEFAULT ''")
     ensure_column(connection, "sportsbook_bets", "profit_boost_source_json", "TEXT")
     ensure_column(connection, "sportsbook_bets", "conditional_benefit_json", "TEXT")
+    ensure_column(connection, "sportsbook_bets", "offer_group_id", "TEXT NOT NULL DEFAULT ''")
+    ensure_column(connection, "sportsbook_bets", "bet_role", "TEXT NOT NULL DEFAULT 'Standalone'")
+    ensure_column(connection, "sportsbook_bets", "wagering_contribution", "TEXT NOT NULL DEFAULT ''")
+    ensure_column(connection, "sportsbook_bets", "promotion_json", "TEXT")
     ensure_column(connection, "sportsbook_bets", "base_back_odds", "TEXT NOT NULL DEFAULT ''")
     ensure_column(connection, "sportsbook_bets", "profit_boost_percent", "TEXT NOT NULL DEFAULT ''")
     ensure_column(
@@ -3887,6 +3895,10 @@ class SportsbookBetRecord:
     profit_boost_mode: str
     profit_boost_source_json: str | None
     conditional_benefit_json: str | None
+    offer_group_id: str
+    bet_role: str
+    wagering_contribution: str
+    promotion_json: str | None
     base_back_odds: str
     profit_boost_percent: str
     maximum_boost_winnings: str
@@ -4069,19 +4081,8 @@ class CasinoOfferRecord:
     updated_at: str
 
 
-SPORTSBOOK_PROMOTION_COMPATIBILITY_COLUMNS = frozenset(
-    {"offer_group_id", "bet_role", "wagering_contribution", "promotion_json"}
-)
-
-
 def map_row(row: sqlite3.Row) -> SportsbookBetRecord:
-    record = dict(row)
-    # The schema-compatible rollback build predates CP-075's promotion contract.
-    # Ignore only its known additive columns when reading; an unexpected schema
-    # column must still fail closed rather than being hidden by a generic filter.
-    for column in SPORTSBOOK_PROMOTION_COMPATIBILITY_COLUMNS:
-        record.pop(column, None)
-    return SportsbookBetRecord(**record)
+    return SportsbookBetRecord(**dict(row))
 
 
 def map_free_bet_row(row: sqlite3.Row) -> FreeBetRecord:
@@ -4309,6 +4310,10 @@ def create_sportsbook_bet(profile_id: str, payload: dict[str, Any], *,
         "profit_boost_mode": payload.get("profit_boost_mode", ""),
         "profit_boost_source_json": payload.get("profit_boost_source_json"),
         "conditional_benefit_json": payload.get("conditional_benefit_json"),
+        "offer_group_id": payload.get("offer_group_id", ""),
+        "bet_role": payload.get("bet_role", "Standalone"),
+        "wagering_contribution": payload.get("wagering_contribution", ""),
+        "promotion_json": payload.get("promotion_json"),
         "base_back_odds": payload.get("base_back_odds", ""),
         "profit_boost_percent": payload.get("profit_boost_percent", ""),
         "maximum_boost_winnings": payload.get("maximum_boost_winnings", ""),
@@ -4362,6 +4367,10 @@ def create_sportsbook_bet(profile_id: str, payload: dict[str, Any], *,
               profit_boost_mode,
               profit_boost_source_json,
               conditional_benefit_json,
+              offer_group_id,
+              bet_role,
+              wagering_contribution,
+              promotion_json,
               base_back_odds,
               profit_boost_percent,
               maximum_boost_winnings,
@@ -4395,7 +4404,7 @@ def create_sportsbook_bet(profile_id: str, payload: dict[str, Any], *,
               ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
               ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
               ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-              ?, ?, ?, ?, ?, ?, ?, ?
+              ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
             )
             """,
             tuple(record.values()),
@@ -4470,6 +4479,10 @@ def update_sportsbook_bet(
         "profit_boost_mode": payload.get("profit_boost_mode", ""),
         "profit_boost_source_json": payload.get("profit_boost_source_json"),
         "conditional_benefit_json": payload.get("conditional_benefit_json"),
+        "offer_group_id": payload.get("offer_group_id", ""),
+        "bet_role": payload.get("bet_role", "Standalone"),
+        "wagering_contribution": payload.get("wagering_contribution", ""),
+        "promotion_json": payload.get("promotion_json"),
         "base_back_odds": payload.get("base_back_odds", ""),
         "profit_boost_percent": payload.get("profit_boost_percent", ""),
         "maximum_boost_winnings": payload.get("maximum_boost_winnings", ""),
@@ -4546,6 +4559,10 @@ def update_sportsbook_bet(
               profit_boost_mode = ?,
               profit_boost_source_json = ?,
               conditional_benefit_json = ?,
+              offer_group_id = ?,
+              bet_role = ?,
+              wagering_contribution = ?,
+              promotion_json = ?,
               base_back_odds = ?,
               profit_boost_percent = ?,
               maximum_boost_winnings = ?,
@@ -4586,6 +4603,10 @@ def update_sportsbook_bet(
                 updated["profit_boost_mode"],
                 updated["profit_boost_source_json"],
                 updated["conditional_benefit_json"],
+                updated["offer_group_id"],
+                updated["bet_role"],
+                updated["wagering_contribution"],
+                updated["promotion_json"],
                 updated["base_back_odds"],
                 updated["profit_boost_percent"],
                 updated["maximum_boost_winnings"],

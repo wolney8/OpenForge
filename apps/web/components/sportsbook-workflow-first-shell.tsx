@@ -211,6 +211,10 @@ type SportsbookRecord = {
   lay_plan_json?: string | null;
   profit_boost_source_json?: string | null;
   conditional_benefit_json?: string | null;
+  offer_group_id: string;
+  bet_role: "Standalone" | "Trigger" | "Wagering" | "RewardUse";
+  wagering_contribution: string;
+  promotion_json?: string | null;
   sportsbook_bet_id: string;
   profile_id: string;
   event_name: string;
@@ -308,6 +312,10 @@ type SportsbookFormState = {
   lay_plan_json?: string | null;
   profit_boost_source_json?: string | null;
   conditional_benefit_json?: string | null;
+  offer_group_id: string;
+  bet_role: "Standalone" | "Trigger" | "Wagering" | "RewardUse";
+  wagering_contribution: string;
+  promotion_json?: string | null;
   sportsbook_bet_id?: string;
   event_name: string;
   offer_text: string;
@@ -1062,6 +1070,10 @@ function createBlankForm(defaultBonusRetentionRate = "70"): SportsbookFormState 
     lay_plan_json: null,
     profit_boost_source_json: null,
     conditional_benefit_json: null,
+    offer_group_id: "",
+    bet_role: "Standalone",
+    wagering_contribution: "",
+    promotion_json: null,
     event_name: "",
     offer_text: "",
     bookmaker: "",
@@ -1104,6 +1116,10 @@ function recordToForm(record: SportsbookRecord): SportsbookFormState {
     lay_plan_json: record.lay_plan_json ?? null,
     profit_boost_source_json: record.profit_boost_source_json ?? null,
     conditional_benefit_json: record.conditional_benefit_json ?? null,
+    offer_group_id: record.offer_group_id || "",
+    bet_role: record.bet_role || "Standalone",
+    wagering_contribution: record.wagering_contribution || "",
+    promotion_json: record.promotion_json ?? null,
     sportsbook_bet_id: record.sportsbook_bet_id,
     event_name: record.event_name,
     offer_text: record.offer_text,
@@ -1311,6 +1327,10 @@ function toInlineUpdatePayload(record: SportsbookRecord, overrides?: Partial<Spo
     lay_plan_json: formState.lay_plan_json,
     profit_boost_source_json: serializeOfferMetadata(formState).profit_boost_source_json,
     conditional_benefit_json: serializeOfferMetadata(formState).conditional_benefit_json,
+    offer_group_id: formState.offer_group_id,
+    bet_role: formState.bet_role,
+    wagering_contribution: formState.wagering_contribution,
+    promotion_json: formState.promotion_json,
     offer_text: formState.offer_text,
     bookmaker: formState.bookmaker,
     offer_type: formState.offer_type,
@@ -2431,6 +2451,7 @@ function getCalculatorMissingFields(
   }
 
   if (
+    formState.bet_role !== "Wagering" && formState.bet_role !== "RewardUse" &&
     (formState.offer_type === "Cashback" || isBonusLockInOfferType(formState.offer_type)) &&
     parseNumericInput(formState.maximum_bonus) === null
   ) {
@@ -2438,6 +2459,7 @@ function getCalculatorMissingFields(
   }
 
   if (
+    formState.bet_role !== "Wagering" && formState.bet_role !== "RewardUse" &&
     isBonusLockInOfferType(formState.offer_type) &&
     parseNumericInput(formState.bonus_retention_rate) === null
   ) {
@@ -2913,6 +2935,28 @@ function getPersistableSportsbookForm(
   };
 }
 
+type PromotionDraft = {
+  refund_percent: string; reward_cap: string; reward_type: string; reward_calculation: string;
+  reward_face_value: string; reward_status: string; bonus_retention_percent: string;
+  wagering_required: boolean; wagering_multiplier: string; wagering_basis: string;
+  wagering_base_amount: string; wagering_funding_source: string; minimum_wagering_odds: string;
+  expiry: string; qualifying_scope: string; qualifying_requirement: string;
+};
+
+function promotionDraft(serialized?: string | null): PromotionDraft {
+  const fallback: PromotionDraft = { refund_percent: "", reward_cap: "", reward_type: "Unknown", reward_calculation: "PercentOfLosingStake", reward_face_value: "", reward_status: "Pending", bonus_retention_percent: "70", wagering_required: false, wagering_multiplier: "", wagering_basis: "Reward", wagering_base_amount: "", wagering_funding_source: "Unknown", minimum_wagering_odds: "", expiry: "", qualifying_scope: "AnyEvent", qualifying_requirement: "" };
+  if (!serialized) return fallback;
+  try { return { ...fallback, ...JSON.parse(serialized) } as PromotionDraft; } catch { return fallback; }
+}
+
+function serializePromotionDraft(draft: PromotionDraft): string {
+  return JSON.stringify({ schema_version: "sportsbook-promotion-v1", ...draft });
+}
+
+function makeOfferGroupId(): string {
+  return `OFG-${new Date().toISOString().slice(0, 10).replaceAll("-", "")}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
+}
+
 export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialIssueFilter, initialRecordId, feeReviewContext }: { profileId: string; initialQuery?: string; initialIssueFilter?: string; initialRecordId?: string; feeReviewContext?: FeeReviewResolutionContext }) {
   const { catalogue: bookmakerCatalogue, providerIdsByName } =
     useBookmakerCatalogue(profileId);
@@ -2953,7 +2997,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   const [corePlanPending, setCorePlanPending] = useState(false);
   const handleCoreValidity = useCallback((valid: boolean) => { corePlanPendingRef.current = !valid; setCorePlanPending(!valid); }, []);
   useEffect(() => {
-    const doesNotUseCorePlan = ["Profit Boost", "Bonus Lock-In", "Cashback", "2UP", "Early Payout"].includes(formState.offer_type);
+    const doesNotUseCorePlan = ["Profit Boost", "Bonus Lock-In", "Refund", "Refund If Loses", "Cashback", "2UP", "Early Payout"].includes(formState.offer_type);
     if (doesNotUseCorePlan) {
       corePlanPendingRef.current = false;
     }
@@ -4654,6 +4698,22 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
         maximum_bonus: field === "eligible_amount" ? value : current.maximum_bonus,
       };
     });
+  }
+
+  function updatePromotionField<K extends keyof PromotionDraft>(field: K, value: PromotionDraft[K]) {
+    setFormState((current) => {
+      const next = { ...promotionDraft(current.promotion_json), [field]: value };
+      return { ...current, promotion_json: serializePromotionDraft(next) };
+    });
+  }
+
+  function startWageringBet() {
+    const terms = promotionDraft(formState.promotion_json);
+    const next = createBlankForm(defaultBonusRetentionRateRef.current);
+    loadEditorFormState({ ...next, bookmaker: formState.bookmaker, offer_type: formState.offer_type, bet_type: formState.bet_type, offer_name: formState.offer_name, fixture_type: formState.fixture_type, offer_text: formState.offer_text, bet_role: "Wagering", offer_group_id: formState.offer_group_id, user_notes: `Wagering for ${formState.offer_name || "linked promotion"}. Minimum odds ${terms.minimum_wagering_odds || "not recorded"}.` }, { markPristine: true });
+    isCreatingDraftRef.current = true;
+    setSelectedId(null);
+    setActiveEditorTabId("setup");
   }
 
   function updateOddsFormField(field: keyof SportsbookFormState, value: string) {
@@ -8136,6 +8196,26 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                     Offer type describes the promotion mechanics, for example Bet &amp; Get, Price Boost, or Cashback.
                   </p>
                 </label>
+                <fieldset className="form-section-fieldset promotion-link-fields" data-pd-id="sportsbook.promotion.link">
+                  <legend>Promotion Link</legend>
+                  <div className="form-grid form-grid-compact">
+                    <label className="field-control"><span>Bet role</span><select value={formState.bet_role} onChange={(event) => setFormState((current) => { const role = event.target.value as SportsbookFormState["bet_role"]; return { ...current, bet_role: role, offer_group_id: role === "Standalone" ? "" : (current.offer_group_id || makeOfferGroupId()), promotion_json: role === "Trigger" ? (current.promotion_json || serializePromotionDraft(promotionDraft(null))) : null }; })}><option value="Standalone">Standalone</option><option value="Trigger">Trigger</option><option value="Wagering">Wagering</option><option value="RewardUse">Reward Use</option></select></label>
+                    {formState.bet_role === "Wagering" ? <label className="field-control"><span>Wagering contribution (optional)</span><input inputMode="decimal" onChange={(event) => updateDecimalFormField("wagering_contribution", event.target.value)} placeholder={formState.back_stake || "Defaults to eligible actual stake"} value={formState.wagering_contribution} /><small>Leave blank to use the eligible actual stake.</small></label> : null}
+                  </div>
+                  {formState.bet_role !== "Standalone" && !formState.offer_group_id ? <p className="form-error">Promotion link is required.</p> : null}
+                  {formState.bet_role === "Trigger" ? (() => { const promotion = promotionDraft(formState.promotion_json); return <details open className="progressive-disclosure"><summary>Refund And Wagering Terms</summary><div className="form-grid form-grid-compact">
+                    <label className="field-control"><span>Refund percentage</span><input inputMode="decimal" value={promotion.refund_percent} onChange={(event) => updatePromotionField("refund_percent", event.target.value)} /></label>
+                    <label className="field-control"><span>Maximum refund</span><input inputMode="decimal" value={promotion.reward_cap} onChange={(event) => { updatePromotionField("reward_cap", event.target.value); updateDecimalFormField("maximum_bonus", event.target.value); }} /></label>
+                    <label className="field-control"><span>Reward type</span><select value={promotion.reward_type} onChange={(event) => updatePromotionField("reward_type", event.target.value)}><option>Unknown</option><option>Cash</option><option>BonusFunds</option><option>SiteCredit</option><option>FreeBetSNR</option><option>FreeBetSR</option></select></label>
+                    <label className="field-control"><span>Reward status</span><select value={promotion.reward_status} onChange={(event) => updatePromotionField("reward_status", event.target.value)}>{["Pending","Not Earned","Awarded","Locked","Wagering","Released","Expired","Forfeited"].map((value) => <option key={value}>{value}</option>)}</select></label>
+                    <label className="field-control"><span>Reward awarded</span><input inputMode="decimal" value={promotion.reward_face_value} onChange={(event) => updatePromotionField("reward_face_value", event.target.value)} /></label>
+                    <label className="field-control"><span>Bonus retention %</span><input inputMode="decimal" value={promotion.bonus_retention_percent} onChange={(event) => { updatePromotionField("bonus_retention_percent", event.target.value); updateDecimalFormField("bonus_retention_rate", event.target.value); }} /></label>
+                    <label className="field-control"><span>Wagering required?</span><select value={promotion.wagering_required ? "yes" : "no"} onChange={(event) => updatePromotionField("wagering_required", event.target.value === "yes")}><option value="no">No</option><option value="yes">Yes</option></select></label>
+                    {promotion.wagering_required ? <><label className="field-control"><span>Wagering multiplier</span><input inputMode="decimal" value={promotion.wagering_multiplier} onChange={(event) => updatePromotionField("wagering_multiplier", event.target.value)} /></label><label className="field-control"><span>Wagering basis</span><select value={promotion.wagering_basis} onChange={(event) => updatePromotionField("wagering_basis", event.target.value)}><option>Reward</option><option>Deposit</option><option>DepositPlusReward</option><option>FixedAmount</option><option>Other</option></select></label><label className="field-control"><span>Minimum wagering odds</span><input inputMode="decimal" value={promotion.minimum_wagering_odds} onChange={(event) => updatePromotionField("minimum_wagering_odds", event.target.value)} /></label></> : null}
+                    <label className="field-control"><span>Expiry</span><input type="datetime-local" value={promotion.expiry} onChange={(event) => updatePromotionField("expiry", event.target.value)} /></label>
+                  </div></details>; })() : null}
+                </fieldset>
+                {formState.bet_role === "Trigger" && formState.offer_group_id ? (() => { const p = promotionDraft(formState.promotion_json); const trigger = selectedSportsbookRow; const lossCash = Number(trigger?.scenario_pnl_if_lay_wins ?? 0); const winCash = Number(trigger?.scenario_pnl_if_back_wins ?? 0); const face = Number(p.reward_face_value || Math.min(Number(formState.back_stake || 0) * Number(p.refund_percent || 0) / 100, Number(p.reward_cap || 0))); const estimated = face * Number(p.bonus_retention_percent || 0) / 100; const linked = rows.filter((row) => row.offer_group_id === formState.offer_group_id && row.bet_role === "Wagering"); const completed = linked.filter((row) => ["Placed","Settled","Free Bet Awarded"].includes(row.status) && Number(row.back_odds || 0) >= Number(p.minimum_wagering_odds || 0)).reduce((total, row) => total + Number(row.wagering_contribution || row.back_stake || 0), 0); const target = face * Number(p.wagering_multiplier || 0); return <section aria-label="Live promotion position" className="review-summary-card promotion-position-card" data-pd-id="sportsbook.promotion.position"><h3>Offer Position</h3><p><strong>Bookmaker wins:</strong> {formatPreviewFinancialValue(winCash)} now; no reward.</p><p><strong>Qualifying loss:</strong> {formatPreviewFinancialValue(lossCash)} cash now + {formatPreviewFinancialValue(face)} locked reward ({formatPreviewFinancialValue(estimated)} estimated convertible) = <strong>{formatPreviewFinancialValue(lossCash + estimated)} projected</strong>.</p><dl className="summary-definition-list"><div><dt>Cash P&amp;L Now</dt><dd>{renderPreviewFinancialValue(trigger?.status === "Settled" ? trigger.reporting_value : null)}</dd></div><div><dt>Locked Reward</dt><dd>{renderNeutralPreviewFinancialValue(["Awarded","Locked","Wagering"].includes(p.reward_status) ? face : 0)}</dd></div><div><dt>Estimated Convertible Value</dt><dd>{renderNeutralPreviewFinancialValue(["Awarded","Locked","Wagering"].includes(p.reward_status) ? estimated : 0)}</dd></div><div><dt>Projected Final Offer P&amp;L</dt><dd>{renderPreviewFinancialValue(lossCash + estimated)}</dd></div><div><dt>Wagering</dt><dd>£{completed.toFixed(2)} / £{target.toFixed(2)}</dd></div></dl>{["Awarded","Locked","Wagering"].includes(p.reward_status) && p.wagering_required ? <button className="button button-primary" data-pd-id="sportsbook.promotion.add-wagering" onClick={startWageringBet} type="button">Add Wagering Bet</button> : null}</section>; })() : null}
                 <label className="field-control">
                   <span>Campaign tag (optional)</span>
                   <input

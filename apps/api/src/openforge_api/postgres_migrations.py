@@ -13,7 +13,7 @@ from openforge_api.postgres_schema import (
     sqlite_type_to_postgres,
 )
 
-MIGRATION_ID = "20260927_008_invited_subscribers"
+MIGRATION_ID = "20261007_009_sportsbook_promotions"
 
 RUNTIME_EXTENSION_STATEMENTS = (
     """
@@ -251,13 +251,16 @@ def apply_postgres_migrations(connection_url: str) -> str:
                       WHEN 'Each Way / Extra Places' THEN 'extra_place'
                       WHEN 'Extra Places' THEN 'extra_place'
                       WHEN 'Cash Adjustments' THEN 'cash_adjustment'
-                      ELSE 'legacy_' || lower(regexp_replace(source_sheet, '[^a-zA-Z0-9]+', '_', 'g'))
+                      ELSE 'legacy_' || lower(
+                        regexp_replace(source_sheet, '[^a-zA-Z0-9]+', '_', 'g')
+                      )
                     END
                     WHERE source_namespace = ''
                     """
                 )
                 cursor.execute(
-                    "ALTER TABLE import_source_records DROP CONSTRAINT IF EXISTS import_source_records_pkey"
+                    "ALTER TABLE import_source_records DROP CONSTRAINT IF EXISTS "
+                    "import_source_records_pkey"
                 )
                 cursor.execute(
                     "ALTER TABLE import_source_records ADD CONSTRAINT import_source_records_pkey "

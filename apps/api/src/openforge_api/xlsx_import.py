@@ -252,6 +252,14 @@ def find_account_table(workbook: ZipFile) -> tuple[ET.Element, tuple[str, ...]]:
     )
 
 
+def find_offer_group_table(workbook: ZipFile) -> tuple[ET.Element, tuple[str, ...]]:
+    return find_ledger_table(
+        workbook,
+        required_headers={"OfferGroupID", "RewardType", "WageringMultiplier"},
+        ledger_label="Offer Groups",
+    )
+
+
 def detect_supported_ledger_xlsx(content: bytes) -> tuple[SupportedLedger, ...]:
     if not content:
         raise XlsxImportError("Workbook file is empty")
@@ -313,6 +321,28 @@ def parse_sportsbook_xlsx(content: bytes) -> ParsedSportsbookSheet:
         table_name=parsed[2],
         table_reference=parsed[3],
     )
+
+
+def parse_optional_offer_groups_xlsx(
+    content: bytes,
+) -> dict[str, dict[str, str | int | float | bool | None]]:
+    """Read optional promotion metadata without making it an import prerequisite."""
+    try:
+        parsed = parse_ledger_xlsx(
+            content,
+            sheet_name="Offer Groups",
+            source_id_header="OfferGroupID",
+            entered_headers=("OfferGroupID", "OfferName", "RewardType"),
+            max_rows=MAX_SPORTSBOOK_ROWS,
+            find_table=find_offer_group_table,
+        )
+    except XlsxImportError as error:
+        if "does not contain a Offer Groups sheet" in str(error) or (
+            "Offer Groups table with" in str(error)
+        ):
+            return {}
+        raise
+    return {source_id: fields for _row, source_id, fields, _outside in parsed[1] if source_id}
 
 
 def parse_free_bet_xlsx(content: bytes) -> ParsedFreeBetSheet:

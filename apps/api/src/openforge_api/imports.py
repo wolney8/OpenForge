@@ -79,6 +79,7 @@ from openforge_api.free_bets import FreeBetPayload
 from openforge_api.free_bets import build_response as build_free_bet_response
 from openforge_api.source_identity import logical_source_namespace
 from openforge_api.sportsbook import SportsbookBetPayload, build_response
+from openforge_api.sportsbook_promotions import validate_promotion_json
 from openforge_api.xlsx_export import (
     build_account_export,
     build_cash_adjustment_export,
@@ -98,6 +99,7 @@ from openforge_api.xlsx_import import (
     parse_cash_adjustment_xlsx,
     parse_casino_offer_xlsx,
     parse_free_bet_xlsx,
+    parse_optional_offer_groups_xlsx,
     parse_sportsbook_xlsx,
 )
 
@@ -162,6 +164,11 @@ SPORTSBOOK_SOURCE_MAP = {
     "BonusTrigger": "bonus_trigger",
     "MaximumBonus": "maximum_bonus",
     "BonusRetentionRate": "bonus_retention_rate",
+    "OfferGroupID": "offer_group_id",
+    "Offer Group ID": "offer_group_id",
+    "BetRole": "bet_role",
+    "WageringContribution (£)": "wagering_contribution",
+    "PromotionDetailsJson": "promotion_json",
     "MultiLayOutcome1Name": "multi_lay_outcome_1_name",
     "MultiLayOutcomesJson": "multi_lay_outcomes_json",
 }
@@ -173,6 +180,115 @@ SPORTSBOOK_ADVANCED_BRANCH_FIELDS = {
     "PnL_IfLay2Wins",
     "PnL_IfLay3Wins",
 }
+
+PROMOTION_ENUMS = {
+    "RewardType": {"Cash", "BonusFunds", "SiteCredit", "FreeBetSNR", "FreeBetSR", "Unknown"},
+    "RewardCalculation": {"Fixed", "PercentOfLosingStake", "PercentOfDeposit", "Manual"},
+    "RewardStatus": {
+        "Pending", "Not Earned", "Awarded", "Locked", "Wagering",
+        "Released", "Expired", "Forfeited",
+    },
+    "WageringBasis": {"Reward", "Deposit", "DepositPlusReward", "FixedAmount", "Other"},
+    "WageringFundingSource": {"Cash", "RewardBalance", "Mixed", "Unknown"},
+    "QualifyingScope": {"AnyEvent", "SpecificFixture", "SpecificSport", "SpecificMarket", "Other"},
+}
+
+
+def promotion_details_from_offer_group(
+    fields: dict[str, str | int | float | bool | None],
+) -> tuple[str | None, str | None]:
+    """Translate a valid optional Offer Groups row by logical header, never position."""
+    for header, allowed in PROMOTION_ENUMS.items():
+        field_value = str(fields.get(header) or "").strip()
+        if field_value and field_value not in allowed:
+            return None, (
+                f"Offer Groups {header} is not a recognised value; "
+                "promotion details require review."
+            )
+    numeric_headers = (
+        "RewardRatePct",
+        "RewardCap (£)",
+        "RewardAwardedValue (£)",
+        "DepositAmount (£)",
+        "WageringMultiplier",
+        "WageringMinOdds",
+        "WageringTargetOverride (£)",
+        "QualifyingMinDeposit (£)",
+        "QualifyingMinStake (£)",
+        "QualifyingMinOdds",
+    )
+    for header in numeric_headers:
+        field_value = str(fields.get(header) or "").strip()
+        if field_value:
+            try:
+                parsed = Decimal(field_value)
+            except InvalidOperation:
+                return None, (
+                    f"Offer Groups {header} is not numeric; "
+                    "promotion details require review."
+                )
+            if not parsed.is_finite() or parsed < 0:
+                return None, f"Offer Groups {header} is invalid; promotion details require review."
+
+    def get_value(header: str) -> str | None:
+        resolved = str(fields.get(header) or "").strip()
+        return resolved or None
+
+    basis = get_value("WageringBasis")
+    deposit = get_value("DepositAmount (£)")
+    face = get_value("RewardAwardedValue (£)")
+    base_amount: str | None = None
+    if basis == "Deposit":
+        base_amount = deposit
+    elif basis == "DepositPlusReward" and deposit and face:
+        base_amount = str(Decimal(deposit) + Decimal(face))
+    details = {
+        "schema_version": "sportsbook-promotion-v1",
+        "reward_type": get_value("RewardType") or "Unknown",
+        "reward_calculation": get_value("RewardCalculation"),
+        "refund_percent": get_value("RewardRatePct"),
+        "reward_cap": get_value("RewardCap (£)"),
+        "reward_face_value": face,
+        "reward_status": get_value("RewardStatus") or "Pending",
+        "reward_expiry_datetime": get_value("RewardExpiryDateTime"),
+        "wagering_required": Decimal(get_value("WageringMultiplier") or "0") > 0,
+        "wagering_multiplier": get_value("WageringMultiplier"),
+        "wagering_basis": basis,
+        "wagering_funding_source": get_value("WageringFundingSource") or "Unknown",
+        "wagering_base_amount": base_amount,
+        "wagering_target_override": get_value("WageringTargetOverride (£)"),
+        "minimum_wagering_odds": get_value("WageringMinOdds"),
+        "qualifying_scope": get_value("QualifyingScope"),
+        "qualifying_requirement": get_value("QualifyingRequirementRef"),
+        "qualifying_minimum_deposit": get_value("QualifyingMinDeposit (£)"),
+        "qualifying_minimum_stake": get_value("QualifyingMinStake (£)"),
+        "qualifying_minimum_odds": get_value("QualifyingMinOdds"),
+    }
+    return validate_promotion_json(json.dumps(details)), None
+
+
+def enrich_sportsbook_xlsx_rows(
+    content: bytes, rows: tuple[Any, ...]
+) -> list[dict[str, JsonScalar]]:
+    offer_groups = parse_optional_offer_groups_xlsx(content)
+    enriched: list[dict[str, JsonScalar]] = []
+    for row in rows:
+        fields: dict[str, JsonScalar] = dict(row.fields)
+        group_id = str(fields.get("OfferGroupID") or fields.get("Offer Group ID") or "").strip()
+        group = offer_groups.get(group_id)
+        if group:
+            details, review = promotion_details_from_offer_group(group)
+            existing = str(fields.get("PromotionDetailsJson") or "").strip()
+            if review:
+                fields["__PlumDuffPromotionReview"] = review
+            elif existing and validate_promotion_json(existing) != details:
+                fields["__PlumDuffPromotionReview"] = (
+                    "Sportsbook and Offer Groups promotion details conflict; review required."
+                )
+            elif details:
+                fields["PromotionDetailsJson"] = details
+        enriched.append(fields)
+    return enriched
 FREE_BET_SOURCE_MAP = {
     "DateSettling": "date_settled",
     "ExpiryDateTime": "expiry_datetime",
@@ -386,6 +502,8 @@ def sportsbook_mapped_fields(row: object) -> dict[str, JsonScalar]:
     record = row.__dict__
     mapped = {target: record.get(target, "") for target in set(SPORTSBOOK_SOURCE_MAP.values())}
     mapped["lay_commission_1"] = ""
+    mapped["bet_role"] = mapped.get("bet_role") or "Standalone"
+    mapped["promotion_json"] = mapped.get("promotion_json") or None
     return mapped
 
 
@@ -458,6 +576,10 @@ def sportsbook_export_row(profile_id: str, row: object) -> dict[str, object]:
         "BonusRetentionRate": record["bonus_retention_rate"],
         "MultiLayOutcome1Name": record["multi_lay_outcome_1_name"],
         "MultiLayOutcomesJson": record["multi_lay_outcomes_json"],
+        "OfferGroupID": record["offer_group_id"],
+        "BetRole": record["bet_role"],
+        "WageringContribution (£)": record["wagering_contribution"],
+        "PromotionDetailsJson": record["promotion_json"] or "",
         "CurrentProjectedValue": calculated.projected_current_pnl or "",
         "SettledFinalValue": calculated.final_net_pnl or "",
         "ReportingValue": calculated.reporting_value or "",
@@ -1032,7 +1154,7 @@ def reconcile_sportsbook_values(
                 record_id=f"IMPORT-ROW-{index + 1}",
                 status=str(row.get("status") or ""),
                 result=str(row.get("result") or ""),
-                offer_type=str(row.get("offer_type") or ""),
+                offer_type=("Normal" if row.get("bet_role") in {"Wagering", "RewardUse"} else str(row.get("offer_type") or "")),
                 back_stake=str(row.get("back_stake") or ""),
                 back_odds=str(row.get("back_odds") or ""),
                 match_strategy=str(row.get("match_strategy") or ""),
@@ -1387,10 +1509,11 @@ def map_sportsbook_import_fields(
     normalized_fields["MatchStrategy"] = normalize_workbook_match_strategy(
         fields.get("MatchStrategy", "")
     )
-    mapped: dict[str, JsonScalar] = {
-        target: normalized_fields.get(source, "")
-        for source, target in SPORTSBOOK_SOURCE_MAP.items()
-    }
+    mapped: dict[str, JsonScalar] = {}
+    for source, target in SPORTSBOOK_SOURCE_MAP.items():
+        value = normalized_fields.get(source, "")
+        if value not in (None, "") or target not in mapped:
+            mapped[target] = value
     mapped.update(
         {
             "bonus_trigger": mapped.get("bonus_trigger") or "",
@@ -1399,6 +1522,8 @@ def map_sportsbook_import_fields(
             "multi_lay_outcome_1_name": mapped.get("multi_lay_outcome_1_name") or "",
             "multi_lay_outcomes_json": mapped.get("multi_lay_outcomes_json") or "[]",
             "lay_commission_1": "",
+            "bet_role": mapped.get("bet_role") or "Standalone",
+            "promotion_json": mapped.get("promotion_json") or None,
         }
     )
     mapped["lay_actual"] = mapped.get("lay_actual") or normalized_fields.get(
@@ -1824,6 +1949,9 @@ def stage_import_rows(
                     ),
                 )
             )
+        promotion_review = str(row.fields.get("__PlumDuffPromotionReview") or "").strip()
+        if promotion_review:
+            warnings.append(issue("promotion_details_conflict", promotion_review))
 
         if source_sheet in EXCLUDED_SHEETS:
             action = "ignored"
@@ -1846,6 +1974,17 @@ def stage_import_rows(
                 else:
                     mapped_fields, mapping_errors = map_sportsbook_import_fields(row.fields)
                     errors.extend(mapping_errors)
+                    if (
+                        field_text(mapped_fields, "offer_group_id")
+                        and field_text(mapped_fields, "bet_role") in {"Trigger", "Wagering", "RewardUse"}
+                        and not field_text(mapped_fields, "promotion_json")
+                    ):
+                        warnings.append(
+                            issue(
+                                "promotion_details_required",
+                                "Promotion details required; the linked Sportsbook row may still be imported and completed in Plum Duff.",
+                            )
+                        )
                     # Idempotency follows authoritative entered fields. Workbook helper
                     # calculations may change without turning an unchanged tracker row
                     # into an operational update.
@@ -2353,6 +2492,12 @@ def create_profile_xlsx_import_dry_run(
         "sportsbook": "sportsbook-v1",
     }[resolved_ledger]
 
+    sportsbook_fields = (
+        enrich_sportsbook_xlsx_rows(content, parsed.rows)
+        if resolved_ledger == "sportsbook"
+        else []
+    )
+
     return persist_import_dry_run(
         profile_id=profile_id,
         payload=ImportDryRunPayload(
@@ -2362,14 +2507,18 @@ def create_profile_xlsx_import_dry_run(
             rows=[
                 ImportRowPayload(
                     sheet=source_sheet,
-                    source_record_id=row.source_record_id,
-                    source_row=row.source_row,
+                    source_record_id=cast(Any, row).source_record_id,
+                    source_row=cast(Any, row).source_row,
                     fields={
-                        **row.fields,
-                        "__PlumDuffOutsideTableRange": row.outside_table_range,
+                        **(
+                            sportsbook_fields[index]
+                            if resolved_ledger == "sportsbook"
+                            else cast(Any, row).fields
+                        ),
+                        "__PlumDuffOutsideTableRange": cast(Any, row).outside_table_range,
                     },
                 )
-                for row in parsed.rows
+                for index, row in enumerate(parsed.rows)
             ],
         ),
     )

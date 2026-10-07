@@ -127,6 +127,10 @@ class SportsbookBetFields(BaseModel):
     lay_plan_json: str | None = Field(default=None, max_length=12000)
     profit_boost_source_json: str | None = Field(default=None, max_length=4000)
     conditional_benefit_json: str | None = Field(default=None, max_length=4000)
+    offer_group_id: str = Field(default="", max_length=80)
+    bet_role: Literal["Standalone", "Trigger", "Wagering", "RewardUse"] = "Standalone"
+    wagering_contribution: str = Field(default="", max_length=40)
+    promotion_json: str | None = Field(default=None, max_length=8000)
     sportsbook_bet_id: str | None = Field(default=None, max_length=64)
     event_name: str = Field(min_length=1, max_length=200)
     offer_text: str = Field(default="", max_length=200)
@@ -166,25 +170,26 @@ class SportsbookBetFields(BaseModel):
 
 class SportsbookBetPayload(SportsbookBetFields):
     multi_lay_correction_reason: str = Field(default="", max_length=1000)
-
-    @model_validator(mode="before")
+    @field_validator("wagering_contribution", mode="before")
     @classmethod
-    def reject_unsupported_promotion_edits(cls, value: Any) -> Any:
-        if not isinstance(value, dict):
-            return value
-        promotion_fields = {
-            "offer_group_id",
-            "bet_role",
-            "wagering_contribution",
-            "promotion_json",
-        }
-        supplied = sorted(promotion_fields.intersection(value))
-        if supplied:
-            raise ValueError(
-                "Promotion fields require the sportsbook promotions release: "
-                + ", ".join(supplied)
-            )
-        return value
+    def validate_wagering_contribution(cls, value: Any) -> str:
+        return money(value, "wagering_contribution")
+
+    @field_validator("promotion_json", mode="before")
+    @classmethod
+    def validate_promotion_json(cls, value: Any) -> str | None:
+        if value in (None, ""):
+            return None
+        from openforge_api.sportsbook_promotions import validate_promotion_json
+        return validate_promotion_json(str(value))
+
+    @model_validator(mode="after")
+    def validate_promotion_link(self) -> "SportsbookBetPayload":
+        if self.bet_role != "Standalone" and not self.offer_group_id.strip():
+            raise ValueError("Offer Group ID is required for linked promotion bets.")
+        if self.bet_role == "Wagering" and self.promotion_json:
+            raise ValueError("Promotion terms belong to the Trigger bet, not each wagering bet.")
+        return self
 
     @field_validator(*MONEY_FIELDS, mode="before")
     @classmethod
@@ -323,6 +328,21 @@ class SportsbookBetResponse(SportsbookBetFields):
     profit_boost_effective_odds_return: str | None
     profit_boost_potential_profit: str | None
     profit_boost_equation: str | None
+
+
+class SportsbookPromotionPositionResponse(BaseModel):
+    offer_group_id: str
+    trigger_bet_id: str
+    cash_pnl_now: str
+    locked_reward_face_value: str
+    estimated_convertible_value: str
+    projected_final_offer_pnl: str
+    wagering_completed: str
+    wagering_target: str | None
+    wagering_remaining: str | None
+    reward_status: str
+    review_required: bool
+    review_message: str
 
 
 class SportsbookCalculationPreviewResponse(BaseModel):
@@ -769,7 +789,7 @@ def _build_response(
             record_id=record["sportsbook_bet_id"],
             status=record["status"],
             result=record["result"],
-            offer_type=record["offer_type"],
+            offer_type=("Normal" if record.get("bet_role") in {"Wagering", "RewardUse"} else record["offer_type"]),
             back_stake=record["back_stake"],
             back_odds=effective_back_odds or "",
             bonus_trigger=record["bonus_trigger"],
@@ -993,6 +1013,33 @@ def list_profile_sportsbook_bets(profile_id: str) -> list[SportsbookBetResponse]
     ]
 
 
+@router.get("/promotion-position/{offer_group_id}", response_model=SportsbookPromotionPositionResponse)
+def get_profile_sportsbook_promotion_position(profile_id: str, offer_group_id: str) -> SportsbookPromotionPositionResponse:
+    rows = [row for row in list_sportsbook_bets(profile_id) if row.offer_group_id == offer_group_id]
+    trigger = next((row for row in rows if row.bet_role == "Trigger"), None)
+    if trigger is None:
+        raise HTTPException(status_code=404, detail="Promotion trigger was not found for this Profile.")
+    built = [build_response(profile_id, row, as_of_date=date.today()).model_dump() for row in rows]
+    trigger_data = next(row for row in built if row["sportsbook_bet_id"] == trigger.sportsbook_bet_id)
+    from openforge_api.sportsbook_promotions import calculate_offer_position
+    position = calculate_offer_position(trigger_data, [row for row in built if row["sportsbook_bet_id"] != trigger.sportsbook_bet_id])
+    fmt = lambda value: format(value, ".2f") if value is not None else None
+    return SportsbookPromotionPositionResponse(
+        offer_group_id=offer_group_id,
+        trigger_bet_id=trigger.sportsbook_bet_id,
+        cash_pnl_now=fmt(position.cash_pnl_now) or "0.00",
+        locked_reward_face_value=fmt(position.locked_reward_face_value) or "0.00",
+        estimated_convertible_value=fmt(position.estimated_convertible_value) or "0.00",
+        projected_final_offer_pnl=fmt(position.projected_final_offer_pnl) or "0.00",
+        wagering_completed=fmt(position.wagering_completed) or "0.00",
+        wagering_target=fmt(position.wagering_target),
+        wagering_remaining=fmt(position.wagering_remaining),
+        reward_status=position.reward_status,
+        review_required=trigger.promotion_json is None,
+        review_message="Promotion details required" if trigger.promotion_json is None else "",
+    )
+
+
 @router.put(
     "/{sportsbook_bet_id}/partial-lay-reminder",
     response_model=SportsbookBetResponse,
@@ -1099,7 +1146,7 @@ def preview_profile_sportsbook_bet(
             record_id=payload.sportsbook_bet_id or "preview",
             status=payload.status,
             result=payload.result,
-            offer_type=payload.offer_type,
+            offer_type=("Normal" if payload.bet_role in {"Wagering", "RewardUse"} else payload.offer_type),
             back_stake=payload.back_stake,
             back_odds=effective_back_odds or "",
             bonus_trigger=payload.bonus_trigger,
