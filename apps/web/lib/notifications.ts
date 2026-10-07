@@ -53,6 +53,38 @@ export type FundManagerNotification = {
   tone: "warning" | "danger" | "info" | "success";
 };
 
+let inFlightFundManagerNotificationFeed: Promise<FundManagerNotification[]> | null = null;
+
+/**
+ * Share the current feed request between the application header and Daily Tasks.
+ * Hosted PostgreSQL builds the same governed projection for both consumers; issuing
+ * those reads concurrently multiplies the projection and event-persistence work.
+ */
+export function loadFundManagerNotificationFeed(): Promise<FundManagerNotification[]> {
+  if (inFlightFundManagerNotificationFeed) return inFlightFundManagerNotificationFeed;
+
+  const request = (async () => {
+    const response = await fetch(`${apiBaseUrl}/fund-manager/notifications`, {
+      cache: "no-store",
+      credentials: "include",
+    });
+    if (await redirectExpiredSession(response)) throw new Error("Session expired");
+    if (!response.ok) throw new Error("Unable to load notifications");
+    const payload = await response.json() as unknown;
+    if (!Array.isArray(payload)) throw new Error("Invalid notification feed");
+    return payload as FundManagerNotification[];
+  })();
+  inFlightFundManagerNotificationFeed = request;
+  void request.finally(() => {
+    if (inFlightFundManagerNotificationFeed === request) {
+      inFlightFundManagerNotificationFeed = null;
+    }
+  }).catch(() => {
+    // Each consumer handles the original request failure; this observes the cleanup chain.
+  });
+  return request;
+}
+
 export function canViewerReceiveNotification(
   notification: SecurityScopedNotification,
   viewer: NotificationViewer
@@ -430,10 +462,18 @@ export function deriveDailyTaskView(
 ): DailyTaskView {
   const completed =
     notification.task_state === "done" || isNotificationCleared(notification, viewState);
-  const parsedDue = new Date(notification.due_at);
-  const hasDue = notification.due_at.trim().length > 0 && !Number.isNaN(parsedDue.getTime());
+  const rawDue = typeof notification.due_at === "string" ? notification.due_at.trim() : "";
+  const parsedDue = new Date(rawDue);
+  const hasDue = rawDue.length > 0 && !Number.isNaN(parsedDue.getTime());
   const todayKey = londonDateKey(now);
-  const dueKey = hasDue ? londonDateKey(parsedDue) : "";
+  // Legacy date-only and timezone-naive values represent the owner's recorded
+  // calendar date. Preserve that date rather than letting the browser timezone
+  // reinterpret it. Zoned timestamps still resolve through Europe/London.
+  const dueKey = hasDue
+    ? /^\d{4}-\d{2}-\d{2}(?:$|T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?$)/.test(rawDue)
+      ? rawDue.slice(0, 10)
+      : londonDateKey(parsedDue)
+    : "";
   const dueState: DailyTaskDueState = completed
     ? "completed"
     : !hasDue

@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { apiBaseUrl } from "@/lib/api";
-import { redirectExpiredSession } from "@/lib/session-inactivity";
 import { APP_CONFIRMATION_OPEN_EVENT } from "@/lib/use-unsaved-changes-guard";
 import {
   filterFundManagerNotificationsForViewer,
@@ -21,6 +20,7 @@ import {
   loadPersistedNotificationPreferences,
   loadPersistedNotificationState,
   loadFundManagerNotificationPreferences,
+  loadFundManagerNotificationFeed,
   markNotificationsRead,
   normalizeNotificationViewState,
   persistNotificationState,
@@ -82,19 +82,10 @@ export function NotificationCentre() {
               loadPersistedNotificationPreferences(),
             ])
           : Promise.resolve([null, null] as const);
-        const [response, [persistedState, persistedPreferences]] = await Promise.all([
-          fetch(`${apiBaseUrl}/fund-manager/notifications`, {
-            cache: "no-store",
-            credentials: "include",
-          }),
+        const [payload, [persistedState, persistedPreferences]] = await Promise.all([
+          loadFundManagerNotificationFeed(),
           settingsRequest,
         ]);
-        if (await redirectExpiredSession(response)) {
-          isActive = false;
-          return;
-        }
-        if (!response.ok) throw new Error("Unable to load notifications");
-        const payload = (await response.json()) as FundManagerNotification[];
         if (!isActive) return;
         if (
           persistedState &&

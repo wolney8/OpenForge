@@ -17,6 +17,7 @@ import {
   FUND_MANAGER_NOTIFICATIONS_STORAGE_KEY,
   loadPersistedNotificationPreferences,
   loadPersistedNotificationState,
+  loadFundManagerNotificationFeed,
   markNotificationsRead,
   normalizeNotificationViewState,
   persistNotificationState,
@@ -95,13 +96,13 @@ export function DailyTasksPage() {
     if (showLoading) setIsLoading(true);
     setNow(new Date());
     try {
-      const [response, persistedState, preferences] = await Promise.all([
-        fetch(`${apiBaseUrl}/fund-manager/notifications`, { cache: "no-store", credentials: "include" }),
+      const [feed, persistedState, preferences] = await Promise.all([
+        loadFundManagerNotificationFeed(),
         loadPersistedNotificationState(),
         loadPersistedNotificationPreferences(),
       ]);
-      if (!response.ok || !persistedState || !preferences) throw new Error("Task evidence unavailable");
-      const remote = currentDailyTasks(await response.json() as FundManagerNotification[]);
+      if (!persistedState || !preferences) throw new Error("Task evidence unavailable");
+      const remote = currentDailyTasks(feed);
       if (requestVersion !== refreshVersionRef.current) return;
       if (stateRequestVersion === stateRequestVersionRef.current) applyViewState(persistedState);
       setNotifications(filterFundManagerNotificationsForViewer(remote, preferences));
@@ -251,7 +252,7 @@ export function DailyTasksPage() {
               role="tab"
               type="button"
             >
-              {view.label}<span>{counts[view.id]}</span>
+              {view.label}<span>{isLoading ? "—" : counts[view.id]}</span>
             </button>
           ))}
         </div>

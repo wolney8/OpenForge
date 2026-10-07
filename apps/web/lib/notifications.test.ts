@@ -17,6 +17,7 @@ import {
   getUnreadNotificationCount,
   getVisibleNotifications,
   isNotificationUnread,
+  loadFundManagerNotificationFeed,
   markNotificationsRead,
   normalizeFundManagerNotificationPreferences,
   normalizeNotificationViewState,
@@ -201,6 +202,53 @@ describe("fund manager notification view state", () => {
     expect(overdue).toMatchObject({ dueState: "overdue", priority: "high" });
     expect(completed.dueState).toBe("completed");
     expect(undated).toMatchObject({ dueState: "today", dueLabel: "Ready now · no deadline", priority: "low" });
+  });
+
+  it("keeps legacy due-date shapes visible in the Europe/London lifecycle", () => {
+    const now = new Date("2026-10-07T23:30:00Z"); // 8 October in Europe/London.
+    const dateOnly = deriveDailyTaskView(
+      { ...notifications[0], notification_id: "DATE-ONLY", due_at: "2026-10-07" },
+      emptyNotificationViewState,
+      now
+    );
+    const naiveLondon = deriveDailyTaskView(
+      { ...notifications[0], notification_id: "NAIVE", due_at: "2026-10-08T08:30:00" },
+      emptyNotificationViewState,
+      now
+    );
+    const missingDue = deriveDailyTaskView(
+      { ...notifications[0], notification_id: "MISSING", due_at: null } as unknown as FundManagerNotification,
+      emptyNotificationViewState,
+      now
+    );
+
+    expect(dateOnly.dueState).toBe("overdue");
+    expect(naiveLondon.dueState).toBe("today");
+    expect(missingDue).toMatchObject({
+      dueState: "today",
+      dueLabel: "Ready now · no deadline",
+    });
+  });
+
+  it("shares concurrent hosted feed reads and releases the request after completion", async () => {
+    const fetchMock = vi.fn().mockImplementation(async () =>
+      new Response(JSON.stringify(notifications), {
+        headers: { "Content-Type": "application/json" },
+        status: 200,
+      })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const [first, second] = await Promise.all([
+      loadFundManagerNotificationFeed(),
+      loadFundManagerNotificationFeed(),
+    ]);
+    expect(first).toEqual(notifications);
+    expect(second).toEqual(notifications);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    await loadFundManagerNotificationFeed();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it("filters Daily Tasks by Profile, bookmaker, type, source and search then sorts predictably", () => {

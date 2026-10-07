@@ -17,13 +17,14 @@ test("Daily Tasks scales through lifecycle views, combined filters and stable pa
     completion_href: "", tone: "warning", ...overrides,
   });
   const tasks = [
-    ...Array.from({ length: 21 }, (_, index) => task(index + 1)),
+    ...Array.from({ length: 124 }, (_, index) => task(index + 1)),
     task(30, { due_at: tomorrow.toISOString(), notification_id: "TASK-UPCOMING", title: "Upcoming synthetic review" }),
     task(31, { due_at: yesterday.toISOString(), notification_id: "TASK-OVERDUE", title: "Overdue synthetic review" }),
     task(32, { task_state: "done", notification_id: "TASK-DONE", title: "Completed synthetic review" }),
   ];
+  let feedRequests = 0;
   let persisted = { read_keys: [] as string[], dismissed_ids: [] as string[] };
-  const preferences = { calculator_conversion_complete: true, database_backup_reminder: true, partial_lay_reminder: true, free_bet_follow_up_reminder: true, profile_opportunity_reminder: true, catalogue_transfer_status: true, free_bet_expiry: true, settlement_review: true, account_review: true };
+  const preferences = {};
   await page.route("**/fund-manager/notifications/state", async (route) => {
     if (route.request().method() === "PUT") {
       const body = route.request().postDataJSON() as typeof persisted; persisted = body;
@@ -31,16 +32,22 @@ test("Daily Tasks scales through lifecycle views, combined filters and stable pa
     await route.fulfill({ status: 200, json: persisted });
   });
   await page.route("**/fund-manager/notifications/preferences", (route) => route.fulfill({ status: 200, json: { preferences } }));
-  await page.route("**/fund-manager/notifications", (route) => route.fulfill({ status: 200, json: tasks }));
+  await page.route("**/fund-manager/notifications", async (route) => {
+    feedRequests += 1;
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    await route.fulfill({ status: 200, json: tasks });
+  });
 
   await page.goto("/tasks");
   await expect(page.getByRole("heading", { name: "Daily Tasks", exact: true })).toBeVisible();
-  await expect(page.getByRole("tab", { name: /Today 21/ })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("tab", { name: /Today —/ })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("tab", { name: /Today 124/ })).toHaveAttribute("aria-selected", "true");
+  expect(feedRequests).toBe(1);
   await expect(page.locator('[data-pd-id^="tasks.item."]')).toHaveCount(16);
-  await expect(page.getByText("Page 1 of 2 · 21 rows").first()).toBeVisible();
+  await expect(page.getByText("Page 1 of 8 · 124 rows").first()).toBeVisible();
   const firstPageIds = await page.locator('[data-pd-id^="tasks.item."]').evaluateAll((rows) => rows.map((row) => row.getAttribute("data-pd-id")));
   await page.getByRole("button", { name: "Next", exact: true }).first().click();
-  await expect(page.locator('[data-pd-id^="tasks.item."]')).toHaveCount(5);
+  await expect(page.locator('[data-pd-id^="tasks.item."]')).toHaveCount(16);
   const secondPageIds = await page.locator('[data-pd-id^="tasks.item."]').evaluateAll((rows) => rows.map((row) => row.getAttribute("data-pd-id")));
   expect(secondPageIds.some((id) => firstPageIds.includes(id))).toBe(false);
 
@@ -63,14 +70,14 @@ test("Daily Tasks scales through lifecycle views, combined filters and stable pa
   await page.getByRole("tab", { name: /Upcoming 1/ }).click(); await expect(page.locator('[data-pd-id="tasks.item.TASK-UPCOMING"]')).toBeVisible();
   await page.getByRole("tab", { name: /Overdue 1/ }).click(); await expect(page.locator('[data-pd-id="tasks.item.TASK-OVERDUE"]')).toBeVisible();
   await page.getByRole("tab", { name: /Completed 1/ }).click(); await expect(page.locator('[data-pd-id="tasks.item.TASK-DONE"]')).toBeVisible();
-  await page.getByRole("tab", { name: /Today 21/ }).click();
+  await page.getByRole("tab", { name: /Today 124/ }).click();
   const first = page.locator('[data-pd-id="tasks.item.TASK-001"]');
   await first.getByText("Evidence", { exact: true }).click(); await expect(first).toContainText("Structured evidence");
   await first.getByRole("button", { name: "Complete Review synthetic task 1" }).click();
   await page.getByRole("tab", { name: /Completed 2/ }).click(); await expect(first).toBeVisible();
   await first.getByRole("button", { name: "Restore Review synthetic task 1" }).click(); await expect(first).toHaveCount(0);
 
-  await page.getByRole("tab", { name: /Today 21/ }).click();
+  await page.getByRole("tab", { name: /Today 124/ }).click();
   await page.getByRole("searchbox", { name: "Search Daily Tasks" }).fill("absent item");
   await expect(page.getByText("No today tasks match these controls.", { exact: true })).toBeVisible();
   for (const width of [390, 760]) {
