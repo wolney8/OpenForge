@@ -752,7 +752,9 @@ function sortReportRows(rows: ReportRow[]): ReportRow[] {
 }
 
 function sortBookmakerRows(rows: BookmakerBreakdownRow[]): BookmakerBreakdownRow[] {
-  return [...rows].sort((left, right) => right.totalPnl - left.totalPnl);
+  return [...rows].sort(
+    (left, right) => right.totalPnl - left.totalPnl || left.bookmaker.localeCompare(right.bookmaker)
+  );
 }
 
 function firstRetainedProfit(rows: ReportRow[]): number {

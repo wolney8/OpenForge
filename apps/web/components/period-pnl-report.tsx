@@ -1,12 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { ContextHelp } from "@/components/context-help";
 import { FinancialValue } from "@/components/financial-value";
-import { ReportPointChart } from "@/components/report-point-chart";
 import { usePersistedState } from "@/lib/ledger-ui";
-import { buildSparklinePoints } from "@/lib/dashboard-analytics";
+import { LedgerPagination } from "@/components/ledger-pagination";
 import { filterFormalReportRows, type FormalReportFinancialFilter } from "@/lib/formal-report-filters";
 import { buildFormalReportRecords, formatHumanDisplayDate, formalReportWeekKey,
   type ReportRow, type TrackerSummaryDataset } from "@/lib/tracker-summary";
@@ -22,37 +21,40 @@ export function PeriodPnlReport({ rows, scopes, contextKey, scopeLabel }: {
   // Existing UI preference storage, not a saved-preset/domain object.
   const [stored, setSelection] = usePersistedState<Selection>(
     "openforge-report-period-pnl:" + contextKey, defaults);
+  const [periodPage, setPeriodPage] = useState(1);
+  const [periodPageSize, setPeriodPageSize] = useState(16);
+  const [recordPage, setRecordPage] = useState(1);
+  const [recordPageSize, setRecordPageSize] = useState(16);
   const selection = {
     maximum: ["all", "3", "6", "12"].includes(stored?.maximum) ? stored.maximum : "all",
     week: formalReportWeekKey(stored?.week) ?? "",
     filter: filters.includes(stored?.filter) ? stored.filter : "all",
     point: typeof stored?.point === "string" ? stored.point : "",
   };
-  const change = (patch: Partial<Selection>) => setSelection({ ...selection, ...patch });
+  const change = (patch: Partial<Selection>) => {
+    setSelection({ ...selection, ...patch });
+    setPeriodPage(1);
+    setRecordPage(1);
+  };
   const visible = filterFormalReportRows({ rows,
     maximumPeriods: selection.maximum === "all" ? null : Number(selection.maximum),
     periodKey: selection.week, financialFilter: selection.filter as FormalReportFinancialFilter,
     feeValue: () => 0, feeReviewRequired: () => false,
   }).toSorted((a, b) => a.periodKey.localeCompare(b.periodKey));
-  const points = visible.map((row) => ({ key: row.periodKey,
-    label: "Week commencing " + formatHumanDisplayDate(row.periodKey, false), value: row.totalPnl }));
-  const foundIndex = points.findIndex((point) => point.key === selection.point);
-  const selectedIndex = foundIndex < 0 ? points.length - 1 : foundIndex;
-  const selected = points[selectedIndex];
+  const selected = visible.find((row) => row.periodKey === selection.point) ?? visible.at(-1);
   const records = useMemo(() => scopes.flatMap((scope) => buildFormalReportRecords(scope.dataset)
     .map((row) => ({ ...row, profileId: scope.profileId, profileLabel: scope.label }))), [scopes]);
-  const pointRecords = records.filter((row) => row.weekKey === selected?.key && row.component !== "funding");
+  const pointRecords = records.filter((row) => row.weekKey === selected?.periodKey && row.component !== "funding");
   const bettingRecords = pointRecords.filter((row) => row.component !== "costs" && row.component !== "withdrawals");
   const cashRecords = pointRecords.filter((row) => row.component === "costs" || row.component === "withdrawals");
   const total = (field: "totalPnl" | "costs" | "withdrawals" | "retainedProfit") =>
     visible.reduce((sum, row) => sum + row[field], 0);
-  const graph = buildSparklinePoints(points, true);
-  const recordList = (list: typeof records) => <ul>{list.map((row) => <li key={row.profileId + ":" + row.module + ":" + row.id}>
-    <Link href={`/profiles/${row.profileId}/tracker/${row.module}?search=${encodeURIComponent(row.id)}&source=report-point`}>
-      <span>{row.profileLabel} · {row.label} · {formatHumanDisplayDate(row.date.toISOString(), false)}</span>
-      <FinancialValue animate={false} value={row.value} />
-    </Link>
-  </li>)}</ul>;
+  const periodPageCount = Math.max(1, Math.ceil(visible.length / periodPageSize));
+  const safePeriodPage = Math.min(periodPage, periodPageCount);
+  const visiblePeriods = visible.slice((safePeriodPage - 1) * periodPageSize, safePeriodPage * periodPageSize);
+  const recordPageCount = Math.max(1, Math.ceil(pointRecords.length / recordPageSize));
+  const safeRecordPage = Math.min(recordPage, recordPageCount);
+  const visibleRecords = pointRecords.slice((safeRecordPage - 1) * recordPageSize, safeRecordPage * recordPageSize);
   return <section className="content-subpanel stack" aria-label="Period P&L" data-pd-id="reports.period-pnl">
     <div className="section-heading-row formal-report-section-heading">
       <h3>Period P&amp;L <ContextHelp label="About period P&L" text="Weekly betting P&L before management and investment fees. Sportsbook and Free Bets use their recorded settlement date; Free Bets include Placed and Settled rows. Casino uses its settling date; Extra Place uses its placed date. Eligible current values are included, so this is not a settled-only report. Commission and Casino costs already included in row values are not deducted twice. Funding and History are not betting profit. Signed cash costs and withdrawals are separate in retained profit." /></h3>
@@ -84,13 +86,32 @@ export function PeriodPnlReport({ rows, scopes, contextKey, scopeLabel }: {
       <div><dt>Withdrawals</dt><dd><FinancialValue animate={false} value={total("withdrawals")} /></dd></div>
       <div><dt>Retained profit</dt><dd data-pd-id="reports.period-pnl.retained"><FinancialValue animate={false} value={total("retainedProfit")} /></dd></div>
     </dl>
-    {points.length ? <ReportPointChart {...graph} label="Weekly betting P&L points" points={points}
-      selectedIndex={selectedIndex} onSelect={(index) => change({ point: points[index].key })}>
-      <section className="dashboard-chart-drilldown" aria-label={"Betting records for " + selected?.label} data-pd-id="reports.period-pnl.records">
-        <h4>Betting records in this point</h4>
-        {bettingRecords.length ? recordList(bettingRecords) : <p className="muted-text">No betting records in this week.</p>}
-        {cashRecords.length ? <details><summary>Cash costs and withdrawals — separate from betting P&amp;L</summary>{recordList(cashRecords)}</details> : null}
+    {visible.length ? <>
+      <LedgerPagination ariaLabel="Period P&L Periods" currentPage={safePeriodPage} onPageChange={setPeriodPage}
+        onPageSizeChange={(size) => { setPeriodPageSize(size); setPeriodPage(1); }} pageCount={periodPageCount}
+        pageSize={periodPageSize} position="top" totalRows={visible.length} />
+      <div className="table-shell"><table><thead><tr><th scope="col">Period</th><th scope="col">Betting P&amp;L</th><th scope="col">Cash Costs</th><th scope="col">Withdrawals</th><th scope="col">Retained Profit</th><th scope="col">Records</th></tr></thead><tbody>
+        {visiblePeriods.map((row) => <tr key={row.periodKey} data-pd-id={`reports.period-pnl.period.${row.periodKey}`}>
+          <td>Week commencing {formatHumanDisplayDate(row.periodKey, false)}</td><td><FinancialValue animate={false} value={row.totalPnl} /></td><td><FinancialValue animate={false} value={row.costs} /></td><td><FinancialValue animate={false} value={row.withdrawals} /></td><td><FinancialValue animate={false} value={row.retainedProfit} /></td><td><button aria-pressed={selected?.periodKey === row.periodKey} className="button-link" onClick={() => change({ point: row.periodKey })} type="button">Inspect Period</button></td>
+        </tr>)}
+      </tbody></table></div>
+      <LedgerPagination ariaLabel="Period P&L Periods" currentPage={safePeriodPage} onPageChange={setPeriodPage}
+        onPageSizeChange={(size) => { setPeriodPageSize(size); setPeriodPage(1); }} pageCount={periodPageCount}
+        pageSize={periodPageSize} position="bottom" totalRows={visible.length} />
+      <section className="dashboard-chart-drilldown stack" aria-label={`Records for week commencing ${selected?.periodKey}`} data-pd-id="reports.period-pnl.records">
+        <h4>Selected Period Records · Week Commencing {selected ? formatHumanDisplayDate(selected.periodKey, false) : "—"}</h4>
+        <p className="field-hint">{bettingRecords.length} betting records · {cashRecords.length} cash costs or withdrawals shown separately.</p>
+        <LedgerPagination ariaLabel="Period P&L Records" currentPage={safeRecordPage} onPageChange={setRecordPage}
+          onPageSizeChange={(size) => { setRecordPageSize(size); setRecordPage(1); }} pageCount={recordPageCount}
+          pageSize={recordPageSize} position="top" totalRows={pointRecords.length} />
+        <div className="table-shell"><table><thead><tr><th scope="col">Record</th><th scope="col">Profile</th><th scope="col">Type</th><th scope="col">Reporting Date</th><th scope="col">Value</th></tr></thead><tbody>
+          {visibleRecords.map((row) => <tr key={row.profileId + ":" + row.module + ":" + row.id}><td><Link href={`/profiles/${row.profileId}/tracker/${row.module}?search=${encodeURIComponent(row.id)}&source=report-point`}>{row.label}</Link></td><td>{row.profileLabel}</td><td>{row.component === "costs" || row.component === "withdrawals" ? "Cash movement" : "Betting"}</td><td>{formatHumanDisplayDate(row.date.toISOString(), false)}</td><td><FinancialValue animate={false} value={row.value} /></td></tr>)}
+          {!pointRecords.length ? <tr><td colSpan={5}>No records are available for this period.</td></tr> : null}
+        </tbody></table></div>
+        <LedgerPagination ariaLabel="Period P&L Records" currentPage={safeRecordPage} onPageChange={setRecordPage}
+          onPageSizeChange={(size) => { setRecordPageSize(size); setRecordPage(1); }} pageCount={recordPageCount}
+          pageSize={recordPageSize} position="bottom" totalRows={pointRecords.length} />
       </section>
-    </ReportPointChart> : <p role="status">No report records match this period and result filter.</p>}
+    </> : <p role="status">No report records match this period and result filter.</p>}
   </section>;
 }

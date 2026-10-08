@@ -3,6 +3,14 @@ import { readSummaryMoney, type TrackerSummaryDataset } from "./tracker-summary"
 export type ExplorerScope = { profileId: string; label: string; dataset: TrackerSummaryDataset };
 export type ExplorerMetric = "pnl" | "count" | "costs" | "withdrawals";
 export type ExplorerDimension = "provider" | "module" | "betType" | "offerType" | "fixtureType" | "status" | "result";
+export type ExplorerDatePreset = "Today" | "This Week" | "Last Week" | "This Month" | "Last Month" | "Custom";
+export type ExplorerFilters = Partial<Record<ExplorerDimension, string[]>>;
+export type ExplorerRecipe = {
+  id: string;
+  label: string;
+  preset: ExplorerDatePreset;
+  filters: ExplorerFilters;
+};
 export const explorerDimensions: Record<ExplorerDimension, string> = {
   provider: "Bookmaker / provider", module: "Module", betType: "Bet type", offerType: "Offer type",
   fixtureType: "Fixture type", status: "Status", result: "Result",
@@ -11,6 +19,16 @@ export const explorerModules: Record<string, string> = {
   "sportsbook-bets": "Sportsbook", "free-bets": "Free Bets", "casino-offers": "Casino",
   "each-way-extra-places": "Each Way / Extra Places", "cash-adjustments": "Cash",
 };
+export const explorerRecipes: ExplorerRecipe[] = [{
+  id: "free-bets-today",
+  label: "Free Bets Today",
+  preset: "Today",
+  filters: {
+    module: ["free-bets"],
+    betType: ["Single"],
+    status: ["Placed", "Settled"],
+  },
+}];
 export type ExplorerRecord = Record<ExplorerDimension, string> & {
   id: string; profileId: string; profileLabel: string; label: string; date: string | null;
   realised: boolean; operational: boolean; value: number; cashType: string;
@@ -26,7 +44,7 @@ export function londonReportDay(value: string | Date): string | null {
   if (!Number.isFinite(date.getTime())) return null;
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/London", year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
 }
-export function explorerRange(preset: string, now: Date, start: string, end: string) {
+export function explorerRange(preset: ExplorerDatePreset, now: Date, start: string, end: string) {
   const today=londonReportDay(now)!;
   if (preset==="Custom") return { start: londonReportDay(start), end: londonReportDay(end) };
   if (preset==="Today") return { start: today, end: today };
@@ -36,7 +54,39 @@ export function explorerRange(preset: string, now: Date, start: string, end: str
     const first=day.toISOString().slice(0,10);day.setUTCDate(day.getUTCDate()+6);
     return { start:first,end:day.toISOString().slice(0,10) };
   }
+  if (preset==="Last Week") {
+    day.setUTCDate(day.getUTCDate()-(day.getUTCDay()+6)%7-7);
+    const first=day.toISOString().slice(0,10);day.setUTCDate(day.getUTCDate()+6);
+    return { start:first,end:day.toISOString().slice(0,10) };
+  }
+  if (preset==="Last Month") {
+    const first=new Date(Date.UTC(day.getUTCFullYear(),day.getUTCMonth()-1,1,12));
+    const last=new Date(Date.UTC(day.getUTCFullYear(),day.getUTCMonth(),0,12));
+    return { start:first.toISOString().slice(0,10),end:last.toISOString().slice(0,10) };
+  }
   return { start:today.slice(0,7)+"-01",end:new Date(Date.UTC(day.getUTCFullYear(),day.getUTCMonth()+1,0,12)).toISOString().slice(0,10) };
+}
+
+export function normalizeExplorerFilters(value: unknown): ExplorerFilters {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  return Object.fromEntries(Object.entries(value).flatMap(([key, raw]) => {
+    if (!(key in explorerDimensions)) return [];
+    const values = Array.isArray(raw) ? raw : typeof raw === "string" ? [raw] : [];
+    const normalized = [...new Set(values.filter((item): item is string => typeof item === "string" && Boolean(item)))];
+    return normalized.length ? [[key, normalized]] : [];
+  })) as ExplorerFilters;
+}
+
+export function explorerSelectionMatchesRecipe(
+  selection: { preset: ExplorerDatePreset; filters: ExplorerFilters },
+  recipe: ExplorerRecipe,
+) {
+  const dimensions = Object.keys(explorerDimensions) as ExplorerDimension[];
+  return selection.preset === recipe.preset && dimensions.every((dimension) => {
+    const selected = [...(selection.filters[dimension] ?? [])].sort();
+    const expected = [...(recipe.filters[dimension] ?? [])].sort();
+    return selected.length === expected.length && selected.every((value, index) => value === expected[index]);
+  });
 }
 export function buildExplorerRecords(scopes: ExplorerScope[]): ExplorerRecord[] {
   const rows: ExplorerRecord[]=[];
@@ -65,15 +115,25 @@ export function buildExplorerRecords(scopes: ExplorerScope[]): ExplorerRecord[] 
   }
   return [...new Map(rows.map(r=>[`${r.profileId}:${r.module}:${r.id}`,r])).values()];
 }
-export function exploreRecords(rows: ExplorerRecord[], metric: ExplorerMetric, range: {start:string|null;end:string|null}, filters: Partial<Record<ExplorerDimension,string>>, group: ExplorerDimension) {
+export function exploreRecords(rows: ExplorerRecord[], metric: ExplorerMetric, range: {start:string|null;end:string|null}, filters: ExplorerFilters, group: ExplorerDimension) {
   const valid=Boolean(range.start&&range.end&&range.start<=range.end);
-  const eligible=rows.filter(r=>(metric==="count" ? r.operational : metric==="pnl" ? r.realised : metric==="withdrawals" ? r.cashType==="Withdrawal" : ["Deduction","Subscription","Costs"].includes(r.cashType))
-    &&Object.entries(filters).every(([key,value])=>!value||r[key as ExplorerDimension]===value));
-  const undated=eligible.filter(r=>!r.date);
-  const selected=valid ? eligible.filter(r=>r.date&&r.date>=range.start!&&r.date<=range.end!) : [];
+  const matchesFilters=(record:ExplorerRecord)=>Object.entries(filters).every(([key,values])=>
+    !values?.length||values.includes(record[key as ExplorerDimension]));
+  const candidates=rows.filter(matchesFilters);
+  const isEligible=(record:ExplorerRecord)=>metric==="count" ? record.operational : metric==="pnl" ? record.realised : metric==="withdrawals" ? record.cashType==="Withdrawal" : ["Deduction","Subscription","Costs"].includes(record.cashType);
+  const explicitlySelectedStatuses=filters.status??[];
+  const isVisibleMatch=(record:ExplorerRecord)=>isEligible(record)||explicitlySelectedStatuses.includes(record.status);
+  const undated=candidates.filter(record=>!record.date&&isVisibleMatch(record));
+  const ranged=valid ? candidates.filter(record=>record.date&&record.date>=range.start!&&record.date<=range.end!) : [];
+  const records=ranged.filter(isVisibleMatch);
+  const eligible=ranged.filter(isEligible);
   const aggregate=(records: ExplorerRecord[])=>({ count:records.length,
     known: metric==="count" ? records.length : records.reduce((sum,r)=>Number.isFinite(r.value)?sum+Math.round(r.value*100):sum,0)/100,
     unknown:metric==="count" ? 0 : records.filter(r=>!Number.isFinite(r.value)).length });
-  const groups=[...new Set(selected.map(r=>r[group]))].sort().map(key=>({key,records:selected.filter(r=>r[group]===key),...aggregate(selected.filter(r=>r[group]===key))}));
-  return { valid,records:selected,undated,groups,...aggregate(selected) };
+  const groups=[...new Set(records.map(r=>r[group]))].sort().map(key=>{
+    const groupRecords=records.filter(r=>r[group]===key);
+    const groupEligible=eligible.filter(r=>r[group]===key);
+    return {key,records:groupRecords,...aggregate(groupEligible)};
+  });
+  return { valid,records,eligibleRecords:eligible,undated,groups,...aggregate(eligible) };
 }

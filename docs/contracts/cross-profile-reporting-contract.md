@@ -164,8 +164,8 @@ Formal report fields retain their existing signed-value semantics:
 - Use human-readable British dates in report labels and tables while retaining stable machine period keys.
 - Surface concise action-needed indicators for overdue or expiring work without treating all open
   positions as errors.
-- Group the Fund Manager surface into accessible `Profiles`, `Performance`, `Exposure`, and
-  `Formal Reports` views without changing the calculations or resolved range behind each view.
+- Group the Fund Manager surface into accessible `Profiles`, `Performance`, `Exposure`, `Fees`,
+  and `Formal Reports` views without changing the calculations or resolved range behind each view.
 - Keep profile management, operational issue links, dashboard navigation, report navigation and
   the profile-details drawer exclusively in the `Profiles` directory view.
 - The directory combines ledger issue actions and dashboard/report navigation into one `Actions`
@@ -231,3 +231,24 @@ Authoritative financial outputs are already currency values at two-decimal preci
 integer pennies, then divide by100 for display; no new per-record financial rounding or equation.
 The existing Sportsbook No Lay + None/Mug Bet cash-return win branch is unchanged; explorer uses
 its governed final output and must not claim independent recalculation or resolve that old caveat.
+
+## CP-078 Reports organisation, recipes and bounded lists
+
+- Each report block has one primary home: Profiles owns directory/workload/cash/balance history;
+  Performance owns selected-range performance, Explorer, one governed P&L breakdown, bookmaker
+  breakdown and Profile comparison; Exposure owns open-position comparison; Fees owns fee position
+  and monthly status; Formal Reports owns Period P&L and weekly/monthly/yearly formal tables.
+- Main sections remain visible in their tab. Record-level inspection and optional controls may use
+  progressive disclosure; primary reports must not be hidden in accordions.
+- Explorer date chips preserve other criteria. Named recipes are explicit versioned filter
+  definitions. `Free Bets Today` means reporting date Today AND module Free Bets AND bet type
+  Single AND status (Placed OR Settled). Applying it clears unspecified option filters, preserves
+  authorised Profile scope and updates the visible controls atomically.
+- Multiple selections within one filter dimension use OR; different dimensions use AND. Legacy
+  persisted scalar selections normalise to one-element lists. Relative dates resolve in
+  Europe/London when applied or restored.
+- Matching records and aggregate eligibility remain distinct: explicitly requested Placed records
+  remain inspectable while realised P&L continues to use only governed realised results.
+- Growing report/detail lists use the shared 16-row pagination control. Sorting and filtering occur
+  before pagination; totals cover the full governed scope; list pages are independent and reset or
+  clamp safely when their governing criteria change.

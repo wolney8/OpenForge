@@ -3720,6 +3720,81 @@ html[data-theme="dark"] .notification-count-badge {
   align-self: start;
 }
 
+.report-filter-chip-groups,
+.filter-chip-list,
+.active-filter-summary {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.report-filter-chip-groups {
+  align-items: flex-start;
+  flex-direction: column;
+}
+
+.filter-chip-label,
+.active-filter-summary > strong {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.filter-chip {
+  align-items: center;
+  background: var(--surface-container);
+  border: 1px solid var(--outline);
+  border-radius: 999px;
+  color: var(--text);
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  min-height: 2.75rem;
+  padding: 0.45rem 0.8rem;
+}
+
+.filter-chip:is(:hover, :focus-visible),
+.filter-chip.is-active {
+  background: var(--primary-soft);
+  border-color: var(--primary);
+}
+
+.report-filter-disclosure > summary {
+  cursor: pointer;
+  font-weight: 700;
+  min-height: 2.75rem;
+  padding-block: 0.5rem;
+}
+
+.report-multi-filter-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+  padding-block-start: 0.75rem;
+}
+
+.report-multi-filter-grid fieldset {
+  border: 1px solid var(--outline);
+  border-radius: var(--shape-medium);
+  display: grid;
+  gap: 0.25rem;
+  margin: 0;
+  max-height: 15rem;
+  min-width: 0;
+  overflow: auto;
+  padding: 0.75rem;
+}
+
+.filter-checkbox {
+  align-items: center;
+  display: flex;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+}
+
 .m3-picker-field {
   position: relative;
   display: grid;

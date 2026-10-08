@@ -110,7 +110,7 @@ const analyticsTabs: { id: AnalyticsTab; label: string }[] = [
   { id: "reports", label: "Formal Reports" },
 ];
 
-const directoryPageSize = 8;
+const directoryDefaultPageSize = 16;
 const reportProfilePickerPageSize = 16;
 const reportProfileTableDefaultPageSize = 16;
 const profileStatusOptions = ["Active", "Pending", "Inactive", "Paused", "Archived"];
@@ -388,6 +388,7 @@ export function CrossProfileAnalytics({
 }) {
   const router = useRouter();
   const profileRecords = profiles;
+  const isReportAnalysisTab = initialTab === "reports" || initialTab === "performance";
   const activeProfileIds = useMemo(
     () => profiles
       .filter((profile) => normalizeProfileStatus(profile.status) !== "Archived")
@@ -409,15 +410,15 @@ export function CrossProfileAnalytics({
     [profiles, savedReportProfileIds]
   );
   const selectedProfileIds = useMemo(() => {
-    if (initialTab !== "reports") return localProfileIds;
+    if (!isReportAnalysisTab) return localProfileIds;
     return resolvedReportSelection.selectedIds;
-  }, [initialTab, localProfileIds, resolvedReportSelection.selectedIds]);
+  }, [isReportAnalysisTab, localProfileIds, resolvedReportSelection.selectedIds]);
   const setSelectedProfileIds = (
     next: string[] | ((ids: string[]) => string[]),
     scope: ReportProfileScopeMode = "custom",
   ) => {
     const ids = typeof next === "function" ? next(selectedProfileIds) : next;
-    if (initialTab === "reports") setSavedReportProfileIds({ selectedIds: ids,
+    if (isReportAnalysisTab) setSavedReportProfileIds({ selectedIds: ids,
       archivedIds: ids.filter((id) => profiles.some((profile) => profile.profileId === id && normalizeProfileStatus(profile.status) === "Archived")),
       scope });
     else setLocalProfileIds(ids);
@@ -431,12 +432,21 @@ export function CrossProfileAnalytics({
   const [directoryQuery, setDirectoryQuery] = useState("");
   const [directoryStatus, setDirectoryStatus] = useState<DirectoryStatus>(initialDirectoryStatus);
   const [directoryPage, setDirectoryPage] = useState(1);
+  const [directoryPageSize, setDirectoryPageSize] = useState(directoryDefaultPageSize);
   const [reportProfilePickerQuery, setReportProfilePickerQuery] = useState("");
   const [reportProfilePickerPage, setReportProfilePickerPage] = useState(1);
   const [reportProfileTableQuery, setReportProfileTableQuery] = useState("");
   const [reportProfileTableSort, setReportProfileTableSort] = useState("pnl-desc");
   const [reportProfileTablePage, setReportProfileTablePage] = useState(1);
   const [reportProfileTablePageSize, setReportProfileTablePageSize] = useState(reportProfileTableDefaultPageSize);
+  const [bookmakerPage, setBookmakerPage] = useState(1);
+  const [bookmakerPageSize, setBookmakerPageSize] = useState(16);
+  const [exposurePage, setExposurePage] = useState(1);
+  const [exposurePageSize, setExposurePageSize] = useState(16);
+  const [feePage, setFeePage] = useState(1);
+  const [feePageSize, setFeePageSize] = useState(16);
+  const [balancePage, setBalancePage] = useState(1);
+  const [balancePageSize, setBalancePageSize] = useState(16);
   const [pinnedProfileIds, setPinnedProfileIds] = useState<string[]>([]);
   const [detailProfileId, setDetailProfileId] = useState<string | null>(initialDetailProfileId ?? null);
   const [drawerNavigationLabel, setDrawerNavigationLabel] = useState("");
@@ -478,6 +488,7 @@ export function CrossProfileAnalytics({
     activeTab,
     detailProfileId,
     directoryPage,
+    directoryPageSize,
     directoryQuery,
     directoryStatus,
     feeBreakdownProfileId,
@@ -545,7 +556,7 @@ export function CrossProfileAnalytics({
     if (!hasCompleteCriticalCache && initialTab !== "profiles") beginShellLoading();
 
     const loadProfiles = async (): Promise<ProfileSourceLoadResult[]> => {
-      if (initialTab === "reports") {
+      if (isReportAnalysisTab) {
         const combinedResult = await fetchCombinedTrackerSummarySources(
           resolvedReportSelection.scope,
           requestedProfiles.map((profile) => profile.profileId),
@@ -637,7 +648,7 @@ export function CrossProfileAnalytics({
       if (stateTimer !== null) window.clearTimeout(stateTimer);
       if (!hasCompleteCriticalCache && initialTab !== "profiles") endShellLoading();
     };
-  }, [initialTab, profiles, requestedProfileIds, loadRevision, resolvedReportSelection.scope]);
+  }, [initialTab, isReportAnalysisTab, profiles, requestedProfileIds, loadRevision, resolvedReportSelection.scope]);
 
   useEffect(() => {
     const retryableFailures = failures.filter((failure) => failure.status !== 404);
@@ -756,7 +767,7 @@ export function CrossProfileAnalytics({
   const selectedReadState = profileReadState(selectedProfileIds);
   const feeCentreReadState = profileReadState(profileRecords.map((profile) => profile.profileId), "fees");
 
-  const reportScopeMode = initialTab === "reports" ? resolvedReportSelection.scope : "custom";
+  const reportScopeMode = isReportAnalysisTab ? resolvedReportSelection.scope : "custom";
   const reportScopeLabel = reportScopeMode === "active"
     ? `${selectedProfileIds.length} Active ${selectedProfileIds.length === 1 ? "Profile" : "Profiles"}`
     : reportScopeMode === "inactive"
@@ -1038,8 +1049,8 @@ export function CrossProfileAnalytics({
             (cutoff === null || timestamp >= cutoff) &&
             (balanceSnapshotType === "all" || snapshot.snapshot_type === balanceSnapshotType);
         })
-        .sort((left, right) => right.snapshot_at.localeCompare(left.snapshot_at))
-        .slice(0, 50);
+        .sort((left, right) => right.snapshot_at.localeCompare(left.snapshot_at) ||
+          `${left.profile_id}:${left.balance_snapshot_id}`.localeCompare(`${right.profile_id}:${right.balance_snapshot_id}`));
     },
     [balanceSnapshotRange, balanceSnapshotType, datasets, profileRecords, reportFilterAsOf, selectedProfileIds]
   );
@@ -1055,6 +1066,26 @@ export function CrossProfileAnalytics({
           )
       )].sort(),
     [datasets, profileRecords, selectedProfileIds]
+  );
+  const bookmakerPageCount = Math.max(1, Math.ceil(combined.bookmakerBreakdown.length / bookmakerPageSize));
+  const visibleBookmakerRows = combined.bookmakerBreakdown.slice(
+    (Math.min(bookmakerPage, bookmakerPageCount) - 1) * bookmakerPageSize,
+    Math.min(bookmakerPage, bookmakerPageCount) * bookmakerPageSize,
+  );
+  const exposurePageCount = Math.max(1, Math.ceil(combined.profileRows.length / exposurePageSize));
+  const visibleExposureRows = combined.profileRows.slice(
+    (Math.min(exposurePage, exposurePageCount) - 1) * exposurePageSize,
+    Math.min(exposurePage, exposurePageCount) * exposurePageSize,
+  );
+  const feePageCount = Math.max(1, Math.ceil(feeCentreRows.length / feePageSize));
+  const visibleFeeRows = feeCentreRows.slice(
+    (Math.min(feePage, feePageCount) - 1) * feePageSize,
+    Math.min(feePage, feePageCount) * feePageSize,
+  );
+  const balancePageCount = Math.max(1, Math.ceil(balanceSnapshots.length / balancePageSize));
+  const visibleBalanceSnapshots = balanceSnapshots.slice(
+    (Math.min(balancePage, balancePageCount) - 1) * balancePageSize,
+    Math.min(balancePage, balancePageCount) * balancePageSize,
   );
 
   function toggleProfile(profileId: string) {
@@ -1155,12 +1186,12 @@ export function CrossProfileAnalytics({
           <span aria-hidden="true" className="material-symbols-outlined">
             group
           </span>
-          <span>{initialTab === "reports" ? "Profile Scope" : "Profiles"}</span>
-          <span className="profile-picker-count">{initialTab === "reports" ? reportScopeLabel : `${selectedProfileIds.length} of ${profileRecords.length}`}</span>
+          <span>{isReportAnalysisTab ? "Profile Scope" : "Profiles"}</span>
+          <span className="profile-picker-count">{isReportAnalysisTab ? reportScopeLabel : `${selectedProfileIds.length} of ${profileRecords.length}`}</span>
         </summary>
         <fieldset>
-          <legend>{initialTab === "reports" ? "Profiles Included In Reports" : "Profiles included in combined analytics"}</legend>
-          {initialTab === "reports" ? <>
+          <legend>{isReportAnalysisTab ? "Profiles Included In Reports" : "Profiles included in combined analytics"}</legend>
+          {isReportAnalysisTab ? <>
           <label className="m3-picker-field report-profile-scope-mode">
             <span className="m3-picker-label">Profile scope</span>
             <span className="m3-picker-control">
@@ -1293,7 +1324,7 @@ export function CrossProfileAnalytics({
               <select
                 aria-label="Fee centre closed month"
                 data-pd-id="fees.closed-month"
-                onChange={(event) => setFeeCentreMonth(event.target.value)}
+                onChange={(event) => { setFeeCentreMonth(event.target.value); setFeePage(1); }}
                 value={feeCentreMonth}
               >
                 {feeCentreMonthOptions.map((option) => (
@@ -1383,74 +1414,6 @@ export function CrossProfileAnalytics({
         </div>
       ) : null}
 
-      <section
-          aria-label="Combined portfolio visual summary"
-          className="portfolio-dashboard-view portfolio-dashboard-compact profiles-visual-header"
-          data-pd-id="profiles.visual-summary"
-        >
-          <FinancialValueReplayGroup>
-          <article className="dashboard-visual-card dashboard-performance-card">
-            <div className="dashboard-visual-header">
-              <div>
-                <span className="eyebrow">Combined P&amp;L</span>
-                <h3>Selected Range Performance</h3>
-              </div>
-              <span className="badge">{preset}</span>
-            </div>
-            <strong className="dashboard-hero-value">
-              <FinancialReadValue state={selectedReadState} subject="combined profit and loss"
-                label="Combined selected range profit and loss"
-                value={combined.totals.grossBettingPnl}
-              />
-            </strong>
-            <div className="dashboard-point-rail profiles-command-rail" aria-label="Fund Manager command metrics">
-              <span>
-                <small>{activeTab === "reports" ? "Profiles In Scope" : "Active Profiles"}</small>
-                {selectedProfileIds.length}
-              </span>
-              <span>
-                <small>Retained Profit</small>
-                <FinancialReadValue state={selectedReadState} subject="retained profit" value={combined.totals.retainedProfit} />
-              </span>
-              <span>
-                <small>Cash Snapshot</small>
-                <FinancialReadValue state={activeTab === "reports" ? selectedReadState : headlineReadState} subject="Account cash" value={activeTab === "reports" ? combined.totals.cashSnapshot : trackerRangeActiveProfilesCombined.totals.cashSnapshot} />
-              </span>
-              <span>
-                <small>Fee Position</small>
-                <FinancialReadValue state={activeFeeReadState} subject="fee position" value={activeProfilesFeePosition.availableToWithdraw} />
-              </span>
-            </div>
-          </article>
-          </FinancialValueReplayGroup>
-          <article className="dashboard-visual-card dashboard-focus-card">
-            <div className="dashboard-visual-header">
-              <div>
-                <span className="eyebrow">Fund Manager Actions</span>
-                <h3>Profile Workload</h3>
-              </div>
-            </div>
-            <dl className="dashboard-focus-list">
-              <div>
-                <dt>Sportsbook</dt>
-                <dd>{selectedReadState === "ready" ? combined.profileRows.reduce((total, row) => total + row.sportsbookActionCount, 0) : selectedReadState === "loading" ? "Loading…" : "Unavailable"}</dd>
-              </div>
-              <div>
-                <dt>Free Bets</dt>
-                <dd>{selectedReadState === "ready" ? combined.profileRows.reduce((total, row) => total + row.freeBetActionCount, 0) : selectedReadState === "loading" ? "Loading…" : "Unavailable"}</dd>
-              </div>
-              <div>
-                <dt>Casino</dt>
-                <dd>{selectedReadState === "ready" ? combined.profileRows.reduce((total, row) => total + row.casinoActionCount, 0) : selectedReadState === "loading" ? "Loading…" : "Unavailable"}</dd>
-              </div>
-              <div>
-                <dt>Extra Place</dt>
-                <dd>{selectedReadState === "ready" ? combined.profileRows.reduce((total, row) => total + row.extraPlaceActionCount, 0) : selectedReadState === "loading" ? "Loading…" : "Unavailable"}</dd>
-              </div>
-            </dl>
-          </article>
-        </section>
-
       <div
         aria-label="Fund Manager profile and analytics sections"
         className="analytics-tab-list"
@@ -1520,6 +1483,7 @@ export function CrossProfileAnalytics({
                     <h3>Monthly Fee Status</h3>
                   </div>
                 </div>
+                <LedgerPagination ariaLabel="Monthly Fee Status" currentPage={Math.min(feePage,feePageCount)} onPageChange={setFeePage} onPageSizeChange={(size)=>{setFeePageSize(size);setFeePage(1);}} pageCount={feePageCount} pageSize={feePageSize} position="top" totalRows={feeCentreRows.length}/>
                 <div className="table-shell">
                   <table className="profile-action-table fee-centre-table">
                     <thead>
@@ -1533,7 +1497,7 @@ export function CrossProfileAnalytics({
                       </tr>
                     </thead>
                     <tbody>
-                      {feeCentreRows.map(({ profile, result }) => {
+                      {visibleFeeRows.map(({ profile, result }) => {
                         const readState = profileReadState([profile.profileId], "fees");
                         const canReview = readState === "ready" && result.state !== "unavailable" && result.state !== "open" && result.state !== "not_applicable";
                         const actionLabel = result.state === "review_required"
@@ -1590,6 +1554,7 @@ export function CrossProfileAnalytics({
                     </tbody>
                   </table>
                 </div>
+                <LedgerPagination ariaLabel="Monthly Fee Status" currentPage={Math.min(feePage,feePageCount)} onPageChange={setFeePage} onPageSizeChange={(size)=>{setFeePageSize(size);setFeePage(1);}} pageCount={feePageCount} pageSize={feePageSize} position="bottom" totalRows={feeCentreRows.length}/>
               </section>
             </section>
           ) : null}
@@ -1621,7 +1586,8 @@ export function CrossProfileAnalytics({
                 </article>
               </section>
               <section className="content-subpanel stack">
-                <h3>Profile exposure</h3>
+                <h3>Profile Exposure</h3>
+                <LedgerPagination ariaLabel="Profile Exposure" currentPage={Math.min(exposurePage,exposurePageCount)} onPageChange={setExposurePage} onPageSizeChange={(size)=>{setExposurePageSize(size);setExposurePage(1);}} pageCount={exposurePageCount} pageSize={exposurePageSize} position="top" totalRows={combined.profileRows.length}/>
                 <div className="table-shell">
                   <table className="profile-analytics-table">
                     <thead>
@@ -1634,7 +1600,7 @@ export function CrossProfileAnalytics({
                       </tr>
                     </thead>
                     <tbody>
-                      {combined.profileRows.map((row) => (
+                      {visibleExposureRows.map((row) => (
                         <FinancialValueReplayRow key={row.profileId}>
                           <td>{row.displayName}</td>
                           <td>{row.openBets}</td>
@@ -1646,6 +1612,7 @@ export function CrossProfileAnalytics({
                     </tbody>
                   </table>
                 </div>
+                <LedgerPagination ariaLabel="Profile Exposure" currentPage={Math.min(exposurePage,exposurePageCount)} onPageChange={setExposurePage} onPageSizeChange={(size)=>{setExposurePageSize(size);setExposurePage(1);}} pageCount={exposurePageCount} pageSize={exposurePageSize} position="bottom" totalRows={combined.profileRows.length}/>
               </section>
             </section>
           ) : null}
@@ -1653,13 +1620,27 @@ export function CrossProfileAnalytics({
           {activeTab === "performance" ? (
           <section
             aria-labelledby="analytics-tab-performance"
-            className="analytics-tab-panel"
+            className="analytics-tab-panel stack"
             id="analytics-panel-performance"
             role="tabpanel"
           >
+          <section aria-label="Selected range performance" className="portfolio-dashboard-view portfolio-dashboard-compact" data-pd-id="performance.selected-range">
+            <FinancialValueReplayGroup>
+            <article className="dashboard-visual-card dashboard-performance-card">
+              <div className="dashboard-visual-header"><div><span className="eyebrow">Combined P&amp;L</span><h3>Selected Range Performance</h3></div><span className="badge">{preset}</span></div>
+              <strong className="dashboard-hero-value"><FinancialReadValue state={selectedReadState} subject="combined profit and loss" label="Combined selected range profit and loss" value={combined.totals.grossBettingPnl}/></strong>
+              <div className="dashboard-point-rail profiles-command-rail" aria-label="Selected range metrics">
+                <span><small>Profiles In Scope</small>{selectedProfileIds.length}</span>
+                <span><small>Retained Profit</small><FinancialReadValue state={selectedReadState} subject="retained profit" value={combined.totals.retainedProfit}/></span>
+                <span><small>Cash Snapshot</small><FinancialReadValue state={selectedReadState} subject="Account cash" value={combined.totals.cashSnapshot}/></span>
+              </div>
+            </article>
+            </FinancialValueReplayGroup>
+          </section>
           <div className="reporting-breakdown-grid">
-            <section className="content-subpanel stack">
-              <h3>Category P&amp;L</h3>
+            <section className="content-subpanel stack" data-pd-id="reports.category-breakdown">
+              <h3>P&amp;L Breakdown</h3>
+              <p className="field-hint">{reportScopeLabel} · {preset}. Existing governed category values; cash movements remain separate.</p>
               <div className="table-shell">
                 <table>
                   <thead>
@@ -1683,6 +1664,7 @@ export function CrossProfileAnalytics({
             </section>
             <section className="content-subpanel stack">
               <h3>Bookmaker P&amp;L</h3>
+              <LedgerPagination ariaLabel="Bookmaker P&L" currentPage={Math.min(bookmakerPage,bookmakerPageCount)} onPageChange={setBookmakerPage} onPageSizeChange={(size)=>{setBookmakerPageSize(size);setBookmakerPage(1);}} pageCount={bookmakerPageCount} pageSize={bookmakerPageSize} position="top" totalRows={combined.bookmakerBreakdown.length}/>
               <div className="table-shell">
                 <table>
                   <thead>
@@ -1698,7 +1680,7 @@ export function CrossProfileAnalytics({
                         <td colSpan={3}>No bookmaker rows are in the shared range.</td>
                       </tr>
                     ) : (
-                      combined.bookmakerBreakdown.slice(0, 12).map((row) => (
+                      visibleBookmakerRows.map((row) => (
                         <FinancialValueReplayRow key={row.bookmaker}>
                           <td>{row.bookmaker}</td>
                           <td><FinancialValue value={row.totalPnl} /></td>
@@ -1709,8 +1691,22 @@ export function CrossProfileAnalytics({
                   </tbody>
                 </table>
               </div>
+              <LedgerPagination ariaLabel="Bookmaker P&L" currentPage={Math.min(bookmakerPage,bookmakerPageCount)} onPageChange={setBookmakerPage} onPageSizeChange={(size)=>{setBookmakerPageSize(size);setBookmakerPage(1);}} pageCount={bookmakerPageCount} pageSize={bookmakerPageSize} position="bottom" totalRows={combined.bookmakerBreakdown.length}/>
             </section>
           </div>
+          <ReportExplorer contextKey="combined" state={selectedReadState} scopeLabel={reportScopeLabel}
+            scopes={profileRecords.filter((profile)=>selectedProfileIds.includes(profile.profileId)).flatMap((profile)=>{const dataset=datasets.get(profile.profileId);return dataset?[{profileId:profile.profileId,label:profile.displayName,dataset}]:[];})}/>
+          <section className="content-subpanel stack" data-pd-id="reports.profile-performance">
+            <div className="section-heading-row formal-report-section-heading"><div><span className="eyebrow">Profile Comparison</span><h3>Profile Performance</h3></div><div className="compact-report-controls formal-report-section-controls reports-profile-controls">
+              <label className="m3-picker-field"><span className="m3-picker-label">Find a Profile</span><span className="m3-picker-control"><span aria-hidden="true" className="material-symbols-outlined">search</span><input aria-label="Search Profile Performance" type="search" value={reportProfileTableQuery} onChange={(event)=>{setReportProfileTableQuery(event.target.value);setReportProfileTablePage(1);}}/></span></label>
+              <label className="m3-picker-field"><span className="m3-picker-label">Sort Profiles</span><span className="m3-picker-control"><span aria-hidden="true" className="material-symbols-outlined">sort</span><select aria-label="Sort Profile Performance" value={reportProfileTableSort} onChange={(event)=>{setReportProfileTableSort(event.target.value);setReportProfileTablePage(1);}}><option value="pnl-desc">P&amp;L High To Low</option><option value="pnl-asc">P&amp;L Low To High</option><option value="profile-asc">Profile A–Z</option><option value="open-desc">Open Items High To Low</option></select></span></label>
+            </div></div>
+            <LedgerPagination ariaLabel="Profile Performance" currentPage={Math.min(reportProfileTablePage,reportProfileTablePageCount)} onPageChange={setReportProfileTablePage} onPageSizeChange={(size)=>{setReportProfileTablePageSize(size);setReportProfileTablePage(1);}} pageCount={reportProfileTablePageCount} pageSize={reportProfileTablePageSize} position="top" totalRows={reportProfileRows.length}/>
+            <div className="table-shell"><table className="profile-analytics-table"><thead><tr><th scope="col">Profile</th><th scope="col">Status</th><th scope="col">Betting P&amp;L</th><th scope="col">Retained Profit</th><th scope="col">Open Items</th><th scope="col">Report</th></tr></thead><tbody>
+              {visibleReportProfileRows.length?visibleReportProfileRows.map((row)=><FinancialValueReplayRow key={row.profileId} data-pd-id={`reports.profile.${row.profileId}`}><td><strong>{row.displayName}</strong><br/><small>{row.profileCode}</small></td><td><span className="table-chip">{normalizeProfileStatus(row.status)}</span></td><td><FinancialReadValue state={profileReadState([row.profileId])} subject={`${row.displayName} betting profit and loss`} value={row.grossBettingPnl}/></td><td><FinancialReadValue state={profileReadState([row.profileId])} subject={`${row.displayName} retained profit`} value={row.retainedProfit}/></td><td>{row.openBets}</td><td><Link className="report-value-link" href={`/profiles/${row.profileId}/tracker/reports?source=combined-reports`}><span className="material-symbols-outlined" aria-hidden="true">open_in_new</span>View Report</Link></td></FinancialValueReplayRow>):<tr><td colSpan={6}>No Profiles match this scope and search.</td></tr>}
+            </tbody></table></div>
+            <LedgerPagination ariaLabel="Profile Performance" currentPage={Math.min(reportProfileTablePage,reportProfileTablePageCount)} onPageChange={setReportProfileTablePage} onPageSizeChange={(size)=>{setReportProfileTablePageSize(size);setReportProfileTablePage(1);}} pageCount={reportProfileTablePageCount} pageSize={reportProfileTablePageSize} position="bottom" totalRows={reportProfileRows.length}/>
+          </section>
           </section>
           ) : null}
 
@@ -1728,42 +1724,7 @@ export function CrossProfileAnalytics({
                 const dataset = datasets.get(profile.profileId);
                 return dataset ? [{ profileId: profile.profileId, label: profile.displayName, dataset }] : [];
               })} />
-          <section className="content-subpanel stack" data-pd-id="reports.category-breakdown">
-            <div className="section-heading-row"><div><span className="eyebrow">Selected Range</span><h3>P&amp;L Breakdown</h3></div></div>
-            <p className="field-hint">{reportScopeLabel} · {preset}. Existing governed category values; cash movements remain separate.</p>
-            <div className="table-shell"><table className="profile-analytics-table">
-              <thead><tr><th scope="col">Category</th><th scope="col">Records</th><th scope="col">P&amp;L</th></tr></thead>
-              <tbody>{combined.moduleBreakdown.length ? combined.moduleBreakdown.map((row) => (
-                <FinancialValueReplayRow key={row.moduleKey}><td>{row.label}</td><td>{row.rowCount}</td><td><FinancialReadValue state={selectedReadState} subject={`${row.label} profit and loss`} value={row.reportingValue} /></td></FinancialValueReplayRow>
-              )) : <tr><td colSpan={3}>No report categories are in this scope and range.</td></tr>}</tbody>
-            </table></div>
-          </section>
-          <details className="content-subpanel report-progressive-section" data-pd-id="reports.explorer-disclosure">
-            <summary><span><strong>Trend And Activity Explorer</strong><small>Change metric, grouping and canonical filters</small></span></summary>
-            <ReportExplorer contextKey="combined" state={selectedReadState} scopeLabel={reportScopeLabel}
-              scopes={profileRecords.filter((p)=>selectedProfileIds.includes(p.profileId)).flatMap(p=>{const dataset=datasets.get(p.profileId);return dataset?[{profileId:p.profileId,label:p.displayName,dataset}]:[];})} />
-          </details>
-          <section className="content-subpanel stack" data-pd-id="reports.profile-performance">
-            <div className="section-heading-row formal-report-section-heading">
-              <div><span className="eyebrow">Profile Comparison</span><h3>Profile Performance</h3></div>
-              <div className="compact-report-controls formal-report-section-controls reports-profile-controls">
-                <label className="m3-picker-field"><span className="m3-picker-label">Find a Profile</span><span className="m3-picker-control"><span aria-hidden="true" className="material-symbols-outlined">search</span><input aria-label="Search Profile Performance" type="search" value={reportProfileTableQuery} onChange={(event) => { setReportProfileTableQuery(event.target.value); setReportProfileTablePage(1); }} /></span></label>
-                <label className="m3-picker-field"><span className="m3-picker-label">Sort Profiles</span><span className="m3-picker-control"><span aria-hidden="true" className="material-symbols-outlined">sort</span><select aria-label="Sort Profile Performance" value={reportProfileTableSort} onChange={(event) => { setReportProfileTableSort(event.target.value); setReportProfileTablePage(1); }}><option value="pnl-desc">P&amp;L High To Low</option><option value="pnl-asc">P&amp;L Low To High</option><option value="profile-asc">Profile A–Z</option><option value="open-desc">Open Items High To Low</option></select></span></label>
-              </div>
-            </div>
-            <LedgerPagination ariaLabel="Profile Performance" currentPage={Math.min(reportProfileTablePage, reportProfileTablePageCount)} onPageChange={setReportProfileTablePage} onPageSizeChange={(size) => { setReportProfileTablePageSize(size); setReportProfileTablePage(1); }} pageCount={reportProfileTablePageCount} pageSize={reportProfileTablePageSize} position="top" totalRows={reportProfileRows.length} />
-            <div className="table-shell"><table className="profile-analytics-table"><thead><tr><th scope="col">Profile</th><th scope="col">Status</th><th scope="col">Betting P&amp;L</th><th scope="col">Retained Profit</th><th scope="col">Open Items</th><th scope="col">Report</th></tr></thead><tbody>
-              {visibleReportProfileRows.length ? visibleReportProfileRows.map((row) => <FinancialValueReplayRow key={row.profileId} data-pd-id={`reports.profile.${row.profileId}`}>
-                <td><strong>{row.displayName}</strong><br /><small>{row.profileCode}</small></td><td><span className="table-chip">{normalizeProfileStatus(row.status)}</span></td>
-                <td><FinancialReadValue state={profileReadState([row.profileId])} subject={`${row.displayName} betting profit and loss`} value={row.grossBettingPnl} /></td><td><FinancialReadValue state={profileReadState([row.profileId])} subject={`${row.displayName} retained profit`} value={row.retainedProfit} /></td><td>{row.openBets}</td>
-                <td><Link className="report-value-link" href={`/profiles/${row.profileId}/tracker/reports?source=combined-reports`}><span className="material-symbols-outlined" aria-hidden="true">open_in_new</span>View Report</Link></td>
-              </FinancialValueReplayRow>) : <tr><td colSpan={6}>No Profiles match this scope and search.</td></tr>}
-            </tbody></table></div>
-            <LedgerPagination ariaLabel="Profile Performance" currentPage={Math.min(reportProfileTablePage, reportProfileTablePageCount)} onPageChange={setReportProfileTablePage} onPageSizeChange={(size) => { setReportProfileTablePageSize(size); setReportProfileTablePage(1); }} pageCount={reportProfileTablePageCount} pageSize={reportProfileTablePageSize} position="bottom" totalRows={reportProfileRows.length} />
-          </section>
-          <details className="content-subpanel report-progressive-section" data-pd-id="reports.formal-detail">
-          <summary><span><strong>Detailed Formal Reports</strong><small>Weekly, monthly, yearly and balance history</small></span></summary>
-          <div className="stack report-progressive-content">
+          <div className="section-heading-row"><div><span className="eyebrow">Formal Reporting</span><h3>Detailed Formal Reports</h3></div></div>
           <ReportTable
             feeGranularity="week"
             feeHeading="Indicative Fee Impact"
@@ -1788,79 +1749,6 @@ export function CrossProfileAnalytics({
             rows={formalCombined.yearlyReports}
             title="Combined Yearly Reports"
           />
-          <section className="content-subpanel stack">
-            <div className="section-heading-row formal-report-section-heading">
-              <h3>Combined balance snapshot history</h3>
-              <div className="compact-report-controls formal-report-section-controls">
-                <label className="m3-picker-field">
-                  <span className="m3-picker-label">Snapshot range</span>
-                  <span className="m3-picker-control">
-                    <span aria-hidden="true" className="material-symbols-outlined">date_range</span>
-                    <select
-                      aria-label="Balance snapshot period range"
-                      data-pd-id="formal-reports.balance-snapshots.period-range"
-                      onChange={(event) => setBalanceSnapshotRange(event.target.value)}
-                      value={balanceSnapshotRange}
-                    >
-                      <option value="all">All snapshots</option>
-                      <option value="30">Last 30 days</option>
-                      <option value="90">Last 3 months</option>
-                      <option value="180">Last 6 months</option>
-                    </select>
-                  </span>
-                </label>
-                <label className="m3-picker-field">
-                  <span className="m3-picker-label">Snapshot type</span>
-                  <span className="m3-picker-control">
-                    <span aria-hidden="true" className="material-symbols-outlined">filter_alt</span>
-                    <select
-                      aria-label="Balance snapshot type"
-                      data-pd-id="formal-reports.balance-snapshots.type"
-                      onChange={(event) => setBalanceSnapshotType(event.target.value)}
-                      value={balanceSnapshotType}
-                    >
-                      <option value="all">All types</option>
-                      {balanceSnapshotTypes.map((type) => (
-                        <option key={type} value={type}>{type}</option>
-                      ))}
-                    </select>
-                  </span>
-                </label>
-              </div>
-            </div>
-            <div className="table-shell">
-              <table className="profile-action-table">
-                <thead>
-                  <tr>
-                    <th>Profile</th>
-                    <th>Captured</th>
-                    <th>Type</th>
-                    <th>Account</th>
-                    <th>Balance</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {balanceSnapshots.length === 0 ? (
-                    <tr>
-                      <td colSpan={5}>No balance snapshots fall inside the shared range.</td>
-                    </tr>
-                  ) : (
-                    balanceSnapshots.map((row) => (
-                      <FinancialValueReplayRow key={`${row.profile_id}-${row.balance_snapshot_id}`}>
-                        <td>{row.displayName}</td>
-                        <td>{formatHumanDisplayDate(row.snapshot_at, true)}</td>
-                        <td>{row.snapshot_type}</td>
-                        <td>{row.account_id ?? "Profile total"}</td>
-                        <td><FinancialValue value={Number(row.balance_amount)} /></td>
-                      </FinancialValueReplayRow>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </section>
-          </div>
-          </details>
           </section>
           ) : null}
         </>
@@ -1914,6 +1802,26 @@ export function CrossProfileAnalytics({
             </article>
           </FinancialValueReplayGroup>
         </section>
+        <section className="content-subpanel stack" data-pd-id="profiles.workload">
+          <h3>Profile Workload</h3>
+          <dl className="dashboard-focus-list">
+            <div><dt>Sportsbook</dt><dd>{selectedReadState === "ready" ? combined.profileRows.reduce((total, row) => total + row.sportsbookActionCount, 0) : selectedReadState === "loading" ? "Loading…" : "Unavailable"}</dd></div>
+            <div><dt>Free Bets</dt><dd>{selectedReadState === "ready" ? combined.profileRows.reduce((total, row) => total + row.freeBetActionCount, 0) : selectedReadState === "loading" ? "Loading…" : "Unavailable"}</dd></div>
+            <div><dt>Casino</dt><dd>{selectedReadState === "ready" ? combined.profileRows.reduce((total, row) => total + row.casinoActionCount, 0) : selectedReadState === "loading" ? "Loading…" : "Unavailable"}</dd></div>
+            <div><dt>Extra Place</dt><dd>{selectedReadState === "ready" ? combined.profileRows.reduce((total, row) => total + row.extraPlaceActionCount, 0) : selectedReadState === "loading" ? "Loading…" : "Unavailable"}</dd></div>
+          </dl>
+        </section>
+        <section className="content-subpanel stack" data-pd-id="profiles.balance-history">
+          <div className="section-heading-row formal-report-section-heading"><h3>Balance Snapshot History</h3><div className="compact-report-controls formal-report-section-controls">
+            <label className="m3-picker-field"><span className="m3-picker-label">Snapshot Range</span><span className="m3-picker-control"><span aria-hidden="true" className="material-symbols-outlined">date_range</span><select aria-label="Balance snapshot period range" data-pd-id="profiles.balance-snapshots.period-range" onChange={(event)=>{setBalanceSnapshotRange(event.target.value);setBalancePage(1);}} value={balanceSnapshotRange}><option value="all">All Snapshots</option><option value="30">Last 30 Days</option><option value="90">Last 3 Months</option><option value="180">Last 6 Months</option></select></span></label>
+            <label className="m3-picker-field"><span className="m3-picker-label">Snapshot Type</span><span className="m3-picker-control"><span aria-hidden="true" className="material-symbols-outlined">filter_alt</span><select aria-label="Balance snapshot type" data-pd-id="profiles.balance-snapshots.type" onChange={(event)=>{setBalanceSnapshotType(event.target.value);setBalancePage(1);}} value={balanceSnapshotType}><option value="all">All Types</option>{balanceSnapshotTypes.map((type)=><option key={type} value={type}>{type}</option>)}</select></span></label>
+          </div></div>
+          <LedgerPagination ariaLabel="Balance Snapshot History" currentPage={Math.min(balancePage,balancePageCount)} onPageChange={setBalancePage} onPageSizeChange={(size)=>{setBalancePageSize(size);setBalancePage(1);}} pageCount={balancePageCount} pageSize={balancePageSize} position="top" totalRows={balanceSnapshots.length}/>
+          <div className="table-shell"><table className="profile-action-table"><thead><tr><th scope="col">Profile</th><th scope="col">Captured</th><th scope="col">Type</th><th scope="col">Account</th><th scope="col">Balance</th></tr></thead><tbody>
+            {visibleBalanceSnapshots.length?visibleBalanceSnapshots.map((row)=><FinancialValueReplayRow key={`${row.profile_id}-${row.balance_snapshot_id}`}><td>{row.displayName}</td><td>{formatHumanDisplayDate(row.snapshot_at,true)}</td><td>{row.snapshot_type}</td><td>{row.account_id??"Profile total"}</td><td><FinancialValue value={Number(row.balance_amount)}/></td></FinancialValueReplayRow>):<tr><td colSpan={5}>No balance snapshots fall inside the selected range.</td></tr>}
+          </tbody></table></div>
+          <LedgerPagination ariaLabel="Balance Snapshot History" currentPage={Math.min(balancePage,balancePageCount)} onPageChange={setBalancePage} onPageSizeChange={(size)=>{setBalancePageSize(size);setBalancePage(1);}} pageCount={balancePageCount} pageSize={balancePageSize} position="bottom" totalRows={balanceSnapshots.length}/>
+        </section>
         <div className="section-heading-row">
           <div>
             <span className="eyebrow">Profile management</span>
@@ -1940,6 +1848,7 @@ export function CrossProfileAnalytics({
             </button>
           </div>
         </div>
+        <LedgerPagination ariaLabel="Profile Directory" currentPage={Math.min(directoryPage,directoryPageCount)} onPageChange={setDirectoryPage} onPageSizeChange={(size)=>{setDirectoryPageSize(size);setDirectoryPage(1);}} pageCount={directoryPageCount} pageSize={directoryPageSize} position="top" totalRows={directoryProfiles.length}/>
         <div className="table-shell">
           <table className="profile-action-table">
             <thead>
@@ -2073,21 +1982,7 @@ export function CrossProfileAnalytics({
             </tbody>
           </table>
         </div>
-        <div className="directory-pagination" aria-label="Profile directory pagination">
-          <button
-            className="button-link"
-            disabled={directoryPage === 1}
-            onClick={() => setDirectoryPage((current) => Math.max(1, current - 1))}
-            type="button"
-          >Previous</button>
-          <span>Page {Math.min(directoryPage, directoryPageCount)} of {directoryPageCount}</span>
-          <button
-            className="button-link"
-            disabled={directoryPage >= directoryPageCount}
-            onClick={() => setDirectoryPage((current) => Math.min(directoryPageCount, current + 1))}
-            type="button"
-          >Next</button>
-        </div>
+        <LedgerPagination ariaLabel="Profile Directory" currentPage={Math.min(directoryPage,directoryPageCount)} onPageChange={setDirectoryPage} onPageSizeChange={(size)=>{setDirectoryPageSize(size);setDirectoryPage(1);}} pageCount={directoryPageCount} pageSize={directoryPageSize} position="bottom" totalRows={directoryProfiles.length}/>
       </section>
       ) : null}
 

@@ -2045,3 +2045,39 @@ Updated 2026-09-26 23:29:27 BST. Branch `feature/normal-multilay-cp047`, applica
 - Preview remains b6437e8, same protected alias and synthetic PostgreSQL identity; health/auth/protection/login/assets reverified. Dedicated DB env is Preview-only `sensitive`; authenticated provider read did not return a usable binding for fresh backup. No CP055 deploy/migration attempted without recovery. Shared/rotation-flagged session/OAuth values were not exported. Missing authorised synthetic app-session renewal is separate; no cookies requested. Existing provider configuration unchanged, no transfer.
 - Next TWO: #114/#115 recover dedicated Preview backup/session resources then promote/test this exact complete slice and inspect hygiene; #104/#12/#23 resolve ALPHA purpose and prepare precise Personal create/cutover for separate approval. No merge engine, normal cutover, Production, push, credential change, paid AI or subscriber activation. Minimal invited request states/visibility/schema/roles remain the existing proposal, not new approval.
 - Safe duplicate-checked publication: [#114](https://github.com/wolney8/OpenForge/issues/114#issuecomment-5850452131), [#111](https://github.com/wolney8/OpenForge/issues/111#issuecomment-5850452272), [#109](https://github.com/wolney8/OpenForge/issues/109#issuecomment-5850452425). Issues remain open; private input/evidence not published.
+
+## CP-078 Reports usability corrections — approved bounded batch
+
+Recorded 2026-10-08 13:22 BST under [#111](https://github.com/wolney8/OpenForge/issues/111). This batch changes report organisation, named Explorer recipes and bounded list navigation only. Financial definitions, report membership, Profile authority and backend projections remain governed by their existing contracts.
+
+| ID | Requested outcome | Status |
+| --- | --- | --- |
+| PD-FIX-313 | Give every existing Reports block one predictable primary tab; keep primary sections visible and move Profile Workload out of shared content | COMPLETE |
+| PD-FIX-314 | Add the exact **Free Bets Today** record-finding recipe, multi-value OR filters, London-relative date chips and truthful active-filter state | COMPLETE |
+| PD-FIX-315 | Replace list truncation with independent 16-row pagination across parent and nested Reports lists | COMPLETE |
+
+| Block | Current location | Associated detail | Destination | Pagination |
+| --- | --- | --- | --- | --- |
+| Profile directory | Profiles | Profile links/actions | Profiles | Existing directory navigation; align to shared 16-row controls |
+| Profile Workload | Shared above tabs | Module action counts | Profiles | Fixed KPI, no pagination |
+| Account cash / balance snapshots | Shared summary / Formal Reports | Snapshot rows | Profiles | Balance rows: 16 |
+| Selected Range Performance | Shared above tabs | Current range headline | Performance | Fixed KPI, no pagination |
+| Category P&L / P&L Breakdown | Performance and Formal Reports duplicate | Governed module rows | Performance, one P&L Breakdown | 16 if it grows |
+| Bookmaker P&L | Performance | Bookmaker rows | Performance | 16 |
+| Trend And Activity Explorer | Formal Reports disclosure | Groups, matching records, undated records | Performance, always visible | Independent 16-row pages |
+| Profile Performance | Formal Reports | Secure Profile drilldown | Performance | Existing 16-row page |
+| Exposure summary / Profile Exposure | Exposure | Profile exposure rows | Exposure | 16 |
+| Fee position / Monthly Fee Status | Fees | Review/breakdown actions | Fees | 16 |
+| Period P&L | Formal Reports | Selected-period records | Formal Reports, always visible | Periods and records: independent 16-row pages |
+| Detailed weekly/monthly/yearly reports | Formal Reports disclosure | Period inspection / fee action | Formal Reports, always visible | Existing 16-row pages |
+
+Shared Profile and Dashboard consumers remain unchanged; only the Fund Manager Reports composition is in scope.
+
+Completed 2026-10-08 13:53:02 BST on isolated branch `feature/cp078-reports-usability`
+from verified `origin/main` `7f4f127f50c5ee40166c42b52721818a5bc3cba0`. Evidence: 75 focused
+reporting/component assertions; seven focused Chromium paths covering 64-Profile organisation,
+malformed-source readiness, exact recipe semantics, more-than-two-page record navigation, secure
+drilldown/return, Period P&L and responsive/keyboard containment; focused ESLint, full web typecheck
+and production build pass. No financial contract, API, schema, Normal data or hosted environment
+changed. The isolated review runtime uses synthetic SQLite identity `cp078-reports-synthetic` at
+web `3078` / API `8078`; Normal `3010` / `8010` remains untouched.

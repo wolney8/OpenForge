@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { FinancialValue, FinancialValueReplayRow } from "./financial-value";
+import { LedgerPagination } from "./ledger-pagination";
 
 export type FeeReportQueueEntry = {
   key: string;
@@ -37,6 +38,14 @@ export function FeeReportReviewQueueDialog({
   open,
 }: FeeReportReviewQueueDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(16);
+  const pageCount = Math.max(1, Math.ceil(entries.length / pageSize));
+  const safePage = Math.min(page, pageCount);
+  const visibleEntries = useMemo(
+    () => entries.slice((safePage - 1) * pageSize, safePage * pageSize),
+    [entries, pageSize, safePage]
+  );
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -75,6 +84,16 @@ export function FeeReportReviewQueueDialog({
       </header>
 
       <div className="fee-report-queue-body">
+        <LedgerPagination
+          ariaLabel="Fee Review Queue"
+          currentPage={safePage}
+          onPageChange={setPage}
+          onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
+          pageCount={pageCount}
+          pageSize={pageSize}
+          position="top"
+          totalRows={entries.length}
+        />
         <div className="table-scroll" data-pd-id="formal-reports.fee-review-queue.table-scroll">
           <table className="data-table">
             <thead>
@@ -87,7 +106,7 @@ export function FeeReportReviewQueueDialog({
               </tr>
             </thead>
             <tbody>
-              {entries.map((entry) => {
+              {visibleEntries.map((entry) => {
                 const canOpen = entry.state !== "open" && entry.state !== "not_applicable";
                 const actionLabel =
                   entry.state === "crystallised"
@@ -122,6 +141,16 @@ export function FeeReportReviewQueueDialog({
             </tbody>
           </table>
         </div>
+        <LedgerPagination
+          ariaLabel="Fee Review Queue"
+          currentPage={safePage}
+          onPageChange={setPage}
+          onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
+          pageCount={pageCount}
+          pageSize={pageSize}
+          position="bottom"
+          totalRows={entries.length}
+        />
       </div>
 
       <footer className="modal-sticky-footer">

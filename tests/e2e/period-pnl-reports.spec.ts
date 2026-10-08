@@ -110,9 +110,8 @@ test("period P&L reconciles source records and retains selected scope, week and 
     await expect(total).toHaveAttribute("aria-label", "£ 5.00");
     await expect(retained).toHaveAttribute("aria-label", "£ -");
     const records = preset.locator('[data-pd-id="reports.period-pnl.records"]');
-    await expect(records.locator(":scope > ul > li")).toHaveCount(1);
+    await expect(records.locator("tbody > tr")).toHaveCount(3);
     await expect(records).not.toContainText("TopUp");
-    await records.getByText("Cash costs and withdrawals", { exact: false }).click();
     await expect(records.getByRole("link")).toHaveCount(3);
     await records.getByRole("link").filter({ hasText: "corrected six to five" }).click();
     await expect(page).toHaveURL(/sportsbook-bets\?search=.*source=report-point/);
@@ -124,16 +123,13 @@ test("period P&L reconciles source records and retains selected scope, week and 
     await expect(total).toHaveAttribute("aria-label", "£ 5.00", { timeout: 60_000 });
     await week.fill("2026-10-19");
     await expect(preset.getByRole("status")).toHaveText("No report records match this period and result filter.");
-    await expect(preset.locator("circle")).toHaveCount(0);
+    await expect(preset.locator('[data-pd-id^="reports.period-pnl.period."]')).toHaveCount(0);
     await week.fill("");
-    await expect(preset.locator("circle[role=button]")).toHaveCount(3);
-    const points = preset.locator("circle[role=button]");
-    await points.first().hover();
-    await expect(preset.locator(".dashboard-chart-point-detail")).toContainText("£ 40.00");
-    await points.nth(1).focus(); await points.nth(1).press("Enter");
-    await expect(preset.locator(".dashboard-chart-point-detail")).toContainText("£ 5.00");
+    await expect(preset.locator('[data-pd-id^="reports.period-pnl.period."]')).toHaveCount(3);
+    await preset.getByRole("button", { name: "Inspect Period" }).nth(1).click();
+    await expect(records).toContainText("corrected six to five");
     await page.reload();
-    await expect(preset.locator(".dashboard-chart-point-detail")).toContainText("£ 5.00", { timeout: 60_000 });
+    await expect(records).toContainText("corrected six to five", { timeout: 60_000 });
     // Existing Profile picker remains the authority; no foreign IDs or hidden archived default.
     await page.goto("/reports");
     await expect(preset).toBeVisible({ timeout: 90_000 });
@@ -153,7 +149,7 @@ test("period P&L reconciles source records and retains selected scope, week and 
     await picker.locator("summary").click();
     await week.fill("2026-09-21");
     await expect(total).toHaveAttribute("aria-label", "£ 2.00", { timeout: 60_000 });
-    await expect(records.locator(":scope > ul > li")).toHaveCount(2);
+    await expect(records.locator("tbody > tr")).toHaveCount(4);
     await picker.locator("summary").click(); await archivedBox.check(); await picker.locator("summary").click();
     await expect(total).toHaveAttribute("aria-label", "£ 9.00", { timeout: 60_000 });
     await page.reload();
