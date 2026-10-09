@@ -88,11 +88,18 @@ test("Reports stays aggregate-first with 64 authorised Profiles", async ({ page 
   await expect(scope.locator("summary")).not.toContainText("Active Profile 00");
   await expect(page.locator('[data-pd-id="reports.period-pnl"]')).toBeVisible({ timeout: 90_000 });
   await expect(page.getByRole("heading", { name: "Detailed Formal Reports" })).toBeVisible();
+  await expect(page.locator('details:has(summary:has-text("Detailed Formal Reports"))')).toHaveCount(0);
+  await expect(page.locator('details:has(summary:has-text("Period P&L"))')).toHaveCount(0);
+  await expect(page.locator('[data-pd-id="reports.period-pnl"] .filter-chip')).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Profile Workload" })).toHaveCount(0);
   await expect(page.locator('[data-pd-id="reports.category-breakdown"]')).toHaveCount(0);
   await page.getByRole("tab", { name: "Performance" }).click();
   await expect(page).toHaveURL(/\/$/);
   await expect(page.locator('[data-pd-id="reports.category-breakdown"]')).toBeVisible();
   await expect(page.locator('[data-pd-id="reports.explorer"]')).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Trend And Activity Explorer" })).toHaveCount(1);
+  await expect(page.getByRole("heading", { name: "Reports explorer" })).toHaveCount(0);
+  await expect(page.locator('details:has(summary:has-text("Trend And Activity Explorer"))')).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Profile Performance" })).toBeVisible();
   await expect(page.locator('[data-pd-id^="reports.profile.active-"]')).toHaveCount(16);
   await expect(page.getByText("Page 1 of 4 · 56 rows").first()).toBeVisible();
@@ -207,7 +214,7 @@ test("Free Bets Today applies one exact recipe and paginates matching Placed and
   const profile = profiles[0]!;
   const freeBets = Array.from({ length: 34 }, (_, index) => ({
     free_bet_id: `free-today-${String(index).padStart(2, "0")}`,
-    bookmaker: index % 2 ? "Bookmaker A" : "Bookmaker B",
+    bookmaker: `Bookmaker ${String(index).padStart(2, "0")}`,
     event_name: `Free Bet Today ${String(index).padStart(2, "0")}`,
     offer_type: "Free Bet",
     bet_type: "Single",
@@ -230,6 +237,26 @@ test("Free Bets Today applies one exact recipe and paginates matching Placed and
   freeBets.push({ ...freeBets[1]!, free_bet_id: "wrong-status", status: "Available" });
   freeBets.push({ ...freeBets[1]!, free_bet_id: "wrong-date", date_settled: "2026-10-07T12:00:00+01:00" });
   freeBets.push({ ...freeBets[1]!, free_bet_id: "undated", date_settled: "", final_net_pnl: null, reporting_value: null });
+  freeBets.push({ ...freeBets[0]!, free_bet_id: "free-builder", event_name: "Free Bet Builder", bet_type: "Bet Builder" });
+  freeBets.push({ ...freeBets[1]!, free_bet_id: "free-acca", event_name: "Free Bet Accumulator", bet_type: "Accumulator / Multiple" });
+  const sportsbook = (id: string, offerType: string, betType = "First Goalscorer", status = "Settled") => ({
+    sportsbook_bet_id: id, bookmaker: "Bookmaker A", event_name: id, offer_type: offerType,
+    offer_name: "Synthetic report recipe", bet_type: betType, fixture_type: "Football", status,
+    result: status === "Settled" ? "Back Won" : "Pending", date_settled: "2026-10-08T12:00:00+01:00",
+    exchange_name: "Exchange A", match_strategy: "Standard", calculated_liability_1: "5.00",
+    projected_current_pnl: "0.50", final_net_pnl: status === "Settled" ? "1.00" : "99.00",
+    reporting_value: status === "Settled" ? "1.00" : "0.50", lay_status: "Matched",
+    counts_as_open: status !== "Settled", is_overdue: false,
+  });
+  const sportsbookBets = [
+    sportsbook("price-boost", "Price Boost"), sportsbook("profit-boost", "Profit Boost"),
+    sportsbook("bet-get", "Bet & Get"), sportsbook("deposit-bet-get", "Deposit, Bet & Get"),
+    sportsbook("in-play-bet-get", "Bet In Play & Get"), sportsbook("awarded-bet-get", "Bet & Get", "First Goalscorer", "Free Bet Awarded"),
+    sportsbook("refund", "Refund If Loses"), sportsbook("sportsbook-builder", "None", "Bet Builder"),
+    sportsbook("sportsbook-acca", "None", "Accumulator / Multiple"), sportsbook("sportsbook-single", "None", "Single"),
+    sportsbook("cashback", "Cashback"), sportsbook("insurance", "Insurance"), sportsbook("mug-bet", "Mug Bet"),
+    sportsbook("dd-hh", "Double Delight / Hat-trick Heaven"),
+  ];
   await page.addInitScript(() => {
     localStorage.setItem("openforge-report-explorer:combined", JSON.stringify({
       preset: "This Month", metric: "pnl", group: "provider", expanded: "stale",
@@ -244,7 +271,7 @@ test("Free Bets Today applies one exact recipe and paginates matching Placed and
     if (pathname === "/api/profiles") return route.fulfill({ json: [profile] });
     if (pathname === "/api/reports/combined-summary-sources") return route.fulfill({ json: {
       scope: "active", profile_ids: [profile.profile_id],
-      sources: { [profile.profile_id]: { ...emptySources, free_bets: freeBets } },
+      sources: { [profile.profile_id]: { ...emptySources, free_bets: freeBets, sportsbook_bets: sportsbookBets } },
     }});
     await route.continue();
   });
@@ -259,6 +286,9 @@ test("Free Bets Today applies one exact recipe and paginates matching Placed and
   await expect(explorer.getByRole("status")).toContainText("1 undated candidate record");
   await expect(explorer.locator('[data-pd-id^="reports.explorer.record.free-today-"]')).toHaveCount(16);
   await expect(explorer.getByText("Page 1 of 3 · 34 rows").first()).toBeVisible();
+  await expect(explorer.getByLabel("Explorer Groups top controls")).toContainText("Page 1 of 3 · 34 rows");
+  await explorer.getByLabel("Explorer Groups top controls").getByRole("button", { name: "Next", exact: true }).click();
+  await expect(explorer.getByLabel("Explorer Groups top controls")).toContainText("Page 2 of 3 · 34 rows");
   await expect(explorer.locator('[data-pd-id="reports.explorer.record.free-today-00"]')).toContainText("Placed");
   await expect(explorer.locator('[data-pd-id="reports.explorer.record.free-today-01"]')).toContainText("Settled");
   await expect(explorer.locator('[data-pd-id="reports.explorer.active-filters"]')).toContainText("Status: Placed");
@@ -266,9 +296,111 @@ test("Free Bets Today applies one exact recipe and paginates matching Placed and
   await explorer.getByRole("button", { name: "This month", exact: true }).click();
   await expect(recipe).toHaveAttribute("aria-pressed", "false");
   await expect(explorer.locator('[data-pd-id="reports.explorer.active-filters"]')).toContainText("Module: Free Bets");
-  await recipe.click();
+  await explorer.locator('[data-pd-id="reports.explorer.recipe.free-bets"]').click();
+  await expect(explorer.getByRole("button", { name: "This month", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(explorer.locator('[data-pd-id="reports.explorer.match-count"]')).toHaveText("38");
+  const expectedPrimary:Record<string,string>={
+    "price-boosts":"1","profit-boosts":"1","bet-and-get":"4","refund-if-loses":"1",
+    "bet-builders":"2","accumulators":"2",
+  };
+  for (const [id,count] of Object.entries(expectedPrimary)) {
+    const chip=explorer.locator(`[data-pd-id="reports.explorer.recipe.${id}"]`);
+    await chip.click(); await expect(chip).toHaveAttribute("aria-pressed","true");
+    await expect(explorer.locator('[data-pd-id="reports.explorer.match-count"]')).toHaveText(count);
+  }
+  await expect(explorer.locator('[data-pd-id^="reports.explorer.recipe."]')).toHaveCount(8);
+  await explorer.locator('[data-pd-id="reports.explorer.more-presets"]').click();
+  await expect(explorer.locator('[data-pd-id^="reports.explorer.recipe."]')).toHaveCount(14);
+  const expectedMore:Record<string,string>={
+    "free-bet-builders":"1","singles":"36","cashback":"1","insurance":"1","mug-bets":"1",
+    "double-delight-hat-trick-heaven":"1",
+  };
+  for (const [id,count] of Object.entries(expectedMore)) {
+    const chip=explorer.locator(`[data-pd-id="reports.explorer.recipe.${id}"]`);
+    await chip.click(); await expect(chip).toHaveAttribute("aria-pressed","true");
+    await expect(explorer.locator('[data-pd-id="reports.explorer.match-count"]')).toHaveText(count);
+  }
+  await explorer.locator('[data-pd-id="reports.explorer.recipe.bet-and-get"]').click();
+  await expect(explorer.locator('[data-pd-id="reports.explorer.record.awarded-bet-get"]')).toContainText("Free Bet Awarded");
+  await expect(explorer.locator('[data-pd-id="reports.explorer.total"]')).not.toContainText("99.00");
   await explorer.getByLabel("Explorer metric").selectOption("count");
-  await expect(explorer.locator('[data-pd-id="reports.explorer.match-count"]')).toHaveText("34");
+  await expect(explorer.locator('[data-pd-id="reports.explorer.match-count"]')).toHaveText("4");
+  await expect(explorer.locator('[data-pd-id="reports.explorer.total"]')).toHaveText("4");
+  await explorer.locator('[data-pd-id="reports.explorer.filters"] summary').click();
+  await expect(explorer.locator('[data-pd-id="reports.explorer.filters"]')).toHaveAttribute("open", "");
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+});
+
+test("formal periods, selected records, and balance history paginate independently", async ({ page }) => {
+  const profile = profiles[0]!;
+  const weeklyBets = Array.from({ length: 34 }, (_, index) => {
+    const settled = new Date(Date.UTC(2026, 0, 5 + (index * 7), 12)).toISOString();
+    return {
+      sportsbook_bet_id: `weekly-${String(index).padStart(2, "0")}`,
+      bookmaker: "Bookmaker A", event_name: `Weekly ${index}`, offer_type: "None",
+      offer_name: "Pagination evidence", bet_type: "Single", fixture_type: "Football",
+      status: "Settled", result: "Back Won", date_settled: settled,
+      exchange_name: "Exchange A", match_strategy: "Standard", calculated_liability_1: "5.00",
+      projected_current_pnl: "1.00", final_net_pnl: "1.00", reporting_value: "1.00",
+      lay_status: "Matched", counts_as_open: false, is_overdue: false,
+    };
+  });
+  const latestDate = weeklyBets.at(-1)!.date_settled;
+  const latestWeekExtras = Array.from({ length: 33 }, (_, index) => ({
+    ...weeklyBets.at(-1)!,
+    sportsbook_bet_id: `latest-extra-${String(index).padStart(2, "0")}`,
+    event_name: `Latest Week Extra ${index}`,
+    date_settled: latestDate,
+  }));
+  const snapshots = Array.from({ length: 34 }, (_, index) => ({
+    balance_snapshot_id: `snapshot-${String(index).padStart(2, "0")}`,
+    profile_id: profile.profile_id,
+    snapshot_at: new Date(Date.UTC(2026, 9, 8, 9, index)).toISOString(),
+    snapshot_type: "Manual",
+    account_id: null,
+    balance_amount: String(100 + index),
+    notes: "Synthetic pagination evidence",
+    created_at: new Date(Date.UTC(2026, 9, 8, 9, index)).toISOString(),
+  }));
+  await page.addInitScript(() => {
+    localStorage.removeItem("openforge-report-profile-selection");
+    localStorage.removeItem("openforge-report-period-pnl:combined");
+  });
+  const sources = {
+    ...emptySources,
+    sportsbook_bets: [...weeklyBets, ...latestWeekExtras],
+    balance_snapshots: snapshots,
+  };
+  await page.route("**/api/**", async (route) => {
+    const pathname = new URL(route.request().url()).pathname;
+    if (pathname === "/api/auth/session") return route.fulfill({ json: syntheticSession });
+    if (pathname === "/api/auth/activity") return route.fulfill({ status: 200, json: { session_policy: syntheticSession.session_policy } });
+    if (pathname === "/api/profiles") return route.fulfill({ json: [profile] });
+    if (pathname === `/api/profiles/${profile.profile_id}/tracker-summary-sources`) {
+      return route.fulfill({ json: sources });
+    }
+    if (pathname === "/api/reports/combined-summary-sources") return route.fulfill({ json: {
+      scope: "active", profile_ids: [profile.profile_id],
+      sources: { [profile.profile_id]: sources },
+    } });
+    await route.continue();
+  });
+
+  await page.goto("/reports");
+  const period = page.locator('[data-pd-id="reports.period-pnl"]');
+  await expect(period.getByLabel("Period P&L Periods top controls")).toContainText("Page 1 of 3 · 34 rows");
+  await expect(period.locator('[data-pd-id^="reports.period-pnl.period."]')).toHaveCount(16);
+  await period.getByLabel("Period P&L Periods top controls").getByRole("button", { name: "Next", exact: true }).click();
+  await expect(period.getByLabel("Period P&L Periods top controls")).toContainText("Page 2 of 3 · 34 rows");
+  await expect(period.getByLabel("Period P&L Records top controls")).toContainText("Page 1 of 3 · 34 rows");
+  await expect(period.locator('[data-pd-id="reports.period-pnl.records"] tbody > tr')).toHaveCount(16);
+  await period.getByLabel("Period P&L Records top controls").getByRole("button", { name: "Next", exact: true }).click();
+  await expect(period.getByLabel("Period P&L Records top controls")).toContainText("Page 2 of 3 · 34 rows");
+
+  await page.getByRole("tab", { name: "Profiles" }).click();
+  await expect(page.getByLabel("Balance Snapshot History top controls")).toContainText("Page 1 of 3 · 34 rows");
+  await expect(page.locator('[data-pd-id="profiles.balance-history"] tbody > tr')).toHaveCount(16);
+  await page.getByLabel("Balance Snapshot History top controls").getByRole("button", { name: "Next", exact: true }).click();
+  await expect(page.getByLabel("Balance Snapshot History top controls")).toContainText("Page 2 of 3 · 34 rows");
 });

@@ -26,7 +26,7 @@ test("Explorer: actual Personal/Managed records, filters, grouping, return and t
   await page.goto(`/profiles/${a}/tracker/reports`);
   const explorer=page.locator('[data-pd-id="reports.explorer"]');const total=explorer.locator('[data-pd-id="reports.explorer.total"]');
   await expect(total.locator('.financial-value')).toHaveAttribute('aria-label','£ 12.34',{timeout:60000});
-  await explorer.getByText('Additional Filters',{exact:true}).click();await explorer.getByRole('checkbox',{name:'Bet365',exact:true}).check();await explorer.getByRole('checkbox',{name:'Sportsbook',exact:true}).check();await explorer.getByLabel('Explorer group by',{exact:true}).selectOption('betType');
+  await explorer.getByText('Filters',{exact:true}).click();await explorer.getByRole('checkbox',{name:'Bet365',exact:true}).check();await explorer.getByRole('checkbox',{name:'Sportsbook',exact:true}).check();await explorer.getByLabel('Explorer group by',{exact:true}).selectOption('betType');
   await explorer.getByLabel('Explorer metric',{exact:true}).selectOption('count');await expect(total).toHaveText('1');await expect(explorer).toContainText('Placed sportsbook records');
   await explorer.getByRole('button',{name:'Inspect Single records'}).click();await explorer.getByRole('link').filter({hasText:'Synthetic win'}).click();await expect(page).toHaveURL(/source=report-explorer/);await page.goBack();await expect(total).toHaveText('1');await expect(explorer.getByLabel('Explorer group by')).toHaveValue('betType');
   await explorer.getByLabel('Explorer metric').selectOption('pnl');

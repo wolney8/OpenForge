@@ -24,6 +24,7 @@ const boundedPage=(page:number,count:number)=>Math.min(Math.max(1,page),Math.max
 
 export function ReportExplorer({scopes,contextKey,state,scopeLabel}:{scopes:ExplorerScope[];contextKey:string;state:"ready"|"loading"|"error";scopeLabel?:string}) {
   const [stored,setStored]=usePersistedState<Selection>("openforge-report-explorer:"+contextKey,defaults);
+  const [showMoreRecipes,setShowMoreRecipes]=useState(false);
   const [groupPage,setGroupPage]=useState(1),[groupPageSize,setGroupPageSize]=useState(16);
   const [recordPage,setRecordPage]=useState(1),[recordPageSize,setRecordPageSize]=useState(16);
   const [undatedPage,setUndatedPage]=useState(1),[undatedPageSize,setUndatedPageSize]=useState(16);
@@ -53,11 +54,16 @@ export function ReportExplorer({scopes,contextKey,state,scopeLabel}:{scopes:Expl
   const undatedPageCount=Math.max(1,Math.ceil(output.undated.length/undatedPageSize));
   const visibleUndated=output.undated.slice((boundedPage(undatedPage,undatedPageCount)-1)*undatedPageSize,boundedPage(undatedPage,undatedPageCount)*undatedPageSize);
   const activeRecipe=explorerRecipes.find(recipe=>explorerSelectionMatchesRecipe(selection,recipe));
+  const primaryRecipes=explorerRecipes.slice(0,8), moreRecipes=explorerRecipes.slice(8);
   const activeFilterEntries=(Object.keys(explorerDimensions) as ExplorerDimension[]).flatMap(dimension=>(selection.filters[dimension]??[]).map(filterValue=>({dimension,filterValue})));
   const toggleFilter=(dimension:ExplorerDimension,filterValue:string)=>{const current=selection.filters[dimension]??[];
     const next=current.includes(filterValue)?current.filter(value=>value!==filterValue):[...current,filterValue];
     change({filters:{...selection.filters,[dimension]:next},expanded:"",point:""});};
-  const applyRecipe=(recipe:(typeof explorerRecipes)[number])=>change({preset:recipe.preset,start:"",end:"",filters:recipe.filters,expanded:"",point:""});
+  const applyRecipe=(recipe:(typeof explorerRecipes)[number])=>change({
+    ...(recipe.preset ? {preset:recipe.preset,start:"",end:""} : {}),
+    filters:Object.fromEntries(Object.entries(recipe.filters).map(([key,values])=>[key,[...(values??[])]])),
+    expanded:"",point:"",
+  });
   const resetFilters=()=>change({...defaults,filters:{},expanded:"",point:""});
 
   return <section className="content-subpanel stack" aria-label="Reports Explorer" data-pd-id="reports.explorer">
@@ -70,9 +76,18 @@ export function ReportExplorer({scopes,contextKey,state,scopeLabel}:{scopes:Expl
           data-pd-id={`reports.explorer.date.${preset.toLowerCase().replaceAll(" ","-")}`} key={preset} onClick={()=>change({preset,point:""})} type="button">{preset==="This Week"?"This week":preset==="Last Week"?"Last week":preset==="This Month"?"This month":preset==="Last Month"?"Last month":preset}</button>)}
       </div>
       <div aria-label="Named report recipes" className="filter-chip-list" role="group"><span className="filter-chip-label">Recipes</span>
-        {explorerRecipes.map(recipe=><button aria-pressed={activeRecipe?.id===recipe.id} className={`filter-chip${activeRecipe?.id===recipe.id?" is-active":""}`}
+        {primaryRecipes.map(recipe=><button aria-pressed={activeRecipe?.id===recipe.id} className={`filter-chip${activeRecipe?.id===recipe.id?" is-active":""}`}
           data-pd-id={`reports.explorer.recipe.${recipe.id}`} key={recipe.id} onClick={()=>applyRecipe(recipe)} type="button">{recipe.label}</button>)}
+        <button aria-controls="reports-explorer-more-presets" aria-expanded={showMoreRecipes} className="button-link"
+          data-pd-id="reports.explorer.more-presets" onClick={()=>setShowMoreRecipes(value=>!value)} type="button">
+          {showMoreRecipes?"Fewer Presets":"More Presets"}
+        </button>
       </div>
+      {showMoreRecipes?<div aria-label="More named report recipes" className="filter-chip-list" id="reports-explorer-more-presets" role="group">
+        <span className="filter-chip-label">More Presets</span>
+        {moreRecipes.map(recipe=><button aria-pressed={activeRecipe?.id===recipe.id} className={`filter-chip${activeRecipe?.id===recipe.id?" is-active":""}`}
+          data-pd-id={`reports.explorer.recipe.${recipe.id}`} key={recipe.id} onClick={()=>applyRecipe(recipe)} type="button">{recipe.label}</button>)}
+      </div>:null}
     </div>
     {selection.preset==="Custom"?<div className="compact-report-controls">
       <label className="m3-picker-field"><span className="m3-picker-label">Explorer start</span><span className="m3-picker-control"><span aria-hidden="true" className="material-symbols-outlined">date_range</span><input aria-label="Explorer start" type="date" value={selection.start} onChange={event=>change({start:event.target.value,point:""})}/></span></label>
@@ -86,7 +101,7 @@ export function ReportExplorer({scopes,contextKey,state,scopeLabel}:{scopes:Expl
       {activeFilterEntries.map(({dimension,filterValue})=><span className="table-chip" key={`${dimension}:${filterValue}`}>{explorerDimensions[dimension]}: {dimension==="module"?explorerModules[filterValue]:filterValue}</span>)}
       <button className="button-link" data-pd-id="reports.explorer.reset" onClick={resetFilters} type="button">Reset Filters</button>
     </div>
-    <details className="report-filter-disclosure"><summary>Additional Filters</summary><div className="report-multi-filter-grid">
+    <details className="report-filter-disclosure" data-pd-id="reports.explorer.filters"><summary>Filters</summary><div className="report-multi-filter-grid">
       {(Object.keys(explorerDimensions) as ExplorerDimension[]).map(dimension=><fieldset key={dimension}><legend>{explorerDimensions[dimension]}</legend>
         {[...new Set(rows.map(row=>row[dimension]))].sort().map(filterValue=><label className="filter-checkbox" key={filterValue}><input checked={(selection.filters[dimension]??[]).includes(filterValue)} onChange={()=>toggleFilter(dimension,filterValue)} type="checkbox"/><span>{dimension==="module"?explorerModules[filterValue]:filterValue}</span></label>)}
       </fieldset>)}</div></details>

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildExplorerRecords, exploreRecords, explorerRange, explorerRecipes, explorerSelectionMatchesRecipe,
   londonReportDay, normalizeExplorerFilters } from "./report-explorer";
+import type { ExplorerDimension, ExplorerRecord } from "./report-explorer";
 import type { SportsbookSummaryRecord, TrackerSummaryDataset } from "./tracker-summary";
 const row=(id:string,value:string|null,extra:Partial<SportsbookSummaryRecord>={}):SportsbookSummaryRecord=>({
   sportsbook_bet_id:id,bookmaker:"Bookmaker A",event_name:id,offer_type:"Profit Boost",offer_name:"",
@@ -38,11 +39,57 @@ describe("Reports Explorer canonical projection",()=>{
    expect(r.records.map(record=>record.id)).toEqual(["same","zero","same"]);
    expect(normalizeExplorerFilters({module:"free-bets",status:["Placed","Settled",""]})).toEqual({module:["free-bets"],status:["Placed","Settled"]});
  });
- it("defines Free Bets Today as a complete atomic recipe and detects modified criteria",()=>{
+ it("defines all 14 owner recipes with canonical exact-match values",()=>{
+   expect(explorerRecipes).toHaveLength(14);
+   expect(explorerRecipes.map(recipe=>recipe.label)).toEqual([
+     "Free Bets Today","Free Bets","Price Boosts","Profit Boosts","Bet & Get","Refund If Loses",
+     "Bet Builders","Accumulators","Free Bet Builders","Singles","Cashback","Insurance","Mug Bets","DD / HH",
+   ]);
    const recipe=explorerRecipes[0];
    expect(recipe).toEqual({id:"free-bets-today",label:"Free Bets Today",preset:"Today",filters:{module:["free-bets"],betType:["Single"],status:["Placed","Settled"]}});
+   expect(explorerRecipes[4]?.filters.offerType).toEqual(["Bet & Get","Deposit, Bet & Get","Bet In Play & Get"]);
+   expect(explorerRecipes[7]?.filters.betType).toEqual(["Accumulator / Multiple"]);
+   expect(explorerRecipes[13]?.filters.offerType).toEqual(["Double Delight / Hat-trick Heaven"]);
    expect(explorerSelectionMatchesRecipe({preset:"Today",filters:recipe.filters},recipe)).toBe(true);
    expect(explorerSelectionMatchesRecipe({preset:"This Month",filters:recipe.filters},recipe)).toBe(false);
+   const rangeNeutral=explorerRecipes[1]!;
+   expect(explorerSelectionMatchesRecipe({preset:"Today",filters:rangeNeutral.filters},rangeNeutral)).toBe(true);
+   expect(explorerSelectionMatchesRecipe({preset:"Last Month",filters:rangeNeutral.filters},rangeNeutral)).toBe(true);
+ });
+ it("matches every recipe with OR inside dimensions and AND between dimensions",()=>{
+   const base:ExplorerRecord={id:"base",profileId:"p",profileLabel:"P",label:"Base",date:"2026-10-08",
+     module:"sportsbook-bets",provider:"Bookmaker A",betType:"Single",offerType:"None",fixtureType:"Football",
+     status:"Settled",result:"Back Won",realised:true,operational:true,value:2,cashType:""};
+   for(const recipe of explorerRecipes){
+     const dimensions=Object.entries(recipe.filters) as [ExplorerDimension,string[]][];
+     const matches=dimensions.flatMap(([dimension,values],dimensionIndex)=>values.map((value,valueIndex)=>{
+       const record={...base,id:`${recipe.id}-${dimensionIndex}-${valueIndex}`};
+       for(const [key,candidates] of dimensions) record[key]=candidates[0]!;
+       record[dimension]=value;
+       record.realised=record.status==="Settled";
+       record.operational=["Placed","Settled","Free Bet Awarded"].includes(record.status);
+       return record;
+     }));
+     const wrong=dimensions.map(([dimension],index)=>{
+       const record={...base,id:`${recipe.id}-wrong-${index}`};
+       for(const [key,candidates] of dimensions) record[key]=candidates[0]!;
+       record[dimension]="Not A Canonical Match";
+       return record;
+     });
+     const output=exploreRecords([...matches,...wrong],"count",{start:"2026-10-08",end:"2026-10-08"},recipe.filters,"module");
+     expect(output.records.map(record=>record.id),recipe.label).toEqual(matches.map(record=>record.id));
+   }
+ });
+ it("treats legacy Free Bet Awarded as executed Placed activity, never settlement",()=>{
+   const awarded:ExplorerRecord={id:"award",profileId:"p",profileLabel:"P",label:"Awarded",date:"2026-10-08",
+     module:"sportsbook-bets",provider:"Bookmaker A",betType:"Single",offerType:"Bet & Get",fixtureType:"Football",
+     status:"Free Bet Awarded",result:"Pending",realised:false,operational:true,value:99,cashType:""};
+   const recipe=explorerRecipes.find(candidate=>candidate.id==="bet-and-get")!;
+   const pnl=exploreRecords([awarded],"pnl",{start:"2026-10-08",end:"2026-10-08"},recipe.filters,"module");
+   expect(pnl.records).toHaveLength(1);
+   expect(pnl.eligibleRecords).toHaveLength(0);
+   expect(pnl.known).toBe(0);
+   expect(exploreRecords([awarded],"count",{start:"2026-10-08",end:"2026-10-08"},recipe.filters,"module").known).toBe(1);
  });
  it("resolves last-week and last-month chips from the current London day",()=>{
    const now=new Date("2026-10-08T12:00:00Z");

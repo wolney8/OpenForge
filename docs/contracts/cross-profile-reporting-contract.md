@@ -241,14 +241,21 @@ its governed final output and must not claim independent recalculation or resolv
 - Main sections remain visible in their tab. Record-level inspection and optional controls may use
   progressive disclosure; primary reports must not be hidden in accordions.
 - Explorer date chips preserve other criteria. Named recipes are explicit versioned filter
-  definitions. `Free Bets Today` means reporting date Today AND module Free Bets AND bet type
-  Single AND status (Placed OR Settled). Applying it clears unspecified option filters, preserves
+  definitions. The first recipe set is `Free Bets Today`, `Free Bets`, `Price Boosts`, `Profit
+  Boosts`, `Bet & Get`, `Refund If Loses`, `Bet Builders`, `Accumulators`, `Free Bet Builders`,
+  `Singles`, `Cashback`, `Insurance`, `Mug Bets`, and `DD / HH`. Recipes use canonical module,
+  offer-type and bet-type values; they never depend on a historical combo/template identity.
+  `Free Bets Today` means reporting date Today AND module Free Bets AND bet type Single AND status
+  (Placed OR Settled). It is the only initial recipe that replaces the selected date range. Other
+  recipes preserve that range. Applying a recipe clears unspecified option filters, preserves
   authorised Profile scope and updates the visible controls atomically.
 - Multiple selections within one filter dimension use OR; different dimensions use AND. Legacy
   persisted scalar selections normalise to one-element lists. Relative dates resolve in
   Europe/London when applied or restored.
 - Matching records and aggregate eligibility remain distinct: explicitly requested Placed records
-  remain inspectable while realised P&L continues to use only governed realised results.
+  remain inspectable while realised P&L continues to use only governed realised results. Legacy
+  `Free Bet Awarded` sportsbook execution evidence is visible under the Placed activity selection;
+  an award is not settlement and never contributes a realised result by that status alone.
 - Growing report/detail lists use the shared 16-row pagination control. Sorting and filtering occur
   before pagination; totals cover the full governed scope; list pages are independent and reset or
   clamp safely when their governing criteria change.

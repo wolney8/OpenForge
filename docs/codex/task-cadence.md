@@ -19,6 +19,10 @@ Use this sequence for normal Codex work in this repository:
 
 Extra guardrails:
 
+- Owner-facing local Plum Duff handoffs use the one established authenticated application at
+  `http://localhost:3010` with its API on `localhost:8010`, existing owner session and normal-owner
+  database unless the owner explicitly chooses another environment. Temporary ports may be used
+  internally for tests but are not a substitute handoff application and must be stopped afterwards.
 - Do not skip source-pack inspection when workbook behaviour is relevant.
 - Do not invent formulas, rounding rules, or status logic when the source pack is silent.
 - Do not commit without explicit human approval.

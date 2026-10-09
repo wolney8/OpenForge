@@ -8,7 +8,7 @@ export type ExplorerFilters = Partial<Record<ExplorerDimension, string[]>>;
 export type ExplorerRecipe = {
   id: string;
   label: string;
-  preset: ExplorerDatePreset;
+  preset?: ExplorerDatePreset;
   filters: ExplorerFilters;
 };
 export const explorerDimensions: Record<ExplorerDimension, string> = {
@@ -19,16 +19,37 @@ export const explorerModules: Record<string, string> = {
   "sportsbook-bets": "Sportsbook", "free-bets": "Free Bets", "casino-offers": "Casino",
   "each-way-extra-places": "Each Way / Extra Places", "cash-adjustments": "Cash",
 };
-export const explorerRecipes: ExplorerRecipe[] = [{
-  id: "free-bets-today",
-  label: "Free Bets Today",
-  preset: "Today",
-  filters: {
-    module: ["free-bets"],
-    betType: ["Single"],
-    status: ["Placed", "Settled"],
-  },
-}];
+const placedOrSettled = ["Placed", "Settled"];
+export const explorerRecipes: ExplorerRecipe[] = [
+  { id: "free-bets-today", label: "Free Bets Today", preset: "Today",
+    filters: { module: ["free-bets"], betType: ["Single"], status: placedOrSettled } },
+  { id: "free-bets", label: "Free Bets",
+    filters: { module: ["free-bets"], status: placedOrSettled } },
+  { id: "price-boosts", label: "Price Boosts",
+    filters: { module: ["sportsbook-bets"], offerType: ["Price Boost"], status: placedOrSettled } },
+  { id: "profit-boosts", label: "Profit Boosts",
+    filters: { module: ["sportsbook-bets"], offerType: ["Profit Boost"], status: placedOrSettled } },
+  { id: "bet-and-get", label: "Bet & Get",
+    filters: { module: ["sportsbook-bets"], offerType: ["Bet & Get", "Deposit, Bet & Get", "Bet In Play & Get"], status: placedOrSettled } },
+  { id: "refund-if-loses", label: "Refund If Loses",
+    filters: { module: ["sportsbook-bets"], offerType: ["Refund If Loses"], status: placedOrSettled } },
+  { id: "bet-builders", label: "Bet Builders",
+    filters: { module: ["sportsbook-bets", "free-bets"], betType: ["Bet Builder"], status: placedOrSettled } },
+  { id: "accumulators", label: "Accumulators",
+    filters: { module: ["sportsbook-bets", "free-bets"], betType: ["Accumulator / Multiple"], status: placedOrSettled } },
+  { id: "free-bet-builders", label: "Free Bet Builders",
+    filters: { module: ["free-bets"], betType: ["Bet Builder"], status: placedOrSettled } },
+  { id: "singles", label: "Singles",
+    filters: { module: ["sportsbook-bets", "free-bets"], betType: ["Single"], status: placedOrSettled } },
+  { id: "cashback", label: "Cashback",
+    filters: { module: ["sportsbook-bets"], offerType: ["Cashback"], status: placedOrSettled } },
+  { id: "insurance", label: "Insurance",
+    filters: { module: ["sportsbook-bets"], offerType: ["Insurance"], status: placedOrSettled } },
+  { id: "mug-bets", label: "Mug Bets",
+    filters: { module: ["sportsbook-bets"], offerType: ["Mug Bet"], status: placedOrSettled } },
+  { id: "double-delight-hat-trick-heaven", label: "DD / HH",
+    filters: { module: ["sportsbook-bets"], offerType: ["Double Delight / Hat-trick Heaven"], status: placedOrSettled } },
+];
 export type ExplorerRecord = Record<ExplorerDimension, string> & {
   id: string; profileId: string; profileLabel: string; label: string; date: string | null;
   realised: boolean; operational: boolean; value: number; cashType: string;
@@ -82,7 +103,7 @@ export function explorerSelectionMatchesRecipe(
   recipe: ExplorerRecipe,
 ) {
   const dimensions = Object.keys(explorerDimensions) as ExplorerDimension[];
-  return selection.preset === recipe.preset && dimensions.every((dimension) => {
+  return (!recipe.preset || selection.preset === recipe.preset) && dimensions.every((dimension) => {
     const selected = [...(selection.filters[dimension] ?? [])].sort();
     const expected = [...(recipe.filters[dimension] ?? [])].sort();
     return selected.length === expected.length && selected.every((value, index) => value === expected[index]);
@@ -97,7 +118,7 @@ export function buildExplorerRecords(scopes: ExplorerScope[]): ExplorerRecord[] 
         module,provider:r.bookmaker||missing,betType:r.bet_type||missing,offerType:r.offer_type||missing,
         fixtureType:r.fixture_type||missing,status:r.status,result:r.result,label:r.event_name||module,
         date:londonReportDay(r.date_settled),realised:r.status==="Settled"||r.status==="Void",
-        operational:["Placed","Settled"].includes(r.status)&&!r.result.startsWith("Void"),
+        operational:["Placed","Settled","Free Bet Awarded"].includes(r.status)&&!r.result.startsWith("Void"),
         value:r.calculation_state==="review_required" ? NaN : readSummaryMoney(r.final_net_pnl),cashType:""});
     }
     for (const r of scope.dataset.casinoOffers) add({id:r.casino_offer_id,module:"casino-offers",provider:r.bookmaker||missing,
@@ -118,11 +139,18 @@ export function buildExplorerRecords(scopes: ExplorerScope[]): ExplorerRecord[] 
 export function exploreRecords(rows: ExplorerRecord[], metric: ExplorerMetric, range: {start:string|null;end:string|null}, filters: ExplorerFilters, group: ExplorerDimension) {
   const valid=Boolean(range.start&&range.end&&range.start<=range.end);
   const matchesFilters=(record:ExplorerRecord)=>Object.entries(filters).every(([key,values])=>
-    !values?.length||values.includes(record[key as ExplorerDimension]));
+    !values?.length||values.some(value => {
+      if (key === "status" && value === "Placed" && record.module === "sportsbook-bets") {
+        return record.status === "Placed" || record.status === "Free Bet Awarded";
+      }
+      return value === record[key as ExplorerDimension];
+    }));
   const candidates=rows.filter(matchesFilters);
   const isEligible=(record:ExplorerRecord)=>metric==="count" ? record.operational : metric==="pnl" ? record.realised : metric==="withdrawals" ? record.cashType==="Withdrawal" : ["Deduction","Subscription","Costs"].includes(record.cashType);
   const explicitlySelectedStatuses=filters.status??[];
-  const isVisibleMatch=(record:ExplorerRecord)=>isEligible(record)||explicitlySelectedStatuses.includes(record.status);
+  const isVisibleMatch=(record:ExplorerRecord)=>isEligible(record)||explicitlySelectedStatuses.includes(record.status)||(
+    record.module === "sportsbook-bets" && record.status === "Free Bet Awarded" && explicitlySelectedStatuses.includes("Placed")
+  );
   const undated=candidates.filter(record=>!record.date&&isVisibleMatch(record));
   const ranged=valid ? candidates.filter(record=>record.date&&record.date>=range.start!&&record.date<=range.end!) : [];
   const records=ranged.filter(isVisibleMatch);

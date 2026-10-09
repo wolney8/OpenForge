@@ -2053,8 +2053,9 @@ Recorded 2026-10-08 13:22 BST under [#111](https://github.com/wolney8/OpenForge/
 | ID | Requested outcome | Status |
 | --- | --- | --- |
 | PD-FIX-313 | Give every existing Reports block one predictable primary tab; keep primary sections visible and move Profile Workload out of shared content | COMPLETE |
-| PD-FIX-314 | Add the exact **Free Bets Today** record-finding recipe, multi-value OR filters, London-relative date chips and truthful active-filter state | COMPLETE |
+| PD-FIX-314 | Add all 14 owner-defined record-finding recipes, multi-value OR filters, London-relative date chips and truthful active-filter state | COMPLETE |
 | PD-FIX-315 | Replace list truncation with independent 16-row pagination across parent and nested Reports lists | COMPLETE |
+| PD-FIX-316 | Verify and deliver CP-078 through the existing authenticated local app on `localhost:3010`; retire the temporary CP-078 review runtime after handoff | COMPLETE |
 
 | Block | Current location | Associated detail | Destination | Pagination |
 | --- | --- | --- | --- | --- |

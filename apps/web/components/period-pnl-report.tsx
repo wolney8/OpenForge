@@ -92,7 +92,7 @@ export function PeriodPnlReport({ rows, scopes, contextKey, scopeLabel }: {
         pageSize={periodPageSize} position="top" totalRows={visible.length} />
       <div className="table-shell"><table><thead><tr><th scope="col">Period</th><th scope="col">Betting P&amp;L</th><th scope="col">Cash Costs</th><th scope="col">Withdrawals</th><th scope="col">Retained Profit</th><th scope="col">Records</th></tr></thead><tbody>
         {visiblePeriods.map((row) => <tr key={row.periodKey} data-pd-id={`reports.period-pnl.period.${row.periodKey}`}>
-          <td>Week commencing {formatHumanDisplayDate(row.periodKey, false)}</td><td><FinancialValue animate={false} value={row.totalPnl} /></td><td><FinancialValue animate={false} value={row.costs} /></td><td><FinancialValue animate={false} value={row.withdrawals} /></td><td><FinancialValue animate={false} value={row.retainedProfit} /></td><td><button aria-pressed={selected?.periodKey === row.periodKey} className="button-link" onClick={() => change({ point: row.periodKey })} type="button">Inspect Period</button></td>
+          <td>Week commencing {formatHumanDisplayDate(row.periodKey, false)}</td><td><FinancialValue animate={false} value={row.totalPnl} /></td><td><FinancialValue animate={false} value={row.costs} /></td><td><FinancialValue animate={false} value={row.withdrawals} /></td><td><FinancialValue animate={false} value={row.retainedProfit} /></td><td><button aria-pressed={selected?.periodKey === row.periodKey} className="button-link" onClick={() => change({ point: row.periodKey })} type="button">Inspect Records</button></td>
         </tr>)}
       </tbody></table></div>
       <LedgerPagination ariaLabel="Period P&L Periods" currentPage={safePeriodPage} onPageChange={setPeriodPage}

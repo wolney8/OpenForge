@@ -344,3 +344,16 @@ code, tests and parity review.
   parent outcome-row styles cannot override it.
 - Extra Place uses the shared modal Save and Delete styles without page-specific overrides. Save
   retains the canonical blue shared action and Delete retains the canonical red destructive action.
+## CP-078 Reports usability completion — 2026-10-09 12:01 BST
+
+| ID | Surface | Requested behaviour | Signed-off equivalent | Status |
+| --- | --- | --- | --- | --- |
+| PD-FIX-313 / #111 | Fund Manager Reports tabs | One visible primary home for every existing Reports block; no primary accordion shells | Existing analytics tabs and `content-subpanel` hierarchy | COMPLETE |
+| PD-FIX-314 / #111 | Trend And Activity Explorer | Fourteen exact ledger-record recipes, compact filters and truthful active state | Existing canonical reporting fields, filter chips and London date resolver | COMPLETE |
+| PD-FIX-315 / #111 | Reports tables and record detail | Shared 16-row pagination for growing parent and nested lists | `LedgerPagination` top/bottom controls | COMPLETE |
+| PD-FIX-316 / #111 | Local owner handoff | Serve the verified change through the established authenticated 3010/8010 application | Existing normal-owner launcher and local backup gate | COMPLETE |
+
+Focused evidence covers 64-Profile reflow, light/dark and 390px containment, keyboard-labelled
+controls, exact recipe matching, unavailable/undated money states, parent/nested pagination and the
+absence of primary `details/summary` wrappers. Financial authorities and API/schema contracts are
+unchanged.

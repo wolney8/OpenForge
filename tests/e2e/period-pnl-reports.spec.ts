@@ -126,7 +126,7 @@ test("period P&L reconciles source records and retains selected scope, week and 
     await expect(preset.locator('[data-pd-id^="reports.period-pnl.period."]')).toHaveCount(0);
     await week.fill("");
     await expect(preset.locator('[data-pd-id^="reports.period-pnl.period."]')).toHaveCount(3);
-    await preset.getByRole("button", { name: "Inspect Period" }).nth(1).click();
+    await preset.getByRole("button", { name: "Inspect Records" }).nth(1).click();
     await expect(records).toContainText("corrected six to five");
     await page.reload();
     await expect(records).toContainText("corrected six to five", { timeout: 60_000 });
