@@ -166,6 +166,26 @@ class SportsbookBetFields(BaseModel):
 
 class SportsbookBetPayload(SportsbookBetFields):
     multi_lay_correction_reason: str = Field(default="", max_length=1000)
+
+    @model_validator(mode="before")
+    @classmethod
+    def reject_unsupported_promotion_edits(cls, value: Any) -> Any:
+        if not isinstance(value, dict):
+            return value
+        promotion_fields = {
+            "offer_group_id",
+            "bet_role",
+            "wagering_contribution",
+            "promotion_json",
+        }
+        supplied = sorted(promotion_fields.intersection(value))
+        if supplied:
+            raise ValueError(
+                "Promotion fields require the sportsbook promotions release: "
+                + ", ".join(supplied)
+            )
+        return value
+
     @field_validator(*MONEY_FIELDS, mode="before")
     @classmethod
     def validate_money(cls, value: Any, info: ValidationInfo) -> str:

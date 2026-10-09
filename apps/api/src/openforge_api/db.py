@@ -4069,8 +4069,19 @@ class CasinoOfferRecord:
     updated_at: str
 
 
+SPORTSBOOK_PROMOTION_COMPATIBILITY_COLUMNS = frozenset(
+    {"offer_group_id", "bet_role", "wagering_contribution", "promotion_json"}
+)
+
+
 def map_row(row: sqlite3.Row) -> SportsbookBetRecord:
-    return SportsbookBetRecord(**dict(row))
+    record = dict(row)
+    # The schema-compatible rollback build predates CP-075's promotion contract.
+    # Ignore only its known additive columns when reading; an unexpected schema
+    # column must still fail closed rather than being hidden by a generic filter.
+    for column in SPORTSBOOK_PROMOTION_COMPATIBILITY_COLUMNS:
+        record.pop(column, None)
+    return SportsbookBetRecord(**record)
 
 
 def map_free_bet_row(row: sqlite3.Row) -> FreeBetRecord:
