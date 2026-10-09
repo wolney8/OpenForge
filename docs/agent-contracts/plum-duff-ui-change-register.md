@@ -369,4 +369,4 @@ not reopen or extend Reports scope.
 | PD-FIX-317 | Sportsbook Trigger editor | Concise relevant refund/wagering terms and truthful current/projected position | Existing Sportsbook editor sections and financial-value treatments | COMPLETE |
 | PD-FIX-318 | Linked wagering entry | Add Wagering Bet carries Profile, bookmaker and group context without repeating promotion terms | Existing Sportsbook create workflow | COMPLETE |
 | PD-FIX-319 | Promotion lifecycle | Turnover progress does not auto-confirm external release | Existing explicit settlement/confirmation semantics | COMPLETE |
-| PD-FIX-320 | Local owner handoff | Install the additive-schema feature through canonical authenticated 3010/8010 only | Existing normal-owner backup and launcher process | NEEDS VERIFICATION |
+| PD-FIX-320 | Local owner handoff | Install the additive-schema feature through canonical authenticated 3010/8010 only | Existing normal-owner backup and launcher process | COMPLETE |

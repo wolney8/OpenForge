@@ -50,3 +50,11 @@ Disposable SQLite compatibility tests passed before CP-075 integration. Disposab
 18.6 verified the `20260927_008_invited_subscribers` to
 `20261007_009_sportsbook_promotions` upgrade and retry path. A pre-migration backup remains
 mandatory for recovery from migration failure itself.
+
+## Local installation
+
+Installed through the canonical 3010/8010 normal-owner runtime after verified backup
+`BACKUP-9335E32C`. Database identity `normal-owner` / fingerprint `7246998d43722066`
+was retained. The six governed ledger/Profile row counts and legacy-column control hash
+`b42fb20575cf3ecd7f63ac659c3608414d4efa94fd7e8a8ee38f9d96d50795ca`
+matched before and after migration; integrity remained `ok` with zero foreign-key violations.
