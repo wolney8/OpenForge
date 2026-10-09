@@ -22,7 +22,7 @@ from openforge_api.workbook_template_package import (
     parse_iteration,
 )
 
-EXPORT_FORMAT_VERSION = "workbook-template-export-v1"
+EXPORT_FORMAT_VERSION = "workbook-template-export-v2"
 OUTPUT_CLASSIFICATION = (
     "STRUCTURALLY VALID WORKING-WORKBOOK EXPORT — GOOGLE RUNTIME VALIDATION PENDING"
 )
@@ -295,10 +295,10 @@ def _validate_contract_schema(
                 f"Workbook runtime identity drift detected for {sheet_name}"
             )
         missing_sources = {
-            str(spec["source"])
+            str(spec["source"]).split(".", 1)[0]
             for spec in ledger["columns"].values()
             if not str(spec["source"]).startswith("$")
-            and str(spec["source"]) not in database_columns
+            and str(spec["source"]).split(".", 1)[0] not in database_columns
         }
         if missing_sources:
             raise WorkbookTemplateExportError(
@@ -397,6 +397,7 @@ def _project_rows(
     sportsbook_identities: Mapping[str, str],
     related_free_bet_identities: Mapping[str, str],
     catalogue_risks: Mapping[str, str],
+    exchange_commissions: Mapping[str, object],
 ) -> list[dict[str, object]]:
     result: list[dict[str, object]] = []
     ledger = coverage["ledgers"][sheet_name]
@@ -413,6 +414,16 @@ def _project_rows(
                 value = _account_workbook_status(row)
             elif source == "$catalogue_risk_team":
                 value = catalogue_risks.get(str(row.get("catalogue_id") or ""), "")
+            elif source == "$exchange_commission":
+                value = exchange_commissions.get(str(row.get("account") or ""), "")
+            elif source == "$restrictions_csv":
+                try:
+                    restrictions = json.loads(str(row.get("restrictions_json") or "[]"))
+                except json.JSONDecodeError as error:
+                    raise WorkbookTemplateExportError(
+                        f"Account {row[runtime_id]} has invalid restriction evidence"
+                    ) from error
+                value = ", ".join(str(item) for item in restrictions)
             elif source == "$linked_sportsbook_export_id":
                 source_value = str(row.get("origin_qual_bet_id") or "")
                 if not source_value:
@@ -428,7 +439,18 @@ def _project_rows(
             elif source == "$linked_free_bet_export_id":
                 value = related_free_bet_identities.get(str(row[runtime_id]), "")
             else:
-                value = row.get(source, "")
+                root, separator, child = source.partition(".")
+                value = row.get(root, "")
+                if separator:
+                    try:
+                        nested = json.loads(str(value or "{}"))
+                    except json.JSONDecodeError as error:
+                        raise WorkbookTemplateExportError(
+                            f"{sheet_name} {row[runtime_id]} has invalid {root} metadata"
+                        ) from error
+                    value = nested.get(child, "") if isinstance(nested, dict) else ""
+                    if isinstance(value, list):
+                        value = ", ".join(str(item) for item in value)
             output[str(header)] = value
         result.append(output)
     return sorted(result, key=lambda row: str(next(iter(row.values()))))
@@ -577,6 +599,15 @@ def build_workbook_template_export(
             related_free_bet_identities[sportsbook_runtime_id] = identities["Free Bets"][
                 str(row["free_bet_id"])
             ]
+        commissions = [
+            (str(row["exchange_name"]), row["commission_rate"])
+            for row in connection.execute(
+                "SELECT exchange_name, commission_rate FROM profile_exchange_commissions "
+                "WHERE profile_id = ? ORDER BY exchange_name",
+                (profile_id,),
+            ).fetchall()
+        ]
+        commission_map = dict(commissions)
         projections = {
             sheet_name: _project_rows(
                 rows,
@@ -586,18 +617,11 @@ def build_workbook_template_export(
                 sportsbook_identities=identities["Sportsbook Bets"],
                 related_free_bet_identities=related_free_bet_identities,
                 catalogue_risks=catalogue_risks,
+                exchange_commissions=commission_map,
             )
             for sheet_name, rows in ordered_by_sheet.items()
         }
         controls = _control_values(profile, tracker, onboarding, catalogue_names)
-        commissions = [
-            (str(row["exchange_name"]), row["commission_rate"])
-            for row in connection.execute(
-                "SELECT exchange_name, commission_rate FROM profile_exchange_commissions "
-                "WHERE profile_id = ? ORDER BY exchange_name",
-                (profile_id,),
-            ).fetchall()
-        ]
         logical_checksum = sha256(
             _json(
                 {

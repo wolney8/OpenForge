@@ -24,6 +24,51 @@ WORKBOOK_ID_PATTERN = re.compile(
 )
 MAX_EXCEL_ROW = 1_048_576
 MAX_EXCEL_COLUMN = 16_384
+CURRENT_TEMPLATE_CONTRACT = "workbook-template-export-v2"
+
+LEDGER_VALIDATION_SOURCES = {
+    "Accounts": {
+        "C": "AccountTypeList",
+        "E": "BookieValueType",
+        "F": "StatusList_Account",
+        "G": "Settings!$AB$3:$AB$1002",
+        "H": "Settings!$AC$3:$AC$1002",
+    },
+    "Sportsbook Bets": {
+        "F": "BookmakerList",
+        "G": "OfferTypeList",
+        "H": "BetTypeList",
+        "I": "OfferNameList",
+        "J": "FixtureTypeList",
+        "K": "SportsbookStatusList",
+        "L": "ResultList",
+        "O": "MatchStrategyList",
+        "R": "ActiveExchanges",
+        "V": "LayStatusList",
+        "AY": "DateRangeList",
+    },
+    "Free Bets": {
+        "E": "BookmakerList",
+        "F": "OfferTypeList",
+        "G": "BetTypeList",
+        "H": "OfferNameList",
+        "I": "FixtureTypeList",
+        "J": "FreeBetStatusList",
+        "K": "ResultList",
+        "M": "FreeBetRetentionModeList",
+        "P": "MatchStrategyFreeBetsList",
+        "S": "ActiveExchanges",
+        "W": "LayStatusList",
+        "AH": "DateRangeList",
+    },
+    "Casino Offers": {"S": "CasinoStatusList", "T": "ResultList", "Z": "DateRangeList"},
+    "Cash Adjustments": {
+        "C": "DirectionList",
+        "E": "AdjustmentTypeList",
+        "H": "FilteredBanksAndExchanges",
+        "K": "DateRangeList",
+    },
+}
 
 
 class WorkbookTemplatePackageError(ValueError):
@@ -47,6 +92,48 @@ class WorkbookTemplatePackage:
 
 def _serialise(root: ET.Element) -> bytes:
     return ET.tostring(root, encoding="utf-8", xml_declaration=True)
+
+
+def _repair_ledger_validation_sources(root: ET.Element, sheet_name: str) -> None:
+    """Restore the approved named-list sources lost in the Google-authored XLSX."""
+    expected = LEDGER_VALIDATION_SOURCES.get(sheet_name, {})
+    repaired: set[str] = set()
+    validations = root.find(f"{{{MAIN_NS}}}dataValidations")
+    if validations is None:
+        raise WorkbookTemplatePackageError(f"Workbook validations are missing for {sheet_name}")
+    for validation in list(validations):
+        formula = validation.find(f"{{{MAIN_NS}}}formula1")
+        if formula is None or formula.text != "#REF!":
+            continue
+        reference = str(validation.get("sqref") or "")
+        start = reference.split(":", 1)[0]
+        column = split_cell(start)[0].replace("$", "") if start else ""
+        if sheet_name == "Casino Offers" and column == "F" and reference.startswith("F2:G"):
+            end_row = split_cell(reference.split(":", 1)[1])[1]
+            validation.set("sqref", f"F2:F{end_row}")
+            formula.text = "BookmakerList"
+            offer = deepcopy(validation)
+            offer.set("sqref", f"G2:G{end_row}")
+            offer_formula = offer.find(f"{{{MAIN_NS}}}formula1")
+            if offer_formula is None:
+                raise WorkbookTemplatePackageError("Casino offer validation formula is missing")
+            offer_formula.text = "OfferTypeList"
+            validations.insert(list(validations).index(validation) + 1, offer)
+            repaired.update({"F", "G"})
+            continue
+        source = expected.get(column)
+        if source is None:
+            raise WorkbookTemplatePackageError(
+                f"Unmapped broken validation in {sheet_name}: {reference}"
+            )
+        formula.text = source
+        repaired.add(column)
+    missing = set(expected) - repaired
+    if missing:
+        raise WorkbookTemplatePackageError(
+            f"Expected broken validations absent in {sheet_name}: {sorted(missing)}"
+        )
+    validations.set("count", str(len(validations)))
 
 
 def split_cell(reference: str) -> tuple[str, int]:
@@ -153,6 +240,31 @@ def translate_formula_rows(formula: str, row_delta: int) -> str:
         output.append(formula[start:index])
     flush_unquoted()
     return "".join(output)
+
+
+def free_bet_overdue_formula(
+    row: int,
+    *,
+    status_column: str = "J",
+    settlement_column: str = "B",
+    expiry_column: str = "L",
+    open_column: str = "AF",
+) -> str:
+    """Placed bets use settlement; unused rewards use expiry, with time intact."""
+
+    def past_date(column: str) -> str:
+        cell = f"${column}{row}"
+        return (
+            f'IF({cell}="",FALSE,IF(ISNUMBER({cell}),'
+            f"IF(MOD({cell},1)=0,{cell}<TODAY(),{cell}<NOW()),"
+            f'IF(ISNUMBER(SEARCH(":",{cell})),'
+            f'VALUE(SUBSTITUTE({cell},"T"," "))<NOW(),VALUE({cell})<TODAY())))'
+        )
+
+    return (
+        f'IFERROR(IF(NOT(${open_column}{row}),FALSE,IF(${status_column}{row}="Placed",'
+        f"{past_date(settlement_column)},{past_date(expiry_column)})),FALSE)"
+    )
 
 
 def parse_iteration(value: object) -> int:
@@ -329,7 +441,7 @@ def _set_cell_value(cell: ET.Element, value: object, encoding: str) -> None:
     if value is None or (allow_empty and str(value).strip() == ""):
         _clear_cell_value(cell, preserve_formula=False)
         return
-    if base_encoding == "text":
+    if base_encoding in {"text", "comma_separated_text"}:
         _set_inline_string(cell, str(value))
         return
     _clear_cell_value(cell, preserve_formula=False)
@@ -399,6 +511,134 @@ def _table_candidate(
             f"Expected one {table_name} table for {sheet_name}; found {len(candidates)}"
         )
     return candidates[0]
+
+
+def _append_contract_columns(
+    payload: dict[str, bytes],
+    *,
+    sheet_name: str,
+    table_name: str,
+    base_headers: Sequence[str],
+    appended_headers: Sequence[str],
+    hidden_headers: Sequence[str] = (),
+    validation_lists: Mapping[str, Sequence[str]] | None = None,
+) -> None:
+    """Create the current template shape from the immutable signed v1 base."""
+    paths = _sheet_paths(payload)
+    tables = _table_map(payload, paths)
+    worksheet, table_path, table = _table_candidate(tables, sheet_name, table_name)
+    existing = [
+        str(column.get("name"))
+        for column in table.findall(f".//{{{MAIN_NS}}}tableColumn")
+    ]
+    if [normalise_header(value) for value in existing] != [
+        normalise_header(value) for value in base_headers
+    ]:
+        raise WorkbookTemplatePackageError(
+            f"Workbook v1 base header drift detected for {sheet_name}; "
+            "regenerate the v2 template from the approved signed base"
+        )
+    start_column, start_row, end_column, end_row = parse_range(str(table.get("ref")))
+    root = ET.fromstring(payload[worksheet])
+    rows = _rows_by_number(root)
+    for offset, header in enumerate(appended_headers, start=1):
+        column_index = end_column + offset
+        column_name = _column_name(column_index)
+        for row_number in range(start_row, end_row + 1):
+            row = rows.get(row_number)
+            if row is None:
+                continue
+            existing_cells = _cells_by_column(row)
+            style_source = existing_cells.get(_column_name(end_column))
+            cell = ET.Element(f"{{{MAIN_NS}}}c", {"r": f"{column_name}{row_number}"})
+            if style_source is not None and style_source.get("s") is not None:
+                cell.set("s", str(style_source.get("s")))
+            if row_number == start_row:
+                _set_inline_string(cell, header)
+            row.append(cell)
+        columns = table.find(f"{{{MAIN_NS}}}tableColumns")
+        if columns is None:
+            raise WorkbookTemplatePackageError(
+                f"Workbook table columns are missing for {sheet_name}"
+            )
+        ET.SubElement(
+            columns,
+            f"{{{MAIN_NS}}}tableColumn",
+            {"id": str(len(existing) + offset), "name": header},
+        )
+        columns.set("count", str(len(existing) + len(appended_headers)))
+        if header in hidden_headers:
+            cols = root.find(f"{{{MAIN_NS}}}cols")
+            if cols is None:
+                sheet_data = root.find(f"{{{MAIN_NS}}}sheetData")
+                if sheet_data is None:
+                    raise WorkbookTemplatePackageError(
+                        f"Worksheet data is missing for {sheet_name}"
+                    )
+                cols = ET.Element(f"{{{MAIN_NS}}}cols")
+                root.insert(list(root).index(sheet_data), cols)
+            ET.SubElement(
+                cols,
+                f"{{{MAIN_NS}}}col",
+                {"min": str(column_index), "max": str(column_index), "hidden": "1"},
+            )
+    new_end = end_column + len(appended_headers)
+    table.set(
+        "ref", f"{_column_name(start_column)}{start_row}:{_column_name(new_end)}{end_row}"
+    )
+    auto_filter = table.find(f"{{{MAIN_NS}}}autoFilter")
+    if auto_filter is not None:
+        auto_filter.set("ref", str(table.get("ref")))
+    workbook = ET.fromstring(payload["xl/workbook.xml"])
+    old_suffix = f":${_column_name(end_column)}${end_row}"
+    new_suffix = f":${_column_name(new_end)}${end_row}"
+    for name in workbook.findall(f".//{{{MAIN_NS}}}definedName"):
+        if name.text and name.text.endswith(old_suffix) and sheet_name in name.text:
+            name.text = name.text[: -len(old_suffix)] + new_suffix
+    payload["xl/workbook.xml"] = _serialise(workbook)
+    for header, values in (validation_lists or {}).items():
+        if header not in appended_headers:
+            continue
+        column_index = end_column + list(appended_headers).index(header) + 1
+        validations = root.find(f"{{{MAIN_NS}}}dataValidations")
+        if validations is None:
+            validations = ET.SubElement(root, f"{{{MAIN_NS}}}dataValidations", {"count": "0"})
+        validation = ET.SubElement(
+            validations,
+            f"{{{MAIN_NS}}}dataValidation",
+            {
+                "type": "list",
+                "allowBlank": "1",
+                "showErrorMessage": "1",
+                "sqref": (
+                    f"{_column_name(column_index)}{start_row + 1}:"
+                    f"{_column_name(column_index)}{end_row}"
+                ),
+            },
+        )
+        formula = ET.SubElement(validation, f"{{{MAIN_NS}}}formula1")
+        formula.text = '"' + ",".join(values) + '"'
+        validations.set("count", str(len(validations)))
+    payload[worksheet] = _serialise(root)
+    payload[table_path] = _serialise(table)
+
+
+def _upgrade_signed_v1_template(
+    payload: dict[str, bytes], structure: Mapping[str, Any]
+) -> None:
+    for sheet_name, ledger in structure["ledgers"].items():
+        appended = list(ledger.get("v2_appended_headers", ()))
+        if not appended:
+            continue
+        _append_contract_columns(
+            payload,
+            sheet_name=sheet_name,
+            table_name=str(ledger["table_name"]),
+            base_headers=list(ledger["v1_base_headers"]),
+            appended_headers=appended,
+            hidden_headers=list(ledger.get("machine_managed_headers", ())),
+            validation_lists=ledger.get("v2_validation_lists", {}),
+        )
 
 
 def _rows_by_number(root: ET.Element) -> dict[int, ET.Element]:
@@ -694,7 +934,7 @@ def build_workbook_template_package(
 ) -> WorkbookTemplatePackage:
     if sha256(source_content).hexdigest() != coverage["source_template_sha256"]:
         raise WorkbookTemplatePackageError("Workbook template fingerprint is not approved")
-    if structure.get("contract") != "workbook-template-export-v1" or coverage.get(
+    if structure.get("contract") != CURRENT_TEMPLATE_CONTRACT or coverage.get(
         "contract"
     ) != structure.get("contract"):
         raise WorkbookTemplatePackageError("Workbook template contract identity is invalid")
@@ -713,6 +953,7 @@ def build_workbook_template_package(
     _reject_nonempty_person_metadata(original)
 
     payload = dict(original)
+    _upgrade_signed_v1_template(payload, structure)
     sheet_paths = _sheet_paths(payload)
     tables = _table_map(payload, sheet_paths)
     table_targets: dict[str, str] = {}
@@ -758,6 +999,31 @@ def build_workbook_template_package(
         if new_end > MAX_EXCEL_ROW:
             raise WorkbookTemplatePackageError(f"Workbook capacity exceeded for {sheet_name}")
         root = ET.fromstring(payload[worksheet])
+        _repair_ledger_validation_sources(root, sheet_name)
+        # The signed template uses shared-formula groups whose master can sit in
+        # the first ledger row. Replacing that row would leave retained blank-row
+        # followers pointing at a master which no longer exists, and Excel then
+        # repairs the workbook on open. Materialise the source groups before any
+        # projected rows are written so every retained formula is self-contained.
+        source_masters = _shared_formula_masters(root)
+        for source_cell in root.findall(f".//{{{MAIN_NS}}}c"):
+            source_formula = source_cell.find(f"{{{MAIN_NS}}}f")
+            if source_formula is None or source_formula.get("t") != "shared":
+                continue
+            reference = str(source_cell.get("r"))
+            master = source_masters.get(str(source_formula.get("si")))
+            if master is None:
+                raise WorkbookTemplatePackageError("Shared formula follower has no source master")
+            if split_cell(master[0])[0] != split_cell(reference)[0]:
+                raise WorkbookTemplatePackageError(
+                    "Horizontal shared formulas need explicit template translation support"
+                )
+            materialise_cloned_formula(
+                source_formula,
+                template_reference=reference,
+                target_reference=reference,
+                shared_masters=source_masters,
+            )
         rows = _rows_by_number(root)
         header_columns = {
             normalise_header(header): index for index, header in enumerate(headers, start=1)
@@ -765,6 +1031,30 @@ def build_workbook_template_package(
         formula_columns = {
             header_columns[normalise_header(header)] for header in ledger["formula_helper_headers"]
         }
+        if sheet_name == "Cash Adjustments":
+            week_column = _column_name(header_columns["weeklabel"])
+            date_column = _column_name(header_columns["adjustmentdate"])
+            source_week_formula = (
+                'IF(Adjustments[AdjustmentDate]="","",'
+                '"W/C "&TEXT(Adjustments[AdjustmentDate]-'
+                'WEEKDAY(Adjustments[AdjustmentDate],2)+1,"dd/mm/yyyy"))'
+            )
+            for source_cell in root.findall(f".//{{{MAIN_NS}}}c"):
+                reference = str(source_cell.get("r"))
+                column, number = split_cell(reference)
+                formula = source_cell.find(f"{{{MAIN_NS}}}f")
+                if column != week_column or formula is None:
+                    continue
+                if re.sub(r"\s+", "", formula.text or "") != re.sub(
+                    r"\s+", "", source_week_formula
+                ):
+                    raise WorkbookTemplatePackageError("Cash WeekLabel source formula drift")
+                date_cell = f"${date_column}{number}"
+                formula.text = (
+                    f'IF({date_cell}="","","W/C "&TEXT('
+                    f'{date_cell}-WEEKDAY({date_cell},2)+1,"dd/mm/yyyy"))'
+                )
+                _clear_cell_value(source_cell)
         template_row_number = _find_template_row(
             rows,
             start_row=start_row,
@@ -780,6 +1070,13 @@ def build_workbook_template_package(
             row_number = start_row + 1 + offset
             clone = deepcopy(template_row)
             clone.set("r", str(row_number))
+            # A template row may also own cells outside this ledger table. Keep
+            # those cells in their original row instead of cloning or moving
+            # them into the projected table row.
+            for outside_cell in list(clone.findall(f"{{{MAIN_NS}}}c")):
+                index = _column_number(split_cell(str(outside_cell.get("r")))[0])
+                if not start_column <= index <= end_column:
+                    clone.remove(outside_cell)
             clone_cells = _cells_by_column(clone)
             projection = rows_to_write[offset] if offset < len(rows_to_write) else {}
             for column_index, header in enumerate(headers, start=1):
@@ -800,6 +1097,14 @@ def build_workbook_template_package(
                         target_reference=new_reference,
                         shared_masters=shared_masters,
                     )
+                    if sheet_name == "Free Bets" and normalise_header(header) == "isoverdue":
+                        formula.text = free_bet_overdue_formula(
+                            row_number,
+                            status_column=_column_name(header_columns["status"]),
+                            settlement_column=_column_name(header_columns["datesettling"]),
+                            expiry_column=_column_name(header_columns["expirydatetime"]),
+                            open_column=_column_name(header_columns["countsasopen"]),
+                        )
                     _clear_cell_value(cell)
                 elif header in allowed:
                     if header in projection:
@@ -817,7 +1122,13 @@ def build_workbook_template_package(
                 raise WorkbookTemplatePackageError(
                     f"Formula ownership drift detected for {sheet_name} row {row_number}"
                 )
-            _replace_row(sheet_data, rows.get(row_number), clone)
+            existing = rows.get(row_number)
+            if existing is not None:
+                for cell in existing.findall(f"{{{MAIN_NS}}}c"):
+                    index = _column_number(split_cell(str(cell.get("r")))[0])
+                    if not start_column <= index <= end_column:
+                        clone.append(deepcopy(cell))
+            _replace_row(sheet_data, existing, clone)
 
         for row_number in range(new_end + 1, old_end + 1):
             row_element = rows.get(row_number)
@@ -827,6 +1138,32 @@ def build_workbook_template_package(
                 column_index = _column_number(split_cell(str(cell.get("r")))[0])
                 if start_column <= column_index <= end_column:
                     _clear_cell_value(cell, preserve_formula=True)
+
+        # Excel table insertion uses these exact governed declarations to
+        # propagate formulas into genuine user-added rows.
+        first_body = _rows_by_number(root)[start_row + 1]
+        first_cells = _cells_by_column(first_body)
+        for index, table_column in enumerate(
+            table.findall(f".//{{{MAIN_NS}}}tableColumn"), start=start_column
+        ):
+            definition = table_column.find(f"{{{MAIN_NS}}}calculatedColumnFormula")
+            if index not in formula_columns:
+                if definition is not None:
+                    raise WorkbookTemplatePackageError(
+                        f"Calculated column unexpectedly owns an input in {sheet_name}"
+                    )
+                continue
+            cell_formula = first_cells[_column_name(index)].find(f"{{{MAIN_NS}}}f")
+            if cell_formula is None or not cell_formula.text:
+                raise WorkbookTemplatePackageError(
+                    f"Calculated column formula missing in {sheet_name}"
+                )
+            if definition is None:
+                definition = ET.SubElement(
+                    table_column, f"{{{MAIN_NS}}}calculatedColumnFormula"
+                )
+            definition.attrib.clear()
+            definition.text = cell_formula.text
 
         _resize_worksheet_ranges(
             root,

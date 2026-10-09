@@ -97,6 +97,14 @@ def main() -> None:
 
     if args.role == "normal-owner":
         owner_root = primary_checkout_root()
+        os.environ.setdefault(
+            "OPENFORGE_WORKBOOK_TEMPLATE_SOURCE",
+            str(owner_root / "_input/WO_MB_Tracker_3Sept2026_1013AM.xlsx"),
+        )
+        os.environ.setdefault(
+            "OPENFORGE_WORKBOOK_TEMPLATE_HELPER_SOURCE",
+            str(owner_root / "_input/MB Helpers.gs"),
+        )
         database_target = args.database_target or (
             f"sqlite:///{owner_root / 'data/private/db/openforge.sqlite3'}"
         )

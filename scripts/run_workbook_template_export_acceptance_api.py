@@ -356,7 +356,7 @@ def main() -> None:
             ),
             "OPENFORGE_RUNTIME_DATABASE_TARGET_EXPLICIT": "true",
             "OPENFORGE_WORKBOOK_TEMPLATE_FIELD_COVERAGE": str(
-                ROOT / "docs/contracts/workbook-template-export-v1-field-coverage.json"
+                ROOT / "docs/contracts/workbook-template-export-v2-field-coverage.json"
             ),
             "OPENFORGE_WORKBOOK_TEMPLATE_HELPER_SOURCE": str(
                 ROOT / "_input/MB Helpers.gs"
@@ -365,7 +365,7 @@ def main() -> None:
                 ROOT / "_input/WO_MB_Tracker_3Sept2026_1013AM.xlsx"
             ),
             "OPENFORGE_WORKBOOK_TEMPLATE_STRUCTURE_MANIFEST": str(
-                ROOT / "docs/contracts/workbook-template-export-v1-ledger-structure.json"
+                ROOT / "docs/contracts/workbook-template-export-v2-ledger-structure.json"
             ),
         }
     )

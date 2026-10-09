@@ -23,6 +23,10 @@ from openforge_api.db import (
     create_profile_with_onboarding,
     create_sportsbook_bet,
 )
+from openforge_api.imports import (
+    map_free_bet_import_fields,
+    map_sportsbook_import_fields,
+)
 from openforge_api.main import app
 from openforge_api.profile_portable_export import SHEET_SPECS
 from openforge_api.workbook_template_export import (
@@ -41,12 +45,13 @@ from openforge_api.workbook_template_package import (
     build_workbook_template_package,
     parse_range,
 )
+from openforge_api.xlsx_import import parse_free_bet_xlsx, parse_sportsbook_xlsx
 
 ROOT = Path(__file__).resolve().parents[3]
 PRIVATE_TEMPLATE = ROOT / "_input/WO_MB_Tracker_3Sept2026_1013AM.xlsx"
 PRIVATE_HELPER = ROOT / "_input/MB Helpers.gs"
-STRUCTURE = ROOT / "docs/contracts/workbook-template-export-v1-ledger-structure.json"
-COVERAGE = ROOT / "docs/contracts/workbook-template-export-v1-field-coverage.json"
+STRUCTURE = ROOT / "docs/contracts/workbook-template-export-v2-ledger-structure.json"
+COVERAGE = ROOT / "docs/contracts/workbook-template-export-v2-field-coverage.json"
 PROFILE_ID = "profile-working-export-test"
 TIMESTAMP = "2026-09-05T09:30:00+00:00"
 
@@ -106,6 +111,19 @@ def _configure(tmp_path: Path) -> None:
                         "foreground_colour": "#FFFFFF",
                         "background_colour": "#455A64",
                         "source": "Synthetic fixture",
+                    },
+                    {
+                        "catalogue_id": "EXCHANGE-SYNTHETIC-001",
+                        "account_type": "Exchange",
+                        "operating_jurisdictions": ["GB"],
+                        "operating_subdivisions": [],
+                        "operating_channels": ["web"],
+                        "brand_name": "Exchange A",
+                        "short_display_name": "Exchange A",
+                        "risk_team": "Synthetic Risk Team",
+                        "foreground_colour": "#FFFFFF",
+                        "background_colour": "#455A64",
+                        "source": "Synthetic fixture",
                     }
                 ],
             },
@@ -155,13 +173,31 @@ def _seed_profile(*, include_rows: bool = True) -> None:
             "lifecycle_status": "Active",
             "signup_offer_status": "Eligible",
             "restrictions_json": '["Bonus Restricted"]',
-            "current_balance": "10.2300",
-            "pending_withdrawal_amount": "0.0000",
+            "current_balance": "10.23",
+            "pending_withdrawal_amount": "0.00",
             "last_balance_update": TIMESTAMP,
             "group_name": "Synthetic Group",
             "platform": "Synthetic Platform",
             "sign_up_date": "2026-01-03",
             "notes": "Synthetic account note",
+        },
+    )
+    create_account(
+        PROFILE_ID,
+        {
+            "account_id": "account-runtime-exchange-001",
+            "catalogue_id": "EXCHANGE-SYNTHETIC-001",
+            "account": "Exchange A",
+            "type": "Exchange",
+            "counts_in_cash_total": True,
+            "channel": "web",
+            "status": "Active",
+            "current_balance": "20.00",
+            "pending_withdrawal_amount": "0.00",
+            "last_balance_update": TIMESTAMP,
+            "group_name": "Synthetic Group",
+            "platform": "Synthetic Platform",
+            "notes": "Synthetic exchange note",
         },
     )
     create_sportsbook_bet(
@@ -184,24 +220,29 @@ def _seed_profile(*, include_rows: bool = True) -> None:
             "offer_name": "Synthetic offer",
             "fixture_type": "Football",
             "status": "Settled",
-            "result": "Won",
-            "retention_mode": "Standard",
-            "free_bet_value": "10.0000",
+            "result": "Win",
+            "retention_mode": "SNR",
+            "free_bet_value": "10.00",
             "back_odds": "5.0000",
             "match_strategy": "Standard",
             "lay_odds_1": "5.1000",
-            "lay_actual": "7.8000",
-            "lay_matched_stake_1": "7.8000",
+            "lay_actual": "7.80",
+            "lay_matched_stake_1": "7.80",
             "exchange_name": "Exchange A",
             "expiry_datetime": "2026-09-06T12:00:00+00:00",
             "date_settled": "2026-09-05T10:00:00+00:00",
-            "origin_qual_bet_id": "sportsbook-runtime-imported",
+            "origin_qual_bet_id": "",
             "offer_group_id": "DEMO-GROUP-001",
             "user_notes": "Synthetic free bet note",
             "manual_override_value": "",
             "manual_override_reason": "",
         },
     )
+    with connect() as connection:
+        connection.execute(
+            "UPDATE free_bets SET origin_qual_bet_id = ? WHERE free_bet_id = ?",
+            ("sportsbook-runtime-imported", "free-runtime-imported"),
+        )
     create_cash_adjustment(
         PROFILE_ID,
         {
@@ -313,7 +354,7 @@ def _seed_profile(*, include_rows: bool = True) -> None:
 
 
 def _sportsbook_payload(record_id: str, event_name: str) -> dict[str, Any]:
-    return {
+    payload = {
         "sportsbook_bet_id": record_id,
         "event_name": event_name,
         "offer_text": "Synthetic qualifying bet",
@@ -324,19 +365,45 @@ def _sportsbook_payload(record_id: str, event_name: str) -> dict[str, Any]:
         "fixture_type": "Football",
         "market": "Match Odds",
         "status": "Settled",
-        "result": "Won",
-        "back_stake": "10.0000",
+        "result": "Win",
+        "back_stake": "10.00",
         "back_odds": "2.0000",
         "match_strategy": "Standard",
         "lay_odds_1": "2.1000",
-        "lay_actual": "9.5000",
-        "lay_matched_stake_1": "9.5000",
+        "lay_actual": "9.50",
+        "lay_matched_stake_1": "9.50",
         "exchange_name": "Exchange A",
         "date_settled": "2026-09-05T09:00:00+00:00",
         "user_notes": "Synthetic sportsbook note",
         "manual_override_value": "",
         "manual_override_reason": "",
     }
+    if record_id == "sportsbook-runtime-imported":
+        payload.update(
+            offer_group_id="DEMO-GROUP-001",
+            bet_role="Trigger",
+            promotion_json=json.dumps(
+                {
+                    "schema_version": "sportsbook-promotion-v1",
+                    "reward_type": "BonusFunds",
+                    "reward_status": "Locked",
+                    "reward_face_value": "50",
+                    "estimated_conversion_rate": "70",
+                    "wagering_required": True,
+                    "wagering_multiplier": "2",
+                    "wagering_basis": "Reward",
+                    "minimum_wagering_odds": "1.60",
+                },
+                sort_keys=True,
+            ),
+        )
+    else:
+        payload.update(
+            offer_group_id="DEMO-GROUP-001",
+            bet_role="Wagering",
+            wagering_contribution="5.00",
+        )
+    return payload
 
 
 def _database_profile_fingerprint() -> str:
@@ -439,6 +506,10 @@ def test_current_profile_export_is_deterministic_read_only_and_identity_safe(
     assert historical["OfferType"] == "Extra Place"
     assert historical["FinalNetPnL"] == "-8.6000"
     assert sportsbook[0]["RelatedFreeBetID"] == "IT3-FB-0004"
+    assert sportsbook[0]["BetRole"] == "Trigger"
+    assert sportsbook[0]["PromotionDetailsJson"]
+    assert sportsbook[2]["BetRole"] == "Wagering"
+    assert sportsbook[2]["WageringContribution (£)"] == "5.00"
     assert free_bets[0]["FreeBetID"] == "IT3-FB-0004"
     assert free_bets[0]["OriginQualBetID"] == "IT3-QB-0009"
     assert _cell_at(payload, paths, "Dashboard", "B4") == "Synthetic Working Profile"
@@ -509,6 +580,61 @@ def test_empty_profile_removes_stale_operational_values_and_preserves_structure(
             if start_row < row <= end_row and start_column <= column <= end_column:
                 assert _cell_value(cell, _shared_strings(payload)) in {None, ""}
                 assert cell.find(f"{{{MAIN_NS}}}f") is None
+
+
+def test_current_working_export_reimports_promotion_and_free_bet_relationships(
+    tmp_path: Path,
+) -> None:
+    """The working workbook remains an editable import source, not just a formatted report."""
+    _configure(tmp_path)
+    _seed_profile()
+    export = build_workbook_template_export(PROFILE_ID, exported_at="20260905T100000Z")
+
+    sportsbook_sheet = parse_sportsbook_xlsx(export.content)
+    sportsbook_rows = {
+        row.source_record_id: row.fields for row in sportsbook_sheet.rows if row.source_record_id
+    }
+    trigger, trigger_errors = map_sportsbook_import_fields(sportsbook_rows["IT3-QB-0009"])
+    wagering, wagering_errors = map_sportsbook_import_fields(sportsbook_rows["IT3-QB-0016"])
+    assert trigger_errors == []
+    assert wagering_errors == []
+    assert trigger["offer_group_id"] == "DEMO-GROUP-001"
+    assert trigger["bet_role"] == "Trigger"
+    assert json.loads(str(trigger["promotion_json"]))["reward_face_value"] == "50"
+    assert wagering["offer_group_id"] == "DEMO-GROUP-001"
+    assert wagering["bet_role"] == "Wagering"
+    assert wagering["wagering_contribution"] == "5.00"
+
+    free_bet_sheet = parse_free_bet_xlsx(export.content)
+    free_bet_fields = next(
+        row.fields for row in free_bet_sheet.rows if row.source_record_id == "IT3-FB-0004"
+    )
+    free_bet, free_bet_errors = map_free_bet_import_fields(free_bet_fields)
+    assert free_bet_errors == []
+    assert free_bet["origin_qual_bet_id"] == "IT3-QB-0009"
+    assert free_bet["offer_group_id"] == "DEMO-GROUP-001"
+
+
+@pytest.mark.parametrize("include_rows", [False, True])
+def test_export_keeps_retained_formula_rows_self_contained(
+    tmp_path: Path, include_rows: bool
+) -> None:
+    """Replacing a shared master row must not make Excel repair the workbook."""
+    _configure(tmp_path)
+    _seed_profile(include_rows=include_rows)
+    export = build_workbook_template_export(PROFILE_ID)
+    payload, paths, _ = _package(export.content)
+    for sheet in ("Sportsbook Bets", "Free Bets", "Casino Offers", "Cash Adjustments"):
+        root = ET.fromstring(payload[paths[sheet]])
+        shared = [
+            formula
+            for formula in root.iter(f"{{{MAIN_NS}}}f")
+            if formula.get("t") == "shared"
+        ]
+        assert shared == [], sheet
+        formulas = list(root.iter(f"{{{MAIN_NS}}}f"))
+        assert formulas
+        assert all(formula.text for formula in formulas), sheet
 
     referenced: set[int] = set()
     for path in paths.values():
@@ -663,33 +789,72 @@ def test_production_package_growth_uses_exact_authorized_targets() -> None:
         exchange_commissions=[],
     )
     assert package.table_targets == {
-        "Accounts": "A1:Q128",
+        "Accounts": "A1:AD128",
         "Cash Adjustments": "A1:L28",
-        "Sportsbook Bets": "A1:BC533",
+        "Sportsbook Bets": "A1:BF533",
         "Free Bets": "A1:AL174",
         "Casino Offers": "A1:AB28",
     }
     assert package.defined_name_targets == {
         "Z_61A693B0_24CC_4BA8_8C2E_3A2E24A5AB80_.wvu.FilterData|10": ("'Free Bets'!$A$1:$AL$174"),
         "Z_CDCB28B3_BC6B_441A_A81B_7CB94D17E405_.wvu.FilterData|9": (
-            "'Sportsbook Bets'!$A$1:$BC$533"
+            "'Sportsbook Bets'!$A$1:$BF$533"
         ),
         "Z_ED738785_E81B_4DF3_973A_0B4EB5925F38_.wvu.FilterData|10": ("'Free Bets'!$A$1:$AL$174"),
-        "Z_FF6E07D2_D981_42E8_AB46_8FA8E5669783_.wvu.FilterData|7": ("Accounts!$A$1:$Q$128"),
+        "Z_FF6E07D2_D981_42E8_AB46_8FA8E5669783_.wvu.FilterData|7": ("Accounts!$A$1:$AD$128"),
         "_xlnm._FilterDatabase|10": "'Free Bets'!$A$1:$AL$174",
         "_xlnm._FilterDatabase|11": "'Casino Offers'!$A$1:$AB$28",
-        "_xlnm._FilterDatabase|7": "Accounts!$A$1:$Q$128",
+        "_xlnm._FilterDatabase|7": "Accounts!$A$1:$AD$128",
         "_xlnm._FilterDatabase|8": "'Cash Adjustments'!$A$1:$L$28",
-        "_xlnm._FilterDatabase|9": "'Sportsbook Bets'!$A$1:$BC$533",
+        "_xlnm._FilterDatabase|9": "'Sportsbook Bets'!$A$1:$BF$533",
     }
     assert package.formula_cache_count == 0
     assert package.scrubbed_chart_cache_value_count == 0
+    payload, paths, tables = _package(package.content)
+    sportsbook_table = tables["Sportsbook Bets"][0][2]
+    headers = [
+        str(column.get("name"))
+        for column in sportsbook_table.findall(f".//{{{MAIN_NS}}}tableColumn")
+    ]
+    assert headers[-3:] == ["BetRole", "WageringContribution (£)", "PromotionDetailsJson"]
+    columns_by_name = {
+        str(column.get("name")): column
+        for column in sportsbook_table.findall(f".//{{{MAIN_NS}}}tableColumn")
+    }
+    assert columns_by_name["CalcNetPnL"].find(
+        f"{{{MAIN_NS}}}calculatedColumnFormula"
+    ) is not None
+    assert columns_by_name["BetRole"].find(
+        f"{{{MAIN_NS}}}calculatedColumnFormula"
+    ) is None
+    assert columns_by_name["WageringContribution (£)"].find(
+        f"{{{MAIN_NS}}}calculatedColumnFormula"
+    ) is None
+    sportsbook_root = ET.fromstring(payload[paths["Sportsbook Bets"]])
+    assert any(
+        validation.get("sqref") == "BD2:BD533"
+        and (validation.find(f"{{{MAIN_NS}}}formula1").text or "")
+        == '"Standalone,Trigger,Wagering,RewardUse"'
+        for validation in sportsbook_root.findall(f".//{{{MAIN_NS}}}dataValidation")
+    )
+    assert any(
+        column.get("min") == "58" and column.get("hidden") == "1"
+        for column in sportsbook_root.findall(f".//{{{MAIN_NS}}}col")
+    )
+    for sheet in ("Accounts", "Cash Adjustments", "Sportsbook Bets", "Free Bets", "Casino Offers"):
+        root = ET.fromstring(payload[paths[sheet]])
+        assert all(
+            formula.text != "#REF!"
+            for formula in root.iter(f"{{{MAIN_NS}}}formula1")
+        ), sheet
 
 
 def _value_for_encoding(encoding: str) -> object:
     base = encoding.removesuffix("_or_empty")
     if base == "text":
         return "Synthetic value"
+    if base == "comma_separated_text":
+        return "Synthetic A, Synthetic B"
     if base == "boolean":
         return True
     if base == "integer":
