@@ -173,6 +173,13 @@ test("refund promotion stays concise and carries context into a wagering bet", a
   expect(updated.wagering_completed).toBe("40.00");
   expect(updated.wagering_remaining).toBe("60.00");
 
+  await page.goto(
+    `/profiles/${profileId}/tracker/sportsbook-bets?record=${trigger.sportsbook_bet_id}`,
+  );
+  await expect(
+    page.getByRole("dialog", { name: "Edit sportsbook row" }).getByText("£40.00 / £100.00"),
+  ).toBeVisible();
+
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(
     true,

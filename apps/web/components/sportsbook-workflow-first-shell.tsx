@@ -288,6 +288,21 @@ type SportsbookRecord = {
   profit_boost_equation: string | null;
 };
 
+type SportsbookPromotionPosition = {
+  offer_group_id: string;
+  trigger_bet_id: string;
+  cash_pnl_now: string;
+  locked_reward_face_value: string;
+  estimated_convertible_value: string;
+  projected_final_offer_pnl: string;
+  wagering_completed: string;
+  wagering_target: string | null;
+  wagering_remaining: string | null;
+  reward_status: string;
+  review_required: boolean;
+  review_message: string;
+};
+
 type LinkedFreeBetRecord = {
   award_review_required?: boolean;
   award_review_notes?: string[];
@@ -2963,6 +2978,12 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   const [guidedAccessMode] = useProfileGuidedAccessMode(profileId);
   const guidedAccessEnabled = isGuidedAccessEnabled(guidedAccessMode);
   const [rows, setRows] = useState<SportsbookRecord[]>([]);
+  const [promotionPosition, setPromotionPosition] =
+    useState<SportsbookPromotionPosition | null>(null);
+  const [promotionPositionError, setPromotionPositionError] = useState<{
+    offerGroupId: string;
+    message: string;
+  } | null>(null);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [pnlReadState, setPnlReadState] = useState<LedgerReadState>(null);
   const [accountAuthorities, setAccountAuthorities] = useState<AccountAuthorityRecord[]>([]);
@@ -3890,6 +3911,39 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     () => rows.find((row) => row.sportsbook_bet_id === selectedId) ?? null,
     [rows, selectedId]
   );
+  useEffect(() => {
+    const offerGroupId =
+      selectedSportsbookRow?.bet_role === "Trigger"
+        ? selectedSportsbookRow.offer_group_id.trim()
+        : "";
+    if (!offerGroupId) {
+      return;
+    }
+    const controller = new AbortController();
+    void fetch(
+      `${apiBaseUrl}/profiles/${profileId}/sportsbook-bets/promotion-position/${encodeURIComponent(offerGroupId)}`,
+      { cache: "no-store", credentials: "include", signal: controller.signal },
+    )
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error(await response.text());
+        }
+        return (await response.json()) as SportsbookPromotionPosition;
+      })
+      .then((position) => {
+        setPromotionPosition(position);
+        setPromotionPositionError(null);
+      })
+      .catch((error: unknown) => {
+        if (!(error instanceof DOMException && error.name === "AbortError")) {
+          setPromotionPositionError({
+            offerGroupId,
+            message: "Offer position is unavailable. Save or retry before relying on it.",
+          });
+        }
+      });
+    return () => controller.abort();
+  }, [profileId, rows, selectedSportsbookRow]);
   const isSettledBet = selectedSportsbookRow?.status === "Settled";
   const isSettledReadOnly = Boolean(
     isSettledBet && !settledEditEnabled && !isDirty && !revertSnapshot
@@ -8215,7 +8269,89 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                     <label className="field-control"><span>Expiry</span><input type="datetime-local" value={promotion.expiry} onChange={(event) => updatePromotionField("expiry", event.target.value)} /></label>
                   </div></details>; })() : null}
                 </fieldset>
-                {formState.bet_role === "Trigger" && formState.offer_group_id ? (() => { const p = promotionDraft(formState.promotion_json); const trigger = selectedSportsbookRow; const lossCash = Number(trigger?.scenario_pnl_if_lay_wins ?? 0); const winCash = Number(trigger?.scenario_pnl_if_back_wins ?? 0); const face = Number(p.reward_face_value || Math.min(Number(formState.back_stake || 0) * Number(p.refund_percent || 0) / 100, Number(p.reward_cap || 0))); const estimated = face * Number(p.bonus_retention_percent || 0) / 100; const linked = rows.filter((row) => row.offer_group_id === formState.offer_group_id && row.bet_role === "Wagering"); const completed = linked.filter((row) => ["Placed","Settled","Free Bet Awarded"].includes(row.status) && Number(row.back_odds || 0) >= Number(p.minimum_wagering_odds || 0)).reduce((total, row) => total + Number(row.wagering_contribution || row.back_stake || 0), 0); const target = face * Number(p.wagering_multiplier || 0); return <section aria-label="Live promotion position" className="review-summary-card promotion-position-card" data-pd-id="sportsbook.promotion.position"><h3>Offer Position</h3><p><strong>Bookmaker wins:</strong> {formatPreviewFinancialValue(winCash)} now; no reward.</p><p><strong>Qualifying loss:</strong> {formatPreviewFinancialValue(lossCash)} cash now + {formatPreviewFinancialValue(face)} locked reward ({formatPreviewFinancialValue(estimated)} estimated convertible) = <strong>{formatPreviewFinancialValue(lossCash + estimated)} projected</strong>.</p><dl className="summary-definition-list"><div><dt>Cash P&amp;L Now</dt><dd>{renderPreviewFinancialValue(trigger?.status === "Settled" ? trigger.reporting_value : null)}</dd></div><div><dt>Locked Reward</dt><dd>{renderNeutralPreviewFinancialValue(["Awarded","Locked","Wagering"].includes(p.reward_status) ? face : 0)}</dd></div><div><dt>Estimated Convertible Value</dt><dd>{renderNeutralPreviewFinancialValue(["Awarded","Locked","Wagering"].includes(p.reward_status) ? estimated : 0)}</dd></div><div><dt>Projected Final Offer P&amp;L</dt><dd>{renderPreviewFinancialValue(lossCash + estimated)}</dd></div><div><dt>Wagering</dt><dd>£{completed.toFixed(2)} / £{target.toFixed(2)}</dd></div></dl>{["Awarded","Locked","Wagering"].includes(p.reward_status) && p.wagering_required ? <button className="button button-primary" data-pd-id="sportsbook.promotion.add-wagering" onClick={startWageringBet} type="button">Add Wagering Bet</button> : null}</section>; })() : null}
+                {formState.bet_role === "Trigger" && formState.offer_group_id ? (() => {
+                  const promotion = promotionDraft(formState.promotion_json);
+                  const trigger = selectedSportsbookRow;
+                  const lossCash = Number(trigger?.scenario_pnl_if_lay_wins ?? 0);
+                  const winCash = Number(trigger?.scenario_pnl_if_back_wins ?? 0);
+                  const face = Number(
+                    promotion.reward_face_value ||
+                      Math.min(
+                        (Number(formState.back_stake || 0) * Number(promotion.refund_percent || 0)) /
+                          100,
+                        Number(promotion.reward_cap || 0),
+                      ),
+                  );
+                  const estimated =
+                    (face * Number(promotion.bonus_retention_percent || 0)) / 100;
+                  const linked = rows.filter(
+                    (row) =>
+                      row.offer_group_id === formState.offer_group_id &&
+                      row.bet_role === "Wagering",
+                  );
+                  const localCompleted = linked
+                    .filter(
+                      (row) =>
+                        ["Placed", "Settled", "Free Bet Awarded"].includes(row.status) &&
+                        Number(row.back_odds || 0) >=
+                          Number(promotion.minimum_wagering_odds || 0),
+                    )
+                    .reduce(
+                      (total, row) =>
+                        total + Number(row.wagering_contribution || row.back_stake || 0),
+                      0,
+                    );
+                  const localTarget = face * Number(promotion.wagering_multiplier || 0);
+                  const authoritative =
+                    !isDirty && promotionPosition?.offer_group_id === formState.offer_group_id
+                      ? promotionPosition
+                      : null;
+                  const rewardStatus = authoritative?.reward_status ?? promotion.reward_status;
+                  const canAddWagering =
+                    ["Awarded", "Locked", "Wagering"].includes(rewardStatus) &&
+                    promotion.wagering_required;
+                  return (
+                    <section
+                      aria-label="Live promotion position"
+                      className="review-summary-card promotion-position-card"
+                      data-pd-id="sportsbook.promotion.position"
+                    >
+                      <h3>Offer Position</h3>
+                      <p>
+                        <strong>Bookmaker wins:</strong> {formatPreviewFinancialValue(winCash)} now;
+                        no reward.
+                      </p>
+                      <p>
+                        <strong>Qualifying loss:</strong> {formatPreviewFinancialValue(lossCash)} cash
+                        now + {formatPreviewFinancialValue(face)} locked reward ({formatPreviewFinancialValue(estimated)} estimated convertible) ={" "}
+                        <strong>{formatPreviewFinancialValue(lossCash + estimated)} projected</strong>.
+                      </p>
+                      {promotionPositionError?.offerGroupId === formState.offer_group_id ? (
+                        <p className="form-error" role="status">{promotionPositionError.message}</p>
+                      ) : null}
+                      <dl className="summary-definition-list">
+                        <div><dt>Cash P&amp;L Now</dt><dd>{renderPreviewFinancialValue(authoritative?.cash_pnl_now ?? (trigger?.status === "Settled" ? trigger.reporting_value : null))}</dd></div>
+                        <div><dt>Locked Reward</dt><dd>{renderNeutralPreviewFinancialValue(authoritative?.locked_reward_face_value ?? (["Awarded", "Locked", "Wagering"].includes(promotion.reward_status) ? face : 0))}</dd></div>
+                        <div><dt>Estimated Convertible Value</dt><dd>{renderNeutralPreviewFinancialValue(authoritative?.estimated_convertible_value ?? (["Awarded", "Locked", "Wagering"].includes(promotion.reward_status) ? estimated : 0))}</dd></div>
+                        <div><dt>Projected Final Offer P&amp;L</dt><dd>{renderPreviewFinancialValue(authoritative?.projected_final_offer_pnl ?? (lossCash + estimated))}</dd></div>
+                        <div><dt>Wagering</dt><dd>£{Number(authoritative?.wagering_completed ?? localCompleted).toFixed(2)} / £{Number(authoritative?.wagering_target ?? localTarget).toFixed(2)}</dd></div>
+                      </dl>
+                      {authoritative?.wagering_remaining === "0.00" && rewardStatus !== "Released" ? (
+                        <p className="field-help-text">Turnover target reached. Confirm Released only after the bookmaker makes the value withdrawable.</p>
+                      ) : null}
+                      {canAddWagering ? (
+                        <button
+                          className="button button-primary"
+                          data-pd-id="sportsbook.promotion.add-wagering"
+                          onClick={startWageringBet}
+                          type="button"
+                        >
+                          Add Wagering Bet
+                        </button>
+                      ) : null}
+                    </section>
+                  );
+                })() : null}
                 <label className="field-control">
                   <span>Campaign tag (optional)</span>
                   <input
