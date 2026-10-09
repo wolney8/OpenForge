@@ -137,6 +137,27 @@ Read `docs/codex/data-safety-rules.md` before handling workbook-derived data.
 - Import mapping and reporting logic require fixtures and assertions.
 - If exact tolerances or rounding are unknown, stop and document the gap instead of guessing.
 
+## Owner desktop interaction rule
+
+- Use headless browser tests, programmatic workbook/package inspection, isolated calculation tools,
+  and existing regression fixtures by default. Generating, exporting, or downloading a file must
+  not automatically open it.
+- Do not launch Excel, Numbers, Google Sheets, visible browser windows, file viewers, or other
+  desktop applications; switch focus; navigate owner browser tabs; send desktop keystrokes; or
+  attach automation to an application session the owner is using without fresh, explicit approval.
+  Hidden or background automation of an existing owner application session has the same approval
+  requirement.
+- When visible desktop interaction is genuinely necessary, first state what cannot be proved
+  non-interactively, the exact application and disposable file, and whether the action will
+  interrupt the owner's work. Wait for approval for that bounded interaction. Approval for one test
+  does not authorise later desktop automation.
+- Never close, save, modify, or terminate the owner's existing workbooks, browser sessions, or
+  applications to prepare for or clean up a test. Use disposable/generated copies. If approval is
+  unavailable, record the exact interactive check as pending and continue independent work.
+- Reuse applicable evidence for the same tested revision and behaviour. Keep structural checks,
+  cached formula values, actual recalculation, and interactive Excel/Google runtime evidence
+  distinct; never claim that one proves another.
+
 ## Playwright rule
 
 - UI-facing workflows must define a Playwright path before implementation is considered done.
