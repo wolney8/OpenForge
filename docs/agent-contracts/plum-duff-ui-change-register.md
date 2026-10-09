@@ -366,10 +366,15 @@ not reopen or extend Reports scope.
 
 | ID | Surface | Requested behaviour | Signed-off equivalent | Status |
 | --- | --- | --- | --- | --- |
-| PD-FIX-321 | Working Workbook export scope | Default to All History; expose governed month/90-day/custom ranges and exact pre-download ledger counts | Existing report date-range controls and Europe/London date resolver | IN PROGRESS |
-| PD-FIX-322 | Legacy Profile export | Preserve legitimate ledger history when the older Profile has no onboarding row; fail with owner-facing recovery only for genuinely required data | Existing legacy import compatibility and actionable Settings empty/error states | IN PROGRESS |
-| PD-FIX-323 | Import/Export hierarchy | Separate Working Workbook, Portable Backup and Ledger Data; remove internal dry-run/domain wording from the owner surface | Existing peer `content-subpanel` Settings cards and canonical field/action controls | IN PROGRESS |
-| PD-FIX-324 | Export feedback and safety | Show plain-English failure, unchanged-data assurance and an exact action; prove counts match the generated package without cross-Profile leakage | Existing actionable error panels and read-only export boundary | IN PROGRESS |
+| PD-FIX-321 | Working Workbook export scope | Default to All History; expose governed month/90-day/custom ranges and exact pre-download ledger counts | Existing report date-range controls and Europe/London date resolver | COMPLETE |
+| PD-FIX-322 | Legacy Profile export | Preserve legitimate ledger history when the older Profile has no onboarding row; fail with owner-facing recovery only for genuinely required data | Existing legacy import compatibility and actionable Settings empty/error states | COMPLETE |
+| PD-FIX-323 | Import/Export hierarchy | Separate Working Workbook, Portable Backup and Ledger Data; remove internal dry-run/domain wording from the owner surface | Existing peer `content-subpanel` Settings cards and canonical field/action controls | COMPLETE |
+| PD-FIX-324 | Export feedback and safety | Show plain-English failure, unchanged-data assurance and an exact action; prove counts match the generated package without cross-Profile leakage | Existing actionable error panels and read-only export boundary | COMPLETE |
+
+Verified 2026-10-09 21:25 BST on the canonical authenticated localhost:3010 application. The
+installed summary and downloaded XLSX agree for the owner-shaped Last Month case (four Sportsbook
+rows); the financial control fingerprint is unchanged. All History retains explicit blocks for
+unsupported native Extra Place or fee-history state rather than omitting or coercing it.
 
 ## CP-075 Sportsbook promotion local integration — 2026-10-09 12:29 BST
 
