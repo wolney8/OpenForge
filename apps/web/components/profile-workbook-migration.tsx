@@ -76,7 +76,7 @@ function runActionLabel(run: ImportRun): string {
   if (["COMPLETE", "POST_IMPORT_RECONCILIATION_FAILED"].includes(run.status)) {
     return "Reconciliation";
   }
-  if (["REVIEW_COMPLETE", "DRY_RUN_READY", "READY"].includes(run.status)) return "Approve dry run";
+  if (["REVIEW_COMPLETE", "DRY_RUN_READY", "READY"].includes(run.status)) return "Approve import review";
   return "Review";
 }
 
@@ -190,8 +190,8 @@ export function ProfileWorkbookMigration({ profileId }: { profileId: string }) {
       <section className="content-subpanel stack" data-pd-id="profile-workbook-migration.section">
         <div className="workflow-panel-header">
           <div>
-            <span className="eyebrow">Profile migration</span>
-            <h2>Workbook dry run</h2>
+            <span className="eyebrow">Full workbook import</span>
+            <h2>Review a workbook before import</h2>
           </div>
         </div>
         <div className="form-grid">
@@ -207,7 +207,7 @@ export function ProfileWorkbookMigration({ profileId }: { profileId: string }) {
         <div className="tracker-nav tracker-nav-right">
           <button className="modal-primary-button icon-text-action" disabled={!file || !effectiveAt || analysing} onClick={() => void analyseWorkbook()} type="button">
             {analysing ? <span aria-hidden="true" className="button-spinner" /> : <span aria-hidden="true" className="material-symbols-outlined">fact_check</span>}
-            <span>{analysing ? "Analysing" : "Analyse workbook"}</span>
+            <span>{analysing ? "Reviewing" : "Review workbook"}</span>
           </button>
         </div>
         {loading ? <LedgerLoadingIndicator label="Loading workbook reviews" /> : runs.length ? (
@@ -238,7 +238,7 @@ export function ProfileWorkbookMigration({ profileId }: { profileId: string }) {
         ) : (
           <section className="content-subpanel stack-tight" data-pd-id="profile-workbook-migration.empty">
             <strong>No workbook awaiting review</strong>
-            <span>Select an .xlsx workbook above to start a dry run.</span>
+            <span>Select an .xlsx workbook above to review it before import.</span>
           </section>
         )}
       </section>
@@ -246,7 +246,7 @@ export function ProfileWorkbookMigration({ profileId }: { profileId: string }) {
         busy={deleting}
         busyLabel="Deleting"
         confirmLabel="Delete review"
-        description={`This removes the dry run, review items, decisions and reconciliation for ${deleteRun?.source_filename ?? "this workbook"}. It does not change the source workbook or any Profile data.`}
+        description={`This removes the import review, decisions and reconciliation for ${deleteRun?.source_filename ?? "this workbook"}. It does not change the source workbook or any Profile data.`}
         error={deleteError}
         onCancel={() => { setDeleteError(""); setDeleteRun(null); }}
         onConfirm={() => void deleteReview()}

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from datetime import date
 from hashlib import sha256
 from io import BytesIO
 from pathlib import Path
@@ -34,6 +35,8 @@ from openforge_api.workbook_template_export import (
     OUTPUT_CLASSIFICATION,
     WorkbookTemplateExportError,
     build_workbook_template_export,
+    build_workbook_template_export_summary,
+    resolve_workbook_export_scope,
 )
 from openforge_api.workbook_template_package import (
     MAIN_NS,
@@ -124,7 +127,7 @@ def _configure(tmp_path: Path) -> None:
                         "foreground_colour": "#FFFFFF",
                         "background_colour": "#455A64",
                         "source": "Synthetic fixture",
-                    }
+                    },
                 ],
             },
             sort_keys=True,
@@ -555,6 +558,98 @@ def test_current_profile_export_is_deterministic_read_only_and_identity_safe(
         assert not [child for child in cache if child.tag.rsplit("}", 1)[-1] == "pt"]
 
 
+def test_export_scopes_preview_and_package_the_same_rows(tmp_path: Path) -> None:
+    _configure(tmp_path)
+    _seed_profile()
+
+    all_summary = build_workbook_template_export_summary(PROFILE_ID, scope="all_history")
+    assert all_summary.can_export is True
+    assert all_summary.counts["Sportsbook Bets"].included == 2
+    assert all_summary.counts["Free Bets"].included == 1
+    assert all_summary.counts["Historical Extra Places"].included == 1
+
+    last_month = build_workbook_template_export(
+        PROFILE_ID,
+        scope="last_month",
+        london_today=date(2026, 10, 9),
+        exported_at="20261009T120000Z",
+    )
+    assert last_month.scope.start_date == date(2026, 9, 1)
+    assert last_month.scope.end_date == date(2026, 9, 30)
+    payload, paths, tables = _package(last_month.content)
+    sportsbook = [
+        row for row in _table_rows(payload, paths, tables, "Sportsbook Bets") if row["QualBetID"]
+    ]
+    free_bets = [
+        row for row in _table_rows(payload, paths, tables, "Free Bets") if row["FreeBetID"]
+    ]
+    assert len(sportsbook) == last_month.counts["Sportsbook Bets"].included == 2
+    assert len(free_bets) == last_month.counts["Free Bets"].included == 1
+    assert last_month.counts["Historical Extra Places"].included == 0
+
+    custom = build_workbook_template_export(
+        PROFILE_ID,
+        scope="custom",
+        start_date="2026-09-05",
+        end_date="2026-09-05",
+        exported_at="20261009T120000Z",
+    )
+    custom_payload, custom_paths, custom_tables = _package(custom.content)
+    custom_sportsbook = [
+        row
+        for row in _table_rows(custom_payload, custom_paths, custom_tables, "Sportsbook Bets")
+        if row["QualBetID"]
+    ]
+    assert len(custom_sportsbook) == 2
+    assert custom.counts["Free Bets"].included == 1
+    assert custom.counts["Cash Adjustments"].included == 0
+    assert custom.counts["Historical Extra Places"].included == 0
+
+
+def test_scope_boundaries_use_london_calendar_and_custom_dates_are_inclusive() -> None:
+    today = date(2026, 10, 9)
+    assert resolve_workbook_export_scope("this_month", london_today=today).start_date == date(
+        2026, 10, 1
+    )
+    last_month = resolve_workbook_export_scope("last_month", london_today=today)
+    assert (last_month.start_date, last_month.end_date) == (date(2026, 9, 1), date(2026, 9, 30))
+    last_90 = resolve_workbook_export_scope("last_90_days", london_today=today)
+    assert (last_90.start_date, last_90.end_date) == (date(2026, 7, 12), date(2026, 10, 9))
+    custom = resolve_workbook_export_scope(
+        "custom", start_date="2026-09-05", end_date="2026-09-05", london_today=today
+    )
+    assert custom.start_date == custom.end_date == date(2026, 9, 5)
+
+
+def test_legacy_profile_without_onboarding_exports_unknown_setup_as_blank(tmp_path: Path) -> None:
+    _configure(tmp_path)
+    _seed_profile()
+    with connect() as connection:
+        connection.execute(
+            "DELETE FROM profile_onboarding_settings WHERE profile_id = ?", (PROFILE_ID,)
+        )
+        connection.execute(
+            "UPDATE profile_exchange_commissions SET commission_rate = '' WHERE profile_id = ?",
+            (PROFILE_ID,),
+        )
+
+    summary = build_workbook_template_export_summary(PROFILE_ID, scope="all_history")
+    assert summary.can_export is True
+    assert summary.legacy_profile_defaults is True
+    assert summary.counts["Sportsbook Bets"].included == 2
+
+    exported = build_workbook_template_export(PROFILE_ID, exported_at="20261009T120000Z")
+    payload, paths, tables = _package(exported.content)
+    sportsbook = [
+        row for row in _table_rows(payload, paths, tables, "Sportsbook Bets") if row["QualBetID"]
+    ]
+    assert len(sportsbook) == 3  # two ordinary rows plus the preserved historical Extra Place row
+    assert _cell_at(payload, paths, "Dashboard", "B5") in {None, ""}
+    assert _cell_at(payload, paths, "Dashboard", "F6") in {None, ""}
+    assert _cell_at(payload, paths, "Dashboard", "B7") == "1"
+    assert _cell_at(payload, paths, "Settings", "I3") in {None, ""}
+
+
 def test_empty_profile_removes_stale_operational_values_and_preserves_structure(
     tmp_path: Path,
 ) -> None:
@@ -627,9 +722,7 @@ def test_export_keeps_retained_formula_rows_self_contained(
     for sheet in ("Sportsbook Bets", "Free Bets", "Casino Offers", "Cash Adjustments"):
         root = ET.fromstring(payload[paths[sheet]])
         shared = [
-            formula
-            for formula in root.iter(f"{{{MAIN_NS}}}f")
-            if formula.get("t") == "shared"
+            formula for formula in root.iter(f"{{{MAIN_NS}}}f") if formula.get("t") == "shared"
         ]
         assert shared == [], sheet
         formulas = list(root.iter(f"{{{MAIN_NS}}}f"))
@@ -698,6 +791,13 @@ def test_unrepresentable_native_extra_place_and_fee_state_fail_closed(tmp_path: 
                 TIMESTAMP,
             ),
         )
+    summary = build_workbook_template_export_summary(PROFILE_ID, scope="all_history")
+    assert summary.can_export is False
+    assert summary.counts["Historical Extra Places"].included == 1
+    assert summary.counts["Sportsbook Bets"].included == 0
+    assert summary.issues == [
+        "Historical Extra Place records in this range are not supported by the working workbook."
+    ]
     with pytest.raises(WorkbookTemplateExportError, match="extra_place:extra-runtime-native"):
         build_workbook_template_export(PROFILE_ID)
 
@@ -821,15 +921,12 @@ def test_production_package_growth_uses_exact_authorized_targets() -> None:
         str(column.get("name")): column
         for column in sportsbook_table.findall(f".//{{{MAIN_NS}}}tableColumn")
     }
-    assert columns_by_name["CalcNetPnL"].find(
-        f"{{{MAIN_NS}}}calculatedColumnFormula"
-    ) is not None
-    assert columns_by_name["BetRole"].find(
-        f"{{{MAIN_NS}}}calculatedColumnFormula"
-    ) is None
-    assert columns_by_name["WageringContribution (£)"].find(
-        f"{{{MAIN_NS}}}calculatedColumnFormula"
-    ) is None
+    assert columns_by_name["CalcNetPnL"].find(f"{{{MAIN_NS}}}calculatedColumnFormula") is not None
+    assert columns_by_name["BetRole"].find(f"{{{MAIN_NS}}}calculatedColumnFormula") is None
+    assert (
+        columns_by_name["WageringContribution (£)"].find(f"{{{MAIN_NS}}}calculatedColumnFormula")
+        is None
+    )
     sportsbook_root = ET.fromstring(payload[paths["Sportsbook Bets"]])
     assert any(
         validation.get("sqref") == "BD2:BD533"
@@ -843,10 +940,9 @@ def test_production_package_growth_uses_exact_authorized_targets() -> None:
     )
     for sheet in ("Accounts", "Cash Adjustments", "Sportsbook Bets", "Free Bets", "Casino Offers"):
         root = ET.fromstring(payload[paths[sheet]])
-        assert all(
-            formula.text != "#REF!"
-            for formula in root.iter(f"{{{MAIN_NS}}}formula1")
-        ), sheet
+        assert all(formula.text != "#REF!" for formula in root.iter(f"{{{MAIN_NS}}}formula1")), (
+            sheet
+        )
 
 
 def _value_for_encoding(encoding: str) -> object:
@@ -910,6 +1006,12 @@ def test_export_endpoint_is_fund_manager_only_and_returns_verification_headers(
         "STRUCTURALLY_VALID_GOOGLE_RUNTIME_PENDING"
     )
     assert response.headers["cache-control"] == "no-store"
+    summary = TestClient(app).get(
+        f"/profiles/{PROFILE_ID}/exports/working-workbook-summary?scope=all_history"
+    )
+    assert summary.status_code == 200
+    assert summary.json()["scope_label"] == "All History"
+    assert summary.json()["counts"]["Sportsbook Bets"]["included"] == 0
 
     monkeypatch.setattr(
         "openforge_api.workbook_template_export.require_request_session",
@@ -917,3 +1019,25 @@ def test_export_endpoint_is_fund_manager_only_and_returns_verification_headers(
     )
     forbidden = TestClient(app).get(f"/profiles/{PROFILE_ID}/exports/working-workbook.xlsx")
     assert forbidden.status_code == 403
+
+
+def test_missing_required_tracker_settings_returns_owner_safe_recovery(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _configure(tmp_path)
+    _seed_profile(include_rows=False)
+    with connect() as connection:
+        connection.execute(
+            "DELETE FROM profile_tracker_settings WHERE profile_id = ?", (PROFILE_ID,)
+        )
+    monkeypatch.setattr(
+        "openforge_api.workbook_template_export.require_request_session",
+        lambda _request: SimpleNamespace(role="fund_manager"),
+    )
+    response = TestClient(app).get(f"/profiles/{PROFILE_ID}/exports/working-workbook.xlsx")
+    assert response.status_code == 409
+    detail = response.json()["detail"]
+    assert detail["code"] == "profile_setup_required"
+    assert detail["data_unchanged"] is True
+    assert detail["message"] == "Profile setup is required before creating a working workbook."
+    assert "profile_tracker_settings" not in detail["message"]

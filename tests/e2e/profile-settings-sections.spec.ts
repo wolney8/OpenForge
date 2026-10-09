@@ -80,7 +80,10 @@ test("profile settings use keyboard-accessible section tabs and retain deep link
   await expect(page).toHaveURL(`${settingsPath}#import-export`);
   await expect(page.getByRole("tabpanel", { name: "Import/Export" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Import/Export" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Workbook dry run" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Create fresh working workbook" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Export portable Profile backup" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Export or import ledger data" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Review a workbook before import" })).toBeVisible();
   await expect(page.getByLabel("Choose Profile workbook")).toBeVisible();
   await expect(page.getByText("No workbook awaiting review")).toBeVisible();
 
@@ -129,6 +132,66 @@ test("Fund Manager Profile Settings links to the authoritative management page",
     "href",
     "/profiles/profile-demo-001/manage"
   );
+});
+
+test("working workbook shows scope and authoritative ledger counts before download", async ({ page }) => {
+  const requestedScopes: string[] = [];
+  await page.route("**/api/**", (route) => {
+    const url = new URL(route.request().url());
+    if (url.pathname === "/api/auth/session") {
+      return route.fulfill({ json: {
+        authenticated: true, email: "founder@example.invalid", expires_at: 2_100_000_000,
+        linked_profile_ids: ["profile-demo-001"], name: "Synthetic Founder", role: "fund_manager",
+        session_policy: { auto_logout_enabled: false, preference_configured: true, timeout_minutes: 30 },
+      } });
+    }
+    if (url.pathname === "/api/profiles/profile-demo-001") {
+      return route.fulfill({ json: { display_name: "Synthetic Profile" } });
+    }
+    if (url.pathname.endsWith("/exports/working-workbook-summary")) {
+      const scope = url.searchParams.get("scope") ?? "all_history";
+      requestedScopes.push(scope);
+      const included = scope === "last_month" ? 4 : 27;
+      return route.fulfill({ json: {
+        scope, scope_label: scope === "last_month" ? "Last Month" : "All History",
+        start_date: scope === "last_month" ? "2026-09-01" : null,
+        end_date: scope === "last_month" ? "2026-09-30" : null,
+        timezone: "Europe/London", date_basis: "Europe/London reporting dates use recorded settlement dates.",
+        counts: {
+          Accounts: { included: 3, total: 3, outside_range: 0, no_reporting_date: 0, relationship_support: 0 },
+          "Sportsbook Bets": { included, total: 27, outside_range: 27 - included, no_reporting_date: 0, relationship_support: 0 },
+          "Free Bets": { included: 2, total: 2, outside_range: 0, no_reporting_date: 0, relationship_support: 0 },
+          "Casino Offers": { included: 0, total: 0, outside_range: 0, no_reporting_date: 0, relationship_support: 0 },
+          "Cash Adjustments": { included: 1, total: 1, outside_range: 0, no_reporting_date: 0, relationship_support: 0 },
+          "Historical Extra Places": { included: 0, total: 0, outside_range: 0, no_reporting_date: 0, relationship_support: 0 },
+        },
+        can_export: true, legacy_profile_defaults: false,
+        notice: scope === "all_history" ? "All supported dated and undated Profile ledger rows are included." : "",
+        problem: "", owner_action: "", issues: [],
+      } });
+    }
+    return route.fulfill({ json: [] });
+  });
+
+  await page.goto(`${settingsPath}#import-export`);
+  const panel = page.locator('[data-pd-id="workbook-template-export.panel"]');
+  const sportsbookCount = panel.locator(".working-workbook-count-grid > div").filter({ hasText: "Sportsbook Bets" });
+  await expect(panel.getByRole("combobox", { name: "Data range" })).toHaveValue("all_history");
+  await expect(sportsbookCount.getByText("27", { exact: true })).toBeVisible();
+  await panel.getByRole("combobox", { name: "Data range" }).selectOption("last_month");
+  await expect(panel).toContainText("2026-09-01 to 2026-09-30");
+  await expect(sportsbookCount.getByText("4", { exact: true })).toBeVisible();
+  await expect(panel.getByRole("button", { name: "Create workbook" })).toBeEnabled();
+  await expect(page.getByText(/workbook dry run/i)).toHaveCount(0);
+  expect(requestedScopes).toContain("all_history");
+  expect(requestedScopes).toContain("last_month");
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  const geometry = await panel.evaluate((element) => ({
+    clientWidth: element.clientWidth,
+    scrollWidth: element.scrollWidth,
+  }));
+  expect(geometry.scrollWidth).toBeLessThanOrEqual(geometry.clientWidth);
 });
 
 test("Fund Manager can load read-only import recovery diagnostics", async ({ page }) => {
@@ -180,6 +243,7 @@ test("Fund Manager can load read-only import recovery diagnostics", async ({ pag
   });
 
   await page.goto(`${settingsPath}#import-export`);
+  await page.getByRole("button", { name: "Import recovery details" }).click();
   const diagnostics = page.locator('[data-pd-id="profile-import.recovery-diagnostics"]');
   await expect(diagnostics.getByRole("heading", { name: "Recovery diagnostics" })).toBeVisible();
   await diagnostics.getByRole("button", { name: "Load import recovery diagnostics" }).click();

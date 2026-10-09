@@ -465,7 +465,7 @@ export function ProfileSpreadsheetTransfer({ profileId }: { profileId: string })
               ) : null}
               <span className="spreadsheet-review-context">{profileId} • {activeBatch.source_filename}</span>
             </div>
-            {batchLedger(activeBatch) === "accounts" && activeBatch.rows.some((row) => row.errors.some((error) => error.code === "account_catalogue_match_required")) ? <p className="field-hint">Unmatched providers need an explicit Catalogue decision. <Link href="/settings#catalogue" target="_blank" rel="noopener noreferrer">Review Account Catalogue (new tab)</Link>, then repeat this dry-run. Importing Accounts never changes shared provider metadata.</p> : null}
+            {batchLedger(activeBatch) === "accounts" && activeBatch.rows.some((row) => row.errors.some((error) => error.code === "account_catalogue_match_required")) ? <p className="field-hint">Unmatched providers need an explicit Catalogue decision. <Link href="/settings#catalogue" target="_blank" rel="noopener noreferrer">Review Account Catalogue (new tab)</Link>, then repeat this import review. Importing Accounts never changes shared provider metadata.</p> : null}
             <div className="spreadsheet-review-controls">
               <label className="field-control table-search-field spreadsheet-search-control">
                 <span className="visually-hidden">Search import review rows</span>
@@ -565,15 +565,16 @@ export function ProfileSpreadsheetTransfer({ profileId }: { profileId: string })
 
   return <>
     <StatusToast message={message} onDismiss={() => setMessage("")} />
-    <>
-      <ProfileWorkbookMigration profileId={profileId} />
-      <ProfileImportRecoveryDiagnostics profileId={profileId} />
-      <PortableProfileExport profileId={profileId} />
+    <div className="stack spreadsheet-transfer-sections">
       <WorkingWorkbookExport profileId={profileId} />
-    </>
-    <section className="content-subpanel stack spreadsheet-transfer-panel">
+      <PortableProfileExport profileId={profileId} />
+    <section className="content-subpanel stack spreadsheet-transfer-panel" aria-labelledby="ledger-data-transfer-title">
       <div className="workflow-panel-header">
-        <div><span className="eyebrow">Profile data</span><h2>Import/Export</h2></div>
+        <div>
+          <span className="eyebrow">Ledger data</span>
+          <h2 id="ledger-data-transfer-title">Export or import ledger data</h2>
+          <p className="field-support-text">Move one ledger at a time for data review. These files are data transfers, not working workbooks.</p>
+        </div>
         <div className="tracker-nav">
           <label className="field-control table-filter-field spreadsheet-ledger-control">
             <span className="visually-hidden">Import/export ledger</span>
@@ -597,7 +598,13 @@ export function ProfileSpreadsheetTransfer({ profileId }: { profileId: string })
           <td><div className="spreadsheet-history-actions"><button className="button-link compact-action" onClick={(event) => openBatch(batch.import_batch_id, event.currentTarget)} type="button">Review</button>{confirmDeleteBatchId === batch.import_batch_id ? <div className="spreadsheet-delete-confirm spreadsheet-delete-confirm-compact" data-pd-id={`spreadsheet-transfer.delete-confirm.${batch.import_batch_id}`} role="group" aria-label={`Confirm delete review ${batch.source_filename}`}><span>Delete?</span><button className="button-link compact-action destructive-action" disabled={isLoading} onClick={() => deleteBatch(batch)} type="button">{isLoading ? <span aria-hidden="true" className="button-spinner" /> : null}<span>{isLoading ? "Deleting" : "Delete"}</span></button><button aria-label="Cancel delete review" className="icon-button spreadsheet-cancel-delete" disabled={isLoading} onClick={() => setConfirmDeleteBatchId("")} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button></div> : <button aria-label={canDeleteBatch(batch) ? `Delete review ${batch.source_filename}` : `Delete unavailable for imported review ${batch.source_filename}`} className={`icon-button spreadsheet-review-delete-button ${canDeleteBatch(batch) ? "icon-button-destructive" : "spreadsheet-delete-disabled"}`} disabled={isLoading || !canDeleteBatch(batch)} onClick={() => setConfirmDeleteBatchId(batch.import_batch_id)} title={deleteBlockedReason(batch)} type="button"><span aria-hidden="true" className="material-symbols-outlined">delete</span></button>}</div></td>
         </tr>)}</tbody>
       </table></div> : <p className="spreadsheet-no-change" data-pd-id="spreadsheet-transfer.empty-history">No {ledgerLabel(selectedLedger)} spreadsheet reviews yet.</p>}
+      <ProfileWorkbookMigration profileId={profileId} />
+      <details className="spreadsheet-technical-details">
+        <summary>Import recovery details</summary>
+        <ProfileImportRecoveryDiagnostics profileId={profileId} />
+      </details>
     </section>
+    </div>
     {modal && typeof document !== "undefined" ? createPortal(modal, document.body) : null}
   </>;
 }

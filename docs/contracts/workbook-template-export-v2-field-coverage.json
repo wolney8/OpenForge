@@ -12,11 +12,11 @@
         "encoding": "text"
       },
       "D4": {
-        "source": "profile_tracker_settings.active_date_preset",
+        "source": "working_workbook_export.scope",
         "encoding": "text"
       },
       "F4": {
-        "source": "profile_tracker_settings.custom_start_date",
+        "source": "working_workbook_export.start_date",
         "encoding": "date"
       },
       "B5": {
@@ -29,7 +29,7 @@
         "encoding": "integer"
       },
       "F5": {
-        "source": "profile_tracker_settings.custom_end_date",
+        "source": "working_workbook_export.end_date",
         "encoding": "date"
       },
       "B6": {
@@ -42,11 +42,13 @@
       },
       "F6": {
         "source": "profile_onboarding_settings.starting_bankroll",
-        "encoding": "decimal"
+        "encoding": "decimal_or_empty",
+        "legacy_fallback": "blank_unknown"
       },
       "B7": {
         "source": "profile_onboarding_settings.iteration_number",
-        "encoding": "integer"
+        "encoding": "integer",
+        "legacy_fallback": 1
       },
       "D7": {
         "source": "profile_tracker_settings.free_bet_expiry_alert_window_days",
@@ -612,7 +614,7 @@
   "profile_domain_coverage": {
     "profiles": "supported_controls",
     "profile_tracker_settings": "supported_controls_and_intentionally_platform_only",
-    "profile_onboarding_settings": "supported_controls_and_intentionally_platform_only",
+    "profile_onboarding_settings": "optional_supported_controls_with_governed_legacy_fallbacks_and_intentionally_platform_only",
     "profile_bookmaker_display_settings": "intentionally_platform_only",
     "profile_exchange_commissions": "supported_settings_zone",
     "accounts": "supported_and_transformed",

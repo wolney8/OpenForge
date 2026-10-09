@@ -1,24 +1,59 @@
 "use client";
 
-import { useState } from "react";
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 
 import { StatusToast } from "@/components/status-toast";
 import { apiBaseUrl } from "@/lib/api";
 
-const OUTPUT_CLASSIFICATION =
-  "STRUCTURALLY VALID WORKING-WORKBOOK EXPORT — GOOGLE RUNTIME VALIDATION PENDING";
-
+type ExportScope = "all_history" | "this_month" | "last_month" | "last_90_days" | "custom";
 type ExportState = "idle" | "generating" | "complete" | "error";
+
+type LedgerCount = {
+  included: number;
+  total: number;
+  outside_range: number;
+  no_reporting_date: number;
+  relationship_support: number;
+};
+
+type ExportSummary = {
+  scope: ExportScope;
+  scope_label: string;
+  start_date: string | null;
+  end_date: string | null;
+  timezone: string;
+  date_basis: string;
+  counts: Record<string, LedgerCount>;
+  can_export: boolean;
+  legacy_profile_defaults: boolean;
+  notice: string;
+  problem: string;
+  owner_action: string;
+  issues: string[];
+};
+
+type ExportProblem = {
+  message: string;
+  action: string;
+  actionHref: string;
+  technicalDetail: string;
+};
 
 type ExportResult = {
   filename: string;
-  formatVersion: string;
   logicalChecksum: string;
   byteChecksum: string;
-  changedPartCount: string;
-  unchangedPartCount: string;
-  platformOnlyWarningCount: string;
 };
+
+const LEDGER_ORDER = [
+  "Accounts",
+  "Sportsbook Bets",
+  "Free Bets",
+  "Casino Offers",
+  "Cash Adjustments",
+  "Historical Extra Places",
+];
 
 function responseFilename(response: Response, fallback: string): string {
   const disposition = response.headers.get("Content-Disposition") ?? "";
@@ -26,38 +61,106 @@ function responseFilename(response: Response, fallback: string): string {
   return match?.[1]?.trim() || fallback;
 }
 
-function errorMessage(error: unknown): string {
-  return error instanceof Error
-    ? error.message
-    : "The working workbook could not be generated.";
+function scopeQuery(scope: ExportScope, startDate: string, endDate: string): string {
+  const query = new URLSearchParams({ scope });
+  if (scope === "custom") {
+    if (startDate) query.set("start_date", startDate);
+    if (endDate) query.set("end_date", endDate);
+  }
+  return query.toString();
+}
+
+async function responseProblem(response: Response): Promise<ExportProblem> {
+  const payload = (await response.json().catch(() => null)) as {
+    detail?: string | {
+      message?: string;
+      action?: string;
+      action_href?: string;
+      technical_detail?: string;
+    };
+  } | null;
+  if (payload?.detail && typeof payload.detail === "object") {
+    return {
+      message: payload.detail.message || "The working workbook could not be created safely.",
+      action: payload.detail.action || "Review the Profile and try again.",
+      actionHref: payload.detail.action_href || "",
+      technicalDetail: payload.detail.technical_detail || "",
+    };
+  }
+  return {
+    message: typeof payload?.detail === "string"
+      ? payload.detail
+      : `The working workbook could not be created (${response.status}).`,
+    action: "No source data was changed. Review the Profile and try again.",
+    actionHref: "",
+    technicalDetail: "",
+  };
 }
 
 export function WorkingWorkbookExport({ profileId }: { profileId: string }) {
+  const [scope, setScope] = useState<ExportScope>("all_history");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [summary, setSummary] = useState<ExportSummary | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(true);
+  const [problem, setProblem] = useState<ExportProblem | null>(null);
   const [state, setState] = useState<ExportState>("idle");
   const [result, setResult] = useState<ExportResult | null>(null);
   const [message, setMessage] = useState("");
 
+  const query = useMemo(
+    () => scopeQuery(scope, startDate, endDate),
+    [endDate, scope, startDate],
+  );
+
+  useEffect(() => {
+    if (scope === "custom" && (!startDate || !endDate)) {
+      return;
+    }
+    let cancelled = false;
+    void fetch(
+      `${apiBaseUrl}/profiles/${profileId}/exports/working-workbook-summary?${query}`,
+      { cache: "no-store", credentials: "include" },
+    ).then(async (response) => {
+      if (!response.ok) throw await responseProblem(response);
+      return response.json() as Promise<ExportSummary>;
+    }).then((nextSummary) => {
+      if (!nextSummary || typeof nextSummary !== "object" || !nextSummary.counts) {
+        throw Object.assign(new Error("The export contents could not be checked."), {
+          action: "No source data was changed. Try again.",
+        });
+      }
+      if (!cancelled) setSummary(nextSummary);
+    }).catch((error: unknown) => {
+      if (cancelled) return;
+      const nextProblem = error as Partial<ExportProblem>;
+      setProblem({
+        message: nextProblem.message || "The export contents could not be checked.",
+        action: nextProblem.action || "No source data was changed. Try again.",
+        actionHref: nextProblem.actionHref || "",
+        technicalDetail: nextProblem.technicalDetail || "",
+      });
+      setSummary(null);
+    }).finally(() => {
+      if (!cancelled) setSummaryLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [profileId, query, scope, startDate, endDate]);
+
   async function generateExport() {
-    if (state === "generating") return;
+    if (state === "generating" || !summary?.can_export) return;
     setState("generating");
     setMessage("");
     setResult(null);
+    setProblem(null);
     try {
       const response = await fetch(
-        `${apiBaseUrl}/profiles/${profileId}/exports/working-workbook.xlsx`,
+        `${apiBaseUrl}/profiles/${profileId}/exports/working-workbook.xlsx?${query}`,
         { cache: "no-store", credentials: "include" },
       );
-      if (!response.ok) {
-        const payload = (await response.json().catch(() => null)) as {
-          detail?: string;
-        } | null;
-        throw new Error(payload?.detail || `Export failed (${response.status}).`);
-      }
+      if (!response.ok) throw await responseProblem(response);
       const blob = await response.blob();
-      const filename = responseFilename(
-        response,
-        `working-workbook-${profileId}.xlsx`,
-      );
+      const filename = responseFilename(response, `working-workbook-${profileId}.xlsx`);
       const downloadUrl = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = downloadUrl;
@@ -68,105 +171,163 @@ export function WorkingWorkbookExport({ profileId }: { profileId: string }) {
       URL.revokeObjectURL(downloadUrl);
       setResult({
         filename,
-        formatVersion:
-          response.headers.get("X-Export-Format-Version") ??
-          "workbook-template-export-v1",
-        logicalChecksum:
-          response.headers.get("X-Export-Logical-Checksum") ?? "Unavailable",
-        byteChecksum:
-          response.headers.get("X-Export-Byte-Checksum") ?? "Unavailable",
-        changedPartCount:
-          response.headers.get("X-Export-Changed-Part-Count") ?? "Unavailable",
-        unchangedPartCount:
-          response.headers.get("X-Export-Unchanged-Part-Count") ?? "Unavailable",
-        platformOnlyWarningCount:
-          response.headers.get("X-Export-Platform-Only-Warning-Count") ?? "Unavailable",
+        logicalChecksum: response.headers.get("X-Export-Logical-Checksum") ?? "Unavailable",
+        byteChecksum: response.headers.get("X-Export-Byte-Checksum") ?? "Unavailable",
       });
       setState("complete");
       setMessage(`Working workbook downloaded: ${filename}`);
     } catch (error) {
+      const nextProblem = error as Partial<ExportProblem>;
       setState("error");
-      setMessage(`Export failed. ${errorMessage(error)}`);
+      setProblem({
+        message: nextProblem.message || "The working workbook could not be created safely.",
+        action: nextProblem.action || "No source data was changed. Review the Profile and try again.",
+        actionHref: nextProblem.actionHref || "",
+        technicalDetail: nextProblem.technicalDetail || "",
+      });
     }
   }
 
   return (
     <section
-      aria-busy={state === "generating" || undefined}
+      aria-busy={state === "generating" || summaryLoading || undefined}
       aria-labelledby="working-workbook-export-title"
-      className="content-subpanel stack spreadsheet-transfer-panel"
+      className="content-subpanel stack spreadsheet-transfer-panel working-workbook-export"
       data-pd-id="workbook-template-export.panel"
     >
-      <StatusToast
-        message={state === "complete" ? message : ""}
-        onDismiss={() => setMessage("")}
-        tone="success"
-      />
-      <div className="workflow-panel-header">
-        <div>
-          <span className="eyebrow">Working workbook</span>
-          <h2 id="working-workbook-export-title">Create fresh working workbook</h2>
+      <StatusToast message={state === "complete" ? message : ""} onDismiss={() => setMessage("")} tone="success" />
+      <div>
+        <span className="eyebrow">Working workbook</span>
+        <h2 id="working-workbook-export-title">Create fresh working workbook</h2>
+        <p className="field-support-text" id="working-workbook-export-description">
+          Create an editable workbook for this Profile. Choose the history to include and check the
+          ledger counts before downloading. Creating it does not change Plum Duff data.
+        </p>
+      </div>
+
+      <div className="working-workbook-scope-grid">
+        <label className="field-control">
+          <span>Data range</span>
+          <select
+            aria-describedby="working-workbook-date-basis"
+            data-pd-id="workbook-template-export.scope"
+            onChange={(event) => {
+              const nextScope = event.target.value as ExportScope;
+              setScope(nextScope);
+              setSummary(null);
+              setProblem(null);
+              setSummaryLoading(nextScope !== "custom" || Boolean(startDate && endDate));
+            }}
+            value={scope}
+          >
+            <option value="all_history">All history</option>
+            <option value="this_month">This month</option>
+            <option value="last_month">Last month</option>
+            <option value="last_90_days">Last 90 days</option>
+            <option value="custom">Custom</option>
+          </select>
+        </label>
+        {scope === "custom" ? (
+          <>
+            <label className="field-control">
+              <span>Start date</span>
+              <input data-pd-id="workbook-template-export.start-date" onChange={(event) => {
+                const nextStart = event.target.value;
+                setStartDate(nextStart);
+                setSummary(null);
+                setProblem(null);
+                setSummaryLoading(Boolean(nextStart && endDate));
+              }} type="date" value={startDate} />
+            </label>
+            <label className="field-control">
+              <span>End date</span>
+              <input data-pd-id="workbook-template-export.end-date" onChange={(event) => {
+                const nextEnd = event.target.value;
+                setEndDate(nextEnd);
+                setSummary(null);
+                setProblem(null);
+                setSummaryLoading(Boolean(startDate && nextEnd));
+              }} type="date" value={endDate} />
+            </label>
+          </>
+        ) : null}
+      </div>
+
+      <div className="working-workbook-summary" data-pd-id="workbook-template-export.summary">
+        <div className="working-workbook-summary-heading">
+          <div>
+            <h3>Workbook contents</h3>
+            <p className="field-support-text">
+              {summary ? `${summary.scope_label}${summary.start_date && summary.end_date ? ` · ${summary.start_date} to ${summary.end_date}` : ""}` : "Choose a complete range to preview its contents."}
+            </p>
+          </div>
+          {summaryLoading ? <span aria-live="polite" className="table-status" role="status">Checking workbook contents…</span> : null}
         </div>
+        {summary ? (
+          <>
+            <dl className="working-workbook-count-grid">
+              {LEDGER_ORDER.map((ledger) => {
+                const count = summary.counts[ledger];
+                if (!count) return null;
+                return (
+                  <div key={ledger}>
+                    <dt>{ledger}</dt>
+                    <dd>{count.included}</dd>
+                    {count.total !== count.included ? <small>{count.total} total · {count.outside_range} outside range{count.no_reporting_date ? ` · ${count.no_reporting_date} without a reporting date` : ""}</small> : null}
+                    {count.relationship_support ? <small>{count.relationship_support} qualifying parent {count.relationship_support === 1 ? "row" : "rows"} included to preserve Free Bet links</small> : null}
+                  </div>
+                );
+              })}
+            </dl>
+            <p className="field-support-text" id="working-workbook-date-basis">{summary.date_basis}</p>
+            {summary.notice ? <p className="field-support-text">{summary.notice}</p> : null}
+          </>
+        ) : !summaryLoading && !problem ? (
+          <p className="spreadsheet-no-change">Complete the custom date range to see what will be exported.</p>
+        ) : null}
+      </div>
+
+      {problem ? (
+        <div className="warning-text stack-tight" data-pd-id="workbook-template-export.problem" role="alert">
+          <strong>{problem.message}</strong>
+          <span>{problem.action}</span>
+          {problem.actionHref ? <Link className="button-link" href={problem.actionHref}>Complete Profile setup</Link> : null}
+          {problem.technicalDetail ? <details><summary>Technical details</summary><code>{problem.technicalDetail}</code></details> : null}
+        </div>
+      ) : null}
+      {!problem && summary?.problem ? (
+        <div className="warning-text stack-tight" data-pd-id="workbook-template-export.problem" role="alert">
+          <strong>{summary.problem}</strong>
+          {summary.issues.length ? <ul>{summary.issues.map((issue) => <li key={issue}>{issue}</li>)}</ul> : null}
+          <span>{summary.owner_action} No source data was changed.</span>
+        </div>
+      ) : null}
+
+      <div className="working-workbook-actions">
         <button
           aria-describedby="working-workbook-export-description"
           className="modal-primary-button icon-text-action"
           data-pd-id="workbook-template-export.generate"
-          disabled={state === "generating"}
+          disabled={state === "generating" || summaryLoading || !summary?.can_export}
           onClick={() => void generateExport()}
           type="button"
         >
-          {state === "generating" ? (
-            <span aria-hidden="true" className="button-spinner" />
-          ) : (
-            <span aria-hidden="true" className="material-symbols-outlined">
-              download
-            </span>
-          )}
+          {state === "generating" ? <span aria-hidden="true" className="button-spinner" /> : <span aria-hidden="true" className="material-symbols-outlined">download</span>}
           <span>{state === "generating" ? "Creating workbook" : "Create workbook"}</span>
         </button>
       </div>
-      <p className="field-support-text" id="working-workbook-export-description">
-        Populate a fresh copy of the approved workbook template with this Profile&apos;s current
-        supported data. This is not the portable Profile backup, does not update an existing
-        workbook, and still requires the deferred Google runtime smoke test. Any state that the
-        approved template cannot safely represent blocks the download rather than being silently
-        omitted. The XLSX file does not contain a bound Google Apps Script project.
-      </p>
-      <div className="portable-profile-export-feedback">
-        {state === "generating" ? (
-          <p aria-live="polite" className="table-status" role="status">
-            Reading this Profile, sanitizing the template copy, and validating its structure…
-          </p>
-        ) : null}
-        {result ? (
-          <div
-            aria-label="Working workbook verification"
-            className="spreadsheet-backup-proof"
-            data-pd-id="workbook-template-export.verification"
-            role="status"
-          >
-            <strong>{result.filename}</strong>
-            <span>Format: {result.formatVersion}</span>
-            <span>{OUTPUT_CLASSIFICATION}</span>
-            <span>
-              Package verification: {result.changedPartCount} changed · {result.unchangedPartCount}{" "}
-              unchanged parts
-            </span>
-            <span>
-              Explicitly platform-only domains: {result.platformOnlyWarningCount}
-            </span>
-            <span className="spreadsheet-row-id">
-              Logical SHA-256: {result.logicalChecksum}
-            </span>
+
+      {result ? (
+        <div aria-label="Working workbook download" className="spreadsheet-backup-proof" data-pd-id="workbook-template-export.verification" role="status">
+          <strong>{result.filename}</strong>
+          <span>The file contains the ledger rows shown above. Plum Duff data was not changed.</span>
+          <details>
+            <summary>Download verification</summary>
+            <span className="spreadsheet-row-id">Content SHA-256: {result.logicalChecksum}</span>
             <span className="spreadsheet-row-id">File SHA-256: {result.byteChecksum}</span>
-          </div>
-        ) : null}
-        {state === "error" ? (
-          <p className="warning-text" role="alert">
-            {message}
-          </p>
-        ) : null}
-      </div>
+          </details>
+        </div>
+      ) : null}
     </section>
   );
 }

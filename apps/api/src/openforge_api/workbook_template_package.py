@@ -822,7 +822,8 @@ def _write_exchange_commissions(
     for offset, (exchange, rate) in enumerate(rows):
         cells = _cells_by_column(rows_by_number[3 + offset])
         _set_cell_value(cells["H"], exchange, "text")
-        _set_cell_value(cells["I"], rate, "decimal")
+        # A recorded exchange with no known commission must remain visibly unknown. It is not zero.
+        _set_cell_value(cells["I"], rate, "decimal_or_empty")
     payload[path] = _serialise(root)
 
 
@@ -1108,7 +1109,12 @@ def build_workbook_template_package(
                     _clear_cell_value(cell)
                 elif header in allowed:
                     if header in projection:
-                        _set_cell_value(cell, projection[header], encodings[header])
+                        try:
+                            _set_cell_value(cell, projection[header], encodings[header])
+                        except WorkbookTemplatePackageError as error:
+                            raise WorkbookTemplatePackageError(
+                                f"{sheet_name} row {row_number} field {header}: {error}"
+                            ) from error
                     else:
                         _clear_cell_value(cell, preserve_formula=False)
                 else:

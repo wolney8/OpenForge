@@ -92,3 +92,20 @@ Apps Script runtime is executed by this contract.
 ## V2 compatibility additions
 
 The current template appends installed Account authority fields, visible `BetRole` and `WageringContribution (£)` Sportsbook inputs, and a hidden machine-managed `PromotionDetailsJson` column. The historic v1 fingerprint remains immutable. Re-import treats visible ledger fields as user inputs and validates the supporting promotion payload rather than asking workbook users to maintain an Offer Groups application.
+
+## Export scope and legacy Profiles
+
+The owner chooses the working-workbook data scope before download. `All History` is the default and
+includes dated and undated supported ledger rows. `This Month`, `Last Month`, `Last 90 Days`, and an
+inclusive custom range use the governed Europe/London reporting-date axis: Sportsbook and Free Bets
+use recorded settlement date, Casino uses settling date, Cash Adjustments use adjustment date, and
+historical Extra Places use placed date. Date-limited exports do not invent dates for undated rows;
+the pre-export summary reports them as excluded. Accounts are reference data and remain included.
+An included Free Bet may bring its qualifying Sportsbook parent as an explicitly counted relationship
+support row.
+
+Older legitimate Profiles may predate `profile_onboarding_settings`. That absence does not discard
+their ledger history or require fabricated setup rows. Export uses the governed new-Profile identity
+iteration default `1`, while unknown historical starting bankroll and main bank stay blank and are
+reported in the pre-export notice. Missing tracker/date settings still block safely with an
+owner-facing setup action because the workbook cannot state its operating date controls honestly.

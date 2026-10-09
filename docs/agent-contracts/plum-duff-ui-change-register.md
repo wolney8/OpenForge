@@ -362,6 +362,15 @@ Owner acceptance recorded 2026-10-09 12:29:49 BST: CP-078 Reports passes for now
 This freezes the bounded Reports presentation for the CP-075 local integration; it does
 not reopen or extend Reports scope.
 
+## CP-079 working-workbook owner acceptance corrections — 2026-10-09 21:04 BST
+
+| ID | Surface | Requested behaviour | Signed-off equivalent | Status |
+| --- | --- | --- | --- | --- |
+| PD-FIX-321 | Working Workbook export scope | Default to All History; expose governed month/90-day/custom ranges and exact pre-download ledger counts | Existing report date-range controls and Europe/London date resolver | IN PROGRESS |
+| PD-FIX-322 | Legacy Profile export | Preserve legitimate ledger history when the older Profile has no onboarding row; fail with owner-facing recovery only for genuinely required data | Existing legacy import compatibility and actionable Settings empty/error states | IN PROGRESS |
+| PD-FIX-323 | Import/Export hierarchy | Separate Working Workbook, Portable Backup and Ledger Data; remove internal dry-run/domain wording from the owner surface | Existing peer `content-subpanel` Settings cards and canonical field/action controls | IN PROGRESS |
+| PD-FIX-324 | Export feedback and safety | Show plain-English failure, unchanged-data assurance and an exact action; prove counts match the generated package without cross-Profile leakage | Existing actionable error panels and read-only export boundary | IN PROGRESS |
+
 ## CP-075 Sportsbook promotion local integration — 2026-10-09 12:29 BST
 
 | ID | Surface | Requested behaviour | Signed-off equivalent | Status |
