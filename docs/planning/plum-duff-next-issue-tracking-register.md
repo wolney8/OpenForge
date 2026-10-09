@@ -2074,6 +2074,17 @@ Recorded 2026-10-08 13:22 BST under [#111](https://github.com/wolney8/OpenForge/
 
 Shared Profile and Dashboard consumers remain unchanged; only the Fund Manager Reports composition is in scope.
 
+Owner acceptance, 2026-10-09 12:29:49 BST: CP-078 Reports passes for now. Reports is
+accepted for this checkpoint and is not part of the CP-075 integration scope.
+
+## CP-075 Sportsbook promotion local integration — approved bounded batch
+
+Recorded 2026-10-09 12:29:49 BST. PD-FIX-317–320 cover the accepted Sportsbook-first
+Trigger → confirmed reward → linked wagering → explicit release workflow, promotion-specific
+workbook preservation, schema-compatible rollback and canonical local 3010/8010 handoff.
+Detailed Offer Groups remain supporting metadata rather than the ordinary Fund Manager UI.
+No hosted release, general workbook-portability claim or unrelated feature is included.
+
 Completed 2026-10-08 13:53:02 BST on isolated branch `feature/cp078-reports-usability`
 from verified `origin/main` `7f4f127f50c5ee40166c42b52721818a5bc3cba0`. Evidence: 75 focused
 reporting/component assertions; seven focused Chromium paths covering 64-Profile organisation,

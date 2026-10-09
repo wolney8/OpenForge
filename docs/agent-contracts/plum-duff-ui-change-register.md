@@ -357,3 +357,16 @@ Focused evidence covers 64-Profile reflow, light/dark and 390px containment, key
 controls, exact recipe matching, unavailable/undated money states, parent/nested pagination and the
 absence of primary `details/summary` wrappers. Financial authorities and API/schema contracts are
 unchanged.
+
+Owner acceptance recorded 2026-10-09 12:29:49 BST: CP-078 Reports passes for now.
+This freezes the bounded Reports presentation for the CP-075 local integration; it does
+not reopen or extend Reports scope.
+
+## CP-075 Sportsbook promotion local integration — 2026-10-09 12:29 BST
+
+| ID | Surface | Requested behaviour | Signed-off equivalent | Status |
+| --- | --- | --- | --- | --- |
+| PD-FIX-317 | Sportsbook Trigger editor | Concise relevant refund/wagering terms and truthful current/projected position | Existing Sportsbook editor sections and financial-value treatments | COMPLETE |
+| PD-FIX-318 | Linked wagering entry | Add Wagering Bet carries Profile, bookmaker and group context without repeating promotion terms | Existing Sportsbook create workflow | COMPLETE |
+| PD-FIX-319 | Promotion lifecycle | Turnover progress does not auto-confirm external release | Existing explicit settlement/confirmation semantics | COMPLETE |
+| PD-FIX-320 | Local owner handoff | Install the additive-schema feature through canonical authenticated 3010/8010 only | Existing normal-owner backup and launcher process | NEEDS VERIFICATION |

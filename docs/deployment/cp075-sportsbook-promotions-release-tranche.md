@@ -1,11 +1,11 @@
 # CP-075 Sportsbook Promotions Release Tranche
 
-Last checked: 7 October 2026 at 10:16:22 BST (Europe/London)
+Last checked: 9 October 2026 at 12:29:49 BST (Europe/London)
 
 ## Release boundary
 
-- Baseline: `034304339304756319196459ae28d0269f82deb9`.
-- Branch: `release/cp075-sportsbook-promotions`.
+- Integration baseline: `ec82df0043f86355c4fb29875cc0a10b29fd405c` (accepted CP-078 Normal).
+- Branch: `release/cp075-local-integration`.
 - Includes the accepted Sportsbook-first refund/cashback and wagering lifecycle, its
   additive PostgreSQL migration, canonical ledger import/export fields, focused tests
   and this release record.
@@ -39,10 +39,14 @@ Take and verify the normal database backup before migration. Start the new API f
 standard startup gate applies the migration before the API reports ready, then the frontend
 may start.
 
-The exact previous Normal application is not schema-forward-compatible: its Sportsbook row
-mapper passes every `SELECT *` column to a strict dataclass and therefore rejects the four
-additional fields. An immediate failed-release rollback, before owner writes, must restore
-the verified pre-release database before restarting `0343043`. Once promotion records exist,
-prefer a forward fix or a separately verified schema-compatible rollback build. Do not use
-routine destructive column removal; restoring the old backup after owner writes would also
-discard those later writes.
+The exact pre-CP-075 Normal application is not schema-forward-compatible: its Sportsbook row
+mapper passes every `SELECT *` column to a strict dataclass and rejects the four additional
+fields. Compatibility commit `9679458` is therefore the verified fallback. It reads legacy and
+post-migration rows, preserves promotion metadata during ordinary edits, and rejects promotion
+edits that it cannot govern. The additive columns remain in place; routine rollback never drops
+them and never restores an older database over newer owner activity.
+
+Disposable SQLite compatibility tests passed before CP-075 integration. Disposable PostgreSQL
+18.6 verified the `20260927_008_invited_subscribers` to
+`20261007_009_sportsbook_promotions` upgrade and retry path. A pre-migration backup remains
+mandatory for recovery from migration failure itself.

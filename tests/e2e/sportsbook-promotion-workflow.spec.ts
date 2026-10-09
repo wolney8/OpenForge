@@ -124,6 +124,12 @@ test("refund promotion stays concise and carries context into a wagering bet", a
   );
   const editor = page.getByRole("dialog", { name: "Edit sportsbook row" });
   await expect(editor.getByLabel("Bet role")).toHaveValue("Trigger");
+  await expect(editor.getByLabel("Refund percentage")).toHaveValue("50");
+  await expect(editor.getByLabel("Maximum refund")).toHaveValue("50");
+  await expect(editor.getByRole("option", { name: "Released (Confirmed)" })).toHaveCount(1);
+  await expect(editor).toContainText(
+    "Choose Released only after the bookmaker confirms the promotional value is withdrawable.",
+  );
   const position = editor.getByRole("region", { name: "Live promotion position" });
   await expect(position).toContainText("£ 14.81 projected");
   await expect(position).toContainText("£0.00 / £100.00");

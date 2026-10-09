@@ -162,10 +162,10 @@ def calculate_offer_position(
     completed = money(completed)
     remaining = None if target is None else money(max(target - completed, Decimal("0")))
     if status in {"Awarded", "Locked", "Wagering"} and target is not None:
-        status = "Released" if remaining == 0 else ("Wagering" if completed > 0 else "Locked")
-        if status == "Released":
-            locked = Decimal("0")
-            estimated = Decimal("0")
+        # Completed turnover is evidence of wagering progress, not evidence that
+        # the bookmaker has released withdrawable value. Release stays an
+        # explicit human-confirmed promotion state.
+        status = "Wagering" if completed > 0 else "Locked"
     return OfferPosition(
         money(cash),
         money(locked),

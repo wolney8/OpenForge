@@ -45,8 +45,9 @@ Supported reward types are Cash, BonusFunds, SiteCredit, FreeBetSNR, FreeBetSR a
 Unknown. FreeBetSNR/SR use the existing Free Bets award path with the same OfferGroupID.
 Other reward types never create a fake Free Bet. Stored external state may be Pending,
 Not Earned, Awarded, Locked, Wagering, Released, Expired or Forfeited. Eligibility and
-wagering progress may derive Locked/Wagering/Released; external award confirmation is
-never invented.
+wagering progress may derive Locked/Wagering. Reaching the turnover target alone does
+not prove that value is withdrawable: Released requires explicit human confirmation.
+External award or release confirmation is never invented.
 
 ## Safety
 

@@ -83,10 +83,19 @@ def test_wagering_defaults_to_eligible_stake_and_supports_partial_override() -> 
     assert result.reward_status == "Wagering"
 
 
-def test_ineligible_odds_do_not_contribute_and_release_replaces_projection() -> None:
+def test_ineligible_odds_do_not_contribute_and_turnover_does_not_auto_release() -> None:
     partial = calculate_offer_position(trigger(), [wagering(back_odds="1.59")])
     assert partial.wagering_completed == Decimal("0.00")
-    released = calculate_offer_position(trigger(), [wagering(back_stake="100")])
+    completed = calculate_offer_position(trigger(), [wagering(back_stake="100")])
+    assert completed.reward_status == "Wagering"
+    assert completed.wagering_remaining == Decimal("0.00")
+    assert completed.locked_reward_face_value == Decimal("50.00")
+    assert completed.estimated_convertible_value == Decimal("35.00")
+
+    released = calculate_offer_position(
+        trigger(promotion_json=json.dumps(promotion(reward_status="Released"))),
+        [wagering(back_stake="100")],
+    )
     assert released.reward_status == "Released"
     assert released.locked_reward_face_value == Decimal("0.00")
     assert released.estimated_convertible_value == Decimal("0.00")
@@ -95,7 +104,7 @@ def test_ineligible_odds_do_not_contribute_and_release_replaces_projection() -> 
 
 def test_realised_wagering_conversion_replaces_estimate_without_double_counting() -> None:
     result = calculate_offer_position(
-        trigger(),
+        trigger(promotion_json=json.dumps(promotion(reward_status="Released"))),
         [
             wagering(
                 back_stake="100",
