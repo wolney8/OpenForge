@@ -312,4 +312,17 @@ describe("dashboard range-aware trends", () => {
       },
     ]);
   });
+
+  it("uses an open reward's recorded creation date rather than a synthetic future expiry", () => {
+    const range = resolveDateRange({ preset: "All Dates" });
+    const dataset = emptyDataset();
+    dataset.freeBets = [{
+      free_bet_id:"FB-FUTURE",bookmaker:"Bookmaker A",event_name:"Synthetic reward",status:"Available",result:"Pending",
+      retention_mode:"SNR",exchange_name:"Exchange A",
+      expiry_datetime:"2099-07-24T20:00:00",date_settled:"",created_at:"2026-08-23T10:30:35Z",reporting_value:"0.00",projected_current_pnl:"0.00",final_net_pnl:null,calculated_liability_1:null,lay_status:"Not Laid",counts_as_open:true,is_overdue:false,
+    }];
+    const trend=buildDashboardTrendFromDataset({dataset,range,summary:summaryWithPnl(0)});
+    expect(trend.some(point=>point.key.startsWith("2099"))).toBe(false);
+    expect(trend[0]?.key).toBe("2026-Q3");
+  });
 });

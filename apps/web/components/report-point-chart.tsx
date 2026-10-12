@@ -18,7 +18,7 @@ export function ReportPointChart({ area, line, zeroY, label, points, selectedInd
   const pointLabel = (point: Point) => point.label + ": " +
     (Number.isFinite(point.cumulativeValue ?? point.value) ? formatMoney(point.cumulativeValue ?? point.value) : "Unavailable");
   return <figure className="dashboard-chart-figure">
-    {knownSeries ? <ReplayableGraph aria-label={label} className="dashboard-sparkline" preserveAspectRatio="none"
+    {knownSeries ? <ReplayableGraph aria-label={label} className="dashboard-sparkline" preserveAspectRatio="xMidYMid meet"
       role="group" valueKey={area + "|" + line} viewBox="0 0 100 42">
       {points.length > 1 ? <polygon className="dashboard-sparkline-area" points={area} /> : null}
       {zeroY !== undefined ? <line aria-hidden="true" x1="0" x2="100" y1={zeroY} y2={zeroY}
@@ -30,7 +30,7 @@ export function ReportPointChart({ area, line, zeroY, label, points, selectedInd
         return <circle key={point.key} aria-label={pointLabel(point)}
           className={"dashboard-sparkline-point" + (selectedIndex === index ? " is-selected" : "")}
           cx={x} cy={y} r="2.5" role="button" tabIndex={0}
-          onClick={() => onSelect(index)} onFocus={() => onSelect(index)} onPointerEnter={() => onSelect(index)}
+          onClick={() => onSelect(index)} onFocus={() => onSelect(index)} onPointerEnter={(event) => { event.preventDefault(); onSelect(index); }}
           onKeyDown={(event) => {
             if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onSelect(index); }
           }} />;

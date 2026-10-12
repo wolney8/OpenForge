@@ -16,5 +16,11 @@ describe("#91 independent exact-cent Account totals",()=>{
     expect(combined.totals.cashSnapshot).toBeNaN();expect(combined.totals.grossBettingPnl).toBe(0);
   });
   it("excluded invalid balance does not contaminate included cash",()=>expect(summary("NaN",false).accountQuickView.cashSnapshot).toBe(10));
+  it("legacy archived Accounts do not contaminate current cash even when their old count flag remains set",()=>{
+    const archived={...account("archived","",true,""),status:"Archived",lifecycle_status:"Active"};
+    const result=summarizeTrackerData({accounts:[account("known","10.00"),archived],sportsbookBets:[],freeBets:[],casinoOffers:[],eachWayExtraPlaces:[],cashAdjustments:[],balanceSnapshots:[]} as TrackerSummaryDataset,resolveDateRange({preset:"All Dates"}));
+    expect(result.accountQuickView.cashSnapshot).toBe(10);expect(result.accountQuickView.moneyIssues).toEqual([]);
+  });
   it("invalid pending value is independently unavailable",()=>{const s=summary("12.34",true,"NaN");expect(s.accountQuickView.cashSnapshot).toBe(22.34);expect(s.accountQuickView.pendingWithdrawals).toBeNaN();});
+  it("treats an optional blank pending withdrawal as no pending withdrawal",()=>{const s=summary("12.34",true,"");expect(s.accountQuickView.pendingWithdrawals).toBe(0);expect(s.accountQuickView.moneyIssues).toEqual([]);});
 });

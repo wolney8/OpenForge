@@ -1,5 +1,28 @@
 # Plum Duff UI Change Register
 
+## Owner regression batch — 2026-10-12
+
+| ID / issue | Surface and requested correction | Signed-off equivalent | Status |
+| --- | --- | --- | --- |
+| PD-FIX-304 / #105 | Profiles and Profile Operations: distinguish an empty betting range from malformed/unavailable P&L | Existing FinancialReadValue readiness and selected-range contract | COMPLETE |
+| PD-FIX-305 / #116 | Account cash warning: optional pending values, governed cash membership, unique Profile/Account presentation and bounded correction links | Accounts contract, AccountMoneyStatus and shared pagination | COMPLETE |
+| PD-FIX-306 / #76 | Summary Dashboard versus Profile Operations naming, page titles and accessible navigation | Existing shell/profile command menu | COMPLETE |
+| PD-FIX-307 / #92 | Profile summary loading indicator must retain Material geometry and avoid the broken spinning line | Existing Material progress_activity treatment | COMPLETE |
+| PD-FIX-308 / #76 | Profile/recent-Profile switching preserves the supported Profile sub-route without carrying record identity | Existing tracker route authority and navigation guard | COMPLETE |
+| PD-FIX-309 / #111 | Selected Range Performance: remove synthetic future-expiry trend point, stabilise sizing and prevent hover replay flicker | Existing ReportPointChart and governed reporting dates | COMPLETE |
+| PD-FIX-310 / #94 | Headless Last-month working-workbook check with exactly two owner-authorised synthetic Sportsbook seed rows | Existing protected synthetic Profile, Sportsbook authority and working-workbook export | COMPLETE |
+
+This is one bounded batch. Reports redesign, workbook acceptance beyond the named export smoke, hosted work and unrelated features remain outside scope.
+
+Verified 2026-10-12: the directory uses its visible Fund Manager range rather than each Profile's
+saved all-time range; optional blank pending withdrawals and archived legacy Accounts no longer
+create false cash warnings; four genuinely unknown Profile/Account balances remain as unique
+correction links. Open Free Bet expiry
+dates no longer become historical trend dates, and chart hover no longer replays the whole value
+card. `BACKUP-0B3F7F2E` precedes the two authorised ALPHA-001 rows. The headless Last Month workbook
+contains both as `IT1-QB-0009` and `IT1-QB-0010`; their retained PD identities are
+`OWNER-SMOKE-SB-202609-A` and `OWNER-SMOKE-SB-202609-B`.
+
 ## CP-049 Daily tasks — 2026-09-25 16:55 BST
 
 FUND-MANAGER-TASK-DECK-001 / #86: COMPLETE first current-evidence slice at09ef37e local/Preview. Reused Notification History cards/toolbar, Account editor and authenticated shell. Profile filtering, current-source routing/recheck, stale-response exclusion, durable clear/retry/History, compact/enlarged themes, keyboard/reduced motion and internal geometry pass. Seven actual workflows plus six fixture-backed notification checks per environment; no money animation/schema changes. Deferred route checks release the existing shell lock until valid navigation begins. Broader routines/dispositions/recurrence, normal-owner browser and VoiceOver remain explicit. [Evidence](../../docs/audits/platform-quality-audit.md#cp-049-private-import-rehearsal-and-daily-tasks--2026-09-25-1655-bst).

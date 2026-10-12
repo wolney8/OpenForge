@@ -1,6 +1,6 @@
 import { normalizeMoneyInput } from "./decimal-input";
 
-export type AccountMoneyIssue = { accountId: string; accountName: string; field: string; reason: string };
+export type AccountMoneyIssue = { accountId: string; accountName: string; field: string; reason: string; profileId?: string };
 type AccountMoneySource = { account_id: string; account: string; current_balance: string; pending_withdrawal_amount: string };
 export function accountMoneyError(raw: string): string | undefined {
   const canonical=normalizeMoneyInput(raw.trim(), {allowNegative:true});
@@ -21,6 +21,10 @@ export function sumAccountMoney(rows: AccountMoneySource[], field: "current_bala
   const issues: AccountMoneyIssue[]=[];
   for(const row of rows) {
     const raw=row[field];const text=typeof raw === "string" ? normalizeAccountMoney(raw) : "";
+    // Pending withdrawal is optional in the governed Accounts contract. An
+    // empty value means that no withdrawal is pending; an empty current
+    // balance remains an unknown observation.
+    if(field === "pending_withdrawal_amount" && (typeof raw !== "string" || !raw.trim())) continue;
     if(typeof raw !== "string" || !text || accountMoneyError(raw)) {
       issues.push({accountId:row.account_id,accountName:row.account,field,reason:typeof raw !== "string" || !raw.trim() ? "Unknown amount" : "Invalid amount"});continue;
     }

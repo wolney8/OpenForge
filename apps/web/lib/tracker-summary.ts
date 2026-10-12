@@ -22,6 +22,7 @@ export type AccountSummaryRecord = {
   type: string;
   counts_in_cash_total: boolean;
   status: string;
+  lifecycle_status?: string;
   current_balance: string;
   pending_withdrawal_amount: string;
   last_balance_update: string;
@@ -782,7 +783,15 @@ export function summarizeTrackerData(
       ? Number(settings?.freeBetExpiryAlertWindowDays)
       : defaultFreeBetExpiryAlertWindowDays;
   const expiryAlertCutoff = endOfDay(addDays(startOfDay(asOf), freeBetExpiryAlertWindowDays));
-  const includedAccounts=dataset.accounts.filter(row=>row.counts_in_cash_total);
+  // Modern archive operations clear counts_in_cash_total as well as the two
+  // lifecycle fields. Imported legacy rows can retain a stale true flag, so
+  // the lifecycle authority must still prevent an archived Account from
+  // contaminating current cash readiness.
+  const includedAccounts=dataset.accounts.filter(row=>
+    row.counts_in_cash_total
+    && row.status !== "Archived"
+    && row.lifecycle_status !== "Archived"
+  );
   const cash=sumAccountMoney(includedAccounts,"current_balance");
   const bookieBalance=sumAccountMoney(includedAccounts.filter(row=>row.type==="Bookie"),"current_balance").value;
   const exchangeBalance=sumAccountMoney(includedAccounts.filter(row=>row.type==="Exchange"),"current_balance").value;

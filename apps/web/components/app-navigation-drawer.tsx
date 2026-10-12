@@ -8,6 +8,7 @@ import { BrandLogo } from "@/components/brand-logo";
 import { platformBrand } from "@/lib/brand";
 import { recordRecentProfile, resolveRecentProfiles } from "@/lib/recent-profiles";
 import { confirmUnsavedTrackerNavigation } from "@/lib/use-unsaved-changes-guard";
+import { resolveEquivalentProfileRoute } from "@/lib/profile-navigation";
 
 type ProfileNavigationRecord = {
   profile_id: string;
@@ -35,7 +36,7 @@ const subscribeToPortalAvailability = () => () => undefined;
 
 const navigationItems = [
   { id: "daily-tasks", href: "/tasks", label: "Daily tasks", icon: "task_alt" },
-  { id: "dashboard", href: "/", label: "Dashboard", icon: "space_dashboard" },
+  { id: "dashboard", href: "/", label: "Summary Dashboard", icon: "space_dashboard" },
   {
     id: "registration-requests",
     href: "/profiles/requests",
@@ -230,14 +231,16 @@ export function AppNavigationDrawer({
             </button>
             {profilesExpanded ? (
               <div className="app-navigation-profile-links" data-pd-id="app-navigation.recent-profiles">
-                {recentProfiles.map((profile) => (
+                {recentProfiles.map((profile) => {
+                  const href = resolveEquivalentProfileRoute(pathname, profile.profile_id);
+                  return (
                   <Link
                     className="app-navigation-drawer-link app-navigation-drawer-sublink"
                     data-pd-id={`app-navigation.profile.${profile.profile_id}`}
                     data-pd-managed-navigation="true"
-                    href={`/profiles/${profile.profile_id}/tracker/dashboard`}
+                    href={href}
                     key={profile.profile_id}
-                    onClick={(event) => navigateFromDrawer(event, `/profiles/${profile.profile_id}/tracker/dashboard`, () => {
+                    onClick={(event) => navigateFromDrawer(event, href, () => {
                       recordRecentProfile(window.localStorage, {
                         profileId: profile.profile_id,
                         displayName: profile.display_name,
@@ -247,7 +250,7 @@ export function AppNavigationDrawer({
                     <span aria-hidden="true" className="material-symbols-outlined">person</span>
                     <span>{profile.display_name}</span>
                   </Link>
-                ))}
+                )})}
                 <Link className="app-navigation-drawer-link app-navigation-drawer-sublink" data-pd-id="app-navigation.profiles.view-all" data-pd-managed-navigation="true" href="/profiles" onClick={(event) => navigateFromDrawer(event, "/profiles")}>
                   <span aria-hidden="true" className="material-symbols-outlined">list</span>
                   <span>View all Profiles</span>

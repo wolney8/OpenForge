@@ -5,6 +5,7 @@ import { ReportPointChart } from "@/components/report-point-chart";
 import { useState, type ReactNode } from "react";
 import { FinancialValue, FinancialValueReplayGroup } from "@/components/financial-value";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
+import { BettingPnlReadValue } from "@/components/betting-pnl-read-value";
 import { ReplayableProgressFill, ReplayableProgressRing } from "@/components/replayable-progress";
 import {
   buildDashboardTargetProgress,
@@ -167,7 +168,6 @@ export function PortfolioDashboardView({
       data-pd-id="dashboard.portfolio-view"
     >
       <div className="dashboard-primary-row">
-        <FinancialValueReplayGroup>
         <article
           aria-busy={isRangeSaving}
           className="dashboard-visual-card dashboard-performance-card portfolio-hero-card"
@@ -212,10 +212,7 @@ export function PortfolioDashboardView({
               inert={isRangeSaving ? true : undefined}
             >
               <strong className="dashboard-hero-value">
-                <FinancialValue
-                  label="Selected range portfolio profit and loss"
-                  value={summary.profitQuickView.overallPnl}
-                />
+                <BettingPnlReadValue state="ready" activityCount={summary.activityQuickView.sportsbookCount + summary.activityQuickView.freeBetCount + summary.activityQuickView.casinoCount + summary.activityQuickView.eachWayExtraPlaceCount} value={summary.profitQuickView.overallPnl} />
               </strong>
               <DashboardChartSurface
                 area={dashboardSparkline.area}
@@ -252,7 +249,6 @@ export function PortfolioDashboardView({
             </p>
           ) : null}
         </article>
-        </FinancialValueReplayGroup>
 
         <section className="dashboard-health-grid" aria-label="Profile operational dashboard cards">
           <DashboardMetricCard

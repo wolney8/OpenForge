@@ -336,11 +336,7 @@ test("top bar profile command menu searches profiles and exposes tracker route o
   await summaryButton.click();
   const alternateProfile = page.locator('[data-pd-id^="profile-command.profile."]:not([aria-current="page"])').first();
   if ((await alternateProfile.count()) > 0) {
-    const beforeSelectionUrl = page.url();
     await alternateProfile.click();
-    await expect(page).toHaveURL(beforeSelectionUrl);
-    await expect(page.locator('[data-pd-id="profile-command.route.sportsbook-bets"]')).toBeVisible();
-    await page.locator('[data-pd-id="profile-command.route.sportsbook-bets"]').click();
     await expect(page).toHaveURL(/\/profiles\/(?!profile-demo-001)[^/]+\/tracker\/sportsbook-bets$/);
   } else {
     await expect(page.getByText("Subscriber Alpha")).toBeVisible();

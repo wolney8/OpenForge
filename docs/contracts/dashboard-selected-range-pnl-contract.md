@@ -134,10 +134,11 @@ Date-range resolver:
 
 Account balances:
 
-- `bookie_balance = sum(accounts.current_balance where type = Bookie and counts_in_cash_total = true)`
-- `exchange_balance = sum(accounts.current_balance where type = Exchange and counts_in_cash_total = true)`
-- `bank_balance = sum(accounts.current_balance where type = Bank and counts_in_cash_total = true)`
-- `pending_withdrawals = sum(accounts.pending_withdrawal_amount where counts_in_cash_total = true)`
+- `bookie_balance = sum(accounts.current_balance where type = Bookie, counts_in_cash_total = true and the Account is not archived)`
+- `exchange_balance = sum(accounts.current_balance where type = Exchange, counts_in_cash_total = true and the Account is not archived)`
+- `bank_balance = sum(accounts.current_balance where type = Bank, counts_in_cash_total = true and the Account is not archived)`
+- `pending_withdrawals = sum(accounts.pending_withdrawal_amount where counts_in_cash_total = true and the Account is not archived)`
+- legacy imported rows with an archived status and a stale `counts_in_cash_total = true` flag remain readable but do not make current cash unavailable
 - `cash_snapshot = sum(account quick-view balances)`
 
 Selected-range P&L:

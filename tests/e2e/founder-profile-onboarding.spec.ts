@@ -311,10 +311,10 @@ test("Profile onboarding uses catalogue authority and saves optional Quick Actio
   await expect(page.getByText("£ 150.00")).toBeVisible();
   await page.getByRole("button", { name: "Create Profile" }).click();
   await expect(page).toHaveURL(/\/profiles\/profile-demo-001\/tracker\/dashboard$/);
-  await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Operations$/ })).toBeVisible();
   await page.reload();
   await expect(page).toHaveURL(/\/profiles\/profile-demo-001\/tracker\/dashboard$/);
-  await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Operations$/ })).toBeVisible();
 
   expect(submitted).toBeDefined();
   expect(submitted?.enabled_modules).not.toContain("casino-offers");

@@ -1,5 +1,6 @@
 "use client";
 import { FinancialReadValue } from "@/components/financial-read-value";
+import { BettingPnlReadValue } from "@/components/betting-pnl-read-value";
 import { AccountMoneyStatus } from "@/components/account-money-status";
 
 import Link from "next/link";
@@ -798,10 +799,6 @@ export function CrossProfileAnalytics({
     ),
     [activeProfileIds, allProfileSummaries]
   );
-  const trackerRangeAllProfilesCombined = useMemo(
-    () => aggregateCrossProfileReporting(trackerRangeProfileSummaries),
-    [trackerRangeProfileSummaries]
-  );
   const trackerRangeActiveProfilesCombined = useMemo(
     () => aggregateCrossProfileReporting(
       trackerRangeProfileSummaries.filter((profile) => activeProfileIds.includes(profile.profileId))
@@ -966,7 +963,7 @@ export function CrossProfileAnalytics({
   const directoryProfiles = useMemo(() => {
     const normalizedQuery = directoryQuery.trim().toLowerCase();
     const summaryByProfile = new Map(
-      trackerRangeAllProfilesCombined.profileRows.map((row) => [
+      allProfilesCombined.profileRows.map((row) => [
         row.profileId,
         row,
       ])
@@ -987,7 +984,7 @@ export function CrossProfileAnalytics({
           Number(pinnedProfileIds.includes(left.profileId));
         return pinDifference || left.displayName.localeCompare(right.displayName);
       });
-  }, [directoryQuery, directoryStatus, pinnedProfileIds, profileRecords, trackerRangeAllProfilesCombined.profileRows]);
+  }, [allProfilesCombined.profileRows, directoryQuery, directoryStatus, pinnedProfileIds, profileRecords]);
 
   const directoryPageCount = Math.max(1, Math.ceil(directoryProfiles.length / directoryPageSize));
   const visibleDirectoryProfiles = directoryProfiles.slice(
@@ -1826,6 +1823,7 @@ export function CrossProfileAnalytics({
           <div>
             <span className="eyebrow">Profile management</span>
             <h2 id="profile-directory-title">Profiles</h2>
+            <p className="muted-text">Gross P&amp;L range: {formatHumanDisplayDate(resolvedRange.start.toISOString())} to {formatHumanDisplayDate(resolvedRange.end.toISOString())}.</p>
           </div>
           <div className="tracker-nav profile-directory-heading-actions">
             <span className="profile-picker-count">{directoryProfiles.length} shown</span>
@@ -1935,7 +1933,7 @@ export function CrossProfileAnalytics({
                         </span>
                       </span>
                     </td>
-                    <td><FinancialReadValue state={profileReadState([profile.profileId])} subject="profit and loss" value={profile.summary?.grossBettingPnl ?? Number.NaN} /></td>
+                    <td><BettingPnlReadValue state={profileReadState([profile.profileId])} activityCount={profile.summary?.bettingActivityCount ?? 0} value={profile.summary?.grossBettingPnl ?? Number.NaN} /></td>
                     <td>
                       <span className="table-status">
                         <FinancialReadValue state={profileReadState([profile.profileId], "fees")} subject="fee position" value={feePositionByProfile.get(profile.profileId)?.availableToWithdraw ?? Number.NaN} />

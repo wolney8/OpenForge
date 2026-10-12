@@ -120,6 +120,18 @@ function parseDashboardDate(value: string | null | undefined): Date | null {
   return Number.isFinite(timestamp) ? new Date(timestamp) : null;
 }
 
+function activityReportingDate(row: {
+  status: string;
+  date_settled?: string | null;
+  date_settling?: string | null;
+  created_at?: string | null;
+  date_started?: string | null;
+}): Date | null {
+  const settled = row.status === "Settled" || row.status === "Cancelled";
+  if (settled) return parseDashboardDate(row.date_settled ?? row.date_settling);
+  return parseDashboardDate(row.created_at ?? row.date_started);
+}
+
 function isDateInRange(date: Date | null, range: ResolvedDateRange): date is Date {
   return date !== null && date.getTime() >= range.start.getTime() && date.getTime() <= range.end.getTime();
 }
@@ -203,35 +215,28 @@ export function buildDashboardTrendFromDataset({
   summary: TrackerSummaryResult;
 }): DashboardTrendPoint[] {
   const bucket = getTrendBucket(range);
-  const rows: Array<{ date: Date; value: number }> = [
+  const rows: Array<{ date: Date | null; value: number }> = [
     ...dataset.sportsbookBets.map((row) => ({
-      date: parseDashboardDate(row.date_settled) ?? parseDashboardDate(row.created_at) ?? range.start,
+      date: activityReportingDate(row),
       value: parseDashboardMoney(row.reporting_value),
     })),
     ...dataset.freeBets.map((row) => ({
-      date:
-        parseDashboardDate(row.date_settled) ??
-        parseDashboardDate(row.expiry_datetime) ??
-        parseDashboardDate(row.created_at) ??
-        range.start,
+      date: activityReportingDate(row),
       value: parseDashboardMoney(row.reporting_value),
     })),
     ...dataset.casinoOffers.map((row) => ({
-      date:
-        parseDashboardDate(row.date_settling) ??
-        parseDashboardDate(row.date_started) ??
-        parseDashboardDate(row.expiry_datetime) ??
-        range.start,
+      date: activityReportingDate(row),
       value: parseDashboardMoney(row.resolved_net_pnl),
     })),
     ...(dataset.eachWayExtraPlaces ?? []).map((row) => ({
-      date: parseDashboardDate(row.placed_at) ?? range.start,
+      date: parseDashboardDate(row.placed_at),
       value: parseDashboardMoney(row.final_value ?? row.current_value),
     })),
-  ].filter((row) => isDateInRange(row.date, range));
+  ].filter((row): row is { date: Date; value: number } => isDateInRange(row.date, range));
 
   const buckets = new Map<string, number>();
   for (const row of rows) {
+    if (!row.date) continue;
     const key = getBucketKey(row.date, bucket);
     buckets.set(key, (buckets.get(key) ?? 0) + row.value);
   }
@@ -283,15 +288,15 @@ export function buildDashboardDrilldownRows({
   range: ResolvedDateRange;
 }): DashboardDrilldownRow[] {
   const bucket = getTrendBucket(range);
-  const rows: Array<DashboardDrilldownRow & { date: Date }> = [
-    ...dataset.sportsbookBets.map((row) => ({ id: row.sportsbook_bet_id, module: "sportsbook-bets" as const, label: row.event_name || row.offer_name || "Sportsbook activity", date: parseDashboardDate(row.date_settled) ?? parseDashboardDate(row.created_at) ?? range.start, value: parseDashboardMoney(row.reporting_value) })),
-    ...dataset.freeBets.map((row) => ({ id: row.free_bet_id, module: "free-bets" as const, label: row.event_name || "Free Bet activity", date: parseDashboardDate(row.date_settled) ?? parseDashboardDate(row.expiry_datetime) ?? parseDashboardDate(row.created_at) ?? range.start, value: parseDashboardMoney(row.reporting_value) })),
-    ...dataset.casinoOffers.map((row) => ({ id: row.casino_offer_id, module: "casino-offers" as const, label: row.offer_name || "Casino activity", date: parseDashboardDate(row.date_settling) ?? parseDashboardDate(row.date_started) ?? parseDashboardDate(row.expiry_datetime) ?? range.start, value: parseDashboardMoney(row.resolved_net_pnl) })),
-    ...(dataset.eachWayExtraPlaces ?? []).map((row) => ({ id: row.each_way_extra_place_id, module: "each-way-extra-places" as const, label: row.runner || row.race || "Each Way / Extra Place activity", date: parseDashboardDate(row.placed_at) ?? range.start, value: parseDashboardMoney(row.final_value ?? row.current_value) })),
+  const rows: Array<DashboardDrilldownRow & { date: Date | null }> = [
+    ...dataset.sportsbookBets.map((row) => ({ id: row.sportsbook_bet_id, module: "sportsbook-bets" as const, label: row.event_name || row.offer_name || "Sportsbook activity", date: activityReportingDate(row), value: parseDashboardMoney(row.reporting_value) })),
+    ...dataset.freeBets.map((row) => ({ id: row.free_bet_id, module: "free-bets" as const, label: row.event_name || "Free Bet activity", date: activityReportingDate(row), value: parseDashboardMoney(row.reporting_value) })),
+    ...dataset.casinoOffers.map((row) => ({ id: row.casino_offer_id, module: "casino-offers" as const, label: row.offer_name || "Casino activity", date: activityReportingDate(row), value: parseDashboardMoney(row.resolved_net_pnl) })),
+    ...(dataset.eachWayExtraPlaces ?? []).map((row) => ({ id: row.each_way_extra_place_id, module: "each-way-extra-places" as const, label: row.runner || row.race || "Each Way / Extra Place activity", date: parseDashboardDate(row.placed_at), value: parseDashboardMoney(row.final_value ?? row.current_value) })),
   ];
   return rows
     .filter((row) => isDateInRange(row.date, range) && getBucketKey(row.date, bucket) === pointKey)
-    .map(({ date: _date, ...row }) => row);
+    .map((row) => ({ id: row.id, module: row.module, label: row.label, value: row.value }));
 }
 
 export function buildSparklinePoints(points: Array<{ value: number }>, includeZero = false): { line: string; area: string; zeroY?: number } {

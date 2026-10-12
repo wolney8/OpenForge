@@ -1,15 +1,24 @@
+"use client";
+
+import Link from "next/link";
+import { useMemo, useState } from "react";
+import { LedgerPagination } from "@/components/ledger-pagination";
 import type { AccountMoneyIssue } from "@/lib/account-money";
 
-type IssueGroup = { accountId: string; accountName: string; fields: string[] };
+type IssueGroup = { accountId: string; accountName: string; fields: string[]; profileId?: string };
 
-function groupIssues(issues: AccountMoneyIssue[]): IssueGroup[] {
+export function groupAccountMoneyIssues(issues: AccountMoneyIssue[]): IssueGroup[] {
   const grouped = new Map<string, IssueGroup>();
   for (const issue of issues) {
-    const key = `${issue.accountId}:${issue.accountName}`;
+    // Imported legacy data can contain repeated physical rows for the same
+    // Profile/provider. Cash correction is a Profile + Account action, so the
+    // warning presents that stable owner-facing identity once.
+    const key = `${issue.profileId ?? "profile"}:${issue.accountName.trim().toLocaleLowerCase()}`;
     const group = grouped.get(key) ?? {
       accountId: issue.accountId,
       accountName: issue.accountName,
       fields: [],
+      profileId: issue.profileId,
     };
     const field = issue.field === "current_balance" ? "current balance" : "pending withdrawal";
     if (!group.fields.includes(field)) group.fields.push(field);
@@ -27,8 +36,16 @@ function MoneyIssueDisclosure({
   issues: AccountMoneyIssue[];
   severity: "warning" | "error";
 }) {
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(16);
+  const groups = useMemo(() => groupAccountMoneyIssues(issues), [issues]);
+  const pageCount = Math.max(1, Math.ceil(groups.length / pageSize));
+  const safePage = Math.min(page, pageCount);
+  const visibleGroups = useMemo(
+    () => groups.slice((safePage - 1) * pageSize, safePage * pageSize),
+    [groups, pageSize, safePage],
+  );
   if (issues.length === 0) return null;
-  const groups = groupIssues(issues);
   const invalid = severity === "error";
   const label = invalid
     ? `Account cash information is invalid for ${groups.length} ${groups.length === 1 ? "Account" : "Accounts"}.`
@@ -49,13 +66,22 @@ function MoneyIssueDisclosure({
         <span className="account-money-status-action">View affected Accounts</span>
       </summary>
       <ul>
-        {groups.map((group) => (
+        {visibleGroups.map((group) => (
           <li key={group.accountId}>
-            <strong>{group.accountName}</strong>
+            {group.profileId ? (
+              <Link href={`/profiles/${group.profileId}/tracker/accounts?search=${encodeURIComponent(group.accountName.split(" · ").at(-1) ?? group.accountName)}`}>
+                <strong>{group.accountName}</strong>
+              </Link>
+            ) : <strong>{group.accountName}</strong>}
             <span>{invalid ? "Invalid" : "Not recorded"}: {group.fields.join(" and ")}</span>
           </li>
         ))}
       </ul>
+      {groups.length > pageSize ? (
+        <LedgerPagination ariaLabel="Affected Accounts" currentPage={safePage}
+          onPageChange={setPage} onPageSizeChange={(size) => { setPageSize(size); setPage(1); }} pageCount={pageCount} pageSize={pageSize}
+          position="bottom" totalRows={groups.length} />
+      ) : null}
     </details>
   );
 }

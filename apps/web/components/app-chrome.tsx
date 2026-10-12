@@ -47,6 +47,7 @@ import {
   recordRecentProfile,
 } from "@/lib/recent-profiles";
 import { beginRouteTransition } from "@/lib/shell-loading";
+import { resolveEquivalentProfileRoute } from "@/lib/profile-navigation";
 import {
   APP_CONFIRMED_NAVIGATION_EVENT,
   APP_CONFIRMATION_OPEN_EVENT,
@@ -96,7 +97,7 @@ type HeaderSummaryState = {
 };
 
 const profileTrackerMenuRoutes = [
-  { href: "dashboard", title: "Dashboard", icon: "dashboard" },
+  { href: "dashboard", title: "Profile Operations", icon: "dashboard" },
   { href: "sportsbook-bets", title: "Sportsbook Bets", icon: "sports" },
   { href: "free-bets", title: "Free Bets", icon: "award_star" },
   { href: "casino-offers", title: "Casino Offers", icon: "playing_cards" },
@@ -649,6 +650,9 @@ function AppChromeContent({
 
   const selectProfileInCommandMenu = (profileId: string) => {
     setSelectedCommandProfileId(profileId);
+    if (profileId !== activeProfileId) {
+      void navigateFromProfileCommand(resolveEquivalentProfileRoute(pathname, profileId));
+    }
   };
 
   const navigateFromProfileCommand = async (href: string) => {
@@ -724,7 +728,7 @@ function AppChromeContent({
                     <span className="summary-menu-subtitle">
                       {profileSummaryLoading ? (
                         <>
-                          <span aria-hidden="true" className="button-spinner" />
+                          <span aria-hidden="true" className="material-symbols-outlined summary-menu-loading-icon">progress_activity</span>
                           <span>Loading Profile summary</span>
                         </>
                       ) : profileSummaryUnavailable ? (
@@ -837,7 +841,7 @@ function AppChromeContent({
 
                       return (
                         <button
-                          aria-current={isActive ? "page" : undefined}
+                          aria-current={isActive ? "location" : undefined}
                           className={`profile-command-route-card ${isActive ? "is-active" : ""}`}
                           data-pd-id={`profile-command.route.${route.href}`}
                           key={route.href}

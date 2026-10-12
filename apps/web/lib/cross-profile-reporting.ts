@@ -35,6 +35,7 @@ export type ProfileComparisonRow = {
   extraPlaceActionCount: number;
   expiringFreeBetCount: number;
   currentLiability: number;
+  bettingActivityCount: number;
 };
 
 export type CrossProfileReportingResult = {
@@ -93,7 +94,11 @@ function aggregateReportRows(rows: ReportRow[]): ReportRow[] {
 export function aggregateCrossProfileReporting(
   profiles: ProfileReportingInput[]
 ): CrossProfileReportingResult {
-  const cashIssues=profiles.flatMap(p=>(p.summary.accountQuickView.moneyIssues??[]).map(issue=>({...issue,accountName:`${p.displayName} · ${issue.accountName}`})));
+  const cashIssues=profiles.flatMap(p=>(p.summary.accountQuickView.moneyIssues??[]).map(issue=>({
+    ...issue,
+    profileId:p.profileId,
+    accountName:`${p.displayName} · ${issue.accountName}`,
+  })));
   // Current lifecycle status is display/scope metadata, not a historical-report exclusion.
   const profileRows = profiles.map(({ profileId, displayName, profileCode, status, summary, actionable, trueOpenPositionCount }) => {
     const actionCounts = actionable ?? { sportsbook: 0, freeBets: 0, casinoOffers: 0, extraPlaces: 0 };
@@ -115,6 +120,7 @@ export function aggregateCrossProfileReporting(
       extraPlaceActionCount: actionCounts.extraPlaces,
       expiringFreeBetCount: summary.betsQuickView.expiringFreeBetCount,
       currentLiability: summary.betsQuickView.currentLiability,
+      bettingActivityCount: summary.activityQuickView.sportsbookCount + summary.activityQuickView.freeBetCount + summary.activityQuickView.casinoCount + summary.activityQuickView.eachWayExtraPlaceCount,
     };
   });
 
@@ -133,6 +139,7 @@ export function aggregateCrossProfileReporting(
       extraPlaceActionCount: aggregate.extraPlaceActionCount + row.extraPlaceActionCount,
       expiringFreeBetCount: aggregate.expiringFreeBetCount + row.expiringFreeBetCount,
       currentLiability: aggregate.currentLiability + row.currentLiability,
+      bettingActivityCount: aggregate.bettingActivityCount + row.bettingActivityCount,
     }),
     {
       grossBettingPnl: 0,
@@ -148,6 +155,7 @@ export function aggregateCrossProfileReporting(
       extraPlaceActionCount: 0,
       expiringFreeBetCount: 0,
       currentLiability: 0,
+      bettingActivityCount: 0,
     }
   );
 

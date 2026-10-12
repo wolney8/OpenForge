@@ -39,7 +39,7 @@ test.describe("Login to profiles shell", () => {
     await page.goto("/profiles");
 
     await expect(page).toHaveURL(/\/profiles$/);
-    await expect(page.getByRole("heading", { name: "Fund Manager Dashboard" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Profiles" })).toBeVisible();
     await expect(page.getByText("Profiles are isolated tracker containers.")).toHaveCount(0);
 
     const profileId = "profile-demo-001";
@@ -57,10 +57,7 @@ test.describe("Login to profiles shell", () => {
       .locator('[data-pd-id^="profile-command.profile."]:not([aria-current="page"])')
       .first();
     if ((await otherProfileButton.count()) > 0) {
-      const beforeSelectionUrl = page.url();
       await otherProfileButton.click();
-      await expect(page).toHaveURL(beforeSelectionUrl);
-      await page.locator('[data-pd-id="profile-command.route.dashboard"]').click();
       await expect(page).toHaveURL(
         new RegExp(`/profiles/(?!${profileId})[^/]+/tracker/dashboard$`)
       );

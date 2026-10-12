@@ -51,7 +51,7 @@ export function FundManagerDashboardLoader({
 }) {
   const [profiles, setProfiles] = useState<ProfileDescriptor[] | null>(null);
   const [error, setError] = useState("");
-  const pageTitle = pageKind === "profiles" ? "Profiles" : pageKind === "reports" ? "Reports" : "Dashboard";
+  const pageTitle = pageKind === "profiles" ? "Profiles" : pageKind === "reports" ? "Reports" : "Summary Dashboard";
 
   useEffect(() => {
     let active = true;

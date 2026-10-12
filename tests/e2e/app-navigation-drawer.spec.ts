@@ -94,7 +94,7 @@ test.describe("Global application navigation drawer", () => {
   test("uses canonical Dashboard and Profiles routes", async ({ page }) => {
     await page.goto("/profiles?view=performance");
     await expect(page).toHaveURL(/\/$/);
-    await expect(page.getByRole("heading", { name: "Dashboard", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Summary Dashboard", exact: true })).toBeVisible();
 
     await page.locator('[data-pd-id="app-navigation.trigger"]').click();
     await page.locator('[data-pd-id="app-navigation.profiles"]').click();

@@ -89,7 +89,7 @@ test("Dashboard and Reports expose distinct selected-range and formal-period vie
   );
   await page.goto(`/profiles/${primaryProfileId}/tracker/dashboard`);
   await expect(page.getByText("Loading tracker summaries")).toBeHidden({ timeout: 60_000 });
-  await expect(page.getByRole("heading", { name: "Dashboard", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Operations$/, exact: true })).toBeVisible();
   await expect(
     page.locator('[data-access-tier="internal_operational"]', {
       hasText: "Fund Manager only",

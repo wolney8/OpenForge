@@ -55,6 +55,7 @@ type SummaryVariant = "dashboard" | "profit-tracker" | "reports";
 
 type TrackerSummaryShellProps = {
   profileId: string;
+  profileTitle?: string;
   variant: SummaryVariant;
 };
 
@@ -119,10 +120,10 @@ function getActivityLedgerHref(profileId: string, module: string, reference: str
   return `/profiles/${profileId}/tracker/${route}?search=${encodeURIComponent(reference)}`;
 }
 
-function getVariantTitle(variant: SummaryVariant) {
+function getVariantTitle(variant: SummaryVariant, profileTitle?: string) {
   switch (variant) {
     case "dashboard":
-      return "Dashboard";
+      return profileTitle ? `${profileTitle} Operations` : "Profile Operations";
     case "profit-tracker":
       return "Dashboard / Profit Tracker";
     case "reports":
@@ -262,7 +263,7 @@ function renderAttentionTable({
   });
 }
 
-export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellProps) {
+export function TrackerSummaryShell({ profileId, profileTitle, variant }: TrackerSummaryShellProps) {
   const { catalogue: bookmakerCatalogue, providerIdsByName } = useBookmakerCatalogue(profileId);
   const [data, setData] = useState<TrackerSummaryDataset | null>(null);
   const [feePeriods, setFeePeriods] = useState<FeePeriodApiRecord[]>([]);
@@ -646,7 +647,7 @@ export function TrackerSummaryShell({ profileId, variant }: TrackerSummaryShellP
       <section className="content-panel stack" inert={isCriticalLoading ? true : undefined}>
         <div className="panel-header">
           <div className="section-heading-row">
-            <h2>{getVariantTitle(variant)}</h2>
+            <h2>{getVariantTitle(variant, profileTitle)}</h2>
             <AccessScopeBadge />
           </div>
         </div>

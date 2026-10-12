@@ -107,7 +107,7 @@ test.describe("Profile lifecycle and shell routing", () => {
     await expect(page.getByText("Loading combined profile reporting")).toBeHidden();
     await page.waitForTimeout(750);
     await expect(page.getByText("Loading combined profile reporting")).toBeHidden();
-    await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Summary Dashboard" })).toBeVisible();
   });
 
   test("defaults the Profile directory to Active and exposes Archived and All", async ({ page }) => {
@@ -409,7 +409,7 @@ test.describe("Profile lifecycle and shell routing", () => {
     await mockProfileDirectory(page);
 
     await page.goto("/");
-    await expect(page.getByRole("heading", { name: "Dashboard", exact: true }).first()).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Summary Dashboard", exact: true }).first()).toBeVisible();
     await expect(page.getByRole("tab", { name: "Performance" })).toHaveAttribute("aria-selected", "true");
     await expect(page.getByText("Founder Profile", { exact: true })).toHaveCount(0);
     await expect(page.getByText("Complete Profile setup", { exact: true })).toHaveCount(0);
