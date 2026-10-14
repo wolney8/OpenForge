@@ -191,5 +191,7 @@ Complete this for every feature, bug fix, component, fixture-backed UI, route or
       dismissible and scroll-contained; reduced-motion needs no chart reveal animation.
 - [x] Workbook verification is headless: stable Profile identity, internal formulas, absence of
       external-workbook parts and six-row ALPHA Last Month scope are asserted programmatically.
-- [ ] Owner interaction at canonical localhost:3010 remains pending after installation; no Excel
+- [x] Canonical localhost:3010/8010 serves the installed revision with the preserved database
+      identity and authenticated boundary.
+- [ ] Owner interaction at canonical localhost:3010 remains pending; no Excel
       or desktop application was opened or controlled.

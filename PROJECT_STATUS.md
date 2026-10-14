@@ -6,7 +6,8 @@
 > by the active Selected Range workflow. P&L readiness, Profile switching, chart interaction and
 > self-contained working-workbook identity corrections passed the bounded automated gates. The
 > additive local migration was applied at 2026-10-14 14:21 BST after verified backup
-> `BACKUP-5DE8D6D5`; owner acceptance remains unverified and no GitHub/hosted release is authorised.
+> `BACKUP-5DE8D6D5`. Canonical 3010/8010 health and database identity were rechecked; owner
+> interaction remains unverified and no GitHub/hosted release is authorised.
 
 **Last updated:** 2026-09-26 23:29:27 BST · **Status:** CP-055 completed locally; protected Preview promotion blocked
 

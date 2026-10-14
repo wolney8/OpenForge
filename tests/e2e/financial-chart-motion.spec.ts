@@ -118,7 +118,7 @@ test("Reports settles a mature populated dataset without an update-depth loop", 
 test("dashboard containers coordinate financial, bar, and ring replay without layout drift", async ({ page }) => {
   const pageErrors: string[] = [];
   page.on("pageerror", (error) => pageErrors.push(`${error.message}\n${error.stack ?? ""}`));
-  await mockDashboard(page);
+  await mockDashboard(page, true, 5);
   await page.goto(`/profiles/${profileId}/tracker/dashboard`);
   await expect(page.getByText("Loading tracker summaries")).toBeHidden({ timeout: 60_000 });
 
@@ -126,8 +126,7 @@ test("dashboard containers coordinate financial, bar, and ring replay without la
   const targetBar = targetCard.locator('[data-progress-motion]');
   const targetValue = targetCard.locator(".financial-value").first();
   const performanceCard = page.locator('[data-pd-id="dashboard.selected-range-performance"]');
-  const performanceGraph = performanceCard.locator('[data-chart-motion]');
-  const performanceValue = performanceCard.locator(".financial-value").first();
+  const performanceGraph = performanceCard.locator(".dashboard-chart-figure");
   const moduleCard = page.locator('[data-pd-id="dashboard.module-mix"]');
   const moduleBars = moduleCard.locator('[data-progress-motion]');
   const focusCard = page.locator('[data-pd-id="dashboard.action-load"]');
@@ -162,27 +161,30 @@ test("dashboard containers coordinate financial, bar, and ring replay without la
   const chartDuration = Number.parseFloat(await targetBar.evaluate((bar) => getComputedStyle(bar).animationDuration));
   expect(chartDuration).toBeGreaterThanOrEqual(1);
 
-  await performanceCard.click({ position: { x: 18, y: 18 } });
-  await expect(performanceGraph).toHaveAttribute("data-chart-motion", "running");
-  await expect(performanceGraph.locator(".dashboard-sparkline-line")).toHaveCSS(
-    "animation-name",
-    "dashboard-graph-line-reveal",
-  );
-  expect(Number(await performanceValue.getAttribute("data-money-motion-cycle"))).toBeGreaterThan(0);
-
   const trendPoints = performanceGraph.getByRole("button");
   expect(await trendPoints.count()).toBeGreaterThan(0);
   const firstPoint = trendPoints.first();
   const firstPointName = await firstPoint.getAttribute("aria-label");
+  const chartBoundsBefore = await performanceGraph.boundingBox();
   await firstPoint.focus();
   await expect(performanceCard.locator(".dashboard-chart-point-detail")).toContainText(
     firstPointName?.split(":")[0] ?? "",
   );
+  await firstPoint.hover();
+  const chartBoundsAfter = await performanceGraph.boundingBox();
+  expect(chartBoundsAfter?.width).toBe(chartBoundsBefore?.width);
+  expect(chartBoundsAfter?.height).toBe(chartBoundsBefore?.height);
   await firstPoint.press("Enter");
   await expect(firstPoint).toHaveClass(/is-selected/);
   const pointRecords = performanceCard.locator('[data-pd-id="dashboard.chart.drilldown"]');
   await expect(pointRecords).toBeVisible();
   await expect(pointRecords.getByRole("heading", { name: "Records in this point" })).toBeVisible();
+  await expect(pointRecords.getByRole("link")).toHaveCount(3);
+  await expect(pointRecords.getByRole("button", { name: "View all 5 records" })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(pointRecords).toBeHidden();
+  await expect(firstPoint).toBeFocused();
+  await firstPoint.press("Enter");
   const underlyingRecord = pointRecords.getByRole("link", { name: /Synthetic event/ });
   await expect(underlyingRecord).toContainText("£ 100.00");
   await expect(underlyingRecord).toHaveAttribute(
@@ -197,7 +199,7 @@ test("dashboard containers coordinate financial, bar, and ring replay without la
 
   const uncoveredMotionCards = await page.locator("article.dashboard-visual-card").evaluateAll((cards) =>
     cards
-      .filter((card) => card.querySelector(".financial-value, [data-progress-motion], [data-chart-motion]"))
+      .filter((card) => card.querySelector(".financial-value, [data-progress-motion]"))
       .filter((card) => card.getAttribute("data-motion-replay-group") !== "true")
       .map((card) => card.getAttribute("data-pd-id") ?? card.className),
   );
