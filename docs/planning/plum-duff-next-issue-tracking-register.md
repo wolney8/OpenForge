@@ -2077,6 +2077,24 @@ Shared Profile and Dashboard consumers remain unchanged; only the Fund Manager R
 Owner acceptance, 2026-10-09 12:29:49 BST: CP-078 Reports passes for now. Reports is
 accepted for this checkpoint and is not part of the CP-075 integration scope.
 
+## Local owner authentication restart regression — bounded repair
+
+Recorded 2026-10-14 under [#62](https://github.com/wolney8/OpenForge/issues/62). Workbook
+smoke and all feature work remain paused.
+
+| ID | Requested outcome | Status |
+| --- | --- | --- |
+| LOGIN-RELIABILITY-001 / PD-FIX-321 | Canonical 3010 and 8010 restarts must load one compatible owner authentication environment; normal-owner web startup fails closed when the required signing/origin/allowlist settings are absent | NEEDS VERIFICATION: implementation and deterministic parity tests pass; one genuine owner Google return remains |
+| PD-FIX-322 | A present but rejected session returns an owner-facing session error instead of silently bouncing to Login | COMPLETE: the protected-route guard preserves the safe return path and selects the existing accessible session-ended alert |
+
+Root cause: API 8010 used the role-bound launcher and primary owner environment, while web 3010
+was started directly from a worktree with no `.env`. Three failed owner callbacks each created an
+active durable session, but Next had neither the signing secret nor owner allowlist and rejected the
+cookie before `/api/auth/session`. The canonical `dev:web` command now uses a role-bound launcher,
+loads the same primary environment without overriding explicit test settings, validates required
+auth/origin fields before serving, and keeps candidate/test environments explicit. No session or
+financial row was changed or revoked.
+
 ## CP-075 Sportsbook promotion local integration — approved bounded batch
 
 Recorded 2026-10-09 12:29:49 BST. PD-FIX-317–320 cover the accepted Sportsbook-first

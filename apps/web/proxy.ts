@@ -25,6 +25,7 @@ export async function proxy(request: NextRequest) {
   if (isAuthenticated && !subscriberPath) return NextResponse.next();
 
   const loginUrl = new URL("/login", request.url);
+  if (token) loginUrl.searchParams.set("error", "session_expired");
   loginUrl.searchParams.set("next", `${request.nextUrl.pathname}${request.nextUrl.search}`);
   return NextResponse.redirect(loginUrl);
 }

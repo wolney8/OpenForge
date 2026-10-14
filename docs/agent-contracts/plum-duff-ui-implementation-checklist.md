@@ -169,3 +169,14 @@ Complete this for every feature, bug fix, component, fixture-backed UI, route or
   passed focused review. No owner-data test.
 - Fresh normal-owner Google interaction, VoiceOver and hosted Preview remain distinct
   unexecuted acceptance/resource checks; no replacement manual correctness campaign.
+
+## Local owner authentication restart repair — 2026-10-14
+
+- [x] Reused the existing Login alert, protected-route proxy and localhost callback contract; no
+      new visual component, auth architecture, credential or permission behaviour.
+- [x] Present-but-invalid sessions retain the requested route and render the existing accessible
+      `role="alert"` session-ended message; missing cookies retain the ordinary Login path.
+- [x] API callback/session tests, frontend proxy tests, canonical launcher parity/fail-closed tests,
+      full web tests, typecheck, production build and focused ESLint/Ruff pass.
+- [ ] Genuine owner Google return through 3010 remains the final provider/browser verification;
+      no desktop or browser automation was used.

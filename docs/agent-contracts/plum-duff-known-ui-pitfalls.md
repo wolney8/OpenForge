@@ -1400,3 +1400,12 @@ A viewport-bounded flex modal allowed its table viewport to shrink to zero while
   columns can enlarge the document despite the visible table being scroll-contained.
   Reproduced on the new subscriber statement table; verify populated columns, not
   only the empty state. Existing shared ledger scroll controls remain the reference.
+
+## Local web and API restarts must share the canonical auth environment
+
+Starting the API through the role-bound launcher while starting Next directly from a worktree can
+leave the frontend without the session signing secret and owner allowlist. Google callback then
+creates a valid API session, but the frontend route guard rejects the cookie before `/auth/session`
+is reached. Start both canonical services through role-bound launchers, load the same primary owner
+environment, and fail closed before serving 3010 when required auth settings are incomplete. A
+present but invalid session must produce the existing owner-facing session-ended message.

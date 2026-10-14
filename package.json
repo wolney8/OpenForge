@@ -5,7 +5,7 @@
   "scripts": {
     "build:web": "pnpm --filter @openforge/web build",
     "dev:api": "./scripts/run-python.sh scripts/run-api-runtime.py --role normal-owner",
-    "dev:web": "pnpm --filter @openforge/web exec next dev --port 3010",
+    "dev:web": "./scripts/run-python.sh scripts/run-web-runtime.py --role normal-owner",
     "lint:web": "pnpm --filter @openforge/web lint",
     "typecheck:web": "pnpm --filter @openforge/web typecheck",
     "test:web": "pnpm --filter @openforge/web test",

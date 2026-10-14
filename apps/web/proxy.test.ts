@@ -63,4 +63,20 @@ describe("application route proxy", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("location")).toBeNull();
   });
+
+  it("explains when a present session cannot be validated", async () => {
+    process.env.OPENFORGE_AUTH_REQUIRED = "true";
+    delete process.env.OPENFORGE_AUTH_SESSION_SECRET;
+    delete process.env.OPENFORGE_AUTH_OWNER_EMAILS;
+    const request = new NextRequest("http://localhost:3010/profiles", {
+      headers: { Cookie: `pd_session=${ownerToken()}` },
+    });
+
+    const response = await proxy(request);
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe(
+      "http://localhost:3010/login?error=session_expired&next=%2Fprofiles"
+    );
+  });
 });
