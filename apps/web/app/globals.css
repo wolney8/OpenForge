@@ -729,7 +729,13 @@ textarea {
 }
 
 .profile-summary-route-group {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(2, 197px);
+  justify-content: space-between;
+}
+
+.profile-summary-route-group > :first-child {
+  grid-column: 1 / -1;
+  width: 100%;
 }
 
 .profile-command-footer {
@@ -745,7 +751,8 @@ textarea {
   align-items: center;
   gap: 0.55rem;
   min-width: 0;
-  min-height: 3.15rem;
+  height: 50px;
+  width: 197px;
   padding: 0.65rem 0.75rem;
   border: 1px solid var(--outline);
   border-radius: 0.95rem;
@@ -757,6 +764,11 @@ textarea {
   text-align: left;
   cursor: pointer;
   transition: border-color 150ms ease, background 150ms ease, color 150ms ease, transform 150ms ease;
+}
+
+.profile-summary-route-group > :first-child > span:last-child {
+  overflow: visible;
+  text-overflow: clip;
 }
 
 .profile-command-route-card:hover,
@@ -2725,16 +2737,16 @@ html[data-theme="dark"] .notification-count-badge {
 }
 
 .dashboard-sparkline {
-  aspect-ratio: 100 / 42;
   display: block;
   width: 100%;
-  height: auto;
-  max-height: 10.75rem;
+  height: clamp(10rem, 22vw, 14rem);
 }
 
 .dashboard-chart-figure {
+  min-height: 16.5rem;
   min-width: 0;
   margin: 0;
+  position: relative;
 }
 
 .dashboard-sparkline-area {
@@ -2775,16 +2787,31 @@ html[data-theme="dark"] .notification-count-badge {
   border-radius: var(--shape-medium);
   display: inline-flex;
   gap: 0.65rem;
-  margin-block-start: 0.5rem;
+  inset: 0.65rem auto auto 0.65rem;
+  margin: 0;
   padding: 0.5rem 0.75rem;
+  position: absolute;
+  z-index: 2;
 }
 
 .dashboard-chart-drilldown {
-  margin-block-start: 0.5rem;
+  inset: 3.75rem 0.75rem auto auto;
+  margin: 0;
+  max-height: min(18rem, calc(100% - 4.5rem));
+  max-width: min(28rem, calc(100% - 1.5rem));
+  overflow: auto;
   padding: 0.75rem;
+  position: absolute;
+  width: 100%;
+  z-index: 4;
   border: 1px solid var(--outline-variant);
   border-radius: var(--shape-medium);
   background: var(--surface-container-low);
+}
+
+@media (max-width: 34rem) {
+  .profile-summary-route-group { grid-template-columns: minmax(0, 1fr); }
+  .profile-command-route-card { width: 100%; }
 }
 
 .dashboard-chart-drilldown h4,

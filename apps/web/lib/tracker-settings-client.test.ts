@@ -30,7 +30,11 @@ afterEach(() => {
 
 describe("saveTrackerDatePreset", () => {
   it("persists one complete settings mutation and announces the committed range", async () => {
-    const savedSettings = { ...currentSettings, active_date_preset: "This Month" };
+    const savedSettings = {
+      selected_range_preset: "This Month",
+      selected_range_custom_start: null,
+      selected_range_custom_end: null,
+    };
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(JSON.stringify(savedSettings), {
         headers: { "Content-Type": "application/json" },
@@ -43,17 +47,17 @@ describe("saveTrackerDatePreset", () => {
 
     await expect(
       saveTrackerDatePreset("profile-synthetic-001", currentSettings, "This Month")
-    ).resolves.toEqual(savedSettings);
+    ).resolves.toEqual({ ...currentSettings, active_date_preset: "This Month" });
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining("/profiles/profile-synthetic-001/tracker-settings"),
+      expect.stringContaining("/fund-manager/preferences/selected-range"),
       expect.objectContaining({ method: "PUT" })
     );
     expect(JSON.parse(fetchMock.mock.calls[0]![1]!.body as string)).toMatchObject({
-      active_date_preset: "This Month",
-      custom_start_date: "",
-      custom_end_date: "",
+      selected_range_preset: "This Month",
+      selected_range_custom_start: null,
+      selected_range_custom_end: null,
     });
     expect(eventListener).toHaveBeenCalledTimes(1);
     window.removeEventListener(TRACKER_SETTINGS_UPDATED_EVENT, eventListener);

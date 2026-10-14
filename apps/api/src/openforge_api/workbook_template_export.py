@@ -790,6 +790,8 @@ def _control_values(
             "F6": (onboarding["starting_bankroll"], "decimal_or_empty"),
             "B7": (onboarding["iteration_number"], "integer"),
             "D7": (tracker["free_bet_expiry_alert_window_days"], "integer"),
+            "C8": ("Profile ID", "text"),
+            "D8": (profile["profile_id"], "text"),
         }
     }
 

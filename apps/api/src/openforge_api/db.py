@@ -987,6 +987,9 @@ def initialize_database(connection: sqlite3.Connection) -> None:
         CREATE TABLE IF NOT EXISTS fund_manager_settings (
           fund_manager_id TEXT PRIMARY KEY,
           bookmaker_display_mode TEXT NOT NULL DEFAULT 'Name',
+          selected_range_preset TEXT NOT NULL DEFAULT 'Week (Mon-Sun)',
+          selected_range_custom_start TEXT,
+          selected_range_custom_end TEXT,
           financial_motion_enabled INTEGER NOT NULL DEFAULT 1,
           financial_motion_replay_delay_ms INTEGER NOT NULL DEFAULT 1500,
           financial_motion_duration_ms INTEGER NOT NULL DEFAULT 520,
@@ -2245,6 +2248,14 @@ def initialize_database(connection: sqlite3.Connection) -> None:
     )
     # Additive relationship v1: legacy rows remain explicitly unclassified.
     ensure_column(connection, "profiles", "profile_relationship", "TEXT NOT NULL DEFAULT ''")
+    ensure_column(
+        connection,
+        "fund_manager_settings",
+        "selected_range_preset",
+        "TEXT NOT NULL DEFAULT 'Week (Mon-Sun)'",
+    )
+    ensure_column(connection, "fund_manager_settings", "selected_range_custom_start", "TEXT")
+    ensure_column(connection, "fund_manager_settings", "selected_range_custom_end", "TEXT")
     ensure_column(
         connection,
         "fund_manager_settings",
@@ -7443,6 +7454,54 @@ def update_global_bookmaker_display_mode(mode: str) -> None:
             """,
             (mode, timestamp, timestamp),
         )
+
+
+def get_fund_manager_selected_range() -> dict[str, str | None]:
+    with connect() as connection:
+        row = connection.execute(
+            """
+            SELECT selected_range_preset, selected_range_custom_start,
+                   selected_range_custom_end
+            FROM fund_manager_settings
+            WHERE fund_manager_id = 'fund-manager-local'
+            """
+        ).fetchone()
+    if row is None:
+        return {
+            "selected_range_preset": "Week (Mon-Sun)",
+            "selected_range_custom_start": None,
+            "selected_range_custom_end": None,
+        }
+    return {
+        "selected_range_preset": str(row["selected_range_preset"]),
+        "selected_range_custom_start": row["selected_range_custom_start"],
+        "selected_range_custom_end": row["selected_range_custom_end"],
+    }
+
+
+def update_fund_manager_selected_range(
+    *, preset: str, custom_start: str | None, custom_end: str | None
+) -> dict[str, str | None]:
+    timestamp = utc_now()
+    start = custom_start if preset == "Custom" else None
+    end = custom_end if preset == "Custom" else None
+    with connect() as connection:
+        connection.execute(
+            """
+            INSERT INTO fund_manager_settings (
+              fund_manager_id, bookmaker_display_mode, selected_range_preset,
+              selected_range_custom_start, selected_range_custom_end,
+              created_at, updated_at
+            ) VALUES ('fund-manager-local', 'Name', ?, ?, ?, ?, ?)
+            ON CONFLICT(fund_manager_id) DO UPDATE SET
+              selected_range_preset = excluded.selected_range_preset,
+              selected_range_custom_start = excluded.selected_range_custom_start,
+              selected_range_custom_end = excluded.selected_range_custom_end,
+              updated_at = excluded.updated_at
+            """,
+            (preset, start, end, timestamp, timestamp),
+        )
+    return get_fund_manager_selected_range()
 
 
 def get_financial_motion_preference() -> dict[str, bool | int]:

@@ -39,6 +39,10 @@ highest sequence for the validated current Profile iteration.
 
 The copy is not allowed to retain the template owner's operational data. The package writer:
 
+- writes the Profile name to `Dashboard!B4`, the labelled stable Profile ID to `Dashboard!D8`,
+  and exposes the same identity through the `PD_Profile_ID` defined name;
+- repairs the two governed stale internal-sheet references in the signed base and rejects any
+  remaining external-workbook part, relationship or formula reference;
 - replaces every row in the five declared Profile ledger tables;
 - clears unused former table-body rows and their cached values;
 - clears the body of Reload Templates, SignupUsers, and Profitability Audit while preserving their

@@ -329,7 +329,15 @@ function AppChromeContent({
     const applySummary = (event: Event) => {
       const detail = (event as CustomEvent<TrackerHeaderSummaryDetail>).detail;
       if (detail.profileId !== activeProfileId) return;
-      setHeaderSummary((current) => ({
+      setHeaderSummary((current) => {
+        if (
+          current?.profileId === detail.profileId &&
+          current.readState === "loading" &&
+          current.profileRangeLabel !== detail.profileRangeLabel
+        ) {
+          return current;
+        }
+        return ({
         profileId: detail.profileId,
         profileName:
           current?.profileId === detail.profileId
@@ -341,7 +349,8 @@ function AppChromeContent({
         profileRangeDetail: detail.profileRangeDetail,
         profileRangeLabel: detail.profileRangeLabel,
         profileSubtitle: detail.profileRangeLabel,
-      }));
+        });
+      });
     };
     window.addEventListener(TRACKER_HEADER_SUMMARY_UPDATED_EVENT, applySummary);
     return () => {
@@ -416,21 +425,15 @@ function AppChromeContent({
         const rangeLabel = formatResolvedDateRange(resolvedRange);
         const rangeDetail = formatResolvedDateRangeContext(resolvedRange);
 
-        setHeaderSummary((current) => {
-          const sameScope = current?.profileId === activeProfileId &&
-            current.profileRangeLabel === rangeLabel && current.profileRangeDetail === rangeDetail;
-          // Identity/cache refreshes cannot make a failed or pending page read ready.
-          const preserveReadState = current?.profileId === activeProfileId &&
-            (current.readState === "error" || (sameScope && current.readState === "loading"));
+        setHeaderSummary(() => {
           return {
             profileId: activeProfileId,
             profileName: profile.display_name,
             profileRangeDetail: rangeDetail,
             profileRangeLabel: rangeLabel,
             profileSubtitle: rangeLabel,
-            overallPnl: preserveReadState ? null : overallPnl === null && sameScope
-              ? current.overallPnl : overallPnl,
-            readState: preserveReadState ? current.readState : "ready",
+            overallPnl: overallPnl === null ? null : overallPnl,
+            readState: overallPnl === null ? "loading" : "ready",
           };
         });
 

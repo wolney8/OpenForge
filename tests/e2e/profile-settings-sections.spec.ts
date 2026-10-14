@@ -181,7 +181,7 @@ test("working workbook shows scope and authoritative ledger counts before downlo
   await panel.getByRole("combobox", { name: "Data range" }).selectOption("last_month");
   await expect(panel).toContainText("2026-09-01 to 2026-09-30");
   await expect(sportsbookCount.getByText("4", { exact: true })).toBeVisible();
-  await expect(panel.getByRole("button", { name: "Create workbook" })).toBeEnabled();
+  await expect(panel.getByRole("button", { name: "Export as New Workbook" })).toBeEnabled();
   await expect(page.getByText(/workbook dry run/i)).toHaveCount(0);
   expect(requestedScopes).toContain("all_history");
   expect(requestedScopes).toContain("last_month");

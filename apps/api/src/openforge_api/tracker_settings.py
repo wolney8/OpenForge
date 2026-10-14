@@ -5,7 +5,11 @@ from typing import Literal
 from fastapi import APIRouter
 from pydantic import BaseModel, Field, field_validator
 
-from openforge_api.db import get_profile_tracker_settings, upsert_profile_tracker_settings
+from openforge_api.db import (
+    get_fund_manager_selected_range,
+    get_profile_tracker_settings,
+    upsert_profile_tracker_settings,
+)
 
 router = APIRouter(prefix="/profiles/{profile_id}/tracker-settings", tags=["tracker-settings"])
 
@@ -91,12 +95,28 @@ class TrackerSettingsResponse(TrackerSettingsPayload):
 @router.get("", response_model=TrackerSettingsResponse)
 def get_tracker_settings(profile_id: str) -> TrackerSettingsResponse:
     record = get_profile_tracker_settings(profile_id)
-    return TrackerSettingsResponse.model_validate(record.__dict__)
+    payload = record.__dict__.copy()
+    selected_range = get_fund_manager_selected_range()
+    payload.update(
+        active_date_preset=selected_range["selected_range_preset"],
+        custom_start_date=selected_range["selected_range_custom_start"] or "",
+        custom_end_date=selected_range["selected_range_custom_end"] or "",
+    )
+    return TrackerSettingsResponse.model_validate(payload)
 
 
 @router.put("", response_model=TrackerSettingsResponse)
 def save_tracker_settings(
     profile_id: str, payload: TrackerSettingsPayload
 ) -> TrackerSettingsResponse:
-    saved = upsert_profile_tracker_settings(profile_id, payload.model_dump())
-    return TrackerSettingsResponse.model_validate(saved.__dict__)
+    existing = get_profile_tracker_settings(profile_id)
+    profile_payload = payload.model_dump()
+    # The historical Profile columns remain intact for compatibility. Selected Range is
+    # now a single Fund Manager preference and is never dual-written to those columns.
+    profile_payload.update(
+        active_date_preset=existing.active_date_preset,
+        custom_start_date=existing.custom_start_date,
+        custom_end_date=existing.custom_end_date,
+    )
+    upsert_profile_tracker_settings(profile_id, profile_payload)
+    return get_tracker_settings(profile_id)

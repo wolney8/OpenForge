@@ -829,6 +829,19 @@ def _analyse_workbook_job(
             effective_at=effective_at,
             progress_callback=persist_progress,
         )
+        source_profile_id = next(
+            (
+                str(item.get("source_value") or "").strip()
+                for item in result.get("profile_settings", [])
+                if item.get("setting") == "source_profile_id"
+            ),
+            "",
+        )
+        if source_profile_id and source_profile_id != profile_id:
+            raise ValueError(
+                "This working workbook belongs to a different Profile. "
+                "Choose the matching Profile before importing it."
+            )
         result["accounts"]["change_reconciliation"] = _account_change_reconciliation(
             profile_id,
             result["accounts"],

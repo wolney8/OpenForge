@@ -1,5 +1,11 @@
 # Feature Status — Plum Duff / OpenForge — Doc ID: FS-CODEX-001
 
+> 2026-10-14 local correction: Selected Range is migrating to the persisted Fund Manager setting
+> (`Week (Mon-Sun)` default, nullable Custom bounds). Profile-specific range columns remain only for
+> compatibility/history. Common financial readiness, stable chart interaction and self-contained
+> working-workbook identity are being verified; canonical localhost installation and owner
+> acceptance remain pending.
+
 **Last updated:** 2026-09-26 23:29:27 BST
 
 ## Operational summary

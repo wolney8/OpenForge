@@ -1,5 +1,12 @@
 # Project Status — Plum Duff / OpenForge — Doc ID: PS-CODEX-001
 
+> Current local correction (2026-10-14): the owner approved one Fund Manager-level Selected Range
+> authority with additive fields on `fund_manager_settings`. Its governed initial value is
+> `Week (Mon-Sun)`; historical Profile range fields are retained but are no longer read or written
+> by the active Selected Range workflow. P&L readiness, Profile switching, chart interaction and
+> self-contained working-workbook identity corrections are under bounded local verification.
+> Owner acceptance remains unverified; no GitHub/hosted release is authorised.
+
 **Last updated:** 2026-09-26 23:29:27 BST · **Status:** CP-055 completed locally; protected Preview promotion blocked
 
 ## Right now

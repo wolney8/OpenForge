@@ -15,7 +15,9 @@ def configure_temp_database(tmp_path: Path) -> None:
     seed_synthetic_betting_context()
 
 
-def test_tracker_settings_are_profile_scoped_and_persist(tmp_path: Path) -> None:
+def test_selected_range_is_fund_manager_scoped_while_other_settings_remain_profile_scoped(
+    tmp_path: Path,
+) -> None:
     configure_temp_database(tmp_path)
 
     response = client.get("/profiles/profile-demo-001/tracker-settings")
@@ -33,6 +35,16 @@ def test_tracker_settings_are_profile_scoped_and_persist(tmp_path: Path) -> None
     assert response.json()["monthly_profit_target"] == ""
     assert response.json()["annual_profit_target"] == ""
     assert response.json()["weekly_extra_place_loss_budget"] == "15"
+
+    selected_range = client.put(
+        "/fund-manager/preferences/selected-range",
+        json={
+            "selected_range_preset": "Custom",
+            "selected_range_custom_start": "2026-06-01",
+            "selected_range_custom_end": "2026-06-30",
+        },
+    )
+    assert selected_range.status_code == 200
 
     save_response = client.put(
         "/profiles/profile-demo-001/tracker-settings",
@@ -85,11 +97,46 @@ def test_tracker_settings_are_profile_scoped_and_persist(tmp_path: Path) -> None
 
     other_profile_response = client.get("/profiles/profile-demo-002/tracker-settings")
     assert other_profile_response.status_code == 200
-    assert other_profile_response.json()["active_date_preset"] == "Week (Mon-Sun)"
-    assert other_profile_response.json()["custom_start_date"] == ""
+    assert other_profile_response.json()["active_date_preset"] == "Custom"
+    assert other_profile_response.json()["custom_start_date"] == "2026-06-01"
     assert other_profile_response.json()["mug_bet_frequency_days"] == 14
     assert other_profile_response.json()["free_bet_expiry_alert_window_days"] == 3
     assert other_profile_response.json()["use_global_date_range_toggle"] is True
     assert other_profile_response.json()["default_exchange_name"] == ""
     assert other_profile_response.json()["dashboard_view_mode"] == "High-Density"
     assert other_profile_response.json()["weekly_profit_target"] == ""
+
+    from openforge_api.db import connect
+
+    with connect() as connection:
+        historical_profile_range = connection.execute(
+            "SELECT active_date_preset, custom_start_date, custom_end_date "
+            "FROM profile_tracker_settings WHERE profile_id = ?",
+            ("profile-demo-001",),
+        ).fetchone()
+    assert tuple(historical_profile_range) == ("Week (Mon-Sun)", "", "")
+
+
+def test_selected_range_preference_uses_product_default_and_persists(tmp_path: Path) -> None:
+    configure_temp_database(tmp_path)
+    default = client.get("/fund-manager/preferences/selected-range")
+    assert default.status_code == 200
+    assert default.json() == {
+        "selected_range_preset": "Week (Mon-Sun)",
+        "selected_range_custom_start": None,
+        "selected_range_custom_end": None,
+    }
+    saved = client.put(
+        "/fund-manager/preferences/selected-range",
+        json={
+            "selected_range_preset": "Last Month",
+            "selected_range_custom_start": "2020-01-01",
+            "selected_range_custom_end": "2020-01-31",
+        },
+    )
+    assert saved.status_code == 200
+    assert saved.json()["selected_range_preset"] == "Last Month"
+    assert saved.json()["selected_range_custom_start"] is None
+    assert client.get("/profiles/profile-demo-002/tracker-settings").json()[
+        "active_date_preset"
+    ] == "Last Month"

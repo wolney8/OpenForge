@@ -180,3 +180,16 @@ Complete this for every feature, bug fix, component, fixture-backed UI, route or
       full web tests, typecheck, production build and focused ESLint/Ruff pass.
 - [ ] Genuine owner Google return through 3010 remains the final provider/browser verification;
       no desktop or browser automation was used.
+
+## Universal Selected Range and workbook correction — 2026-10-14
+
+- [x] Existing range presets, Material route cards, chart primitives, financial readiness values
+      and working-workbook export action are reused; no new UI framework or financial formula.
+- [x] Selected Range uses one server-persisted Fund Manager authority; legacy Profile fields remain
+      stored but are not dual-written by the active workflow.
+- [x] Chart hover is layout-neutral; click/keyboard inspection is bounded to three initial rows,
+      dismissible and scroll-contained; reduced-motion needs no chart reveal animation.
+- [x] Workbook verification is headless: stable Profile identity, internal formulas, absence of
+      external-workbook parts and six-row ALPHA Last Month scope are asserted programmatically.
+- [ ] Owner interaction at canonical localhost:3010 remains pending after installation; no Excel
+      or desktop application was opened or controlled.

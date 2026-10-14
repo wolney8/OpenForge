@@ -52,6 +52,11 @@ import {
   type SportsbookSummaryRecord,
   type TrackerSummaryDataset,
 } from "@/lib/tracker-summary";
+import {
+  saveFundManagerSelectedRange,
+  TRACKER_SETTINGS_UPDATED_EVENT,
+  type FundManagerSelectedRange,
+} from "@/lib/tracker-settings-client";
 import { LedgerLoadingIndicator } from "./ledger-loading-indicator";
 import { MultiProfileOpportunityDialog } from "./multi-profile-opportunity-dialog";
 import { FeePeriodReviewDialog } from "./fee-period-review-dialog";
@@ -399,6 +404,42 @@ export function CrossProfileAnalytics({
   const [preset, setPreset] = useState<DatePreset>("Week (Mon-Sun)");
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    const apply = (value: FundManagerSelectedRange) => {
+      if (!active) return;
+      setPreset(value.selected_range_preset as DatePreset);
+      setCustomStart(value.selected_range_custom_start ?? "");
+      setCustomEnd(value.selected_range_custom_end ?? "");
+    };
+    void fetch(`${apiBaseUrl}/fund-manager/preferences/selected-range`, { cache: "no-store" })
+      .then((response) => {
+        if (!response.ok) throw new Error("Unable to load Selected Range.");
+        return response.json() as Promise<FundManagerSelectedRange>;
+      })
+      .then(apply)
+      .catch(() => undefined);
+    const sync = (event: Event) => {
+      const selectedRange = (event as CustomEvent<{ selectedRange?: FundManagerSelectedRange }>).detail?.selectedRange;
+      if (selectedRange) apply(selectedRange);
+    };
+    window.addEventListener(TRACKER_SETTINGS_UPDATED_EVENT, sync);
+    return () => {
+      active = false;
+      window.removeEventListener(TRACKER_SETTINGS_UPDATED_EVENT, sync);
+    };
+  }, []);
+
+  const changeSelectedRange = async (nextPreset: DatePreset) => {
+    setPreset(nextPreset);
+    if (nextPreset === "Custom" && (!customStart || !customEnd)) return;
+    await saveFundManagerSelectedRange(nextPreset, customStart || null, customEnd || null);
+  };
+  const saveCustomRange = async (nextStart: string, nextEnd: string) => {
+    if (!nextStart || !nextEnd) return;
+    await saveFundManagerSelectedRange("Custom", nextStart, nextEnd);
+  };
   const [localProfileIds, setLocalProfileIds] = useState(() =>
     profiles
       .filter((profile) => normalizeProfileStatus(profile.status) !== "Archived")
@@ -1337,7 +1378,7 @@ export function CrossProfileAnalytics({
             <span className="m3-picker-label">Date range</span>
             <span className="m3-picker-control">
               <span aria-hidden="true" className="material-symbols-outlined">date_range</span>
-              <select value={preset} onChange={(event) => setPreset(event.target.value as DatePreset)}>
+              <select value={preset} onChange={(event) => void changeSelectedRange(event.target.value as DatePreset)}>
                 {getDatePresetOptions().map((option) => (
                   <option key={option} value={option}>{option}</option>
                 ))}
@@ -1350,14 +1391,14 @@ export function CrossProfileAnalytics({
                 <span className="m3-picker-label">Start</span>
                 <span className="m3-picker-control">
                   <span aria-hidden="true" className="material-symbols-outlined">date_range</span>
-                  <input type="date" value={customStart} onChange={(event) => setCustomStart(event.target.value)} />
+                  <input type="date" value={customStart} onChange={(event) => setCustomStart(event.target.value)} onBlur={() => void saveCustomRange(customStart, customEnd)} />
                 </span>
               </label>
               <label className="m3-picker-field">
                 <span className="m3-picker-label">End</span>
                 <span className="m3-picker-control">
                   <span aria-hidden="true" className="material-symbols-outlined">date_range</span>
-                  <input type="date" value={customEnd} onChange={(event) => setCustomEnd(event.target.value)} />
+                  <input type="date" value={customEnd} onChange={(event) => setCustomEnd(event.target.value)} onBlur={() => void saveCustomRange(customStart, customEnd)} />
                 </span>
               </label>
             </>

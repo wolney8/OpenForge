@@ -22,6 +22,7 @@ import {
   type DatePreset,
 } from "@/lib/tracker-summary";
 import { useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
+import { saveFundManagerSelectedRange } from "@/lib/tracker-settings-client";
 
 type TrackerSettingsRecord = {
   profile_id: string;
@@ -62,6 +63,15 @@ const guidedAccessModeLabels: Record<GuidedAccessMode, string> = {
   minimal: "Minimal",
   off: "Off",
 };
+
+function londonToday(): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    day: "2-digit",
+    month: "2-digit",
+    timeZone: "Europe/London",
+    year: "numeric",
+  }).format(new Date());
+}
 
 export function TrackerDateSettings({ profileId }: Props) {
   const [guidedAccessMode, setGuidedAccessMode] = useProfileGuidedAccessMode(profileId);
@@ -177,8 +187,8 @@ export function TrackerDateSettings({ profileId }: Props) {
       return {
         ...current,
         active_date_preset: nextPreset,
-        custom_start_date: current.custom_start_date || new Date().toISOString().slice(0, 10),
-        custom_end_date: current.custom_end_date || new Date().toISOString().slice(0, 10),
+        custom_start_date: current.custom_start_date || londonToday(),
+        custom_end_date: current.custom_end_date || londonToday(),
       };
     }
 
@@ -196,6 +206,18 @@ export function TrackerDateSettings({ profileId }: Props) {
     setIsSaving(true);
     setErrorMessage("");
     try {
+      if (
+        !pristineSettings ||
+        nextSettings.active_date_preset !== pristineSettings.active_date_preset ||
+        nextSettings.custom_start_date !== pristineSettings.custom_start_date ||
+        nextSettings.custom_end_date !== pristineSettings.custom_end_date
+      ) {
+        await saveFundManagerSelectedRange(
+          nextSettings.active_date_preset,
+          nextSettings.custom_start_date || null,
+          nextSettings.custom_end_date || null
+        );
+      }
       const response = await fetch(`${apiBaseUrl}/profiles/${profileId}/tracker-settings`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -281,11 +303,11 @@ export function TrackerDateSettings({ profileId }: Props) {
           <span className="eyebrow">Profile defaults</span>
           <h2 className="section-title section-title-with-help" data-pd-id="profile-settings.defaults.heading">
             <span>Date Range and Tracker Defaults</span>
-            <ContextHelp label="About date range and tracker defaults" text="Choose the reporting period, reminders, dashboard targets and calculator defaults for this Profile." />
+            <ContextHelp label="About date range and tracker defaults" text="Selected Range is shared across the Fund Manager workspace. Reminders, targets and calculator defaults remain specific to this Profile." />
           </h2>
         </div>
       </div>
-      <p className="field-hint">Applies to this Profile. Selections save immediately. Other fields use Save unless the Custom date range is selected.</p>
+      <p className="field-hint">Selected Range applies across all Profiles. The remaining defaults apply to this Profile. Selections save immediately; other fields use Save unless Custom is selected.</p>
       {settings ? (
         <section className="stat-strip" aria-label="Tracker date setting summary">
           <article className="stat-card">

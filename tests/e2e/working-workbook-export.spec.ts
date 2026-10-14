@@ -97,7 +97,7 @@ test("working workbook export owns one keyboard request and reports its evidence
   await button.focus();
   await page.keyboard.press("Enter");
   await expect(button).toBeDisabled();
-  await expect(button).toContainText("Creating workbook");
+  await expect(button).toContainText("Exporting new workbook");
   await expect(panel).toHaveAttribute("aria-busy", "true");
   await expect(panel.getByRole("status")).toContainText("sanitizing the template copy");
   await page.keyboard.press("Enter");
@@ -112,7 +112,7 @@ test("working workbook export owns one keyboard request and reports its evidence
     "working-workbook-SYNTHETIC-WORKING-001.xlsx",
   );
   await expect(button).toBeEnabled();
-  await expect(button).toContainText("Create workbook");
+  await expect(button).toContainText("Export as New Workbook");
   await expect(panel).not.toHaveAttribute("aria-busy", "true");
   const verification = panel.locator(
     '[data-pd-id="workbook-template-export.verification"]',

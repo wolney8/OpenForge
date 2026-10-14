@@ -11,6 +11,14 @@
         "source": "profiles.display_name",
         "encoding": "text"
       },
+      "C8": {
+        "source": "literal.Profile ID",
+        "encoding": "text"
+      },
+      "D8": {
+        "source": "profiles.profile_id",
+        "encoding": "text"
+      },
       "D4": {
         "source": "working_workbook_export.scope",
         "encoding": "text"

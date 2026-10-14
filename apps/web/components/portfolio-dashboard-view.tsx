@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ReportPointChart } from "@/components/report-point-chart";
-import { useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { FinancialValue, FinancialValueReplayGroup } from "@/components/financial-value";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { BettingPnlReadValue } from "@/components/betting-pnl-read-value";
@@ -625,15 +625,49 @@ function DashboardChartSurface({
   range: ResolvedDateRange;
 }) {
   const [selectedPointIndex, setSelectedPointIndex] = useState(Math.max(0, points.length - 1));
+  const [openPointIndex, setOpenPointIndex] = useState<number | null>(null);
+  const [showAllPointRows, setShowAllPointRows] = useState(false);
+  const popoverRef = useRef<HTMLElement>(null);
+  const pointTriggerRef = useRef<HTMLElement | null>(null);
   const index = points[selectedPointIndex] ? selectedPointIndex : points.length - 1;
-  const selectedPoint = points[index];
-  const drilldownRows = dataset && selectedPoint
-    ? buildDashboardDrilldownRows({ dataset, pointKey: selectedPoint.key, range }) : [];
+  const openPoint = openPointIndex === null ? undefined : points[openPointIndex];
+  const drilldownRows = dataset && openPoint
+    ? buildDashboardDrilldownRows({ dataset, pointKey: openPoint.key, range }) : [];
+  const dismissPointRows = useCallback((restoreFocus: boolean) => {
+    setOpenPointIndex(null);
+    setShowAllPointRows(false);
+    if (restoreFocus) requestAnimationFrame(() => pointTriggerRef.current?.focus());
+  }, []);
+  useEffect(() => {
+    if (openPointIndex === null) return;
+    const close = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        dismissPointRows(true);
+      }
+    };
+    const outside = (event: PointerEvent) => {
+      if (!popoverRef.current?.contains(event.target as Node)) {
+        dismissPointRows(false);
+      }
+    };
+    document.addEventListener("keydown", close);
+    document.addEventListener("pointerdown", outside);
+    popoverRef.current?.focus();
+    return () => {
+      document.removeEventListener("keydown", close);
+      document.removeEventListener("pointerdown", outside);
+    };
+  }, [dismissPointRows, openPointIndex]);
   return <ReportPointChart area={area} line={line} label={label} points={points}
-    selectedIndex={index} onSelect={setSelectedPointIndex}>
-    {selectedPoint ? <section aria-label={`Records for ${selectedPoint.label}`} className="dashboard-chart-drilldown" data-pd-id="dashboard.chart.drilldown">
-      <h4>Records in this point</h4>
-      {drilldownRows.length ? <ul>{drilldownRows.map((row) => <li key={`${row.module}-${row.id}`}><Link href={`/profiles/${profileId}/tracker/${row.module}?search=${encodeURIComponent(row.id)}&source=report-point`}><span>{row.label}</span><FinancialValue animate={false} value={row.value} /></Link></li>)}</ul> : <p className="muted-text">No underlying records in this point.</p>}
+    selectedIndex={index} onSelect={setSelectedPointIndex} onActivate={(nextIndex) => {
+      pointTriggerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      setSelectedPointIndex(nextIndex);
+      setOpenPointIndex(nextIndex);
+      setShowAllPointRows(false);
+    }}>
+    {openPoint ? <section aria-label={`Records for ${openPoint.label}`} className="dashboard-chart-drilldown" data-pd-id="dashboard.chart.drilldown" ref={popoverRef} tabIndex={-1}>
+      <div className="section-heading-row"><h4>Records in this point</h4><button aria-label="Close point records" className="icon-button icon-button-danger" onClick={() => dismissPointRows(true)} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button></div>
+      {drilldownRows.length ? <><ul>{drilldownRows.slice(0, showAllPointRows ? drilldownRows.length : 3).map((row) => <li key={`${row.module}-${row.id}`}><Link href={`/profiles/${profileId}/tracker/${row.module}?search=${encodeURIComponent(row.id)}&source=report-point`}><span>{row.label}</span><FinancialValue animate={false} value={row.value} /></Link></li>)}</ul>{drilldownRows.length > 3 && !showAllPointRows ? <button className="button-link" onClick={() => setShowAllPointRows(true)} type="button">View all {drilldownRows.length} records</button> : null}</> : <p className="muted-text">No underlying records in this point.</p>}
     </section> : null}
   </ReportPointChart>;
 }

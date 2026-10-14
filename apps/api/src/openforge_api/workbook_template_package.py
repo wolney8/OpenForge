@@ -25,6 +25,9 @@ WORKBOOK_ID_PATTERN = re.compile(
 MAX_EXCEL_ROW = 1_048_576
 MAX_EXCEL_COLUMN = 16_384
 CURRENT_TEMPLATE_CONTRACT = "workbook-template-export-v2"
+STALE_INTERNAL_SHEET_RENAMES = {
+    "Central Dashboard - Clean": "Central Dashboard - KPI",
+}
 
 LEDGER_VALIDATION_SOURCES = {
     "Accounts": {
@@ -924,6 +927,76 @@ def _formula_stats(payload: Mapping[str, bytes]) -> tuple[int, int]:
     return formulas, caches
 
 
+def _make_workbook_self_contained(payload: dict[str, bytes]) -> None:
+    """Repair governed stale internal references and reject external workbook dependencies."""
+    prohibited_parts = [
+        name for name in payload
+        if name.startswith("xl/externalLinks/")
+        or name == "xl/connections.xml"
+        or "/queryTables/" in name
+    ]
+    if prohibited_parts:
+        raise WorkbookTemplatePackageError(
+            "Workbook template contains an external data dependency: "
+            + ", ".join(sorted(prohibited_parts))
+        )
+    sheet_names = set(_sheet_paths(payload))
+    missing_reference_pattern = re.compile(r"'([A-Za-z0-9 _-]+)'!")
+    external_formula_pattern = re.compile(r"\[[^\]]+\][^!]*!")
+    for path in sorted(
+        name for name in payload if name.startswith("xl/worksheets/") and name.endswith(".xml")
+    ):
+        root = ET.fromstring(payload[path])
+        changed = False
+        for formula in root.findall(f".//{{{MAIN_NS}}}f"):
+            text = formula.text or ""
+            for stale, current in STALE_INTERNAL_SHEET_RENAMES.items():
+                replaced = text.replace(f"'{stale}'!", f"'{current}'!")
+                if replaced != text:
+                    text = replaced
+                    changed = True
+            # Extra Place is not a supported v2 working-workbook ledger. The legacy
+            # dashboard's two EP-only open-count terms therefore have no internal source.
+            repaired = re.sub(
+                r"\+COUNTIF\('EP Catchers'!Q:Q,\"(?:Placed|Prospecting)\"\)",
+                "",
+                text,
+            )
+            if repaired != text:
+                text = repaired
+                changed = True
+            if external_formula_pattern.search(text):
+                raise WorkbookTemplatePackageError(
+                    f"Workbook formula has an external workbook dependency in {path}"
+                )
+            missing = {
+                reference for reference in missing_reference_pattern.findall(text)
+                if reference not in sheet_names
+            }
+            if missing:
+                raise WorkbookTemplatePackageError(
+                    "Workbook formula references missing sheets: " + ", ".join(sorted(missing))
+                )
+            formula.text = text
+        if changed:
+            payload[path] = _serialise(root)
+
+    for path, content in payload.items():
+        if not path.endswith(".rels"):
+            continue
+        root = ET.fromstring(content)
+        for relationship in root:
+            relationship_type = str(relationship.get("Type") or "")
+            target = str(relationship.get("Target") or "")
+            if relationship_type.endswith("/externalLink") or (
+                str(relationship.get("TargetMode") or "") == "External"
+                and re.search(r"\.(?:xlsx?|xlsm|xlsb)(?:$|[?#])", target, re.IGNORECASE)
+            ):
+                raise WorkbookTemplatePackageError(
+                    "Workbook relationship has an external workbook dependency"
+                )
+
+
 def build_workbook_template_package(
     *,
     source_content: bytes,
@@ -955,6 +1028,7 @@ def build_workbook_template_package(
 
     payload = dict(original)
     _upgrade_signed_v1_template(payload, structure)
+    _make_workbook_self_contained(payload)
     sheet_paths = _sheet_paths(payload)
     tables = _table_map(payload, sheet_paths)
     table_targets: dict[str, str] = {}
@@ -1205,6 +1279,27 @@ def build_workbook_template_package(
                 raise WorkbookTemplatePackageError(f"Defined-name source drift for {identity[0]}")
             item.text = _extend_ending_row(str(item.text), old_end, new_end)
             defined_name_targets[f"{identity[0]}|{identity[1]}"] = str(item.text)
+    defined_names = workbook.find(f"{{{MAIN_NS}}}definedNames")
+    if defined_names is None:
+        defined_names = ET.Element(f"{{{MAIN_NS}}}definedNames")
+        calculation_node = workbook.find(f"{{{MAIN_NS}}}calcPr")
+        if calculation_node is None:
+            workbook.append(defined_names)
+        else:
+            workbook.insert(list(workbook).index(calculation_node), defined_names)
+    profile_identity_name = next(
+        (
+            item for item in defined_names.findall(f"{{{MAIN_NS}}}definedName")
+            if item.get("name") == "PD_Profile_ID"
+        ),
+        None,
+    )
+    if profile_identity_name is None:
+        profile_identity_name = ET.SubElement(
+            defined_names, f"{{{MAIN_NS}}}definedName", {"name": "PD_Profile_ID"}
+        )
+    profile_identity_name.text = "Dashboard!$D$8"
+    defined_name_targets["PD_Profile_ID|"] = profile_identity_name.text
     calculation = workbook.find(f"{{{MAIN_NS}}}calcPr")
     if calculation is not None:
         calculation.set("fullCalcOnLoad", "1")

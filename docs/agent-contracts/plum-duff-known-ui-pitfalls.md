@@ -1409,3 +1409,11 @@ creates a valid API session, but the frontend route guard rejects the cookie bef
 is reached. Start both canonical services through role-bound launchers, load the same primary owner
 environment, and fail closed before serving 3010 when required auth settings are incomplete. A
 present but invalid session must produce the existing owner-facing session-ended message.
+
+## Selected Range and point-chart state must not fork
+
+Selected Range is a persisted Fund Manager preference. Profile settings and browser storage must
+not become competing authorities. Identity-only header refreshes remain loading until the matching
+range calculation arrives; an older range response cannot replace a newer loading scope. Point
+hover may update a fixed overlay, while record inspection uses a bounded anchored popover so the
+chart and card never resize or replay on pointer movement.

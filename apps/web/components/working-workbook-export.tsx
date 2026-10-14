@@ -313,7 +313,7 @@ export function WorkingWorkbookExport({ profileId }: { profileId: string }) {
           type="button"
         >
           {state === "generating" ? <span aria-hidden="true" className="button-spinner" /> : <span aria-hidden="true" className="material-symbols-outlined">download</span>}
-          <span>{state === "generating" ? "Creating workbook" : "Create workbook"}</span>
+          <span>{state === "generating" ? "Exporting new workbook" : "Export as New Workbook"}</span>
         </button>
       </div>
 

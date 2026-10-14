@@ -26,48 +26,53 @@ export type TrackerSettingsClientRecord = {
   weekly_extra_place_loss_budget?: string;
 };
 
+export type FundManagerSelectedRange = {
+  selected_range_preset: DatePreset | string;
+  selected_range_custom_start: string | null;
+  selected_range_custom_end: string | null;
+};
+
+export async function saveFundManagerSelectedRange(
+  preset: DatePreset,
+  customStart: string | null = null,
+  customEnd: string | null = null
+): Promise<FundManagerSelectedRange> {
+  const selectedRangeUrl = `${apiBaseUrl}/fund-manager/preferences/selected-range`;
+  const response = await fetch(selectedRangeUrl, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      selected_range_preset: preset,
+      selected_range_custom_start: preset === "Custom" ? customStart : null,
+      selected_range_custom_end: preset === "Custom" ? customEnd : null,
+    }),
+  });
+  if (!response.ok) throw new Error(await response.text());
+  const selectedRange = (await response.json()) as FundManagerSelectedRange;
+  invalidateCachedJson(`${apiBaseUrl}/profiles/`);
+  invalidateCachedJson(selectedRangeUrl);
+  window.dispatchEvent(new CustomEvent(TRACKER_SETTINGS_UPDATED_EVENT, {
+    detail: { selectedRange },
+  }));
+  return selectedRange;
+}
+
 export async function saveTrackerDatePreset<TSettings extends TrackerSettingsClientRecord>(
   profileId: string,
   currentSettings: TSettings,
   nextPreset: DatePreset
 ): Promise<TSettings> {
-  const settingsUrl = `${apiBaseUrl}/profiles/${profileId}/tracker-settings`;
-  const response = await fetch(settingsUrl, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      active_date_preset: nextPreset,
-      custom_start_date: currentSettings.custom_start_date,
-      custom_end_date: currentSettings.custom_end_date,
-      range_back_days: currentSettings.range_back_days,
-      range_forward_days: currentSettings.range_forward_days,
-      mug_bet_frequency_days: currentSettings.mug_bet_frequency_days,
-      free_bet_expiry_alert_window_days: currentSettings.free_bet_expiry_alert_window_days,
-      use_global_date_range_toggle: currentSettings.use_global_date_range_toggle,
-      this_month_mode: currentSettings.this_month_mode,
-      default_free_bet_underlay_factor: currentSettings.default_free_bet_underlay_factor,
-      default_free_bet_overlay_factor: currentSettings.default_free_bet_overlay_factor,
-      default_bonus_retention_percent: currentSettings.default_bonus_retention_percent,
-      default_exchange_name: currentSettings.default_exchange_name ?? "",
-      dashboard_view_mode: currentSettings.dashboard_view_mode ?? "High-Density",
-      weekly_profit_target: currentSettings.weekly_profit_target ?? "",
-      monthly_profit_target: currentSettings.monthly_profit_target ?? "",
-      annual_profit_target: currentSettings.annual_profit_target ?? "",
-      weekly_extra_place_loss_budget:
-        currentSettings.weekly_extra_place_loss_budget ?? "15",
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error(await response.text());
-  }
-
-  invalidateCachedJson(settingsUrl);
-  window.dispatchEvent(
-    new CustomEvent(TRACKER_SETTINGS_UPDATED_EVENT, {
-      detail: { profileId },
-    })
+  void profileId;
+  const selectedRange = await saveFundManagerSelectedRange(
+    nextPreset,
+    currentSettings.custom_start_date || null,
+    currentSettings.custom_end_date || null
   );
 
-  return (await response.json()) as TSettings;
+  return {
+    ...currentSettings,
+    active_date_preset: selectedRange.selected_range_preset,
+    custom_start_date: selectedRange.selected_range_custom_start ?? "",
+    custom_end_date: selectedRange.selected_range_custom_end ?? "",
+  } as TSettings;
 }

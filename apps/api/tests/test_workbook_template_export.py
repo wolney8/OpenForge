@@ -516,6 +516,8 @@ def test_current_profile_export_is_deterministic_read_only_and_identity_safe(
     assert free_bets[0]["FreeBetID"] == "IT3-FB-0004"
     assert free_bets[0]["OriginQualBetID"] == "IT3-QB-0009"
     assert _cell_at(payload, paths, "Dashboard", "B4") == "Synthetic Working Profile"
+    assert _cell_at(payload, paths, "Dashboard", "C8") == "Profile ID"
+    assert _cell_at(payload, paths, "Dashboard", "D8") == PROFILE_ID
     assert _cell_at(payload, paths, "Dashboard", "B7") == "3"
     assert _cell_at(payload, paths, "Settings", "H3") == "Exchange A"
     assert _cell_at(payload, paths, "Settings", "I3") == "0.0200"
@@ -548,6 +550,20 @@ def test_current_profile_export_is_deterministic_read_only_and_identity_safe(
     ]
     assert formula_cells
     assert all(cell.find(f"{{{MAIN_NS}}}v") is None for cell in formula_cells)
+    assert not any(name.startswith("xl/externalLinks/") for name in payload)
+    formula_text = "\n".join(
+        formula.text or ""
+        for path in paths.values()
+        for formula in ET.fromstring(payload[path]).findall(f".//{{{MAIN_NS}}}f")
+    )
+    assert "Central Dashboard - Clean" not in formula_text
+    assert "EP Catchers" not in formula_text
+    workbook = ET.fromstring(payload["xl/workbook.xml"])
+    profile_identity = workbook.find(
+        f".//{{{MAIN_NS}}}definedName[@name='PD_Profile_ID']"
+    )
+    assert profile_identity is not None
+    assert profile_identity.text == "Dashboard!$D$8"
     assert payload["xl/persons/person.xml"] == source_payload["xl/persons/person.xml"]
     chart = ET.fromstring(payload["xl/charts/chart1.xml"])
     for cache in (
@@ -896,6 +912,7 @@ def test_production_package_growth_uses_exact_authorized_targets() -> None:
         "Casino Offers": "A1:AB28",
     }
     assert package.defined_name_targets == {
+        "PD_Profile_ID|": "Dashboard!$D$8",
         "Z_61A693B0_24CC_4BA8_8C2E_3A2E24A5AB80_.wvu.FilterData|10": ("'Free Bets'!$A$1:$AL$174"),
         "Z_CDCB28B3_BC6B_441A_A81B_7CB94D17E405_.wvu.FilterData|9": (
             "'Sportsbook Bets'!$A$1:$BF$533"

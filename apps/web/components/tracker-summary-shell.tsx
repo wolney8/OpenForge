@@ -488,10 +488,9 @@ export function TrackerSummaryShell({ profileId, profileTitle, variant }: Tracke
   ]);
 
   useEffect(() => {
-    if (!summary && !errorMessage) return;
     const detail: TrackerHeaderSummaryDetail = {
       profileId,
-      state: errorMessage ? "error" : isTrackerRangeSaving ? "loading" : "ready",
+      state: errorMessage ? "error" : isTrackerRangeSaving || !summary ? "loading" : "ready",
       overallPnl: summary?.profitQuickView.overallPnl ?? null,
       profileRangeLabel: formatResolvedDateRange(resolvedRange),
       profileRangeDetail: formatResolvedDateRangeContext(resolvedRange),
@@ -503,7 +502,11 @@ export function TrackerSummaryShell({ profileId, profileTitle, variant }: Tracke
     );
   }, [errorMessage, isTrackerRangeSaving, profileId, resolvedRange, summary]);
 
-  const selectedRangeReadState = isTrackerRangeSaving ? "loading" : "ready";
+  const selectedRangeReadState = errorMessage
+    ? "error"
+    : isTrackerRangeSaving || !summary
+      ? "loading"
+      : "ready";
 
   const feePosition = useMemo(
     () => summarizeFeePeriods(feePeriods, resolvedRange.start, resolvedRange.end),
