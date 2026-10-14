@@ -3,8 +3,9 @@
 > 2026-10-14 local correction: Selected Range is migrating to the persisted Fund Manager setting
 > (`Week (Mon-Sun)` default, nullable Custom bounds). Profile-specific range columns remain only for
 > compatibility/history. Common financial readiness, stable chart interaction and self-contained
-> working-workbook identity are being verified; canonical localhost installation and owner
-> acceptance remain pending.
+> working-workbook identity passed bounded automated verification. The additive local migration
+> was applied after verified backup `BACKUP-5DE8D6D5`; canonical runtime smoke and owner acceptance
+> remain pending.
 
 **Last updated:** 2026-09-26 23:29:27 BST
 

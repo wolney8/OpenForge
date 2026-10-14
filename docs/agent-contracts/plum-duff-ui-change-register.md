@@ -403,17 +403,18 @@ unsupported native Extra Place or fee-history state rather than omitting or coer
 
 | ID | Surface | Requested behaviour | Signed-off equivalent | Status |
 | --- | --- | --- | --- | --- |
-| PD-FIX-325 | Selected Range authority | One Fund Manager-level persisted range across Profiles and all supported range-aware surfaces | Existing governed date presets and Europe/London resolver | IN PROGRESS |
-| PD-FIX-326 | Financial readiness | Loading, no activity, valid activity, invalid source and load failure remain distinct across summary consumers | Existing `FinancialValue` readiness contract | IN PROGRESS |
-| PD-FIX-327 | Profile switcher | Full-width Profile Operations row and 197 × 50 peer destinations without losing route/current-state behaviour | Existing command-panel route cards | IN PROGRESS |
-| PD-FIX-328 | Selected Range Performance | Stable chart, fixed hover detail and accessible anchored record popover | Existing `ReportPointChart` and Material overlay treatments | IN PROGRESS |
-| PD-FIX-329 | Working Workbook action | Use `Export as New Workbook` for the working-workbook action only | Existing positive export action | IN PROGRESS |
-| PD-FIX-330 | Working Workbook package | Export a self-contained XLSX with no unintended external-workbook dependency | Existing versioned template-package validation boundary | IN PROGRESS |
-| PD-FIX-331 | Working Workbook identity | Keep Dashboard B4 as Profile name, show Profile ID nearby and retain the same ID in machine metadata | Existing dashboard identity block and manifest | IN PROGRESS |
+| PD-FIX-325 | Selected Range authority | One Fund Manager-level persisted range across Profiles and all supported range-aware surfaces | Existing governed date presets and Europe/London resolver | NEEDS VERIFICATION |
+| PD-FIX-326 | Financial readiness | Loading, no activity, valid activity, invalid source and load failure remain distinct across summary consumers | Existing `FinancialValue` readiness contract | NEEDS VERIFICATION |
+| PD-FIX-327 | Profile switcher | Full-width Profile Operations row and 197 × 50 peer destinations without losing route/current-state behaviour | Existing command-panel route cards | NEEDS VERIFICATION |
+| PD-FIX-328 | Selected Range Performance | Stable chart, fixed hover detail and accessible anchored record popover | Existing `ReportPointChart` and Material overlay treatments | NEEDS VERIFICATION |
+| PD-FIX-329 | Working Workbook action | Use `Export as New Workbook` for the working-workbook action only | Existing positive export action | NEEDS VERIFICATION |
+| PD-FIX-330 | Working Workbook package | Export a self-contained XLSX with no unintended external-workbook dependency | Existing versioned template-package validation boundary | NEEDS VERIFICATION |
+| PD-FIX-331 | Working Workbook identity | Keep Dashboard B4 as Profile name, show Profile ID nearby and retain the same ID in machine metadata | Existing dashboard identity block and manifest | NEEDS VERIFICATION |
 
-The universal Selected Range migration is additive. Historical Profile range fields remain for
-compatibility but are no longer the active authority for this feature. Owner acceptance remains
-pending after installation on the canonical localhost:3010 application.
+The universal Selected Range migration is additive and was applied locally at 2026-10-14 14:21
+BST after verified backup `BACKUP-5DE8D6D5`. Historical Profile range fields remain for
+compatibility but are no longer the active authority for this feature. Automated gates passed;
+canonical runtime smoke and owner acceptance remain pending.
 
 ## CP-075 Sportsbook promotion local integration — 2026-10-09 12:29 BST
 
