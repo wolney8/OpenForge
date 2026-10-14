@@ -3,6 +3,8 @@ import { invalidateCachedJson } from "./client-json-cache";
 import type { DatePreset } from "./tracker-summary";
 
 export const TRACKER_SETTINGS_UPDATED_EVENT = "plum-duff-tracker-settings-updated";
+export const TRACKER_SETTINGS_UPDATE_STARTED_EVENT = "plum-duff-tracker-settings-update-started";
+export const TRACKER_SETTINGS_UPDATE_FAILED_EVENT = "plum-duff-tracker-settings-update-failed";
 
 export type TrackerSettingsClientRecord = {
   profile_id: string;
@@ -38,23 +40,31 @@ export async function saveFundManagerSelectedRange(
   customEnd: string | null = null
 ): Promise<FundManagerSelectedRange> {
   const selectedRangeUrl = `${apiBaseUrl}/fund-manager/preferences/selected-range`;
-  const response = await fetch(selectedRangeUrl, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      selected_range_preset: preset,
-      selected_range_custom_start: preset === "Custom" ? customStart : null,
-      selected_range_custom_end: preset === "Custom" ? customEnd : null,
-    }),
-  });
-  if (!response.ok) throw new Error(await response.text());
-  const selectedRange = (await response.json()) as FundManagerSelectedRange;
-  invalidateCachedJson(`${apiBaseUrl}/profiles/`);
-  invalidateCachedJson(selectedRangeUrl);
-  window.dispatchEvent(new CustomEvent(TRACKER_SETTINGS_UPDATED_EVENT, {
-    detail: { selectedRange },
+  window.dispatchEvent(new CustomEvent(TRACKER_SETTINGS_UPDATE_STARTED_EVENT, {
+    detail: { preset },
   }));
-  return selectedRange;
+  try {
+    const response = await fetch(selectedRangeUrl, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        selected_range_preset: preset,
+        selected_range_custom_start: preset === "Custom" ? customStart : null,
+        selected_range_custom_end: preset === "Custom" ? customEnd : null,
+      }),
+    });
+    if (!response.ok) throw new Error(await response.text());
+    const selectedRange = (await response.json()) as FundManagerSelectedRange;
+    invalidateCachedJson(`${apiBaseUrl}/profiles/`);
+    invalidateCachedJson(selectedRangeUrl);
+    window.dispatchEvent(new CustomEvent(TRACKER_SETTINGS_UPDATED_EVENT, {
+      detail: { selectedRange },
+    }));
+    return selectedRange;
+  } catch (error) {
+    window.dispatchEvent(new CustomEvent(TRACKER_SETTINGS_UPDATE_FAILED_EVENT));
+    throw error;
+  }
 }
 
 export async function saveTrackerDatePreset<TSettings extends TrackerSettingsClientRecord>(

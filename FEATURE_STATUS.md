@@ -6,6 +6,13 @@
 > working-workbook identity passed bounded automated verification. The additive local migration
 > was applied after verified backup `BACKUP-5DE8D6D5`; canonical runtime health passed and owner
 > interaction remains pending.
+>
+> 2026-10-14 Profile/range stabilisation: Profile summary loading has one request-versioned owner
+> and explicit ready/no-activity/unavailable/failure terminals. Invalidated shared reads are
+> cancelled, the contained Material loader replaces the rotating glyph, empty/unavailable chart
+> states no longer occupy the plot, and incomplete Account cash retains labelled known subtotals.
+> The authenticated 26-transition synthetic browser gate passed; canonical owner interaction is
+> still unverified and workbook acceptance remains paused.
 
 **Last updated:** 2026-09-26 23:29:27 BST
 

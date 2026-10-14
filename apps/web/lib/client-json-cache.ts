@@ -8,7 +8,11 @@ type CacheEntry<T> = {
 };
 
 const jsonCache = new Map<string, CacheEntry<unknown>>();
-const inFlightJsonRequests = new Map<string, Promise<unknown>>();
+type InFlightJsonRequest = {
+  controller: AbortController;
+  promise: Promise<unknown>;
+};
+const inFlightJsonRequests = new Map<string, InFlightJsonRequest>();
 
 export const TRACKER_STALE_WHILE_REFRESH_MS = 300_000;
 
@@ -40,14 +44,20 @@ export function invalidateCachedJson(urlOrPrefix: string): void {
       jsonCache.delete(key);
     }
   }
+  for (const [key, request] of inFlightJsonRequests.entries()) {
+    if (key === urlOrPrefix || key.startsWith(urlOrPrefix)) {
+      request.controller.abort();
+      inFlightJsonRequests.delete(key);
+    }
+  }
 }
 
 export async function fetchJsonAndCache<T>(
   url: string,
   options: { signal?: AbortSignal } = {}
 ): Promise<T> {
-  const request = async () => {
-    const response = await fetch(url, { cache: "no-store", signal: options.signal });
+  const request = async (signal: AbortSignal) => {
+    const response = await fetch(url, { cache: "no-store", signal });
     if (!response.ok) {
       await redirectExpiredSession(response);
       throw new JsonRequestError(response.status);
@@ -55,14 +65,29 @@ export async function fetchJsonAndCache<T>(
     return writeCachedJson(url, (await response.json()) as T);
   };
 
-  // Signal-owned requests must remain independently abortable. Stable shell/page
-  // reads without a signal can safely share one in-flight request per URL.
-  if (options.signal) return request();
-  const current = inFlightJsonRequests.get(url) as Promise<T> | undefined;
-  if (current) return current;
-  const pending = request().finally(() => {
-    if (inFlightJsonRequests.get(url) === pending) inFlightJsonRequests.delete(url);
+  const current = inFlightJsonRequests.get(url);
+  let pending: Promise<T>;
+  if (current) {
+    pending = current.promise as Promise<T>;
+  } else {
+    const controller = new AbortController();
+    const entry: InFlightJsonRequest = {
+      controller,
+      promise: Promise.resolve(undefined),
+    };
+    pending = request(controller.signal).finally(() => {
+      if (inFlightJsonRequests.get(url) === entry) inFlightJsonRequests.delete(url);
+    });
+    entry.promise = pending;
+    inFlightJsonRequests.set(url, entry);
+  }
+  if (!options.signal) return pending;
+  if (options.signal.aborted) throw new DOMException("Request cancelled", "AbortError");
+  return new Promise<T>((resolve, reject) => {
+    const abort = () => reject(new DOMException("Request cancelled", "AbortError"));
+    options.signal?.addEventListener("abort", abort, { once: true });
+    void pending.then(resolve, reject).finally(() => {
+      options.signal?.removeEventListener("abort", abort);
+    });
   });
-  inFlightJsonRequests.set(url, pending);
-  return pending;
 }

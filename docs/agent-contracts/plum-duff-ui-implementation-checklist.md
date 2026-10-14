@@ -195,3 +195,12 @@ Complete this for every feature, bug fix, component, fixture-backed UI, route or
       identity and authenticated boundary.
 - [ ] Owner interaction at canonical localhost:3010 remains pending; no Excel
       or desktop application was opened or controlled.
+
+## Core Profile/range stabilisation — 2026-10-14
+
+- [x] PD-FIX-332 deterministic request identity, cancellation and terminal-state evidence.
+- [x] PD-FIX-333 contained header progress geometry and reduced-motion evidence.
+- [x] PD-FIX-334 compact empty/unavailable state and unchanged valid-chart evidence.
+- [x] PD-FIX-335 partial-known cash, affected-Account link and unknown-not-zero evidence.
+- [x] Twenty-transition authenticated synthetic browser stability gate (26 transitions passed).
+- [ ] Canonical owner smoke remains pending after installation; workbook acceptance stays paused.

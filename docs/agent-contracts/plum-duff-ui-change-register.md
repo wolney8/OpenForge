@@ -416,6 +416,24 @@ BST after verified backup `BACKUP-5DE8D6D5`. Historical Profile range fields rem
 compatibility but are no longer the active authority for this feature. Automated gates passed;
 canonical runtime smoke and owner acceptance remain pending.
 
+## Core Profile/range stabilisation — 2026-10-14
+
+| ID | Surface | Requested behaviour | Signed-off equivalent | Status |
+| --- | --- | --- | --- | --- |
+| PD-FIX-332 | Profile summary state | Every Profile/range request reaches ready, empty, unavailable or error; stale/cancelled work cannot strand loading | Existing combined tracker-summary projection and selected-range authority | COMPLETE |
+| PD-FIX-333 | Profile header loader | Stable contained Material progress with `Updating summary…`; no rotating glyph/wire | Existing Material linear progress primitive | COMPLETE |
+| PD-FIX-334 | Selected Range Performance | Compact empty/unavailable state outside the plotting area; preserve the accepted valid-data chart | Existing compact financial-readiness treatment | COMPLETE |
+| PD-FIX-335 | Current Account Cash | Show known subtotal and missing-account evidence without presenting partial cash as complete | Existing Account money completeness authority; tracked Account repair scope #116 | COMPLETE |
+
+This batch is limited to the canonical Profile/range workflow. Workbook acceptance and feature
+development remain paused. The UI checklist below is the explicit local verification link; no new
+GitHub issue or hosted mutation is authorised by this batch.
+
+Evidence: 566 web unit/component regressions; focused lint, typecheck and production build; one
+authenticated isolated browser gate with 26 terminal transitions, delayed/stale responses,
+failure/recovery, zero/invalid activity, route/Profile changes, refresh and re-authentication.
+Canonical owner interaction remains `NEEDS VERIFICATION` after installation.
+
 ## CP-075 Sportsbook promotion local integration — 2026-10-09 12:29 BST
 
 | ID | Surface | Requested behaviour | Signed-off equivalent | Status |

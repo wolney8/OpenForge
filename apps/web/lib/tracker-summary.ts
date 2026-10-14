@@ -282,6 +282,9 @@ export type TrackerSummaryResult = {
     cashSnapshot: number;
     moneyIssues?: AccountMoneyIssue[];
     knownCashSubtotal?: string;
+    bookieKnownBalance?: string;
+    exchangeKnownBalance?: string;
+    bankKnownBalance?: string;
   };
   profitQuickView: {
     sportsbook: ModuleMetric;
@@ -793,9 +796,12 @@ export function summarizeTrackerData(
     && row.lifecycle_status !== "Archived"
   );
   const cash=sumAccountMoney(includedAccounts,"current_balance");
-  const bookieBalance=sumAccountMoney(includedAccounts.filter(row=>row.type==="Bookie"),"current_balance").value;
-  const exchangeBalance=sumAccountMoney(includedAccounts.filter(row=>row.type==="Exchange"),"current_balance").value;
-  const bankBalance=sumAccountMoney(includedAccounts.filter(row=>row.type==="Bank"),"current_balance").value;
+  const bookieCash=sumAccountMoney(includedAccounts.filter(row=>row.type==="Bookie"),"current_balance");
+  const exchangeCash=sumAccountMoney(includedAccounts.filter(row=>row.type==="Exchange"),"current_balance");
+  const bankCash=sumAccountMoney(includedAccounts.filter(row=>row.type==="Bank"),"current_balance");
+  const bookieBalance=bookieCash.value;
+  const exchangeBalance=exchangeCash.value;
+  const bankBalance=bankCash.value;
   const pending=sumAccountMoney(includedAccounts,"pending_withdrawal_amount");
   const pendingWithdrawals=pending.value;
 
@@ -1174,6 +1180,9 @@ export function summarizeTrackerData(
       cashSnapshot: cash.value,
       moneyIssues: [...cash.issues,...pending.issues],
       knownCashSubtotal: cash.knownSubtotal,
+      bookieKnownBalance: bookieCash.knownSubtotal,
+      exchangeKnownBalance: exchangeCash.knownSubtotal,
+      bankKnownBalance: bankCash.knownSubtotal,
     },
     profitQuickView: {
       sportsbook: {

@@ -42,6 +42,8 @@ export type CrossProfileReportingResult = {
   freeBetFinancialIssues?: string[];
   sportsbookFinancialIssues?: string[];
   cashIssues?: AccountMoneyIssue[];
+  knownCashSubtotal: number;
+  incompleteCashAccountCount: number;
   profileRows: ProfileComparisonRow[];
   totals: Omit<
     ProfileComparisonRow,
@@ -99,6 +101,21 @@ export function aggregateCrossProfileReporting(
     profileId:p.profileId,
     accountName:`${p.displayName} · ${issue.accountName}`,
   })));
+  const knownCashSubtotal = profiles.reduce((total, profile) => {
+    const raw = profile.summary.accountQuickView.knownCashSubtotal;
+    if (raw?.trim()) {
+      const parsed = Number(raw);
+      if (Number.isFinite(parsed)) return total + parsed;
+    }
+    return Number.isFinite(profile.summary.accountQuickView.cashSnapshot)
+      ? total + profile.summary.accountQuickView.cashSnapshot
+      : total;
+  }, 0);
+  const incompleteCashAccountCount = new Set(
+    cashIssues
+      .filter((issue) => issue.field === "current_balance")
+      .map((issue) => `${issue.profileId ?? "profile"}:${issue.accountId}`)
+  ).size;
   // Current lifecycle status is display/scope metadata, not a historical-report exclusion.
   const profileRows = profiles.map(({ profileId, displayName, profileCode, status, summary, actionable, trueOpenPositionCount }) => {
     const actionCounts = actionable ?? { sportsbook: 0, freeBets: 0, casinoOffers: 0, extraPlaces: 0 };
@@ -210,6 +227,8 @@ export function aggregateCrossProfileReporting(
     freeBetFinancialIssues: profiles.flatMap((profile) => (profile.summary.freeBetFinancialIssues ?? []).map((issue) => `${profile.displayName} · ${issue}`)),
     sportsbookFinancialIssues: profiles.flatMap((profile) => (profile.summary.sportsbookFinancialIssues ?? []).map((issue) => `${profile.displayName} · ${issue}`)),
     cashIssues,
+    knownCashSubtotal,
+    incompleteCashAccountCount,
     totals,
     moduleBreakdown: [...moduleMap.values()],
     bookmakerBreakdown: [...bookmakerMap.values()].sort(

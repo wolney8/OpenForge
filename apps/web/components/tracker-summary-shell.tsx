@@ -15,6 +15,8 @@ import {
 } from "@/components/bookmaker-identity";
 import { FinancialValue, FinancialValueReplayGroup, FinancialValueReplayRow } from "@/components/financial-value";
 import { FinancialReadValue } from "@/components/financial-read-value";
+import { BettingPnlReadValue } from "@/components/betting-pnl-read-value";
+import { CurrentAccountCash } from "@/components/current-account-cash";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { PortfolioDashboardView } from "@/components/portfolio-dashboard-view";
 import { TrackerRangeCard } from "@/components/tracker-range-card";
@@ -29,10 +31,6 @@ import {
 } from "@/lib/fee-period-summary";
 import { saveTrackerDatePreset } from "@/lib/tracker-settings-client";
 import { buildOperationalLedgerHref } from "@/lib/operational-actions";
-import {
-  TRACKER_HEADER_SUMMARY_UPDATED_EVENT,
-  type TrackerHeaderSummaryDetail,
-} from "@/lib/tracker-data-events";
 import {
   formatHumanDisplayDate,
   formatResolvedDateRange,
@@ -487,21 +485,6 @@ export function TrackerSummaryShell({ profileId, profileTitle, variant }: Tracke
     settings?.use_global_date_range_toggle,
   ]);
 
-  useEffect(() => {
-    const detail: TrackerHeaderSummaryDetail = {
-      profileId,
-      state: errorMessage ? "error" : isTrackerRangeSaving || !summary ? "loading" : "ready",
-      overallPnl: summary?.profitQuickView.overallPnl ?? null,
-      profileRangeLabel: formatResolvedDateRange(resolvedRange),
-      profileRangeDetail: formatResolvedDateRangeContext(resolvedRange),
-    };
-    window.dispatchEvent(
-      new CustomEvent<TrackerHeaderSummaryDetail>(TRACKER_HEADER_SUMMARY_UPDATED_EVENT, {
-        detail,
-      })
-    );
-  }, [errorMessage, isTrackerRangeSaving, profileId, resolvedRange, summary]);
-
   const selectedRangeReadState = errorMessage
     ? "error"
     : isTrackerRangeSaving || !summary
@@ -688,16 +671,17 @@ export function TrackerSummaryShell({ profileId, profileTitle, variant }: Tracke
                 <span className="eyebrow">
                   {isReports ? "Formal Report Periods" : "Current Account Cash"}
                 </span>
-                <strong>
-                  {isReports
-                    ? `${summary.reportingModel.formalReports.weeklyPeriods}W / ${summary.reportingModel.formalReports.monthlyPeriods}M`
-                    : <FinancialValue value={summary.accountQuickView.cashSnapshot} />}
-                </strong>
-                <span>
-                  {isReports
-                    ? `${summary.reportingModel.formalReports.yearlyPeriods}Y formal periods`
-                    : <>Pending withdrawals <FinancialValue value={summary.accountQuickView.pendingWithdrawals} /></>}
-                </span>
+                {isReports ? (
+                  <>
+                    <strong>{`${summary.reportingModel.formalReports.weeklyPeriods}W / ${summary.reportingModel.formalReports.monthlyPeriods}M`}</strong>
+                    <span>{`${summary.reportingModel.formalReports.yearlyPeriods}Y formal periods`}</span>
+                  </>
+                ) : (
+                  <>
+                    <CurrentAccountCash cash={summary.accountQuickView} />
+                    <span>Pending withdrawals <FinancialValue value={summary.accountQuickView.pendingWithdrawals} /></span>
+                  </>
+                )}
               </article>
             </>
           ) : null}
@@ -744,7 +728,7 @@ export function TrackerSummaryShell({ profileId, profileTitle, variant }: Tracke
             <section className="stat-strip" aria-label="Selected range module mix">
               <FinancialValueReplayGroup><article className="stat-card">
                 <span className="eyebrow">Sportsbook</span>
-                <strong><FinancialReadValue state={selectedRangeReadState} subject="value" value={summary.profitQuickView.sportsbook.reportingValue} /></strong>
+                <strong><BettingPnlReadValue state={selectedRangeReadState} activityCount={summary.profitQuickView.sportsbook.count} value={summary.profitQuickView.sportsbook.reportingValue} /></strong>
                 <span>
                   Open/current <FinancialReadValue state={selectedRangeReadState} subject="value" value={summary.profitQuickView.sportsbook.currentValue} /> • Final{" "}
                   <FinancialReadValue state={selectedRangeReadState} subject="value" value={summary.profitQuickView.sportsbook.finalValue} />
@@ -752,7 +736,7 @@ export function TrackerSummaryShell({ profileId, profileTitle, variant }: Tracke
               </article></FinancialValueReplayGroup>
               <FinancialValueReplayGroup><article className="stat-card">
                 <span className="eyebrow">Free Bets</span>
-                <strong><FinancialReadValue state={selectedRangeReadState} subject="value" value={summary.profitQuickView.freeBets.reportingValue} /></strong>
+                <strong><BettingPnlReadValue state={selectedRangeReadState} activityCount={summary.profitQuickView.freeBets.count} value={summary.profitQuickView.freeBets.reportingValue} /></strong>
                 <span>
                   Open/current <FinancialReadValue state={selectedRangeReadState} subject="value" value={summary.profitQuickView.freeBets.currentValue} /> • Final{" "}
                   <FinancialReadValue state={selectedRangeReadState} subject="value" value={summary.profitQuickView.freeBets.finalValue} />
@@ -778,16 +762,11 @@ export function TrackerSummaryShell({ profileId, profileTitle, variant }: Tracke
             <section className="stat-strip" aria-label="Tracker quick views">
               <article className="stat-card">
                 <span className="eyebrow">Current Account Cash</span>
-                <strong><FinancialValue value={summary.accountQuickView.cashSnapshot} /></strong>
-                <span>
-                  Bookie <FinancialValue value={summary.accountQuickView.bookieBalance} /> • Exchange{" "}
-                  <FinancialValue value={summary.accountQuickView.exchangeBalance} /> • Bank{" "}
-                  <FinancialValue value={summary.accountQuickView.bankBalance} />
-                </span>
+                <CurrentAccountCash cash={summary.accountQuickView} />
               </article>
               <article className="stat-card">
                 <span className="eyebrow">Selected Range P&amp;L</span>
-                <strong><FinancialValue value={summary.profitQuickView.overallPnl} /></strong>
+                <strong><BettingPnlReadValue state={selectedRangeReadState} activityCount={summary.activityQuickView.sportsbookCount + summary.activityQuickView.freeBetCount + summary.activityQuickView.casinoCount + summary.activityQuickView.eachWayExtraPlaceCount} value={summary.profitQuickView.overallPnl} /></strong>
                 <span>
                   Sportsbook <FinancialValue value={summary.profitQuickView.sportsbook.reportingValue} /> •
                   Free Bets <FinancialValue value={summary.profitQuickView.freeBets.reportingValue} /> • Casino{" "}

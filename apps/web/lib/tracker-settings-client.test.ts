@@ -3,6 +3,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   saveTrackerDatePreset,
   TRACKER_SETTINGS_UPDATED_EVENT,
+  TRACKER_SETTINGS_UPDATE_FAILED_EVENT,
+  TRACKER_SETTINGS_UPDATE_STARTED_EVENT,
   type TrackerSettingsClientRecord,
 } from "./tracker-settings-client";
 
@@ -43,7 +45,9 @@ describe("saveTrackerDatePreset", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
     const eventListener = vi.fn();
+    const startedListener = vi.fn();
     window.addEventListener(TRACKER_SETTINGS_UPDATED_EVENT, eventListener);
+    window.addEventListener(TRACKER_SETTINGS_UPDATE_STARTED_EVENT, startedListener);
 
     await expect(
       saveTrackerDatePreset("profile-synthetic-001", currentSettings, "This Month")
@@ -60,7 +64,9 @@ describe("saveTrackerDatePreset", () => {
       selected_range_custom_end: null,
     });
     expect(eventListener).toHaveBeenCalledTimes(1);
+    expect(startedListener).toHaveBeenCalledTimes(1);
     window.removeEventListener(TRACKER_SETTINGS_UPDATED_EVENT, eventListener);
+    window.removeEventListener(TRACKER_SETTINGS_UPDATE_STARTED_EVENT, startedListener);
   });
 
   it("does not announce a failed settings mutation", async () => {
@@ -69,12 +75,16 @@ describe("saveTrackerDatePreset", () => {
       vi.fn().mockResolvedValue(new Response("Synthetic settings failure", { status: 500 }))
     );
     const eventListener = vi.fn();
+    const failedListener = vi.fn();
     window.addEventListener(TRACKER_SETTINGS_UPDATED_EVENT, eventListener);
+    window.addEventListener(TRACKER_SETTINGS_UPDATE_FAILED_EVENT, failedListener);
 
     await expect(
       saveTrackerDatePreset("profile-synthetic-001", currentSettings, "Week (Mon-Sun)")
     ).rejects.toThrow("Synthetic settings failure");
     expect(eventListener).not.toHaveBeenCalled();
+    expect(failedListener).toHaveBeenCalledTimes(1);
     window.removeEventListener(TRACKER_SETTINGS_UPDATED_EVENT, eventListener);
+    window.removeEventListener(TRACKER_SETTINGS_UPDATE_FAILED_EVENT, failedListener);
   });
 });

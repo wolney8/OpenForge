@@ -2,6 +2,7 @@
 import { FinancialReadValue } from "@/components/financial-read-value";
 import { BettingPnlReadValue } from "@/components/betting-pnl-read-value";
 import { AccountMoneyStatus } from "@/components/account-money-status";
+import { CurrentAccountCash } from "@/components/current-account-cash";
 
 import Link from "next/link";
 import { ReportExplorer } from "@/components/report-explorer";
@@ -1670,7 +1671,7 @@ export function CrossProfileAnalytics({
               <div className="dashboard-point-rail profiles-command-rail" aria-label="Selected range metrics">
                 <span><small>Profiles In Scope</small>{selectedProfileIds.length}</span>
                 <span><small>Retained Profit</small><FinancialReadValue state={selectedReadState} subject="retained profit" value={combined.totals.retainedProfit}/></span>
-                <span><small>Cash Snapshot</small><FinancialReadValue state={selectedReadState} subject="Account cash" value={combined.totals.cashSnapshot}/></span>
+                <span><small>Cash Snapshot</small>{selectedReadState === "ready" && !Number.isFinite(combined.totals.cashSnapshot) && combined.incompleteCashAccountCount > 0 ? <>Known cash <FinancialValue value={combined.knownCashSubtotal} /><small>Incomplete — {combined.incompleteCashAccountCount} Account {combined.incompleteCashAccountCount === 1 ? "balance" : "balances"} missing</small></> : <FinancialReadValue state={selectedReadState} subject="Account cash" value={combined.totals.cashSnapshot}/>}</span>
               </div>
             </article>
             </FinancialValueReplayGroup>
@@ -1822,8 +1823,7 @@ export function CrossProfileAnalytics({
           <FinancialValueReplayGroup>
             <article className="stat-card">
               <span className="eyebrow">Current Account Cash</span>
-              <strong><FinancialReadValue state={headlineReadState} subject="current Account cash" value={trackerRangeActiveProfilesCombined.totals.cashSnapshot} zeroTone="neutral" /></strong>
-              <span>Current bookmaker, exchange, and bank balances</span>
+              {headlineReadState === "ready" && !Number.isFinite(trackerRangeActiveProfilesCombined.totals.cashSnapshot) && trackerRangeActiveProfilesCombined.incompleteCashAccountCount > 0 ? <><strong>Known cash <FinancialValue value={trackerRangeActiveProfilesCombined.knownCashSubtotal} /></strong><span className="warning-text">Incomplete — {trackerRangeActiveProfilesCombined.incompleteCashAccountCount} Account {trackerRangeActiveProfilesCombined.incompleteCashAccountCount === 1 ? "balance" : "balances"} missing</span></> : <><strong><FinancialReadValue state={headlineReadState} subject="current Account cash" value={trackerRangeActiveProfilesCombined.totals.cashSnapshot} zeroTone="neutral" /></strong><span>Current bookmaker, exchange, and bank balances</span></>}
             </article>
           </FinancialValueReplayGroup>
           <FinancialValueReplayGroup>
@@ -2105,7 +2105,7 @@ export function CrossProfileAnalytics({
             <section className="profile-drawer-section stack-tight">
               <h3>Current Cash</h3>
               <dl className="profile-detail-list">
-                <div><dt>Current Account Cash</dt><dd>{detailSummary ? <FinancialValue value={detailSummary.summary.accountQuickView.cashSnapshot} /> : isLoading ? <ReportingCellLoading label="Loading current Account cash" /> : "Unavailable"}</dd></div>
+                <div><dt>Current Account Cash</dt><dd>{detailSummary ? <CurrentAccountCash cash={detailSummary.summary.accountQuickView} /> : isLoading ? <ReportingCellLoading label="Loading current Account cash" /> : "Unavailable"}</dd></div>
               </dl>
             </section>
             </FinancialValueReplayGroup>

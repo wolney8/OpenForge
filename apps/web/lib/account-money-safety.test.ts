@@ -14,6 +14,8 @@ describe("#91 independent exact-cent Account totals",()=>{
     const s=summary(raw);expect(s.accountQuickView.cashSnapshot).toBeNaN();expect(s.profitQuickView.overallPnl).toBe(0);
     const combined=aggregateCrossProfileReporting([{profileId:"a",displayName:"Synthetic A",profileCode:"A",status:"Active",summary:s},{profileId:"b",displayName:"Synthetic B",profileCode:"B",status:"Active",summary:summary("0.00")}]);
     expect(combined.totals.cashSnapshot).toBeNaN();expect(combined.totals.grossBettingPnl).toBe(0);
+    expect(combined.knownCashSubtotal).toBe(20);
+    expect(combined.incompleteCashAccountCount).toBe(1);
   });
   it("excluded invalid balance does not contaminate included cash",()=>expect(summary("NaN",false).accountQuickView.cashSnapshot).toBe(10));
   it("legacy archived Accounts do not contaminate current cash even when their old count flag remains set",()=>{

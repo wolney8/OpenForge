@@ -2,19 +2,9 @@ import { apiBaseUrl } from "./api";
 import { invalidateCachedJson } from "./client-json-cache";
 
 export const TRACKER_DATA_UPDATED_EVENT = "plum-duff-tracker-data-updated";
-export const TRACKER_HEADER_SUMMARY_UPDATED_EVENT = "plum-duff-tracker-header-summary-updated";
-
 export type TrackerDataUpdatedDetail = {
   ledger?: string;
   profileId?: string;
-};
-
-export type TrackerHeaderSummaryDetail = {
-  overallPnl: number | null;
-  state: "loading" | "ready" | "error";
-  profileId: string;
-  profileRangeDetail: string;
-  profileRangeLabel: string;
 };
 
 const trackerLedgerPaths = [

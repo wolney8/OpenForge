@@ -2674,6 +2674,27 @@ html[data-theme="dark"] .notification-count-badge {
   letter-spacing: -0.06em;
 }
 
+.dashboard-hero-value.is-compact {
+  font-size: clamp(1.35rem, 2.2vw, 1.8rem);
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+
+.betting-pnl-empty,
+.betting-pnl-read-state {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.betting-pnl-empty small,
+.betting-pnl-read-state small {
+  color: var(--muted);
+  font-size: 0.92rem;
+  font-weight: 650;
+  letter-spacing: normal;
+  line-height: 1.35;
+}
+
 .dashboard-period-control {
   align-items: center;
   box-sizing: border-box;
@@ -8471,12 +8492,9 @@ html[data-theme="dark"] .ledger-editor-tab-button-matching {
   animation: button-spinner-rotate 780ms linear infinite;
 }
 
-.summary-menu-loading-icon {
-  animation: button-spinner-rotate 780ms linear infinite;
-  block-size: 1rem;
-  font-size: 1rem;
-  inline-size: 1rem;
-  line-height: 1;
+.summary-menu-loading-indicator {
+  flex: 0 0 auto;
+  inline-size: 2.25rem;
 }
 
 @keyframes button-spinner-rotate {
@@ -8487,9 +8505,6 @@ html[data-theme="dark"] .ledger-editor-tab-button-matching {
 
 @media (prefers-reduced-motion: reduce) {
   .button-spinner {
-    animation: none;
-  }
-  .summary-menu-loading-icon {
     animation: none;
   }
   .workflow-editor-panel {

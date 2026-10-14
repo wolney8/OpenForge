@@ -23,25 +23,20 @@ import { platformBrand } from "@/lib/brand";
 import {
   fetchJsonAndCache,
   readCachedJson,
-  TRACKER_STALE_WHILE_REFRESH_MS,
 } from "@/lib/client-json-cache";
 import {
   formatResolvedDateRange,
   formatResolvedDateRangeContext,
   resolveDateRange,
   summarizeTrackerData,
-  type CashAdjustmentSummaryRecord,
-  type CasinoSummaryRecord,
-  type EachWayExtraPlaceSummaryRecord,
-  type FreeBetSummaryRecord,
-  type SportsbookSummaryRecord,
 } from "@/lib/tracker-summary";
+import { TRACKER_DATA_UPDATED_EVENT } from "@/lib/tracker-data-events";
 import {
-  TRACKER_DATA_UPDATED_EVENT,
-  TRACKER_HEADER_SUMMARY_UPDATED_EVENT,
-  type TrackerHeaderSummaryDetail,
-} from "@/lib/tracker-data-events";
-import { TRACKER_SETTINGS_UPDATED_EVENT } from "@/lib/tracker-settings-client";
+  TRACKER_SETTINGS_UPDATED_EVENT,
+  TRACKER_SETTINGS_UPDATE_FAILED_EVENT,
+  TRACKER_SETTINGS_UPDATE_STARTED_EVENT,
+} from "@/lib/tracker-settings-client";
+import { fetchTrackerSummarySources } from "@/lib/tracker-summary-sources";
 import {
   PROFILE_DIRECTORY_UPDATED_EVENT,
   recordRecentProfile,
@@ -64,28 +59,6 @@ type ProfileHeaderRecord = {
   status?: string;
 };
 
-type TrackerSettingsRecord = {
-  active_date_preset:
-    | "Today"
-    | "Yesterday"
-    | "This Week"
-    | "Week (Mon-Sun)"
-    | "Last Week"
-    | "Past 7 Days"
-    | "Past 8 Days"
-    | "Fortnight"
-    | "This Month"
-    | "Last Month"
-    | "This Year"
-    | "All Dates"
-    | "Custom";
-  custom_start_date: string;
-  custom_end_date: string;
-  range_back_days: number;
-  range_forward_days: number;
-  mug_bet_frequency_days: number;
-};
-
 type HeaderSummaryState = {
   profileId: string;
   profileName: string;
@@ -93,7 +66,7 @@ type HeaderSummaryState = {
   profileRangeLabel: string;
   profileSubtitle: string;
   overallPnl: number | null;
-  readState: "loading" | "ready" | "error";
+  readState: "loading" | "ready" | "unavailable" | "error";
 };
 
 const profileTrackerMenuRoutes = [
@@ -180,6 +153,7 @@ function AppChromeContent({
   const [selectedCommandProfileId, setSelectedCommandProfileId] = useState<string | null>(null);
   const [activeProfiles, setActiveProfiles] = useState<ProfileHeaderRecord[]>([]);
   const [headerRefreshKey, setHeaderRefreshKey] = useState(0);
+  const headerRequestIdRef = useRef(0);
   const unsavedPrompt = useUnsavedChangesPromptController();
   const trackerMenuRef = useRef<HTMLDivElement | null>(null);
   const trackerMenuTriggerRef = useRef<HTMLButtonElement | null>(null);
@@ -326,37 +300,39 @@ function AppChromeContent({
   }, [activeProfileId]);
 
   useEffect(() => {
-    const applySummary = (event: Event) => {
-      const detail = (event as CustomEvent<TrackerHeaderSummaryDetail>).detail;
-      if (detail.profileId !== activeProfileId) return;
-      setHeaderSummary((current) => {
-        if (
-          current?.profileId === detail.profileId &&
-          current.readState === "loading" &&
-          current.profileRangeLabel !== detail.profileRangeLabel
-        ) {
-          return current;
-        }
-        return ({
-        profileId: detail.profileId,
-        profileName:
-          current?.profileId === detail.profileId
-            ? current.profileName
-            : activeProfiles.find((profile) => profile.profile_id === detail.profileId)?.display_name ??
-              "Selected profile",
-        overallPnl: detail.state === "ready" ? detail.overallPnl : null,
-        readState: detail.state,
-        profileRangeDetail: detail.profileRangeDetail,
-        profileRangeLabel: detail.profileRangeLabel,
-        profileSubtitle: detail.profileRangeLabel,
-        });
-      });
+    const showUpdatingSummary = () => {
+      if (!isInsideProfile) return;
+      setHeaderSummary((current) => ({
+        profileId: activeProfileId,
+        profileName: current?.profileId === activeProfileId
+          ? current.profileName
+          : activeProfiles.find((profile) => profile.profile_id === activeProfileId)?.display_name ?? "Selected Profile",
+        overallPnl: null,
+        readState: "loading",
+        profileRangeDetail: "Updating summary…",
+        profileRangeLabel: "Updating summary…",
+        profileSubtitle: "Updating summary…",
+      }));
     };
-    window.addEventListener(TRACKER_HEADER_SUMMARY_UPDATED_EVENT, applySummary);
+    const showUpdateFailure = () => {
+      if (!isInsideProfile) return;
+      setHeaderSummary((current) => ({
+        profileId: activeProfileId,
+        profileName: current?.profileId === activeProfileId ? current.profileName : "Selected Profile",
+        overallPnl: null,
+        readState: "error",
+        profileRangeDetail: "Summary update failed",
+        profileRangeLabel: "Summary update failed",
+        profileSubtitle: "Summary update failed",
+      }));
+    };
+    window.addEventListener(TRACKER_SETTINGS_UPDATE_STARTED_EVENT, showUpdatingSummary);
+    window.addEventListener(TRACKER_SETTINGS_UPDATE_FAILED_EVENT, showUpdateFailure);
     return () => {
-      window.removeEventListener(TRACKER_HEADER_SUMMARY_UPDATED_EVENT, applySummary);
+      window.removeEventListener(TRACKER_SETTINGS_UPDATE_STARTED_EVENT, showUpdatingSummary);
+      window.removeEventListener(TRACKER_SETTINGS_UPDATE_FAILED_EVENT, showUpdateFailure);
     };
-  }, [activeProfileId, activeProfiles]);
+  }, [activeProfileId, activeProfiles, isInsideProfile]);
 
   useEffect(() => {
     if (!isInsideProfile) {
@@ -391,30 +367,36 @@ function AppChromeContent({
       return;
     }
 
-    let isActive = true;
+    const controller = new AbortController();
+    const requestId = ++headerRequestIdRef.current;
+    const isCurrentRequest = () =>
+      requestId === headerRequestIdRef.current && !controller.signal.aborted;
+    const existingName = activeProfiles.find(
+      (profile) => profile.profile_id === activeProfileId
+    )?.display_name;
+    let loadingFrame = window.requestAnimationFrame(() => {
+      loadingFrame = 0;
+      if (!isCurrentRequest()) return;
+      setHeaderSummary((current) => ({
+        profileId: activeProfileId,
+        profileName: existingName ??
+          (current?.profileId === activeProfileId ? current.profileName : "Selected Profile"),
+        profileRangeDetail: "Updating summary…",
+        profileRangeLabel: "Updating summary…",
+        profileSubtitle: "Updating summary…",
+        overallPnl: null,
+        readState: "loading",
+      }));
+    });
 
     const loadHeader = async () => {
       const profileUrl = `${apiBaseUrl}/profiles/${activeProfileId}`;
-      const settingsUrl = `${apiBaseUrl}/profiles/${activeProfileId}/tracker-settings`;
-      const sportsbookUrl = `${apiBaseUrl}/profiles/${activeProfileId}/sportsbook-bets`;
-      const freeBetUrl = `${apiBaseUrl}/profiles/${activeProfileId}/free-bets`;
-      const casinoUrl = `${apiBaseUrl}/profiles/${activeProfileId}/casino-offers`;
-      const eachWayExtraPlacesUrl = `${apiBaseUrl}/profiles/${activeProfileId}/each-way-extra-places`;
-      const cashUrl = `${apiBaseUrl}/profiles/${activeProfileId}/cash-adjustments`;
-
-      const cachedProfile = readCachedJson<ProfileHeaderRecord>(
-        profileUrl,
-        TRACKER_STALE_WHILE_REFRESH_MS
-      );
-      const cachedSettings = readCachedJson<TrackerSettingsRecord>(
-        settingsUrl,
-        TRACKER_STALE_WHILE_REFRESH_MS
-      );
-      const applyHeaderIdentity = (
-        profile: ProfileHeaderRecord,
-        settings: TrackerSettingsRecord,
-        overallPnl: number | null
-      ) => {
+      const [profile, sources] = await Promise.all([
+        fetchJsonAndCache<ProfileHeaderRecord>(profileUrl, { signal: controller.signal }),
+        fetchTrackerSummarySources(activeProfileId, { signal: controller.signal }),
+      ]);
+      if (!isCurrentRequest()) return;
+      const settings = sources.trackerSettings;
         const resolvedRange = resolveDateRange({
           preset: settings.active_date_preset,
           customStart: settings.custom_start_date,
@@ -424,109 +406,32 @@ function AppChromeContent({
         });
         const rangeLabel = formatResolvedDateRange(resolvedRange);
         const rangeDetail = formatResolvedDateRangeContext(resolvedRange);
-
-        setHeaderSummary(() => {
-          return {
-            profileId: activeProfileId,
-            profileName: profile.display_name,
-            profileRangeDetail: rangeDetail,
-            profileRangeLabel: rangeLabel,
-            profileSubtitle: rangeLabel,
-            overallPnl: overallPnl === null ? null : overallPnl,
-            readState: overallPnl === null ? "loading" : "ready",
-          };
-        });
-
-        return resolvedRange;
-      };
-
-      if (cachedProfile && cachedSettings && isActive) {
-        applyHeaderIdentity(cachedProfile, cachedSettings, null);
-      }
-
-      const cachedSportsbookBets = readCachedJson<SportsbookSummaryRecord[]>(
-        sportsbookUrl,
-        TRACKER_STALE_WHILE_REFRESH_MS
-      );
-      const cachedFreeBets = readCachedJson<FreeBetSummaryRecord[]>(
-        freeBetUrl,
-        TRACKER_STALE_WHILE_REFRESH_MS
-      );
-      const cachedCasinoOffers = readCachedJson<CasinoSummaryRecord[]>(
-        casinoUrl,
-        TRACKER_STALE_WHILE_REFRESH_MS
-      );
-      const cachedEachWayExtraPlaces = readCachedJson<EachWayExtraPlaceSummaryRecord[]>(
-        eachWayExtraPlacesUrl,
-        TRACKER_STALE_WHILE_REFRESH_MS
-      );
-      const cachedCashAdjustments = readCachedJson<CashAdjustmentSummaryRecord[]>(
-        cashUrl,
-        TRACKER_STALE_WHILE_REFRESH_MS
-      );
-
-      if (
-        cachedProfile &&
-        cachedSettings &&
-        cachedSportsbookBets &&
-        cachedFreeBets &&
-        cachedCasinoOffers &&
-        cachedCashAdjustments &&
-        cachedEachWayExtraPlaces
-      ) {
-        const cachedRange = resolveDateRange({
-          preset: cachedSettings.active_date_preset,
-          customStart: cachedSettings.custom_start_date,
-          customEnd: cachedSettings.custom_end_date,
-          rangeBackDays: cachedSettings.range_back_days,
-          rangeForwardDays: cachedSettings.range_forward_days,
-        });
-        const cachedSummary = summarizeTrackerData(
-          {
-            accounts: [],
-            sportsbookBets: cachedSportsbookBets,
-            freeBets: cachedFreeBets,
-            casinoOffers: cachedCasinoOffers,
-            cashAdjustments: cachedCashAdjustments,
-            eachWayExtraPlaces: cachedEachWayExtraPlaces,
-          },
-          cachedRange,
-          undefined,
-          {
-            mugBetFrequencyDays: cachedSettings.mug_bet_frequency_days,
-          }
-        );
-
-        if (isActive) {
-          applyHeaderIdentity(
-            cachedProfile,
-            cachedSettings,
-            cachedSummary.profitQuickView.overallPnl
-          );
-        }
-      }
-
-      const [profile, settings] = await Promise.all([
-        fetchJsonAndCache<ProfileHeaderRecord>(profileUrl),
-        fetchJsonAndCache<TrackerSettingsRecord>(settingsUrl),
-      ]);
-
-      if (!isActive) {
-        return;
-      }
-
-      // Profile pages own their ledger reads and publish their calculated
-      // header summary without causing another network refresh.
-      applyHeaderIdentity(profile, settings, null);
-    };
-
-    void loadHeader().catch(() => {
-      if (!isActive) {
-        return;
-      }
+      const summary = summarizeTrackerData(sources, resolvedRange, undefined, {
+        mugBetFrequencyDays: settings.mug_bet_frequency_days,
+        freeBetExpiryAlertWindowDays: settings.free_bet_expiry_alert_window_days,
+        useGlobalDateRangeToggle: settings.use_global_date_range_toggle,
+      });
+      const overallPnl = summary.profitQuickView.overallPnl;
+      if (loadingFrame) window.cancelAnimationFrame(loadingFrame);
+      loadingFrame = 0;
       setHeaderSummary({
         profileId: activeProfileId,
-        profileName: "Selected profile",
+        profileName: profile.display_name,
+        profileRangeDetail: rangeDetail,
+        profileRangeLabel: rangeLabel,
+        profileSubtitle: rangeLabel,
+        overallPnl: Number.isFinite(overallPnl) ? overallPnl : null,
+        readState: Number.isFinite(overallPnl) ? "ready" : "unavailable",
+      });
+    };
+
+    void loadHeader().catch((error: unknown) => {
+      if (!isCurrentRequest() || (error instanceof DOMException && error.name === "AbortError")) return;
+      if (loadingFrame) window.cancelAnimationFrame(loadingFrame);
+      loadingFrame = 0;
+      setHeaderSummary({
+        profileId: activeProfileId,
+        profileName: existingName ?? "Selected Profile",
         profileRangeDetail: "Header summary unavailable",
         profileRangeLabel: "Header summary unavailable",
         profileSubtitle: "Header summary unavailable",
@@ -536,9 +441,11 @@ function AppChromeContent({
     });
 
     return () => {
-      isActive = false;
+      if (loadingFrame) window.cancelAnimationFrame(loadingFrame);
+      controller.abort();
+      if (headerRequestIdRef.current === requestId) headerRequestIdRef.current += 1;
     };
-  }, [activeProfileId, headerRefreshKey, isInsideProfile, pathname]);
+  }, [activeProfileId, activeProfiles, headerRefreshKey, isInsideProfile, pathname]);
 
   useEffect(() => {
     if (!trackerMenuOpen) {
@@ -606,7 +513,8 @@ function AppChromeContent({
   const profileSummaryLoading =
     isInsideProfile && (headerSummary?.profileId !== activeProfileId || headerSummary.readState === "loading");
   const profileSummaryUnavailable =
-    isInsideProfile && headerSummary?.profileId === activeProfileId && headerSummary.readState === "error";
+    isInsideProfile && headerSummary?.profileId === activeProfileId &&
+    (headerSummary.readState === "error" || headerSummary.readState === "unavailable");
   const recentProfileName =
     activeProfiles.find((profile) => profile.profile_id === activeProfileId)?.display_name ??
     (headerSummary?.profileId === activeProfileId ? headerSummary.profileName : "");
@@ -731,22 +639,29 @@ function AppChromeContent({
                     <span className="summary-menu-subtitle">
                       {profileSummaryLoading ? (
                         <>
-                          <span aria-hidden="true" className="material-symbols-outlined summary-menu-loading-icon">progress_activity</span>
-                          <span>Loading Profile summary</span>
+                          <span aria-hidden="true" className="material-linear-progress summary-menu-loading-indicator"><span /></span>
+                          <span>Updating summary…</span>
                         </>
                       ) : profileSummaryUnavailable ? (
-                        <span>Profile summary unavailable</span>
+                        <span>{headerSummary?.readState === "error" ? "Profile summary failed to load" : "Profile P&L unavailable"}</span>
                       ) : (
                         <span>Total P&amp;L for {profileRangeLabel}</span>
                       )}
                       {!profileSummaryLoading && typeof profileOverallPnl === "number" ? (
                         <>
                           <span aria-hidden="true" className="summary-menu-separator">•</span>
-                          <FinancialValue
-                            className="summary-menu-financial-value"
-                            label={`Total P&L for ${profileRangeLabel}`}
-                            value={profileOverallPnl}
-                          />
+                          {profileOverallPnl === 0 ? (
+                            <span
+                              aria-label={`Total P&L for ${profileRangeLabel}: £ 0.00`}
+                              className="financial-value financial-value-neutral summary-menu-financial-value"
+                            >£ 0.00</span>
+                          ) : (
+                            <FinancialValue
+                              className="summary-menu-financial-value"
+                              label={`Total P&L for ${profileRangeLabel}`}
+                              value={profileOverallPnl}
+                            />
+                          )}
                         </>
                       ) : null}
                     </span>

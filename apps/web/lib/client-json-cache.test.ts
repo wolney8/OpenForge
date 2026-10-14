@@ -59,4 +59,46 @@ describe("client-json-cache", () => {
     ]);
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
+
+  it("cancels one consumer without cancelling or duplicating the shared request", async () => {
+    let release: (() => void) | undefined;
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    const fetchMock = vi.fn(async () => {
+      await gate;
+      return new Response(JSON.stringify([{ id: "ROW-2" }]), {
+        headers: { "Content-Type": "application/json" }, status: 200,
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const controller = new AbortController();
+    const cancelled = fetchJsonAndCache<Array<{ id: string }>>(
+      "/api/cache-test/cancelled-consumer", { signal: controller.signal },
+    );
+    const current = fetchJsonAndCache<Array<{ id: string }>>(
+      "/api/cache-test/cancelled-consumer",
+    );
+    controller.abort();
+    await expect(cancelled).rejects.toMatchObject({ name: "AbortError" });
+    release?.();
+    await expect(current).resolves.toEqual([{ id: "ROW-2" }]);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("aborts and discards an invalidated in-flight request before a fresh read", async () => {
+    const fetchMock = vi.fn((_url: string, init?: RequestInit) => new Promise<Response>((resolve, reject) => {
+      init?.signal?.addEventListener("abort", () => reject(new DOMException("Cancelled", "AbortError")), { once: true });
+      if (fetchMock.mock.calls.length === 2) resolve(new Response(JSON.stringify({ range: "new" }), {
+        headers: { "Content-Type": "application/json" }, status: 200,
+      }));
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const stale = fetchJsonAndCache<{ range: string }>("/api/cache-test/range");
+    invalidateCachedJson("/api/cache-test/range");
+    await expect(stale).rejects.toMatchObject({ name: "AbortError" });
+    await expect(fetchJsonAndCache<{ range: string }>("/api/cache-test/range"))
+      .resolves.toEqual({ range: "new" });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(readCachedJson("/api/cache-test/range")).toEqual({ range: "new" });
+  });
 });

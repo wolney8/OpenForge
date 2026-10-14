@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { FinancialValue, FinancialValueReplayGroup } from "@/components/financial-value";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { BettingPnlReadValue } from "@/components/betting-pnl-read-value";
+import { CurrentAccountCash, currentAccountCashIssueCount } from "@/components/current-account-cash";
 import { ReplayableProgressFill, ReplayableProgressRing } from "@/components/replayable-progress";
 import {
   buildDashboardTargetProgress,
@@ -155,6 +156,12 @@ export function PortfolioDashboardView({
       Math.max(1, Math.abs(summary.profitQuickView.overallPnl) + Math.abs(summary.profitQuickView.openCurrentValue)) *
       100
   );
+  const bettingActivityCount =
+    summary.activityQuickView.sportsbookCount + summary.activityQuickView.freeBetCount +
+    summary.activityQuickView.casinoCount + summary.activityQuickView.eachWayExtraPlaceCount;
+  const performanceAvailable = Number.isFinite(summary.profitQuickView.overallPnl);
+  const showPerformanceChart = bettingActivityCount > 0 && performanceAvailable;
+  const accountCashIssueCount = currentAccountCashIssueCount(summary.accountQuickView);
   const openPeerBarWidth = clampPercent(
     Math.abs(summary.profitQuickView.openCurrentValue) /
       Math.max(1, Math.abs(summary.profitQuickView.overallPnl) + Math.abs(summary.profitQuickView.openCurrentValue)) *
@@ -211,10 +218,10 @@ export function PortfolioDashboardView({
               }`}
               inert={isRangeSaving ? true : undefined}
             >
-              <strong className="dashboard-hero-value">
-                <BettingPnlReadValue state="ready" activityCount={summary.activityQuickView.sportsbookCount + summary.activityQuickView.freeBetCount + summary.activityQuickView.casinoCount + summary.activityQuickView.eachWayExtraPlaceCount} value={summary.profitQuickView.overallPnl} />
+              <strong className={`dashboard-hero-value ${showPerformanceChart ? "" : "is-compact"}`}>
+                <BettingPnlReadValue state="ready" activityCount={bettingActivityCount} value={summary.profitQuickView.overallPnl} />
               </strong>
-              <DashboardChartSurface
+              {showPerformanceChart ? <DashboardChartSurface
                 area={dashboardSparkline.area}
                 label="Selected range P&L trend"
                 line={dashboardSparkline.line}
@@ -222,15 +229,15 @@ export function PortfolioDashboardView({
                 dataset={dataset}
                 profileId={profileId}
                 range={resolvedRange}
-              />
-              <div className="dashboard-point-rail" aria-label="Recent P&L movement points">
+              /> : !performanceAvailable ? <Link className="report-action-badge" href={overdueHref}>Inspect affected betting records</Link> : null}
+              {showPerformanceChart ? <div className="dashboard-point-rail" aria-label="Recent P&L movement points">
                 {dashboardTrend.slice(-5).map((point) => (
                   <span key={point.key}>
                     <small>{point.label}</small>
                     <FinancialValue value={point.cumulativeValue} />
                   </span>
                 ))}
-              </div>
+              </div> : null}
             </div>
             {isRangeSaving ? (
               <LedgerLoadingIndicator
@@ -279,14 +286,12 @@ export function PortfolioDashboardView({
             <span>Pending withdrawals <FinancialValue value={summary.accountQuickView.pendingWithdrawals} /></span>
           </DashboardMetricCard>
           <DashboardMetricCard
+            actionHref={accountCashIssueCount ? accountHref : undefined}
+            actionLabel={accountCashIssueCount ? "Review affected Accounts" : undefined}
             eyebrow="Current Account Cash"
             label="Cash snapshot"
-            moneyValue={summary.accountQuickView.cashSnapshot}
-          >
-            <span>Bookie <FinancialValue value={summary.accountQuickView.bookieBalance} /></span>
-            <span>Exchange <FinancialValue value={summary.accountQuickView.exchangeBalance} /></span>
-            <span>Bank <FinancialValue value={summary.accountQuickView.bankBalance} /></span>
-          </DashboardMetricCard>
+            primary={<CurrentAccountCash cash={summary.accountQuickView} />}
+          />
           <DashboardMetricCard
             actionHref={alertHref}
             actionLabel="Open action-required tracker rows"
@@ -573,6 +578,7 @@ function DashboardMetricCard({
   eyebrow,
   label,
   moneyValue,
+  primary,
   value,
 }: {
   actionHref?: string;
@@ -583,6 +589,7 @@ function DashboardMetricCard({
   eyebrow: string;
   label: string;
   moneyValue?: number;
+  primary?: ReactNode;
   value?: number;
 }) {
   return (
@@ -592,9 +599,9 @@ function DashboardMetricCard({
         <span className="eyebrow">{eyebrow}</span>
         {badge ? <span className={`dashboard-card-badge dashboard-card-badge-${badgeTone}`}>{badge}</span> : null}
       </div>
-      <strong aria-label={label}>
+      {primary ?? <strong aria-label={label}>
         {typeof moneyValue === "number" ? <FinancialValue value={moneyValue} /> : value}
-      </strong>
+      </strong>}
       <div className="dashboard-mini-card-details">{children}</div>
       {actionHref && actionLabel ? (
         <Link className="dashboard-card-action" href={actionHref}>

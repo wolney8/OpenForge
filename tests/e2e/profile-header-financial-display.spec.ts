@@ -65,7 +65,7 @@ test("Profile header suppresses a failed warm summary and recovers its exact sco
       await route.continue();
     });
     await page.getByLabel("Change tracker date range").selectOption("Last Week");
-    await expect(header).toContainText("Loading Profile summary");
+    await expect(header).toContainText("Updating summary…");
     await expect(value).toHaveCount(0);
     release();
     await expect(value).toHaveAttribute("aria-label", /Total P&L for .+: £ -$/);

@@ -8,6 +8,14 @@
 > additive local migration was applied at 2026-10-14 14:21 BST after verified backup
 > `BACKUP-5DE8D6D5`. Canonical 3010/8010 health and database identity were rechecked; owner
 > interaction remains unverified and no GitHub/hosted release is authorised.
+>
+> Core Profile/range stabilisation (2026-10-14 15:49 BST): the Profile header now owns one
+> request-versioned terminal summary state, invalidated shared reads cannot republish stale range
+> data, and the header uses the contained Material progress bar. No-activity and invalid P&L are
+> compact, distinct states; partial Account cash exposes its known subtotal plus unique missing
+> balances. A 26-transition authenticated synthetic browser gate passed, including delays,
+> failure, refresh and re-authentication. Canonical owner interaction remains to be checked after
+> the local process restart; workbook acceptance stays paused.
 
 **Last updated:** 2026-09-26 23:29:27 BST · **Status:** CP-055 completed locally; protected Preview promotion blocked
 
