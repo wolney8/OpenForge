@@ -204,3 +204,14 @@ Complete this for every feature, bug fix, component, fixture-backed UI, route or
 - [x] PD-FIX-335 partial-known cash, affected-Account link and unknown-not-zero evidence.
 - [x] Twenty-transition authenticated synthetic browser stability gate (26 transitions passed).
 - [ ] Canonical owner smoke remains pending after installation; workbook acceptance stays paused.
+
+## Profile Operations composition refinement — 2026-10-14
+
+- [x] PD-FIX-336 uses a semantic, responsive label/value list; known and incomplete money remain
+      distinct and the existing affected-Accounts action remains available.
+- [x] PD-FIX-337 aligns the performance card with the first two operational rows on desktop, removes
+      the forced span on narrow layouts and preserves `ReportPointChart` hover/click behaviour.
+- [x] PD-FIX-338 re-runs the delayed Profile/range sequence and asserts stable card geometry,
+      contained cash rows, overflow, reduced motion and headless desktop/narrow rendering.
+- [x] Focused tests, typecheck, production build and lint pass before the canonical 3010/8010 install.
+- [ ] Owner visual verification remains pending; workbook acceptance stays paused.

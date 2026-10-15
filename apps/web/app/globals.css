@@ -2603,6 +2603,7 @@ html[data-theme="dark"] .notification-count-badge {
 .dashboard-performance-card {
   display: grid;
   gap: 1rem;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
   background:
     radial-gradient(
       circle at 20% 20%,
@@ -2625,6 +2626,13 @@ html[data-theme="dark"] .notification-count-badge {
 
 .dashboard-performance-data {
   position: relative;
+  min-height: 0;
+  height: 100%;
+}
+
+.dashboard-performance-content {
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100%;
 }
 
 .dashboard-performance-content.is-range-pending {
@@ -2644,7 +2652,6 @@ html[data-theme="dark"] .notification-count-badge {
 
 .portfolio-hero-card {
   min-width: 0;
-  grid-row: auto;
 }
 
 .dashboard-visual-header {
@@ -2669,7 +2676,7 @@ html[data-theme="dark"] .notification-count-badge {
 }
 
 .dashboard-hero-value {
-  font-size: clamp(2.45rem, 4.8vw, 4.6rem);
+  font-size: clamp(2.25rem, 4vw, 3.6rem);
   line-height: 1;
   letter-spacing: -0.06em;
 }
@@ -2764,7 +2771,8 @@ html[data-theme="dark"] .notification-count-badge {
 }
 
 .dashboard-chart-figure {
-  min-height: 16.5rem;
+  height: 100%;
+  min-height: 12rem;
   min-width: 0;
   margin: 0;
   position: relative;
@@ -2909,41 +2917,6 @@ html[data-theme="dark"] .notification-count-badge {
   white-space: nowrap;
 }
 
-.dashboard-point-rail {
-  display: grid;
-  min-width: 0;
-  gap: 0.6rem;
-  grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
-}
-
-.dashboard-point-rail > span {
-  display: grid;
-  min-width: 0;
-  gap: 0.35rem;
-  padding: 0.7rem 0.75rem;
-  border: 1px solid color-mix(in srgb, var(--outline) 75%, transparent);
-  border-radius: 1rem;
-  background: color-mix(in srgb, var(--surface) 62%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--surface-strong) 26%, transparent);
-}
-
-.dashboard-point-rail small {
-  display: block;
-  min-width: 0;
-  overflow: hidden;
-  color: var(--muted);
-  font-size: 0.78rem;
-  font-weight: 800;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.dashboard-point-rail .financial-value-visual {
-  max-width: 100%;
-  overflow: hidden;
-  justify-content: flex-start;
-}
-
 .profiles-command-rail {
   grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
 }
@@ -2954,6 +2927,77 @@ html[data-theme="dark"] .notification-count-badge {
   gap: 0.85rem;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   align-content: start;
+}
+
+.dashboard-primary-row > .dashboard-health-grid {
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  align-content: stretch;
+}
+
+.dashboard-health-grid-secondary {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.current-account-cash {
+  display: grid;
+  min-width: 0;
+  gap: 0.65rem;
+}
+
+.current-account-cash-total {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.current-account-cash-total > span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 750;
+}
+
+.current-account-cash-total > strong {
+  font-size: clamp(1.35rem, 2vw, 2rem);
+  line-height: 1.05;
+}
+
+.current-account-cash > .warning-text {
+  line-height: 1.35;
+}
+
+.current-account-cash-categories {
+  display: grid;
+  min-width: 0;
+  gap: 0.35rem;
+  margin: 0;
+}
+
+.current-account-cash-categories > div {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr) minmax(0, auto);
+  align-items: baseline;
+  gap: 0.75rem;
+}
+
+.current-account-cash-categories dt,
+.current-account-cash-categories dd {
+  min-width: 0;
+  margin: 0;
+}
+
+.current-account-cash-categories dt {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.current-account-cash-categories dd {
+  justify-self: end;
+  text-align: end;
+  font-weight: 800;
+}
+
+.current-account-cash-incomplete {
+  color: color-mix(in srgb, var(--warning) 82%, var(--text));
 }
 
 .dashboard-mini-card {
@@ -3441,10 +3485,21 @@ html[data-theme="dark"] .notification-count-badge {
 
   .dashboard-performance-card {
     grid-row: auto;
+    grid-template-rows: auto;
+  }
+
+  .dashboard-performance-data,
+  .dashboard-performance-content,
+  .dashboard-chart-figure {
+    height: auto;
   }
 
   .dashboard-health-grid {
     grid-template-columns: 1fr;
+  }
+
+  .dashboard-primary-row > .dashboard-health-grid {
+    grid-template-rows: none;
   }
 }
 
@@ -3474,9 +3529,6 @@ html[data-theme="dark"] .notification-count-badge {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .dashboard-point-rail {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
 
 /* Founder import review reuses ledger controls while retaining source/audit context. */

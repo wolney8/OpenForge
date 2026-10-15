@@ -7,6 +7,11 @@
 > was applied after verified backup `BACKUP-5DE8D6D5`; canonical runtime health passed and owner
 > interaction remains pending.
 >
+> 2026-10-15 Profile Operations refinement: Current Account Cash uses separate semantic category
+> rows, and Selected Range Performance occupies exactly two adjacent operational-card rows on
+> desktop while retaining natural narrow-screen flow and the accepted point popover. Authenticated
+> delayed-transition and headless geometry checks pass; owner visual verification remains pending.
+>
 > 2026-10-14 Profile/range stabilisation: Profile summary loading has one request-versioned owner
 > and explicit ready/no-activity/unavailable/failure terminals. Invalidated shared reads are
 > cancelled, the contained Material loader replaces the rotating glyph, empty/unavailable chart

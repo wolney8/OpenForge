@@ -40,7 +40,7 @@ async function switchProfile(page: Page, profileId: string) {
 async function navigateSection(page: Page, route: "dashboard" | "sportsbook-bets") {
   await openProfileMenu(page);
   await page.locator(`[data-pd-id="profile-command.route.${route}"]`).click();
-  await expect(page).toHaveURL(new RegExp(`/tracker/${route}$`));
+  await expect(page).toHaveURL(new RegExp(`/tracker/${route}$`), { timeout: 15_000 });
 }
 
 async function expectTerminalSummary(
@@ -62,7 +62,7 @@ async function expectTerminalSummary(
   await expect(page.locator(".summary-menu-loading-icon")).toHaveCount(0);
 }
 
-test("universal range and Profile summary settle across 20+ delayed transitions", async ({ page }) => {
+test("universal range and Profile summary settle across 20+ delayed transitions", async ({ page }, testInfo) => {
   test.setTimeout(120_000);
   test.skip(process.env.OPENFORGE_PROFILE_RANGE_STABILITY_GATE !== "true", "Authenticated isolated stability runtime required");
   const sessionToken = process.env.OPENFORGE_STABILITY_SESSION_TOKEN;
@@ -76,6 +76,8 @@ test("universal range and Profile summary settle across 20+ delayed transitions"
     url: baseURL,
     value: sessionToken,
   }]);
+  await page.setViewportSize({ height: 1200, width: 1440 });
+  await page.emulateMedia({ reducedMotion: "reduce" });
   await page.clock.setFixedTime(new Date("2026-10-14T12:00:00Z"));
   const suffix = Date.now();
   const profileA = await createProfile(page, `Synthetic Stability A ${suffix}`, `STAB-A-${suffix}`);
@@ -97,23 +99,33 @@ test("universal range and Profile summary settle across 20+ delayed transitions"
     const payload = await response.json();
     const delay = isProfileA ? delayProfileA : delayProfileB;
     if (delay) await new Promise((resolve) => setTimeout(resolve, delay));
-    payload.sportsbook_bets = isProfileA ? [{
+    payload.accounts = isProfileA ? [
+      { account_id: "STABILITY-BOOKIE", account: "Bookmaker A", type: "Bookie", counts_in_cash_total: true, status: "Active", current_balance: "62.34", pending_withdrawal_amount: "0.00", last_balance_update: "2026-10-14T10:00:00+01:00", group_name: "Synthetic", platform: "Bookmaker A" },
+      { account_id: "STABILITY-EXCHANGE-1", account: "Exchange A", type: "Exchange", counts_in_cash_total: true, status: "Active", current_balance: "", pending_withdrawal_amount: "0.00", last_balance_update: "", group_name: "Synthetic", platform: "Exchange A" },
+      { account_id: "STABILITY-EXCHANGE-2", account: "Exchange B", type: "Exchange", counts_in_cash_total: true, status: "Active", current_balance: "", pending_withdrawal_amount: "0.00", last_balance_update: "", group_name: "Synthetic", platform: "Exchange B" },
+      { account_id: "STABILITY-BANK", account: "Bank A", type: "Bank", counts_in_cash_total: true, status: "Active", current_balance: "0.00", pending_withdrawal_amount: "0.00", last_balance_update: "2026-10-14T10:00:00+01:00", group_name: "Synthetic", platform: "Bank A" },
+    ] : [];
+    payload.sportsbook_bets = isProfileA ? [
+      ["STABILITY-SB-001", "3.00", "2026-09-04T12:00:00+01:00"],
+      ["STABILITY-SB-002", "4.00", "2026-09-11T12:00:00+01:00"],
+      ["STABILITY-SB-003", "5.34", "2026-09-18T12:00:00+01:00"],
+    ].map(([id, value, settledAt]) => ({
       bookmaker: "Bookmaker A",
       counts_as_open: false,
-      date_settled: "2026-09-18T12:00:00+01:00",
-      event_name: "Synthetic stability fixture",
+      date_settled: settledAt,
+      event_name: `Synthetic stability fixture ${id}`,
       exchange_name: "Exchange A",
-      final_net_pnl: "12.34",
+      final_net_pnl: value,
       lay_status: "Matched",
       match_strategy: "Standard",
       offer_name: "Synthetic stability offer",
       offer_type: "Bet & Get",
-      projected_current_pnl: "12.34",
-      reporting_value: "12.34",
+      projected_current_pnl: value,
+      reporting_value: value,
       result: "Back Won",
-      sportsbook_bet_id: "STABILITY-SB-001",
+      sportsbook_bet_id: id,
       status: "Settled",
-    }] : [];
+    })) : [];
     payload.casino_offers = !isProfileA && malformedProfileB ? [{
       bookmaker: "Bookmaker B",
       casino_offer_id: "STABILITY-MALFORMED-001",
@@ -143,14 +155,47 @@ test("universal range and Profile summary settle across 20+ delayed transitions"
     await page.goto(`/profiles/${profileA.profile_id}/tracker/dashboard`);
     await assert(profileA, "Last Month", "valid"); // 1
 
+    const performanceCard = page.locator('[data-pd-id="dashboard.selected-range-performance"]');
+    const openPositionsCard = page.locator('[data-pd-id="dashboard.metric.open-positions"]');
+    const accountCashCard = page.locator('[data-pd-id="dashboard.metric.current-account-cash"]');
+    const [performanceBox, openPositionsBox, accountCashBox, chartBox] = await Promise.all([
+      performanceCard.boundingBox(),
+      openPositionsCard.boundingBox(),
+      accountCashCard.boundingBox(),
+      performanceCard.locator("figure").boundingBox(),
+    ]);
+    expect(performanceBox).not.toBeNull();
+    expect(openPositionsBox).not.toBeNull();
+    expect(accountCashBox).not.toBeNull();
+    expect(chartBox).not.toBeNull();
+    expect(Math.abs(performanceBox!.y - openPositionsBox!.y)).toBeLessThanOrEqual(2);
+    expect(Math.abs((performanceBox!.y + performanceBox!.height) - (accountCashBox!.y + accountCashBox!.height))).toBeLessThanOrEqual(2);
+    expect(chartBox!.height / performanceBox!.height).toBeGreaterThan(0.38);
+    const cashRows = accountCashCard.locator(".current-account-cash-categories > div");
+    await expect(cashRows).toHaveCount(3);
+    await expect(cashRows.nth(0)).toContainText("Bookie");
+    await expect(cashRows.nth(1)).toContainText("ExchangeIncomplete");
+    await expect(cashRows.nth(2)).toContainText("Bank");
+    const cashRowBoxes = await cashRows.evaluateAll((rows) => rows.map((row) => {
+      const box = row.getBoundingClientRect();
+      return { bottom: box.bottom, top: box.top };
+    }));
+    expect(cashRowBoxes[0]!.bottom).toBeLessThanOrEqual(cashRowBoxes[1]!.top);
+    expect(cashRowBoxes[1]!.bottom).toBeLessThanOrEqual(cashRowBoxes[2]!.top);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBeTruthy();
+    await page.screenshot({ fullPage: true, path: testInfo.outputPath("profile-operations-desktop.png") });
+
     delayProfileA = 450;
     await page.emulateMedia({ reducedMotion: "reduce" });
     const settledHeaderBox = await page.locator('[data-pd-id="profile-command.trigger"]').boundingBox();
+    const settledPerformanceBox = await performanceCard.boundingBox();
     await page.getByLabel("Change tracker date range").selectOption("This Year");
     await expect(page.locator('[data-pd-id="profile-command.trigger"]')).toHaveAttribute("aria-busy", "true");
     await expect(page.locator(".summary-menu-loading-indicator")).toBeVisible();
     const updatingHeaderBox = await page.locator('[data-pd-id="profile-command.trigger"]').boundingBox();
+    const updatingPerformanceBox = await performanceCard.boundingBox();
     expect(updatingHeaderBox?.height).toBe(settledHeaderBox?.height);
+    expect(updatingPerformanceBox?.height).toBeCloseTo(settledPerformanceBox!.height, 0);
     await expect(page.locator(".summary-menu-loading-indicator span")).toHaveCSS("animation-name", "none");
     await assert(profileA, "This Year", "valid"); // 2
     await page.emulateMedia({ reducedMotion: "no-preference" });
@@ -161,7 +206,6 @@ test("universal range and Profile summary settle across 20+ delayed transitions"
     await assert(profileB, "This Year", "zero"); // 4
     await navigateSection(page, "dashboard");
     await assert(profileB, "This Year", "zero"); // 5
-    const performanceCard = page.locator('[data-pd-id="dashboard.selected-range-performance"]');
     await expect(performanceCard).toContainText("No betting activity in this range");
     await expect(performanceCard.locator("figure")).toHaveCount(0);
 
@@ -238,6 +282,14 @@ test("universal range and Profile summary settle across 20+ delayed transitions"
     await assert(profileA, "This Year", "valid"); // 25
     await page.reload();
     await assert(profileA, "This Year", "valid"); // 26
+    await page.setViewportSize({ height: 1000, width: 760 });
+    const narrowPerformanceBox = await performanceCard.boundingBox();
+    const narrowOpenPositionsBox = await openPositionsCard.boundingBox();
+    expect(narrowPerformanceBox).not.toBeNull();
+    expect(narrowOpenPositionsBox).not.toBeNull();
+    expect(narrowOpenPositionsBox!.y).toBeGreaterThanOrEqual(narrowPerformanceBox!.y + narrowPerformanceBox!.height);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBeTruthy();
+    await page.screenshot({ fullPage: true, path: testInfo.outputPath("profile-operations-narrow.png") });
     expect(transitions).toBeGreaterThanOrEqual(20);
   } finally {
     await page.unrouteAll({ behavior: "ignoreErrors" });

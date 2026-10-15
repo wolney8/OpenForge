@@ -24,9 +24,14 @@ function uniqueBalanceIssues(issues: AccountMoneyIssue[]): AccountMoneyIssue[] {
 }
 
 function CategoryCash({ label, known, value }: { label: string; known?: string; value: number }) {
-  if (Number.isFinite(value)) return <span>{label} <FinancialValue value={value} /></span>;
+  if (Number.isFinite(value)) return <div><dt>{label}</dt><dd><FinancialValue value={value} /></dd></div>;
   const subtotal = knownMoney(known);
-  return <span>{label} {subtotal === null ? "unknown" : <>known <FinancialValue value={subtotal} /> · incomplete</>}</span>;
+  return <div>
+    <dt>{label}</dt>
+    <dd className="current-account-cash-incomplete">
+      {subtotal !== null && subtotal !== 0 ? <>Known <FinancialValue value={subtotal} /> · incomplete</> : "Incomplete"}
+    </dd>
+  </div>;
 }
 
 export function CurrentAccountCash({ cash }: { cash: AccountCash }) {
@@ -40,18 +45,21 @@ export function CurrentAccountCash({ cash }: { cash: AccountCash }) {
     invalidCount ? `${invalidCount} invalid` : "",
   ].filter(Boolean).join(" · ");
 
-  return <>
-    <strong aria-label="Current Account cash">
-      {incomplete ? <>Known cash {known === null ? "unavailable" : <FinancialValue value={known} />}</>
-        : <FinancialValue value={cash.cashSnapshot} />}
-    </strong>
+  return <div className="current-account-cash">
+    <div className="current-account-cash-total">
+      <span>{incomplete ? "Known cash" : "Current cash"}</span>
+      <strong aria-label={incomplete ? "Known Account cash" : "Current Account cash"}>
+        {incomplete ? (known === null ? "Unavailable" : <FinancialValue value={known} />)
+          : <FinancialValue value={cash.cashSnapshot} />}
+      </strong>
+    </div>
     {incomplete ? <span className="warning-text">Incomplete — {incompleteLabel}</span> : null}
-    <span className="current-account-cash-categories">
+    <dl className="current-account-cash-categories">
       <CategoryCash label="Bookie" value={cash.bookieBalance} known={cash.bookieKnownBalance} />
       <CategoryCash label="Exchange" value={cash.exchangeBalance} known={cash.exchangeKnownBalance} />
       <CategoryCash label="Bank" value={cash.bankBalance} known={cash.bankKnownBalance} />
-    </span>
-  </>;
+    </dl>
+  </div>;
 }
 
 export function currentAccountCashIssueCount(cash: AccountCash): number {

@@ -230,14 +230,6 @@ export function PortfolioDashboardView({
                 profileId={profileId}
                 range={resolvedRange}
               /> : !performanceAvailable ? <Link className="report-action-badge" href={overdueHref}>Inspect affected betting records</Link> : null}
-              {showPerformanceChart ? <div className="dashboard-point-rail" aria-label="Recent P&L movement points">
-                {dashboardTrend.slice(-5).map((point) => (
-                  <span key={point.key}>
-                    <small>{point.label}</small>
-                    <FinancialValue value={point.cumulativeValue} />
-                  </span>
-                ))}
-              </div> : null}
             </div>
             {isRangeSaving ? (
               <LedgerLoadingIndicator
@@ -292,6 +284,10 @@ export function PortfolioDashboardView({
             label="Cash snapshot"
             primary={<CurrentAccountCash cash={summary.accountQuickView} />}
           />
+        </section>
+      </div>
+
+      <section className="dashboard-health-grid dashboard-health-grid-secondary" aria-label="Additional Profile operational dashboard cards">
           <DashboardMetricCard
             actionHref={alertHref}
             actionLabel="Open action-required tracker rows"
@@ -340,7 +336,6 @@ export function PortfolioDashboardView({
             <span>No action {summary.accountHealthQuickView.noActionCount}</span>
           </DashboardMetricCard>
         </section>
-      </div>
 
       <section className="dashboard-secondary-grid" aria-label="Portfolio supporting dashboard cards">
         <FinancialValueReplayGroup>
@@ -594,7 +589,10 @@ function DashboardMetricCard({
 }) {
   return (
     <FinancialValueReplayGroup>
-    <article className={`dashboard-mini-card dashboard-mini-card-${badgeTone}`}>
+    <article
+      className={`dashboard-mini-card dashboard-mini-card-${badgeTone}`}
+      data-pd-id={`dashboard.metric.${eyebrow.toLowerCase().replaceAll(" ", "-")}`}
+    >
       <div className="dashboard-mini-card-header">
         <span className="eyebrow">{eyebrow}</span>
         {badge ? <span className={`dashboard-card-badge dashboard-card-badge-${badgeTone}`}>{badge}</span> : null}

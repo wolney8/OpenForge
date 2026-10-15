@@ -48,6 +48,34 @@ describe("Current Account Cash readiness", () => {
     expect(markup).toContain("£ 84.16");
     expect(markup).toContain("Incomplete — 2 Account balances missing");
     expect(markup).not.toContain("Known cash £ 99.16");
+    expect(markup).toContain('<dl class="current-account-cash-categories">');
+    expect(markup.match(/<dt>/g)).toHaveLength(3);
+    expect(markup.match(/<dd/g)).toHaveLength(3);
+  });
+
+  it("renders each category as an aligned value row and keeps an unknown category incomplete", () => {
+    const markup = render({
+      ...complete,
+      cashSnapshot: Number.NaN,
+      knownCashSubtotal: "62.34",
+      bookieBalance: 62.34,
+      bookieKnownBalance: "62.34",
+      exchangeBalance: Number.NaN,
+      exchangeKnownBalance: "0.00",
+      bankBalance: 0,
+      bankKnownBalance: "0.00",
+      moneyIssues: [
+        { accountId: "ACCOUNT-UNKNOWN-1", accountName: "Exchange One", field: "current_balance", reason: "Unknown amount" },
+        { accountId: "ACCOUNT-UNKNOWN-2", accountName: "Exchange Two", field: "current_balance", reason: "Unknown amount" },
+      ],
+    });
+
+    expect(markup).toContain("Known cash");
+    expect(markup).toContain("£ 62.34");
+    expect(markup).toContain("<dt>Bookie</dt><dd>");
+    expect(markup).toContain('<dt>Exchange</dt><dd class="current-account-cash-incomplete">Incomplete</dd>');
+    expect(markup).toContain("<dt>Bank</dt><dd>");
+    expect(markup).not.toContain("Exchange £ 0.00");
   });
 
   it("deduplicates repeated missing-field evidence by Account identity", () => {

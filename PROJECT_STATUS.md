@@ -9,6 +9,12 @@
 > `BACKUP-5DE8D6D5`. Canonical 3010/8010 health and database identity were rechecked; owner
 > interaction remains unverified and no GitHub/hosted release is authorised.
 >
+> Profile Operations composition refinement (2026-10-15): Current Account Cash now separates its
+> known subtotal, incomplete evidence and Bookie/Exchange/Bank rows. Selected Range Performance
+> aligns to the first two operational-card rows on desktop, reflows naturally on narrow screens and
+> gives the existing chart the remaining card area. The 26-transition authenticated stability gate,
+> 1440px/760px geometry, typecheck, build and focused lint passed; owner visual verification remains.
+>
 > Core Profile/range stabilisation (2026-10-14 15:49 BST): the Profile header now owns one
 > request-versioned terminal summary state, invalidated shared reads cannot republish stale range
 > data, and the header uses the contained Material progress bar. No-activity and invalid P&L are

@@ -434,6 +434,19 @@ authenticated isolated browser gate with 26 terminal transitions, delayed/stale 
 failure/recovery, zero/invalid activity, route/Profile changes, refresh and re-authentication.
 Canonical owner interaction remains `NEEDS VERIFICATION` after installation.
 
+## Profile Operations composition refinement — 2026-10-14
+
+| ID | Surface | Requested behaviour | Signed-off equivalent | Status |
+| --- | --- | --- | --- | --- |
+| PD-FIX-336 / #116 | Current Account Cash | Present known total, incompleteness and one aligned row per cash category without changing money readiness | Existing Account money completeness authority and dashboard metric-card typography | COMPLETE |
+| PD-FIX-337 / #111 | Selected Range Performance | Align the performance card to exactly the first two operational-card rows and give its existing chart the remaining card area | Existing dashboard card grid, range pills and `ReportPointChart` interaction | COMPLETE |
+| PD-FIX-338 / #111 | Profile Operations stability evidence | Preserve terminal range/Profile state and accepted chart interaction while proving desktop and narrow geometry headlessly | Existing authenticated Profile-range stability gate and UI checklist | COMPLETE |
+
+Workbook acceptance remains paused. This batch changes presentation only: no financial authority,
+summary request lifecycle, schema, owner data or hosted surface is in scope.
+Headless authenticated evidence passed 26 range/Profile/route transitions at 1440px and 760px;
+canonical owner visual verification remains outstanding.
+
 ## CP-075 Sportsbook promotion local integration — 2026-10-09 12:29 BST
 
 | ID | Surface | Requested behaviour | Signed-off equivalent | Status |
