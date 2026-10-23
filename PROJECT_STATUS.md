@@ -9,6 +9,12 @@
 > Championship and Champions League with 18–21 providers, `h2h`/`h2h_lay`, links and update times,
 > but no liquidity/depth. It can support discovery/back prices, not the first owner tranche alone.
 > Direct exchange placement remains excluded.
+> The preservation branch and annotated baseline tag are now published without changing `main`.
+> A complete external Git bundle is retained outside the repository. Typecheck, production build,
+> 567 web assertions and 160 focused API tests pass; current full web lint still fails one existing
+> `react-hooks/refs` rule in the Free Bet editor, so the custody gate is not represented as a clean
+> product-release gate. Remaining decisions are the permitted exchange-liquidity source, the exact
+> authenticated MBB evidence need and completion of owner acceptance.
 
 > **CP-079 audit snapshot — 2026-10-23:** canonical local product is clean application revision
 > `f4b9771e9bf54e406d6c3caa023b939f61dd9ba4` on `repair/import-history-012`, serving

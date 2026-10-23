@@ -2133,7 +2133,7 @@ Production/main mutation is included.
 
 | ID | Requested outcome | Status |
 | --- | --- | --- |
-| PD-PR-080-01 | Preserve the exact local product, CP-079 records and acceptance guide on a safe non-main remote branch and verified bundle | IN PROGRESS — local tag/branch and clean `origin/main` merge established; remote/bundle evidence follows the safety gate |
+| PD-PR-080-01 | Preserve the exact local product, CP-079 records and acceptance guide on a safe non-main remote branch and verified bundle | COMPLETE — public-history safety scan passed; non-main branch and annotated baseline tag published; complete external bundle verified |
 | PD-PR-080-02 | Publish one owner-facing nine-journey acceptance guide without converting automated evidence into acceptance | COMPLETE — `docs/owner-acceptance-critical-journeys.md`; Reports remains the only owner-accepted journey |
 | PD-PR-080-03 | Confirm the server-only The Odds API boundary and sample official UK football data within ten credits | COMPLETE — key present/non-empty without disclosure; 3 credits used, 497 remain |
 | PD-PR-080-04 | Decide whether sampled provider evidence supports the first Oddsmatcher tranche | COMPLETE — discovery/back-price input only; a permitted exchange liquidity source or explicit product decision remains required |
