@@ -62,7 +62,10 @@ function loadTrackerSeed(): TrackerSeedFile | null {
 
   for (const filePath of candidatePaths) {
     try {
-      const raw = readFileSync(filePath, "utf8");
+      // Local seed files are runtime-only owner inputs. They must never cause
+      // Turbopack to trace the repository (including ignored private data) into
+      // a hosted server bundle.
+      const raw = readFileSync(/* turbopackIgnore: true */ filePath, "utf8");
       return JSON.parse(raw) as TrackerSeedFile;
     } catch {
       continue;

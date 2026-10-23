@@ -62,5 +62,5 @@ def test_vercel_wrapper_starts_and_mounts_api() -> None:
         assert payload["status"] == "ok"
         assert payload["runtime_role"] == "test"
         assert payload["database_classification"] == "isolated"
-        assert payload["schema_version"] == "account-access-v1"
+        assert payload["schema_version"] == "invited-subscribers-v1"
         assert "database_url" not in payload

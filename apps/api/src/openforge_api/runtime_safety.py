@@ -9,9 +9,12 @@ from urllib.parse import urlsplit, urlunsplit
 
 from openforge_api.config import SOURCE_ROOT, Settings
 
-ALLOWED_RUNTIME_ROLES = frozenset({"normal-owner", "candidate", "test", "preview"})
+ALLOWED_RUNTIME_ROLES = frozenset(
+    {"normal-owner", "candidate", "test", "preview", "production"}
+)
 ISOLATED_RUNTIME_ROLES = frozenset({"candidate", "test"})
 PREVIEW_DATABASE_IDENTITY_PREFIX = "preview:"
+PRODUCTION_DATABASE_IDENTITY_PREFIX = "production:"
 OWNER_DATABASE_IDENTITY = "normal-owner"
 
 
@@ -119,13 +122,17 @@ def validate_runtime_contract(settings: Settings) -> RuntimeIdentity:
     configured_source = settings.runtime_source_root.strip()
     if role not in ALLOWED_RUNTIME_ROLES:
         raise RuntimeSafetyError(
-            "OPENFORGE_RUNTIME_ROLE must explicitly be normal-owner, candidate, test, or preview"
+            "OPENFORGE_RUNTIME_ROLE must explicitly be normal-owner, candidate, test, preview, "
+            "or production"
         )
     if not identity:
         raise RuntimeSafetyError("OPENFORGE_RUNTIME_DATABASE_IDENTITY is required")
     if not configured_source:
         raise RuntimeSafetyError("OPENFORGE_RUNTIME_SOURCE_ROOT is required")
-    if configured_source.casefold() == "deployed-source-root" and role == "preview":
+    if configured_source.casefold() == "deployed-source-root" and role in {
+        "preview",
+        "production",
+    }:
         configured_source_path = SOURCE_ROOT
     else:
         configured_source_path = Path(configured_source).resolve()
@@ -148,7 +155,7 @@ def validate_runtime_contract(settings: Settings) -> RuntimeIdentity:
     primary_root: Path | None = None
     owner_target = ""
     is_owner_target = False
-    if role != "preview":
+    if role not in {"preview", "production"}:
         primary_root = _primary_checkout_root()
         owner_target = str((primary_root / "data/private/db/openforge.sqlite3").resolve())
         is_owner_target = engine == "sqlite" and target == owner_target
@@ -196,6 +203,41 @@ def validate_runtime_contract(settings: Settings) -> RuntimeIdentity:
             raise RuntimeSafetyError("The Preview API endpoint must use HTTPS")
         _validate_complete_authentication(settings, "Preview")
         classification = "preview"
+    elif role == "production":
+        if settings.environment.strip().casefold() != "production":
+            raise RuntimeSafetyError(
+                "The Production runtime requires OPENFORGE_ENVIRONMENT=production"
+            )
+        if not settings.runtime_database_target_explicit:
+            raise RuntimeSafetyError(
+                "The Production runtime requires an explicit Production database target"
+            )
+        if engine != "postgresql":
+            raise RuntimeSafetyError("The Production runtime requires PostgreSQL storage")
+        if not identity.startswith(PRODUCTION_DATABASE_IDENTITY_PREFIX):
+            raise RuntimeSafetyError(
+                "The Production database identity must use production:<database-name>"
+            )
+        expected_database_name = identity.removeprefix(
+            PRODUCTION_DATABASE_IDENTITY_PREFIX
+        )
+        actual_database_name = _postgres_database_name(settings.neon_database_url)
+        if not expected_database_name or actual_database_name != expected_database_name:
+            raise RuntimeSafetyError(
+                "The Production runtime database identity does not match its PostgreSQL database"
+            )
+        if "preview" in actual_database_name:
+            raise RuntimeSafetyError(
+                "The Production PostgreSQL database must not be Preview-scoped"
+            )
+        if not settings.runtime_source_revision.strip():
+            raise RuntimeSafetyError("The Production source revision must be explicit")
+        if not settings.runtime_frontend_endpoint.strip().startswith("https://"):
+            raise RuntimeSafetyError("The Production frontend endpoint must use HTTPS")
+        if not settings.runtime_api_endpoint.strip().startswith("https://"):
+            raise RuntimeSafetyError("The Production API endpoint must use HTTPS")
+        _validate_complete_authentication(settings, "Production")
+        classification = "production"
     else:
         assert primary_root is not None
         if identity != OWNER_DATABASE_IDENTITY:
