@@ -152,17 +152,39 @@ _Last updated: 2026-10-23_
 
 ## CP-081 bounded current evidence — 2026-10-23
 
-One authenticated desktop table/toolbar capture is retained privately at
-`data/private/evidence/cp081-mbb-20261023/02-authenticated-desktop.{png,json}`. The temporary
-control process ended before Settings, Bet Summary and narrow-layout inspection; those current MBB
-details remain **UNVERIFIED** rather than inferred from the retained older capture.
+The initial authenticated desktop capture is retained privately at
+`data/private/evidence/cp081-mbb-20261023/`. CP-081A resumed with an independently running,
+reconnectable CDP browser and step manifest under
+`data/private/evidence/cp081a-mbb-20261023/`; raw screenshots and DOM notes remain ignored.
 
 **OBSERVED NOW:** the beta rollout label reported 60 bookmakers, six markets and two exchanges;
-Normal/Qualifying mode; Settings, Selection, Start time, Back, Lay, Rating, Clear and My filters;
-Date, Event, Bet, Back Odds, Lay Odds, Rating and action columns; shared-odds labels; hidden-arb
-notice; Next-page pagination; Bet365/Sky Bet/Unibet back providers; Smarkets/Matchbook exchanges;
-and visible MBB liquidity amounts. Exact Settings choices, saved-filter persistence, quote
-staleness labels, current modal behavior and current narrow presentation are **UNVERIFIED**.
+the mode choices were `Normal/Qualifying Bet` and `Free Bet`; the Selection filter exposed Sport,
+Competition, Event, Market, Selection and Exclude draws; Start time exposed Any time, 30-minute,
+1/2/4/8/12/24-hour, Today, Tomorrow, three-day and custom-range choices; Back exposed 63 current
+bookmaker choices plus min/max odds; Lay exposed Matchbook and Smarkets plus min/max odds and
+minimum liquidity; Rating exposed min/max and Show arbs with the account-health explanation.
+Settings exposed default stake, exchange commissions and gubbed-provider exclusions. My Filters
+exposed `Save` and `Save as...`; persistence was not exercised.
+
+The table columns were Date, Event, Bet, Back Odds, Lay Odds, Rating and actions. No sortable
+column control or sort-state indicator was observable, and clicking Rating did not reorder the
+rows. Pagination changed the result page and exposed First, Previous and Next navigation. Bet
+Summary exposed qualifying-bet inputs, automatic quote toggles, liquidity, calculated lay stake,
+liability, two outcome tables, total profit, copy-lay-stake and bookmaker/exchange deep links. Its
+Advanced view exposed Underlay, Standard and Overlay, the stake slider and range bounds. Calculator
+Settings offered Decimal, Fractional and Moneyline independently for back and lay odds. The
+responsive layout changed the table to stacked rows and filters to a contained full-screen drawer
+without page-level horizontal overflow. Loading and reversible no-results states were observed;
+an error state was not intentionally induced. Place-lay and provider links were observed but never
+activated.
+
+**Installed Alpha parity delta:** Plum Duff implements Profile-authorised real Match Odds discovery,
+server-side Account eligibility, commission-aware calculation and idempotent Prospecting drafts.
+It remains narrower than the observed MBB surface: three competitions, one market, no Free Bet
+mode, no saved-filter persistence, no automatic refresh, no verified liquidity and no direct lay
+placement. The unknown-liquidity and Prospecting-only boundaries remain intentional. Current MBB
+quote-staleness presentation, saved-filter load/manage behaviour and genuine provider error state
+remain **UNVERIFIED**.
 
 ## Matched-betting workflow coverage after CP-081 Alpha
 
