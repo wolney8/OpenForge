@@ -1,5 +1,17 @@
 # Project Roadmap — Plum Duff / OpenForge — Doc ID: PR-CODEX-001
 
+## CP-079 Oddsmatcher programme decision — 2026-10-23
+
+Oddsmatcher remains audit/research only. The first releasable tranche is not a mock table: after an
+owner-approved provider/terms gate, deliver a read-only Football Match Odds Normal/single-lay finder
+using authorised bookmaker and exchange data, truthful freshness/liquidity, Profile Account
+eligibility, the existing calculator and an explicit idempotent Prospecting draft. Then add SNR/SR
+and refund modes, full discovery controls, wider market matching and reliability. Direct exchange
+placement is excluded pending a separate product/security approval. Preserve M8 provenance but use
+the current canonical no-copy/no-scraping boundary. Full audit, provider matrix and estimates are in
+[CP-079](docs/audits/platform-quality-audit.md#cp-079-local-ship-audit-and-oddsmatcher-knowledge-freeze--2026-10-23).
+
+
 **Last updated:** 2026-09-26 23:29:27 BST
 
 ## Product goal

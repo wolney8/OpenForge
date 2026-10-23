@@ -4,7 +4,13 @@
 
 **Document purpose:** This is a build specification for a Codex AI / GitHub Copilot coding agent to implement an OpenForge-native Oddsmatcher module that is functionally very close to the Matched Betting Blog Oddsmatcher experience shown in the reference screenshots and accompanying analysis.
 
-**Important implementation boundary:** Build a functional clone of the workflow, calculations, interaction model, data model, and UI behaviour. Feel freel to copy source code, APIs, copy, CSS, image assets, and trade dress. We will modify this later. Use OpenForge naming, design tokens, components, and repository conventions.
+**Important implementation boundary (superseded 2026-10-23 by CP-079):** Reproduce only
+observable workflow and behaviour, using independently derived mathematics and authorised data
+sources. Use Plum Duff components, tokens, architecture and original wording. Do not copy external
+source code, private APIs, CSS, assets, branding or trade dress. No bookmaker scraping or automated
+bet placement is authorised; direct exchange placement requires a separate product and security
+approval. The original research wording is retained in repository history for provenance, but this
+boundary is the canonical implementation rule.
 
 
 ---

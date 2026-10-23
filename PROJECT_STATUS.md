@@ -1,5 +1,28 @@
 # Project Status — Plum Duff / OpenForge — Doc ID: PS-CODEX-001
 
+> **CP-080 custody/evidence gate — 2026-10-23:** exact running baseline `f4b9771e…` is tagged
+> `local-product-baseline-2026-10-23`; preservation branch
+> `preserve/local-product-2026-10-23` cleanly merges current `origin/main` without rewriting local
+> history. [Owner critical-journey guide](docs/owner-acceptance-critical-journeys.md) records the
+> existing CP-079 statuses; automated evidence does not confer acceptance. The Odds API key is
+> present server-side only. A three-credit UK football sample returned 51 events across EPL,
+> Championship and Champions League with 18–21 providers, `h2h`/`h2h_lay`, links and update times,
+> but no liquidity/depth. It can support discovery/back prices, not the first owner tranche alone.
+> Direct exchange placement remains excluded.
+
+> **CP-079 audit snapshot — 2026-10-23:** canonical local product is clean application revision
+> `f4b9771e9bf54e406d6c3caa023b939f61dd9ba4` on `repair/import-history-012`, serving
+> `normal-owner` on 3010/8010 with SQLite fingerprint `7246998d43722066`. It is 18 commits ahead
+> and one commit behind GitHub `main` (`7f4f127f…`) from merge base `0343043`; source custody and
+> release provenance are a P1 operational gap. Reports/CP-078 is owner accepted. Login/restart,
+> universal range/Profile operations, Account cash, CP-075 and the working-workbook journey retain
+> explicit owner-acceptance gates. Focused audit sampling passed 184 API tests, skipped 17 and found
+> two unchanged failures: one stale onboarding fixture and the known subscriber/Profile FK invariant.
+> The current web unit suite passed 78 files/567 assertions.
+> Oddsmatcher remains unimplemented in the installed product. M8 provenance is assimilated as six
+> docs/fixture artefacts; CP-070 is an older synthetic recorded-price prototype and must be
+> reconstructed selectively after a provider/licensing decision. [CP-079 evidence and programme](docs/audits/platform-quality-audit.md#cp-079-local-ship-audit-and-oddsmatcher-knowledge-freeze--2026-10-23).
+
 > Current local correction (2026-10-14): the owner approved one Fund Manager-level Selected Range
 > authority with additive fields on `fund_manager_settings`. Its governed initial value is
 > `Week (Mon-Sun)`; historical Profile range fields are retained but are no longer read or written

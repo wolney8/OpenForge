@@ -2111,3 +2111,29 @@ drilldown/return, Period P&L and responsive/keyboard containment; focused ESLint
 and production build pass. No financial contract, API, schema, Normal data or hosted environment
 changed. The isolated review runtime uses synthetic SQLite identity `cp078-reports-synthetic` at
 web `3078` / API `8078`; Normal `3010` / `8010` remains untouched.
+
+## CP-079 local ship audit and Oddsmatcher knowledge freeze
+
+Recorded 2026-10-23 against #52–#57 and the existing platform/readiness registers. This records
+research and decisions only; it is not implementation approval.
+
+| ID | Requested outcome | Status |
+| --- | --- | --- |
+| PD-PR-079-01 | Establish the exact canonical local product/Git/runtime/database baseline and nine-journey ship matrix without altering owner data | COMPLETE — audit evidence recorded; owner acceptance gates remain visible |
+| PD-PR-079-02 | Prove file-level M8 assimilation and classify all recoverable CP-070 behaviour | COMPLETE — six M8 artefacts mapped; CP-070 classified as experimental/selective-reuse only |
+| PD-PR-079-03 | Replace the unsafe external-copy instruction in the current canonical Oddsmatcher specification while preserving M8 provenance | COMPLETE — current spec now requires independent behaviour/maths, Plum Duff UI and authorised sources |
+| PD-PR-079-04 | Freeze the current observable MBB feature target, provider feasibility and Bet Builder Buddy boundary | COMPLETE — official/public and retained authenticated evidence distinguished; current hidden behaviour remains UNKNOWN |
+| PD-PR-079-05 | Produce an executable programme ending in parity or better, with a genuinely useful first release | COMPLETE — provider gate then live read-only Football Match Odds/Normal single-lay finder recommended |
+| PD-PR-079-06 | Obtain one current authenticated MBB evidence set for exact sport/mode/sort/page/timestamp/responsive parity | DEFERRED — owner action only if exact visual parity is approved after provider selection |
+
+## CP-080 source custody, owner acceptance and provider evidence
+
+Recorded 2026-10-23. No product implementation, owner-data write, schema change, deployment or
+Production/main mutation is included.
+
+| ID | Requested outcome | Status |
+| --- | --- | --- |
+| PD-PR-080-01 | Preserve the exact local product, CP-079 records and acceptance guide on a safe non-main remote branch and verified bundle | IN PROGRESS — local tag/branch and clean `origin/main` merge established; remote/bundle evidence follows the safety gate |
+| PD-PR-080-02 | Publish one owner-facing nine-journey acceptance guide without converting automated evidence into acceptance | COMPLETE — `docs/owner-acceptance-critical-journeys.md`; Reports remains the only owner-accepted journey |
+| PD-PR-080-03 | Confirm the server-only The Odds API boundary and sample official UK football data within ten credits | COMPLETE — key present/non-empty without disclosure; 3 credits used, 497 remain |
+| PD-PR-080-04 | Decide whether sampled provider evidence supports the first Oddsmatcher tranche | COMPLETE — discovery/back-price input only; a permitted exchange liquidity source or explicit product decision remains required |

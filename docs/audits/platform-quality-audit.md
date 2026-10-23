@@ -5586,3 +5586,233 @@ Updated existing owner notebook and concise model resume; primary checkout now r
 Final API/web types, focused lint and webpack build pass. Retained private CP055 receipts/logs are primary `data/private/rehearsals/cp055`; successful final logs distinguish earlier obsolete tab/URL/clock fixture setup failures from application defects. PostgreSQL per-ledger local-backup capability remains a separate limitation; direct adapter proof does not imply hosted confirmation.
 
 Normal additive migration was explicitly authorised with backup/compatibility/projection gates, all passed. Existing data, ALPHA, private workbook and fee history unchanged. No Production/main merge/push/new paid service/credential change. AI inactive; subscriber requests remain exact existing state/visibility/role/storage proposal. Three safe issue comments linked in the canonical register. Verified outgoing bundle/evidence receipt records application/docs SHAs.
+
+## CP-079 local ship audit and Oddsmatcher knowledge freeze — 2026-10-23
+
+This is a read-only product/research checkpoint. It does not approve Oddsmatcher implementation,
+schema work, a provider subscription, direct exchange placement, deployment or owner-data changes.
+
+### Exact baseline
+
+- Canonical local app worktree: `.worktrees/local-plum-duff-integration`, branch
+  `repair/import-history-012`, clean application revision
+  `f4b9771e9bf54e406d6c3caa023b939f61dd9ba4` before these documentation-only audit edits.
+- Frontend `3010` and API `8010` are the canonical processes. Health identifies role/database
+  `normal-owner`, SQLite fingerprint `7246998d43722066`, auth required and the governed
+  `localhost:3010` callback. The code migration head is
+  `20261014_010_universal_selected_range`.
+- GitHub `main` is `7f4f127f50c5ee40166c42b52721818a5bc3cba0`. The merge base is
+  `034304339304756319196459ae28d0269f82deb9`; local is 18 commits ahead and one commit behind.
+  This is a divergent local product, not a clean fast-forward from GitHub. The last recorded Vercel
+  Production revision is `f7a3b35073ecc87cdf8f8f881129f221ec44d395`; it was not freshly
+  provider-verified in CP-079 and is recorded only as divergence.
+
+### Critical owner journeys
+
+| Journey | Route | Authority/evidence | State | Exact blocker / next acceptance action |
+| --- | --- | --- | --- | --- |
+| Google login, refresh and canonical restart | `/login` → protected return | API auth/session contracts; canonical launchers; focused callback/session tests | IMPLEMENTED — OWNER ACCEPTANCE PENDING | The startup parity defect is repaired; one genuine owner login followed by refresh and canonical restart still needs explicit owner acceptance. |
+| Universal Selected Range and Profile switching | `/profiles`, Profile Operations and range-aware tracker/report routes | `fund_manager_settings`; request-versioned summary state; 26-transition authenticated synthetic browser evidence | IMPLEMENTED — OWNER ACCEPTANCE PENDING | Latest range/header/chart refinements are automated-only; repeat the short owner range/switch/navigation smoke. |
+| Accounts and cash readiness | Profile Operations and `/tracker/accounts` | Account lifecycle/counts-in-cash authority; known-subtotal/incomplete rules; unit and browser geometry evidence | IMPLEMENTED — OWNER ACCEPTANCE PENDING | Owner must confirm the separated known cash rows and unique affected-Account correction path on normal data. |
+| Sportsbook create/place/settle/correct | `/tracker/sportsbook-bets` | ledger workflow/calculation contracts, atomic mutation/history and deterministic fixtures | CODE-VERIFIED ONLY | No retained explicit owner acceptance covers this complete four-stage journey on the current revision; execute one disposable/controlled record journey without changing genuine owner history. |
+| Qualifying bet → Free Bet lineage | Sportsbook and `/tracker/free-bets` | parent identity, award copy and Free Bet calculation/lineage tests | CODE-VERIFIED ONLY | Run one owner-observed controlled qualifying-loss → linked Free Bet save/reopen journey. |
+| Refund/reward → wagering → confirmed release | Sportsbook promotion workflow | CP-075 contracts, API/UI/workbook fixtures, actual/projected separation and retry tests | IMPLEMENTED — OWNER ACCEPTANCE PENDING | Installed and code-verified; owner acceptance of award, linked wagering progress and explicit release remains. |
+| Reports and P&L reconciliation | `/reports` and Profile Reports | authorised combined projection, malformed-source readiness, CP-078 UI/pagination evidence | OWNER ACCEPTED | Owner accepted CP-078 “for now”; future changed financial semantics or source defects reopen this gate. |
+| Workbook import → daily edit → export → no-write re-import review | Profile Settings → Import/Export | versioned template/manifest, review/apply authority and headless XLSX round-trip tests | IMPLEMENTED — OWNER ACCEPTANCE PENDING | Acceptance is deliberately paused. Local structural evidence does not prove Excel/Google runtime; complete the controlled owner workbook content check, then isolated no-write re-import review. |
+| Backup, restore and compatible application rollback | Profile portable backup plus normal recovery procedure | backup manifests/checksums, disposable restore and additive-schema compatible fallback rehearsals | CODE-VERIFIED ONLY | Complete one owner-observed disposable recovery and compatible-app fallback rehearsal using the current local baseline. |
+
+Focused CP-079 regression sampling returned 184 pass/17 skip/2 fail. One failure is a stale Account
+observation onboarding fixture missing three now-required fields. The other is the known unchanged
+Profile/subscriber foreign-key invariant (`NO ACTION` versus test expectation `CASCADE`). Neither was
+introduced or repaired by this audit. They prevent a claim that the sampled API gate is clean. The
+current web unit suite passed 78 files/567 assertions, including auth/session, Reports, Sportsbook,
+Free Bet lineage and workbook-option authorities. No owner browser or financial mutation was used.
+
+### P0/P1 dependable-daily-use position
+
+- No new P0 data-loss or wrong-money defect was demonstrated.
+- **P1 — local source custody/release provenance:** the everyday product contains 18 local commits
+  absent from GitHub `main` and diverges by one hosted-hardening commit. Loss of this worktree would
+  lose accepted local capability; a separately approved reconciliation/push is required.
+- **P1 — owner acceptance chain:** current login/restart, universal-range/Profile operations,
+  Account cash and CP-075 journeys have automated evidence but no final owner acceptance on
+  `f4b9771e`.
+- **P1 — working workbook:** the supported XLSX journey is code-verified but owner acceptance remains
+  paused, and Google-bound helper/runtime behaviour remains separately unverified.
+- **P1 — regression baseline:** repair the stale Account-observation fixture and separately decide
+  the known subscriber/Profile foreign-key defect before treating the focused API suite as clean.
+
+### M8 provenance and assimilation
+
+The read-only M8 source is `/Users/will_work/Scripts/Homelab/OpenForge-oddsforge-m8`, branch
+`feature/extra-place-ledger-parity`, current HEAD `66b0d9e8…`; provenance commit
+`c446dab3024ddfd9611adda72d755c1a10788560`. It contains six Oddsmatcher artefacts and no retained
+image/capture/script files; visual measurements are textual observations.
+
+| Original M8 source | Finding / requirement | Current destination | Code/test evidence | Status / gap |
+| --- | --- | --- | --- | --- |
+| `docs/oddsforge/OpenForge_Oddsmatcher_Codex_Technical_Spec.md` | Full shell, filters, opportunity table, Bet Summary, advanced stake modes and integration boundaries | Same current path | No installed matcher code | DOCUMENTED; unsafe copying sentence now explicitly superseded in current canonical spec. |
+| `docs/planning/oddsmatcher-development-blueprint.md` | staged shell → fixtures → calculations → integration sequence | Same current path and #52–#57 | No installed matcher tests | DOCUMENTED; sequencing predates live-provider/licensing gate and must be adapted. |
+| `docs/planning/oddsmatcher-reverse-engineering-summary.md` | Authenticated observed layout, labels, dimensions and interactions | Same current path | Textual observation only | PROVEN provenance; no retained screenshots, current responsive/WCAG state unverified. |
+| `docs/contracts/oddsmatcher-public-shell-rating-contract.md` | display rating, arb boundary, modal and advanced-control contract | Same current path; CP-070 extension | 9-case fixture plus experimental CP-070 tests outside installed product | CODE-VERIFIED only in the old experimental chain; not current product capability. |
+| `docs/fixture-specs/oddsmatcher-public-shell-rating-fixture-spec.md` | deterministic rating/modal/boundary cases | Same current path | fixture JSON | PROVEN fixture specification, incomplete for live freshness/liquidity/provider errors. |
+| `tests/fixtures/oddsmatcher-public-shell-rating-fixtures.json` | six rating/arb cases plus qualifying modal, advanced mode and deep-link/copy cases | Same current path | static JSON | PROVEN fixture data; no installed UI consumes it. |
+
+### CP-070 disposition
+
+CP-070 production work is commit `aefa16c` with evidence commits `0d9a65b` and `41e0a8a`. Its
+Oddsmatcher files are absent from the installed product. It used synthetic recorded prices and exact
+event/selection/market/period/settlement equality; ranked display rating; flagged quotes stale after
+300 seconds; exposed missing liquidity; opened the existing calculator with snapshot/source fields;
+and created an idempotent Prospecting Sportsbook draft after explicit Account/offer selection.
+
+| Behaviour | Disposition | Reason |
+| --- | --- | --- |
+| deterministic event/market/selection compatibility and stable ranking | reusable after adaptation | Useful pure logic, but aliases, provider-normalised identities and ambiguity confidence are absent. |
+| rating and stale-price presentation | reusable after adaptation | Contract-backed; one fixed staleness threshold is not a provider freshness policy. |
+| Account eligibility and restricted-account exclusion | reusable after adaptation | Current installed Account authority has advanced; reconstruct against it rather than carrying the old catalogue edits. |
+| calculator snapshot hand-off and Prospecting draft retry | reusable after adaptation | Correct safety direction; source identity and snapshot persistence need the current tracker contract. |
+| liquidity display | experimental only | `null`/missing display was proven; no order-book or stake-depth calculation existed. |
+| recorded-price table/search/provider filter | experimental only | Three synthetic matches, no pagination, saved filters, settings or owner feed. It is not an operational Oddsmatcher. |
+| live provider, cache/refresh, normalisation and quote reconciliation | missing | No authorised feed or service boundary was implemented. |
+| CP-070 commit as a release unit | unsafe to carry forward | It mixes matcher code with owner-review/media scripts and stale shared-component changes. Reconstruct selected logic on current main/local baseline. |
+
+### Current MBB observable inventory (checked 2026-10-23)
+
+Official public evidence reports **60 bookmakers, six markets and two exchanges**, Smarkets and
+Matchbook integrated lay betting, direct Matchbook placement added 21 October, and Correct Score,
+BTTS, Over/Under Goals and Half Time/Full Time added 9 October. The public user guide establishes:
+
+- opportunity table: Date & Time, Event, Selection, Back Odds/bookmaker, Lay Odds/exchange with
+  liquidity, Rating and calculator action;
+- search; Selection/Start time/Back/Lay/Rating drawers; bookmaker, exchange, odds, liquidity and
+  rating bounds; predefined/custom start time; exclude draws; saved `My Filters`;
+- arbs hidden by default; `Arb`, `Estimated`, `Shared Odds` and `Unavailable` labels;
+- settings for default back stake, exchange commission and gubbed bookmaker exclusions across tools;
+- Bet Summary inputs/outputs for back and lay prices/stakes, liability and outcomes, deep links,
+  copy lay stake and optional connected-exchange placement;
+- explicit advice to recheck price, selection and liquidity before placing.
+
+The current exact sport list, complete six-market enumeration, complete bet-mode enumeration,
+sorting/pagination behaviour, quote timestamp/staleness presentation, refresh cadence, responsive
+breakpoints and WCAG behaviour remain **UNKNOWN** from authorised current evidence. Existing M8
+authenticated observations establish the July shell/modal and Qualifying/Free Bet surfaces, not the
+October backend, hidden algorithms or provider contracts. Sources:
+[official Oddsmatcher](https://matchedbettingblog.com/oddsmatcher/) and
+[official user guide](https://matchedbettingblog.com/oddsmatcher-user-guide/).
+
+### Requirement-to-current-code reuse matrix
+
+Percentage rubric: **0%** absent; **25%** contract/fixture or experimental-only; **50%** installed
+reusable authority without matcher integration; **75%** installed integrated slice lacking the live
+operational boundary; **100%** installed, automated and owner-visible end-to-end. It measures the
+target integration surface, not general code quality.
+
+| Requirement | Reusable authority | % | Evidence / owner-visible state | Gap / recommendation |
+| --- | --- | ---: | --- | --- |
+| rating / display rating | M8 contract/fixtures | 25 | experimental CP-070 only; no | Add provider-aware canonical price inputs and display/financial precision tests. |
+| commission-aware rating | commission/account settings and calculators | 25 | no matcher calculation; no | Contract whether displayed rating is raw or effective after commission. |
+| qualifying calculations | installed Normal calculator | 50 | calculator visible, matcher absent | Pass immutable quote snapshot into existing authority. |
+| Free Bet SNR / SR | installed Free Bet calculators/workflow | 50 | visible outside matcher | Add mode-specific rating/stake hand-off; preserve parent lineage. |
+| money-back/refund | CP-075 promotion authority | 50 | visible outside matcher | Project both cash and estimated reward pathway without treating forecast as realised. |
+| underlay / overlay | installed calculator authorities; M8 contract | 50 | calculator visible | Integrate bounded controls and scenario outcomes. |
+| partial lay / multilay | actual-fill and multilay authorities | 50 | ledger/calculator visible | Quote-depth allocation, partial-fill refresh and immutable execution plan missing. |
+| liability / outcome tables | installed calculator authorities | 50 | visible outside matcher | Reuse; do not duplicate formulas. |
+| liquidity warnings | M8 contract; CP-070 null state | 25 | experimental only | Provider stake-depth semantics, insufficiency and unknown/stale states. |
+| account eligibility/restrictions | Accounts lifecycle/capability authority | 50 | visible outside matcher | Server-side matcher eligibility projection and reviewable unknowns. |
+| bookmaker/exchange Accounts | canonical providers and Profile Accounts | 50 | visible outside matcher | Map provider source IDs to authorised Profile Accounts. |
+| opportunity table | CP-070 prototype | 25 | absent installed product | Build current Plum Duff table with bounded pagination, truth labels and accessibility. |
+| filter drawers / saved filters / settings | M8 contract only | 25 | absent | Persist Profile/Fund Manager-safe preferences after canonical filter model. |
+| Bet Summary modal | installed calculators plus M8 contract | 50 | no matcher entry | Compose existing calculator, snapshot and explicit draft action. |
+| deep links | provider metadata and calculator hand-off patterns | 25 | no matcher journey | Verify authorised, stable provider URLs; never imply placement. |
+| tracker draft creation | ledger creation/idempotency authority | 50 | CP-070 experimental only | Current explicit Prospecting draft contract and retry key. |
+| odds snapshot metadata | audit/history patterns | 25 | CP-070 query-only prototype | Persist provider, quote ID/time, prices, commission, liquidity and freshness decision. |
+| provider interface / quote normalisation | none installed | 0 | no | Define read-only adapter and canonical quote/event/market/selection vocabulary. |
+| event/market/selection matching | CP-070 exact-match pure logic | 25 | experimental only | Add aliases, period/settlement qualifiers, ambiguity/confidence and review queue. |
+| freshness / live updates / cache | CP-070 fixed stale flag | 25 | experimental only | Provider-specific SLAs, coalescing, last-good truth and unavailable states. |
+| direct exchange placement | none approved | 0 | no | Separate security/product decision; do not include in read-only matcher tranches. |
+
+### Official provider feasibility (checked 2026-10-23)
+
+| Source | Coverage / data | Access, price and terms | Feasibility |
+| --- | --- | --- | --- |
+| [The Odds API](https://the-odds-api.com/) | 100+ sports/bookmakers globally; UK list currently includes 21 sportsbooks/exchanges including Betfair Exchange, Matchbook and Smarkets; back odds, selected lay markets and timestamps; no proven exchange depth/liquidity | Free 500 credits/month; paid 20k/$30, 100k/$59, 5m/$119, 15m/$249 monthly. API key; quota charged by sport/market/region. Exact redistribution/local-product terms need review. | **Viable now for a bounded back-price/read-only pilot**, subject to owner subscription and terms review. Insufficient alone for reliable liquidity and full MBB market parity. |
+| [Betfair Exchange API](https://support.developer.betfair.com/hc/en-us/articles/360009638032-When-should-I-use-the-Delayed-or-Live-Application-Key) | Official exchange catalogue, back/lay prices, volumes/order-book projections and Stream API | Delayed development key free, variable 1–180-second snapshots; live personal key £499 one-off and read-only live use is not permitted. Distributed software has separate vendor/security licensing. | **Development viable; live read-only Oddsmatcher use not viable under the personal live-key rule.** Commercial/vendor path required for broader product; placement remains separately unapproved. |
+| [Smarkets API](https://help.smarkets.com/hc/en-gb/articles/34697834941085-Smarkets-API-Access-Integration-T-Cs) | Real-time exchange market prices/order-book and account/trading operations | Verified active account, application approval and £150 one-off fee. Terms prohibit unapproved scraping, benchmarking and data-only extraction without commensurate trading; limits are individually approved. | **Unsafe for a read-only matcher without written approval.** Potential connected trading source only after terms confirmation and separate placement/security decision. |
+| [Matchbook API](https://developers.matchbook.com/) | Sports/events/markets, depth/aggregated prices and liquidity; read/write exchange operations | Registered users get standard access; official default limits include Events 700/min, Navigation 100/min, Reports 40/min and Betting Write 3000/min. Pricing/Trader-plan cost and product data rights need direct confirmation. | **Technically promising exchange source**, including liquidity; commercial/use-rights confirmation and UK account eligibility remain prerequisites. |
+
+No single source is proven to supply MBB-equivalent UK bookmaker breadth, both exchange order books,
+all six markets, compliant redistribution and deep links. The recommended feasibility test is The
+Odds API for bookmaker discovery plus one contractually authorised exchange source, never restricted
+scraping or competitor subscription-feed reuse.
+
+#### CP-080 measured The Odds API sample — 2026-10-23 12:32 BST
+
+The server-only credential name is `OPENFORGE_THE_ODDS_API_KEY`; its value remains only in the
+ignored repository-root `.env` and must never use a browser-exposed `NEXT_PUBLIC_` name. Three
+official `/v4/sports/{sport}/odds` calls used `regions=uk`, `markets=h2h`, decimal odds and links,
+after the quota-free `/v4/sports` inventory. Raw licensed responses remain ignored under
+`data/private/evidence/cp080-the-odds-api-20261023`.
+
+| Competition | Events | Providers observed | Exchanges observed | Markets / links | Cost |
+| --- | ---: | ---: | --- | --- | ---: |
+| EPL | 21 | 21 | Betfair Exchange, Matchbook, Smarkets | `h2h`, `h2h_lay`; provider/market/outcome links | 1 |
+| Championship | 12 | 21 | Betfair Exchange, Matchbook, Smarkets | `h2h`, `h2h_lay`; provider/market/outcome links | 1 |
+| UEFA Champions League | 18 | 18 | Betfair Exchange, Smarkets; Matchbook absent in this sample | `h2h`, `h2h_lay`; provider/market/outcome links | 1 |
+
+The sample returned 51 events, 48 active soccer competition keys and complete event start/team
+fields for the sampled rows. Per-bookmaker and per-market `last_update` values were present, with
+observed sample updates between 11:26:58Z and 11:32:41Z. Coverage varied by event (5–21 providers),
+Matchbook covered only 9/21 sampled EPL events, and Smarkets did not expose `h2h_lay` on every EPL
+event. No liquidity, available stake, price depth or order-book volume field was present. The three
+paid calls cost exactly 3 credits; headers finished at 497 remaining / 3 used / 1 last.
+
+Conclusion: **suitable for a discovery prototype** and potentially the bookmaker/back-price half of
+the first real owner tranche. It is **not sufficient alone for that tranche** because reliable lay
+liquidity is a core decision-safety input; an authorised exchange/order-book source or an explicit
+unknown-liquidity product decision remains mandatory. It cannot deliver full parity from sampled
+`h2h` coverage alone. No provider code or browser exposure was added.
+
+### Full parity target and Bet Builder Buddy boundary
+
+- **A Core decision support:** Normal/SNR/SR/refund modes, rating, commission, liability, outcome
+  scenarios, underlay/standard/overlay, partial/multilay and truthful liquidity/stale/unavailable.
+- **B Live odds and matching:** authorised adapters, canonical event/market/selection/period/settlement
+  matching, confidence/review, search/filter/sort/pagination, timestamps, cache and refresh.
+- **C Personalisation/account health:** Profile Account eligibility/restrictions, commission/default
+  stakes, arb policy, saved filters and unknown-evidence handling.
+- **D Tracker integration:** immutable quote snapshot, explicit Prospecting draft, idempotent retry,
+  Free Bet/offer/refund/wagering lineage, actual versus projected economics and audit trail.
+- **E Direct exchange:** optional connection, confirmation, order state, partial fills, cancellation,
+  credential custody and recovery. This is excluded until separately approved.
+- **F Reliability/compliance/operations:** provider rights/cost/SLA, monitoring, source attribution,
+  fail-closed financial states, WCAG/responsive behaviour, backups and incident rollback.
+
+Plum Duff should equal MBB on observable table/filter/settings/calculator/freshness/liquidity
+capability. It should exceed MBB through Profile-aware eligibility, canonical Accounts, tracker draft
+and execution lineage, CP-075 current/projected offer economics, auditable changes and supported
+workbook interoperability.
+
+Bet Builder Buddy is deferred. Its observable goal is to translate a bookmaker Bet Builder into one
+or more covering lay selections, or find Bet Builders from a lay selection. Public inputs are bet
+type, stake, odds, boost and market/selection legs; outputs are lay combinations/stakes, profit,
+maximum liability and outcome table, with optional live recommendations/placement. Plum Duff can
+reuse multilay, liability, outcome and actual-fill authorities, but lacks the combinatorial market
+solver and live event taxonomy. Future research needs authenticated edge cases, canonical market
+equivalence, correlated/void settlement rules, recommendation/rating maths, provider coverage and
+bookmaker combination restrictions. Source: [official Bet Builder Buddy](https://matchedbettingblog.com/bet-builder-buddy/).
+
+### Executable Oddsmatcher programme
+
+| Tranche | User outcome | Reuse / new work / dependency | Tests and acceptance | Rollback / estimate / standalone value |
+| --- | --- | --- | --- | --- |
+| 0. Provider and contract gate | A proven legal/technical source combination and measured sample feed | Reuse provider catalogue; add no product UI. Requires owner provider choice/access and written terms review. | Adapter probe against disposable data; coverage/freshness/liquidity report. Owner approves cost/rights. | No schema/product rollback. 2–4 engineering days plus provider lead time. Necessary gate, not a released capability. |
+| 1. Read-only Normal single-lay finder | Profile sees real, current Football Match Odds from approved bookmaker/exchange sources; filters/ranks, sees freshness/liquidity/eligibility, opens existing calculator and explicitly saves a Prospecting draft | Reuse Accounts, Normal calculator, CP-070 pure logic after adaptation, ledger retry. Add provider adapter, normaliser, matcher service/table and immutable snapshot. Likely additive snapshot/cache schema after contract approval. | Independent quote/match/rating fixtures, stale/liquidity/ambiguity/auth tests and owner comparison against source sites. | Disable adapter/route; retain drafts. 2–3 weeks after access. **First genuinely useful owner tranche.** |
+| 2. Offer modes | Same journey for SNR, SR and refund/money-back with correct current/projected economics | Reuse Free Bet and CP-075 authorities; add mode ranking and Bet Summary composition. | Existing calculator equivalence, lineage/double-counting and owner offer examples. | Feature flags per mode. 1–2 weeks. Useful independently after tranche 1. |
+| 3. Full discovery controls | MBB-level market/time/bookmaker/exchange/rating/liquidity filters, sorting, pagination, saved filters/settings and arb policy | Reuse report filter/pagination primitives; add persisted matcher preferences. Provider must cover chosen markets. | Full-dataset sort/filter, preference isolation, responsive/WCAG and owner workflow acceptance. | Preferences additive; old matcher remains usable. 2 weeks. |
+| 4. Coverage and matching confidence | Six-market/target-sport coverage with explainable exact/ambiguous/unmatched results | Add canonical taxonomy, aliases, confidence/evidence and review queue; provider agreements may expand. | Settlement/period/market corpus, false-match prevention and owner adjudication set. | Market adapters independently disabled. 3–5 weeks plus provider lead time. |
+| 5. Live reliability | Coalesced refresh/cache, source health, last-update/stale/unavailable truth, audit/operations and performance at scale | Add monitored adapter runtime/cache and incident controls. | Latency/failure/recovery/load tests, quote replay and operational acceptance. | Stop feed and fall back to explicit unavailable/last-known states. 2–3 weeks. |
+| 6. Optional direct exchange | Explicitly confirmed Matchbook/Smarkets/Betfair lay orders, partial fills/cancel/retry and tracker reconciliation | Separate secret custody, exchange order service and security review. Requires distinct owner approval and provider terms. | Sandbox/delayed where possible, real-money-safe bounded acceptance, audit/recovery and no autonomous placement. | Kill switch, revoke token, reconcile open orders. 3–6 weeks after approval. Useful convenience, not required for full read-only parity. |
+
+Indicative total for one engineer is 10–16 weeks after provider access, excluding provider/legal lead
+time and direct-placement approval. Estimates are planning ranges, not delivery commitments.
