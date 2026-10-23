@@ -2148,9 +2148,9 @@ and markets are authorised.
 | ID | Requested outcome | Status |
 | --- | --- | --- |
 | PD-PR-081-01 | Capture one bounded current authenticated MBB table, toolbar, filter, settings, calculation and responsive evidence set without retaining credentials or cookies | IN PROGRESS — authenticated desktop table/toolbar captured; control-process failure ended the session before Settings/modal evidence, which will remain explicitly unverified rather than prompting another login |
-| PD-PR-081-02 | Add the server-only provider adapter, 25-credit ceiling, request coalescing, runtime last-good cache and stale/error truth | IN PROGRESS |
-| PD-PR-081-03 | Normalise and rank same-provider EPL, Championship and Champions League Match Odds selections with liquidity UNKNOWN | IN PROGRESS |
-| PD-PR-081-04 | Build the Profile-scoped table, filters, pagination and accessible Bet Summary modal using signed-off Plum Duff primitives | IN PROGRESS |
-| PD-PR-081-05 | Create authorised idempotent Prospecting Sportsbook drafts without placement or balance mutation | IN PROGRESS |
-| PD-PR-081-06 | Verify regression, private screenshots, documentation, backup and bounded localhost:3010 installation | IN PROGRESS |
-| PD-PR-081-07 | Update the matched-betting workflow coverage matrix without implementing deferred workflows | IN PROGRESS |
+| PD-PR-081-02 | Add the server-only provider adapter, 25-credit ceiling, request coalescing, runtime last-good cache and stale/error truth | COMPLETE — server-only key; persisted daily ceiling; one active refresh; stale last-good behavior tested |
+| PD-PR-081-03 | Normalise and rank same-provider EPL, Championship and Champions League Match Odds selections with liquidity UNKNOWN | COMPLETE — 51-event real sample and exact synthetic identity/ranking fixtures; no liquidity claimed |
+| PD-PR-081-04 | Build the Profile-scoped table, filters, pagination and accessible Bet Summary modal using signed-off Plum Duff primitives | COMPLETE — dark/light desktop and narrow headless evidence; owner acceptance pending |
+| PD-PR-081-05 | Create authorised idempotent Prospecting Sportsbook drafts without placement or balance mutation | COMPLETE — Profile Account authority, deterministic retry and unchanged balances tested |
+| PD-PR-081-06 | Verify regression, private screenshots, documentation, backup and bounded localhost:3010 installation | COMPLETE — backup `BACKUP-C48C9FC1`; canonical local install verified; owner acceptance pending |
+| PD-PR-081-07 | Update the matched-betting workflow coverage matrix without implementing deferred workflows | COMPLETE — matrix retained in `docs/planning/oddsmatcher-reverse-engineering-summary.md` |
