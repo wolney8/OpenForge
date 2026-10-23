@@ -1,6 +1,7 @@
 const profileScopedSections = new Set([
   "dashboard", "accounts", "sportsbook-bets", "free-bets", "casino-offers",
   "each-way-extra-places", "cash-adjustments", "reports", "settings",
+  "oddsmatcher",
 ]);
 
 /** Preserve a list-level Profile location without carrying record-specific query state. */

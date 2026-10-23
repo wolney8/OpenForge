@@ -12,6 +12,25 @@ from openforge_api.free_bet_input import validate_free_bet_commission, validate_
 from openforge_api.sportsbook_odds_input import validate_sportsbook_odds
 
 
+class OddsMatcherSourceSnapshot(BaseModel):
+    """Non-financial provenance for an unplaced Oddsmatcher planning row."""
+
+    model_config = ConfigDict(extra="forbid")
+    schema_version: Literal["oddsmatcher-source-v1"] = "oddsmatcher-source-v1"
+    source: Literal["ODDSMATCHER"] = "ODDSMATCHER"
+    provider: str = Field(min_length=1, max_length=80)
+    event_id: str = Field(min_length=1, max_length=120)
+    competition_key: str = Field(min_length=1, max_length=80)
+    market_key: Literal["h2h"] = "h2h"
+    selection_key: Literal["HOME", "DRAW", "AWAY"]
+    back_provider_key: str = Field(min_length=1, max_length=80)
+    lay_provider_key: str = Field(min_length=1, max_length=80)
+    back_quote_timestamp: str = Field(min_length=1, max_length=60)
+    lay_quote_timestamp: str = Field(min_length=1, max_length=60)
+    liquidity_state: Literal["UNKNOWN"] = "UNKNOWN"
+    retry_token: str = Field(min_length=8, max_length=120)
+
+
 class LayPlan(BaseModel):
     model_config = ConfigDict(extra="forbid")
     schema_version: Literal["lay-plan-v1"] = "lay-plan-v1"
@@ -31,6 +50,7 @@ class LayPlan(BaseModel):
     reviewed_planned_lay_stake: str = ""
     source_identity: str = Field(default="", max_length=200)
     source_checksum: str = Field(default="", max_length=64)
+    oddsmatcher_source: OddsMatcherSourceSnapshot | None = None
 
     @field_validator("back_stake", "custom_lay_stake", "reviewed_planned_lay_stake")
     @classmethod
@@ -59,7 +79,6 @@ class LayPlan(BaseModel):
         if self.selected_strategy == "Custom" and not self.custom_lay_stake:
             raise ValueError("Custom requires an explicit custom_lay_stake")
         return self
-
     def reference(self):
         from openforge_api.calculators import MatchedBettingPayload, _calculate
         return _calculate(MatchedBettingPayload(

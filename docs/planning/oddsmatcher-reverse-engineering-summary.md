@@ -1,6 +1,6 @@
 # Oddsmatcher Reverse Engineering Summary
 
-_Last updated: 2026-07-08_
+_Last updated: 2026-10-23_
 
 ## Executive result
 
@@ -149,3 +149,44 @@ _Last updated: 2026-07-08_
 - Delivery tracking now lives in GitHub. Repository documentation retains the approved M8
   blueprint, contracts, fixtures, and reverse-engineering evidence rather than duplicate issue
   payloads.
+
+## CP-081 bounded current evidence — 2026-10-23
+
+One authenticated desktop table/toolbar capture is retained privately at
+`data/private/evidence/cp081-mbb-20261023/02-authenticated-desktop.{png,json}`. The temporary
+control process ended before Settings, Bet Summary and narrow-layout inspection; those current MBB
+details remain **UNVERIFIED** rather than inferred from the retained older capture.
+
+**OBSERVED NOW:** the beta rollout label reported 60 bookmakers, six markets and two exchanges;
+Normal/Qualifying mode; Settings, Selection, Start time, Back, Lay, Rating, Clear and My filters;
+Date, Event, Bet, Back Odds, Lay Odds, Rating and action columns; shared-odds labels; hidden-arb
+notice; Next-page pagination; Bet365/Sky Bet/Unibet back providers; Smarkets/Matchbook exchanges;
+and visible MBB liquidity amounts. Exact Settings choices, saved-filter persistence, quote
+staleness labels, current modal behavior and current narrow presentation are **UNVERIFIED**.
+
+## Matched-betting workflow coverage after CP-081 Alpha
+
+`Owner acceptance` records the existing critical-journey state; automated evidence does not change
+it.
+
+| Workflow | Calculation | Ledger lifecycle | Reports | Workbook | Owner acceptance | Gap |
+| --- | --- | --- | --- | --- | --- | --- |
+| Standard qualifying | Existing commission-aware single-lay authority; CP-081 uses it | Prospecting plus existing place/settle/correct | Existing governed P&L | Existing Sportsbook fields | CODE-VERIFIED ONLY | Alpha has real Match Odds discovery but liquidity remains unknown. |
+| Free Bet SNR | Existing calculator | Existing linked Free Bet workflow | Existing Free Bet P&L | Existing Free Bet ledger | CODE-VERIFIED ONLY | Not an Alpha discovery mode. |
+| Free Bet SR | Existing calculator | Existing Free Bet workflow | Existing Free Bet P&L | Existing Free Bet ledger | CODE-VERIFIED ONLY | Not an Alpha discovery mode. |
+| Refund/cashback | Existing refund and CP-075 promotion authorities | Trigger → reward → wagering → release | Actual/projected separation | CP-075 fields preserved | IMPLEMENTED — OWNER ACCEPTANCE PENDING | Not an Alpha discovery mode. |
+| Price boost | Existing qualifying inputs and Sportsbook offer taxonomy | Existing Sportsbook lifecycle | Existing Sportsbook P&L | Offer type preserved | CODE-VERIFIED ONLY | No boost-specific matcher ranking. |
+| Profit boost | Existing Sportsbook/calculator foundations | Existing Sportsbook lifecycle | Existing Sportsbook P&L | Offer type preserved | CODE-VERIFIED ONLY | No boost-specific matcher ranking. |
+| 2UP / Early Payout | Ordinary Sportsbook settlement authority only | Can record the bet/result | Existing settled P&L | Ledger fields preserved | DOCUMENTED / NOT IMPLEMENTED | Early-payout-specific matching and settlement evidence are absent. |
+| Extra Places | Existing each-way/extra-place calculator and ledger | Existing Extra Place lifecycle | Existing reporting sources | Supported ledger data | CODE-VERIFIED ONLY | Not an Alpha market. |
+| Each-way | Existing each-way calculation foundations | Existing sportsbook/extra-place records | Existing governed results | Supported fields | CODE-VERIFIED ONLY | No horse-racing matcher or live terms. |
+| Partial lays | Existing placement-state authority | Existing Sportsbook actual-fill lifecycle | Existing exposure/P&L | Supported Sportsbook fields | CODE-VERIFIED ONLY | Alpha is single-lay planning only. |
+| Multilays | Existing multilay calculator and Sportsbook legs | Existing multilay save/settle support | Existing Sportsbook P&L | Supported Sportsbook fields | CODE-VERIFIED ONLY | Alpha excludes multilay opportunities. |
+| Accumulators | Can be represented as a Sportsbook bet | Existing generic lifecycle | Existing Sportsbook P&L | Bet type preserved | CODE-VERIFIED ONLY | No accumulator solver or matcher feed. |
+| Bet Builders | Can be represented; multilay foundations overlap | Existing generic lifecycle | Existing Sportsbook P&L | Bet type preserved | DOCUMENTED / NOT IMPLEMENTED | Bet Builder Buddy and combinatorial matching remain deferred. |
+| Reload offers | Existing promotion metadata can represent them | Existing Sportsbook/promotion lifecycle | Existing actual/projected rules | CP-075 metadata preserved | IMPLEMENTED — OWNER ACCEPTANCE PENDING | No matcher discovery/ranking. |
+| Wager-to-earn reward | Existing CP-075 wagering target authority | Trigger → linked wagering → confirmation | Actual/projected separation | CP-075 round trip | IMPLEMENTED — OWNER ACCEPTANCE PENDING | No matcher discovery mode. |
+| Casino wagering | Existing Casino and promotion records are separate authorities | Existing Casino workflow | Existing Casino reporting | Existing Casino ledger | CODE-VERIFIED ONLY | No cross-product wagering matcher. |
+
+`Double boom` remains an **UNVERIFIED** community term, likely associated with 2UP/Early Payout.
+It is not a separate implemented workflow without a sourced definition and settlement example.

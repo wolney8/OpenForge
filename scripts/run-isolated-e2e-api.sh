@@ -3,6 +3,7 @@ set -eu
 
 runtime_directory="$(mktemp -d "${TMPDIR:-/tmp}/openforge-e2e.XXXXXX")"
 api_pid=""
+api_port="${OPENFORGE_E2E_API_PORT:-8010}"
 
 cleanup() {
   if [[ -n "$api_pid" ]]; then
@@ -24,11 +25,16 @@ export OPENFORGE_RUNTIME_DATABASE_IDENTITY=isolated-e2e
 export OPENFORGE_RUNTIME_SOURCE_ROOT="$PWD"
 export OPENFORGE_RUNTIME_SOURCE_REVISION="$(git rev-parse HEAD)"
 export OPENFORGE_RUNTIME_FRONTEND_ENDPOINT=http://localhost:3010
-export OPENFORGE_RUNTIME_API_ENDPOINT=http://127.0.0.1:8010
+export OPENFORGE_RUNTIME_API_ENDPOINT="http://127.0.0.1:$api_port"
 export OPENFORGE_RUNTIME_ENVIRONMENT_SOURCE=run-isolated-e2e-api.sh
 export OPENFORGE_RUNTIME_DATABASE_TARGET_EXPLICIT=true
 
+if [[ "${OPENFORGE_E2E_SEED_SYNTHETIC:-false}" == "true" ]]; then
+  PYTHONPATH="$PWD/apps/api/src:$PWD" ./scripts/run-python.sh -c \
+    'from apps.api.tests.synthetic_setup import seed_synthetic_betting_context; seed_synthetic_betting_context()'
+fi
+
 ./scripts/run-python.sh -m uvicorn openforge_api.main:app \
-  --app-dir apps/api/src --host 127.0.0.1 --port 8010 &
+  --app-dir apps/api/src --host 127.0.0.1 --port "$api_port" &
 api_pid=$!
 wait "$api_pid"

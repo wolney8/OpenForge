@@ -1,6 +1,6 @@
 # Fixture Spec: Oddsmatcher Public Shell Rating and Arb Visibility
 
-_Last updated: 2026-07-08_
+_Last updated: 2026-10-23_
 
 ## Contract(s) covered
 
@@ -180,3 +180,21 @@ They also include modal calculator and advanced-mode parity scenarios needed for
   - `copy_lay_stake_visible`: `true`
 - Expected inclusion/exclusion behaviour: visible in modal for selected row
 - Notes: URL values must remain synthetic/anonymized in non-live fixture sets
+
+## CP-081 Alpha fixtures
+
+- `oddsmatcher-alpha-normalise-010`: exact same-event HOME/DRAW/AWAY provider identities produce
+  three selections; an unmapped outcome is excluded with evidence and no fuzzy join.
+- `oddsmatcher-alpha-profile-011`: a Profile with eligible Bookmaker A and Exchange A Accounts plus
+  a recorded commission receives a ranked commission-aware row; another Profile cannot reuse those
+  Accounts. Liquidity is `UNKNOWN` in both cases.
+- `oddsmatcher-alpha-draft-012`: repeating one explicit retry token creates one Prospecting
+  Sportsbook identity, retains provider/event/selection/timestamps/odds/commission and unknown
+  liquidity in the lay-plan snapshot, and changes no balance or placed-bet state.
+- `oddsmatcher-alpha-provider-013`: concurrent refreshes coalesce; a temporary failure returns the
+  last-good snapshot as stale; a refresh that would exceed 25 runtime credits fails before network
+  access.
+
+The synthetic automated implementations are in `apps/api/tests/test_oddsmatcher.py` and
+`apps/web/lib/oddsmatcher*.test.ts`; rendered coverage is in
+`tests/e2e/oddsmatcher-alpha.spec.ts`.

@@ -2137,3 +2137,20 @@ Production/main mutation is included.
 | PD-PR-080-02 | Publish one owner-facing nine-journey acceptance guide without converting automated evidence into acceptance | COMPLETE — `docs/owner-acceptance-critical-journeys.md`; Reports remains the only owner-accepted journey |
 | PD-PR-080-03 | Confirm the server-only The Odds API boundary and sample official UK football data within ten credits | COMPLETE — key present/non-empty without disclosure; 3 credits used, 497 remain |
 | PD-PR-080-04 | Decide whether sampled provider evidence supports the first Oddsmatcher tranche | COMPLETE — discovery/back-price input only; a permitted exchange liquidity source or explicit product decision remains required |
+
+## CP-081 three-day Oddsmatcher Alpha
+
+Recorded 2026-10-23 against #52–#57. Scope is limited to Profile-scoped Football Match Odds,
+Normal/Qualifying single-lay comparison using The Odds API, unknown-liquidity truth and explicit
+Prospecting drafts. No polling, placed-bet action, direct exchange placement or additional modes
+and markets are authorised.
+
+| ID | Requested outcome | Status |
+| --- | --- | --- |
+| PD-PR-081-01 | Capture one bounded current authenticated MBB table, toolbar, filter, settings, calculation and responsive evidence set without retaining credentials or cookies | IN PROGRESS — authenticated desktop table/toolbar captured; control-process failure ended the session before Settings/modal evidence, which will remain explicitly unverified rather than prompting another login |
+| PD-PR-081-02 | Add the server-only provider adapter, 25-credit ceiling, request coalescing, runtime last-good cache and stale/error truth | IN PROGRESS |
+| PD-PR-081-03 | Normalise and rank same-provider EPL, Championship and Champions League Match Odds selections with liquidity UNKNOWN | IN PROGRESS |
+| PD-PR-081-04 | Build the Profile-scoped table, filters, pagination and accessible Bet Summary modal using signed-off Plum Duff primitives | IN PROGRESS |
+| PD-PR-081-05 | Create authorised idempotent Prospecting Sportsbook drafts without placement or balance mutation | IN PROGRESS |
+| PD-PR-081-06 | Verify regression, private screenshots, documentation, backup and bounded localhost:3010 installation | IN PROGRESS |
+| PD-PR-081-07 | Update the matched-betting workflow coverage matrix without implementing deferred workflows | IN PROGRESS |

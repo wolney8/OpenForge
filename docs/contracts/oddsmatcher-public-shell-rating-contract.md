@@ -1,10 +1,10 @@
 # Calculation Contract: Oddsmatcher Public Shell, Table, and Modal Boundary
 
-_Last updated: 2026-07-08_
+_Last updated: 2026-10-23_
 
 ## 0. Contract status
 
-- Status: Draft for M8 planning approval
+- Status: CP-081 Alpha scope approved; wider parity remains draft
 - Owner: Codex planning draft
 - Human approval required before implementation: Yes
 - Related workflow contract: Oddsmatcher public shell, table, and modal workflow
@@ -252,3 +252,28 @@ These selectors are not strict implementation requirements for OpenForge naming,
 - Review date: pending
 - Approval outcome: pending
 - Follow-up required before implementation: yes
+
+## 23. CP-081 operative Alpha addendum
+
+This addendum supersedes the older public/non-Profile assumptions above only for the approved Alpha.
+
+- Route and authority: authenticated, Profile-scoped Tracker Oddsmatcher. Server-side Account
+  authority is rechecked before draft creation.
+- Scope: EPL, Championship and UEFA Champions League; Football Match Odds/1X2;
+  Normal/Qualifying; one lay quote; manual refresh only.
+- Provider: server-side provider interface with The Odds API as the first adapter. Same-provider
+  event and exact HOME/DRAW/AWAY identity are required; no fuzzy cross-event join is permitted.
+- Rating: display rating remains `(back odds / lay odds) * 100`. Commission-aware rating is derived
+  by the existing matched-betting calculator using the Profile exchange commission. Decimal inputs
+  are preserved; displayed ratings use two decimal places.
+- Liquidity: The Odds API does not provide available exchange depth. The value is always `UNKNOWN`,
+  displayed as `Liquidity unknown`, and never represented as zero or executable capacity.
+- Calculator: projected stake, liability and outcome values reuse the existing matched-betting
+  preview authority. They are not realised ledger P&L.
+- Output: the only ledger action is explicit `Add Prospecting Draft`. It creates an unplaced,
+  Profile-owned Sportsbook row with an immutable provider/event/selection/quote snapshot in the
+  existing lay-plan JSON. It does not change balances or claim that a bet is placed.
+- Retry: the client supplies an action token; Profile plus token produces a deterministic identity.
+  Repeating the same action returns the existing draft.
+- Safety boundaries: no polling, no SNR/SR/refund mode, no extra market, no direct exchange
+  placement and no provider response persistence.

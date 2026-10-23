@@ -5816,3 +5816,19 @@ bookmaker combination restrictions. Source: [official Bet Builder Buddy](https:/
 
 Indicative total for one engineer is 10–16 weeks after provider access, excluding provider/legal lead
 time and direct-placement approval. Estimates are planning ranges, not delivery commitments.
+
+### CP-081 Alpha implementation evidence — 2026-10-23
+
+CP-081 implements only tranche 1's bounded Match Odds/Normal single-lay subset on the preserved local
+product. The provider-neutral server adapter keeps the key server-side, permits manual refresh only,
+coalesces concurrent refreshes, enforces a 25-credit runtime daily ceiling and retains only a
+last-good in-memory snapshot. The real sample used three calls/credits and returned 51 events, 153
+exact selections, 18 bookmaker keys and Betfair Exchange/Matchbook/Smarkets lay quotes; no
+liquidity field was present. Provider headers ended at 6 used and 494 remaining for the account.
+
+The Profile-scoped UI uses the existing dense toolbar, contained table, pagination, modal,
+calculator outcomes and action primitives. It labels liquidity `UNKNOWN`, hides arbs by default and
+offers only an idempotent unplaced Prospecting draft. Synthetic browser evidence covers dark/light
+desktop, narrow layout, filters, pagination, Settings focus return and Advanced Bet Summary. Current
+MBB Settings/modal/narrow evidence was not captured after the bounded authenticated session ended
+and remains unverified. Owner acceptance of the Alpha remains pending.

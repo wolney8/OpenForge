@@ -1,5 +1,14 @@
 # Project Status — Plum Duff / OpenForge — Doc ID: PS-CODEX-001
 
+> **CP-081 Alpha under verification — 2026-10-23:** a bounded Profile-scoped Football Match Odds
+> implementation now uses The Odds API through a server-only manual-refresh adapter. EPL,
+> Championship and Champions League HOME/DRAW/AWAY selections are ranked using the existing
+> qualifying calculator and Account authority; exchange liquidity is always labelled unknown and
+> the only ledger action is an unplaced idempotent Prospecting draft. One three-credit sample
+> returned 51 events/153 selections and no liquidity. Automated API/UI/build evidence passes so
+> far; localhost installation and owner acceptance remain pending. Direct placement and all other
+> modes/markets remain excluded.
+
 > **CP-080 custody/evidence gate — 2026-10-23:** exact running baseline `f4b9771e…` is tagged
 > `local-product-baseline-2026-10-23`; preservation branch
 > `preserve/local-product-2026-10-23` cleanly merges current `origin/main` without rewriting local

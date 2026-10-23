@@ -33,6 +33,9 @@ class Settings(BaseSettings):
     auth_owner_emails: str = ""
     google_oauth_client_id: str = ""
     google_oauth_client_secret: str = ""
+    the_odds_api_key: str = ""
+    the_odds_api_daily_credit_ceiling: int = 25
+    the_odds_api_usage_state: str = "data/private/runtime/the-odds-api-usage.json"
     runtime_role: str = ""
     runtime_database_identity: str = ""
     runtime_source_root: str = ""
@@ -72,6 +75,11 @@ class Settings(BaseSettings):
         return path if path.is_absolute() else SOURCE_ROOT / path
 
     @property
+    def the_odds_api_usage_state_path(self) -> Path:
+        path = Path(self.the_odds_api_usage_state)
+        return path if path.is_absolute() else SOURCE_ROOT / path
+
+    @property
     def cors_origins(self) -> list[str]:
         return [
             origin.strip().rstrip("/")
@@ -98,20 +106,15 @@ class Settings(BaseSettings):
 
     @property
     def hosted_persistence_ready(self) -> bool:
-        return (
-            not self.hosted_environment
-            or (
-                self.database_mode.strip().lower() in {"neon", "postgres", "postgresql"}
-                and bool(self.neon_database_url.strip())
-            )
+        return not self.hosted_environment or (
+            self.database_mode.strip().lower() in {"neon", "postgres", "postgresql"}
+            and bool(self.neon_database_url.strip())
         )
 
     @property
     def owner_emails(self) -> set[str]:
         return {
-            email.strip().casefold()
-            for email in self.auth_owner_emails.split(",")
-            if email.strip()
+            email.strip().casefold() for email in self.auth_owner_emails.split(",") if email.strip()
         }
 
     @property

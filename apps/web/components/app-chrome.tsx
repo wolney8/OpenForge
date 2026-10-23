@@ -72,6 +72,7 @@ type HeaderSummaryState = {
 const profileTrackerMenuRoutes = [
   { href: "dashboard", title: "Profile Operations", icon: "dashboard" },
   { href: "sportsbook-bets", title: "Sportsbook Bets", icon: "sports" },
+  { href: "oddsmatcher", title: "Oddsmatcher", icon: "query_stats" },
   { href: "free-bets", title: "Free Bets", icon: "award_star" },
   { href: "casino-offers", title: "Casino Offers", icon: "playing_cards" },
   { href: "each-way-extra-places", title: "Extra Places", icon: "chess_knight" },
@@ -185,6 +186,7 @@ function AppChromeContent({
 
     for (const route of [
       "sportsbook-bets",
+      "oddsmatcher",
       "free-bets",
       "casino-offers",
       "each-way-extra-places",

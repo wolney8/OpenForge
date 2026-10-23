@@ -54,6 +54,11 @@ export const trackerModuleDefinitions: Record<string, TrackerModuleDefinition> =
       { key: "eventName", label: "Event" },
     ],
   },
+  oddsmatcher: {
+    href: "oddsmatcher",
+    title: "Oddsmatcher",
+    summary: "Profile-scoped real Match Odds comparison and Prospecting draft workflow.",
+  },
   "free-bets": {
     href: "free-bets",
     title: "Free Bets",
@@ -143,6 +148,7 @@ export const trackerLandingCards = trackerModuleCards.filter(
 export const primaryProfileModules = trackerModuleCards.filter((module) =>
   [
     "sportsbook-bets",
+    "oddsmatcher",
     "free-bets",
     "casino-offers",
     "each-way-extra-places",
