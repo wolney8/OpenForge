@@ -209,4 +209,3 @@ journeys; 7. Reports; 8. workbook round-trip; 9. recovery/rollback.
 | --- | --- | --- | --- | --- | --- |
 | 2026-10-09 | `ec82df0…` | Reports and P&L reconciliation (CP-078) | PASS for checkpoint | Owner accepted “passes for now”; reaccept after calculation/source change |  |
 |  |  |  |  |  |  |
-
