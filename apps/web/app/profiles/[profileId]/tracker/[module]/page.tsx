@@ -6,7 +6,6 @@ import { FreeBetWorkflowShell } from "@/components/free-bet-workflow-shell";
 import { EachWayExtraPlaceWorkflowShell } from "@/components/each-way-extra-place-workflow-shell";
 import { ProfileSettingsShell } from "@/components/profile-settings-shell";
 import { SportsbookWorkflowShell } from "@/components/sportsbook-workflow-shell";
-import { OddsMatcherShell } from "@/components/oddsmatcher-shell";
 import { TrackerSummaryShell } from "@/components/tracker-summary-shell";
 import { TrackerModuleTable } from "@/components/tracker-module-table";
 import { trackerModuleDefinitions, trackerTableModules } from "@/lib/tracker-modules";
@@ -38,6 +37,9 @@ export default async function TrackerModulePage({
       if (typeof value === "string") preserved.set(key, value);
     }
     redirect(`/fund-manager/calculators${preserved.size ? `?${preserved.toString()}` : ""}`);
+  }
+  if (module === "oddsmatcher") {
+    redirect(`/oddsmatcher?profileId=${encodeURIComponent(profileId)}`);
   }
   const requestedView = typeof query.view === "string" ? query.view : undefined;
   const requestedSearch = typeof query.search === "string" ? query.search : undefined;
@@ -118,11 +120,9 @@ export default async function TrackerModulePage({
         </section>
       ) : null}
       {module === "accounts" ? (
-        <AccountsWorkflowShell profileId={profile.profileId} initialRecordId={requestedRecord} />
+        <AccountsWorkflowShell profileId={profile.profileId} initialRecordId={requestedRecord} initialIssueFilter={requestedIssue} />
       ) : module === "sportsbook-bets" ? (
         <SportsbookWorkflowShell feeReviewContext={feeReviewContext} initialIssueFilter={requestedIssue} initialQuery={requestedSearch} initialRecordId={requestedRecord} key={`sportsbook:${requestedRecord ?? requestedIssue ?? (requestedRecords.join(",") || "default")}`} profileId={profile.profileId} />
-      ) : module === "oddsmatcher" ? (
-        <OddsMatcherShell profileId={profile.profileId} />
       ) : module === "free-bets" ? (
         <FreeBetWorkflowShell feeReviewContext={feeReviewContext} initialIssueFilter={requestedIssue} initialQuery={requestedSearch} initialRecordId={requestedRecord} initialTableMode={requestedView} key={`free-bets:${requestedRecord ?? requestedIssue ?? (requestedRecords.join(",") || requestedView || "default")}`} profileId={profile.profileId} />
       ) : module === "casino-offers" ? (

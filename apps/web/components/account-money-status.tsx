@@ -69,7 +69,7 @@ function MoneyIssueDisclosure({
         {visibleGroups.map((group) => (
           <li key={group.accountId}>
             {group.profileId ? (
-              <Link href={`/profiles/${group.profileId}/tracker/accounts?search=${encodeURIComponent(group.accountName.split(" · ").at(-1) ?? group.accountName)}`}>
+              <Link href={`/profiles/${group.profileId}/tracker/accounts?view=issues&issue=needs-attention&record=${encodeURIComponent(group.accountId)}&source=cash-readiness`}>
                 <strong>{group.accountName}</strong>
               </Link>
             ) : <strong>{group.accountName}</strong>}

@@ -70,6 +70,14 @@ NAVIGATION_RESULTS = (
         icon="summarize",
     ),
     GlobalSearchResult(
+        result_id="navigation-oddsmatcher",
+        group="Navigation",
+        title="Oddsmatcher",
+        subtitle="Football Match Odds decision support",
+        href="/oddsmatcher",
+        icon="query_stats",
+    ),
+    GlobalSearchResult(
         result_id="navigation-settings",
         group="Navigation",
         title="Settings",

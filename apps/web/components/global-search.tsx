@@ -25,6 +25,7 @@ export function GlobalSearch() {
   const [isLoading, setIsLoading] = useState(false);
   const [searchError, setSearchError] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const [compactOpen, setCompactOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const rootRef = useRef<HTMLDivElement | null>(null);
 
@@ -68,7 +69,10 @@ export function GlobalSearch() {
 
   useEffect(() => {
     const handlePointerDown = (event: MouseEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) setIsOpen(false);
+      if (!rootRef.current?.contains(event.target as Node)) {
+        setIsOpen(false);
+        setCompactOpen(false);
+      }
     };
     document.addEventListener("mousedown", handlePointerDown);
     return () => document.removeEventListener("mousedown", handlePointerDown);
@@ -77,6 +81,7 @@ export function GlobalSearch() {
   const navigateToResult = async (result: SearchResult) => {
     if (!(await confirmUnsavedTrackerChanges())) return;
     setIsOpen(false);
+    setCompactOpen(false);
     setQuery("");
     beginRouteTransition();
     router.push(result.href);
@@ -87,7 +92,8 @@ export function GlobalSearch() {
     .filter(({ items }) => items.length > 0);
 
   return (
-    <div className="global-search" data-pd-id="global-search.root" ref={rootRef} role="search">
+    <div className={`global-search${compactOpen ? " is-compact-open" : ""}`} data-pd-id="global-search.root" ref={rootRef} role="search">
+      <button aria-expanded={compactOpen} aria-label={compactOpen ? "Close Plum Duff search" : "Open Plum Duff search"} className="icon-button global-search-compact-trigger" onClick={() => setCompactOpen(current => !current)} type="button"><span aria-hidden="true" className="material-symbols-outlined">{compactOpen ? "close" : "search"}</span></button>
       <label className="field-control table-search-field global-search-field">
         <span className="visually-hidden">Search Plum Duff</span>
         <span aria-hidden="true" className="material-symbols-outlined global-search-leading-icon">search</span>

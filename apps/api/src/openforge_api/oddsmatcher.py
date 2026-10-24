@@ -25,6 +25,7 @@ from openforge_api.lay_plan import LayPlan, OddsMatcherSourceSnapshot
 from openforge_api.sportsbook import SportsbookBetResponse, prepare_write_response
 
 router = APIRouter(prefix="/profiles/{profile_id}/oddsmatcher", tags=["oddsmatcher"])
+global_router = APIRouter(prefix="/oddsmatcher", tags=["oddsmatcher"])
 
 PROVIDER_NAME = "The Odds API"
 PROVIDER_BASE_URL = "https://api.the-odds-api.com/v4"
@@ -507,12 +508,14 @@ def _eligibility(account: object | None, *, provider: str, bookmaker: bool) -> E
     )
 
 
-def _resolved_opportunities(profile_id: str, cache: ProviderCache) -> list[OpportunityResponse]:
-    accounts = list_accounts(profile_id)
+def _resolved_opportunities(
+    profile_id: str | None, cache: ProviderCache
+) -> list[OpportunityResponse]:
+    accounts = list_accounts(profile_id) if profile_id else []
     account_index = {
         (str(account.type), str(account.account).casefold()): account for account in accounts
     }
-    commissions = get_profile_exchange_commission_map(profile_id)
+    commissions = get_profile_exchange_commission_map(profile_id) if profile_id else {}
     now = datetime.now(UTC)
     rows: list[OpportunityResponse] = []
     for source in cache.opportunities:
@@ -520,13 +523,34 @@ def _resolved_opportunities(profile_id: str, cache: ProviderCache) -> list[Oppor
         for quote in source.back_quotes:
             account = account_index.get(("Bookie", quote.account_name.casefold()))
             back_candidates.append(
-                (quote, _eligibility(account, provider=quote.account_name, bookmaker=True))
+                (
+                    quote,
+                    _eligibility(account, provider=quote.account_name, bookmaker=True)
+                    if profile_id
+                    else EligibilityResponse(
+                        state="warning",
+                        reason="Choose a Profile to check bookmaker Account eligibility.",
+                        account_id=None,
+                    ),
+                )
             )
         lay_candidates: list[tuple[ProviderQuote, EligibilityResponse]] = []
         for quote in source.lay_quotes:
             account = account_index.get(("Exchange", quote.account_name.casefold()))
             lay_candidates.append(
-                (quote, _eligibility(account, provider=quote.account_name, bookmaker=False))
+                (
+                    quote,
+                    _eligibility(account, provider=quote.account_name, bookmaker=False)
+                    if profile_id
+                    else EligibilityResponse(
+                        state="warning",
+                        reason=(
+                            "Choose a Profile to apply exchange commission and "
+                            "Account eligibility."
+                        ),
+                        account_id=None,
+                    ),
+                )
             )
         eligible_backs = [item for item in back_candidates if item[1].state != "unavailable"]
         eligible_lays = [item for item in lay_candidates if item[1].state != "unavailable"]
@@ -548,7 +572,7 @@ def _resolved_opportunities(profile_id: str, cache: ProviderCache) -> list[Oppor
                 )
             except (ValueError, ArithmeticError):
                 calculation = None
-        if not commission and lay_state.state != "unavailable":
+        if profile_id and not commission and lay_state.state != "unavailable":
             lay_state = EligibilityResponse(
                 state="unavailable",
                 reason=f"Record {lay.account_name} commission before using this price.",
@@ -599,7 +623,8 @@ def _resolved_opportunities(profile_id: str, cache: ProviderCache) -> list[Oppor
                 back_eligibility=back_state,
                 lay_eligibility=lay_state,
                 can_create_prospecting_draft=(
-                    calculation is not None
+                    profile_id is not None
+                    and calculation is not None
                     and back_state.state == "eligible"
                     and lay_state.state == "eligible"
                 ),
@@ -616,9 +641,9 @@ def _resolved_opportunities(profile_id: str, cache: ProviderCache) -> list[Oppor
 
 
 def _response(
-    profile_id: str, cache: ProviderCache | None, warning: str | None = None
+    profile_id: str | None, cache: ProviderCache | None, warning: str | None = None
 ) -> OddsMatcherResponse:
-    if get_profile(profile_id) is None:
+    if profile_id is not None and get_profile(profile_id) is None:
         raise HTTPException(status_code=404, detail="Profile not found")
     if cache is None:
         return OddsMatcherResponse(
@@ -664,6 +689,19 @@ def get_oddsmatcher(profile_id: str) -> OddsMatcherResponse:
 @router.post("/refresh", response_model=OddsMatcherResponse)
 async def refresh_oddsmatcher(profile_id: str) -> OddsMatcherResponse:
     if get_profile(profile_id) is None:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    cache, warning = await refresh_provider_cache()
+    return _response(profile_id, cache, warning)
+
+
+@global_router.get("", response_model=OddsMatcherResponse)
+def get_global_oddsmatcher(profile_id: str | None = None) -> OddsMatcherResponse:
+    return _response(profile_id, _cache)
+
+
+@global_router.post("/refresh", response_model=OddsMatcherResponse)
+async def refresh_global_oddsmatcher(profile_id: str | None = None) -> OddsMatcherResponse:
+    if profile_id is not None and get_profile(profile_id) is None:
         raise HTTPException(status_code=404, detail="Profile not found")
     cache, warning = await refresh_provider_cache()
     return _response(profile_id, cache, warning)

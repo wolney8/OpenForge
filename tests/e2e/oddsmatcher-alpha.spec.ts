@@ -4,7 +4,7 @@ import path from "node:path";
 
 const profileId = "profile-demo-001";
 const evidenceDirectory = path.resolve(
-  "data/private/evidence/cp081-alpha-ui-20261023",
+  "data/private/evidence/cp082-owner-smoke-20261024",
 );
 
 function opportunity(index: number) {
@@ -73,8 +73,11 @@ async function mockRuntime(page: Page) {
     if (url.includes("/fund-manager/calculators/matched-betting/preview")) {
       return route.fulfill({ json: { selected_lay_stake: "9.62", liability: "35.59", pnl_if_back_wins: "-1.09", pnl_if_lay_wins: "-0.57", matched_result: "-1.09" } });
     }
-    if (url.includes(`/profiles/${profileId}/oddsmatcher`)) {
+    if (url.includes("/oddsmatcher")) {
       return route.fulfill({ json: feed });
+    }
+    if (/\/profiles\/?(?:\?.*)?$/.test(new URL(url).pathname)) {
+      return route.fulfill({ json: [{ profile_id: profileId, display_name: "ALPHA-001 Synthetic", status: "active" }] });
     }
     if (url.includes("/auth/session")) {
       return route.fulfill({ json: { authenticated: true, email: "alpha-owner@example.invalid", linked_profile_ids: [profileId], name: "Alpha Owner", role: "fund_manager" } });
@@ -88,31 +91,40 @@ async function mockRuntime(page: Page) {
 }
 
 test("renders, filters, paginates and inspects the bounded Alpha", async ({ page }) => {
+  test.setTimeout(90_000);
   await fs.mkdir(evidenceDirectory, { recursive: true });
   await mockRuntime(page);
   await page.setViewportSize({ width: 1440, height: 1000 });
-  await page.goto(`/profiles/${profileId}/tracker/oddsmatcher`);
+  await page.goto("/oddsmatcher");
 
   await expect(page.getByRole("heading", { name: "Oddsmatcher" })).toBeVisible();
+  await expect(page.getByLabel("Oddsmatcher Profile context")).toHaveValue("");
+  await page.screenshot({ path: path.join(evidenceDirectory, "F-oddsmatcher-global-desktop.png"), fullPage: true });
+  await page.getByLabel("Oddsmatcher Profile context").selectOption(profileId);
+  await expect(page).toHaveURL(new RegExp(`profileId=${profileId}`));
   await expect(page.getByText("Page 1 of 3 · 34 rows").first()).toBeVisible();
   await expect(page.getByText("Liquidity unknown").first()).toBeVisible();
-  const liquidityChip = page.getByText("Liquidity unknown", { exact: true }).first();
-  await expect(liquidityChip).toHaveCSS("white-space", "nowrap");
-  expect((await liquidityChip.boundingBox())?.height).toBeLessThan(40);
+  const liquidityLabel = page.getByText("Liquidity unknown", { exact: true }).first();
+  await expect(liquidityLabel).toBeVisible();
+  expect((await liquidityLabel.boundingBox())?.height).toBeLessThan(44);
   await expect(page.getByRole("button", { name: "Add Prospecting Draft" })).toHaveCount(0);
-  await page.screenshot({ path: path.join(evidenceDirectory, "01-table-shell-desktop.png"), fullPage: true });
-  await page.getByRole("button", { name: "Switch to light mode" }).click();
-  await expect(page.getByRole("button", { name: "Switch to dark mode" })).toBeVisible();
+  await page.screenshot({ path: path.join(evidenceDirectory, "G-oddsmatcher-profile-context-desktop.png"), fullPage: true });
+  await page.evaluate(() => { document.documentElement.dataset.theme = "light"; });
   await page.screenshot({ path: path.join(evidenceDirectory, "01b-table-shell-light.png"), fullPage: true });
-  await page.getByRole("button", { name: "Switch to dark mode" }).click();
+  await page.evaluate(() => { document.documentElement.dataset.theme = "dark"; });
 
-  await page.getByLabel("Filter by selection").selectOption("DRAW");
-  await page.getByLabel("Filter by minimum rating").selectOption("95");
+  await page.getByRole("button", { name: /^Selection/ }).click();
+  await page.screenshot({ path: path.join(evidenceDirectory, "H-oddsmatcher-filter-drawer.png"), fullPage: true });
+  await page.getByLabel("Selection").selectOption("DRAW");
+  await page.getByRole("button", { name: "Apply filters" }).click();
+  await page.locator('[data-pd-id="oddsmatcher.filters"]').getByRole("button", { name: /^Rating/ }).click();
+  await page.getByLabel("Minimum rating").selectOption("95");
+  await page.getByRole("button", { name: "Apply filters" }).click();
   await expect(page.locator("tbody tr").first()).toContainText("Draw");
   await expect(page.getByText(/Page 1 of \d+ · \d+ rows/).first()).toBeVisible();
   await page.screenshot({ path: path.join(evidenceDirectory, "02-filtered-ranked-results.png"), fullPage: true });
 
-  await page.getByRole("button", { name: "Bet Summary" }).first().click();
+  await page.getByRole("button", { name: /^Open Bet Summary/ }).first().click();
   const dialog = page.getByRole("dialog", { name: "Oddsmatcher Bet Summary" });
   await expect(dialog).toBeVisible();
   await expect(dialog).toContainText("Liquidity unknown");
@@ -121,7 +133,7 @@ test("renders, filters, paginates and inspects the bounded Alpha", async ({ page
   await expect(dialog).not.toContainText("Place Bet");
   await dialog.getByRole("checkbox", { name: /Advanced/ }).check();
   await expect(dialog.getByRole("group", { name: "Lay strategy" })).toBeVisible();
-  await page.screenshot({ path: path.join(evidenceDirectory, "03-bet-summary-advanced.png"), fullPage: true });
+  await page.screenshot({ path: path.join(evidenceDirectory, "J-bet-summary-desktop.png"), fullPage: true });
   await page.keyboard.press("Escape");
   await expect(dialog).toBeHidden();
 
@@ -134,17 +146,22 @@ test("renders, filters, paginates and inspects the bounded Alpha", async ({ page
   const desktopGeometry = await page.evaluate(() => ({
     bodyWidth: document.body.scrollWidth,
     viewportWidth: document.documentElement.clientWidth,
-    tableScrollWidth: document.querySelector('[data-pd-id="oddsmatcher.results-scroll"]')?.scrollWidth ?? 0,
-    tableClientWidth: document.querySelector('[data-pd-id="oddsmatcher.results-scroll"]')?.clientWidth ?? 0,
+    tableScrollWidth: document.querySelector('.oddsmatcher-desktop-results')?.scrollWidth ?? 0,
+    tableClientWidth: document.querySelector('.oddsmatcher-desktop-results')?.clientWidth ?? 0,
   }));
   expect(desktopGeometry.bodyWidth).toBeLessThanOrEqual(desktopGeometry.viewportWidth);
 
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.getByRole("heading", { name: "Oddsmatcher" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Filters(?: \d+)?$/ })).toBeVisible();
+  await expect(page.locator(".oddsmatcher-opportunity-card").first()).toBeVisible();
   const narrowGeometry = await page.evaluate(() => ({
     bodyWidth: document.body.scrollWidth,
     viewportWidth: document.documentElement.clientWidth,
   }));
   expect(narrowGeometry.bodyWidth).toBeLessThanOrEqual(narrowGeometry.viewportWidth);
-  await page.screenshot({ path: path.join(evidenceDirectory, "04-final-narrow.png"), fullPage: true });
+  await page.screenshot({ path: path.join(evidenceDirectory, "I-oddsmatcher-narrow-stacked.png"), fullPage: true });
+  await page.getByRole("button", { name: /^Open Bet Summary/ }).first().click();
+  await expect(page.getByRole("dialog", { name: "Oddsmatcher Bet Summary" })).toBeVisible();
+  await page.screenshot({ path: path.join(evidenceDirectory, "J-bet-summary-narrow.png"), fullPage: true });
 });

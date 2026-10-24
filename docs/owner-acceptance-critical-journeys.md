@@ -196,7 +196,7 @@ Profile **Profile Operations**, then **Accounts**.
   - **Expect:** known cash/category subtotals remain visible; unknown categories say **Incomplete**, not £0.00.
   - **Stop if:** known cash is labelled complete or unknown money becomes zero.
 - [ ] Select **Review affected Accounts**.
-  - **Expect:** one row per unique affected Account with combined reasons.
+  - **Expect:** Accounts opens with **Needs attention** active, one row per unique affected Account and combined reasons.
   - **Stop if:** a Profile/Account repeats or another Profile opens.
 - [ ] Follow one supported correction link without changing data.
   - **Expect:** the relevant Profile/Account correction surface opens.
@@ -510,19 +510,25 @@ The recorded source revision/database identity and a clearly named disposable re
 OWNER ACCEPTANCE PENDING
 
 **What this proves:**
-The Profile-scoped Alpha shows ranked real Match Odds opportunities, preserves liquidity truth, recalculates qualifying outcomes and creates one unplaced Prospecting draft.
+The global Alpha shows ranked real Match Odds opportunities, applies optional Profile context without hiding global opportunities, preserves liquidity truth, recalculates qualifying outcomes and creates one unplaced Prospecting draft only after a Profile is selected.
 
 **Use this Profile/test identity:**
 `ALPHA-001`
 
 **Start here:**
-`ALPHA-001` → **Tracker** → **Oddsmatcher**
+Top-level **Tools** → **Oddsmatcher** (`/oddsmatcher`), then select `ALPHA-001` as **Profile context** before creating a draft. The Profile Tracker link must open this same tool with that Profile preselected.
 
 #### Steps
 
 - [ ] Open Oddsmatcher.
-  - **Expect:** table-first page, Normal/Qualifying, search, filters, **Refresh**, **Settings/My Filters** state and no placed-bet action.
+  - **Expect:** table-first page, **No Profile / All opportunities**, Normal/Qualifying, search, filters, **Refresh**, **Settings/My Filters** state and no placed-bet action.
   - **Stop if:** page fails, another Profile's data appears or any action implies automatic placement.
+- [ ] Open one Bet Summary without a Profile selected.
+  - **Expect:** all-provider opportunity context is visible and **Add Prospecting Draft** is disabled with **Choose a Profile to add to Tracker**.
+  - **Stop if:** a Profile restriction or commission is applied as universal, or a draft can be created.
+- [ ] Select `ALPHA-001` as **Profile context**.
+  - **Expect:** Account eligibility and exchange commission become Profile-specific and the URL retains the context.
+  - **Stop if:** another Profile's authority is used or global opportunities disappear without an eligibility explanation.
 - [ ] Record quota before refresh.
   - **Expect:** quota evidence is visible without exposing the API key.
   - **Stop if:** current quota cannot be established.

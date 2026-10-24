@@ -455,3 +455,19 @@ canonical owner visual verification remains outstanding.
 | PD-FIX-318 | Linked wagering entry | Add Wagering Bet carries Profile, bookmaker and group context without repeating promotion terms | Existing Sportsbook create workflow | COMPLETE |
 | PD-FIX-319 | Promotion lifecycle | Turnover progress does not auto-confirm external release | Existing explicit settlement/confirmation semantics | COMPLETE |
 | PD-FIX-320 | Local owner handoff | Install the additive-schema feature through canonical authenticated 3010/8010 only | Existing normal-owner backup and launcher process | COMPLETE |
+
+## CP-082 owner smoke corrections and Oddsmatcher parity — 2026-10-24
+
+| ID | Surface | Requested behaviour | Signed-off equivalent | Status |
+| --- | --- | --- | --- | --- |
+| PD-FIX-339 / #111 | Selected Range Performance | Financial-chart composition with restrained points, compact summary, layout-neutral hover and anchored record popover | Existing `ReportPointChart`, `FinancialValue` and bounded Material popover patterns | COMPLETE |
+| PD-FIX-340 / #111 | Application header | Deliberate desktop, intermediate and narrow top-bar states without squashed controls or page overflow | Existing authenticated app-shell regions, icon actions and global-search primitive | COMPLETE |
+| PD-FIX-341 / #116 | Accounts readiness navigation | `View affected Accounts` opens Accounts with governed `Needs attention` filtering and direct correction actions | Existing Account readiness authority, ledger toolbar and editor/review surface | COMPLETE |
+| PD-FIX-342 / #52 | Oddsmatcher route/context | One canonical `/oddsmatcher` tool with optional Profile context; Profile entry delegates to it | Existing Calculators top-level placement, Profile selector and server authority | COMPLETE |
+| PD-FIX-343 / #54 | Oddsmatcher desktop IA | MBB-observed toolbar/filter/table hierarchy expressed with Plum Duff Material components | Existing table toolbar, filter-drawer, branded quote and pagination patterns | COMPLETE |
+| PD-FIX-344 / #54 | Oddsmatcher responsive IA | Filters collapse to one counted control and opportunities become stacked cards on narrow widths | Existing responsive ledger cards, modal containment and app-shell breakpoints | COMPLETE |
+| PD-FIX-345 / #57 | CP-082 evidence and local install | Geometry, themes, keyboard/focus, Profile isolation and preserved Alpha boundaries verified before 3010/8010 install | UI consistency fail-closed gate and canonical normal-owner backup/install procedure | NEEDS VERIFICATION |
+
+This batch changes presentation, route composition and Account issue navigation only. It does not
+change financial calculations, provider polling/quota rules, ledger settlement, database schema,
+owner data or the recorded owner-acceptance statuses.

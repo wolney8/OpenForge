@@ -90,7 +90,7 @@ function resolveProfileId(pathname: string): string | null {
 
 function isAuthenticatedApplicationPath(pathname: string): boolean {
   return pathname === "/" ||
-    ["/profiles", "/reports", "/performance", "/notifications", "/tasks", "/settings", "/account", "/fund-manager", "/imports", "/calculator"].some(
+    ["/profiles", "/reports", "/performance", "/notifications", "/tasks", "/settings", "/account", "/fund-manager", "/imports", "/calculator", "/oddsmatcher"].some(
       (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
     );
 }
@@ -612,7 +612,7 @@ function AppChromeContent({
             </div>
           </div>
           {!isPublicAuthRoute ? <GlobalSearch /> : <div aria-hidden="true" />}
-          <div className="top-bar-actions">
+          <div className="top-bar-profile-context">
             {!isPublicAuthRoute && isInsideProfile ? (
               <div className="app-menu-shell profile-summary-menu-shell" ref={trackerMenuRef}>
                 <FinancialValueReplayGroup>
@@ -756,8 +756,8 @@ function AppChromeContent({
                       aria-label={`${commandProfileForRoutes.display_name} tracker routes`}
                     >
                     {profileTrackerMenuRoutes.map((route) => {
-                      const href = `/profiles/${commandProfileForRoutes.profile_id}/tracker/${route.href}`;
-                      const isActive = pathname === href;
+                      const href = route.href === "oddsmatcher" ? `/oddsmatcher?profileId=${encodeURIComponent(commandProfileForRoutes.profile_id)}` : `/profiles/${commandProfileForRoutes.profile_id}/tracker/${route.href}`;
+                      const isActive = route.href === "oddsmatcher" ? pathname === "/oddsmatcher" : pathname === href;
 
                       return (
                         <button
@@ -789,6 +789,8 @@ function AppChromeContent({
                 </div>
               </div>
             ) : null}
+          </div>
+          <div className="top-bar-actions">
             {!isPublicAuthRoute ? <NotificationCentre /> : null}
             {!isPublicAuthRoute ? <BackLayThemeToggle /> : null}
             {!isPublicAuthRoute ? <FundManagerIdentityMenu /> : null}

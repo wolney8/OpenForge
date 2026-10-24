@@ -212,3 +212,20 @@ it.
 
 `Double boom` remains an **UNVERIFIED** community term, likely associated with 2UP/Early Payout.
 It is not a separate implemented workflow without a sourced definition and settlement example.
+
+## CP-082 architecture and interface correction — 2026-10-24
+
+The Alpha now has one canonical top-level `/oddsmatcher` tool beside Calculators. With no Profile
+selected it returns all supported provider opportunities without applying a Profile restriction or
+commission and disables draft creation. Selecting a Profile applies existing Account eligibility
+and commission server-side; the older Profile route redirects to this same implementation with
+that context preselected. Exact event/market/selection identity remains available for a later
+deterministic `Already in Tracker` check; fuzzy matching was not added.
+
+The desktop hierarchy now follows the observed MBB behaviour: mode/search/settings, a second row of
+counted filter buttons, compact provider status, seven table columns with liquidity nested under
+the lay quote, and secondary pagination. Narrow layouts use one `Filters N` control and stacked
+opportunity cards. Plum Duff styling, Account evidence, quota status and the Prospecting boundary
+remain distinct. Free Bet mode, saved-filter persistence, automatic refresh, verified liquidity,
+additional markets and direct placement remain parity gaps. No provider, calculation or ledger
+lifecycle authority changed.

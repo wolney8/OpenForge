@@ -1,6 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
+import fs from "node:fs/promises";
+import path from "node:path";
 
 const profileId = "profile-demo-001";
+const cp082Evidence = path.resolve("data/private/evidence/cp082-owner-smoke-20261024");
 
 test.beforeEach(async ({ page, baseURL }) => {
   const sessionToken = process.env.OPENFORGE_E2E_SESSION_TOKEN;
@@ -71,8 +74,8 @@ async function mockDashboard(page: Page, motionEnabled = true, reportRowCount = 
       reporting_value: "0.00", result: "Pending", sportsbook_bet_id: "MOTION-SB-003", status: "Placed",
     }, ...Array.from({ length: Math.max(0, reportRowCount - 3) }, (_, index) => ({
       bookmaker: `Bookmaker ${index + 4}`, calculated_liability_1: "10.00", counts_as_open: false,
-      created_at: `2026-09-${String((index % 20) + 1).padStart(2, "0")}T08:00:00Z`,
-      date_settled: `2026-09-${String((index % 20) + 1).padStart(2, "0")}T09:00:00Z`,
+      created_at: `2026-${index < 4 ? "09" : String(((index - 4) % 8) + 1).padStart(2, "0")}-${String((index % 20) + 1).padStart(2, "0")}T08:00:00Z`,
+      date_settled: `2026-${index < 4 ? "09" : String(((index - 4) % 8) + 1).padStart(2, "0")}-${String((index % 20) + 1).padStart(2, "0")}T09:00:00Z`,
       event_name: `Synthetic report event ${index + 4}`, exchange_name: "Exchange A",
       final_net_pnl: "1.00", is_overdue: false, lay_status: "Fully Laid", match_strategy: "Standard",
       offer_name: `Synthetic report offer ${index + 4}`, offer_type: "Qualifying Bet",
@@ -116,9 +119,11 @@ test("Reports settles a mature populated dataset without an update-depth loop", 
 });
 
 test("dashboard containers coordinate financial, bar, and ring replay without layout drift", async ({ page }) => {
+  test.setTimeout(60_000);
+  await fs.mkdir(cp082Evidence, { recursive: true });
   const pageErrors: string[] = [];
   page.on("pageerror", (error) => pageErrors.push(`${error.message}\n${error.stack ?? ""}`));
-  await mockDashboard(page, true, 5);
+  await mockDashboard(page, true, 8);
   await page.goto(`/profiles/${profileId}/tracker/dashboard`);
   await expect(page.getByText("Loading tracker summaries")).toBeHidden({ timeout: 60_000 });
 
@@ -127,6 +132,14 @@ test("dashboard containers coordinate financial, bar, and ring replay without la
   const targetValue = targetCard.locator(".financial-value").first();
   const performanceCard = page.locator('[data-pd-id="dashboard.selected-range-performance"]');
   const performanceGraph = performanceCard.locator(".dashboard-chart-figure");
+  await performanceCard.screenshot({ path: path.join(cp082Evidence, "A-profile-performance-chart-desktop.png") });
+  for (const width of [1440, 1100, 900, 760, 430]) {
+    await page.setViewportSize({ width, height: 900 });
+    await expect(page.locator('[data-pd-id="app-shell.top-bar"]')).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    if ([1440, 900, 430].includes(width)) await page.locator('[data-pd-id="app-shell.top-bar"]').screenshot({ path: path.join(cp082Evidence, `top-bar-${width}.png`) });
+  }
+  await page.setViewportSize({ width: 1440, height: 1000 });
   const moduleCard = page.locator('[data-pd-id="dashboard.module-mix"]');
   const moduleBars = moduleCard.locator('[data-progress-motion]');
   const focusCard = page.locator('[data-pd-id="dashboard.action-load"]');
@@ -161,9 +174,9 @@ test("dashboard containers coordinate financial, bar, and ring replay without la
   const chartDuration = Number.parseFloat(await targetBar.evaluate((bar) => getComputedStyle(bar).animationDuration));
   expect(chartDuration).toBeGreaterThanOrEqual(1);
 
-  const trendPoints = performanceGraph.getByRole("button");
+  const trendPoints = performanceGraph.locator(".dashboard-sparkline-point");
   expect(await trendPoints.count()).toBeGreaterThan(0);
-  const firstPoint = trendPoints.first();
+  const firstPoint = trendPoints.last();
   const firstPointName = await firstPoint.getAttribute("aria-label");
   const chartBoundsBefore = await performanceGraph.boundingBox();
   await firstPoint.focus();
@@ -180,7 +193,7 @@ test("dashboard containers coordinate financial, bar, and ring replay without la
   await expect(pointRecords).toBeVisible();
   await expect(pointRecords.getByRole("heading", { name: "Records in this point" })).toBeVisible();
   await expect(pointRecords.getByRole("link")).toHaveCount(3);
-  await expect(pointRecords.getByRole("button", { name: "View all 5 records" })).toBeVisible();
+  await expect(pointRecords.getByRole("button", { name: /View all \d+ records/ })).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(pointRecords).toBeHidden();
   await expect(firstPoint).toBeFocused();
@@ -199,20 +212,19 @@ test("dashboard containers coordinate financial, bar, and ring replay without la
 
   const uncoveredMotionCards = await page.locator("article.dashboard-visual-card").evaluateAll((cards) =>
     cards
-      .filter((card) => card.querySelector(".financial-value, [data-progress-motion]"))
+      .filter((card) => card.querySelector(".financial-value[data-money-motion-cycle], [data-progress-motion]"))
       .filter((card) => card.getAttribute("data-motion-replay-group") !== "true")
       .map((card) => card.getAttribute("data-pd-id") ?? card.className),
   );
   expect(uncoveredMotionCards).toEqual([]);
 
-  const miniCard = page.locator(".dashboard-mini-card", { hasText: "Open Current Value" });
-  const miniValue = miniCard.locator('.financial-value[aria-label="£ 100.00"]');
-  const miniCycle = Number(await miniValue.getAttribute("data-money-motion-cycle"));
+  const performanceValue = performanceCard.locator(".dashboard-hero-value .financial-value");
+  const performanceCycle = Number(await performanceValue.getAttribute("data-money-motion-cycle"));
   await page.mouse.move(0, 0);
   await page.waitForTimeout(1_000);
-  await miniCard.click({ position: { x: 18, y: 18 } });
-  await expect.poll(async () => Number(await miniValue.getAttribute("data-money-motion-cycle")))
-    .toBeGreaterThan(miniCycle);
+  await performanceCard.locator("h3").click();
+  await expect.poll(async () => Number(await performanceValue.getAttribute("data-money-motion-cycle")))
+    .toBeGreaterThan(performanceCycle);
 
   await moduleCard.click({ position: { x: 18, y: 18 } });
   await expect(moduleBars.first()).toHaveAttribute("data-progress-motion", "running");

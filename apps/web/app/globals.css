@@ -269,7 +269,8 @@ textarea {
   top: 0;
   z-index: 40;
   display: grid;
-  grid-template-columns: minmax(12rem, max-content) minmax(10rem, 1fr) minmax(0, auto);
+  grid-template-areas: "brand search profile actions";
+  grid-template-columns: minmax(11rem, max-content) minmax(12rem, 1fr) minmax(16rem, 28rem) auto;
   align-items: center;
   gap: 1rem;
   padding: 1rem 1.25rem;
@@ -277,6 +278,13 @@ textarea {
   background: color-mix(in srgb, var(--surface) 86%, transparent);
   border-bottom: 1px solid var(--outline);
 }
+
+.top-app-bar > .brand-lockup { grid-area: brand; }
+.top-app-bar > .global-search { grid-area: search; }
+.top-bar-profile-context { grid-area: profile; min-width: 0; }
+.top-bar-profile-context:empty { display: none; }
+.top-bar-profile-context .profile-summary-menu-shell,
+.top-bar-profile-context .summary-menu-button { width: 100%; max-width: none; }
 
 .shell-loading-progress {
   position: absolute;
@@ -896,6 +904,8 @@ textarea {
   width: 100%;
   min-width: 0;
 }
+
+.global-search-compact-trigger { display: none; }
 
 .global-search-field {
   position: relative;
@@ -2767,19 +2777,24 @@ html[data-theme="dark"] .notification-count-badge {
 .dashboard-sparkline {
   display: block;
   width: 100%;
-  height: clamp(10rem, 22vw, 14rem);
+  height: 100%;
+  min-height: 10rem;
 }
 
 .dashboard-chart-figure {
+  display: grid;
+  grid-template-rows: auto minmax(10rem, 1fr);
+  gap: 0.35rem;
   height: 100%;
-  min-height: 12rem;
+  min-height: 11rem;
   min-width: 0;
   margin: 0;
   position: relative;
 }
 
-.dashboard-sparkline-area {
-  fill: color-mix(in srgb, var(--primary) 18%, transparent);
+.dashboard-chart-plot {
+  min-height: 0;
+  position: relative;
 }
 
 .dashboard-sparkline-line {
@@ -2787,9 +2802,16 @@ html[data-theme="dark"] .notification-count-badge {
   stroke: var(--primary-strong);
   stroke-linecap: round;
   stroke-linejoin: round;
-  stroke-width: 2.8;
+  stroke-width: 2;
   vector-effect: non-scaling-stroke;
-  filter: drop-shadow(0 0 12px color-mix(in srgb, var(--primary) 42%, transparent));
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--primary) 30%, transparent));
+}
+
+.dashboard-chart-crosshair {
+  stroke: color-mix(in srgb, var(--primary) 52%, var(--outline));
+  stroke-dasharray: 2 2;
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
 }
 
 .dashboard-sparkline-point {
@@ -2797,7 +2819,8 @@ html[data-theme="dark"] .notification-count-badge {
   fill: var(--surface-strong);
   outline: none;
   stroke: var(--primary-strong);
-  stroke-width: 2;
+  opacity: 0.32;
+  stroke-width: 1.25;
   vector-effect: non-scaling-stroke;
 }
 
@@ -2806,7 +2829,8 @@ html[data-theme="dark"] .notification-count-badge {
 .dashboard-sparkline-point.is-selected {
   fill: var(--primary);
   stroke: var(--focus);
-  stroke-width: 3;
+  opacity: 1;
+  stroke-width: 2.25;
 }
 
 .dashboard-chart-point-detail {
@@ -2816,17 +2840,15 @@ html[data-theme="dark"] .notification-count-badge {
   border-radius: var(--shape-medium);
   display: inline-flex;
   gap: 0.65rem;
-  inset: 0.65rem auto auto 0.65rem;
   margin: 0;
-  padding: 0.5rem 0.75rem;
-  position: absolute;
-  z-index: 2;
+  padding: 0.35rem 0.6rem;
+  justify-self: start;
 }
 
 .dashboard-chart-drilldown {
-  inset: 3.75rem 0.75rem auto auto;
+  inset: 3.25rem 0.75rem auto auto;
   margin: 0;
-  max-height: min(18rem, calc(100% - 4.5rem));
+  max-height: min(18rem, calc(100% - 4rem));
   max-width: min(28rem, calc(100% - 1.5rem));
   overflow: auto;
   padding: 0.75rem;
@@ -7239,6 +7261,54 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
   justify-content: flex-end;
 }
 
+.oddsmatcher-profile-context {
+  display: grid;
+  grid-template-columns: minmax(16rem, 24rem) minmax(0, 1fr);
+  align-items: end;
+  gap: 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--outline);
+  border-radius: var(--shape-large);
+  background: var(--surface-container);
+}
+
+.oddsmatcher-profile-context p { margin: 0 0 0.7rem; color: var(--muted); }
+
+.oddsmatcher-primary-toolbar {
+  display: grid;
+  grid-template-columns: auto minmax(18rem, 1fr) auto;
+  align-items: end;
+  gap: 0.75rem;
+}
+
+.oddsmatcher-mode-control {
+  display: grid;
+  min-height: 3.25rem;
+  gap: 0.1rem;
+  padding: 0.45rem 0.85rem;
+  border: 1px solid var(--outline);
+  border-radius: var(--shape-medium);
+  background: var(--surface-container);
+}
+.oddsmatcher-mode-control > span { color: var(--muted); font-size: 0.75rem; font-weight: 700; text-transform: uppercase; }
+.oddsmatcher-search { position: relative; }
+.oddsmatcher-search > .material-symbols-outlined { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); z-index: 1; color: var(--muted); }
+.oddsmatcher-search input { min-height: 3.25rem; padding-left: 3rem; }
+
+.oddsmatcher-filter-toolbar,
+.oddsmatcher-desktop-filters,
+.oddsmatcher-filter-utilities {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.oddsmatcher-filter-toolbar { justify-content: space-between; }
+.filter-chip { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; min-height: 44px; padding: 0.5rem 0.8rem; border: 1px solid var(--outline); border-radius: var(--shape-full); background: var(--surface-container); color: var(--text); font: inherit; font-weight: 750; cursor: pointer; }
+.filter-chip:hover, .filter-chip:focus-visible, .filter-chip.is-active { border-color: var(--primary); background: var(--primary-soft); color: var(--primary-strong); }
+.filter-chip .material-symbols-outlined { font-size: 1.15rem; }
+.oddsmatcher-mobile-filter { display: none; }
+
 .oddsmatcher-boundary-note {
   align-items: start;
   background: color-mix(in srgb, var(--warning) 14%, var(--surface-container));
@@ -7256,6 +7326,8 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem 1rem;
+  padding: 0.55rem 0.75rem;
+  border-block: 1px solid var(--outline);
 }
 
 .oddsmatcher-toolbar {
@@ -7266,7 +7338,7 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
 }
 
 .oddsmatcher-table {
-  min-width: 76rem;
+  min-width: 68rem;
 }
 
 .oddsmatcher-table td:nth-child(2) {
@@ -7274,22 +7346,24 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
   white-space: normal;
 }
 
-.oddsmatcher-table td:nth-child(6) {
-  min-width: 10rem;
-}
-
-.oddsmatcher-table td:nth-child(6) .table-chip {
-  overflow-wrap: normal;
-  white-space: nowrap;
-}
-
 .oddsmatcher-table td:last-child {
-  min-width: 13rem;
+  min-width: 10rem;
 }
 
 .oddsmatcher-table tr.is-muted {
   background: color-mix(in srgb, var(--surface-container) 70%, transparent);
 }
+
+.oddsmatcher-quote-block { display: grid; min-width: 8rem; gap: 0.12rem; }
+.oddsmatcher-quote-block small { color: var(--muted); font-size: 0.72rem; font-weight: 800; text-transform: uppercase; }
+.oddsmatcher-quote-block b { font-size: 1.1rem; }
+.oddsmatcher-quote-block > span { max-width: 16rem; color: var(--muted); font-size: 0.76rem; line-height: 1.25; }
+.oddsmatcher-mobile-results { display: none; }
+.oddsmatcher-opportunity-card { display: grid; gap: 0.75rem; padding: 1rem; border: 1px solid var(--outline); border-radius: var(--shape-large); background: var(--surface-container); }
+.oddsmatcher-card-status { display: flex; justify-content: space-between; gap: 0.75rem; align-items: center; }
+.oddsmatcher-card-quotes { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 0.75rem; }
+.oddsmatcher-filter-dialog { width: min(38rem, calc(100vw - 2rem)); }
+.oddsmatcher-filter-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
 .oddsmatcher-summary-dialog {
   display: grid;
@@ -7329,12 +7403,7 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
 }
 
 @media (max-width: 72rem) {
-  .oddsmatcher-toolbar {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-  .oddsmatcher-toolbar .table-search-field {
-    grid-column: span 3;
-  }
+  .oddsmatcher-primary-toolbar { grid-template-columns: auto minmax(12rem, 1fr) auto; }
 }
 
 @media (max-width: 48rem) {
@@ -7343,18 +7412,29 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
     align-items: stretch;
     flex-direction: column;
   }
-  .oddsmatcher-toolbar,
+  .oddsmatcher-primary-toolbar,
+  .oddsmatcher-profile-context,
   .oddsmatcher-calculator-fields,
   .oddsmatcher-summary-values {
     grid-template-columns: minmax(0, 1fr);
   }
-  .oddsmatcher-toolbar .table-search-field {
-    grid-column: auto;
-  }
+  .oddsmatcher-primary-toolbar > .button-link { justify-self: start; }
+  .oddsmatcher-desktop-filters { display: none; }
+  .oddsmatcher-mobile-filter { display: inline-flex; }
+  .oddsmatcher-filter-utilities { justify-content: flex-end; }
+  .oddsmatcher-desktop-results { display: none; }
+  .oddsmatcher-mobile-results { display: grid; gap: 0.75rem; }
+  .oddsmatcher-filter-fields { grid-template-columns: minmax(0, 1fr); }
   .oddsmatcher-summary-dialog {
     height: calc(100dvh - 1rem);
     width: calc(100dvw - 1rem);
   }
+}
+
+@media (max-width: 30rem) {
+  .oddsmatcher-filter-toolbar { align-items: stretch; flex-direction: column; }
+  .oddsmatcher-filter-utilities { justify-content: flex-start; }
+  .oddsmatcher-card-quotes { grid-template-columns: minmax(0, 1fr); }
 }
 
 .sportsbook-data-table {
@@ -7731,7 +7811,27 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
 
 .ledger-table-scroll-wrap {
   position: relative;
+  width: 100%;
+  max-width: 100%;
   min-width: 0;
+}
+
+.accounts-page-shell,
+.accounts-page-shell > *,
+.accounts-page-shell .sportsbook-page-shell,
+.accounts-page-shell [data-pd-id="accounts.filtered-results"] {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.accounts-page-shell .sportsbook-review-bar {
+  justify-content: flex-start;
+}
+
+.accounts-page-shell .sportsbook-review-bar > .extra-place-toolbar-actions {
+  margin-left: auto;
 }
 
 .ledger-table-scroll-arrow {
@@ -16962,15 +17062,21 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
   }
 }
 
-@media (max-width: 880px) {
+@media (max-width: 1180px) {
   .top-app-bar {
-    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "brand actions"
+      "profile profile"
+      "search search";
+    grid-template-columns: minmax(0, 1fr) auto;
   }
 
   .top-app-bar > .global-search {
-    grid-column: 1 / -1;
-    grid-row: 2;
+    grid-area: search;
   }
+
+  .top-bar-profile-context { grid-area: profile; width: 100%; }
+  .top-bar-actions { grid-area: actions; }
 
   .split-hero {
     grid-template-columns: 1fr;
@@ -17087,7 +17193,12 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
 
 @media (max-width: 560px) {
   .top-app-bar {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "brand search actions"
+      "profile profile profile";
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 0.65rem;
+    padding: 0.75rem;
   }
 
   .top-bar-actions {
@@ -17097,11 +17208,33 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
     justify-content: space-between;
   }
 
+  .top-bar-profile-context,
   .profile-summary-menu-shell {
-    flex: 1 0 100%;
     min-width: 0;
     width: 100%;
   }
+
+  .brand-title { display: none; }
+  .top-bar-actions { gap: 0.35rem; width: auto; }
+  .top-bar-actions .icon-button,
+  .top-bar-actions button { min-width: 44px; min-height: 44px; }
+
+  .global-search { width: 44px; }
+  .global-search-compact-trigger { display: inline-flex; width: 44px; height: 44px; }
+  .global-search-field { display: none; }
+  .global-search.is-compact-open .global-search-field {
+    display: block;
+    position: absolute;
+    right: 0;
+    top: calc(100% + 0.5rem);
+    width: min(28rem, calc(100vw - 1.5rem));
+    padding: 0.5rem;
+    border: 1px solid var(--outline-strong);
+    border-radius: var(--shape-medium);
+    background: var(--surface-strong);
+    box-shadow: var(--shadow);
+  }
+  .global-search-results { right: 0; left: auto; top: calc(100% + 4.6rem); }
 
   .top-app-bar-public .top-bar-actions {
     width: auto;

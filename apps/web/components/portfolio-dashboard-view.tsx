@@ -142,7 +142,7 @@ export function PortfolioDashboardView({
   ];
   const overdueHref = `/profiles/${profileId}/tracker/sportsbook-bets?view=issues&issue=all-issues&source=dashboard`;
   const freeBetHref = `/profiles/${profileId}/tracker/free-bets?view=issues&issue=all-issues&source=dashboard`;
-  const accountHref = `/profiles/${profileId}/tracker/accounts`;
+  const accountHref = `/profiles/${profileId}/tracker/accounts?view=issues&issue=needs-attention&source=dashboard`;
   const alertHref =
     summary.betsQuickView.overdueBets > 0 || summary.betsQuickView.partLaidBets > 0
       ? overdueHref
@@ -175,6 +175,7 @@ export function PortfolioDashboardView({
       data-pd-id="dashboard.portfolio-view"
     >
       <div className="dashboard-primary-row">
+        <FinancialValueReplayGroup>
         <article
           aria-busy={isRangeSaving}
           className="dashboard-visual-card dashboard-performance-card portfolio-hero-card"
@@ -248,6 +249,7 @@ export function PortfolioDashboardView({
             </p>
           ) : null}
         </article>
+        </FinancialValueReplayGroup>
 
         <section className="dashboard-health-grid" aria-label="Profile operational dashboard cards">
           <DashboardMetricCard
@@ -633,16 +635,46 @@ function DashboardChartSurface({
   const [openPointIndex, setOpenPointIndex] = useState<number | null>(null);
   const [showAllPointRows, setShowAllPointRows] = useState(false);
   const popoverRef = useRef<HTMLElement>(null);
-  const pointTriggerRef = useRef<HTMLElement | null>(null);
+  const pointTriggerRef = useRef<HTMLElement | SVGElement | null>(null);
+  const pointIdentityRef = useRef(points.map((point) => point.key).join("|"));
   const index = points[selectedPointIndex] ? selectedPointIndex : points.length - 1;
   const openPoint = openPointIndex === null ? undefined : points[openPointIndex];
   const drilldownRows = dataset && openPoint
     ? buildDashboardDrilldownRows({ dataset, pointKey: openPoint.key, range }) : [];
+  const storeOpenPoint = useCallback((pointKey: string | null) => {
+    const url = new URL(window.location.href);
+    if (pointKey) url.searchParams.set("reportPoint", pointKey);
+    else url.searchParams.delete("reportPoint");
+    window.history.replaceState(window.history.state, "", url);
+  }, []);
   const dismissPointRows = useCallback((restoreFocus: boolean) => {
+    storeOpenPoint(null);
     setOpenPointIndex(null);
     setShowAllPointRows(false);
     if (restoreFocus) requestAnimationFrame(() => pointTriggerRef.current?.focus());
-  }, []);
+  }, [storeOpenPoint]);
+  useEffect(() => {
+    const pointKey = new URL(window.location.href).searchParams.get("reportPoint");
+    if (!pointKey) return;
+    const nextIndex = points.findIndex((point) => point.key === pointKey);
+    if (nextIndex < 0) return;
+    const frame = requestAnimationFrame(() => {
+      setSelectedPointIndex(nextIndex);
+      setOpenPointIndex(nextIndex);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [points]);
+  useEffect(() => {
+    const identity = points.map((point) => point.key).join("|");
+    if (pointIdentityRef.current === identity) return;
+    pointIdentityRef.current = identity;
+    const frame = requestAnimationFrame(() => {
+      setSelectedPointIndex(Math.max(0, points.length - 1));
+      setOpenPointIndex(null);
+      setShowAllPointRows(false);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [points]);
   useEffect(() => {
     if (openPointIndex === null) return;
     const close = (event: KeyboardEvent) => {
@@ -664,8 +696,9 @@ function DashboardChartSurface({
     };
   }, [dismissPointRows, openPointIndex]);
   return <ReportPointChart area={area} line={line} label={label} points={points}
-    selectedIndex={index} onSelect={setSelectedPointIndex} onActivate={(nextIndex) => {
-      pointTriggerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    selectedIndex={index} onSelect={setSelectedPointIndex} onActivate={(nextIndex, trigger) => {
+      pointTriggerRef.current = trigger;
+      storeOpenPoint(points[nextIndex]?.key ?? null);
       setSelectedPointIndex(nextIndex);
       setOpenPointIndex(nextIndex);
       setShowAllPointRows(false);

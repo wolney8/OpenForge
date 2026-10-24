@@ -33,7 +33,12 @@ from openforge_api.imports import router as imports_router
 from openforge_api.lookup_values import router as lookup_values_router
 from openforge_api.multi_profile_opportunities import router as multi_profile_opportunities_router
 from openforge_api.notifications import router as notifications_router
-from openforge_api.oddsmatcher import router as oddsmatcher_router
+from openforge_api.oddsmatcher import (
+    global_router as oddsmatcher_global_router,
+)
+from openforge_api.oddsmatcher import (
+    router as oddsmatcher_router,
+)
 from openforge_api.profile_lifecycle_middleware import ProfileLifecycleMiddleware
 from openforge_api.profile_portable_export import router as profile_portable_export_router
 from openforge_api.profile_portable_restore import router as profile_portable_restore_router
@@ -84,6 +89,7 @@ app.include_router(sportsbook_router)
 app.include_router(multi_profile_opportunities_router)
 app.include_router(notifications_router)
 app.include_router(oddsmatcher_router)
+app.include_router(oddsmatcher_global_router)
 app.include_router(free_bets_router)
 app.include_router(founder_import_review_router)
 app.include_router(profile_workbook_imports_router)

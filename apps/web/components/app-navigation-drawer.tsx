@@ -51,6 +51,7 @@ const navigationItems = [
   },
   { id: "reports", href: "/reports", label: "Reports", icon: "summarize" },
   { id: "calculators", href: "/fund-manager/calculators", label: "Calculators", icon: "calculate" },
+  { id: "oddsmatcher", href: "/oddsmatcher", label: "Oddsmatcher", icon: "query_stats" },
 ] as const;
 
 export function AppNavigationDrawer({
@@ -138,6 +139,7 @@ export function AppNavigationDrawer({
     }
     if (id === "reports") return pathname === "/reports";
     if (id === "calculators") return pathname === "/fund-manager/calculators";
+    if (id === "oddsmatcher") return pathname === "/oddsmatcher";
     return false;
   };
 

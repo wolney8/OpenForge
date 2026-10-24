@@ -5832,3 +5832,12 @@ offers only an idempotent unplaced Prospecting draft. Synthetic browser evidence
 desktop, narrow layout, filters, pagination, Settings focus return and Advanced Bet Summary. Current
 MBB Settings/modal/narrow evidence was not captured after the bounded authenticated session ended
 and remains unverified. Owner acceptance of the Alpha remains pending.
+
+### CP-082 owner-smoke UI correction — 2026-10-24
+
+The Alpha route authority is now global with optional Profile context; the Profile link delegates
+to the same implementation. Headless evidence covers global/Profile desktop states, filter drawer,
+narrow cards, desktop/narrow Bet Summary, responsive top bar, Account `Needs attention` navigation
+and the point-level performance chart. Manual refresh, quota, exact matching, unknown liquidity,
+server Profile authorization, idempotent Prospecting and no-placement boundaries are unchanged.
+Owner acceptance remains pending and no acceptance status was inferred from these checks.

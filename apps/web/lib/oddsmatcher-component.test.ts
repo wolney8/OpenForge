@@ -47,6 +47,7 @@ describe("OddsMatcherShell", () => {
     vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input); const method = init?.method ?? "GET";
       requests.push({ url, method, body: init?.body ? JSON.parse(String(init.body)) : null });
+      if (url.endsWith("/profiles")) return new Response(JSON.stringify([{ profile_id: "profile-demo-001", display_name: "Synthetic Alpha", status: "active" }]), { status: 200 });
       if (url.includes("matched-betting/preview")) return new Response(JSON.stringify({ selected_lay_stake: "9.62", liability: "35.59", pnl_if_back_wins: "-1.09", pnl_if_lay_wins: "-0.57", matched_result: "-1.09" }), { status: 200 });
       if (url.includes("prospecting-drafts")) return new Response(JSON.stringify({ created: true, sportsbook_bet: { sportsbook_bet_id: "ODD-DEMO" } }), { status: 201 });
       return new Response(JSON.stringify(feed), { status: 200 });
@@ -67,10 +68,21 @@ describe("OddsMatcherShell", () => {
     expect(container.textContent).toContain("Page 2 of 3 · 34 rows");
   });
 
+  it("uses one global tool and requires explicit Profile context for Tracker drafts", async () => {
+    await act(async () => { root.render(createElement(OddsMatcherShell)); });
+    expect(requests.some(request => request.url.endsWith("/oddsmatcher"))).toBe(true);
+    expect(container.textContent).toContain("No Profile / All opportunities");
+    const summary = container.querySelector<HTMLButtonElement>('button[aria-label^="Open Bet Summary"]');
+    await act(async () => { summary?.click(); });
+    expect(document.body.textContent).toContain("Choose a Profile to add this opportunity to Tracker");
+    const add = [...document.body.querySelectorAll<HTMLButtonElement>("button")].find(button => button.textContent === "Add Prospecting Draft");
+    expect(add?.disabled).toBe(true);
+  });
+
   it("shows unknown liquidity, live calculator results and creates only an explicit Prospecting draft", async () => {
     await act(async () => { root.render(createElement(OddsMatcherShell, { profileId: "profile-demo-001" })); });
     expect(container.textContent).toContain("Liquidity unknown");
-    const summary = [...container.querySelectorAll("button")].find(button => button.textContent === "Bet Summary");
+    const summary = container.querySelector<HTMLButtonElement>('button[aria-label^="Open Bet Summary"]');
     await act(async () => { summary?.click(); });
     expect(document.body.textContent).toContain("The provider supplies a lay price without available depth");
     expect(document.body.textContent).toContain("Required lay stake");
@@ -84,7 +96,7 @@ describe("OddsMatcherShell", () => {
 
   it("keeps manual odds until Reset to latest quotes", async () => {
     await act(async () => { root.render(createElement(OddsMatcherShell, { profileId: "profile-demo-001" })); });
-    const summary = [...container.querySelectorAll("button")].find(button => button.textContent === "Bet Summary");
+    const summary = container.querySelector<HTMLButtonElement>('button[aria-label^="Open Bet Summary"]');
     await act(async () => { summary?.click(); });
     const inputs = [...document.body.querySelectorAll<HTMLInputElement>("input")];
     const backOdds = inputs.find(input => input.parentElement?.textContent?.includes("Back odds"));

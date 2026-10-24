@@ -1,5 +1,15 @@
 # Project Status — Plum Duff / OpenForge — Doc ID: PS-CODEX-001
 
+> **CP-082 owner-smoke correction — 2026-10-24:** the Oddsmatcher now has one canonical
+> top-level `/oddsmatcher` surface beside Calculators, with optional Profile context for Account
+> eligibility, commission and Prospecting-draft authority. The Profile route delegates to the same
+> surface. Its toolbar, filter drawers, dense desktop table and narrow opportunity cards follow the
+> retained MBB behavioural evidence while preserving manual refresh, quota, exact-match,
+> `Liquidity unknown`, Prospecting-only and no-placement boundaries. Selected Range Performance,
+> the responsive app header and governed Account-attention navigation have bounded headless
+> evidence; owner acceptance remains pending. Current normal-owner data contains no Betfair-named
+> Account or catalogue identity, so no owner Account correction was inferred or applied.
+
 > **CP-081 Alpha local installation — 2026-10-23:** a bounded Profile-scoped Football Match Odds
 > implementation now uses The Odds API through a server-only manual-refresh adapter. EPL,
 > Championship and Champions League HOME/DRAW/AWAY selections are ranked using the existing

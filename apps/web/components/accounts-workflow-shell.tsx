@@ -173,7 +173,7 @@ type AccountTableFilters = {
   status: string;
   restriction: string;
   channel: string;
-  issue: "" | "all-issues" | "not-signed-up" | "restricted";
+  issue: "" | "needs-attention" | "all-issues" | "not-signed-up" | "restricted";
   cashTotal: "" | "yes" | "no";
 };
 
@@ -373,14 +373,23 @@ async function readApiError(response: Response, fallback: string) {
   return typeof body?.detail === "string" ? body.detail : fallback;
 }
 
+export function accountAttentionReasons(row: AccountRecord) {
+  const reasons: string[] = [];
+  if (row.counts_in_cash_total && (!row.current_balance.trim() || accountMoneyError(row.current_balance))) {
+    reasons.push("Current Balance needs review");
+  }
+  if (row.pending_withdrawal_amount.trim() && accountMoneyError(row.pending_withdrawal_amount)) {
+    reasons.push("Pending withdrawal needs review");
+  }
+  if (row.lifecycle_status === "Not Signed Up" || row.status === "Not Signed Up") reasons.push("Not signed up");
+  if (row.lifecycle_status === "Pending Sign Up") reasons.push("Sign-up pending");
+  if (row.lifecycle_status === "Verification Pending") reasons.push("Verification pending");
+  if (row.restrictions.length > 0) reasons.push("Account restrictions recorded");
+  return [...new Set(reasons)];
+}
+
 function hasAccountIssue(row: AccountRecord) {
-  return (
-    row.lifecycle_status === "Not Signed Up" ||
-    row.status === "Not Signed Up" ||
-    row.lifecycle_status === "Pending Sign Up" ||
-    row.lifecycle_status === "Verification Pending" ||
-    row.restrictions.length > 0
-  );
+  return accountAttentionReasons(row).length > 0;
 }
 
 function sortAccountRows(rows: TrackerRow[], sort: AccountSort | null) {
@@ -396,7 +405,7 @@ function sortAccountRows(rows: TrackerRow[], sort: AccountSort | null) {
   });
 }
 
-export function AccountsWorkflowShell({ profileId, initialRecordId }: { profileId: string; initialRecordId?: string }) {
+export function AccountsWorkflowShell({ profileId, initialRecordId, initialIssueFilter }: { profileId: string; initialRecordId?: string; initialIssueFilter?: string }) {
   const initialRecordOpenedRef = useRef("");
   const [rows, setRows] = useState<AccountRecord[]>([]);
   const [bookmakerCatalogue, setBookmakerCatalogue] = useState<BookmakerCatalogueRecord[]>([]);
@@ -416,7 +425,10 @@ export function AccountsWorkflowShell({ profileId, initialRecordId }: { profileI
   const [formState, setFormState] = useState<AccountFormState>(createBlankForm);
   const [pristineFormState, setPristineFormState] = useState<AccountFormState>(createBlankForm);
   const [tableMode, setTableMode] = useState<AccountTableMode>("All");
-  const [tableFilters, setTableFilters] = useState<AccountTableFilters>(emptyAccountTableFilters);
+  const [tableFilters, setTableFilters] = useState<AccountTableFilters>(() => ({
+    ...emptyAccountTableFilters,
+    issue: initialIssueFilter === "needs-attention" || initialIssueFilter === "all-issues" ? "needs-attention" : "",
+  }));
   const [visibleColumnKeys, setVisibleColumnKeys] = useState<Set<AccountColumnKey>>(
     () => new Set(defaultVisibleAccountColumns)
   );
@@ -438,6 +450,7 @@ export function AccountsWorkflowShell({ profileId, initialRecordId }: { profileI
   const [isArchiveConfirmationOpen, setIsArchiveConfirmationOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const editorRef = useRef<HTMLElement | null>(null);
+  const resultsRef = useRef<HTMLDivElement | null>(null);
   const filterDialogRef = useRef<HTMLElement | null>(null);
   const isCreatingDraftRef = useRef(false);
   const saveInFlightRef = useRef(false);
@@ -754,7 +767,7 @@ export function AccountsWorkflowShell({ profileId, initialRecordId }: { profileI
           return false;
         }
         if (tableFilters.channel && !parseChannels(row.channel).includes(tableFilters.channel)) return false;
-        if (tableFilters.issue === "all-issues" && !hasAccountIssue(row)) return false;
+        if ((tableFilters.issue === "all-issues" || tableFilters.issue === "needs-attention") && !hasAccountIssue(row)) return false;
         if (
           tableFilters.issue === "not-signed-up" &&
           row.status !== "Not Signed Up" &&
@@ -810,6 +823,7 @@ export function AccountsWorkflowShell({ profileId, initialRecordId }: { profileI
     [tableFilters]
   );
   const hiddenColumnCount = tableColumns.length - visibleTableColumns.length;
+  const attentionCount = useMemo(() => reviewRows.filter(hasAccountIssue).length, [reviewRows]);
   const hasActiveTableControls =
     tableMode !== "All" || activeFilterCount > 0 || hiddenColumnCount > 0;
   const activeTableControlCount =
@@ -899,6 +913,19 @@ export function AccountsWorkflowShell({ profileId, initialRecordId }: { profileI
       openInitialRecord(initialRecordId);
     }
   }, [profileId, initialRecordId, isInitialLoading]);
+  useEffect(() => {
+    if (!workflowVisible || !initialRecordId || initialIssueFilter !== "needs-attention") return;
+    const frame = requestAnimationFrame(() => document.getElementById("account-current-balance")?.focus());
+    return () => cancelAnimationFrame(frame);
+  }, [initialIssueFilter, initialRecordId, workflowVisible]);
+  useEffect(() => {
+    if (isInitialLoading || (initialIssueFilter !== "needs-attention" && initialIssueFilter !== "all-issues")) return;
+    const frame = requestAnimationFrame(() => {
+      resultsRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
+      resultsRef.current?.focus({ preventScroll: true });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [initialIssueFilter, isInitialLoading]);
 
   async function startNewRow() {
     if (isDirty && !(await confirmDiscardChanges())) {
@@ -1112,7 +1139,7 @@ export function AccountsWorkflowShell({ profileId, initialRecordId }: { profileI
   }
 
   return (
-    <section className="stack">
+    <section className="stack accounts-page-shell">
       <StatusToast message={statusMessage} onDismiss={clearStatusMessage} />
       <section
         aria-busy={isInitialLoading}
@@ -1175,45 +1202,46 @@ export function AccountsWorkflowShell({ profileId, initialRecordId }: { profileI
                   value={query}
                 />
               </label>
-              <div className="extra-place-toolbar-actions">
-                <LedgerAddRowButton label="Add Account" onClick={startNewRow} />
-                <div className="table-filter-button-wrap">
+              <div className="table-filter-button-wrap">
+                <button
+                  aria-haspopup="dialog"
+                  aria-label="Filter accounts"
+                  className={`icon-button table-filter-button${hasActiveTableControls ? " has-active-table-controls" : ""}`}
+                  data-pd-id="accounts.toolbar.filter"
+                  onClick={() => setIsFilterModalOpen(true)}
+                  title="Filter accounts"
+                  type="button"
+                >
+                  <span aria-hidden="true" className="material-symbols-outlined">filter_alt</span>
+                  {hasActiveTableControls ? (
+                    <span aria-label={`${activeTableControlCount} active account table controls`} className="table-filter-badge">
+                      {activeTableControlCount > 9 ? "9+" : activeTableControlCount}
+                    </span>
+                  ) : null}
+                </button>
+                {hasActiveTableControls ? (
                   <button
-                    aria-haspopup="dialog"
-                    aria-label="Filter accounts"
-                    className={`icon-button table-filter-button${hasActiveTableControls ? " has-active-table-controls" : ""}`}
-                    data-pd-id="accounts.toolbar.filter"
-                    onClick={() => setIsFilterModalOpen(true)}
-                    title="Filter accounts"
+                    aria-label="Clear active account filters and visible columns"
+                    className="table-filter-clear"
+                    onClick={() => {
+                      setTableFilters(emptyAccountTableFilters);
+                      setTableMode("All");
+                      setVisibleColumnKeys(new Set(defaultVisibleAccountColumns));
+                      setCurrentPage(1);
+                    }}
                     type="button"
                   >
-                    <span aria-hidden="true" className="material-symbols-outlined">filter_alt</span>
-                    {hasActiveTableControls ? (
-                      <span aria-label={`${activeTableControlCount} active account table controls`} className="table-filter-badge">
-                        {activeTableControlCount > 9 ? "9+" : activeTableControlCount}
-                      </span>
-                    ) : null}
+                    ×
                   </button>
-                  {hasActiveTableControls ? (
-                    <button
-                      aria-label="Clear active account filters and visible columns"
-                      className="table-filter-clear"
-                      onClick={() => {
-                        setTableFilters(emptyAccountTableFilters);
-                        setTableMode("All");
-                        setVisibleColumnKeys(new Set(defaultVisibleAccountColumns));
-                        setCurrentPage(1);
-                      }}
-                      type="button"
-                    >
-                      ×
-                    </button>
-                  ) : null}
-                </div>
+                ) : null}
+              </div>
+              <div className="extra-place-toolbar-actions">
+                <LedgerAddRowButton label="Add Account" onClick={startNewRow} />
               </div>
             </div>
             <div className="extra-place-table-heading-controls" data-pd-id="accounts.table-loadouts">
               <div className="tracker-nav extra-place-loadouts" role="group" aria-label="Accounts review modes">
+                <button aria-pressed={tableFilters.issue === "needs-attention"} className={`review-chip${tableFilters.issue === "needs-attention" ? " is-active" : ""}`} data-pd-id="accounts.filter.needs-attention" onClick={() => { setTableFilters((current) => ({ ...current, issue: current.issue === "needs-attention" ? "" : "needs-attention" })); setCurrentPage(1); }} type="button">Needs attention{attentionCount ? ` (${attentionCount})` : ""}</button>
                 {accountTableModes.filter((mode) => ["Active", "Not Signed Up", "Limited / Gubbed", "Bookie", "Exchange"].includes(mode.value)).map((mode) => (
                   <button
                     aria-pressed={tableMode === mode.value}
@@ -1235,6 +1263,7 @@ export function AccountsWorkflowShell({ profileId, initialRecordId }: { profileI
                 {errorMessage}
               </p>
             ) : null}
+            <div ref={resultsRef} tabIndex={-1} data-pd-id="accounts.filtered-results">
             <LedgerPagination
               ariaLabel="Accounts"
               currentPage={effectivePage}
@@ -1313,7 +1342,7 @@ export function AccountsWorkflowShell({ profileId, initialRecordId }: { profileI
                               key={column.key}
                             >
                               {column.key === "account" ? (
-                                <AccountProviderIdentity fallbackName={String(row.account ?? "")} provider={provider} />
+                                <span className="table-cell-stack"><AccountProviderIdentity fallbackName={String(row.account ?? "")} provider={provider} />{accountRecord && hasAccountIssue(accountRecord) ? <small className="field-warning-text">{accountAttentionReasons(accountRecord).join(" · ")}</small> : null}</span>
                               ) : column.key === "account_id" ? (
                                 <span className="accounts-id-value" title={rowId}>{rowId}</span>
                               ) : column.key === "type" ? (
@@ -1332,7 +1361,7 @@ export function AccountsWorkflowShell({ profileId, initialRecordId }: { profileI
                                 <span className="table-chip accounts-financial-chip"><FinancialValue value={accountMoneyDisplayValue(String(row[column.key] ?? ""))} /></span>
                               ) : column.key === "actions" ? (
                                 <button
-                                  aria-label={`Edit ${String(row.account ?? "account")}`}
+                                  aria-label={`${accountRecord && hasAccountIssue(accountRecord) ? "Review attention for" : "Edit"} ${String(row.account ?? "account")}`}
                                   className="icon-button"
                                   onClick={(event) => {
                                     event.stopPropagation();
@@ -1366,6 +1395,7 @@ export function AccountsWorkflowShell({ profileId, initialRecordId }: { profileI
               position="bottom"
               totalRows={filteredRows.length}
             />
+            </div>
         </>
       </section>
 
@@ -1392,7 +1422,7 @@ export function AccountsWorkflowShell({ profileId, initialRecordId }: { profileI
                   <label className="field-control"><span>Status</span><select value={tableFilters.status} onChange={(event) => setTableFilters((current) => ({ ...current, status: event.target.value }))}><option value="">All</option>{accountFilterOptions.statuses.map((option) => <option key={option}>{option}</option>)}</select></label>
                   <label className="field-control"><span>Restriction</span><select value={tableFilters.restriction} onChange={(event) => setTableFilters((current) => ({ ...current, restriction: event.target.value }))}><option value="">All</option>{accountFilterOptions.restrictions.map((option) => <option key={option}>{option}</option>)}</select></label>
                   <label className="field-control"><span>Access</span><select value={tableFilters.channel} onChange={(event) => setTableFilters((current) => ({ ...current, channel: event.target.value }))}><option value="">All</option>{accountFilterOptions.channels.map((option) => <option key={option}>{option}</option>)}</select></label>
-                  <label className="field-control"><span>Issues</span><select value={tableFilters.issue} onChange={(event) => setTableFilters((current) => ({ ...current, issue: event.target.value as AccountTableFilters["issue"] }))}><option value="">All rows</option><option value="all-issues">Needs action</option><option value="not-signed-up">Not signed up</option><option value="restricted">Restricted</option></select></label>
+                  <label className="field-control"><span>Issues</span><select value={tableFilters.issue} onChange={(event) => setTableFilters((current) => ({ ...current, issue: event.target.value as AccountTableFilters["issue"] }))}><option value="">All rows</option><option value="needs-attention">Needs attention</option><option value="not-signed-up">Not signed up</option><option value="restricted">Restricted</option></select></label>
                   <label className="field-control"><span>Cash total</span><select value={tableFilters.cashTotal} onChange={(event) => setTableFilters((current) => ({ ...current, cashTotal: event.target.value as AccountTableFilters["cashTotal"] }))}><option value="">All</option><option value="yes">Included</option><option value="no">Excluded</option></select></label>
                 </div>
                 <section className="stack-tight" aria-label="Visible account columns">

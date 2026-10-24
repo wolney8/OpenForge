@@ -138,6 +138,17 @@ def test_profile_response_ranks_and_uses_authoritative_commission(tmp_path: Path
     assert first["standard_lay_stake"]
 
 
+def test_global_response_exposes_all_quotes_without_profile_assumptions(tmp_path: Path) -> None:
+    client = configure_database(tmp_path)
+    response = client.get("/oddsmatcher")
+    assert response.status_code == 200, response.text
+    rows = response.json()["opportunities"]
+    assert len(rows) == 3
+    assert all(row["exchange_commission"] is None for row in rows)
+    assert all(row["can_create_prospecting_draft"] is False for row in rows)
+    assert all("Choose a Profile" in row["back_eligibility"]["reason"] for row in rows)
+
+
 def test_ineligible_profile_cannot_reuse_another_profiles_accounts(tmp_path: Path) -> None:
     client = configure_database(tmp_path)
     response = client.get("/profiles/profile-demo-002/oddsmatcher")
