@@ -8,7 +8,9 @@
 > `Liquidity unknown`, Prospecting-only and no-placement boundaries. Selected Range Performance,
 > the responsive app header and governed Account-attention navigation have bounded headless
 > evidence; owner acceptance remains pending. Current normal-owner data contains no Betfair-named
-> Account or catalogue identity, so no owner Account correction was inferred or applied.
+> Account or catalogue identity, so no owner Account correction was inferred or applied. The
+> bounded source was installed on canonical 3010/8010 after verified backup `BACKUP-78C9A966`;
+> database identity/schema, integrity and Profile/ledger counts remain unchanged.
 
 > **CP-081 Alpha local installation — 2026-10-23:** a bounded Profile-scoped Football Match Odds
 > implementation now uses The Odds API through a server-only manual-refresh adapter. EPL,

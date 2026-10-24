@@ -466,8 +466,13 @@ canonical owner visual verification remains outstanding.
 | PD-FIX-342 / #52 | Oddsmatcher route/context | One canonical `/oddsmatcher` tool with optional Profile context; Profile entry delegates to it | Existing Calculators top-level placement, Profile selector and server authority | COMPLETE |
 | PD-FIX-343 / #54 | Oddsmatcher desktop IA | MBB-observed toolbar/filter/table hierarchy expressed with Plum Duff Material components | Existing table toolbar, filter-drawer, branded quote and pagination patterns | COMPLETE |
 | PD-FIX-344 / #54 | Oddsmatcher responsive IA | Filters collapse to one counted control and opportunities become stacked cards on narrow widths | Existing responsive ledger cards, modal containment and app-shell breakpoints | COMPLETE |
-| PD-FIX-345 / #57 | CP-082 evidence and local install | Geometry, themes, keyboard/focus, Profile isolation and preserved Alpha boundaries verified before 3010/8010 install | UI consistency fail-closed gate and canonical normal-owner backup/install procedure | NEEDS VERIFICATION |
+| PD-FIX-345 / #57 | CP-082 evidence and local install | Geometry, themes, keyboard/focus, Profile isolation and preserved Alpha boundaries verified before 3010/8010 install | UI consistency fail-closed gate and canonical normal-owner backup/install procedure | COMPLETE |
 
 This batch changes presentation, route composition and Account issue navigation only. It does not
 change financial calculations, provider polling/quota rules, ledger settlement, database schema,
 owner data or the recorded owner-acceptance statuses.
+
+Installed locally after verified backup `BACKUP-78C9A966`. Canonical 3010/8010 health reports the
+bounded revision, `normal-owner` fingerprint `7246998d43722066` and unchanged
+`invited-subscribers-v1`; Profile/ledger row counts, SQLite integrity and foreign-key integrity are
+unchanged. Owner visual and workflow acceptance remains pending.
