@@ -63,22 +63,76 @@ export type OddsMatcherFeed = {
 
 export type OddsMatcherFilters = {
   search: string;
-  selection: "ALL" | "HOME" | "DRAW" | "AWAY";
-  startTime: "ALL" | "6H" | "24H" | "48H";
-  backProvider: string;
-  layProvider: string;
-  minimumRating: string;
+  sports: string[];
+  competitions: string[];
+  eventName: string;
+  markets: string[];
+  selections: Array<"HOME" | "DRAW" | "AWAY">;
+  excludeDraws: boolean;
+  startTime: "ALL" | "30M" | "1H" | "2H" | "4H" | "8H" | "12H" | "24H" | "TODAY" | "TOMORROW" | "3D" | "CUSTOM";
+  customStart: string;
+  customEnd: string;
+  backProviders: string[];
+  minBackOdds: string;
+  maxBackOdds: string;
+  layProviders: string[];
+  minLayOdds: string;
+  maxLayOdds: string;
+  minLiquidity: string;
+  minRating: string;
+  maxRating: string;
   showArbs: boolean;
 };
 
 export const emptyOddsMatcherFilters: OddsMatcherFilters = {
   search: "",
-  selection: "ALL",
+  sports: [],
+  competitions: [],
+  eventName: "",
+  markets: [],
+  selections: [],
+  excludeDraws: false,
   startTime: "ALL",
-  backProvider: "",
-  layProvider: "",
-  minimumRating: "",
+  customStart: "",
+  customEnd: "",
+  backProviders: [],
+  minBackOdds: "",
+  maxBackOdds: "",
+  layProviders: [],
+  minLayOdds: "",
+  maxLayOdds: "",
+  minLiquidity: "",
+  minRating: "",
+  maxRating: "",
   showArbs: false,
+};
+
+export type OddsMatcherSavedFilter = {
+  id: string;
+  name: string;
+  filters: OddsMatcherFilters;
+};
+
+export type OddsMatcherPreferences = {
+  version: 1;
+  default_back_stake: string;
+  exchange_commission_overrides: Record<string, string>;
+  excluded_bookmaker_identities: string[];
+  excluded_exchange_identities: string[];
+  show_arbs_default: boolean;
+  default_advanced: boolean;
+  saved_filters: OddsMatcherSavedFilter[];
+};
+
+export const defaultOddsMatcherPreferences: OddsMatcherPreferences = {
+  version: 1,
+  default_back_stake: "10.00",
+  exchange_commission_overrides: {},
+  excluded_bookmaker_identities: [],
+  excluded_exchange_identities: [],
+  show_arbs_default: false,
+  default_advanced: false,
+  saved_filters: [],
 };
 
 export type OpportunitySort = {
@@ -93,23 +147,81 @@ export function filterAndSortOpportunities(
   now = new Date(),
 ): OddsMatcherOpportunity[] {
   const needle = filters.search.trim().toLocaleLowerCase("en-GB");
-  const hours = filters.startTime === "ALL" ? null : Number(filters.startTime.slice(0, -1));
-  const cutoff = hours === null ? null : now.getTime() + hours * 3_600_000;
-  const minimum = filters.minimumRating.trim() ? Number(filters.minimumRating) : null;
+  const durationMs: Partial<Record<OddsMatcherFilters["startTime"], number>> = {
+    "30M": 30 * 60_000, "1H": 3_600_000, "2H": 2 * 3_600_000,
+    "4H": 4 * 3_600_000, "8H": 8 * 3_600_000, "12H": 12 * 3_600_000,
+    "24H": 24 * 3_600_000, "3D": 3 * 24 * 3_600_000,
+  };
+  const dateKey = (value: Date) => {
+    const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/London", year: "numeric", month: "2-digit", day: "2-digit",
+    }).formatToParts(value);
+    const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === type)?.value ?? "";
+    return `${part("year")}-${part("month")}-${part("day")}`;
+  };
+  const parseLondonLocal = (value: string) => {
+    if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(value)) return Number.NaN;
+    const [datePart, timePart] = value.split("T");
+    const [year, month, day] = datePart.split("-").map(Number);
+    const [hour, minute] = timePart.split(":").map(Number);
+    const tentative = Date.UTC(year, month - 1, day, hour, minute);
+    const zone = new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Europe/London", timeZoneName: "shortOffset", hour: "2-digit",
+    }).formatToParts(new Date(tentative)).find((item) => item.type === "timeZoneName")?.value ?? "GMT";
+    const match = zone.match(/GMT(?:([+-])(\d{1,2})(?::(\d{2}))?)?/);
+    const sign = match?.[1] === "-" ? -1 : 1;
+    const offset = match?.[2] ? sign * (Number(match[2]) * 60 + Number(match[3] ?? 0)) * 60_000 : 0;
+    return tentative - offset;
+  };
+  const today = dateKey(now);
+  const tomorrow = dateKey(new Date(now.getTime() + 24 * 3_600_000));
+  const numeric = (value: string) => value.trim() ? Number(value) : null;
+  const minBack = numeric(filters.minBackOdds);
+  const maxBack = numeric(filters.maxBackOdds);
+  const minLay = numeric(filters.minLayOdds);
+  const maxLay = numeric(filters.maxLayOdds);
+  const minimum = numeric(filters.minRating);
+  const maximum = numeric(filters.maxRating);
   const filtered = rows.filter((row) => {
     const starts = Date.parse(row.starts_at);
     if (needle && ![
       row.event_name,
       row.selection,
       row.competition,
+      row.market,
       row.back.account_name,
       row.lay.account_name,
     ].some((value) => value.toLocaleLowerCase("en-GB").includes(needle))) return false;
-    if (filters.selection !== "ALL" && row.selection_key !== filters.selection) return false;
-    if (cutoff !== null && (!Number.isFinite(starts) || starts < now.getTime() || starts > cutoff)) return false;
-    if (filters.backProvider && row.back.account_name !== filters.backProvider) return false;
-    if (filters.layProvider && row.lay.account_name !== filters.layProvider) return false;
+    if (filters.sports.length && !filters.sports.includes("football")) return false;
+    if (filters.competitions.length && !filters.competitions.includes(row.competition_key)) return false;
+    if (filters.eventName.trim() && !row.event_name.toLocaleLowerCase("en-GB").includes(filters.eventName.trim().toLocaleLowerCase("en-GB"))) return false;
+    if (filters.markets.length && !filters.markets.includes(row.market_key)) return false;
+    if (filters.selections.length && !filters.selections.includes(row.selection_key)) return false;
+    if (filters.excludeDraws && row.selection_key === "DRAW") return false;
+    if (filters.startTime !== "ALL") {
+      if (!Number.isFinite(starts)) return false;
+      const duration = durationMs[filters.startTime];
+      if (duration != null && (starts < now.getTime() || starts > now.getTime() + duration)) return false;
+      const startsKey = dateKey(new Date(starts));
+      if (filters.startTime === "TODAY" && startsKey !== today) return false;
+      if (filters.startTime === "TOMORROW" && startsKey !== tomorrow) return false;
+      if (filters.startTime === "CUSTOM") {
+        const start = parseLondonLocal(filters.customStart);
+        const end = parseLondonLocal(filters.customEnd);
+        if (!Number.isFinite(start) || !Number.isFinite(end) || starts < start || starts > end) return false;
+      }
+    }
+    if (filters.backProviders.length && !filters.backProviders.includes(row.back.provider_key)) return false;
+    if (filters.layProviders.length && !filters.layProviders.includes(row.lay.provider_key)) return false;
+    const backOdds = Number(row.back.odds);
+    const layOdds = Number(row.lay.odds);
+    if (minBack !== null && Number.isFinite(minBack) && backOdds < minBack) return false;
+    if (maxBack !== null && Number.isFinite(maxBack) && backOdds > maxBack) return false;
+    if (minLay !== null && Number.isFinite(minLay) && layOdds < minLay) return false;
+    if (maxLay !== null && Number.isFinite(maxLay) && layOdds > maxLay) return false;
+    if (filters.minLiquidity.trim()) return false;
     if (minimum !== null && Number.isFinite(minimum) && Number(row.display_rating) < minimum) return false;
+    if (maximum !== null && Number.isFinite(maximum) && Number(row.display_rating) > maximum) return false;
     if (!filters.showArbs && Number(row.display_rating) > 100) return false;
     return true;
   });

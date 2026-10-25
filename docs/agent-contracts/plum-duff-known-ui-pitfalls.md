@@ -1440,3 +1440,8 @@ identity and external-link action form the quote header; odds and liquidity/elig
 form its value surface. Do not add a separate liquidity column or repeat Back/Lay inside every
 desktop cell. Transform to stacked opportunities before the table's intentional 62rem minimum
 would require page-level or primary horizontal navigation.
+
+Keep routine eligibility prose outside the fixed quote-body geometry. Quote blocks reserve their
+second level for odds and, for lay quotes, liquidity; only an actual ineligibility/restriction may
+add compact adjacent evidence. Percentage-labelled commission fields must reuse `CommissionInput`
+so the UI displays percent while persisted/calculator state remains the canonical 0–1 ratio.

@@ -11,6 +11,7 @@ import {
 } from "react";
 import { CalculatorOutcomes } from "@/components/calculator-outcomes";
 import { CalculatorSegmentedControl } from "@/components/calculator-segmented-control";
+import { CommissionInput } from "@/components/commission-input";
 import { CopyableFinancialValue } from "@/components/copyable-financial-value";
 import { FinancialValue } from "@/components/financial-value";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
@@ -24,12 +25,15 @@ import {
 } from "@/lib/bookmaker-catalogue";
 import {
   emptyOddsMatcherFilters,
+  defaultOddsMatcherPreferences,
   filterAndSortOpportunities,
   isManualQuote,
   opportunityCopyText,
   type OddsMatcherFeed,
   type OddsMatcherFilters,
   type OddsMatcherOpportunity,
+  type OddsMatcherPreferences,
+  type OddsMatcherSavedFilter,
   type OpportunitySort,
 } from "@/lib/oddsmatcher";
 
@@ -79,10 +83,10 @@ function ratingTone(value: string) {
   if (rating >= 90) return "caution";
   return "low";
 }
-function QuoteLink({ href, label }: { href: string | null; label: string }) {
-  return href ? (
+function QuoteLink({ href, label, disabled = false }: { href: string | null; label: string; disabled?: boolean }) {
+  return href && !disabled ? (
     <a
-      className="table-action-button"
+      className="oddsmatcher-quote-link"
       href={href}
       rel="noreferrer"
       target="_blank"
@@ -93,7 +97,17 @@ function QuoteLink({ href, label }: { href: string | null; label: string }) {
         open_in_new
       </span>
     </a>
-  ) : null;
+  ) : (
+    <button
+      aria-label={`${label} unavailable`}
+      className="oddsmatcher-quote-link"
+      disabled
+      title="Exchange link unavailable"
+      type="button"
+    >
+      <span aria-hidden="true" className="material-symbols-outlined">open_in_new</span>
+    </button>
+  );
 }
 
 export function OddsMatcherShell({
@@ -113,6 +127,9 @@ export function OddsMatcherShell({
   const [filters, setFilters] = useState<OddsMatcherFilters>(
     emptyOddsMatcherFilters,
   );
+  const [searchInput, setSearchInput] = useState("");
+  const [preferences, setPreferences] = useState<OddsMatcherPreferences>(defaultOddsMatcherPreferences);
+  const [preferencesState, setPreferencesState] = useState<ReadState>("loading");
   const [sort, setSort] = useState<OpportunitySort>({
     key: "rating",
     direction: "desc",
@@ -120,10 +137,13 @@ export function OddsMatcherShell({
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(16);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [savedFiltersOpen, setSavedFiltersOpen] = useState(false);
+  const [activeSavedFilterId, setActiveSavedFilterId] = useState<string | null>(null);
   const [filterPanel, setFilterPanel] = useState<FilterPanel | null>(null);
   const [defaultStake, setDefaultStake] = useState("10");
   const [selected, setSelected] = useState<OddsMatcherOpportunity | null>(null);
   const settingsButtonRef = useRef<HTMLButtonElement>(null);
+  const savedFiltersButtonRef = useRef<HTMLButtonElement>(null);
   const filterButtonRef = useRef<HTMLButtonElement>(null);
   const inspectButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -142,6 +162,32 @@ export function OddsMatcherShell({
       )
       .catch(() => setProfiles([]));
   }, []);
+  useEffect(() => {
+    void fetch(`${apiBaseUrl}/fund-manager/preferences/oddsmatcher`, { credentials: "include", cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) throw new Error(await responseError(response, "Oddsmatcher settings could not be loaded."));
+        return response.json() as Promise<OddsMatcherPreferences>;
+      })
+      .then((value) => {
+        setPreferences(value);
+        setDefaultStake(value.default_back_stake);
+        setFilters((current) => ({ ...current, showArbs: value.show_arbs_default }));
+        setPreferencesState("ready");
+      })
+      .catch(() => setPreferencesState("error"));
+  }, []);
+  useEffect(() => {
+    if (filters.search === searchInput) return;
+    const timer = window.setTimeout(() => {
+      setFilters((current) => ({ ...current, search: searchInput }));
+      setActiveSavedFilterId(null);
+      setPage(1);
+      setSelected(null);
+    }, 180);
+    return () => window.clearTimeout(timer);
+  // The input value alone controls the debounce; filter changes must not restart it.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchInput]);
   useEffect(() => {
     void fetch(`${apiBaseUrl}/account-catalogue/source`, { cache: "no-store", credentials: "include" })
       .then(async (response) => response.ok ? response.json() as Promise<MasterAccountCatalogue> : null)
@@ -190,47 +236,54 @@ export function OddsMatcherShell({
     return () => { active = false; };
   }, [load]);
 
+  const eligibleForPreferences = useMemo(() => (feed?.opportunities ?? []).filter((row) =>
+    !preferences.excluded_bookmaker_identities.includes(row.back.provider_key) &&
+    !preferences.excluded_exchange_identities.includes(row.lay.provider_key)), [feed, preferences]);
   const visible = useMemo(
-    () => filterAndSortOpportunities(feed?.opportunities ?? [], filters, sort),
-    [feed, filters, sort],
+    () => filterAndSortOpportunities(eligibleForPreferences, filters, sort),
+    [eligibleForPreferences, filters, sort],
   );
+  const hiddenArbCount = useMemo(() => filters.showArbs ? 0 : filterAndSortOpportunities(
+    eligibleForPreferences,
+    { ...filters, showArbs: true },
+    sort,
+  ).filter((row) => Number(row.display_rating) > 100).length, [eligibleForPreferences, filters, sort]);
   const pageCount = Math.max(1, Math.ceil(visible.length / pageSize));
   const currentPage = Math.min(page, pageCount);
   const rows = visible.slice(
     (currentPage - 1) * pageSize,
     currentPage * pageSize,
   );
-  const backProviders = useMemo(
-    () =>
-      [
-        ...new Set(
-          (feed?.opportunities ?? []).map((row) => row.back.account_name),
-        ),
-      ].sort(),
-    [feed],
-  );
-  const layProviders = useMemo(
-    () =>
-      [
-        ...new Set(
-          (feed?.opportunities ?? []).map((row) => row.lay.account_name),
-        ),
-      ].sort(),
-    [feed],
-  );
+  const backProviders = useMemo(() => Array.from(new Map((feed?.opportunities ?? [])
+    .map((row) => [row.back.provider_key, row.back.account_name] as const)).entries())
+    .map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name, "en-GB")), [feed]);
+  const layProviders = useMemo(() => Array.from(new Map((feed?.opportunities ?? [])
+    .map((row) => [row.lay.provider_key, row.lay.account_name] as const)).entries())
+    .map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name, "en-GB")), [feed]);
+  const competitionOptions = useMemo(() => Array.from(new Map((feed?.opportunities ?? [])
+    .map((row) => [row.competition_key, row.competition] as const)).entries())
+    .map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name, "en-GB")), [feed]);
   const activeFilterCount = [
-    filters.selection !== "ALL",
+    filters.sports.length > 0,
+    filters.competitions.length > 0,
+    Boolean(filters.eventName),
+    filters.markets.length > 0,
+    filters.selections.length > 0,
+    filters.excludeDraws,
     filters.startTime !== "ALL",
-    Boolean(filters.backProvider),
-    Boolean(filters.layProvider),
-    Boolean(filters.minimumRating),
-    filters.showArbs,
+    filters.backProviders.length > 0,
+    Boolean(filters.minBackOdds || filters.maxBackOdds),
+    filters.layProviders.length > 0,
+    Boolean(filters.minLayOdds || filters.maxLayOdds || filters.minLiquidity),
+    Boolean(filters.minRating || filters.maxRating),
+    filters.showArbs !== preferences.show_arbs_default,
   ].filter(Boolean).length;
   const setFilter = <K extends keyof OddsMatcherFilters>(
     key: K,
     value: OddsMatcherFilters[K],
   ) => {
     setFilters((current) => ({ ...current, [key]: value }));
+    setActiveSavedFilterId(null);
     setPage(1);
     setSelected(null);
   };
@@ -247,9 +300,25 @@ export function OddsMatcherShell({
     setFilterPanel(panel);
   };
   const clearFilters = () => {
-    setFilters(emptyOddsMatcherFilters);
+    setFilters({ ...emptyOddsMatcherFilters, showArbs: preferences.show_arbs_default });
+    setSearchInput("");
+    setActiveSavedFilterId(null);
     setPage(1);
     setSelected(null);
+  };
+  const savePreferences = async (next: OddsMatcherPreferences) => {
+    const response = await fetch(`${apiBaseUrl}/fund-manager/preferences/oddsmatcher`, {
+      method: "PUT", credentials: "include", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(next),
+    });
+    if (!response.ok) throw new Error(await responseError(response, "Oddsmatcher settings could not be saved."));
+    const saved = await response.json() as OddsMatcherPreferences;
+    setFilters((current) => current.showArbs === preferences.show_arbs_default
+      ? { ...current, showArbs: saved.show_arbs_default }
+      : current);
+    setPreferences(saved);
+    setDefaultStake(saved.default_back_stake);
+    return saved;
   };
   const profileName = profiles.find(
     (profile) => profile.profile_id === profileId,
@@ -261,24 +330,29 @@ export function OddsMatcherShell({
       data-pd-id={`oddsmatcher.opportunity.${row.opportunity_id}`}
       key={`${mobile ? "card" : "row"}:${row.opportunity_id}`}
     >
-      <div className="oddsmatcher-card-status">
-        <span className={`oddsmatcher-rating-pill oddsmatcher-rating-${ratingTone(row.display_rating)}`}>
-          {row.freshness === "stale"
-            ? `Stale · ${formatObserved(row.age_seconds)}`
-            : `${Number(row.display_rating).toFixed(2)}%`}
-        </span>
+      <div className="oddsmatcher-card-topline">
+        <div className="oddsmatcher-card-status">
+          <span aria-hidden="true" className="material-symbols-outlined oddsmatcher-event-icon">sports_soccer</span>
+          <span className={`oddsmatcher-rating-pill oddsmatcher-rating-${ratingTone(row.display_rating)}`}>
+            Rating: {Number(row.display_rating).toFixed(2)}%
+          </span>
+          {row.freshness === "stale" ? <span className="status-chip">Stale · {formatObserved(row.age_seconds)}</span> : null}
+        </div>
+        <OpportunityActions
+          onInspect={(trigger) => {
+            inspectButtonRef.current = trigger;
+            setSelected(row);
+          }}
+          row={row}
+        />
+      </div>
+      <div className="oddsmatcher-card-eventline">
+        <span className="table-cell-stack"><strong>{row.event_name}</strong><span>{row.competition}</span></span>
         <time dateTime={row.starts_at}>
           {new Date(row.starts_at).toLocaleString("en-GB", {
-            day: "2-digit",
-            month: "short",
-            hour: "2-digit",
-            minute: "2-digit",
+            day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
           })}
         </time>
-      </div>
-      <div className="oddsmatcher-event-cell">
-        <span aria-hidden="true" className="material-symbols-outlined oddsmatcher-event-icon">sports_soccer</span>
-        <span className="table-cell-stack"><strong>{row.event_name}</strong><span>{row.competition}</span></span>
       </div>
       <div className="table-cell-stack">
         <strong>{row.selection}</strong>
@@ -287,19 +361,13 @@ export function OddsMatcherShell({
       <div className="oddsmatcher-card-quotes">
         <div className="oddsmatcher-card-quote"><span className="eyebrow">Back</span><QuoteBlock
           kind="back" catalogue={accountCatalogue} href={row.back.link}
-          name={row.back.account_name} odds={row.back.odds}
-          reason={profileId ? row.back_eligibility.reason : undefined} /></div>
+          name={row.back.account_name} odds={row.back.odds} />
+          {profileId && row.back_eligibility.state !== "eligible" ? <small className={eligibilityClass(row.back_eligibility.state)}>{row.back_eligibility.reason}</small> : null}
+        </div>
         <div className="oddsmatcher-card-quote"><span className="eyebrow">Lay</span><QuoteBlock
           kind="lay" catalogue={accountCatalogue} href={row.lay.link}
           name={row.lay.account_name} odds={row.lay.odds} reason="Liquidity unknown" /></div>
       </div>
-      <OpportunityActions
-        onInspect={(trigger) => {
-          inspectButtonRef.current = trigger;
-          setSelected(row);
-        }}
-        row={row}
-      />
     </article>
   );
 
@@ -363,18 +431,20 @@ export function OddsMatcherShell({
             </span>
             <input
               aria-label="Search Oddsmatcher events"
-              onChange={(event) => setFilter("search", event.target.value)}
+              onChange={(event) => setSearchInput(event.target.value)}
               placeholder="Search events, teams or providers"
               type="search"
-              value={filters.search}
+              value={searchInput}
             />
           </label>
           <button
             aria-haspopup="dialog"
             className="button-link icon-text-action"
             data-pd-id="oddsmatcher.settings.open"
+            disabled={preferencesState !== "ready"}
             onClick={() => setSettingsOpen(true)}
             ref={settingsButtonRef}
+            title={preferencesState === "error" ? "Settings are unavailable because stored preferences require review" : "Oddsmatcher settings"}
             type="button"
           >
             <span aria-hidden="true" className="material-symbols-outlined">
@@ -390,18 +460,18 @@ export function OddsMatcherShell({
           <div className="oddsmatcher-desktop-filters">
             {(
               [
-                ["selection", "Selection", filters.selection !== "ALL" ? 1 : 0],
+                ["selection", "Selection", [filters.sports, filters.competitions, filters.markets, filters.selections].filter((value) => value.length).length + Number(Boolean(filters.eventName)) + Number(filters.excludeDraws)],
                 [
                   "startTime",
                   "Start time",
                   filters.startTime !== "ALL" ? 1 : 0,
                 ],
-                ["back", "Back", filters.backProvider ? 1 : 0],
-                ["lay", "Lay", filters.layProvider ? 1 : 0],
+                ["back", "Back", filters.backProviders.length + Number(Boolean(filters.minBackOdds)) + Number(Boolean(filters.maxBackOdds))],
+                ["lay", "Lay", filters.layProviders.length + Number(Boolean(filters.minLayOdds)) + Number(Boolean(filters.maxLayOdds)) + Number(Boolean(filters.minLiquidity))],
                 [
                   "rating",
                   "Rating",
-                  filters.minimumRating || filters.showArbs ? 1 : 0,
+                  Number(Boolean(filters.minRating)) + Number(Boolean(filters.maxRating)) + Number(filters.showArbs !== preferences.show_arbs_default),
                 ],
               ] as const
             ).map(([id, label, count]) => (
@@ -457,8 +527,11 @@ export function OddsMatcherShell({
             </button>
             <button
               className="button-link icon-text-action"
-              disabled
-              title="Saved filters are planned after the Alpha"
+              aria-haspopup="dialog"
+              disabled={preferencesState !== "ready"}
+              onClick={() => setSavedFiltersOpen(true)}
+              ref={savedFiltersButtonRef}
+              title={preferencesState === "error" ? "Saved filters are unavailable because preferences could not be loaded" : "Save or load filter presets"}
               type="button"
             >
               <span aria-hidden="true" className="material-symbols-outlined">
@@ -530,6 +603,12 @@ export function OddsMatcherShell({
         ) : null}
         {readState === "ready" && feed && feed.state !== "empty" ? (
           <>
+            {hiddenArbCount ? (
+              <div className="oddsmatcher-hidden-arbs" role="status">
+                <span>{hiddenArbCount} result{hiddenArbCount === 1 ? "" : "s"} over 100% {hiddenArbCount === 1 ? "is" : "are"} hidden.</span>
+                <button className="button-link" onClick={() => setFilter("showArbs", true)} type="button">Show hidden results</button>
+              </div>
+            ) : null}
             <LedgerPagination
               ariaLabel="Oddsmatcher results"
               currentPage={currentPage}
@@ -615,16 +694,16 @@ export function OddsMatcherShell({
                         </span>
                       </td>
                       <td>
-                        <QuoteBlock
-                          kind="back"
-                          catalogue={accountCatalogue}
-                          href={row.back.link}
-                          name={row.back.account_name}
-                          odds={row.back.odds}
-                          reason={
-                            profileId ? row.back_eligibility.reason : undefined
-                          }
-                        />
+                        <span className="table-cell-stack">
+                          <QuoteBlock
+                            kind="back"
+                            catalogue={accountCatalogue}
+                            href={row.back.link}
+                            name={row.back.account_name}
+                            odds={row.back.odds}
+                          />
+                          {profileId && row.back_eligibility.state !== "eligible" ? <small className={eligibilityClass(row.back_eligibility.state)}>{row.back_eligibility.reason}</small> : null}
+                        </span>
                       </td>
                       <td>
                         <QuoteBlock
@@ -639,11 +718,11 @@ export function OddsMatcherShell({
                       <td>
                         <span className="table-cell-stack oddsmatcher-rating-cell">
                           <strong className={`oddsmatcher-rating-pill oddsmatcher-rating-${ratingTone(row.display_rating)}`}>
-                            {Number(row.display_rating).toFixed(2)}%
+                            Rating: {Number(row.display_rating).toFixed(2)}%
                           </strong>
                           <span>
                             {row.commission_aware_rating
-                              ? `${Number(row.commission_aware_rating).toFixed(2)}% after commission`
+                              ? `After commission · ${Number(row.commission_aware_rating).toFixed(2)}%`
                               : profileId
                                 ? "Commission unavailable"
                                 : "Choose Profile for commission"}
@@ -695,6 +774,7 @@ export function OddsMatcherShell({
         {filterPanel ? (
           <FilterDialog
             backProviders={backProviders}
+            competitionOptions={competitionOptions}
             filters={filters}
             layProviders={layProviders}
             onChange={setFilter}
@@ -705,17 +785,40 @@ export function OddsMatcherShell({
         ) : null}
         {settingsOpen ? (
           <SettingsDialog
-            defaultStake={defaultStake}
-            filters={filters}
-            onChangeDefaultStake={setDefaultStake}
-            onChangeShowArbs={(value) => setFilter("showArbs", value)}
+            backProviders={backProviders}
+            layProviders={layProviders}
             onClose={() => setSettingsOpen(false)}
+            onSave={async (next) => {
+              const saved = await savePreferences(next);
+              setFilter("showArbs", saved.show_arbs_default);
+            }}
+            preferences={preferences}
             returnFocusRef={settingsButtonRef}
+          />
+        ) : null}
+        {savedFiltersOpen ? (
+          <SavedFiltersDialog
+            activeId={activeSavedFilterId}
+            filters={filters}
+            onClose={() => setSavedFiltersOpen(false)}
+            onLoad={(saved) => {
+              setFilters(saved.filters);
+              setSearchInput(saved.filters.search);
+              setActiveSavedFilterId(saved.id);
+              setPage(1);
+              setSelected(null);
+            }}
+            onSave={savePreferences}
+            onSetActive={setActiveSavedFilterId}
+            preferences={preferences}
+            returnFocusRef={savedFiltersButtonRef}
           />
         ) : null}
         {selected ? (
           <BetSummaryDialog
             defaultStake={defaultStake}
+            defaultAdvanced={preferences.default_advanced}
+            defaultCommission={preferences.exchange_commission_overrides[selected.lay.provider_key] ?? ""}
             onClose={() => setSelected(null)}
             opportunity={selected}
             profileId={profileId}
@@ -747,7 +850,9 @@ function QuoteBlock({
   reason?: string;
 }) {
   const provider = findMasterAccountCatalogueEntry(catalogue, { accountName: name });
-  const displayName = kind === "lay" ? simpleExchangeName(provider?.short_display_name || name) : provider?.short_display_name || name;
+  const displayName = kind === "lay"
+    ? simpleExchangeName(provider?.brand_name || provider?.short_display_name || name)
+    : provider?.brand_name || name;
   return (
     <span className={`oddsmatcher-quote-block oddsmatcher-quote-block-${kind}`}>
       <span className="oddsmatcher-quote-provider" style={provider ? {
@@ -755,7 +860,7 @@ function QuoteBlock({
         color: provider.foreground_colour,
       } : undefined}>
         <strong>{displayName}</strong>
-        <QuoteLink href={href} label={`${displayName} quote`} />
+        <QuoteLink disabled={kind === "lay"} href={kind === "back" ? href : null} label={`${displayName} quote`} />
       </span>
       <span className="oddsmatcher-quote-price">
         <b>{Number.isFinite(Number(odds)) ? Number(odds).toFixed(2) : "—"}</b>
@@ -804,6 +909,7 @@ function OpportunityActions({
 
 function FilterDialog({
   backProviders,
+  competitionOptions,
   filters,
   layProviders,
   onChange,
@@ -811,158 +917,47 @@ function FilterDialog({
   panel,
   returnFocusRef,
 }: {
-  backProviders: string[];
+  backProviders: Array<{ id: string; name: string }>;
+  competitionOptions: Array<{ id: string; name: string }>;
   filters: OddsMatcherFilters;
-  layProviders: string[];
-  onChange: <K extends keyof OddsMatcherFilters>(
-    key: K,
-    value: OddsMatcherFilters[K],
-  ) => void;
+  layProviders: Array<{ id: string; name: string }>;
+  onChange: <K extends keyof OddsMatcherFilters>(key: K, value: OddsMatcherFilters[K]) => void;
   onClose: () => void;
   panel: FilterPanel;
   returnFocusRef: RefObject<HTMLButtonElement | null>;
 }) {
-  const show = (name: Exclude<FilterPanel, "all">) =>
-    panel === "all" || panel === name;
+  const show = (name: Exclude<FilterPanel, "all">) => panel === "all" || panel === name;
+  const toggle = <T extends string>(values: T[], value: T) =>
+    values.includes(value) ? values.filter((item) => item !== value) : [...values, value];
+  const startOptions: Array<[OddsMatcherFilters["startTime"], string]> = [
+    ["ALL", "Any time"], ["30M", "30 minutes"], ["1H", "1 hour"], ["2H", "2 hours"],
+    ["4H", "4 hours"], ["8H", "8 hours"], ["12H", "12 hours"], ["24H", "24 hours"],
+    ["TODAY", "Today"], ["TOMORROW", "Tomorrow"], ["3D", "3 days"], ["CUSTOM", "Custom range"],
+  ];
   return (
     <ModalBoundary onDismiss={onClose} returnFocusRef={returnFocusRef}>
       <div className="modal-backdrop" onClick={onClose}>
-        <section
-          aria-label="Oddsmatcher filters"
-          aria-modal="true"
-          className="modal-panel oddsmatcher-filter-dialog stack"
-          data-pd-id="oddsmatcher.filter-drawer"
-          onClick={(event) => event.stopPropagation()}
-          role="dialog"
-        >
+        <section aria-label="Oddsmatcher filters" aria-modal="true" className="modal-panel oddsmatcher-filter-dialog stack" data-pd-id="oddsmatcher.filter-drawer" onClick={(event) => event.stopPropagation()} role="dialog">
           <header className="calculator-panel-heading-row">
-            <div>
-              <span className="eyebrow">Opportunity controls</span>
-              <h2>Filters</h2>
-            </div>
-            <button
-              aria-label="Close filters"
-              className="modal-close-button"
-              onClick={onClose}
-              type="button"
-            >
-              <span aria-hidden="true" className="material-symbols-outlined">
-                close
-              </span>
-            </button>
+            <div><span className="eyebrow">Opportunity controls</span><h2>Filters</h2></div>
+            <button aria-label="Close filters" className="modal-close-button" onClick={onClose} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button>
           </header>
-          <div className="form-grid oddsmatcher-filter-fields">
-            {show("selection") ? (
-              <label className="field-control">
-                <span>Selection</span>
-                <select
-                  onChange={(event) =>
-                    onChange(
-                      "selection",
-                      event.target.value as OddsMatcherFilters["selection"],
-                    )
-                  }
-                  value={filters.selection}
-                >
-                  <option value="ALL">All selections</option>
-                  <option value="HOME">Home</option>
-                  <option value="DRAW">Draw</option>
-                  <option value="AWAY">Away</option>
-                </select>
-              </label>
-            ) : null}
-            {show("startTime") ? (
-              <label className="field-control">
-                <span>Start time</span>
-                <select
-                  onChange={(event) =>
-                    onChange(
-                      "startTime",
-                      event.target.value as OddsMatcherFilters["startTime"],
-                    )
-                  }
-                  value={filters.startTime}
-                >
-                  <option value="ALL">Any start time</option>
-                  <option value="6H">Next 6 hours</option>
-                  <option value="24H">Next 24 hours</option>
-                  <option value="48H">Next 48 hours</option>
-                </select>
-              </label>
-            ) : null}
-            {show("back") ? (
-              <label className="field-control">
-                <span>Back bookmaker</span>
-                <select
-                  onChange={(event) =>
-                    onChange("backProvider", event.target.value)
-                  }
-                  value={filters.backProvider}
-                >
-                  <option value="">All bookmakers</option>
-                  {backProviders.map((value) => (
-                    <option key={value}>{value}</option>
-                  ))}
-                </select>
-              </label>
-            ) : null}
-            {show("lay") ? (
-              <label className="field-control">
-                <span>Lay exchange</span>
-                <select
-                  onChange={(event) =>
-                    onChange("layProvider", event.target.value)
-                  }
-                  value={filters.layProvider}
-                >
-                  <option value="">All exchanges</option>
-                  {layProviders.map((value) => (
-                    <option key={value}>{value}</option>
-                  ))}
-                </select>
-              </label>
-            ) : null}
-            {show("rating") ? (
-              <>
-                <label className="field-control">
-                  <span>Minimum rating</span>
-                  <select
-                    onChange={(event) =>
-                      onChange("minimumRating", event.target.value)
-                    }
-                    value={filters.minimumRating}
-                  >
-                    <option value="">Any rating</option>
-                    <option value="95">95%+</option>
-                    <option value="97">97%+</option>
-                    <option value="99">99%+</option>
-                  </select>
-                </label>
-                <label className="toggle-row">
-                  <input
-                    checked={filters.showArbs}
-                    onChange={(event) =>
-                      onChange("showArbs", event.target.checked)
-                    }
-                    type="checkbox"
-                  />
-                  <span>
-                    <strong>Show arbs</strong>
-                    <small>Ratings above 100% are hidden by default.</small>
-                  </span>
-                </label>
-              </>
-            ) : null}
+          <div className="oddsmatcher-filter-sections">
+            {show("selection") ? <fieldset className="oddsmatcher-filter-group">
+              <legend>Selection</legend>
+              <label className="toggle-row"><input checked={filters.sports.includes("football")} onChange={() => onChange("sports", toggle(filters.sports, "football"))} type="checkbox" /><span><strong>Football</strong><small>Current Alpha sport</small></span></label>
+              <div className="oddsmatcher-filter-subgroup"><strong>Competition</strong><div className="filter-option-grid">{competitionOptions.map((option) => <label className="choice-chip" key={option.id}><input checked={filters.competitions.includes(option.id)} onChange={() => onChange("competitions", toggle(filters.competitions, option.id))} type="checkbox" /><span>{option.name}</span></label>)}</div></div>
+              <label className="field-control"><span>Event name</span><input onChange={(event) => onChange("eventName", event.target.value)} value={filters.eventName} /></label>
+              <div className="oddsmatcher-filter-subgroup"><strong>Market</strong><label className="choice-chip"><input checked={filters.markets.includes("h2h")} onChange={() => onChange("markets", toggle(filters.markets, "h2h"))} type="checkbox" /><span>Match Odds / 1X2</span></label></div>
+              <div className="oddsmatcher-filter-subgroup"><strong>Selection</strong><div className="filter-option-grid">{([['HOME','Home'],['DRAW','Draw'],['AWAY','Away']] as const).map(([id,label]) => <label className="choice-chip" key={id}><input checked={filters.selections.includes(id)} onChange={() => onChange("selections", toggle(filters.selections, id))} type="checkbox" /><span>{label}</span></label>)}</div></div>
+              <label className="toggle-row"><input checked={filters.excludeDraws} onChange={(event) => onChange("excludeDraws", event.target.checked)} type="checkbox" /><span><strong>Exclude draws</strong></span></label>
+            </fieldset> : null}
+            {show("startTime") ? <fieldset className="oddsmatcher-filter-group"><legend>Start time</legend><div className="filter-option-grid">{startOptions.map(([id,label]) => <label className="choice-chip" key={id}><input checked={filters.startTime === id} name="oddsmatcher-start-time" onChange={() => onChange("startTime", id)} type="radio" /><span>{label}</span></label>)}</div>{filters.startTime === "CUSTOM" ? <div className="form-grid oddsmatcher-filter-fields"><label className="field-control"><span>From</span><input onChange={(event) => onChange("customStart", event.target.value)} type="datetime-local" value={filters.customStart} /></label><label className="field-control"><span>To</span><input onChange={(event) => onChange("customEnd", event.target.value)} type="datetime-local" value={filters.customEnd} /></label></div> : null}<p className="field-hint">Times are interpreted and displayed in Europe/London.</p></fieldset> : null}
+            {show("back") ? <fieldset className="oddsmatcher-filter-group"><legend>Back</legend><div className="filter-option-grid">{backProviders.map((option) => <label className="choice-chip" key={option.id}><input checked={filters.backProviders.includes(option.id)} onChange={() => onChange("backProviders", toggle(filters.backProviders, option.id))} type="checkbox" /><span>{option.name}</span></label>)}</div><div className="form-grid oddsmatcher-filter-fields"><label className="field-control"><span>Minimum back odds</span><input inputMode="decimal" onChange={(event) => onChange("minBackOdds", event.target.value)} value={filters.minBackOdds} /></label><label className="field-control"><span>Maximum back odds</span><input inputMode="decimal" onChange={(event) => onChange("maxBackOdds", event.target.value)} value={filters.maxBackOdds} /></label></div></fieldset> : null}
+            {show("lay") ? <fieldset className="oddsmatcher-filter-group"><legend>Lay</legend><div className="filter-option-grid">{layProviders.map((option) => <label className="choice-chip" key={option.id}><input checked={filters.layProviders.includes(option.id)} onChange={() => onChange("layProviders", toggle(filters.layProviders, option.id))} type="checkbox" /><span>{simpleExchangeName(option.name)}</span></label>)}</div><div className="form-grid oddsmatcher-filter-fields"><label className="field-control"><span>Minimum lay odds</span><input inputMode="decimal" onChange={(event) => onChange("minLayOdds", event.target.value)} value={filters.minLayOdds} /></label><label className="field-control"><span>Maximum lay odds</span><input inputMode="decimal" onChange={(event) => onChange("maxLayOdds", event.target.value)} value={filters.maxLayOdds} /></label><label className="field-control"><span>Minimum liquidity</span><input inputMode="decimal" onChange={(event) => onChange("minLiquidity", event.target.value)} value={filters.minLiquidity} /><small>Unknown-liquidity rows are excluded when this is set.</small></label></div></fieldset> : null}
+            {show("rating") ? <fieldset className="oddsmatcher-filter-group"><legend>Rating</legend><div className="form-grid oddsmatcher-filter-fields"><label className="field-control"><span>Minimum rating</span><input inputMode="decimal" onChange={(event) => onChange("minRating", event.target.value)} value={filters.minRating} /></label><label className="field-control"><span>Maximum rating</span><input inputMode="decimal" onChange={(event) => onChange("maxRating", event.target.value)} value={filters.maxRating} /></label></div><label className="toggle-row"><input checked={filters.showArbs} onChange={(event) => onChange("showArbs", event.target.checked)} type="checkbox" /><span><strong>Show arbs</strong><small>Ratings above 100% are hidden by default.</small></span></label></fieldset> : null}
           </div>
-          <footer className="modal-sticky-footer">
-            <button
-              className="modal-primary-button"
-              onClick={onClose}
-              type="button"
-            >
-              Apply filters
-            </button>
-          </footer>
+          <footer className="modal-sticky-footer"><button className="modal-primary-button" onClick={onClose} type="button">Apply filters</button></footer>
         </section>
       </div>
     </ModalBoundary>
@@ -970,92 +965,106 @@ function FilterDialog({
 }
 
 function SettingsDialog({
-  defaultStake,
-  filters,
-  onChangeDefaultStake,
-  onChangeShowArbs,
+  backProviders,
+  layProviders,
   onClose,
+  onSave,
+  preferences,
   returnFocusRef,
 }: {
-  defaultStake: string;
-  filters: OddsMatcherFilters;
-  onChangeDefaultStake: (value: string) => void;
-  onChangeShowArbs: (value: boolean) => void;
+  backProviders: Array<{ id: string; name: string }>;
+  layProviders: Array<{ id: string; name: string }>;
   onClose: () => void;
+  onSave: (value: OddsMatcherPreferences) => Promise<void>;
+  preferences: OddsMatcherPreferences;
   returnFocusRef: RefObject<HTMLButtonElement | null>;
 }) {
+  const [draft, setDraft] = useState(preferences);
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "error">("idle");
+  const toggle = (values: string[], value: string) => values.includes(value) ? values.filter((item) => item !== value) : [...values, value];
+  const updateCommission = (id: string, value: string) => {
+    const next = { ...draft.exchange_commission_overrides };
+    if (value.trim()) next[id] = value;
+    else delete next[id];
+    setDraft({ ...draft, exchange_commission_overrides: next });
+  };
+  const save = async () => {
+    setSaveState("saving");
+    try { await onSave(draft); onClose(); } catch { setSaveState("error"); }
+  };
   return (
     <ModalBoundary onDismiss={onClose} returnFocusRef={returnFocusRef}>
       <div className="modal-backdrop" onClick={onClose}>
-        <section
-          aria-label="Oddsmatcher settings"
-          aria-modal="true"
-          className="modal-panel stack"
-          data-pd-id="oddsmatcher.settings"
-          onClick={(event) => event.stopPropagation()}
-          role="dialog"
-        >
-          <header className="calculator-panel-heading-row">
-            <div>
-              <span className="eyebrow">Session settings</span>
-              <h2>Oddsmatcher Settings</h2>
-            </div>
-            <button
-              aria-label="Close Oddsmatcher settings"
-              className="modal-close-button"
-              onClick={onClose}
-              type="button"
-            >
-              <span aria-hidden="true" className="material-symbols-outlined">
-                close
-              </span>
-            </button>
-          </header>
-          <label className="field-control">
-            <span>Default back stake</span>
-            <input
-              inputMode="decimal"
-              onChange={(event) => onChangeDefaultStake(event.target.value)}
-              value={defaultStake}
-            />
-          </label>
-          <label className="toggle-row">
-            <input
-              checked={filters.showArbs}
-              onChange={(event) => onChangeShowArbs(event.target.checked)}
-              type="checkbox"
-            />
-            <span>
-              <strong>Show arbs</strong>
-              <small>Ratings over 100% are hidden by default.</small>
-            </span>
-          </label>
-          <p className="field-hint">
-            Manual refresh is the only refresh mode. Saved filters and automatic
-            polling are outside this Alpha.
-          </p>
-          <footer className="modal-sticky-footer">
-            <button
-              className="modal-primary-button"
-              onClick={onClose}
-              type="button"
-            >
-              Done
-            </button>
-          </footer>
+        <section aria-label="Oddsmatcher settings" aria-modal="true" className="modal-panel oddsmatcher-settings-dialog stack" data-pd-id="oddsmatcher.settings" onClick={(event) => event.stopPropagation()} role="dialog">
+          <header className="calculator-panel-heading-row"><div><span className="eyebrow">Fund Manager preferences</span><h2>Oddsmatcher Settings</h2></div><button aria-label="Close Oddsmatcher settings" className="modal-close-button" onClick={onClose} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button></header>
+          <div className="oddsmatcher-settings-body stack">
+            <label className="field-control"><span>Default back stake</span><input inputMode="decimal" onChange={(event) => setDraft({...draft, default_back_stake:event.target.value})} value={draft.default_back_stake} /></label>
+            <fieldset className="oddsmatcher-filter-group"><legend>Exchange commission defaults</legend><p className="field-hint">Used only when a selected Profile does not provide an authoritative Account commission.</p>{layProviders.map((provider) => <label className="field-control" key={provider.id}><span>{simpleExchangeName(provider.name)} commission (%)</span><CommissionInput onRatioChange={(value) => updateCommission(provider.id, value)} value={draft.exchange_commission_overrides[provider.id] ?? ""} /></label>)}</fieldset>
+            <fieldset className="oddsmatcher-filter-group"><legend>Excluded bookmakers</legend><div className="filter-option-grid">{backProviders.map((provider) => <label className="choice-chip" key={provider.id}><input checked={draft.excluded_bookmaker_identities.includes(provider.id)} onChange={() => setDraft({...draft,excluded_bookmaker_identities:toggle(draft.excluded_bookmaker_identities,provider.id)})} type="checkbox" /><span>{provider.name}</span></label>)}</div></fieldset>
+            <fieldset className="oddsmatcher-filter-group"><legend>Excluded exchanges</legend><div className="filter-option-grid">{layProviders.map((provider) => <label className="choice-chip" key={provider.id}><input checked={draft.excluded_exchange_identities.includes(provider.id)} onChange={() => setDraft({...draft,excluded_exchange_identities:toggle(draft.excluded_exchange_identities,provider.id)})} type="checkbox" /><span>{simpleExchangeName(provider.name)}</span></label>)}</div></fieldset>
+            <label className="toggle-row"><input checked={draft.show_arbs_default} onChange={(event) => setDraft({...draft,show_arbs_default:event.target.checked})} type="checkbox" /><span><strong>Show arbs by default</strong><small>Ratings above 100% remain hidden unless enabled.</small></span></label>
+            <label className="toggle-row"><input checked={draft.default_advanced} onChange={(event) => setDraft({...draft,default_advanced:event.target.checked})} type="checkbox" /><span><strong>Open Advanced by default</strong><small>Applies to Bet Summary without changing its calculations.</small></span></label>
+            <p className="field-hint">Profile Account restrictions and commissions remain authoritative when a Profile is selected. Manual refresh remains the only refresh mode.</p>
+            {saveState === "error" ? <p className="error-text" role="alert">Settings could not be saved. Existing settings remain unchanged.</p> : null}
+          </div>
+          <footer className="modal-sticky-footer"><button className="button-link" onClick={onClose} type="button">Cancel</button><button aria-busy={saveState === "saving"} className="modal-primary-button" disabled={saveState === "saving"} onClick={() => void save()} type="button">{saveState === "saving" ? "Saving…" : "Save settings"}</button></footer>
         </section>
       </div>
     </ModalBoundary>
   );
 }
 
+function SavedFiltersDialog({ activeId, filters, onClose, onLoad, onSave, onSetActive, preferences, returnFocusRef }: {
+  activeId: string | null;
+  filters: OddsMatcherFilters;
+  onClose: () => void;
+  onLoad: (value: OddsMatcherSavedFilter) => void;
+  onSave: (value: OddsMatcherPreferences) => Promise<OddsMatcherPreferences>;
+  onSetActive: (value: string | null) => void;
+  preferences: OddsMatcherPreferences;
+  returnFocusRef: RefObject<HTMLButtonElement | null>;
+}) {
+  const [name, setName] = useState("");
+  const [renames, setRenames] = useState<Record<string,string>>({});
+  const [error, setError] = useState("");
+  const persist = async (savedFilters: OddsMatcherSavedFilter[]) => {
+    setError("");
+    try { return await onSave({...preferences,saved_filters:savedFilters}); }
+    catch { setError("Saved filters could not be updated. Existing presets remain unchanged."); return null; }
+  };
+  const saveAs = async () => {
+    const cleaned = name.trim();
+    if (!cleaned) { setError("Enter a unique preset name."); return; }
+    const created: OddsMatcherSavedFilter = { id:`filter-${crypto.randomUUID()}`, name:cleaned, filters };
+    const saved = await persist([...preferences.saved_filters,created]);
+    if (saved) { onSetActive(created.id); setName(""); }
+  };
+  const saveCurrent = async () => {
+    if (!activeId) return;
+    await persist(preferences.saved_filters.map((item) => item.id === activeId ? {...item,filters} : item));
+  };
+  const deleteFilter = async (id: string) => {
+    const saved = await persist(preferences.saved_filters.filter((item) => item.id !== id));
+    if (saved && activeId === id) onSetActive(null);
+  };
+  return <ModalBoundary onDismiss={onClose} returnFocusRef={returnFocusRef}><div className="modal-backdrop" onClick={onClose}><section aria-label="My Oddsmatcher filters" aria-modal="true" className="modal-panel oddsmatcher-saved-filters-dialog stack" data-pd-id="oddsmatcher.saved-filters" onClick={(event) => event.stopPropagation()} role="dialog"><header className="calculator-panel-heading-row"><div><span className="eyebrow">Reusable opportunity filters</span><h2>My Filters</h2></div><button aria-label="Close My Filters" className="modal-close-button" onClick={onClose} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button></header><div className="stack">
+    <div className="oddsmatcher-save-filter-row"><label className="field-control"><span>New preset name</span><input onChange={(event) => setName(event.target.value)} value={name} /></label><button className="modal-primary-button" onClick={() => void saveAs()} type="button">Save as…</button>{activeId ? <button className="button-link" onClick={() => void saveCurrent()} type="button">Save</button> : null}</div>
+    {preferences.saved_filters.length ? <ul className="oddsmatcher-saved-filter-list">{preferences.saved_filters.map((item) => <li className={item.id === activeId ? "is-active" : ""} key={item.id}><span className="table-cell-stack"><strong>{item.name}</strong>{item.id === activeId ? <span>Active preset</span> : null}</span><label className="field-control"><span className="visually-hidden">Rename {item.name}</span><input aria-label={`Rename ${item.name}`} onChange={(event) => setRenames({...renames,[item.id]:event.target.value})} value={renames[item.id] ?? item.name} /></label><div className="table-action-row"><button className="button-link" onClick={() => { onLoad(item); onClose(); }} type="button">Load</button><button className="button-link" onClick={() => void persist(preferences.saved_filters.map((value) => value.id === item.id ? {...value,name:(renames[item.id] ?? item.name).trim()} : value))} type="button">Rename</button><button aria-label={`Delete ${item.name}`} className="table-action-button destructive-action" onClick={() => void deleteFilter(item.id)} type="button"><span aria-hidden="true" className="material-symbols-outlined">delete</span></button></div></li>)}</ul> : <div className="empty-state"><strong>No saved filters</strong><span>Save the current transient filters with a unique name.</span></div>}
+    {error ? <p className="error-text" role="alert">{error}</p> : null}
+  </div></section></div></ModalBoundary>;
+}
+
 function BetSummaryDialog({
+  defaultAdvanced,
+  defaultCommission,
   defaultStake,
   onClose,
   opportunity,
   profileId,
   returnFocusRef,
 }: {
+  defaultAdvanced: boolean;
+  defaultCommission: string;
   defaultStake: string;
   onClose: () => void;
   opportunity: OddsMatcherOpportunity;
@@ -1066,10 +1075,10 @@ function BetSummaryDialog({
   const [backOdds, setBackOdds] = useState(opportunity.back.odds);
   const [layOdds, setLayOdds] = useState(opportunity.lay.odds);
   const [commission, setCommission] = useState(
-    opportunity.exchange_commission ?? "",
+    opportunity.exchange_commission ?? defaultCommission,
   );
   const [strategy, setStrategy] = useState<Strategy>("Standard");
-  const [advanced, setAdvanced] = useState(false);
+  const [advanced, setAdvanced] = useState(defaultAdvanced);
   const [preview, setPreview] = useState<Preview | null>(null);
   const [previewState, setPreviewState] = useState<
     "loading" | "ready" | "error"

@@ -13,7 +13,7 @@ from openforge_api.postgres_schema import (
     sqlite_type_to_postgres,
 )
 
-MIGRATION_ID = "20261014_010_universal_selected_range"
+MIGRATION_ID = "20261025_011_oddsmatcher_preferences"
 
 RUNTIME_EXTENSION_STATEMENTS = (
     """

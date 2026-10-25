@@ -498,3 +498,23 @@ Installed locally after verified backup `BACKUP-534DEA71`. Canonical health iden
 `normal-owner` fingerprint `7246998d43722066` and schema `invited-subscribers-v1`; SQLite integrity,
 foreign keys and all 29 financial controls match the pre-install snapshot. The only row-count change
 is the recorded backup itself. Owner visual acceptance remains pending.
+
+## CP-084 Oddsmatcher density, responsive-row and filter/settings parity — 2026-10-25
+
+| ID | Surface | Requested behaviour | Signed-off equivalent | Status |
+| --- | --- | --- | --- | --- |
+| PD-FIX-354 / #54 | Desktop quote blocks | Measured MBB-like density, full bookmaker names and compact inline link affordances | Retained CP-081A evidence plus Plum Duff Account branding | IN PROGRESS |
+| PD-FIX-355 / #54 | Desktop result table | Intentional seven-column proportions with compact Material actions and no clipped Actions column | Retained CP-081A table hierarchy and shared data-table actions | IN PROGRESS |
+| PD-FIX-356 / #54 | Narrow opportunity rows | Reference order with top actions and side-by-side quotes until genuinely too narrow | Retained CP-081A narrow hierarchy and responsive ledger cards | IN PROGRESS |
+| PD-FIX-357 / #54 | Selection filter | Supported Sport, Competition, Event, Market, Selection and Exclude draws controls | Existing contained Oddsmatcher filter drawer | IN PROGRESS |
+| PD-FIX-358 / #54 | Start-time filter | Captured presets and inclusive Europe/London custom range | Existing governed date semantics | IN PROGRESS |
+| PD-FIX-359 / #54 | Back/Lay filters | Provider multi-select, odds bounds and truthful unknown-liquidity handling | Existing provider feed and filter authority | IN PROGRESS |
+| PD-FIX-360 / #54 | Rating filter | Minimum/maximum rating, default arb hiding and reversible hidden-results state | Existing rating authority and status treatment | IN PROGRESS |
+| PD-FIX-361 / #54 | Oddsmatcher Settings | Persisted Fund Manager defaults with Profile Account/commission precedence | Existing `fund_manager_settings` authority | IN PROGRESS |
+| PD-FIX-362 / #54 | My Filters | Persist named transient-filter selections without silently embedding Profile context | Existing settings authority and modal patterns | IN PROGRESS |
+| PD-FIX-363 / #54 | CP-084 evidence/install | Private measured comparison, responsive captures, regression gate, backup and canonical install | UI consistency gate and local-install procedure | IN PROGRESS |
+
+Owner approved the additive, server-validated `oddsmatcher_preferences_json` v1 authority on
+2026-10-25. It is limited to the approved defaults and named filters; Profile context and Account
+truth remain outside it. Final measured visual verification and installation remain gated on the
+two re-attached private MBB desktop/narrow references.

@@ -1,5 +1,14 @@
 # Project Status — Plum Duff / OpenForge — Doc ID: PS-CODEX-001
 
+> **CP-084 bounded correction in verification — 2026-10-25:** the isolated branch adds the
+> server-validated `oddsmatcher_preferences_json` v1 authority, named saved filters, observed MBB
+> filter families, compact quote/table/card geometry and Material actions without changing provider,
+> calculation, Account or Prospecting authorities. Disposable migration/restore rehearsal preserves
+> all 29 financial controls and proves the prior application can operate with the additive column.
+> Automated component/API/browser gates pass. Canonical localhost:3010/8010 is unchanged because
+> the required measured comparison against the owner's two current private MBB screenshots remains
+> pending.
+
 > **CP-083 visual-architecture correction — 2026-10-25:** bounded source on
 > `feature/cp083-visual-architecture-oddsmatcher-parity` replaces the Selected Range Performance
 > presentation while retaining its reporting projection, introduces explicit wide/intermediate/

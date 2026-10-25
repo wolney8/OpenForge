@@ -277,3 +277,20 @@ This addendum supersedes the older public/non-Profile assumptions above only for
   Repeating the same action returns the existing draft.
 - Safety boundaries: no polling, no SNR/SR/refund mode, no extra market, no direct exchange
   placement and no provider response persistence.
+
+## 24. CP-084 persisted preference and filter addendum
+
+- Canonical persistence is Fund Manager server state in versioned
+  `oddsmatcher_preferences_json`; browser storage is not an authority.
+- Version 1 contains only default back stake, canonical exchange commission ratios, excluded
+  bookmaker/exchange identities, show-arbs default, default Advanced state and named filters.
+- Profile context is excluded from saved filters. A selected Profile's Account restrictions and
+  commission override Fund Manager defaults.
+- Saved filters require a stable ID and case-insensitively unique display name. Load, rename and
+  delete are deterministic server writes; malformed/unknown payloads fail closed.
+- Selection, Start time, Back, Lay and Rating operate on the full cached snapshot before stable
+  sort and pagination. Dimensions combine with AND and multi-values within a dimension with OR.
+- Minimum liquidity excludes `UNKNOWN` liquidity. It must never coerce unknown to zero or imply
+  executable depth.
+- Clear removes transient filter state without changing Profile context, persisted settings or the
+  provider snapshot. Search/filter/settings changes do not trigger provider refresh.

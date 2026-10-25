@@ -41,6 +41,19 @@ def reuse_mutation_connection(connection: Any) -> Iterator[None]:
         _mutation_connection.reset(token)
 SUPPORTED_SQLITE_RUNTIME_MODES = {"local", "recovery-local"}
 SUPPORTED_POSTGRES_RUNTIME_MODES = {"neon", "postgres", "postgresql"}
+ODDSMATCHER_PREFERENCES_V1_DEFAULT_JSON = json.dumps(
+    {
+        "version": 1,
+        "default_back_stake": "10.00",
+        "exchange_commission_overrides": {},
+        "excluded_bookmaker_identities": [],
+        "excluded_exchange_identities": [],
+        "show_arbs_default": False,
+        "default_advanced": False,
+        "saved_filters": [],
+    },
+    separators=(",", ":"),
+)
 
 
 class DuplicateProfileAccountError(ValueError):
@@ -2256,6 +2269,12 @@ def initialize_database(connection: sqlite3.Connection) -> None:
     )
     ensure_column(connection, "fund_manager_settings", "selected_range_custom_start", "TEXT")
     ensure_column(connection, "fund_manager_settings", "selected_range_custom_end", "TEXT")
+    ensure_column(
+        connection,
+        "fund_manager_settings",
+        "oddsmatcher_preferences_json",
+        f"TEXT NOT NULL DEFAULT '{ODDSMATCHER_PREFERENCES_V1_DEFAULT_JSON}'",
+    )
     ensure_column(
         connection,
         "fund_manager_settings",
@@ -7502,6 +7521,37 @@ def update_fund_manager_selected_range(
             (preset, start, end, timestamp, timestamp),
         )
     return get_fund_manager_selected_range()
+
+
+def get_oddsmatcher_preferences_json() -> str:
+    with connect() as connection:
+        row = connection.execute(
+            """
+            SELECT oddsmatcher_preferences_json
+            FROM fund_manager_settings
+            WHERE fund_manager_id = 'fund-manager-local'
+            """
+        ).fetchone()
+    if row is None:
+        return ODDSMATCHER_PREFERENCES_V1_DEFAULT_JSON
+    return str(row["oddsmatcher_preferences_json"])
+
+
+def update_oddsmatcher_preferences_json(value: str) -> None:
+    timestamp = utc_now()
+    with connect() as connection:
+        connection.execute(
+            """
+            INSERT INTO fund_manager_settings (
+              fund_manager_id, bookmaker_display_mode,
+              oddsmatcher_preferences_json, created_at, updated_at
+            ) VALUES ('fund-manager-local', 'Name', ?, ?, ?)
+            ON CONFLICT(fund_manager_id) DO UPDATE SET
+              oddsmatcher_preferences_json = excluded.oddsmatcher_preferences_json,
+              updated_at = excluded.updated_at
+            """,
+            (value, timestamp, timestamp),
+        )
 
 
 def get_financial_motion_preference() -> dict[str, bool | int]:

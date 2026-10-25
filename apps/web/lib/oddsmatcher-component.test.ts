@@ -4,7 +4,7 @@ import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { OddsMatcherShell } from "@/components/oddsmatcher-shell";
-import type { OddsMatcherFeed, OddsMatcherOpportunity } from "./oddsmatcher";
+import { defaultOddsMatcherPreferences, type OddsMatcherFeed, type OddsMatcherOpportunity } from "./oddsmatcher";
 
 function opportunity(index: number): OddsMatcherOpportunity {
   return {
@@ -47,6 +47,8 @@ describe("OddsMatcherShell", () => {
     vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input); const method = init?.method ?? "GET";
       requests.push({ url, method, body: init?.body ? JSON.parse(String(init.body)) : null });
+      if (url.includes("/fund-manager/preferences/oddsmatcher")) return new Response(JSON.stringify(defaultOddsMatcherPreferences), { status: 200 });
+      if (url.includes("/account-catalogue/source")) return new Response(JSON.stringify({ schema_version: "1.0", records: [] }), { status: 200 });
       if (url.endsWith("/profiles")) return new Response(JSON.stringify([{ profile_id: "profile-demo-001", display_name: "Synthetic Alpha", status: "active" }]), { status: 200 });
       if (url.includes("matched-betting/preview")) return new Response(JSON.stringify({ selected_lay_stake: "9.62", liability: "35.59", pnl_if_back_wins: "-1.09", pnl_if_lay_wins: "-0.57", matched_result: "-1.09" }), { status: 200 });
       if (url.includes("prospecting-drafts")) return new Response(JSON.stringify({ created: true, sportsbook_bet: { sportsbook_bet_id: "ODD-DEMO" } }), { status: 201 });
@@ -72,11 +74,9 @@ describe("OddsMatcherShell", () => {
     await act(async () => { root.render(createElement(OddsMatcherShell)); });
     expect(requests.some(request => request.url.endsWith("/oddsmatcher"))).toBe(true);
     expect(container.textContent).toContain("No Profile / All opportunities");
-    const summary = container.querySelector<HTMLButtonElement>('button[aria-label^="Open Bet Summary"]');
-    await act(async () => { summary?.click(); });
-    expect(document.body.textContent).toContain("Choose a Profile to add this opportunity to Tracker");
+    expect(container.textContent).toContain("Choose a Profile to check Account eligibility and add to Tracker");
     const add = [...document.body.querySelectorAll<HTMLButtonElement>("button")].find(button => button.textContent === "Add Prospecting Draft");
-    expect(add?.disabled).toBe(true);
+    expect(add).toBeUndefined();
   });
 
   it("shows unknown liquidity, live calculator results and creates only an explicit Prospecting draft", async () => {

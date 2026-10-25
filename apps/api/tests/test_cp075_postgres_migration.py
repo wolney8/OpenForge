@@ -11,7 +11,7 @@ POSTGRES_URL = os.environ.get("CP075_TEST_POSTGRES_URL", "")
 
 
 def test_cp075_has_a_new_versioned_migration_marker() -> None:
-    assert MIGRATION_ID == "20261014_010_universal_selected_range"
+    assert MIGRATION_ID == "20261025_011_oddsmatcher_preferences"
 
 
 @pytest.mark.skipif(not POSTGRES_URL, reason="disposable CP-075 PostgreSQL is not configured")

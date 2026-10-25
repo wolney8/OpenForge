@@ -255,3 +255,25 @@ a new pixel-level side-by-side canvas is **UNVERIFIED**. The Plum Duff captures 
 
 Provider behaviour, ranking, exact event/selection matching, quota handling, stale/last-good state,
 Profile eligibility, unknown liquidity and Prospecting idempotency were not changed by CP-083.
+
+## CP-084 filter, settings and density correction — 2026-10-25
+
+The Alpha now implements the observed Selection, Start time, Back, Lay and Rating filter families
+against the already loaded provider snapshot. Different dimensions combine with AND; provider and
+selection choices within a dimension combine with OR. Numeric minimum liquidity excludes unknown
+liquidity rather than treating it as zero or sufficient. Arbs remain hidden by default with an
+explicit reveal action. Search is debounced across competition, event, market, selection,
+bookmaker and exchange; these client controls do not spend provider credits.
+
+Fund Manager Oddsmatcher preferences use the server-owned, versioned
+`oddsmatcher_preferences_json` v1 contract. It stores the approved stake, canonical commission
+ratios, provider exclusions, arb/Advanced defaults and named filter definitions. Saved filters have
+stable IDs and unique case-insensitive names, support load/rename/delete, and deliberately exclude
+Profile context. Profile Account restrictions and exchange commission remain authoritative when a
+Profile is selected. Malformed or unknown persisted structures fail closed for review.
+
+Plum Duff private captures and computed geometry are under
+`data/private/evidence/cp084-oddsmatcher-parity-20261025/`. The promised current MBB desktop and
+narrow references have not yet been supplied, so the required measured reference delta and local
+installation remain **UNVERIFIED**. Free Bet mode, live liquidity, auto-refresh, direct placement,
+additional markets and Bet Summary visual acceptance remain outside this correction.
