@@ -1,11 +1,15 @@
 # Project Status — Plum Duff / OpenForge — Doc ID: PS-CODEX-001
 
-> **CP-085 bounded source verified; local installation pending — 2026-10-25:** Rating and Actions
+> **CP-085 bounded correction installed for owner verification — 2026-10-25:** Rating and Actions
 > remain contained through the seven-column layout and results change to the established cards at
 > 72rem. Desktop filters and My Filters now use anchored, focus-managed surfaces; saved filters gain
 > backward-compatible optional descriptions within the existing validated v1 JSON contract.
 > Provider, quota, calculations, liquidity, Profile authority and Prospecting behaviour are
-> unchanged. Focused API/component/browser gates pass; owner visual acceptance remains pending.
+> unchanged. Focused API/component/browser gates pass. After verified backup `BACKUP-9E41D0F8`,
+> canonical localhost:3010/8010 serves the bounded correction; database fingerprint, integrity,
+> foreign keys and all 29 financial controls remain unchanged. Owner visual acceptance remains
+> pending. Repository-wide lint remains blocked by the unchanged Free Bet ref-during-render error;
+> focused changed-file lint passes.
 
 > **CP-084 bounded correction installed for owner verification — 2026-10-25:** the local source adds the
 > server-validated `oddsmatcher_preferences_json` v1 authority, named saved filters, observed MBB
