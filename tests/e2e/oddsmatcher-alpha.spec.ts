@@ -4,7 +4,7 @@ import path from "node:path";
 
 const profileId = "profile-demo-001";
 const evidenceDirectory = path.resolve(
-  "data/private/evidence/cp084-oddsmatcher-parity-20261025",
+  "data/private/evidence/cp085-oddsmatcher-parity-20261025",
 );
 
 let preferences = {
@@ -15,7 +15,7 @@ let preferences = {
   excluded_exchange_identities: [] as string[],
   show_arbs_default: false,
   default_advanced: false,
-  saved_filters: [] as Array<{ id: string; name: string; filters: unknown }>,
+  saved_filters: [] as Array<{ id: string; name: string; description?: string; filters: unknown }>,
 };
 let providerRequests = 0;
 
@@ -129,6 +129,9 @@ test("renders, filters, paginates and inspects the bounded Alpha", async ({ page
   await expect(page).toHaveURL(new RegExp(`profileId=${profileId}`));
   await expect(page.getByText("Page 1 of 3 · 34 rows").first()).toBeVisible();
   await expect(page.getByText("Liquidity unknown").first()).toBeVisible();
+  const refreshButton = page.getByRole("button", { name: "Refresh opportunities" });
+  await expect(refreshButton.locator(".material-symbols-outlined")).toHaveText("refresh");
+  await expect(refreshButton.locator("span")).toHaveCount(1);
   for (const heading of ["Date", "Event", "Bet", "Back Odds", "Lay Odds", "Rating", "Actions"]) {
     await expect(page.locator(".oddsmatcher-table thead").getByText(heading, { exact: true })).toBeVisible();
   }
@@ -136,9 +139,15 @@ test("renders, filters, paginates and inspects the bounded Alpha", async ({ page
   await expect(page.locator(".oddsmatcher-table tbody tr").first().locator(".oddsmatcher-quote-block")).toHaveCount(2);
   await expect(page.locator(".oddsmatcher-table tbody tr").first()).not.toContainText(/^WH$|^BF$/);
   await expect(page.locator(".oddsmatcher-table tbody tr").first().locator(".oddsmatcher-rating-pill")).toBeVisible();
+  await expect(page.locator(".oddsmatcher-table tbody tr").first().locator(".oddsmatcher-rating-pill")).toHaveText(/^[0-9]+\.[0-9]{2}%$/);
   await page.locator(".oddsmatcher-table tbody tr").first().screenshot({ path: path.join(evidenceDirectory, "L-quote-block-close-up.png") });
   await expect(page.locator(".oddsmatcher-table tbody tr").first().locator(".table-action-row .table-action-button")).toHaveCount(2);
   expect((await page.locator(".oddsmatcher-table tbody tr").first().locator(".table-action-row").boundingBox())?.width ?? 999).toBeLessThan(100);
+  await page.locator(".oddsmatcher-table tbody tr").first().locator("td:nth-child(2)").click();
+  await expect(page.getByRole("dialog", { name: "Oddsmatcher Bet Summary" })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await page.locator(".oddsmatcher-table tbody tr").first().getByRole("button", { name: /^Copy/ }).click();
+  await expect(page.getByRole("dialog", { name: "Oddsmatcher Bet Summary" })).toHaveCount(0);
   const requestsBeforeClientFilters = providerRequests;
   const desktopMeasurements = await page.evaluate(() => {
     const box = (selector: string) => {
@@ -190,19 +199,30 @@ test("renders, filters, paginates and inspects the bounded Alpha", async ({ page
   await expect(page.getByText("Page 1 of 3 · 34 rows").first()).toBeVisible();
 
   await page.getByRole("button", { name: /^Selection/ }).click();
+  const selectionPopover = page.getByRole("dialog", { name: "Selection filter" });
+  expect((await selectionPopover.boundingBox())?.width ?? 999).toBeLessThanOrEqual(440);
   await page.screenshot({ path: path.join(evidenceDirectory, "05-selection-filter.png"), fullPage: true });
-  await expect(page.getByRole("group", { name: "Selection" })).toContainText("Football");
-  await page.getByRole("dialog", { name: "Oddsmatcher filters" }).getByText("Draw", { exact: true }).click();
-  await page.getByRole("button", { name: "Apply filters" }).click();
+  await expect(selectionPopover).toContainText("Football");
+  await selectionPopover.getByText("Draw", { exact: true }).click();
+  await page.getByRole("button", { name: "Done" }).click();
+  const selectionButton = page.locator('[data-pd-id="oddsmatcher.filters"]').getByRole("button", { name: /^Selection/ });
+  await expect(selectionButton.locator(".table-filter-badge")).toHaveText("1");
+  const badgeAndLabel = await selectionButton.evaluate((node) => {
+    const label = node.querySelector("span:first-child")?.getBoundingClientRect();
+    const badge = node.querySelector(".table-filter-badge")?.getBoundingClientRect();
+    return label && badge ? { labelRight: label.right, badgeLeft: badge.left, badgeTop: badge.top, labelTop: label.top } : null;
+  });
+  expect(badgeAndLabel).not.toBeNull();
+  expect(Math.abs((badgeAndLabel?.badgeTop ?? 0) - (badgeAndLabel?.labelTop ?? 0))).toBeLessThan(10);
   for (const [label, filename] of [["Start time", "06-start-time-filter.png"], ["Back", "07-back-filter.png"], ["Lay", "08-lay-filter.png"]] as const) {
     await page.locator('[data-pd-id="oddsmatcher.filters"]').getByRole("button", { name: new RegExp(`^${label}`) }).click();
     await page.screenshot({ path: path.join(evidenceDirectory, filename), fullPage: true });
-    await page.getByRole("button", { name: "Apply filters" }).click();
+    await page.getByRole("button", { name: "Done" }).click();
   }
   await page.locator('[data-pd-id="oddsmatcher.filters"]').getByRole("button", { name: /^Rating/ }).click();
   await page.screenshot({ path: path.join(evidenceDirectory, "09-rating-filter.png"), fullPage: true });
   await page.getByLabel("Minimum rating").fill("95");
-  await page.getByRole("button", { name: "Apply filters" }).click();
+  await page.getByRole("button", { name: "Done" }).click();
   await expect(page.locator("tbody tr").first()).toContainText("Draw");
   await expect(page.getByText(/Page 1 of \d+ · \d+ rows/).first()).toBeVisible();
   expect(providerRequests).toBe(requestsBeforeClientFilters);
@@ -234,12 +254,18 @@ test("renders, filters, paginates and inspects the bounded Alpha", async ({ page
   expect(providerRequests).toBe(requestsBeforeClientFilters);
 
   await page.getByRole("button", { name: "My Filters" }).click();
-  await page.getByLabel("New preset name").fill("Draw value");
+  expect((await page.getByRole("dialog", { name: "My Filters" }).boundingBox())?.width ?? 999).toBeLessThanOrEqual(440);
   await page.getByRole("button", { name: "Save as…" }).click();
+  await page.getByRole("dialog", { name: "Save filter preset" }).getByLabel("Name").fill("Draw value");
+  await page.getByRole("dialog", { name: "Save filter preset" }).getByLabel(/Description/).fill("Draw selections rated 95 or above");
+  await page.getByRole("button", { name: "Save preset" }).click();
   await expect(page.getByText("Draw value", { exact: true })).toBeVisible();
+  await expect(page.getByText("Draw selections rated 95 or above", { exact: true })).toBeVisible();
   await page.screenshot({ path: path.join(evidenceDirectory, "11-my-filters.png"), fullPage: true });
-  await page.getByLabel("Rename Draw value").fill("Draw value renamed");
-  await page.getByRole("button", { name: "Rename", exact: true }).click();
+  await page.getByRole("button", { name: "Edit Draw value" }).click();
+  await page.getByRole("dialog", { name: "Edit Draw value" }).getByLabel("Name").fill("Draw value renamed");
+  await page.getByRole("button", { name: "Save changes" }).click();
+  await expect(page.getByRole("dialog", { name: "Edit Draw value" })).toHaveCount(0);
   await expect(page.getByText("Draw value renamed", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Close My Filters" }).click();
   expect(providerRequests).toBe(requestsBeforeClientFilters);
@@ -251,10 +277,23 @@ test("renders, filters, paginates and inspects the bounded Alpha", async ({ page
   await expect(page.getByText("Draw value renamed", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Load", exact: true }).click();
   await expect(page.locator('[data-pd-id="oddsmatcher.filters"]').getByRole("button", { name: /Selection 1/ })).toBeVisible();
+  await page.locator('[data-pd-id="oddsmatcher.filters"]').getByRole("button", { name: /^Rating/ }).click();
+  await page.getByLabel("Minimum rating").fill("96");
+  await page.getByRole("button", { name: "Done" }).click();
+  await page.getByRole("button", { name: "My Filters" }).click();
+  await expect(page.getByText("Active preset · modified")).toBeVisible();
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  expect((preferences.saved_filters[0].filters as { minRating: string }).minRating).toBe("96");
+  await page.getByRole("button", { name: "Close My Filters" }).click();
   await page.getByRole("button", { name: "My Filters" }).click();
   await page.getByRole("button", { name: "Delete Draw value renamed" }).click();
   await expect(page.getByText("No saved filters", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Close My Filters" }).click();
+  const requestsBeforeClear = providerRequests;
+  await page.getByRole("button", { name: "Clear", exact: true }).click();
+  await expect(page.getByText("Page 1 of 3 · 34 rows").first()).toBeVisible();
+  await expect(page.getByLabel("Oddsmatcher Profile context")).toHaveValue(profileId);
+  expect(providerRequests).toBe(requestsBeforeClear);
 
   const desktopGeometry = await page.evaluate(() => ({
     bodyWidth: document.body.scrollWidth,
@@ -263,6 +302,22 @@ test("renders, filters, paginates and inspects the bounded Alpha", async ({ page
     tableClientWidth: document.querySelector('.oddsmatcher-desktop-results')?.clientWidth ?? 0,
   }));
   expect(desktopGeometry.bodyWidth).toBeLessThanOrEqual(desktopGeometry.viewportWidth);
+
+  await page.setViewportSize({ width: 1200, height: 900 });
+  await expect(page.locator(".oddsmatcher-desktop-results")).toBeVisible();
+  const containedColumns = await page.evaluate(() => {
+    const table = document.querySelector(".oddsmatcher-table")?.getBoundingClientRect();
+    const rating = document.querySelector(".oddsmatcher-table tbody td:nth-child(6)")?.getBoundingClientRect();
+    const actions = document.querySelector(".oddsmatcher-table tbody td:nth-child(7)")?.getBoundingClientRect();
+    return table && rating && actions ? { tableRight: table.right, ratingRight: rating.right, actionsRight: actions.right } : null;
+  });
+  expect(containedColumns).not.toBeNull();
+  expect(containedColumns?.ratingRight).toBeLessThanOrEqual(containedColumns?.tableRight ?? 0);
+  expect(containedColumns?.actionsRight).toBeLessThanOrEqual(containedColumns?.tableRight ?? 0);
+
+  await page.setViewportSize({ width: 1150, height: 900 });
+  await expect(page.locator(".oddsmatcher-mobile-results")).toBeVisible();
+  await expect(page.locator(".oddsmatcher-desktop-results")).toBeHidden();
 
   await page.setViewportSize({ width: 760, height: 900 });
   await expect(page.locator(".oddsmatcher-mobile-results")).toBeVisible();

@@ -132,6 +132,7 @@ class OddsMatcherSavedFilter(BaseModel):
 
     id: str = Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9_-]{7,63}$")
     name: str = Field(min_length=1, max_length=80)
+    description: str = Field(default="", max_length=240)
     filters: OddsMatcherSavedFilterState
 
     @field_validator("name")
@@ -141,6 +142,11 @@ class OddsMatcherSavedFilter(BaseModel):
         if not cleaned:
             raise ValueError("Saved filter names cannot be empty.")
         return cleaned
+
+    @field_validator("description")
+    @classmethod
+    def clean_description(cls, value: str) -> str:
+        return " ".join(value.split())
 
 
 class OddsMatcherPreferences(BaseModel):

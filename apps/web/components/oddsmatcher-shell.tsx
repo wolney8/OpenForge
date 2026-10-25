@@ -4,11 +4,16 @@ import Link from "next/link";
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type MouseEvent as ReactMouseEvent,
+  type ReactNode,
   type RefObject,
 } from "react";
+import { createPortal } from "react-dom";
 import { CalculatorOutcomes } from "@/components/calculator-outcomes";
 import { CalculatorSegmentedControl } from "@/components/calculator-segmented-control";
 import { CommissionInput } from "@/components/commission-input";
@@ -28,6 +33,7 @@ import {
   defaultOddsMatcherPreferences,
   filterAndSortOpportunities,
   isManualQuote,
+  oddsMatcherRatingTone,
   opportunityCopyText,
   type OddsMatcherFeed,
   type OddsMatcherFilters,
@@ -74,14 +80,6 @@ function eligibilityClass(state: "eligible" | "warning" | "unavailable") {
     : state === "warning"
       ? "field-warning-text"
       : "field-hint";
-}
-function ratingTone(value: string) {
-  const rating = Number(value);
-  if (rating >= 100) return "arb";
-  if (rating >= 97) return "strong";
-  if (rating >= 94) return "positive";
-  if (rating >= 90) return "caution";
-  return "low";
 }
 function QuoteLink({ href, label, disabled = false }: { href: string | null; label: string; disabled?: boolean }) {
   return href && !disabled ? (
@@ -145,7 +143,7 @@ export function OddsMatcherShell({
   const settingsButtonRef = useRef<HTMLButtonElement>(null);
   const savedFiltersButtonRef = useRef<HTMLButtonElement>(null);
   const filterButtonRef = useRef<HTMLButtonElement>(null);
-  const inspectButtonRef = useRef<HTMLButtonElement>(null);
+  const inspectButtonRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     void fetch(`${apiBaseUrl}/profiles`, { credentials: "include" })
@@ -180,7 +178,6 @@ export function OddsMatcherShell({
     if (filters.search === searchInput) return;
     const timer = window.setTimeout(() => {
       setFilters((current) => ({ ...current, search: searchInput }));
-      setActiveSavedFilterId(null);
       setPage(1);
       setSelected(null);
     }, 180);
@@ -283,7 +280,6 @@ export function OddsMatcherShell({
     value: OddsMatcherFilters[K],
   ) => {
     setFilters((current) => ({ ...current, [key]: value }));
-    setActiveSavedFilterId(null);
     setPage(1);
     setSelected(null);
   };
@@ -324,25 +320,39 @@ export function OddsMatcherShell({
     (profile) => profile.profile_id === profileId,
   )?.display_name;
 
+  const inspectOpportunity = (row: OddsMatcherOpportunity, trigger: HTMLElement) => {
+    inspectButtonRef.current = trigger;
+    setSelected(row);
+  };
+  const activateOpportunity = (
+    event: ReactMouseEvent<HTMLElement> | ReactKeyboardEvent<HTMLElement>,
+    row: OddsMatcherOpportunity,
+  ) => {
+    if (event.target instanceof Element && event.target.closest("a, button, input, select, textarea, label")) return;
+    if ("key" in event && event.key !== "Enter" && event.key !== " ") return;
+    if ("key" in event) event.preventDefault();
+    inspectOpportunity(row, event.currentTarget);
+  };
+
   const opportunityRow = (row: OddsMatcherOpportunity, mobile = false) => (
     <article
       className={`oddsmatcher-opportunity-card${row.freshness === "stale" ? " is-muted" : ""}`}
       data-pd-id={`oddsmatcher.opportunity.${row.opportunity_id}`}
       key={`${mobile ? "card" : "row"}:${row.opportunity_id}`}
+      onClick={(event) => activateOpportunity(event, row)}
+      onKeyDown={(event) => activateOpportunity(event, row)}
+      tabIndex={0}
     >
       <div className="oddsmatcher-card-topline">
         <div className="oddsmatcher-card-status">
           <span aria-hidden="true" className="material-symbols-outlined oddsmatcher-event-icon">sports_soccer</span>
-          <span className={`oddsmatcher-rating-pill oddsmatcher-rating-${ratingTone(row.display_rating)}`}>
-            Rating: {Number(row.display_rating).toFixed(2)}%
+          <span className={`oddsmatcher-rating-pill oddsmatcher-rating-${oddsMatcherRatingTone(row.display_rating)}`}>
+            {Number(row.display_rating).toFixed(2)}%
           </span>
           {row.freshness === "stale" ? <span className="status-chip">Stale · {formatObserved(row.age_seconds)}</span> : null}
         </div>
         <OpportunityActions
-          onInspect={(trigger) => {
-            inspectButtonRef.current = trigger;
-            setSelected(row);
-          }}
+          onInspect={(trigger) => inspectOpportunity(row, trigger)}
           row={row}
         />
       </div>
@@ -476,6 +486,7 @@ export function OddsMatcherShell({
               ] as const
             ).map(([id, label, count]) => (
               <button
+                aria-expanded={filterPanel === id}
                 aria-haspopup="dialog"
                 className={`filter-chip${count ? " is-active" : ""}`}
                 key={id}
@@ -514,7 +525,8 @@ export function OddsMatcherShell({
             </button>
             <button
               aria-busy={refreshing}
-              className="modal-primary-button icon-text-action"
+              aria-label={refreshing ? "Refreshing opportunities" : "Refresh opportunities"}
+              className="icon-button compact-action"
               data-pd-id="oddsmatcher.refresh"
               disabled={refreshing}
               onClick={() => void load(true)}
@@ -523,11 +535,11 @@ export function OddsMatcherShell({
               <span aria-hidden="true" className="material-symbols-outlined">
                 refresh
               </span>
-              <span>{refreshing ? "Refreshing…" : "Refresh"}</span>
             </button>
             <button
               className="button-link icon-text-action"
-              aria-haspopup="dialog"
+              aria-expanded={savedFiltersOpen}
+              aria-haspopup="menu"
               disabled={preferencesState !== "ready"}
               onClick={() => setSavedFiltersOpen(true)}
               ref={savedFiltersButtonRef}
@@ -661,7 +673,14 @@ export function OddsMatcherShell({
                 </thead>
                 <tbody>
                   {rows.map((row) => (
-                    <tr key={row.opportunity_id}>
+                    <tr
+                      aria-label={`Open Bet Summary for ${row.event_name} ${row.selection}`}
+                      className="oddsmatcher-clickable-row"
+                      key={row.opportunity_id}
+                      onClick={(event) => activateOpportunity(event, row)}
+                      onKeyDown={(event) => activateOpportunity(event, row)}
+                      tabIndex={0}
+                    >
                       <td>
                         <span className="table-cell-stack">
                           <time dateTime={row.starts_at}>
@@ -717,8 +736,8 @@ export function OddsMatcherShell({
                       </td>
                       <td>
                         <span className="table-cell-stack oddsmatcher-rating-cell">
-                          <strong className={`oddsmatcher-rating-pill oddsmatcher-rating-${ratingTone(row.display_rating)}`}>
-                            Rating: {Number(row.display_rating).toFixed(2)}%
+                          <strong className={`oddsmatcher-rating-pill oddsmatcher-rating-${oddsMatcherRatingTone(row.display_rating)}`}>
+                            {Number(row.display_rating).toFixed(2)}%
                           </strong>
                           <span>
                             {row.commission_aware_rating
@@ -731,10 +750,7 @@ export function OddsMatcherShell({
                       </td>
                       <td>
                         <OpportunityActions
-                          onInspect={(trigger) => {
-                            inspectButtonRef.current = trigger;
-                            setSelected(row);
-                          }}
+                          onInspect={(trigger) => inspectOpportunity(row, trigger)}
                           row={row}
                         />
                       </td>
@@ -882,7 +898,7 @@ function OpportunityActions({
         aria-label={`Copy ${row.event_name} ${row.selection} opportunity`}
         className="table-action-button"
         onClick={() =>
-          void navigator.clipboard.writeText(opportunityCopyText(row))
+          void navigator.clipboard.writeText(opportunityCopyText(row)).catch(() => undefined)
         }
         title="Copy opportunity"
         type="button"
@@ -907,6 +923,66 @@ function OpportunityActions({
   );
 }
 
+function AnchoredSurface({ children, className = "", label, onClose, returnFocusRef }: {
+  children: ReactNode;
+  className?: string;
+  label: string;
+  onClose: () => void;
+  returnFocusRef: RefObject<HTMLElement | null>;
+}) {
+  const surfaceRef = useRef<HTMLElement>(null);
+  const [position, setPosition] = useState({ left: 12, top: 12, width: 420, maxHeight: 600 });
+  useLayoutEffect(() => {
+    const trigger = returnFocusRef.current;
+    const surface = surfaceRef.current;
+    if (!trigger || !surface) return;
+    const place = () => {
+      const rect = trigger.getBoundingClientRect();
+      const margin = 12;
+      const width = Math.min(440, window.innerWidth - margin * 2);
+      const measuredHeight = Math.min(surface.scrollHeight, window.innerHeight - margin * 2);
+      const roomBelow = window.innerHeight - rect.bottom - margin;
+      const top = roomBelow >= Math.min(measuredHeight, 320)
+        ? rect.bottom + 6
+        : Math.max(margin, rect.top - measuredHeight - 6);
+      setPosition({
+        left: Math.min(Math.max(margin, rect.left), window.innerWidth - width - margin),
+        top,
+        width,
+        maxHeight: Math.max(180, window.innerHeight - top - margin),
+      });
+    };
+    place();
+    const first = surface.querySelector<HTMLElement>('input:not(:disabled), button:not(:disabled), [tabindex="0"]');
+    first?.focus({ preventScroll: true });
+    window.addEventListener("resize", place);
+    window.addEventListener("scroll", place, true);
+    return () => {
+      window.removeEventListener("resize", place);
+      window.removeEventListener("scroll", place, true);
+      if (trigger.isConnected) trigger.focus({ preventScroll: true });
+    };
+  }, [returnFocusRef]);
+  if (typeof document === "undefined") return null;
+  return createPortal(
+    <div className="oddsmatcher-anchored-layer" onPointerDown={(event) => {
+      if (event.target === event.currentTarget) onClose();
+    }}>
+      <section
+        aria-label={label}
+        className={`oddsmatcher-anchored-surface ${className}`}
+        onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); onClose(); } }}
+        ref={surfaceRef}
+        role="dialog"
+        style={position}
+      >
+        {children}
+      </section>
+    </div>,
+    document.body,
+  );
+}
+
 function FilterDialog({
   backProviders,
   competitionOptions,
@@ -924,7 +1000,7 @@ function FilterDialog({
   onChange: <K extends keyof OddsMatcherFilters>(key: K, value: OddsMatcherFilters[K]) => void;
   onClose: () => void;
   panel: FilterPanel;
-  returnFocusRef: RefObject<HTMLButtonElement | null>;
+  returnFocusRef: RefObject<HTMLElement | null>;
 }) {
   const show = (name: Exclude<FilterPanel, "all">) => panel === "all" || panel === name;
   const toggle = <T extends string>(values: T[], value: T) =>
@@ -934,34 +1010,38 @@ function FilterDialog({
     ["4H", "4 hours"], ["8H", "8 hours"], ["12H", "12 hours"], ["24H", "24 hours"],
     ["TODAY", "Today"], ["TOMORROW", "Tomorrow"], ["3D", "3 days"], ["CUSTOM", "Custom range"],
   ];
-  return (
+  const label = panel === "startTime" ? "Start time" : panel === "all" ? "Filters" : `${panel[0].toUpperCase()}${panel.slice(1)}`;
+  const fields = <div className="oddsmatcher-filter-sections">
+    {show("selection") ? <fieldset className="oddsmatcher-filter-group">
+      <legend>Selection</legend>
+      <label className="toggle-row"><input checked={filters.sports.includes("football")} onChange={() => onChange("sports", toggle(filters.sports, "football"))} type="checkbox" /><span><strong>Football</strong><small>Current Alpha sport</small></span></label>
+      <div className="oddsmatcher-filter-subgroup"><strong>Competition</strong><div className="filter-option-grid">{competitionOptions.map((option) => <label className="choice-chip" key={option.id}><input checked={filters.competitions.includes(option.id)} onChange={() => onChange("competitions", toggle(filters.competitions, option.id))} type="checkbox" /><span>{option.name}</span></label>)}</div></div>
+      <label className="field-control"><span>Event name</span><input onChange={(event) => onChange("eventName", event.target.value)} value={filters.eventName} /></label>
+      <div className="oddsmatcher-filter-subgroup"><strong>Market</strong><label className="choice-chip"><input checked={filters.markets.includes("h2h")} onChange={() => onChange("markets", toggle(filters.markets, "h2h"))} type="checkbox" /><span>Match Odds / 1X2</span></label></div>
+      <div className="oddsmatcher-filter-subgroup"><strong>Selection</strong><div className="filter-option-grid">{([['HOME','Home'],['DRAW','Draw'],['AWAY','Away']] as const).map(([id,text]) => <label className="choice-chip" key={id}><input checked={filters.selections.includes(id)} onChange={() => onChange("selections", toggle(filters.selections, id))} type="checkbox" /><span>{text}</span></label>)}</div></div>
+      <label className="toggle-row"><input checked={filters.excludeDraws} onChange={(event) => onChange("excludeDraws", event.target.checked)} type="checkbox" /><span><strong>Exclude draws</strong></span></label>
+    </fieldset> : null}
+    {show("startTime") ? <fieldset className="oddsmatcher-filter-group"><legend>Start time</legend><div className="filter-option-grid">{startOptions.map(([id,text]) => <label className="choice-chip" key={id}><input checked={filters.startTime === id} name="oddsmatcher-start-time" onChange={() => onChange("startTime", id)} type="radio" /><span>{text}</span></label>)}</div>{filters.startTime === "CUSTOM" ? <div className="form-grid oddsmatcher-filter-fields"><label className="field-control"><span>From</span><input onChange={(event) => onChange("customStart", event.target.value)} type="datetime-local" value={filters.customStart} /></label><label className="field-control"><span>To</span><input onChange={(event) => onChange("customEnd", event.target.value)} type="datetime-local" value={filters.customEnd} /></label></div> : null}<p className="field-hint">Times are interpreted and displayed in Europe/London.</p></fieldset> : null}
+    {show("back") ? <fieldset className="oddsmatcher-filter-group"><legend>Back</legend><div className="filter-option-grid">{backProviders.map((option) => <label className="choice-chip" key={option.id}><input checked={filters.backProviders.includes(option.id)} onChange={() => onChange("backProviders", toggle(filters.backProviders, option.id))} type="checkbox" /><span>{option.name}</span></label>)}</div><div className="form-grid oddsmatcher-filter-fields"><label className="field-control"><span>Minimum back odds</span><input inputMode="decimal" onChange={(event) => onChange("minBackOdds", event.target.value)} value={filters.minBackOdds} /></label><label className="field-control"><span>Maximum back odds</span><input inputMode="decimal" onChange={(event) => onChange("maxBackOdds", event.target.value)} value={filters.maxBackOdds} /></label></div></fieldset> : null}
+    {show("lay") ? <fieldset className="oddsmatcher-filter-group"><legend>Lay</legend><div className="filter-option-grid">{layProviders.map((option) => <label className="choice-chip" key={option.id}><input checked={filters.layProviders.includes(option.id)} onChange={() => onChange("layProviders", toggle(filters.layProviders, option.id))} type="checkbox" /><span>{simpleExchangeName(option.name)}</span></label>)}</div><div className="form-grid oddsmatcher-filter-fields"><label className="field-control"><span>Minimum lay odds</span><input inputMode="decimal" onChange={(event) => onChange("minLayOdds", event.target.value)} value={filters.minLayOdds} /></label><label className="field-control"><span>Maximum lay odds</span><input inputMode="decimal" onChange={(event) => onChange("maxLayOdds", event.target.value)} value={filters.maxLayOdds} /></label><label className="field-control"><span>Minimum liquidity</span><input inputMode="decimal" onChange={(event) => onChange("minLiquidity", event.target.value)} value={filters.minLiquidity} /><small>Unknown-liquidity rows are excluded when this is set.</small></label></div></fieldset> : null}
+    {show("rating") ? <fieldset className="oddsmatcher-filter-group"><legend>Rating</legend><div className="form-grid oddsmatcher-filter-fields"><label className="field-control"><span>Minimum rating</span><input inputMode="decimal" onChange={(event) => onChange("minRating", event.target.value)} value={filters.minRating} /></label><label className="field-control"><span>Maximum rating</span><input inputMode="decimal" onChange={(event) => onChange("maxRating", event.target.value)} value={filters.maxRating} /></label></div><label className="toggle-row"><input checked={filters.showArbs} onChange={(event) => onChange("showArbs", event.target.checked)} type="checkbox" /><span><strong>Show arbs</strong><small>Ratings above 100% are hidden by default.</small></span></label></fieldset> : null}
+  </div>;
+  if (panel === "all") return (
     <ModalBoundary onDismiss={onClose} returnFocusRef={returnFocusRef}>
       <div className="modal-backdrop" onClick={onClose}>
         <section aria-label="Oddsmatcher filters" aria-modal="true" className="modal-panel oddsmatcher-filter-dialog stack" data-pd-id="oddsmatcher.filter-drawer" onClick={(event) => event.stopPropagation()} role="dialog">
-          <header className="calculator-panel-heading-row">
-            <div><span className="eyebrow">Opportunity controls</span><h2>Filters</h2></div>
-            <button aria-label="Close filters" className="modal-close-button" onClick={onClose} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button>
-          </header>
-          <div className="oddsmatcher-filter-sections">
-            {show("selection") ? <fieldset className="oddsmatcher-filter-group">
-              <legend>Selection</legend>
-              <label className="toggle-row"><input checked={filters.sports.includes("football")} onChange={() => onChange("sports", toggle(filters.sports, "football"))} type="checkbox" /><span><strong>Football</strong><small>Current Alpha sport</small></span></label>
-              <div className="oddsmatcher-filter-subgroup"><strong>Competition</strong><div className="filter-option-grid">{competitionOptions.map((option) => <label className="choice-chip" key={option.id}><input checked={filters.competitions.includes(option.id)} onChange={() => onChange("competitions", toggle(filters.competitions, option.id))} type="checkbox" /><span>{option.name}</span></label>)}</div></div>
-              <label className="field-control"><span>Event name</span><input onChange={(event) => onChange("eventName", event.target.value)} value={filters.eventName} /></label>
-              <div className="oddsmatcher-filter-subgroup"><strong>Market</strong><label className="choice-chip"><input checked={filters.markets.includes("h2h")} onChange={() => onChange("markets", toggle(filters.markets, "h2h"))} type="checkbox" /><span>Match Odds / 1X2</span></label></div>
-              <div className="oddsmatcher-filter-subgroup"><strong>Selection</strong><div className="filter-option-grid">{([['HOME','Home'],['DRAW','Draw'],['AWAY','Away']] as const).map(([id,label]) => <label className="choice-chip" key={id}><input checked={filters.selections.includes(id)} onChange={() => onChange("selections", toggle(filters.selections, id))} type="checkbox" /><span>{label}</span></label>)}</div></div>
-              <label className="toggle-row"><input checked={filters.excludeDraws} onChange={(event) => onChange("excludeDraws", event.target.checked)} type="checkbox" /><span><strong>Exclude draws</strong></span></label>
-            </fieldset> : null}
-            {show("startTime") ? <fieldset className="oddsmatcher-filter-group"><legend>Start time</legend><div className="filter-option-grid">{startOptions.map(([id,label]) => <label className="choice-chip" key={id}><input checked={filters.startTime === id} name="oddsmatcher-start-time" onChange={() => onChange("startTime", id)} type="radio" /><span>{label}</span></label>)}</div>{filters.startTime === "CUSTOM" ? <div className="form-grid oddsmatcher-filter-fields"><label className="field-control"><span>From</span><input onChange={(event) => onChange("customStart", event.target.value)} type="datetime-local" value={filters.customStart} /></label><label className="field-control"><span>To</span><input onChange={(event) => onChange("customEnd", event.target.value)} type="datetime-local" value={filters.customEnd} /></label></div> : null}<p className="field-hint">Times are interpreted and displayed in Europe/London.</p></fieldset> : null}
-            {show("back") ? <fieldset className="oddsmatcher-filter-group"><legend>Back</legend><div className="filter-option-grid">{backProviders.map((option) => <label className="choice-chip" key={option.id}><input checked={filters.backProviders.includes(option.id)} onChange={() => onChange("backProviders", toggle(filters.backProviders, option.id))} type="checkbox" /><span>{option.name}</span></label>)}</div><div className="form-grid oddsmatcher-filter-fields"><label className="field-control"><span>Minimum back odds</span><input inputMode="decimal" onChange={(event) => onChange("minBackOdds", event.target.value)} value={filters.minBackOdds} /></label><label className="field-control"><span>Maximum back odds</span><input inputMode="decimal" onChange={(event) => onChange("maxBackOdds", event.target.value)} value={filters.maxBackOdds} /></label></div></fieldset> : null}
-            {show("lay") ? <fieldset className="oddsmatcher-filter-group"><legend>Lay</legend><div className="filter-option-grid">{layProviders.map((option) => <label className="choice-chip" key={option.id}><input checked={filters.layProviders.includes(option.id)} onChange={() => onChange("layProviders", toggle(filters.layProviders, option.id))} type="checkbox" /><span>{simpleExchangeName(option.name)}</span></label>)}</div><div className="form-grid oddsmatcher-filter-fields"><label className="field-control"><span>Minimum lay odds</span><input inputMode="decimal" onChange={(event) => onChange("minLayOdds", event.target.value)} value={filters.minLayOdds} /></label><label className="field-control"><span>Maximum lay odds</span><input inputMode="decimal" onChange={(event) => onChange("maxLayOdds", event.target.value)} value={filters.maxLayOdds} /></label><label className="field-control"><span>Minimum liquidity</span><input inputMode="decimal" onChange={(event) => onChange("minLiquidity", event.target.value)} value={filters.minLiquidity} /><small>Unknown-liquidity rows are excluded when this is set.</small></label></div></fieldset> : null}
-            {show("rating") ? <fieldset className="oddsmatcher-filter-group"><legend>Rating</legend><div className="form-grid oddsmatcher-filter-fields"><label className="field-control"><span>Minimum rating</span><input inputMode="decimal" onChange={(event) => onChange("minRating", event.target.value)} value={filters.minRating} /></label><label className="field-control"><span>Maximum rating</span><input inputMode="decimal" onChange={(event) => onChange("maxRating", event.target.value)} value={filters.maxRating} /></label></div><label className="toggle-row"><input checked={filters.showArbs} onChange={(event) => onChange("showArbs", event.target.checked)} type="checkbox" /><span><strong>Show arbs</strong><small>Ratings above 100% are hidden by default.</small></span></label></fieldset> : null}
-          </div>
+          <header className="calculator-panel-heading-row"><div><span className="eyebrow">Opportunity controls</span><h2>Filters</h2></div><button aria-label="Close filters" className="modal-close-button" onClick={onClose} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button></header>
+          {fields}
           <footer className="modal-sticky-footer"><button className="modal-primary-button" onClick={onClose} type="button">Apply filters</button></footer>
         </section>
       </div>
     </ModalBoundary>
   );
+  return <AnchoredSurface className="oddsmatcher-filter-popover" label={`${label} filter`} onClose={onClose} returnFocusRef={returnFocusRef}>
+    <header className="oddsmatcher-popover-heading"><strong>{label}</strong><button aria-label={`Close ${label} filter`} className="icon-button compact-action" onClick={onClose} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button></header>
+    {fields}
+    <footer className="oddsmatcher-popover-footer"><button className="modal-primary-button" onClick={onClose} type="button">Done</button></footer>
+  </AnchoredSurface>;
 }
 
 function SettingsDialog({
@@ -1014,6 +1094,30 @@ function SettingsDialog({
   );
 }
 
+function SavedFilterEditorDialog({ initial, onClose, onSave, returnFocusRef }: {
+  initial: OddsMatcherSavedFilter | null;
+  onClose: () => void;
+  onSave: (name: string, description: string) => Promise<boolean>;
+  returnFocusRef: RefObject<HTMLElement | null>;
+}) {
+  const [name, setName] = useState(initial?.name ?? "");
+  const [description, setDescription] = useState(initial?.description ?? "");
+  const [state, setState] = useState<"idle" | "saving" | "error">("idle");
+  const save = async () => {
+    if (!name.trim()) { setState("error"); return; }
+    setState("saving");
+    if (await onSave(name.trim(), description.trim())) onClose();
+    else setState("error");
+  };
+  return <AnchoredSurface className="oddsmatcher-filter-editor-dialog" label={initial ? `Edit ${initial.name}` : "Save filter preset"} onClose={onClose} returnFocusRef={returnFocusRef}>
+    <header className="oddsmatcher-popover-heading"><div><span className="eyebrow">Reusable opportunity filter</span><strong>{initial ? "Edit saved filter" : "Save as…"}</strong></div><button aria-label="Close saved filter editor" className="icon-button compact-action" onClick={onClose} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button></header>
+    <label className="field-control"><span>Name</span><input maxLength={80} onChange={(event) => setName(event.target.value)} value={name} /></label>
+    <label className="field-control"><span>Description <small>(optional)</small></span><textarea maxLength={240} onChange={(event) => setDescription(event.target.value)} rows={3} value={description} /></label>
+    {state === "error" ? <p className="error-text" role="alert">Use a unique name. The existing saved filters were not changed.</p> : null}
+    <footer className="oddsmatcher-popover-footer"><button className="button-link" onClick={onClose} type="button">Cancel</button><button aria-busy={state === "saving"} className="modal-primary-button" disabled={state === "saving"} onClick={() => void save()} type="button">{state === "saving" ? "Saving…" : initial ? "Save changes" : "Save preset"}</button></footer>
+  </AnchoredSurface>;
+}
+
 function SavedFiltersDialog({ activeId, filters, onClose, onLoad, onSave, onSetActive, preferences, returnFocusRef }: {
   activeId: string | null;
   filters: OddsMatcherFilters;
@@ -1024,20 +1128,15 @@ function SavedFiltersDialog({ activeId, filters, onClose, onLoad, onSave, onSetA
   preferences: OddsMatcherPreferences;
   returnFocusRef: RefObject<HTMLButtonElement | null>;
 }) {
-  const [name, setName] = useState("");
-  const [renames, setRenames] = useState<Record<string,string>>({});
+  const [editing, setEditing] = useState<OddsMatcherSavedFilter | "new" | null>(null);
   const [error, setError] = useState("");
+  const editorTriggerRef = useRef<HTMLElement>(null);
+  const active = preferences.saved_filters.find((item) => item.id === activeId) ?? null;
+  const activeModified = Boolean(active && JSON.stringify(active.filters) !== JSON.stringify(filters));
   const persist = async (savedFilters: OddsMatcherSavedFilter[]) => {
     setError("");
     try { return await onSave({...preferences,saved_filters:savedFilters}); }
     catch { setError("Saved filters could not be updated. Existing presets remain unchanged."); return null; }
-  };
-  const saveAs = async () => {
-    const cleaned = name.trim();
-    if (!cleaned) { setError("Enter a unique preset name."); return; }
-    const created: OddsMatcherSavedFilter = { id:`filter-${crypto.randomUUID()}`, name:cleaned, filters };
-    const saved = await persist([...preferences.saved_filters,created]);
-    if (saved) { onSetActive(created.id); setName(""); }
   };
   const saveCurrent = async () => {
     if (!activeId) return;
@@ -1047,11 +1146,32 @@ function SavedFiltersDialog({ activeId, filters, onClose, onLoad, onSave, onSetA
     const saved = await persist(preferences.saved_filters.filter((item) => item.id !== id));
     if (saved && activeId === id) onSetActive(null);
   };
-  return <ModalBoundary onDismiss={onClose} returnFocusRef={returnFocusRef}><div className="modal-backdrop" onClick={onClose}><section aria-label="My Oddsmatcher filters" aria-modal="true" className="modal-panel oddsmatcher-saved-filters-dialog stack" data-pd-id="oddsmatcher.saved-filters" onClick={(event) => event.stopPropagation()} role="dialog"><header className="calculator-panel-heading-row"><div><span className="eyebrow">Reusable opportunity filters</span><h2>My Filters</h2></div><button aria-label="Close My Filters" className="modal-close-button" onClick={onClose} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button></header><div className="stack">
-    <div className="oddsmatcher-save-filter-row"><label className="field-control"><span>New preset name</span><input onChange={(event) => setName(event.target.value)} value={name} /></label><button className="modal-primary-button" onClick={() => void saveAs()} type="button">Save as…</button>{activeId ? <button className="button-link" onClick={() => void saveCurrent()} type="button">Save</button> : null}</div>
-    {preferences.saved_filters.length ? <ul className="oddsmatcher-saved-filter-list">{preferences.saved_filters.map((item) => <li className={item.id === activeId ? "is-active" : ""} key={item.id}><span className="table-cell-stack"><strong>{item.name}</strong>{item.id === activeId ? <span>Active preset</span> : null}</span><label className="field-control"><span className="visually-hidden">Rename {item.name}</span><input aria-label={`Rename ${item.name}`} onChange={(event) => setRenames({...renames,[item.id]:event.target.value})} value={renames[item.id] ?? item.name} /></label><div className="table-action-row"><button className="button-link" onClick={() => { onLoad(item); onClose(); }} type="button">Load</button><button className="button-link" onClick={() => void persist(preferences.saved_filters.map((value) => value.id === item.id ? {...value,name:(renames[item.id] ?? item.name).trim()} : value))} type="button">Rename</button><button aria-label={`Delete ${item.name}`} className="table-action-button destructive-action" onClick={() => void deleteFilter(item.id)} type="button"><span aria-hidden="true" className="material-symbols-outlined">delete</span></button></div></li>)}</ul> : <div className="empty-state"><strong>No saved filters</strong><span>Save the current transient filters with a unique name.</span></div>}
-    {error ? <p className="error-text" role="alert">{error}</p> : null}
-  </div></section></div></ModalBoundary>;
+  const saveEditor = async (name: string, description: string) => {
+    if (editing === "new") {
+      const created: OddsMatcherSavedFilter = { id:`filter-${crypto.randomUUID()}`, name, description, filters };
+      const saved = await persist([...preferences.saved_filters, created]);
+      if (!saved) return false;
+      onSetActive(created.id);
+      return true;
+    }
+    if (editing) return Boolean(await persist(preferences.saved_filters.map((item) => item.id === editing.id ? {...item,name,description} : item)));
+    return false;
+  };
+  return <>
+    <AnchoredSurface className="oddsmatcher-saved-filters-menu" label="My Filters" onClose={onClose} returnFocusRef={returnFocusRef}>
+      <header className="oddsmatcher-popover-heading"><div><span className="eyebrow">Reusable opportunity filters</span><strong>My Filters</strong></div><button aria-label="Close My Filters" className="icon-button compact-action" onClick={onClose} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button></header>
+      <div className="oddsmatcher-saved-filter-actions">
+        <button className="modal-primary-button" onClick={(event) => { editorTriggerRef.current = event.currentTarget; setEditing("new"); }} type="button">Save as…</button>
+        <button className="button-link" disabled={!activeId || !activeModified} onClick={() => void saveCurrent()} type="button">Save</button>
+      </div>
+      {preferences.saved_filters.length ? <ul className="oddsmatcher-saved-filter-list">{preferences.saved_filters.map((item) => <li className={item.id === activeId ? "is-active" : ""} key={item.id}>
+        <span className="table-cell-stack"><strong>{item.name}</strong>{item.description ? <span>{item.description}</span> : null}{item.id === activeId ? <span>{activeModified ? "Active preset · modified" : "Active preset"}</span> : null}</span>
+        <div className="table-action-row"><button className="button-link" onClick={() => { onLoad(item); onClose(); }} type="button">Load</button><button aria-label={`Edit ${item.name}`} className="table-action-button" onClick={(event) => { editorTriggerRef.current = event.currentTarget; setEditing(item); }} title="Edit saved filter" type="button"><span aria-hidden="true" className="material-symbols-outlined">edit</span></button><button aria-label={`Delete ${item.name}`} className="table-action-button destructive-action" onClick={() => void deleteFilter(item.id)} title="Delete saved filter" type="button"><span aria-hidden="true" className="material-symbols-outlined">delete</span></button></div>
+      </li>)}</ul> : <div className="empty-state"><strong>No saved filters</strong><span>Save the current transient filters with a unique name.</span></div>}
+      {error ? <p className="error-text" role="alert">{error}</p> : null}
+    </AnchoredSurface>
+    {editing ? <SavedFilterEditorDialog initial={editing === "new" ? null : editing} onClose={() => setEditing(null)} onSave={saveEditor} returnFocusRef={editorTriggerRef} /> : null}
+  </>;
 }
 
 function BetSummaryDialog({
@@ -1069,7 +1189,7 @@ function BetSummaryDialog({
   onClose: () => void;
   opportunity: OddsMatcherOpportunity;
   profileId: string | null;
-  returnFocusRef: RefObject<HTMLButtonElement | null>;
+  returnFocusRef: RefObject<HTMLElement | null>;
 }) {
   const [stake, setStake] = useState(defaultStake);
   const [backOdds, setBackOdds] = useState(opportunity.back.odds);

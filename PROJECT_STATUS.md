@@ -1,5 +1,12 @@
 # Project Status — Plum Duff / OpenForge — Doc ID: PS-CODEX-001
 
+> **CP-085 bounded source verified; local installation pending — 2026-10-25:** Rating and Actions
+> remain contained through the seven-column layout and results change to the established cards at
+> 72rem. Desktop filters and My Filters now use anchored, focus-managed surfaces; saved filters gain
+> backward-compatible optional descriptions within the existing validated v1 JSON contract.
+> Provider, quota, calculations, liquidity, Profile authority and Prospecting behaviour are
+> unchanged. Focused API/component/browser gates pass; owner visual acceptance remains pending.
+
 > **CP-084 bounded correction installed for owner verification — 2026-10-25:** the local source adds the
 > server-validated `oddsmatcher_preferences_json` v1 authority, named saved filters, observed MBB
 > filter families, compact quote/table/card geometry and Material actions without changing provider,

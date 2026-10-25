@@ -107,6 +107,7 @@ def test_oddsmatcher_preferences_round_trip_and_saved_filter_lifecycle(tmp_path:
         "saved_filters": [{
             "id": "filter-001",
             "name": "High rating",
+            "description": "Premier League opportunities above the target rating.",
             "filters": {
                 "competitions": ["soccer_epl"],
                 "minRating": "97",
@@ -117,6 +118,9 @@ def test_oddsmatcher_preferences_round_trip_and_saved_filter_lifecycle(tmp_path:
     saved = client.put("/fund-manager/preferences/oddsmatcher", json=payload)
     assert saved.status_code == 200
     assert saved.json()["saved_filters"][0]["name"] == "High rating"
+    assert saved.json()["saved_filters"][0]["description"] == (
+        "Premier League opportunities above the target rating."
+    )
     assert TestClient(app).get("/fund-manager/preferences/oddsmatcher").json() == saved.json()
 
     renamed = saved.json()
@@ -126,6 +130,30 @@ def test_oddsmatcher_preferences_round_trip_and_saved_filter_lifecycle(tmp_path:
     deleted = client.put("/fund-manager/preferences/oddsmatcher", json=renamed)
     assert deleted.status_code == 200
     assert deleted.json()["saved_filters"] == []
+
+
+def test_oddsmatcher_preferences_accept_legacy_filter_without_description(
+    tmp_path: Path,
+) -> None:
+    configure_temp_settings(tmp_path)
+    client = TestClient(app)
+    base = client.get("/fund-manager/preferences/oddsmatcher").json()
+
+    saved = client.put(
+        "/fund-manager/preferences/oddsmatcher",
+        json={
+            **base,
+            "saved_filters": [{
+                "id": "filter-legacy-001",
+                "name": "Legacy filter",
+                "filters": {"minRating": "97"},
+            }],
+        },
+    )
+
+    assert saved.status_code == 200
+    assert saved.json()["version"] == 1
+    assert saved.json()["saved_filters"][0]["description"] == ""
 
 
 def test_oddsmatcher_preferences_reject_invalid_contracts(tmp_path: Path) -> None:
@@ -139,6 +167,18 @@ def test_oddsmatcher_preferences_reject_invalid_contracts(tmp_path: Path) -> Non
     assert client.put(
         "/fund-manager/preferences/oddsmatcher",
         json={**base, "exchange_commission_overrides": {"smarkets": "2"}},
+    ).status_code == 422
+    assert client.put(
+        "/fund-manager/preferences/oddsmatcher",
+        json={
+            **base,
+            "saved_filters": [{
+                "id": "filter-001",
+                "name": "Description too long",
+                "description": "x" * 241,
+                "filters": {},
+            }],
+        },
     ).status_code == 422
     assert client.put(
         "/fund-manager/preferences/oddsmatcher",

@@ -110,6 +110,7 @@ export const emptyOddsMatcherFilters: OddsMatcherFilters = {
 export type OddsMatcherSavedFilter = {
   id: string;
   name: string;
+  description?: string;
   filters: OddsMatcherFilters;
 };
 
@@ -139,6 +140,15 @@ export type OpportunitySort = {
   key: "rating" | "start" | "event";
   direction: "asc" | "desc";
 };
+
+export function oddsMatcherRatingTone(value: string): "arb" | "strong" | "positive" | "caution" | "low" {
+  const rating = Number(value);
+  if (rating > 100) return "arb";
+  if (rating >= 97) return "strong";
+  if (rating >= 94) return "positive";
+  if (rating >= 90) return "caution";
+  return "low";
+}
 
 export function filterAndSortOpportunities(
   rows: OddsMatcherOpportunity[],

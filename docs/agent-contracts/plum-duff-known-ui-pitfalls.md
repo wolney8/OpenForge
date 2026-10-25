@@ -1445,3 +1445,10 @@ Keep routine eligibility prose outside the fixed quote-body geometry. Quote bloc
 second level for odds and, for lay quotes, liquidity; only an actual ineligibility/restriction may
 add compact adjacent evidence. Percentage-labelled commission fields must reuse `CommissionInput`
 so the UI displays percent while persisted/calculator state remains the canonical 0–1 ratio.
+
+## Anchored surfaces must fit their measured viewport placement
+
+Do not give an anchored menu a CSS width that overrides the placement layer's clamped inline width.
+That mismatch can move the close control beyond the viewport even when the anchor calculation is
+correct. Cap the surface with `min(…, calc(100vw - 2rem))`, use the computed layer width, and verify
+both the surface and every dismiss action at the narrowest supported desktop anchor position.

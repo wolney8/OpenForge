@@ -3,6 +3,7 @@ import {
   emptyOddsMatcherFilters,
   filterAndSortOpportunities,
   isManualQuote,
+  oddsMatcherRatingTone,
   opportunityCopyText,
   type OddsMatcherOpportunity,
 } from "./oddsmatcher";
@@ -91,5 +92,14 @@ describe("Oddsmatcher filters", () => {
     expect(isManualQuote(value, "4.5", "4.7")).toBe(false);
     expect(isManualQuote(value, "4.6", "4.7")).toBe(true);
     expect(opportunityCopyText(value)).toContain("Liquidity unknown");
+  });
+
+  it("uses the governed percentage-only rating bands", () => {
+    expect(oddsMatcherRatingTone("100.01")).toBe("arb");
+    expect(oddsMatcherRatingTone("100.00")).toBe("strong");
+    expect(oddsMatcherRatingTone("97.00")).toBe("strong");
+    expect(oddsMatcherRatingTone("96.99")).toBe("positive");
+    expect(oddsMatcherRatingTone("93.99")).toBe("caution");
+    expect(oddsMatcherRatingTone("89.99")).toBe("low");
   });
 });

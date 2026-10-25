@@ -294,3 +294,19 @@ This addendum supersedes the older public/non-Profile assumptions above only for
   executable depth.
 - Clear removes transient filter state without changing Profile context, persisted settings or the
   provider snapshot. Search/filter/settings changes do not trigger provider refresh.
+
+## 25. CP-085 interaction and saved-filter description addendum
+
+- Desktop Selection, Start time, Back, Lay, Rating and My Filters controls open anchored,
+  focus-managed surfaces. Narrow layouts reuse the same filter state in one contained sheet.
+- Active-filter counts sit inline with their labels. Clear removes transient criteria without
+  changing Profile context, settings, the active provider snapshot or provider quota.
+- Result-row activation opens Bet Summary, while links, buttons and form controls retain their own
+  actions. Enter and Space provide the same row activation for keyboard users.
+- Rating pills contain only the percentage. Values above 100% use the arb/danger treatment;
+  97–100% use strong-positive treatment; 94–96.99%, 90–93.99% and below 90% retain the governed
+  positive, caution and low-priority bands.
+- The seven-column table changes to opportunity cards at 72rem, before Rating or Actions can clip.
+- Version 1 saved-filter entries may include an optional, whitespace-normalised description of at
+  most 240 characters. Missing descriptions from existing v1 payloads read as an empty string, so
+  no SQL migration or version guess is required.

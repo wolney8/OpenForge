@@ -280,3 +280,19 @@ compact Plum Duff row remains about 12% taller to retain 44px actions and Materi
 The additive preference field and bounded UI are installed locally; owner visual acceptance remains
 **UNVERIFIED**. Free Bet mode, live liquidity, auto-refresh, direct placement, additional markets
 and Bet Summary visual acceptance remain outside this correction.
+
+## CP-085 interaction and containment correction — 2026-10-25
+
+The existing provider, ranking, calculation and Prospecting boundaries are unchanged. The desktop
+table now reserves explicit space for Rating and Actions and changes to the established opportunity
+card hierarchy at 72rem. Rating pills contain the percentage only. Clicking or keyboard-activating
+a non-interactive part of a result opens Bet Summary; child actions remain independent.
+
+Selection, Start time, Back, Lay and Rating use anchored desktop surfaces with inline active counts.
+My Filters uses an anchored preset menu with deterministic load, update, rename and delete. Save
+as uses a compact Name plus optional Description editor. Descriptions extend the existing validated
+version 1 preference contract and remain backward compatible with v1 entries that omit them.
+
+Private browser captures, responsive geometry and the retained MBB-relative comparison are under
+`data/private/evidence/cp085-oddsmatcher-parity-20261025/`. Automated evidence is verified; owner
+visual acceptance remains **UNVERIFIED**.

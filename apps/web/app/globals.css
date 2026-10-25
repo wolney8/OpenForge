@@ -7378,6 +7378,7 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
 .filter-chip { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; min-height: 44px; padding: 0.5rem 0.8rem; border: 1px solid var(--outline); border-radius: var(--shape-full); background: var(--surface-container); color: var(--text); font: inherit; font-weight: 750; cursor: pointer; }
 .filter-chip:hover, .filter-chip:focus-visible, .filter-chip.is-active { border-color: var(--primary); background: var(--primary-soft); color: var(--primary-strong); }
 .filter-chip .material-symbols-outlined { font-size: 1.15rem; }
+.filter-chip .table-filter-badge { position: static; flex: 0 0 auto; min-width: 1.25rem; height: 1.25rem; line-height: 1.25rem; box-shadow: none; }
 .oddsmatcher-mobile-filter { display: none; }
 
 .oddsmatcher-boundary-note {
@@ -7417,16 +7418,20 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
 }
 
 .oddsmatcher-table th:nth-child(1) { width: 9%; }
-.oddsmatcher-table th:nth-child(2) { width: 25%; }
-.oddsmatcher-table th:nth-child(3) { width: 20%; }
+.oddsmatcher-table th:nth-child(2) { width: 24%; }
+.oddsmatcher-table th:nth-child(3) { width: 18%; }
 .oddsmatcher-table th:nth-child(4),
 .oddsmatcher-table th:nth-child(5) { width: 14%; }
-.oddsmatcher-table th:nth-child(6) { width: 11%; }
-.oddsmatcher-table th:nth-child(7) { width: 7%; }
+.oddsmatcher-table th:nth-child(6) { width: 12%; }
+.oddsmatcher-table th:nth-child(7) { width: 9%; }
 .data-table.oddsmatcher-table th { padding: 0.58rem 0.4rem; }
 .data-table.oddsmatcher-table td { padding: 1.55rem 0.4rem; }
 .oddsmatcher-table td { white-space: normal; }
-.oddsmatcher-table td:last-child { overflow: visible; }
+.oddsmatcher-table td:last-child { overflow: hidden; }
+.oddsmatcher-clickable-row { cursor: pointer; }
+.oddsmatcher-clickable-row:focus-visible,
+.oddsmatcher-opportunity-card:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: -3px; }
+.oddsmatcher-clickable-row:hover { background: var(--surface-container); }
 
 .oddsmatcher-table tr.is-muted {
   background: color-mix(in srgb, var(--surface-container) 70%, transparent);
@@ -7538,7 +7543,7 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
   font-weight: 850;
   white-space: nowrap;
 }
-.oddsmatcher-rating-arb { border-color: var(--success); background: color-mix(in srgb, var(--success) 28%, var(--surface)); color: var(--success-strong); }
+.oddsmatcher-rating-arb { border-color: var(--danger); background: color-mix(in srgb, var(--danger) 15%, var(--surface)); color: var(--danger); }
 .oddsmatcher-rating-strong { border-color: color-mix(in srgb, var(--success) 78%, var(--outline)); background: color-mix(in srgb, var(--success) 19%, var(--surface)); }
 .oddsmatcher-rating-positive { border-color: color-mix(in srgb, var(--success) 52%, var(--outline)); background: color-mix(in srgb, var(--success) 11%, var(--surface)); }
 .oddsmatcher-rating-caution { border-color: var(--warning); background: color-mix(in srgb, var(--warning) 16%, var(--surface)); }
@@ -7572,28 +7577,40 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
 .oddsmatcher-filter-subgroup { display: grid; gap: 0.45rem; }
 .filter-option-grid { display: flex; flex-wrap: wrap; gap: 0.45rem; }
 .oddsmatcher-filter-dialog .toggle-row,
+.oddsmatcher-filter-popover .toggle-row,
 .oddsmatcher-settings-dialog .toggle-row {
   display: flex;
   align-items: flex-start;
   gap: 0.6rem;
 }
 .oddsmatcher-filter-dialog .toggle-row > input,
+.oddsmatcher-filter-popover .toggle-row > input,
 .oddsmatcher-settings-dialog .toggle-row > input { margin-top: 0.2rem; }
 .oddsmatcher-filter-dialog .toggle-row > span,
+.oddsmatcher-filter-popover .toggle-row > span,
 .oddsmatcher-settings-dialog .toggle-row > span { display: grid; gap: 0.18rem; }
 .oddsmatcher-filter-dialog .toggle-row small,
+.oddsmatcher-filter-popover .toggle-row small,
 .oddsmatcher-settings-dialog .toggle-row small { color: var(--muted); line-height: 1.35; }
 .choice-chip { display: inline-flex; align-items: center; min-height: 2.5rem; cursor: pointer; }
 .choice-chip input { position: absolute; opacity: 0; pointer-events: none; }
 .choice-chip span { display: inline-flex; align-items: center; min-height: 2.5rem; padding: 0.35rem 0.7rem; border: 1px solid var(--outline); border-radius: var(--shape-full); background: var(--surface-container); }
 .choice-chip input:checked + span { border-color: var(--primary); background: var(--primary-soft); color: var(--primary-strong); }
 .choice-chip input:focus-visible + span { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
-.oddsmatcher-settings-dialog,
-.oddsmatcher-saved-filters-dialog { width: min(46rem, calc(100dvw - 2rem)); max-height: calc(100dvh - 2rem); overflow: hidden; }
+.oddsmatcher-settings-dialog { width: min(46rem, calc(100dvw - 2rem)); max-height: calc(100dvh - 2rem); overflow: hidden; }
 .oddsmatcher-settings-body { min-height: 0; overflow: auto; }
-.oddsmatcher-save-filter-row { display: grid; grid-template-columns: minmax(14rem,1fr) auto auto; gap: 0.55rem; align-items: end; }
+.oddsmatcher-anchored-layer { position: fixed; inset: 0; z-index: 80; pointer-events: auto; }
+.oddsmatcher-anchored-surface { position: fixed; display: grid; gap: 0.75rem; overflow: auto; padding: 0.75rem; border: 1px solid var(--outline); border-radius: var(--shape-large); background: var(--surface-strong); box-shadow: var(--floating-nav-shadow); }
+.oddsmatcher-popover-heading { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; position: sticky; top: -0.75rem; z-index: 1; margin: -0.75rem -0.75rem 0; padding: 0.65rem 0.75rem; background: var(--surface-strong); border-bottom: 1px solid var(--outline); }
+.oddsmatcher-popover-heading > div { display: grid; gap: 0.15rem; min-width: 0; }
+.oddsmatcher-popover-footer { display: flex; justify-content: flex-end; position: sticky; bottom: -0.75rem; margin: 0 -0.75rem -0.75rem; padding: 0.65rem 0.75rem; background: var(--surface-strong); border-top: 1px solid var(--outline); }
+.oddsmatcher-filter-popover .oddsmatcher-filter-sections { max-height: none; }
+.oddsmatcher-filter-popover .oddsmatcher-filter-group { border: 0; padding: 0; }
+.oddsmatcher-saved-filters-menu { min-width: 0; }
+.oddsmatcher-saved-filter-actions { display: flex; align-items: center; gap: 0.5rem; }
+.oddsmatcher-filter-editor-dialog { width: min(28rem, calc(100dvw - 2rem)); }
 .oddsmatcher-saved-filter-list { display: grid; gap: 0.55rem; margin: 0; padding: 0; list-style: none; }
-.oddsmatcher-saved-filter-list li { display: grid; grid-template-columns: minmax(8rem,0.8fr) minmax(12rem,1fr) auto; gap: 0.55rem; align-items: center; padding: 0.55rem; border: 1px solid var(--outline); border-radius: var(--shape-medium); }
+.oddsmatcher-saved-filter-list li { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 0.55rem; align-items: center; padding: 0.55rem; border: 1px solid var(--outline); border-radius: var(--shape-medium); }
 .oddsmatcher-saved-filter-list li.is-active { border-color: var(--primary); background: var(--primary-soft); }
 
 .oddsmatcher-summary-dialog {
@@ -7635,6 +7652,8 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
 
 @media (max-width: 72rem) {
   .oddsmatcher-primary-toolbar { grid-template-columns: auto minmax(12rem, 1fr) auto; }
+  .oddsmatcher-desktop-results { display: none; }
+  .oddsmatcher-mobile-results { display: grid; gap: 0.75rem; }
 }
 
 @media (max-width: 64rem) {
@@ -7653,10 +7672,7 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
   .oddsmatcher-desktop-filters { display: none; }
   .oddsmatcher-mobile-filter { display: inline-flex; }
   .oddsmatcher-filter-utilities { justify-content: flex-end; }
-  .oddsmatcher-desktop-results { display: none; }
-  .oddsmatcher-mobile-results { display: grid; gap: 0.75rem; }
   .oddsmatcher-filter-fields { grid-template-columns: minmax(0, 1fr); }
-  .oddsmatcher-save-filter-row,
   .oddsmatcher-saved-filter-list li { grid-template-columns: minmax(0,1fr); }
   .oddsmatcher-summary-dialog {
     height: calc(100dvh - 1rem);
@@ -7664,7 +7680,7 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
   }
 }
 
-@media (min-width: 36rem) and (max-width: 64rem) {
+@media (min-width: 36rem) and (max-width: 72rem) {
   .oddsmatcher-opportunity-card { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: end; gap: 0.4rem; padding: 0.6rem; }
   .oddsmatcher-card-topline,
   .oddsmatcher-card-eventline { grid-column: 1 / -1; }

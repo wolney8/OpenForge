@@ -520,3 +520,20 @@ truth remain outside it. Normalized private comparison and the fail-closed UI ga
 bounded change was installed after verified backup `BACKUP-51838512`; SQLite integrity, foreign
 keys, database fingerprint and all 29 financial controls are unchanged. Owner visual acceptance
 remains pending.
+
+## CP-085 Oddsmatcher interaction and containment correction — 2026-10-25
+
+| ID | Surface | Requested behaviour | Signed-off equivalent | Status |
+| --- | --- | --- | --- | --- |
+| PD-FIX-364 / #54 | Rating and Actions columns | Keep both columns contained and switch to cards before either clips | CP-084 measured table plus retained MBB responsive hierarchy | IN PROGRESS |
+| PD-FIX-365 / #54 | Rating presentation | Percentage-only pill with governed red/green/lower bands | Existing Oddsmatcher rating authority and semantic status tokens | IN PROGRESS |
+| PD-FIX-366 / #54 | Opportunity rows | Row activation opens Bet Summary while interactive descendants retain their own actions | Existing selectable-row keyboard pattern and Bet Summary authority | IN PROGRESS |
+| PD-FIX-367 / #54 | Desktop filters | Inline count badges and anchored Selection, Start time, Back, Lay and Rating dropdowns | Retained CP-081A MBB interaction evidence and Plum Duff anchored menus | IN PROGRESS |
+| PD-FIX-368 / #54 | Filter utilities | Clear transient filters only; Refresh is icon-only | Existing client-filter authority and shared icon-button treatment | IN PROGRESS |
+| PD-FIX-369 / #54 | My Filters | Anchored preset menu with load, update, edit and delete | Existing server-owned Oddsmatcher preference authority | IN PROGRESS |
+| PD-FIX-370 / #54 | Save as preset | Small Name and optional Description dialog | Existing compact confirmation/form dialog pattern | IN PROGRESS |
+| PD-FIX-371 / #54 | Saved-filter contract | Backward-compatible optional descriptions in versioned preferences JSON without SQL migration | Existing `oddsmatcher_preferences_json` v1 validation boundary | IN PROGRESS |
+| PD-FIX-372 / #54 | CP-085 evidence/install | Responsive threshold tests, private MBB comparison, backup and canonical local installation | UI consistency gate and normal-owner install procedure | IN PROGRESS |
+
+This batch does not change provider fetching, calculations, Profile Operations, workbook behaviour,
+Accounts, markets, liquidity authority, placement boundaries or ledger mutation semantics.
