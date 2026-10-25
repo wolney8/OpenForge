@@ -274,6 +274,9 @@ Profile is selected. Malformed or unknown persisted structures fail closed for r
 
 Plum Duff private captures and computed geometry are under
 `data/private/evidence/cp084-oddsmatcher-parity-20261025/`. The promised current MBB desktop and
-narrow references have not yet been supplied, so the required measured reference delta and local
-installation remain **UNVERIFIED**. Free Bet mode, live liquidity, auto-refresh, direct placement,
-additional markets and Bet Summary visual acceptance remain outside this correction.
+narrow references were compared using relative proportions because the chat client resized the
+source images. Row, column, quote, gap and rating proportions meet the bounded comparison; the
+compact Plum Duff row remains about 12% taller to retain 44px actions and Material card padding.
+The additive preference field and bounded UI are installed locally; owner visual acceptance remains
+**UNVERIFIED**. Free Bet mode, live liquidity, auto-refresh, direct placement, additional markets
+and Bet Summary visual acceptance remain outside this correction.
