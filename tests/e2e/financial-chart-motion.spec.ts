@@ -3,7 +3,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 const profileId = "profile-demo-001";
-const cp082Evidence = path.resolve("data/private/evidence/cp082-owner-smoke-20261024");
+const cp082Evidence = path.resolve("data/private/evidence/cp083-visual-parity-20261025");
 
 test.beforeEach(async ({ page, baseURL }) => {
   const sessionToken = process.env.OPENFORGE_E2E_SESSION_TOKEN;
@@ -132,6 +132,7 @@ test("dashboard containers coordinate financial, bar, and ring replay without la
   const targetValue = targetCard.locator(".financial-value").first();
   const performanceCard = page.locator('[data-pd-id="dashboard.selected-range-performance"]');
   const performanceGraph = performanceCard.locator(".dashboard-chart-figure");
+  await expect(performanceCard).toHaveAttribute("data-performance-state", "chart");
   await performanceCard.screenshot({ path: path.join(cp082Evidence, "A-profile-performance-chart-desktop.png") });
   for (const width of [1440, 1100, 900, 760, 430]) {
     await page.setViewportSize({ width, height: 900 });
@@ -146,6 +147,7 @@ test("dashboard containers coordinate financial, bar, and ring replay without la
   const focusRing = focusCard.locator('[data-progress-motion]');
   await expect(targetBar).toHaveAttribute("data-progress-motion", "settled", { timeout: 5_000 });
   await page.waitForTimeout(1_600);
+  await performanceCard.screenshot({ path: path.join(cp082Evidence, "A-profile-performance-chart-desktop.png") });
 
   await targetCard.hover();
   await expect(targetBar).toHaveAttribute("data-progress-motion", "running");
@@ -174,7 +176,7 @@ test("dashboard containers coordinate financial, bar, and ring replay without la
   const chartDuration = Number.parseFloat(await targetBar.evaluate((bar) => getComputedStyle(bar).animationDuration));
   expect(chartDuration).toBeGreaterThanOrEqual(1);
 
-  const trendPoints = performanceGraph.locator(".dashboard-sparkline-point");
+  const trendPoints = performanceGraph.locator(".dashboard-chart-hit-target");
   expect(await trendPoints.count()).toBeGreaterThan(0);
   const firstPoint = trendPoints.last();
   const firstPointName = await firstPoint.getAttribute("aria-label");
@@ -188,10 +190,10 @@ test("dashboard containers coordinate financial, bar, and ring replay without la
   expect(chartBoundsAfter?.width).toBe(chartBoundsBefore?.width);
   expect(chartBoundsAfter?.height).toBe(chartBoundsBefore?.height);
   await firstPoint.press("Enter");
-  await expect(firstPoint).toHaveClass(/is-selected/);
-  const pointRecords = performanceCard.locator('[data-pd-id="dashboard.chart.drilldown"]');
+  await expect(performanceGraph.locator(".dashboard-sparkline-active-point")).toBeVisible();
+  const pointRecords = page.locator('[data-pd-id="dashboard.chart.drilldown"]');
   await expect(pointRecords).toBeVisible();
-  await expect(pointRecords.getByRole("heading", { name: "Records in this point" })).toBeVisible();
+  await expect(pointRecords.getByText("Selected period", { exact: true })).toBeVisible();
   await expect(pointRecords.getByRole("link")).toHaveCount(3);
   await expect(pointRecords.getByRole("button", { name: /View all \d+ records/ })).toBeVisible();
   await page.keyboard.press("Escape");
@@ -208,7 +210,7 @@ test("dashboard containers coordinate financial, bar, and ring replay without la
   await expect(page).toHaveURL(/sportsbook-bets\?search=MOTION-SB-001&source=report-point$/);
   await expect(page.getByRole("heading", { name: "Sportsbook Bets" })).toBeVisible();
   await page.goBack();
-  await expect(performanceCard.locator('[data-pd-id="dashboard.chart.drilldown"]')).toBeVisible();
+  await expect(page.locator('[data-pd-id="dashboard.chart.drilldown"]')).toBeVisible();
 
   const uncoveredMotionCards = await page.locator("article.dashboard-visual-card").evaluateAll((cards) =>
     cards
@@ -292,6 +294,35 @@ test("financial motion preference off keeps chart progress at its exact final st
   await card.click({ position: { x: 18, y: 18 } });
   await expect(bar).toHaveAttribute("data-progress-motion-cycle", "0");
   expect(await bar.evaluate((element) => getComputedStyle(element).width)).not.toBe("0px");
+});
+
+test("performance no-activity and unavailable states stay compact and omit the plot", async ({ page }) => {
+  await mockDashboard(page, false);
+  const emptySource = {
+    accounts: [], balance_snapshots: [], casino_offers: [], cash_adjustments: [],
+    each_way_extra_places: [], fee_periods: [], free_bets: [], sportsbook_bets: [],
+    tracker_settings: { active_date_preset: "This Year", annual_profit_target: "200.00", custom_end_date: "", custom_start_date: "", range_back_days: 0, range_forward_days: 0 },
+  };
+  await page.route(`**/profiles/${profileId}/tracker-summary-sources`, (route) => route.fulfill({ json: emptySource }));
+  await page.goto(`/profiles/${profileId}/tracker/dashboard`);
+  await expect(page.getByText("Loading tracker summaries")).toBeHidden({ timeout: 60_000 });
+  const card = page.locator('[data-pd-id="dashboard.selected-range-performance"]');
+  await expect(card).toHaveAttribute("data-performance-state", "no-activity");
+  await expect(card.getByText("No betting activity in this range")).toBeVisible();
+  await expect(card.locator("svg")).toHaveCount(0);
+  expect((await card.boundingBox())?.height).toBeLessThan(360);
+
+  await page.unroute(`**/profiles/${profileId}/tracker-summary-sources`);
+  await page.route(`**/profiles/${profileId}/tracker-summary-sources`, (route) => route.fulfill({ json: {
+    ...emptySource,
+    casino_offers: [{ casino_offer_id: "CASINO-REVIEW-001", bookmaker: "Bookmaker A", offer_name: "Review required", status: "Settled", result: "Completed", date_started: "2026-09-01", date_settling: "2026-09-02", expiry_datetime: "", resolved_net_pnl: null, counts_as_open: false, is_overdue: false, week_label: "2026-W36" }],
+  } }));
+  await page.reload();
+  await expect(page.getByText("Loading tracker summaries")).toBeHidden({ timeout: 60_000 });
+  await expect(card).toHaveAttribute("data-performance-state", "unavailable");
+  await expect(card.getByText("Unavailable", { exact: true })).toBeVisible();
+  await expect(card.locator("svg")).toHaveCount(0);
+  expect((await card.boundingBox())?.height).toBeLessThan(420);
 });
 
 test("a delayed large-data response cannot repaint a newer report surface and recovery keeps the newer state", async ({ page }) => {

@@ -905,7 +905,7 @@ textarea {
   min-width: 0;
 }
 
-.global-search-compact-trigger { display: none; }
+.global-search .global-search-compact-trigger { display: none; }
 
 .global-search-field {
   position: relative;
@@ -2627,6 +2627,16 @@ html[data-theme="dark"] .notification-count-badge {
     );
 }
 
+.dashboard-performance-card.is-compact-state {
+  align-self: start;
+  grid-template-rows: auto auto auto;
+  min-height: 0;
+}
+
+.dashboard-performance-card.is-compact-state .dashboard-performance-content {
+  grid-template-rows: auto;
+}
+
 .dashboard-performance-data,
 .dashboard-performance-content {
   display: grid;
@@ -2659,6 +2669,48 @@ html[data-theme="dark"] .notification-count-badge {
 .dashboard-range-error {
   margin: 0;
 }
+
+.dashboard-readiness-reason {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.dashboard-readiness-issues {
+  max-width: 100%;
+  color: var(--text);
+}
+
+.dashboard-readiness-issues > summary {
+  width: fit-content;
+  min-height: 44px;
+  color: var(--primary-strong);
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.dashboard-readiness-issues ul {
+  display: grid;
+  gap: 0.35rem;
+  max-height: 12rem;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+}
+
+.dashboard-readiness-issues a {
+  display: grid;
+  gap: 0.12rem;
+  min-height: 44px;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--outline);
+  border-radius: var(--shape-small);
+  background: var(--surface-container);
+  color: inherit;
+}
+
+.dashboard-readiness-issues a span { color: var(--muted); font-size: 0.78rem; }
 
 .portfolio-hero-card {
   min-width: 0;
@@ -2778,15 +2830,15 @@ html[data-theme="dark"] .notification-count-badge {
   display: block;
   width: 100%;
   height: 100%;
-  min-height: 10rem;
+  min-height: 13rem;
 }
 
 .dashboard-chart-figure {
   display: grid;
-  grid-template-rows: auto minmax(10rem, 1fr);
-  gap: 0.35rem;
+  grid-template-rows: auto minmax(13rem, 1fr);
+  gap: 0.5rem;
   height: 100%;
-  min-height: 11rem;
+  min-height: 15rem;
   min-width: 0;
   margin: 0;
   position: relative;
@@ -2794,6 +2846,7 @@ html[data-theme="dark"] .notification-count-badge {
 
 .dashboard-chart-plot {
   min-height: 0;
+  padding-bottom: 1.5rem;
   position: relative;
 }
 
@@ -2802,9 +2855,9 @@ html[data-theme="dark"] .notification-count-badge {
   stroke: var(--primary-strong);
   stroke-linecap: round;
   stroke-linejoin: round;
-  stroke-width: 2;
+  stroke-width: 1.65;
   vector-effect: non-scaling-stroke;
-  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--primary) 30%, transparent));
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--primary) 24%, transparent));
 }
 
 .dashboard-chart-crosshair {
@@ -2814,50 +2867,85 @@ html[data-theme="dark"] .notification-count-badge {
   vector-effect: non-scaling-stroke;
 }
 
-.dashboard-sparkline-point {
-  cursor: pointer;
-  fill: var(--surface-strong);
-  outline: none;
-  stroke: var(--primary-strong);
-  opacity: 0.32;
-  stroke-width: 1.25;
+.dashboard-chart-zero-line {
+  stroke: color-mix(in srgb, var(--text) 22%, transparent);
+  stroke-width: 1;
   vector-effect: non-scaling-stroke;
 }
 
-.dashboard-sparkline-point:hover,
-.dashboard-sparkline-point:focus-visible,
-.dashboard-sparkline-point.is-selected {
-  fill: var(--primary);
+.dashboard-chart-hit-target {
+  cursor: pointer;
+  fill: transparent;
+  outline: none;
+  stroke: transparent;
+}
+
+.dashboard-chart-hit-target:focus-visible {
+  fill: color-mix(in srgb, var(--primary) 20%, transparent);
   stroke: var(--focus);
-  opacity: 1;
-  stroke-width: 2.25;
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+
+.dashboard-sparkline-active-point {
+  fill: var(--primary);
+  stroke: var(--surface-strong);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
 }
 
 .dashboard-chart-point-detail {
   align-items: baseline;
-  background: var(--surface-container);
-  border: 1px solid var(--outline);
-  border-radius: var(--shape-medium);
   display: inline-flex;
   gap: 0.65rem;
   margin: 0;
-  padding: 0.35rem 0.6rem;
   justify-self: start;
 }
 
 .dashboard-chart-drilldown {
-  inset: 3.25rem 0.75rem auto auto;
+  position: fixed;
   margin: 0;
-  max-height: min(18rem, calc(100% - 4rem));
-  max-width: min(28rem, calc(100% - 1.5rem));
+  max-height: min(20rem, calc(100dvh - 2rem));
+  max-width: min(28rem, calc(100dvw - 2rem));
   overflow: auto;
-  padding: 0.75rem;
-  position: absolute;
-  width: 100%;
-  z-index: 4;
+  padding: 0.85rem;
+  width: min(28rem, calc(100dvw - 2rem));
+  z-index: 90;
   border: 1px solid var(--outline-variant);
   border-radius: var(--shape-medium);
-  background: var(--surface-container-low);
+  background: var(--surface-strong);
+  box-shadow: var(--shadow);
+}
+
+.dashboard-chart-tooltip {
+  position: absolute;
+  z-index: 2;
+  display: grid;
+  gap: 0.05rem;
+  min-width: max-content;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--outline);
+  border-radius: var(--shape-small);
+  background: color-mix(in srgb, var(--surface-strong) 94%, transparent);
+  box-shadow: var(--shadow);
+  font-size: 0.76rem;
+  pointer-events: none;
+  transform: translate(-50%, calc(-100% - 0.55rem));
+}
+
+.dashboard-chart-tooltip span { color: var(--muted); }
+
+.dashboard-chart-axis {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  justify-content: space-between;
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  pointer-events: none;
 }
 
 @media (max-width: 34rem) {
@@ -2892,23 +2980,6 @@ html[data-theme="dark"] .notification-count-badge {
   font-weight: 750;
 }
 
-.dashboard-sparkline.is-progress-replaying .dashboard-sparkline-area {
-  animation: dashboard-graph-area-reveal var(--progress-motion-duration, 1020ms)
-    cubic-bezier(0.25, 1.35, 0.5, 1) both;
-  transform-box: fill-box;
-  transform-origin: left center;
-}
-
-.dashboard-sparkline.is-progress-replaying .dashboard-sparkline-line {
-  animation: dashboard-graph-line-reveal var(--progress-motion-duration, 1020ms)
-    cubic-bezier(0.25, 1.35, 0.5, 1) both;
-  stroke-dasharray: 1;
-}
-
-@keyframes dashboard-graph-area-reveal {
-  from { opacity: 0; transform: scaleX(0); }
-  to { opacity: 1; transform: scaleX(1); }
-}
 
 @keyframes dashboard-graph-line-reveal {
   from { stroke-dashoffset: 1; }
@@ -7317,7 +7388,8 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
   color: var(--text);
   display: grid;
   gap: 0.25rem;
-  padding: 0.75rem 1rem;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.84rem;
 }
 
 .oddsmatcher-coverage {
@@ -7326,7 +7398,8 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem 1rem;
-  padding: 0.55rem 0.75rem;
+  padding: 0.4rem 0.65rem;
+  font-size: 0.8rem;
   border-block: 1px solid var(--outline);
 }
 
@@ -7338,30 +7411,126 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
 }
 
 .oddsmatcher-table {
-  min-width: 68rem;
+  min-width: 62rem;
+  table-layout: fixed;
 }
 
-.oddsmatcher-table td:nth-child(2) {
-  min-width: 14rem;
-  white-space: normal;
-}
-
-.oddsmatcher-table td:last-child {
-  min-width: 10rem;
-}
+.oddsmatcher-table th:nth-child(1) { width: 7rem; }
+.oddsmatcher-table th:nth-child(2) { width: 20%; }
+.oddsmatcher-table th:nth-child(3) { width: 12%; }
+.oddsmatcher-table th:nth-child(4),
+.oddsmatcher-table th:nth-child(5) { width: 15%; }
+.oddsmatcher-table th:nth-child(6) { width: 11%; }
+.oddsmatcher-table th:nth-child(7) { width: 6.5rem; }
+.oddsmatcher-table th,
+.oddsmatcher-table td { padding: 0.65rem 0.55rem; }
+.oddsmatcher-table td { white-space: normal; }
+.oddsmatcher-table td:last-child { overflow: visible; }
 
 .oddsmatcher-table tr.is-muted {
   background: color-mix(in srgb, var(--surface-container) 70%, transparent);
 }
 
-.oddsmatcher-quote-block { display: grid; min-width: 8rem; gap: 0.12rem; }
-.oddsmatcher-quote-block small { color: var(--muted); font-size: 0.72rem; font-weight: 800; text-transform: uppercase; }
-.oddsmatcher-quote-block b { font-size: 1.1rem; }
-.oddsmatcher-quote-block > span { max-width: 16rem; color: var(--muted); font-size: 0.76rem; line-height: 1.25; }
+.oddsmatcher-quote-block {
+  display: grid;
+  min-width: 7.6rem;
+  overflow: hidden;
+  border: 1px solid var(--outline);
+  border-radius: 0.72rem;
+  background: var(--surface-container);
+}
+.oddsmatcher-quote-provider {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 1.75rem;
+  align-items: center;
+  min-height: 2rem;
+  gap: 0.15rem;
+  padding: 0.25rem 0.35rem 0.25rem 0.55rem;
+  background: var(--surface-container-high);
+  color: var(--text);
+}
+.oddsmatcher-quote-provider strong {
+  overflow: hidden;
+  font-size: 0.76rem;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.oddsmatcher-quote-provider .table-action-button {
+  min-width: 1.75rem;
+  min-height: 1.75rem;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border-color: transparent;
+  background: color-mix(in srgb, currentColor 10%, transparent);
+  color: inherit;
+}
+.oddsmatcher-quote-provider .material-symbols-outlined { font-size: 0.95rem; }
+.oddsmatcher-quote-price {
+  display: grid;
+  place-items: center;
+  min-height: 3.15rem;
+  gap: 0.12rem;
+  padding: 0.35rem 0.45rem;
+  text-align: center;
+}
+.oddsmatcher-quote-block-back .oddsmatcher-quote-price {
+  background: color-mix(in srgb, var(--success) 16%, var(--surface-strong));
+}
+.oddsmatcher-quote-block-lay .oddsmatcher-quote-price {
+  background: var(--lay-panel-bg);
+}
+.oddsmatcher-quote-price b { font-size: 1.15rem; line-height: 1; }
+.oddsmatcher-quote-price small {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.15;
+}
+.oddsmatcher-event-cell {
+  display: grid;
+  grid-template-columns: 1.8rem minmax(0, 1fr);
+  align-items: start;
+  gap: 0.45rem;
+  min-width: 0;
+}
+.oddsmatcher-event-icon {
+  display: grid;
+  place-items: center;
+  width: 1.8rem;
+  height: 1.8rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--primary) 14%, var(--surface-container));
+  color: var(--primary-strong);
+  font-size: 1.1rem;
+}
+.oddsmatcher-rating-cell { align-items: flex-start; }
+.oddsmatcher-rating-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  min-height: 1.75rem;
+  padding: 0.2rem 0.55rem;
+  border: 1px solid var(--outline);
+  border-radius: 999px;
+  background: var(--surface-container-high);
+  color: var(--text);
+  font-size: 0.8rem;
+  font-weight: 850;
+  white-space: nowrap;
+}
+.oddsmatcher-rating-arb { border-color: var(--success); background: color-mix(in srgb, var(--success) 28%, var(--surface)); color: var(--success-strong); }
+.oddsmatcher-rating-strong { border-color: color-mix(in srgb, var(--success) 78%, var(--outline)); background: color-mix(in srgb, var(--success) 19%, var(--surface)); }
+.oddsmatcher-rating-positive { border-color: color-mix(in srgb, var(--success) 52%, var(--outline)); background: color-mix(in srgb, var(--success) 11%, var(--surface)); }
+.oddsmatcher-rating-caution { border-color: var(--warning); background: color-mix(in srgb, var(--warning) 16%, var(--surface)); }
+.oddsmatcher-rating-low { color: var(--muted); }
 .oddsmatcher-mobile-results { display: none; }
-.oddsmatcher-opportunity-card { display: grid; gap: 0.75rem; padding: 1rem; border: 1px solid var(--outline); border-radius: var(--shape-large); background: var(--surface-container); }
+.oddsmatcher-opportunity-card { display: grid; gap: 0.75rem; padding: 0.9rem; border: 1px solid var(--outline); border-radius: var(--shape-large); background: var(--surface-container); }
 .oddsmatcher-card-status { display: flex; justify-content: space-between; gap: 0.75rem; align-items: center; }
 .oddsmatcher-card-quotes { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 0.75rem; }
+.oddsmatcher-card-quote { display: grid; gap: 0.3rem; }
 .oddsmatcher-filter-dialog { width: min(38rem, calc(100vw - 2rem)); }
 .oddsmatcher-filter-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
@@ -7406,7 +7575,7 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
   .oddsmatcher-primary-toolbar { grid-template-columns: auto minmax(12rem, 1fr) auto; }
 }
 
-@media (max-width: 48rem) {
+@media (max-width: 64rem) {
   .oddsmatcher-header-actions,
   .oddsmatcher-quote-context {
     align-items: stretch;
@@ -17062,17 +17231,36 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
   }
 }
 
-@media (max-width: 1180px) {
+@media (max-width: 1280px) {
   .top-app-bar {
     grid-template-areas:
-      "brand actions"
-      "profile profile"
-      "search search";
-    grid-template-columns: minmax(0, 1fr) auto;
+      "brand search actions"
+      "profile profile profile";
+    grid-template-columns: minmax(0, 1fr) auto auto;
   }
 
-  .top-app-bar > .global-search {
-    grid-area: search;
+  .top-app-bar:has(.global-search.is-compact-open) {
+    grid-template-areas:
+      "brand actions actions"
+      "profile profile profile"
+      "search search search";
+  }
+
+  .global-search { width: 44px; justify-self: end; }
+  .global-search .global-search-compact-trigger { display: inline-flex; width: 44px; height: 44px; }
+  .global-search-field { display: none; }
+  .global-search.is-compact-open {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr);
+    gap: 0.5rem;
+    width: 100%;
+    justify-self: stretch;
+  }
+  .global-search.is-compact-open .global-search-field { display: block; }
+  .global-search-results {
+    right: 0;
+    left: auto;
+    top: calc(100% + 0.5rem);
   }
 
   .top-bar-profile-context { grid-area: profile; width: 100%; }
@@ -17218,23 +17406,6 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
   .top-bar-actions { gap: 0.35rem; width: auto; }
   .top-bar-actions .icon-button,
   .top-bar-actions button { min-width: 44px; min-height: 44px; }
-
-  .global-search { width: 44px; }
-  .global-search-compact-trigger { display: inline-flex; width: 44px; height: 44px; }
-  .global-search-field { display: none; }
-  .global-search.is-compact-open .global-search-field {
-    display: block;
-    position: absolute;
-    right: 0;
-    top: calc(100% + 0.5rem);
-    width: min(28rem, calc(100vw - 1.5rem));
-    padding: 0.5rem;
-    border: 1px solid var(--outline-strong);
-    border-radius: var(--shape-medium);
-    background: var(--surface-strong);
-    box-shadow: var(--shadow);
-  }
-  .global-search-results { right: 0; left: auto; top: calc(100% + 4.6rem); }
 
   .top-app-bar-public .top-bar-actions {
     width: auto;

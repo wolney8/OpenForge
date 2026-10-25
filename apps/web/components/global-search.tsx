@@ -28,6 +28,8 @@ export function GlobalSearch() {
   const [compactOpen, setCompactOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const compactTriggerRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
     const trimmedQuery = query.trim();
@@ -78,6 +80,18 @@ export function GlobalSearch() {
     return () => document.removeEventListener("mousedown", handlePointerDown);
   }, []);
 
+  useEffect(() => {
+    if (!compactOpen) return;
+    const frame = window.requestAnimationFrame(() => inputRef.current?.focus());
+    return () => window.cancelAnimationFrame(frame);
+  }, [compactOpen]);
+
+  const closeCompactSearch = () => {
+    setIsOpen(false);
+    setCompactOpen(false);
+    window.requestAnimationFrame(() => compactTriggerRef.current?.focus());
+  };
+
   const navigateToResult = async (result: SearchResult) => {
     if (!(await confirmUnsavedTrackerChanges())) return;
     setIsOpen(false);
@@ -93,7 +107,7 @@ export function GlobalSearch() {
 
   return (
     <div className={`global-search${compactOpen ? " is-compact-open" : ""}`} data-pd-id="global-search.root" ref={rootRef} role="search">
-      <button aria-expanded={compactOpen} aria-label={compactOpen ? "Close Plum Duff search" : "Open Plum Duff search"} className="icon-button global-search-compact-trigger" onClick={() => setCompactOpen(current => !current)} type="button"><span aria-hidden="true" className="material-symbols-outlined">{compactOpen ? "close" : "search"}</span></button>
+      <button aria-expanded={compactOpen} aria-label={compactOpen ? "Close Plum Duff search" : "Open Plum Duff search"} className="icon-button global-search-compact-trigger" onClick={() => compactOpen ? closeCompactSearch() : setCompactOpen(true)} ref={compactTriggerRef} type="button"><span aria-hidden="true" className="material-symbols-outlined">{compactOpen ? "close" : "search"}</span></button>
       <label className="field-control table-search-field global-search-field">
         <span className="visually-hidden">Search Plum Duff</span>
         <span aria-hidden="true" className="material-symbols-outlined global-search-leading-icon">search</span>
@@ -129,10 +143,12 @@ export function GlobalSearch() {
               void navigateToResult(results[activeIndex]);
             } else if (event.key === "Escape") {
               event.preventDefault();
-              setIsOpen(false);
+              if (compactOpen) closeCompactSearch();
+              else setIsOpen(false);
             }
           }}
           placeholder="Search Plum Duff"
+          ref={inputRef}
           role="combobox"
           type="search"
           value={query}

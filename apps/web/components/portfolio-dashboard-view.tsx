@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { createPortal } from "react-dom";
 import { ReportPointChart } from "@/components/report-point-chart";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { FinancialValue, FinancialValueReplayGroup } from "@/components/financial-value";
@@ -161,6 +162,8 @@ export function PortfolioDashboardView({
     summary.activityQuickView.casinoCount + summary.activityQuickView.eachWayExtraPlaceCount;
   const performanceAvailable = Number.isFinite(summary.profitQuickView.overallPnl);
   const showPerformanceChart = bettingActivityCount > 0 && performanceAvailable;
+  const pnlReadinessIssues = (summary.financialReadinessIssues ?? []).filter((issue) => issue.kind === "pnl");
+  const liabilityReadinessIssues = (summary.financialReadinessIssues ?? []).filter((issue) => issue.kind === "liability");
   const accountCashIssueCount = currentAccountCashIssueCount(summary.accountQuickView);
   const openPeerBarWidth = clampPercent(
     Math.abs(summary.profitQuickView.openCurrentValue) /
@@ -178,7 +181,10 @@ export function PortfolioDashboardView({
         <FinancialValueReplayGroup>
         <article
           aria-busy={isRangeSaving}
-          className="dashboard-visual-card dashboard-performance-card portfolio-hero-card"
+          className={`dashboard-visual-card dashboard-performance-card portfolio-hero-card ${
+            showPerformanceChart ? "has-chart" : "is-compact-state"
+          }`}
+          data-performance-state={showPerformanceChart ? "chart" : performanceAvailable ? "no-activity" : "unavailable"}
           data-pd-id="dashboard.selected-range-performance"
         >
           <div className="dashboard-visual-header">
@@ -230,7 +236,7 @@ export function PortfolioDashboardView({
                 dataset={dataset}
                 profileId={profileId}
                 range={resolvedRange}
-              /> : !performanceAvailable ? <Link className="report-action-badge" href={overdueHref}>Inspect affected betting records</Link> : null}
+              /> : !performanceAvailable ? <FinancialReadinessIssues issues={pnlReadinessIssues} profileId={profileId} /> : null}
             </div>
             {isRangeSaving ? (
               <LedgerLoadingIndicator
@@ -273,6 +279,8 @@ export function PortfolioDashboardView({
             <span>Settled final <FinancialValue value={summary.profitQuickView.settledFinalValue} /></span>
           </DashboardMetricCard>
           <DashboardMetricCard
+            actionHref={liabilityReadinessIssues[0] ? `/profiles/${profileId}/tracker/${liabilityReadinessIssues[0].module}?search=${encodeURIComponent(liabilityReadinessIssues[0].recordId)}&source=liability-readiness` : undefined}
+            actionLabel={liabilityReadinessIssues.length ? `Review ${liabilityReadinessIssues.length} affected ${liabilityReadinessIssues.length === 1 ? "record" : "records"}` : undefined}
             eyebrow="Liability"
             label="Current liability"
             moneyValue={summary.betsQuickView.currentLiability}
@@ -566,6 +574,29 @@ export function PortfolioDashboardView({
   );
 }
 
+function FinancialReadinessIssues({
+  issues,
+  profileId,
+}: {
+  issues: NonNullable<TrackerSummaryResult["financialReadinessIssues"]>;
+  profileId: string;
+}) {
+  if (!issues.length) {
+    return <p className="dashboard-readiness-reason">Required betting values are unavailable, but no record-level evidence was returned.</p>;
+  }
+  return <details className="dashboard-readiness-issues">
+    <summary>Review {issues.length} affected {issues.length === 1 ? "record" : "records"}</summary>
+    <ul>
+      {issues.map((issue) => <li key={`${issue.kind}-${issue.module}-${issue.recordId}`}>
+        <Link href={`/profiles/${profileId}/tracker/${issue.module}?search=${encodeURIComponent(issue.recordId)}&source=financial-readiness`}>
+          <strong>{issue.recordId}</strong>
+          <span>{issue.field} · {issue.reason}</span>
+        </Link>
+      </li>)}
+    </ul>
+  </details>;
+}
+
 function DashboardMetricCard({
   actionHref,
   actionLabel,
@@ -634,6 +665,7 @@ function DashboardChartSurface({
   const [selectedPointIndex, setSelectedPointIndex] = useState(Math.max(0, points.length - 1));
   const [openPointIndex, setOpenPointIndex] = useState<number | null>(null);
   const [showAllPointRows, setShowAllPointRows] = useState(false);
+  const [popoverPosition, setPopoverPosition] = useState({ left: 16, top: 16, above: false });
   const popoverRef = useRef<HTMLElement>(null);
   const pointTriggerRef = useRef<HTMLElement | SVGElement | null>(null);
   const pointIdentityRef = useRef(points.map((point) => point.key).join("|"));
@@ -677,6 +709,18 @@ function DashboardChartSurface({
   }, [points]);
   useEffect(() => {
     if (openPointIndex === null) return;
+    const position = () => {
+      const bounds = pointTriggerRef.current?.getBoundingClientRect();
+      if (!bounds) return;
+      const width = Math.min(448, window.innerWidth - 32);
+      const above = bounds.top >= 340;
+      setPopoverPosition({
+        left: Math.max(16, Math.min(window.innerWidth - width - 16, bounds.left + bounds.width / 2 - width / 2)),
+        top: above ? bounds.top - 12 : Math.min(window.innerHeight - 320, bounds.bottom + 12),
+        above,
+      });
+    };
+    position();
     const close = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         dismissPointRows(true);
@@ -689,23 +733,38 @@ function DashboardChartSurface({
     };
     document.addEventListener("keydown", close);
     document.addEventListener("pointerdown", outside);
+    window.addEventListener("resize", position);
+    window.addEventListener("scroll", position, true);
     popoverRef.current?.focus();
     return () => {
       document.removeEventListener("keydown", close);
       document.removeEventListener("pointerdown", outside);
+      window.removeEventListener("resize", position);
+      window.removeEventListener("scroll", position, true);
     };
   }, [dismissPointRows, openPointIndex]);
-  return <ReportPointChart area={area} line={line} label={label} points={points}
+  return <><ReportPointChart area={area} line={line} label={label} points={points}
     selectedIndex={index} onSelect={setSelectedPointIndex} onActivate={(nextIndex, trigger) => {
       pointTriggerRef.current = trigger;
       storeOpenPoint(points[nextIndex]?.key ?? null);
       setSelectedPointIndex(nextIndex);
       setOpenPointIndex(nextIndex);
       setShowAllPointRows(false);
-    }}>
-    {openPoint ? <section aria-label={`Records for ${openPoint.label}`} className="dashboard-chart-drilldown" data-pd-id="dashboard.chart.drilldown" ref={popoverRef} tabIndex={-1}>
-      <div className="section-heading-row"><h4>Records in this point</h4><button aria-label="Close point records" className="icon-button icon-button-danger" onClick={() => dismissPointRows(true)} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button></div>
+    }} />
+    {openPoint && typeof document !== "undefined" ? createPortal(<section
+      aria-label={`Records for ${openPoint.label}`}
+      className="dashboard-chart-drilldown"
+      data-pd-id="dashboard.chart.drilldown"
+      ref={popoverRef}
+      style={{
+        left: popoverPosition.left,
+        top: popoverPosition.top,
+        transform: popoverPosition.above ? "translateY(-100%)" : "none",
+      }}
+      tabIndex={-1}
+    >
+      <div className="section-heading-row"><div><span className="eyebrow">Selected period</span><h4>{openPoint.label}</h4></div><button aria-label="Close point records" className="icon-button icon-button-danger" onClick={() => dismissPointRows(true)} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button></div>
       {drilldownRows.length ? <><ul>{drilldownRows.slice(0, showAllPointRows ? drilldownRows.length : 3).map((row) => <li key={`${row.module}-${row.id}`}><Link href={`/profiles/${profileId}/tracker/${row.module}?search=${encodeURIComponent(row.id)}&source=report-point`}><span>{row.label}</span><FinancialValue animate={false} value={row.value} /></Link></li>)}</ul>{drilldownRows.length > 3 && !showAllPointRows ? <button className="button-link" onClick={() => setShowAllPointRows(true)} type="button">View all {drilldownRows.length} records</button> : null}</> : <p className="muted-text">No underlying records in this point.</p>}
-    </section> : null}
-  </ReportPointChart>;
+    </section>, document.body) : null}
+  </>;
 }

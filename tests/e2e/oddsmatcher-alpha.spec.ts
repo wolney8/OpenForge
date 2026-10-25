@@ -4,7 +4,7 @@ import path from "node:path";
 
 const profileId = "profile-demo-001";
 const evidenceDirectory = path.resolve(
-  "data/private/evidence/cp082-owner-smoke-20261024",
+  "data/private/evidence/cp083-visual-parity-20261025",
 );
 
 function opportunity(index: number) {
@@ -76,6 +76,12 @@ async function mockRuntime(page: Page) {
     if (url.includes("/oddsmatcher")) {
       return route.fulfill({ json: feed });
     }
+    if (url.includes("/account-catalogue/source")) {
+      return route.fulfill({ json: { schema_version: "1.0", records: [
+        { catalogue_id: "bookmaker-a", account_type: "Bookmaker", brand_name: "Bookmaker A", short_display_name: "Bookmaker A", foreground_colour: "#ffffff", background_colour: "#204a87", status: "Active" },
+        { catalogue_id: "smarkets", account_type: "Exchange", brand_name: "Smarkets", short_display_name: "Smarkets", foreground_colour: "#13233a", background_colour: "#8bd3ff", status: "Active" },
+      ] } });
+    }
     if (/\/profiles\/?(?:\?.*)?$/.test(new URL(url).pathname)) {
       return route.fulfill({ json: [{ profile_id: profileId, display_name: "ALPHA-001 Synthetic", status: "active" }] });
     }
@@ -104,6 +110,14 @@ test("renders, filters, paginates and inspects the bounded Alpha", async ({ page
   await expect(page).toHaveURL(new RegExp(`profileId=${profileId}`));
   await expect(page.getByText("Page 1 of 3 · 34 rows").first()).toBeVisible();
   await expect(page.getByText("Liquidity unknown").first()).toBeVisible();
+  for (const heading of ["Date", "Event", "Bet", "Back Odds", "Lay Odds", "Rating", "Actions"]) {
+    await expect(page.locator(".oddsmatcher-table thead").getByText(heading, { exact: true })).toBeVisible();
+  }
+  await expect(page.locator(".oddsmatcher-table tbody tr").first().locator(".oddsmatcher-event-icon")).toBeVisible();
+  await expect(page.locator(".oddsmatcher-table tbody tr").first().locator(".oddsmatcher-quote-block")).toHaveCount(2);
+  await expect(page.locator(".oddsmatcher-table tbody tr").first().locator(".oddsmatcher-rating-pill")).toBeVisible();
+  await page.locator(".oddsmatcher-table tbody tr").first().screenshot({ path: path.join(evidenceDirectory, "L-quote-block-close-up.png") });
+  await expect(page.locator(".oddsmatcher-table tbody tr").first().locator(".table-action-row .table-action-button")).toHaveCount(2);
   const liquidityLabel = page.getByText("Liquidity unknown", { exact: true }).first();
   await expect(liquidityLabel).toBeVisible();
   expect((await liquidityLabel.boundingBox())?.height).toBeLessThan(44);
@@ -151,6 +165,11 @@ test("renders, filters, paginates and inspects the bounded Alpha", async ({ page
   }));
   expect(desktopGeometry.bodyWidth).toBeLessThanOrEqual(desktopGeometry.viewportWidth);
 
+  await page.setViewportSize({ width: 760, height: 900 });
+  await expect(page.locator(".oddsmatcher-mobile-results")).toBeVisible();
+  await page.screenshot({ path: path.join(evidenceDirectory, "G2-oddsmatcher-compact-desktop.png"), fullPage: true });
+  await page.setViewportSize({ width: 600, height: 900 });
+  await expect(page.locator(".oddsmatcher-mobile-results")).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.getByRole("heading", { name: "Oddsmatcher" })).toBeVisible();
   await expect(page.getByRole("button", { name: /^Filters(?: \d+)?$/ })).toBeVisible();

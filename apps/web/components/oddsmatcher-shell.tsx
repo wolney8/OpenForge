@@ -18,6 +18,11 @@ import { LedgerPagination } from "@/components/ledger-pagination";
 import { ModalBoundary } from "@/components/modal-boundary";
 import { apiBaseUrl } from "@/lib/api";
 import {
+  findMasterAccountCatalogueEntry,
+  type MasterAccountCatalogue,
+  type MasterAccountCatalogueRecord,
+} from "@/lib/bookmaker-catalogue";
+import {
   emptyOddsMatcherFilters,
   filterAndSortOpportunities,
   isManualQuote,
@@ -66,6 +71,14 @@ function eligibilityClass(state: "eligible" | "warning" | "unavailable") {
       ? "field-warning-text"
       : "field-hint";
 }
+function ratingTone(value: string) {
+  const rating = Number(value);
+  if (rating >= 100) return "arb";
+  if (rating >= 97) return "strong";
+  if (rating >= 94) return "positive";
+  if (rating >= 90) return "caution";
+  return "low";
+}
 function QuoteLink({ href, label }: { href: string | null; label: string }) {
   return href ? (
     <a
@@ -92,6 +105,7 @@ export function OddsMatcherShell({
 }) {
   const [profileId, setProfileId] = useState<string | null>(initialProfileId ?? legacyProfileId ?? null);
   const [profiles, setProfiles] = useState<ProfileOption[]>([]);
+  const [accountCatalogue, setAccountCatalogue] = useState<MasterAccountCatalogueRecord[]>([]);
   const [feed, setFeed] = useState<OddsMatcherFeed | null>(null);
   const [readState, setReadState] = useState<ReadState>("loading");
   const [refreshing, setRefreshing] = useState(false);
@@ -127,6 +141,12 @@ export function OddsMatcherShell({
         ),
       )
       .catch(() => setProfiles([]));
+  }, []);
+  useEffect(() => {
+    void fetch(`${apiBaseUrl}/account-catalogue/source`, { cache: "no-store", credentials: "include" })
+      .then(async (response) => response.ok ? response.json() as Promise<MasterAccountCatalogue> : null)
+      .then((value) => setAccountCatalogue(value?.records ?? []))
+      .catch(() => setAccountCatalogue([]));
   }, []);
   const profileQuery = profileId ? `?profile_id=${encodeURIComponent(profileId)}` : "";
   const load = useCallback(
@@ -242,9 +262,7 @@ export function OddsMatcherShell({
       key={`${mobile ? "card" : "row"}:${row.opportunity_id}`}
     >
       <div className="oddsmatcher-card-status">
-        <span
-          className={`table-chip${row.freshness === "stale" ? " table-chip-warning" : ""}`}
-        >
+        <span className={`oddsmatcher-rating-pill oddsmatcher-rating-${ratingTone(row.display_rating)}`}>
           {row.freshness === "stale"
             ? `Stale · ${formatObserved(row.age_seconds)}`
             : `${Number(row.display_rating).toFixed(2)}%`}
@@ -258,27 +276,22 @@ export function OddsMatcherShell({
           })}
         </time>
       </div>
-      <div className="table-cell-stack">
-        <strong>{row.event_name}</strong>
-        <span>{row.competition}</span>
+      <div className="oddsmatcher-event-cell">
+        <span aria-hidden="true" className="material-symbols-outlined oddsmatcher-event-icon">sports_soccer</span>
+        <span className="table-cell-stack"><strong>{row.event_name}</strong><span>{row.competition}</span></span>
       </div>
       <div className="table-cell-stack">
         <strong>{row.selection}</strong>
         <span>{row.market}</span>
       </div>
       <div className="oddsmatcher-card-quotes">
-        <QuoteBlock
-          label="Back"
-          name={row.back.account_name}
-          odds={row.back.odds}
-          reason={profileId ? row.back_eligibility.reason : undefined}
-        />
-        <QuoteBlock
-          label="Lay"
-          name={row.lay.account_name}
-          odds={row.lay.odds}
-          reason="Liquidity unknown"
-        />
+        <div className="oddsmatcher-card-quote"><span className="eyebrow">Back</span><QuoteBlock
+          kind="back" catalogue={accountCatalogue} href={row.back.link}
+          name={row.back.account_name} odds={row.back.odds}
+          reason={profileId ? row.back_eligibility.reason : undefined} /></div>
+        <div className="oddsmatcher-card-quote"><span className="eyebrow">Lay</span><QuoteBlock
+          kind="lay" catalogue={accountCatalogue} href={row.lay.link}
+          name={row.lay.account_name} odds={row.lay.odds} reason="Liquidity unknown" /></div>
       </div>
       <OpportunityActions
         onInspect={(trigger) => {
@@ -587,9 +600,12 @@ export function OddsMatcherShell({
                         </span>
                       </td>
                       <td>
-                        <span className="table-cell-stack">
+                        <span className="oddsmatcher-event-cell">
+                          <span aria-hidden="true" className="material-symbols-outlined oddsmatcher-event-icon">sports_soccer</span>
+                          <span className="table-cell-stack">
                           <strong>{row.event_name}</strong>
                           <span>{row.competition}</span>
+                          </span>
                         </span>
                       </td>
                       <td>
@@ -600,7 +616,9 @@ export function OddsMatcherShell({
                       </td>
                       <td>
                         <QuoteBlock
-                          label="Back"
+                          kind="back"
+                          catalogue={accountCatalogue}
+                          href={row.back.link}
                           name={row.back.account_name}
                           odds={row.back.odds}
                           reason={
@@ -610,15 +628,17 @@ export function OddsMatcherShell({
                       </td>
                       <td>
                         <QuoteBlock
-                          label="Lay"
+                          kind="lay"
+                          catalogue={accountCatalogue}
+                          href={row.lay.link}
                           name={row.lay.account_name}
                           odds={row.lay.odds}
                           reason="Liquidity unknown"
                         />
                       </td>
                       <td>
-                        <span className="table-cell-stack">
-                          <strong>
+                        <span className="table-cell-stack oddsmatcher-rating-cell">
+                          <strong className={`oddsmatcher-rating-pill oddsmatcher-rating-${ratingTone(row.display_rating)}`}>
                             {Number(row.display_rating).toFixed(2)}%
                           </strong>
                           <span>
@@ -707,23 +727,40 @@ export function OddsMatcherShell({
   );
 }
 
+function simpleExchangeName(name: string) {
+  return name.replace(/\s+Exchange$/i, "");
+}
+
 function QuoteBlock({
-  label,
+  kind,
+  catalogue,
+  href,
   name,
   odds,
   reason,
 }: {
-  label: string;
+  kind: "back" | "lay";
+  catalogue: MasterAccountCatalogueRecord[];
+  href: string | null;
   name: string;
   odds: string;
   reason?: string;
 }) {
+  const provider = findMasterAccountCatalogueEntry(catalogue, { accountName: name });
+  const displayName = kind === "lay" ? simpleExchangeName(provider?.short_display_name || name) : provider?.short_display_name || name;
   return (
-    <span className="oddsmatcher-quote-block">
-      <small>{label}</small>
-      <strong>{name}</strong>
-      <b>{Number(odds).toFixed(2)}</b>
-      {reason ? <span>{reason}</span> : null}
+    <span className={`oddsmatcher-quote-block oddsmatcher-quote-block-${kind}`}>
+      <span className="oddsmatcher-quote-provider" style={provider ? {
+        backgroundColor: provider.background_colour,
+        color: provider.foreground_colour,
+      } : undefined}>
+        <strong>{displayName}</strong>
+        <QuoteLink href={href} label={`${displayName} quote`} />
+      </span>
+      <span className="oddsmatcher-quote-price">
+        <b>{Number.isFinite(Number(odds)) ? Number(odds).toFixed(2) : "—"}</b>
+        {reason ? <small>{reason}</small> : null}
+      </span>
     </span>
   );
 }
@@ -736,11 +773,6 @@ function OpportunityActions({
 }) {
   return (
     <div className="table-action-row">
-      <QuoteLink
-        href={row.back.link}
-        label={`${row.back.account_name} quote`}
-      />
-      <QuoteLink href={row.lay.link} label={`${row.lay.account_name} quote`} />
       <button
         aria-label={`Copy ${row.event_name} ${row.selection} opportunity`}
         className="table-action-button"

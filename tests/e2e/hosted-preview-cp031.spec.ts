@@ -214,7 +214,7 @@ test("chart hover and keyboard inspect the same persisted point without changing
     await page.goto(`/profiles/${profileId}/tracker/dashboard`);
     await expect(page.getByText("Loading tracker summaries", { exact: true })).toBeHidden({ timeout: 60_000 });
     await page.getByRole("button", { name: "Dashboard range shortcut 1W", exact: true }).click();
-    await expect(page.locator(".dashboard-chart-point-detail")).toContainText("No activity");
+    await expect(page.locator('[data-pd-id="dashboard.selected-range-performance"]')).toContainText("No betting activity in this range");
     await expect(page.locator('[data-pd-id="dashboard.chart.drilldown"] a')).toHaveCount(0);
     await addAccount(page.request, profileId, "Bet365", "Bookie");
     await addAccount(page.request, profileId, "Smarkets", "Exchange");
@@ -244,8 +244,10 @@ test("chart hover and keyboard inspect the same persisted point without changing
     await points.first().hover();
     await expect(detail).toContainText(firstLabel.split(":")[0]);
     await expect(detail.locator(".financial-value")).toHaveAttribute("aria-label", "£ 2.00");
-    await expect(points.first()).toHaveClass(/is-selected/);
-    const records = card.locator('[data-pd-id="dashboard.chart.drilldown"]');
+    await expect(card.locator(".dashboard-sparkline-active-point")).toBeVisible();
+    await points.first().focus();
+    await points.first().press("Enter");
+    const records = page.locator('[data-pd-id="dashboard.chart.drilldown"]');
     await expect(records.getByRole("link")).toHaveCount(1);
     await expect(records.getByRole("link")).toContainText(`Synthetic point 22 ${suffix}`);
     await expect(records.getByRole("link")).toContainText("£ 2.00");

@@ -476,3 +476,20 @@ Installed locally after verified backup `BACKUP-78C9A966`. Canonical 3010/8010 h
 bounded revision, `normal-owner` fingerprint `7246998d43722066` and unchanged
 `invited-subscribers-v1`; Profile/ledger row counts, SQLite integrity and foreign-key integrity are
 unchanged. Owner visual and workflow acceptance remains pending.
+
+## CP-083 visual architecture and Oddsmatcher parity correction — 2026-10-25
+
+| ID | Surface | Requested behaviour | Signed-off equivalent | Status |
+| --- | --- | --- | --- | --- |
+| PD-FIX-346 / #111 | Application top bar | Three intentional wide/intermediate/narrow compositions with one context-appropriate search affordance and no overlap | Existing app-shell regions, Material icon actions and global-search authority | COMPLETE |
+| PD-FIX-347 / #111 | Global search | Leading icon in the visible field, short-debounce automatic search, and expandable/cancellable compact search | Existing protected global-search API and keyboard/focus treatment | COMPLETE |
+| PD-FIX-348 / #111 | Selected Range Performance | Replace the presentation component while preserving reporting data; compact zero/unavailable states and layout-neutral point detail | Existing reporting projection, `FinancialValue` semantics and Material overlay primitives | COMPLETE |
+| PD-FIX-349 / #111 | Profile Operations readiness | Trace every displayed unavailable state to exact source records and provide an actionable affected-record path without coercing unknown values | Existing betting-readiness and authorised record-inspection authority | COMPLETE |
+| PD-FIX-350 / #54 | Oddsmatcher controls | Match the retained MBB-observed mode/search/filter/status hierarchy using Plum Duff components | Existing filter drawer, Settings dialog and provider-status projection | COMPLETE |
+| PD-FIX-351 / #54 | Oddsmatcher table | Seven-column information model with themed two-level quote blocks, nested liquidity, rating pills and compact actions | Existing Account branding, Material icons and result-table primitives | COMPLETE |
+| PD-FIX-352 / #54 | Oddsmatcher responsive results | Preserve readable seven-column density until the governed breakpoint, then transform to contained stacked opportunities | Existing responsive ledger-card and drawer patterns | COMPLETE |
+| PD-FIX-353 / #57 | CP-083 evidence and local install | Fail-closed geometry/theme/accessibility evidence, exact private captures, verified backup and canonical 3010/8010 installation | UI consistency gate and normal-owner backup/install procedure | NEEDS VERIFICATION |
+
+This batch is presentation, inspection and navigation work. It does not change financial formulas,
+provider polling/quota rules, ledger mutation semantics, database schema, owner records or owner
+acceptance statuses.

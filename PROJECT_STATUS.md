@@ -1,5 +1,20 @@
 # Project Status — Plum Duff / OpenForge — Doc ID: PS-CODEX-001
 
+> **CP-083 visual-architecture correction — 2026-10-25:** bounded source on
+> `feature/cp083-visual-architecture-oddsmatcher-parity` replaces the Selected Range Performance
+> presentation while retaining its reporting projection, introduces explicit wide/intermediate/
+> narrow application-header compositions, and aligns the Oddsmatcher toolbar and seven-column
+> quote hierarchy with the retained MBB-derived evidence. No-activity and unavailable performance
+> states render without an SVG; unavailable values now expose authorised record IDs instead of a
+> generic review link. Account cash, calculation, provider, quota, Profile-authority, Prospecting
+> and no-placement contracts are unchanged. Automated and local-install status are recorded in the
+> corrective register; owner visual acceptance remains pending.
+> Read-only 2026-range diagnosis found ALPHA-001 P&L blocked by three Casino records
+> (`IT1-CO-0004`, `IT1-CO-0002`, `IT1-CO-0001`) plus eleven Extra Place records with neither
+> current nor final value; its liability is blocked by 90 `counts_as_open` Sportsbook rows without
+> a governed liability. BRAVO-002 has one such Extra Place row (`EWP-922B7575`) and one liability
+> row (`IT2-QB-0001`). The exact record matrix is retained privately; no source row was changed.
+
 > **CP-082 owner-smoke correction — 2026-10-24:** the Oddsmatcher now has one canonical
 > top-level `/oddsmatcher` surface beside Calculators, with optional Profile context for Account
 > eligibility, commission and Prospecting-draft authority. The Profile route delegates to the same

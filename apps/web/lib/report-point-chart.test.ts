@@ -11,8 +11,8 @@ it("does not render invalid SVG or NaN accessible values when a period is unknow
   }));
   expect(html).not.toContain("<svg");
   expect(html).not.toContain("NaN");
-  expect(html).toContain("Unknown week: Unavailable");
-  expect(html).toContain("Inspect the records");
+  expect(html).toContain("Unavailable");
+  expect(html).toContain("required betting values need review");
 });
 
 it("places profit and loss on opposite sides of the zero line without changing values", () => {

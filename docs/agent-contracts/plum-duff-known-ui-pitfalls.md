@@ -1417,3 +1417,26 @@ not become competing authorities. Identity-only header refreshes remain loading 
 range calculation arrives; an older range response cannot replace a newer loading scope. Point
 hover may update a fixed overlay, while record inspection uses a bounded anchored popover so the
 chart and card never resize or replay on pointer movement.
+
+## Responsive headers need explicit compositions, not shrinking controls
+
+The full global-search field, Profile summary and action cluster cannot share one row once their
+canonical minimum widths no longer fit. Use a wide single-row composition, then move the Profile
+selector to its own row and collapse search to one 44px action before wrapping begins. The compact
+action expands a full-width field, focuses it, and Escape returns focus. Do not render the compact
+search trigger while the full field is visible. Verify every requested width after layout settles.
+
+## Financial charts must not own empty/error geometry
+
+Selected Range Performance renders an SVG only for a known non-empty series. No-activity and
+unavailable states use compact card content with no plotting canvas. Point inspection belongs in a
+fixed portal popover; it must not become a child of the chart flow. Keep invisible hit targets
+separate from the single visible active marker and preserve the governed, unsmoothed data points.
+
+## Odds quote hierarchy collapses before the seven-column table becomes unreadable
+
+Desktop Oddsmatcher rows use Date, Event, Bet, Back Odds, Lay Odds, Rating and Actions. Provider
+identity and external-link action form the quote header; odds and liquidity/eligibility evidence
+form its value surface. Do not add a separate liquidity column or repeat Back/Lay inside every
+desktop cell. Transform to stacked opportunities before the table's intentional 62rem minimum
+would require page-level or primary horizontal navigation.

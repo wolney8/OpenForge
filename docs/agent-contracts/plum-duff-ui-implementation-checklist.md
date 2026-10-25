@@ -215,3 +215,19 @@ Complete this for every feature, bug fix, component, fixture-backed UI, route or
       contained cash rows, overflow, reduced motion and headless desktop/narrow rendering.
 - [x] Focused tests, typecheck, production build and lint pass before the canonical 3010/8010 install.
 - [ ] Owner visual verification remains pending; workbook acceptance stays paused.
+
+## CP-083 visual architecture and Oddsmatcher parity correction — 2026-10-25
+
+- [x] Reused global-search API/debounce, Account catalogue colours, reporting projection,
+      `FinancialValue`, filter drawer, shared pagination and Bet Summary authorities.
+- [x] Wide/intermediate/narrow header geometry checks cover 1440/1200/1100/1000/900/760/600/430;
+      no duplicate visible search action, control overlap or page overflow remains.
+- [x] Valid/no-activity/unavailable chart states are distinct; empty/error states contain no SVG;
+      hover geometry is fixed and the keyboard point popover is portal-contained with focus return.
+- [x] Oddsmatcher desktop uses the retained seven-column information model; 760/600/390 widths use
+      contained stacked opportunities and a counted filter drawer before quote columns crush.
+- [x] Dark/light, quote/action geometry, Profile/global context and Account theme fallbacks are
+      covered by private captures and focused automated checks.
+- [ ] Raw CP-081A MBB screenshots are absent from current private storage, so a fresh pixel-level
+      side-by-side comparison is not claimed; the committed derived observations remain the source.
+- [ ] Canonical owner visual acceptance remains pending and must not be inferred from automation.

@@ -229,3 +229,29 @@ opportunity cards. Plum Duff styling, Account evidence, quota status and the Pro
 remain distinct. Free Bet mode, saved-filter persistence, automatic refresh, verified liquidity,
 additional markets and direct placement remain parity gaps. No provider, calculation or ledger
 lifecycle authority changed.
+
+## CP-083 retained-evidence parity checklist — 2026-10-25
+
+This checklist uses the committed CP-081A derived observations above. The referenced raw private
+CP-081A screenshot directory is not present in the current worktree or local repository storage, so
+a new pixel-level side-by-side canvas is **UNVERIFIED**. The Plum Duff captures are private under
+`data/private/evidence/cp083-visual-parity-20261025/`.
+
+| MBB element | Plum Duff implementation | Desktop | Narrow | Functional | Deliberate difference |
+| --- | --- | --- | --- | --- | --- |
+| Mode selector | Normal / Qualifying control in primary row | Yes | Yes | Yes | Free Bet mode remains unimplemented and is not shown as selectable. |
+| Large search | Dominant debounced opportunity search | Yes | Yes | Yes | Uses Plum Duff field/token treatment. |
+| Settings | Material Settings dialog action | Yes | Yes | Yes | Alpha-supported settings only. |
+| Selection / Start time / Back / Lay / Rating | Counted filter buttons opening one contained drawer | Yes | `Filters N` | Yes | Only Alpha-supported fields are exposed. |
+| Clear / Refresh / My Filters | Secondary utility group | Yes | Yes | Clear/Refresh yes | My Filters is deliberately disabled because persistence is deferred. |
+| Date / Event / Bet | Separate compact columns; football icon and competition context in Event | Yes | Stacked card | Yes | Material football icon replaces any proprietary asset. |
+| Back quote | Account-themed provider header, external link and positive quote surface | Yes | Yes | Yes | Profile eligibility reason may appear as Plum Duff evidence. |
+| Lay quote and liquidity | Exchange-themed header, odds and nested liquidity | Yes | Yes | Yes | Liquidity remains explicitly unknown because the provider supplies no depth. |
+| Rating | Explicit percentage pill plus commission warning line | Yes | Yes | Yes | Uses governed Plum Duff bands/tokens. |
+| Copy / calculator | Compact accessible actions | Yes | Yes | Yes | External links live inside quote blocks. |
+| Pagination | Shared 16-row pagination below/above results | Yes | Yes | Yes | Uses Plum Duff shared pagination. |
+| Stacked narrow row / filter drawer | Cards before seven columns become unreadable; contained drawer | N/A | Yes | Yes | Switch occurs at 64rem to avoid horizontal table dependence. |
+| Bet Summary | Existing qualifying authority, Advanced strategies and Prospecting-only action | Yes | Contained | Yes | No placed-bet/direct exchange action. |
+
+Provider behaviour, ranking, exact event/selection matching, quota handling, stale/last-good state,
+Profile eligibility, unknown liquidity and Prospecting idempotency were not changed by CP-083.

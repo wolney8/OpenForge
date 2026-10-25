@@ -271,6 +271,7 @@ export type BookmakerBreakdownRow = {
 };
 
 export type TrackerSummaryResult = {
+  financialReadinessIssues?: FinancialReadinessIssue[];
   freeBetFinancialIssues?: string[];
   sportsbookFinancialIssues?: string[];
   resolvedDateRange: ResolvedDateRange;
@@ -353,6 +354,14 @@ export type TrackerSummaryResult = {
   weeklyReports: ReportRow[];
   monthlyReports: ReportRow[];
   yearlyReports: ReportRow[];
+};
+
+export type FinancialReadinessIssue = {
+  module: "sportsbook-bets" | "free-bets" | "casino-offers" | "each-way-extra-places";
+  recordId: string;
+  kind: "pnl" | "liability";
+  field: string;
+  reason: string;
 };
 
 const reportFreeBetStatuses = new Set(["Placed", "Settled"]);
@@ -916,6 +925,62 @@ export function summarizeTrackerData(
       (sum, row) => sum + readSummaryMoney(row.win_liability) + readSummaryMoney(row.place_liability),
       0
     );
+  const financialReadinessIssues: FinancialReadinessIssue[] = [
+    ...sportsbookInRange.flatMap((row) => !Number.isFinite(sportsbookDisplayValue(row)) ? [{
+      module: "sportsbook-bets" as const,
+      recordId: row.sportsbook_bet_id,
+      kind: "pnl" as const,
+      field: row.calculation_state === "review_required" ? "calculation inputs" : "reporting value",
+      reason: row.calculation_notes?.join("; ") || "Required Sportsbook financial inputs need review.",
+    }] : []),
+    ...freeBetsInRange.flatMap((row) => !Number.isFinite(freeBetDisplayValue(row)) ? [{
+      module: "free-bets" as const,
+      recordId: row.free_bet_id,
+      kind: "pnl" as const,
+      field: "reporting value",
+      reason: row.calculation_notes?.join("; ") || "Required Free Bet financial inputs need review.",
+    }] : []),
+    ...casinoInRange.flatMap((row) => !Number.isFinite(readSummaryMoney(row.resolved_net_pnl)) ? [{
+      module: "casino-offers" as const,
+      recordId: row.casino_offer_id,
+      kind: "pnl" as const,
+      field: "resolved net P&L",
+      reason: "Resolved Casino P&L is missing or invalid.",
+    }] : []),
+    ...eachWayExtraPlacesInRange.flatMap((row) => !Number.isFinite(eachWayExtraPlaceDisplayValue(row)) ? [{
+      module: "each-way-extra-places" as const,
+      recordId: row.each_way_extra_place_id,
+      kind: "pnl" as const,
+      field: "current/final value",
+      reason: "Extra Place current and final values are unavailable.",
+    }] : []),
+    ...openSportsbook.flatMap((row) => !Number.isFinite(readSummaryMoney(
+      row.multi_lay_actual?.exchange_exposure ?? row.calculated_liability_1
+    )) ? [{
+      module: "sportsbook-bets" as const,
+      recordId: row.sportsbook_bet_id,
+      kind: "liability" as const,
+      field: row.multi_lay_actual?.exchange_exposure == null ? "calculated liability" : "exchange exposure",
+      reason: "This open or prospecting Sportsbook row has no governed liability value.",
+    }] : []),
+    ...openFreeBets.flatMap((row) => !Number.isFinite(readSummaryMoney(row.calculated_liability_1)) ? [{
+      module: "free-bets" as const,
+      recordId: row.free_bet_id,
+      kind: "liability" as const,
+      field: "calculated liability",
+      reason: "This open Free Bet has no governed liability value.",
+    }] : []),
+    ...openEachWayExtraPlaces.flatMap((row) => (
+      !Number.isFinite(readSummaryMoney(row.win_liability)) ||
+      !Number.isFinite(readSummaryMoney(row.place_liability))
+    ) ? [{
+      module: "each-way-extra-places" as const,
+      recordId: row.each_way_extra_place_id,
+      kind: "liability" as const,
+      field: "win/place liability",
+      reason: "This placed Extra Place row has incomplete liability values.",
+    }] : []),
+  ];
 
   const topUps = cashAdjustmentsInRange
     .filter((row) => row.adjustment_type === "TopUp")
@@ -1170,6 +1235,7 @@ export function summarizeTrackerData(
 
   return {
     resolvedDateRange,
+    financialReadinessIssues,
     freeBetFinancialIssues,
     sportsbookFinancialIssues,
     accountQuickView: {
