@@ -488,8 +488,13 @@ unchanged. Owner visual and workflow acceptance remains pending.
 | PD-FIX-350 / #54 | Oddsmatcher controls | Match the retained MBB-observed mode/search/filter/status hierarchy using Plum Duff components | Existing filter drawer, Settings dialog and provider-status projection | COMPLETE |
 | PD-FIX-351 / #54 | Oddsmatcher table | Seven-column information model with themed two-level quote blocks, nested liquidity, rating pills and compact actions | Existing Account branding, Material icons and result-table primitives | COMPLETE |
 | PD-FIX-352 / #54 | Oddsmatcher responsive results | Preserve readable seven-column density until the governed breakpoint, then transform to contained stacked opportunities | Existing responsive ledger-card and drawer patterns | COMPLETE |
-| PD-FIX-353 / #57 | CP-083 evidence and local install | Fail-closed geometry/theme/accessibility evidence, exact private captures, verified backup and canonical 3010/8010 installation | UI consistency gate and normal-owner backup/install procedure | NEEDS VERIFICATION |
+| PD-FIX-353 / #57 | CP-083 evidence and local install | Fail-closed geometry/theme/accessibility evidence, exact private captures, verified backup and canonical 3010/8010 installation | UI consistency gate and normal-owner backup/install procedure | COMPLETE |
 
 This batch is presentation, inspection and navigation work. It does not change financial formulas,
 provider polling/quota rules, ledger mutation semantics, database schema, owner records or owner
 acceptance statuses.
+
+Installed locally after verified backup `BACKUP-534DEA71`. Canonical health identifies
+`normal-owner` fingerprint `7246998d43722066` and schema `invited-subscribers-v1`; SQLite integrity,
+foreign keys and all 29 financial controls match the pre-install snapshot. The only row-count change
+is the recorded backup itself. Owner visual acceptance remains pending.

@@ -8,7 +8,9 @@
 > states render without an SVG; unavailable values now expose authorised record IDs instead of a
 > generic review link. Account cash, calculation, provider, quota, Profile-authority, Prospecting
 > and no-placement contracts are unchanged. Automated and local-install status are recorded in the
-> corrective register; owner visual acceptance remains pending.
+> corrective register. The bounded source is installed on canonical 3010/8010 after verified
+> backup `BACKUP-534DEA71`; SQLite integrity, foreign keys and all 29 financial controls remain
+> unchanged. Owner visual acceptance remains pending.
 > Read-only 2026-range diagnosis found ALPHA-001 P&L blocked by three Casino records
 > (`IT1-CO-0004`, `IT1-CO-0002`, `IT1-CO-0001`) plus eleven Extra Place records with neither
 > current nor final value; its liability is blocked by 90 `counts_as_open` Sportsbook rows without
