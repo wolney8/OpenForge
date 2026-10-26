@@ -1,5 +1,12 @@
 # Project Status — Plum Duff / OpenForge — Doc ID: PS-CODEX-001
 
+> **CP-088 owner-smoke follow-up — 2026-10-26:** no-Profile calculations now use explicit 0%
+> Back/Lay commission; selected Profiles resolve Lay commission from Profile Account, validated
+> Oddsmatcher default, then 0%. Liquidity status sits below the quote and its explanation portals
+> above clipping ancestors. Bet Summary retains two columns through intermediate widths, and the
+> shared modal boundary locks/restores exact document scroll and focus. Verified backup
+> `BACKUP-B2266D9C` precedes the bounded local install; owner visual acceptance remains pending.
+
 > **CP-088 bounded Bet Summary correction — 2026-10-26:** owner acceptance is recorded for the
 > CP-087 shared combobox interaction only; Oddsmatcher remains pending. The bounded local build adds a
 > contained manual-refresh state, compact liquidity/Profile/commission disclosures, compact Rating

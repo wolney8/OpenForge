@@ -623,13 +623,17 @@ SQLite integrity and zero foreign-key violations match the pre-install state.
 
 | ID | Surface | Requested behaviour | Signed-off equivalent | Status |
 | --- | --- | --- | --- | --- |
-| PD-FIX-401 / #54 | Rating and Refresh | Preserve compact Rating focus and contained coalesced Refresh state | CP-088 compact inputs and shared button spinner | IN PROGRESS |
-| PD-FIX-402 / #54 | Quote liquidity | Move compact unavailable state below the Lay quote and portal its accessible explanation above clipping ancestors | Retained MBB quote hierarchy and anchored-surface top layer | IN PROGRESS |
-| PD-FIX-403 / #54 | Commission resolution | Apply Profile commission, then persisted default, then explicit 0% without making Profile context a calculation prerequisite | Existing preferences and calculator validation authorities | IN PROGRESS |
-| PD-FIX-404 / #54 | Bet Summary composition | Preserve genuine desktop two-column hierarchy, compact Profile state and responsive ordering | Retained private MBB Advanced evidence and current Material modal shell | IN PROGRESS |
-| PD-FIX-405 / #54 | Shared modal ownership | Lock document scroll and interaction, preserve position, prevent chaining and restore focus/scroll on dismissal | `ModalBoundary`, ledger editor scroll ownership and native modal semantics | IN PROGRESS |
-| PD-FIX-406 / #54 | Evidence/install | Focused financial/UI regression, private comparison, verified backup and canonical installation | UI consistency gate and normal-owner procedure | IN PROGRESS |
+| PD-FIX-401 / #54 | Rating and Refresh | Preserve compact Rating focus and contained coalesced Refresh state | CP-088 compact inputs and shared button spinner | COMPLETE |
+| PD-FIX-402 / #54 | Quote liquidity | Move compact unavailable state below the Lay quote and portal its accessible explanation above clipping ancestors | Retained MBB quote hierarchy and anchored-surface top layer | COMPLETE |
+| PD-FIX-403 / #54 | Commission resolution | Apply Profile commission, then persisted default, then explicit 0% without making Profile context a calculation prerequisite | Existing preferences and calculator validation authorities | COMPLETE |
+| PD-FIX-404 / #54 | Bet Summary composition | Preserve genuine desktop two-column hierarchy, compact Profile state and responsive ordering | Retained private MBB Advanced evidence and current Material modal shell | COMPLETE |
+| PD-FIX-405 / #54 | Shared modal ownership | Lock document scroll and interaction, preserve position, prevent chaining and restore focus/scroll on dismissal | `ModalBoundary`, ledger editor scroll ownership and native modal semantics | COMPLETE |
+| PD-FIX-406 / #54 | Evidence/install | Focused financial/UI regression, private comparison, verified backup and canonical installation | UI consistency gate and normal-owner procedure | COMPLETE |
 
 This follow-up changes commission fallback only within the approved Oddsmatcher opportunity and
 Bet Summary workflow. It does not change the matched-betting formula, provider integration,
 filter state, ledger settlement or owner-acceptance status.
+
+Verified backup `BACKUP-B2266D9C` precedes installation. Focused API, component and browser tests,
+full web tests, typecheck, production build and changed-file lint pass. Private evidence is under
+`data/private/evidence/cp088-owner-smoke-followup-20261026/`; owner visual acceptance remains pending.
