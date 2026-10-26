@@ -614,3 +614,7 @@ overall and the other CP-087 representative surfaces remain pending.
 
 This batch is presentation and interaction work. It preserves the provider, calculator, Profile,
 ledger, liquidity and placement authorities. Oddsmatcher owner acceptance remains pending.
+
+Installed locally after verified backup `BACKUP-C17AE882`; `normal-owner` fingerprint
+`7246998d43722066`, schema `invited-subscribers-v1`, all 13 financial-table row/hash projections,
+SQLite integrity and zero foreign-key violations match the pre-install state.

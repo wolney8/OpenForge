@@ -1,10 +1,13 @@
 # Project Status — Plum Duff / OpenForge — Doc ID: PS-CODEX-001
 
 > **CP-088 bounded Bet Summary correction — 2026-10-26:** owner acceptance is recorded for the
-> CP-087 shared combobox interaction only; Oddsmatcher remains pending. The current branch adds a
+> CP-087 shared combobox interaction only; Oddsmatcher remains pending. The bounded local build adds a
 > contained manual-refresh state, compact liquidity/Profile/commission disclosures, compact Rating
 > inputs and a responsive two-pane Bet Summary while preserving calculator, provider, liquidity and
-> Prospecting authorities. Automated and local-install status is recorded after the remaining gates.
+> Prospecting authorities. Focused component, API and authenticated-browser fixtures, typecheck,
+> production build and focused lint pass. Verified backup `BACKUP-C17AE882` preceded canonical
+> local installation. Database identity/schema, all 13 financial-table row/hash projections,
+> integrity and foreign keys remain unchanged; owner visual acceptance remains pending.
 
 > **CP-087 application control interaction contract — 2026-10-26:** Plum Duff now records one
 > canonical selector taxonomy and uses shared searchable-combobox and grouped preset primitives
