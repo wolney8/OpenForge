@@ -647,7 +647,15 @@ full web tests, typecheck, production build and changed-file lint pass. Private 
 | PD-FIX-409 / #54 | Bet Summary odds formats | Add modal-local Decimal/Fractional/Moneyline presentation and strict canonical-decimal parsing | Approved M14 odds-conversion contract and existing odds normaliser | COMPLETE |
 | PD-FIX-410 / #54 | Calculator Settings | Open a compact, focus-managed format surface from the existing Bet Summary Settings action | Shared `ModalBoundary` and compact settings dialog pattern | COMPLETE |
 | PD-FIX-411 / #54 | Responsive/accessibility | Preserve two-column/narrow hierarchy, scroll ownership, field validation and disabled explanation | CP-088 Bet Summary/modal contract | COMPLETE |
-| PD-FIX-412 / #54 | Evidence/install | Deterministic conversion/strategy tests, private captures, backup and canonical local installation | UI consistency and normal-owner install gate | NEEDS VERIFICATION — verified backup `BACKUP-54F7D709`; canonical install pending |
+| PD-FIX-412 / #54 | Evidence/install | Deterministic conversion/strategy tests, private captures, backup and canonical local installation | UI consistency and normal-owner install gate | COMPLETE |
 
 This batch changes Bet Summary presentation and canonical-input conversion only. It does not alter
 provider data, matched-betting formulas, ledger lifecycle, balances or placement capabilities.
+
+Installed locally after verified backup `BACKUP-54F7D709`; `normal-owner` fingerprint
+`7246998d43722066`, schema `invited-subscribers-v1`, integrity and all 1,366 governed financial /
+settings rows remain unchanged. Focused component, conversion and browser tests, Alpha/CP-088
+regressions, full web tests, typecheck, production build and changed-file lint pass. Repository-wide
+web lint remains blocked by the pre-existing `react-hooks/refs` error in
+`free-bet-workflow-shell.tsx:4869`. Private evidence is under
+`data/private/evidence/cp089-bet-summary-format-parity-20261026/`; owner acceptance remains pending.

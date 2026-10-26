@@ -1,5 +1,13 @@
 # Project Status — Plum Duff / OpenForge — Doc ID: PS-CODEX-001
 
+> **CP-089 bounded Bet Summary correction — 2026-10-26:** the installed local Oddsmatcher keeps
+> Prospecting as its only Tracker mutation and adds an explicitly disabled Place Lay parity area.
+> Total Profit is limited to the governed Standard stake; Underlay, Overlay and Custom retain both
+> outcome tables. Bet Summary-local Decimal/Fractional/Moneyline fields parse to unchanged canonical
+> decimal odds and reject invalid values before calculation. Private headless evidence and the
+> canonical install pass; owner acceptance remains pending. Repository-wide web lint retains one
+> unrelated pre-existing Free Bet ref-during-render error; changed-file lint passes.
+
 > **CP-088 owner-smoke follow-up — 2026-10-26:** no-Profile calculations now use explicit 0%
 > Back/Lay commission; selected Profiles resolve Lay commission from Profile Account, validated
 > Oddsmatcher default, then 0%. Liquidity status sits below the quote and its explanation portals
