@@ -545,3 +545,27 @@ repository-wide lint command remains blocked by the unchanged Free Bet ref-durin
 Installed after verified backup `BACKUP-9E41D0F8`; `normal-owner` fingerprint
 `7246998d43722066`, integrity, foreign keys and all 29 financial controls remain unchanged. Owner
 visual acceptance remains pending.
+
+## CP-086 Oddsmatcher filter interaction parity — 2026-10-26
+
+| ID | Surface | Requested behaviour | Signed-off equivalent | Status |
+| --- | --- | --- | --- | --- |
+| PD-FIX-373 / #54 | Shared filter panels | Anchored, focus-managed panels with no duplicate heading and family-specific Reset | CP-085 anchored surface plus retained MBB filter evidence | COMPLETE |
+| PD-FIX-374 / #54 | Searchable selectors | One reusable tokenised searchable combobox with mouse, touch and keyboard operation | Existing Plum Duff field, chip, listbox and Material action primitives | COMPLETE |
+| PD-FIX-375 / #54 | Back filter | Searchable bookmaker tokens, friendly names and paired odds bounds | Retained MBB Back-filter evidence and provider option authority | COMPLETE |
+| PD-FIX-376 / #54 | Lay filter | Searchable exchange tokens, paired odds bounds and truthful minimum-liquidity handling | Retained MBB Lay-filter evidence and UNKNOWN-liquidity contract | COMPLETE |
+| PD-FIX-377 / #54 | Selection filter | Two-column dependent Sport, Competition, Event, Market and Selection controls plus Exclude draws | Retained MBB Selection evidence and loaded canonical opportunity data | COMPLETE |
+| PD-FIX-378 / #54 | Start time | Grouped single-select presets and existing Europe/London custom range | Retained MBB Start-time evidence and governed date semantics | COMPLETE |
+| PD-FIX-379 / #54 | Badges, Clear and Reset | Logical family counts, family Reset and global transient Clear without provider refresh | Existing CP-085 filter-state authority | COMPLETE |
+| PD-FIX-380 / #54 | Saved-filter and responsive reuse | Persist/restore canonical state and reuse the same controls in the narrow sheet | Existing versioned preference contract and shared filter dialog | COMPLETE |
+| PD-FIX-381 / #54 | CP-086 evidence/install | Focused interaction, responsive, accessibility, no-credit, build and local-install gates | UI consistency fail-closed gate and normal-owner install procedure | COMPLETE |
+
+This batch changes Oddsmatcher filter presentation and interaction only. It does not change provider,
+calculation, Profile, ledger, placement, liquidity or database-schema authorities.
+
+Private captures are stored under
+`data/private/evidence/cp086-oddsmatcher-filter-parity-20261026/`. Focused changed-file lint,
+component, browser, accessibility, typecheck and build gates pass. Repository-wide lint remains
+blocked by the unchanged Free Bet ref-during-render error. Verified backup `BACKUP-5125B5F7`
+preserves integrity, zero foreign-key failures and all 29 financial controls. Owner interaction and
+visual acceptance remain pending.

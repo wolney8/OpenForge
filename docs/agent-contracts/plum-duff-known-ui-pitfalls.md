@@ -1452,3 +1452,12 @@ Do not give an anchored menu a CSS width that overrides the placement layer's cl
 That mismatch can move the close control beyond the viewport even when the anchor calculation is
 correct. Cap the surface with `min(…, calc(100vw - 2rem))`, use the computed layer width, and verify
 both the surface and every dismiss action at the narrowest supported desktop anchor position.
+
+## Filter option walls fork desktop and narrow interaction
+
+Do not render provider or taxonomy options as permanent chip walls inside filter panels. Reuse the
+searchable token-combobox over the canonical filter state on desktop and narrow surfaces. A
+single-value choice may share the autocomplete but must retain its domain cardinality. After a
+single-value selection, keep focus inside the filter surface so Escape can close the parent and
+restore the toolbar trigger. Test duplicate prevention, Backspace removal, dependent-option
+pruning, per-family Reset and saved-preset token restoration.

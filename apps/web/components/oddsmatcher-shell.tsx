@@ -33,6 +33,8 @@ import {
   defaultOddsMatcherPreferences,
   filterAndSortOpportunities,
   isManualQuote,
+  oddsMatcherFilterCounts,
+  oddsMatcherOptionMatches,
   oddsMatcherRatingTone,
   opportunityCopyText,
   type OddsMatcherFeed,
@@ -59,6 +61,7 @@ type ProfileOption = {
 };
 type FilterPanel =
   "all" | "selection" | "startTime" | "back" | "lay" | "rating";
+type FilterOption = { id: string; name: string; status?: string };
 
 async function responseError(response: Response, fallback: string) {
   try {
@@ -251,30 +254,32 @@ export function OddsMatcherShell({
     (currentPage - 1) * pageSize,
     currentPage * pageSize,
   );
-  const backProviders = useMemo(() => Array.from(new Map((feed?.opportunities ?? [])
-    .map((row) => [row.back.provider_key, row.back.account_name] as const)).entries())
-    .map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name, "en-GB")), [feed]);
-  const layProviders = useMemo(() => Array.from(new Map((feed?.opportunities ?? [])
-    .map((row) => [row.lay.provider_key, row.lay.account_name] as const)).entries())
-    .map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name, "en-GB")), [feed]);
-  const competitionOptions = useMemo(() => Array.from(new Map((feed?.opportunities ?? [])
-    .map((row) => [row.competition_key, row.competition] as const)).entries())
-    .map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name, "en-GB")), [feed]);
-  const activeFilterCount = [
-    filters.sports.length > 0,
-    filters.competitions.length > 0,
-    Boolean(filters.eventName),
-    filters.markets.length > 0,
-    filters.selections.length > 0,
-    filters.excludeDraws,
-    filters.startTime !== "ALL",
-    filters.backProviders.length > 0,
-    Boolean(filters.minBackOdds || filters.maxBackOdds),
-    filters.layProviders.length > 0,
-    Boolean(filters.minLayOdds || filters.maxLayOdds || filters.minLiquidity),
-    Boolean(filters.minRating || filters.maxRating),
-    filters.showArbs !== preferences.show_arbs_default,
-  ].filter(Boolean).length;
+  const providerOptions = useCallback((kind: "back" | "lay"): FilterOption[] => {
+    const opportunities = feed?.opportunities ?? [];
+    const mapped = new Map(opportunities.map((row) => {
+      const quote = row[kind];
+      return [quote.provider_key, quote.account_name] as const;
+    }));
+    return Array.from(mapped.entries()).map(([id, name]) => {
+      const excluded = kind === "back"
+        ? preferences.excluded_bookmaker_identities.includes(id)
+        : preferences.excluded_exchange_identities.includes(id);
+      const matching = opportunities.filter((row) => row[kind].provider_key === id);
+      const unavailable = profileId && matching.length && matching.every(
+        (row) => row[`${kind}_eligibility`].state === "unavailable",
+      );
+      const status = excluded
+        ? "Hidden by Oddsmatcher settings"
+        : unavailable
+          ? matching[0][`${kind}_eligibility`].reason
+          : undefined;
+      return { id, name: kind === "lay" ? simpleExchangeName(name) : name, status };
+    }).sort((a, b) => a.name.localeCompare(b.name, "en-GB"));
+  }, [feed, preferences, profileId]);
+  const backProviders = useMemo(() => providerOptions("back"), [providerOptions]);
+  const layProviders = useMemo(() => providerOptions("lay"), [providerOptions]);
+  const filterCounts = oddsMatcherFilterCounts(filters, preferences.show_arbs_default);
+  const activeFilterCount = Object.values(filterCounts).reduce((total, count) => total + count, 0);
   const setFilter = <K extends keyof OddsMatcherFilters>(
     key: K,
     value: OddsMatcherFilters[K],
@@ -282,6 +287,21 @@ export function OddsMatcherShell({
     setFilters((current) => ({ ...current, [key]: value }));
     setPage(1);
     setSelected(null);
+  };
+  const setFilterPatch = (patch: Partial<OddsMatcherFilters>) => {
+    setFilters((current) => ({ ...current, ...patch }));
+    setPage(1);
+    setSelected(null);
+  };
+  const resetFilterFamily = (panel: Exclude<FilterPanel, "all">) => {
+    const resets: Record<Exclude<FilterPanel, "all">, Partial<OddsMatcherFilters>> = {
+      selection: { sports: [], competitions: [], eventName: "", markets: [], selections: [], excludeDraws: false },
+      startTime: { startTime: "ALL", customStart: "", customEnd: "" },
+      back: { backProviders: [], minBackOdds: "", maxBackOdds: "" },
+      lay: { layProviders: [], minLayOdds: "", maxLayOdds: "", minLiquidity: "" },
+      rating: { minRating: "", maxRating: "", showArbs: preferences.show_arbs_default },
+    };
+    setFilterPatch(resets[panel]);
   };
   const changeSort = (key: OpportunitySort["key"]) => {
     setSort((current) => ({
@@ -470,19 +490,11 @@ export function OddsMatcherShell({
           <div className="oddsmatcher-desktop-filters">
             {(
               [
-                ["selection", "Selection", [filters.sports, filters.competitions, filters.markets, filters.selections].filter((value) => value.length).length + Number(Boolean(filters.eventName)) + Number(filters.excludeDraws)],
-                [
-                  "startTime",
-                  "Start time",
-                  filters.startTime !== "ALL" ? 1 : 0,
-                ],
-                ["back", "Back", filters.backProviders.length + Number(Boolean(filters.minBackOdds)) + Number(Boolean(filters.maxBackOdds))],
-                ["lay", "Lay", filters.layProviders.length + Number(Boolean(filters.minLayOdds)) + Number(Boolean(filters.maxLayOdds)) + Number(Boolean(filters.minLiquidity))],
-                [
-                  "rating",
-                  "Rating",
-                  Number(Boolean(filters.minRating)) + Number(Boolean(filters.maxRating)) + Number(filters.showArbs !== preferences.show_arbs_default),
-                ],
+                ["selection", "Selection", filterCounts.selection],
+                ["startTime", "Start time", filterCounts.startTime],
+                ["back", "Back", filterCounts.back],
+                ["lay", "Lay", filterCounts.lay],
+                ["rating", "Rating", filterCounts.rating],
               ] as const
             ).map(([id, label, count]) => (
               <button
@@ -790,11 +802,13 @@ export function OddsMatcherShell({
         {filterPanel ? (
           <FilterDialog
             backProviders={backProviders}
-            competitionOptions={competitionOptions}
             filters={filters}
             layProviders={layProviders}
             onChange={setFilter}
             onClose={() => setFilterPanel(null)}
+            onPatch={setFilterPatch}
+            onReset={resetFilterFamily}
+            opportunities={feed?.opportunities ?? []}
             panel={filterPanel}
             returnFocusRef={filterButtonRef}
           />
@@ -983,48 +997,253 @@ function AnchoredSurface({ children, className = "", label, onClose, returnFocus
   );
 }
 
+function SearchableFilterCombobox({
+  id,
+  label,
+  multiple = true,
+  onChange,
+  onOpenChange,
+  open,
+  options,
+  values,
+}: {
+  id: string;
+  label: string;
+  multiple?: boolean;
+  onChange: (values: string[]) => void;
+  onOpenChange: (id: string | null) => void;
+  open: boolean;
+  options: FilterOption[];
+  values: string[];
+}) {
+  const [query, setQuery] = useState("");
+  const [activeIndex, setActiveIndex] = useState(0);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const listId = `oddsmatcher-filter-options-${id}`;
+  const selected = values.map((value) => options.find((option) => option.id === value) ?? { id: value, name: value });
+  const available = options.filter((option) => oddsMatcherOptionMatches(option.name, query));
+  const resolvedActiveIndex = Math.min(activeIndex, Math.max(0, available.length - 1));
+  const select = (option: FilterOption) => {
+    if (values.includes(option.id)) return;
+    onChange(multiple ? [...values, option.id] : [option.id]);
+    setQuery("");
+    if (!multiple) onOpenChange(null);
+    window.requestAnimationFrame(() => inputRef.current?.focus());
+  };
+  const remove = (value: string) => onChange(values.filter((item) => item !== value));
+  return <div className="oddsmatcher-combobox-field" data-pd-id={`oddsmatcher.filter.${id}`}>
+    <span className="oddsmatcher-filter-label" id={`${id}-label`}>{label}</span>
+    <div className={`oddsmatcher-combobox-input${open ? " is-open" : ""}`} onClick={() => inputRef.current?.focus()}>
+      <div className="oddsmatcher-combobox-values">
+        {selected.map((option) => <span className="oddsmatcher-combobox-token" key={option.id}>
+          <span>{option.name}</span>
+          <button aria-label={`Remove ${option.name}`} onClick={(event) => { event.stopPropagation(); remove(option.id); }} type="button">×</button>
+        </span>)}
+        <input
+          aria-activedescendant={open && available[resolvedActiveIndex] ? `${listId}-${available[resolvedActiveIndex].id}` : undefined}
+          aria-autocomplete="list"
+          aria-controls={listId}
+          aria-expanded={open}
+          aria-labelledby={`${id}-label`}
+          autoComplete="off"
+          onChange={(event) => { setQuery(event.target.value); setActiveIndex(0); onOpenChange(id); }}
+          onFocus={() => onOpenChange(id)}
+          onKeyDown={(event) => {
+            if (event.key === "ArrowDown") { event.preventDefault(); onOpenChange(id); setActiveIndex((current) => Math.min(current + 1, available.length - 1)); }
+            else if (event.key === "ArrowUp") { event.preventDefault(); setActiveIndex((current) => Math.max(current - 1, 0)); }
+            else if (event.key === "Enter" && open && available[resolvedActiveIndex]) { event.preventDefault(); select(available[resolvedActiveIndex]); }
+            else if (event.key === "Backspace" && !query && values.length) remove(values[values.length - 1]);
+            else if (event.key === "Escape" && open) { event.preventDefault(); event.stopPropagation(); onOpenChange(null); }
+          }}
+          placeholder={values.length ? "Type to add" : `Search ${label.toLocaleLowerCase("en-GB")}`}
+          ref={inputRef}
+          role="combobox"
+          type="text"
+          value={query}
+        />
+      </div>
+      {values.length ? <button aria-label={`Clear all ${label.toLocaleLowerCase("en-GB")}`} className="oddsmatcher-combobox-action" onClick={(event) => { event.stopPropagation(); onChange([]); setQuery(""); }} title="Clear all" type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button> : null}
+      <button aria-label={`${open ? "Close" : "Open"} ${label.toLocaleLowerCase("en-GB")} options`} className="oddsmatcher-combobox-action" onClick={(event) => { event.stopPropagation(); onOpenChange(open ? null : id); inputRef.current?.focus(); }} type="button"><span aria-hidden="true" className="material-symbols-outlined">{open ? "expand_less" : "expand_more"}</span></button>
+    </div>
+    {open ? <div aria-label={`${label} options`} className="oddsmatcher-combobox-options" id={listId} role="listbox" aria-multiselectable={multiple || undefined}>
+      {available.length ? available.map((option, index) => {
+        const isSelected = values.includes(option.id);
+        return <button
+          aria-selected={isSelected}
+          className={`${index === resolvedActiveIndex ? "is-active" : ""}${isSelected ? " is-selected" : ""}`}
+          id={`${listId}-${option.id}`}
+          key={option.id}
+          onClick={() => select(option)}
+          role="option"
+          type="button"
+        >
+          <span><strong>{option.name}</strong>{option.status ? <small>{option.status}</small> : null}</span>
+          {isSelected ? <span aria-hidden="true" className="material-symbols-outlined">check</span> : null}
+        </button>;
+      }) : <p className="field-hint">No matching options</p>}
+    </div> : null}
+  </div>;
+}
+
+const startTimeGroups: Array<{ label: string | null; options: Array<[OddsMatcherFilters["startTime"], string]> }> = [
+  { label: null, options: [["ALL", "Any time"]] },
+  { label: "Starting soon", options: [["30M", "Within 30 mins"], ["1H", "Within 1 hour"], ["2H", "Within 2 hours"], ["4H", "Within 4 hours"], ["8H", "Within 8 hours"], ["12H", "Within 12 hours"], ["24H", "Within 24 hours"]] },
+  { label: "By day", options: [["TODAY", "Today"], ["TOMORROW", "Tomorrow"], ["3D", "Next 3 days"]] },
+  { label: "Custom", options: [["CUSTOM", "Custom range"]] },
+];
+
+function StartTimeCombobox({ onChange, onOpenChange, open, value }: {
+  onChange: (value: OddsMatcherFilters["startTime"]) => void;
+  onOpenChange: (id: string | null) => void;
+  open: boolean;
+  value: OddsMatcherFilters["startTime"];
+}) {
+  const selectedLabel = startTimeGroups.flatMap((group) => group.options).find(([id]) => id === value)?.[1] ?? "Any time";
+  const [query, setQuery] = useState(selectedLabel);
+  const [searching, setSearching] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const visible = startTimeGroups.map((group) => ({ ...group, options: group.options.filter(([, label]) => !searching || oddsMatcherOptionMatches(label, query)) })).filter((group) => group.options.length);
+  const flat = visible.flatMap((group) => group.options);
+  const resolvedActiveIndex = Math.min(activeIndex, Math.max(0, flat.length - 1));
+  const choose = (next: OddsMatcherFilters["startTime"]) => {
+    onChange(next);
+    setSearching(false);
+    setQuery("");
+    onOpenChange(null);
+    window.requestAnimationFrame(() => inputRef.current?.focus());
+  };
+  return <div className="oddsmatcher-combobox-field" data-pd-id="oddsmatcher.filter.start-time-select">
+    <span className="oddsmatcher-filter-label" id="start-time-label">Event start time</span>
+    <div className={`oddsmatcher-combobox-input${open ? " is-open" : ""}`}>
+      <input
+        aria-activedescendant={open && flat[resolvedActiveIndex] ? `start-time-${flat[resolvedActiveIndex][0]}` : undefined}
+        aria-autocomplete="list"
+        aria-controls="oddsmatcher-start-time-options"
+        aria-expanded={open}
+        aria-labelledby="start-time-label"
+        onChange={(event) => { setQuery(event.target.value); setSearching(true); setActiveIndex(0); onOpenChange("startTimePreset"); }}
+        onFocus={(event) => { onOpenChange("startTimePreset"); event.currentTarget.select(); }}
+        onKeyDown={(event) => {
+          if (event.key === "ArrowDown") { event.preventDefault(); onOpenChange("startTimePreset"); setActiveIndex((current) => Math.min(current + 1, flat.length - 1)); }
+          else if (event.key === "ArrowUp") { event.preventDefault(); setActiveIndex((current) => Math.max(current - 1, 0)); }
+          else if (event.key === "Enter" && open && flat[resolvedActiveIndex]) { event.preventDefault(); choose(flat[resolvedActiveIndex][0]); }
+          else if (event.key === "Escape" && open) { event.preventDefault(); event.stopPropagation(); onOpenChange(null); setQuery(selectedLabel); setSearching(false); }
+        }}
+        ref={inputRef}
+        role="combobox"
+        value={searching ? query : selectedLabel}
+      />
+      <button aria-label={`${open ? "Close" : "Open"} event start time options`} className="oddsmatcher-combobox-action" onClick={() => { onOpenChange(open ? null : "startTimePreset"); inputRef.current?.focus(); }} type="button"><span aria-hidden="true" className="material-symbols-outlined">{open ? "expand_less" : "expand_more"}</span></button>
+    </div>
+    {open ? <div aria-label="Event start time options" className="oddsmatcher-combobox-options oddsmatcher-grouped-options" id="oddsmatcher-start-time-options" role="listbox">
+      {visible.map((group) => <div className="oddsmatcher-option-group" key={group.label ?? "any"} role="group" aria-label={group.label ?? "Any time"}>
+        {group.label ? <span className="eyebrow">{group.label}</span> : null}
+        {group.options.map(([id, label]) => {
+          const index = flat.findIndex(([candidate]) => candidate === id);
+          return <button aria-selected={value === id} className={`${index === resolvedActiveIndex ? "is-active" : ""}${value === id ? " is-selected" : ""}`} id={`start-time-${id}`} key={id} onClick={() => choose(id)} role="option" type="button"><span><strong>{label}</strong></span>{value === id ? <span aria-hidden="true" className="material-symbols-outlined">check</span> : null}</button>;
+        })}
+      </div>)}
+    </div> : null}
+  </div>;
+}
+
 function FilterDialog({
   backProviders,
-  competitionOptions,
   filters,
   layProviders,
   onChange,
   onClose,
+  onPatch,
+  onReset,
+  opportunities,
   panel,
   returnFocusRef,
 }: {
-  backProviders: Array<{ id: string; name: string }>;
-  competitionOptions: Array<{ id: string; name: string }>;
+  backProviders: FilterOption[];
   filters: OddsMatcherFilters;
-  layProviders: Array<{ id: string; name: string }>;
+  layProviders: FilterOption[];
   onChange: <K extends keyof OddsMatcherFilters>(key: K, value: OddsMatcherFilters[K]) => void;
   onClose: () => void;
+  onPatch: (patch: Partial<OddsMatcherFilters>) => void;
+  onReset: (panel: Exclude<FilterPanel, "all">) => void;
+  opportunities: OddsMatcherOpportunity[];
   panel: FilterPanel;
   returnFocusRef: RefObject<HTMLElement | null>;
 }) {
+  const [openCombobox, setOpenCombobox] = useState<string | null>(null);
   const show = (name: Exclude<FilterPanel, "all">) => panel === "all" || panel === name;
-  const toggle = <T extends string>(values: T[], value: T) =>
-    values.includes(value) ? values.filter((item) => item !== value) : [...values, value];
-  const startOptions: Array<[OddsMatcherFilters["startTime"], string]> = [
-    ["ALL", "Any time"], ["30M", "30 minutes"], ["1H", "1 hour"], ["2H", "2 hours"],
-    ["4H", "4 hours"], ["8H", "8 hours"], ["12H", "12 hours"], ["24H", "24 hours"],
-    ["TODAY", "Today"], ["TOMORROW", "Tomorrow"], ["3D", "3 days"], ["CUSTOM", "Custom range"],
-  ];
-  const label = panel === "startTime" ? "Start time" : panel === "all" ? "Filters" : `${panel[0].toUpperCase()}${panel.slice(1)}`;
+  const rowsFor = (candidate: OddsMatcherFilters) => opportunities.filter((row) =>
+    (!candidate.sports.length || candidate.sports.includes("football")) &&
+    (!candidate.competitions.length || candidate.competitions.includes(row.competition_key)) &&
+    (!candidate.eventName || candidate.eventName === row.event_name));
+  const applySelectionPatch = (patch: Partial<OddsMatcherFilters>) => {
+    const candidate = { ...filters, ...patch };
+    const validRows = rowsFor(candidate);
+    const eventNames = new Set(validRows.map((row) => row.event_name));
+    if (candidate.eventName && !eventNames.has(candidate.eventName)) candidate.eventName = "";
+    const rowsAfterEvent = rowsFor(candidate);
+    const markets = new Set(rowsAfterEvent.map((row) => row.market_key));
+    candidate.markets = candidate.markets.filter((value) => markets.has(value));
+    const rowsAfterMarket = rowsAfterEvent.filter((row) => !candidate.markets.length || candidate.markets.includes(row.market_key));
+    const selections = new Set(rowsAfterMarket.map((row) => row.selection_key));
+    candidate.selections = candidate.selections.filter((value) => selections.has(value));
+    onPatch({ sports: candidate.sports, competitions: candidate.competitions, eventName: candidate.eventName, markets: candidate.markets, selections: candidate.selections, excludeDraws: candidate.excludeDraws });
+  };
+  const sportOptions: FilterOption[] = opportunities.length ? [{ id: "football", name: "Football" }] : [];
+  const competitionRows = opportunities.filter(() => !filters.sports.length || filters.sports.includes("football"));
+  const competitionOptions = Array.from(new Map(competitionRows.map((row) => [row.competition_key, row.competition])).entries()).map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name, "en-GB"));
+  const dependentRows = rowsFor(filters);
+  const eventOptions = Array.from(new Set(dependentRows.map((row) => row.event_name))).map((name) => ({ id: name, name })).sort((a, b) => a.name.localeCompare(b.name, "en-GB"));
+  const marketOptions = Array.from(new Map(dependentRows.map((row) => [row.market_key, row.market])).entries()).map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name, "en-GB"));
+  const selectionRows = dependentRows.filter((row) => !filters.markets.length || filters.markets.includes(row.market_key));
+  const selectionNames: Record<OddsMatcherOpportunity["selection_key"], string> = { HOME: "Home", DRAW: "Draw", AWAY: "Away" };
+  const selectionOptions = Array.from(new Set(selectionRows.map((row) => row.selection_key))).map((id) => ({ id, name: selectionNames[id] }));
+  const groupHeading = (name: string) => panel === "all" ? <legend>{name}</legend> : null;
+  const reset = (family: Exclude<FilterPanel, "all">) => <div className="oddsmatcher-filter-reset"><button className="button-link" onClick={() => onReset(family)} type="button">Reset</button></div>;
   const fields = <div className="oddsmatcher-filter-sections">
-    {show("selection") ? <fieldset className="oddsmatcher-filter-group">
-      <legend>Selection</legend>
-      <label className="toggle-row"><input checked={filters.sports.includes("football")} onChange={() => onChange("sports", toggle(filters.sports, "football"))} type="checkbox" /><span><strong>Football</strong><small>Current Alpha sport</small></span></label>
-      <div className="oddsmatcher-filter-subgroup"><strong>Competition</strong><div className="filter-option-grid">{competitionOptions.map((option) => <label className="choice-chip" key={option.id}><input checked={filters.competitions.includes(option.id)} onChange={() => onChange("competitions", toggle(filters.competitions, option.id))} type="checkbox" /><span>{option.name}</span></label>)}</div></div>
-      <label className="field-control"><span>Event name</span><input onChange={(event) => onChange("eventName", event.target.value)} value={filters.eventName} /></label>
-      <div className="oddsmatcher-filter-subgroup"><strong>Market</strong><label className="choice-chip"><input checked={filters.markets.includes("h2h")} onChange={() => onChange("markets", toggle(filters.markets, "h2h"))} type="checkbox" /><span>Match Odds / 1X2</span></label></div>
-      <div className="oddsmatcher-filter-subgroup"><strong>Selection</strong><div className="filter-option-grid">{([['HOME','Home'],['DRAW','Draw'],['AWAY','Away']] as const).map(([id,text]) => <label className="choice-chip" key={id}><input checked={filters.selections.includes(id)} onChange={() => onChange("selections", toggle(filters.selections, id))} type="checkbox" /><span>{text}</span></label>)}</div></div>
-      <label className="toggle-row"><input checked={filters.excludeDraws} onChange={(event) => onChange("excludeDraws", event.target.checked)} type="checkbox" /><span><strong>Exclude draws</strong></span></label>
+    {show("selection") ? <fieldset aria-label="Selection filter fields" className="oddsmatcher-filter-group oddsmatcher-selection-filter">
+      {groupHeading("Selection")}
+      <div className="oddsmatcher-selection-columns">
+        <div className="stack-tight">
+          <SearchableFilterCombobox id="sport" label="Sport" onChange={(values) => applySelectionPatch({ sports: values })} onOpenChange={setOpenCombobox} open={openCombobox === "sport"} options={sportOptions} values={filters.sports} />
+          <SearchableFilterCombobox id="competition" label="Competition" onChange={(values) => applySelectionPatch({ competitions: values })} onOpenChange={setOpenCombobox} open={openCombobox === "competition"} options={competitionOptions} values={filters.competitions} />
+          <SearchableFilterCombobox id="event" label="Event" multiple={false} onChange={(values) => applySelectionPatch({ eventName: values[0] ?? "" })} onOpenChange={setOpenCombobox} open={openCombobox === "event"} options={eventOptions} values={filters.eventName ? [filters.eventName] : []} />
+        </div>
+        <div className="stack-tight">
+          <SearchableFilterCombobox id="market" label="Market" onChange={(values) => applySelectionPatch({ markets: values })} onOpenChange={setOpenCombobox} open={openCombobox === "market"} options={marketOptions} values={filters.markets} />
+          <SearchableFilterCombobox id="selection" label="Selection" onChange={(values) => applySelectionPatch({ selections: values as OddsMatcherFilters["selections"] })} onOpenChange={setOpenCombobox} open={openCombobox === "selection"} options={selectionOptions} values={filters.selections} />
+          <label className="toggle-row"><input checked={filters.excludeDraws} onChange={(event) => applySelectionPatch({ excludeDraws: event.target.checked })} type="checkbox" /><span><strong>Exclude draws</strong></span></label>
+        </div>
+      </div>
+      {reset("selection")}
     </fieldset> : null}
-    {show("startTime") ? <fieldset className="oddsmatcher-filter-group"><legend>Start time</legend><div className="filter-option-grid">{startOptions.map(([id,text]) => <label className="choice-chip" key={id}><input checked={filters.startTime === id} name="oddsmatcher-start-time" onChange={() => onChange("startTime", id)} type="radio" /><span>{text}</span></label>)}</div>{filters.startTime === "CUSTOM" ? <div className="form-grid oddsmatcher-filter-fields"><label className="field-control"><span>From</span><input onChange={(event) => onChange("customStart", event.target.value)} type="datetime-local" value={filters.customStart} /></label><label className="field-control"><span>To</span><input onChange={(event) => onChange("customEnd", event.target.value)} type="datetime-local" value={filters.customEnd} /></label></div> : null}<p className="field-hint">Times are interpreted and displayed in Europe/London.</p></fieldset> : null}
-    {show("back") ? <fieldset className="oddsmatcher-filter-group"><legend>Back</legend><div className="filter-option-grid">{backProviders.map((option) => <label className="choice-chip" key={option.id}><input checked={filters.backProviders.includes(option.id)} onChange={() => onChange("backProviders", toggle(filters.backProviders, option.id))} type="checkbox" /><span>{option.name}</span></label>)}</div><div className="form-grid oddsmatcher-filter-fields"><label className="field-control"><span>Minimum back odds</span><input inputMode="decimal" onChange={(event) => onChange("minBackOdds", event.target.value)} value={filters.minBackOdds} /></label><label className="field-control"><span>Maximum back odds</span><input inputMode="decimal" onChange={(event) => onChange("maxBackOdds", event.target.value)} value={filters.maxBackOdds} /></label></div></fieldset> : null}
-    {show("lay") ? <fieldset className="oddsmatcher-filter-group"><legend>Lay</legend><div className="filter-option-grid">{layProviders.map((option) => <label className="choice-chip" key={option.id}><input checked={filters.layProviders.includes(option.id)} onChange={() => onChange("layProviders", toggle(filters.layProviders, option.id))} type="checkbox" /><span>{simpleExchangeName(option.name)}</span></label>)}</div><div className="form-grid oddsmatcher-filter-fields"><label className="field-control"><span>Minimum lay odds</span><input inputMode="decimal" onChange={(event) => onChange("minLayOdds", event.target.value)} value={filters.minLayOdds} /></label><label className="field-control"><span>Maximum lay odds</span><input inputMode="decimal" onChange={(event) => onChange("maxLayOdds", event.target.value)} value={filters.maxLayOdds} /></label><label className="field-control"><span>Minimum liquidity</span><input inputMode="decimal" onChange={(event) => onChange("minLiquidity", event.target.value)} value={filters.minLiquidity} /><small>Unknown-liquidity rows are excluded when this is set.</small></label></div></fieldset> : null}
-    {show("rating") ? <fieldset className="oddsmatcher-filter-group"><legend>Rating</legend><div className="form-grid oddsmatcher-filter-fields"><label className="field-control"><span>Minimum rating</span><input inputMode="decimal" onChange={(event) => onChange("minRating", event.target.value)} value={filters.minRating} /></label><label className="field-control"><span>Maximum rating</span><input inputMode="decimal" onChange={(event) => onChange("maxRating", event.target.value)} value={filters.maxRating} /></label></div><label className="toggle-row"><input checked={filters.showArbs} onChange={(event) => onChange("showArbs", event.target.checked)} type="checkbox" /><span><strong>Show arbs</strong><small>Ratings above 100% are hidden by default.</small></span></label></fieldset> : null}
+    {show("startTime") ? <fieldset aria-label="Start time filter fields" className="oddsmatcher-filter-group">
+      {groupHeading("Start time")}
+      <StartTimeCombobox onChange={(value) => onPatch({ startTime: value, ...(value === "CUSTOM" ? {} : { customStart: "", customEnd: "" }) })} onOpenChange={setOpenCombobox} open={openCombobox === "startTimePreset"} value={filters.startTime} />
+      {filters.startTime === "CUSTOM" ? <div className="form-grid oddsmatcher-filter-fields"><label className="field-control"><span>From</span><input onChange={(event) => onChange("customStart", event.target.value)} type="datetime-local" value={filters.customStart} /></label><label className="field-control"><span>To</span><input onChange={(event) => onChange("customEnd", event.target.value)} type="datetime-local" value={filters.customEnd} /></label></div> : null}
+      <p className="field-hint">Times are interpreted and displayed in Europe/London.</p>
+      {reset("startTime")}
+    </fieldset> : null}
+    {show("back") ? <fieldset aria-label="Back filter fields" className="oddsmatcher-filter-group">
+      {groupHeading("Back")}
+      <SearchableFilterCombobox id="bookmakers" label="Bookmakers" onChange={(values) => onChange("backProviders", values)} onOpenChange={setOpenCombobox} open={openCombobox === "bookmakers"} options={backProviders} values={filters.backProviders} />
+      <div className="form-grid oddsmatcher-filter-fields"><label className="field-control"><span>Min. back odds</span><input inputMode="decimal" onChange={(event) => onChange("minBackOdds", event.target.value)} placeholder="Any" value={filters.minBackOdds} /></label><label className="field-control"><span>Max. back odds</span><input inputMode="decimal" onChange={(event) => onChange("maxBackOdds", event.target.value)} placeholder="Any" value={filters.maxBackOdds} /></label></div>
+      {reset("back")}
+    </fieldset> : null}
+    {show("lay") ? <fieldset aria-label="Lay filter fields" className="oddsmatcher-filter-group">
+      {groupHeading("Lay")}
+      <SearchableFilterCombobox id="exchanges" label="Exchanges" onChange={(values) => onChange("layProviders", values)} onOpenChange={setOpenCombobox} open={openCombobox === "exchanges"} options={layProviders} values={filters.layProviders} />
+      <div className="form-grid oddsmatcher-filter-fields"><label className="field-control"><span>Min. lay odds</span><input inputMode="decimal" onChange={(event) => onChange("minLayOdds", event.target.value)} placeholder="Any" value={filters.minLayOdds} /></label><label className="field-control"><span>Max. lay odds</span><input inputMode="decimal" onChange={(event) => onChange("maxLayOdds", event.target.value)} placeholder="Any" value={filters.maxLayOdds} /></label></div>
+      <label className="field-control"><span>Min. lay liquidity</span><input inputMode="decimal" onChange={(event) => onChange("minLiquidity", event.target.value)} placeholder="Any" value={filters.minLiquidity} /><small>Unknown-liquidity rows are excluded when this is set.</small></label>
+      {reset("lay")}
+    </fieldset> : null}
+    {show("rating") ? <fieldset aria-label="Rating filter fields" className="oddsmatcher-filter-group">
+      {groupHeading("Rating")}
+      <div className="form-grid oddsmatcher-filter-fields"><label className="field-control"><span>Min. rating</span><input inputMode="decimal" onChange={(event) => onChange("minRating", event.target.value)} placeholder="Any" value={filters.minRating} /></label><label className="field-control"><span>Max. rating</span><input inputMode="decimal" onChange={(event) => onChange("maxRating", event.target.value)} placeholder="Any" value={filters.maxRating} /></label></div>
+      <label className="toggle-row"><input checked={filters.showArbs} onChange={(event) => onChange("showArbs", event.target.checked)} type="checkbox" /><span><strong>Show arbs</strong><small>Ratings above 100% are hidden by default.</small></span></label>
+      {reset("rating")}
+    </fieldset> : null}
   </div>;
   if (panel === "all") return (
     <ModalBoundary onDismiss={onClose} returnFocusRef={returnFocusRef}>
@@ -1037,10 +1256,8 @@ function FilterDialog({
       </div>
     </ModalBoundary>
   );
-  return <AnchoredSurface className="oddsmatcher-filter-popover" label={`${label} filter`} onClose={onClose} returnFocusRef={returnFocusRef}>
-    <header className="oddsmatcher-popover-heading"><strong>{label}</strong><button aria-label={`Close ${label} filter`} className="icon-button compact-action" onClick={onClose} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button></header>
+  return <AnchoredSurface className="oddsmatcher-filter-popover" label={`${panel === "startTime" ? "Start time" : `${panel[0].toUpperCase()}${panel.slice(1)}`} filter`} onClose={onClose} returnFocusRef={returnFocusRef}>
     {fields}
-    <footer className="oddsmatcher-popover-footer"><button className="modal-primary-button" onClick={onClose} type="button">Done</button></footer>
   </AnchoredSurface>;
 }
 

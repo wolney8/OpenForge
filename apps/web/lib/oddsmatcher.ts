@@ -136,6 +136,51 @@ export const defaultOddsMatcherPreferences: OddsMatcherPreferences = {
   saved_filters: [],
 };
 
+export type OddsMatcherFilterCounts = {
+  selection: number;
+  startTime: number;
+  back: number;
+  lay: number;
+  rating: number;
+};
+
+export function oddsMatcherFilterCounts(
+  filters: OddsMatcherFilters,
+  showArbsDefault: boolean,
+): OddsMatcherFilterCounts {
+  return {
+    selection:
+      filters.sports.length +
+      filters.competitions.length +
+      Number(Boolean(filters.eventName)) +
+      filters.markets.length +
+      filters.selections.length +
+      Number(filters.excludeDraws),
+    startTime: Number(filters.startTime !== "ALL"),
+    back:
+      filters.backProviders.length +
+      Number(Boolean(filters.minBackOdds)) +
+      Number(Boolean(filters.maxBackOdds)),
+    lay:
+      filters.layProviders.length +
+      Number(Boolean(filters.minLayOdds)) +
+      Number(Boolean(filters.maxLayOdds)) +
+      Number(Boolean(filters.minLiquidity)),
+    rating:
+      Number(Boolean(filters.minRating)) +
+      Number(Boolean(filters.maxRating)) +
+      Number(filters.showArbs !== showArbsDefault),
+  };
+}
+
+export function oddsMatcherOptionMatches(value: string, query: string): boolean {
+  const normalize = (source: string) => source
+    .normalize("NFKD")
+    .replace(/[\p{P}\p{S}\s]+/gu, "")
+    .toLocaleLowerCase("en-GB");
+  return normalize(value).includes(normalize(query));
+}
+
 export type OpportunitySort = {
   key: "rating" | "start" | "event";
   direction: "asc" | "desc";

@@ -3,6 +3,8 @@ import {
   emptyOddsMatcherFilters,
   filterAndSortOpportunities,
   isManualQuote,
+  oddsMatcherFilterCounts,
+  oddsMatcherOptionMatches,
   oddsMatcherRatingTone,
   opportunityCopyText,
   type OddsMatcherOpportunity,
@@ -101,5 +103,22 @@ describe("Oddsmatcher filters", () => {
     expect(oddsMatcherRatingTone("96.99")).toBe("positive");
     expect(oddsMatcherRatingTone("93.99")).toBe("caution");
     expect(oddsMatcherRatingTone("89.99")).toBe("low");
+  });
+
+  it("counts logical active values per filter family", () => {
+    expect(oddsMatcherFilterCounts({
+      ...emptyOddsMatcherFilters,
+      backProviders: ["williamhill", "betfred", "bet365"],
+      minBackOdds: "2",
+      startTime: "1H",
+      showArbs: true,
+    }, false)).toEqual({ selection: 0, startTime: 1, back: 4, lay: 0, rating: 1 });
+  });
+
+  it("matches friendly option names without case, spacing or punctuation sensitivity", () => {
+    expect(oddsMatcherOptionMatches("William Hill", "will")).toBe(true);
+    expect(oddsMatcherOptionMatches("888sport", "888")).toBe(true);
+    expect(oddsMatcherOptionMatches("Match-book", "match book")).toBe(true);
+    expect(oddsMatcherOptionMatches("Betfred", "will")).toBe(false);
   });
 });

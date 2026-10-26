@@ -7575,6 +7575,43 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
 .oddsmatcher-filter-group { display: grid; gap: 0.75rem; min-width: 0; margin: 0; padding: 0.85rem; border: 1px solid var(--outline); border-radius: var(--shape-medium); }
 .oddsmatcher-filter-group legend { padding-inline: 0.35rem; font-weight: 850; }
 .oddsmatcher-filter-subgroup { display: grid; gap: 0.45rem; }
+.oddsmatcher-selection-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.8rem; align-items: start; }
+.oddsmatcher-filter-label { color: var(--muted); font-size: 0.78rem; font-weight: 760; }
+.oddsmatcher-combobox-field { display: grid; position: relative; gap: 0.32rem; min-width: 0; }
+.oddsmatcher-combobox-input { display: flex; align-items: center; min-height: 3rem; min-width: 0; padding: 0.25rem; border: 1px solid var(--outline); border-radius: var(--shape-small); background: var(--surface-container); cursor: text; }
+.oddsmatcher-combobox-input:focus-within,
+.oddsmatcher-combobox-input.is-open { border-color: var(--primary); outline: 2px solid color-mix(in srgb, var(--focus-ring) 54%, transparent); outline-offset: 1px; }
+.oddsmatcher-combobox-values { display: flex; flex: 1 1 auto; flex-wrap: wrap; align-items: center; gap: 0.25rem; min-width: 0; }
+.oddsmatcher-combobox-values input,
+.oddsmatcher-combobox-input > input { flex: 1 1 5rem; min-width: 4.5rem; min-height: 2.25rem; padding: 0.25rem 0.38rem; border: 0; outline: 0; background: transparent; color: var(--text); font: inherit; }
+.oddsmatcher-combobox-token { display: inline-flex; align-items: center; min-height: 2rem; max-width: 100%; gap: 0.18rem; padding: 0.12rem 0.16rem 0.12rem 0.5rem; border: 1px solid color-mix(in srgb, var(--primary) 45%, var(--outline)); border-radius: var(--shape-full); background: var(--primary-soft); color: var(--primary-strong); font-size: 0.75rem; font-weight: 760; }
+.oddsmatcher-combobox-token > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.oddsmatcher-combobox-token button,
+.oddsmatcher-combobox-action { display: inline-grid; place-items: center; flex: 0 0 2.25rem; width: 2.25rem; height: 2.25rem; padding: 0; border: 0; border-radius: var(--shape-full); background: transparent; color: inherit; cursor: pointer; }
+.oddsmatcher-combobox-token button { flex-basis: 1.7rem; width: 1.7rem; height: 1.7rem; font-size: 1.1rem; }
+.oddsmatcher-combobox-token button:hover,
+.oddsmatcher-combobox-token button:focus-visible,
+.oddsmatcher-combobox-action:hover,
+.oddsmatcher-combobox-action:focus-visible { background: var(--surface-container-high); outline: 2px solid var(--focus-ring); outline-offset: -2px; }
+.oddsmatcher-combobox-action .material-symbols-outlined { font-size: 1.25rem; }
+.oddsmatcher-combobox-options { display: grid; max-height: min(16rem, 38dvh); overflow: auto; padding: 0.25rem; border: 1px solid var(--outline); border-radius: var(--shape-medium); background: var(--surface-strong); box-shadow: var(--floating-nav-shadow); }
+.oddsmatcher-combobox-options > button,
+.oddsmatcher-option-group > button { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 2.75rem; gap: 0.5rem; padding: 0.45rem 0.55rem; border: 0; border-radius: var(--shape-small); background: transparent; color: var(--text); text-align: left; cursor: pointer; }
+.oddsmatcher-combobox-options > button > span:first-child,
+.oddsmatcher-option-group > button > span:first-child { display: grid; gap: 0.12rem; }
+.oddsmatcher-combobox-options small { color: var(--muted); font-size: 0.7rem; font-weight: 600; }
+.oddsmatcher-combobox-options > button:hover,
+.oddsmatcher-combobox-options > button.is-active,
+.oddsmatcher-option-group > button:hover,
+.oddsmatcher-option-group > button.is-active { background: var(--surface-container-high); }
+.oddsmatcher-combobox-options > button.is-selected,
+.oddsmatcher-option-group > button.is-selected { color: var(--primary-strong); }
+.oddsmatcher-grouped-options { gap: 0.35rem; }
+.oddsmatcher-option-group { display: grid; gap: 0.12rem; }
+.oddsmatcher-option-group + .oddsmatcher-option-group { padding-top: 0.4rem; border-top: 1px solid var(--outline); }
+.oddsmatcher-option-group > .eyebrow { padding: 0.35rem 0.55rem 0.2rem; }
+.oddsmatcher-filter-reset { padding-top: 0.65rem; border-top: 1px solid var(--outline); }
+.oddsmatcher-filter-reset .button-link { width: 100%; min-height: 2.75rem; justify-content: center; }
 .filter-option-grid { display: flex; flex-wrap: wrap; gap: 0.45rem; }
 .oddsmatcher-filter-dialog .toggle-row,
 .oddsmatcher-filter-popover .toggle-row,
@@ -7673,6 +7710,7 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
   .oddsmatcher-mobile-filter { display: inline-flex; }
   .oddsmatcher-filter-utilities { justify-content: flex-end; }
   .oddsmatcher-filter-fields { grid-template-columns: minmax(0, 1fr); }
+  .oddsmatcher-selection-columns { grid-template-columns: minmax(0, 1fr); }
   .oddsmatcher-saved-filter-list li { grid-template-columns: minmax(0,1fr); }
   .oddsmatcher-summary-dialog {
     height: calc(100dvh - 1rem);

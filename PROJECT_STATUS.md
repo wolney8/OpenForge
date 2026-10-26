@@ -1,5 +1,13 @@
 # Project Status — Plum Duff / OpenForge — Doc ID: PS-CODEX-001
 
+> **CP-086 bounded filter-interaction correction — 2026-10-26:** Oddsmatcher filter families now
+> share one searchable token-combobox, logical badge counts, scoped Reset and canonical saved-state
+> restoration across anchored desktop panels and the narrow sheet. Start time follows the grouped
+> observed preset hierarchy; minimum liquidity continues to exclude unknown depth. Focused
+> component/browser, accessibility, typecheck and build gates pass without provider requests or a
+> schema change. Verified backup `BACKUP-5125B5F7` preserves integrity, zero foreign-key failures
+> and all 29 financial controls. Owner interaction and visual acceptance remain pending.
+
 > **CP-085 bounded correction installed for owner verification — 2026-10-25:** Rating and Actions
 > remain contained through the seven-column layout and results change to the established cards at
 > 72rem. Desktop filters and My Filters now use anchored, focus-managed surfaces; saved filters gain

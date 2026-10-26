@@ -296,3 +296,16 @@ version 1 preference contract and remain backward compatible with v1 entries tha
 Private browser captures, responsive geometry and the retained MBB-relative comparison are under
 `data/private/evidence/cp085-oddsmatcher-parity-20261025/`. Automated evidence is verified; owner
 visual acceptance remains **UNVERIFIED**.
+
+## CP-086 filter interaction correction — 2026-10-26
+
+The five filter families retain the CP-085 anchored desktop surfaces and narrow shared sheet.
+Back, Lay and Selection-family fields now use the same searchable token combobox rather than fixed
+option-chip walls. Start time uses the observed grouped preset hierarchy and reveals the existing
+Europe/London custom controls only for Custom range. Per-family Reset and global Clear retain their
+separate scopes; filtering remains client-side and does not spend provider credits.
+
+Logical badge counts, dependent Selection pruning and saved-filter restoration operate on the one
+canonical filter state. Private captures are under
+`data/private/evidence/cp086-oddsmatcher-filter-parity-20261026/`. Automated evidence is verified;
+owner interaction and visual acceptance remain **UNVERIFIED**.

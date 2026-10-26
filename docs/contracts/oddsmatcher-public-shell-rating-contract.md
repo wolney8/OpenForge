@@ -310,3 +310,18 @@ This addendum supersedes the older public/non-Profile assumptions above only for
 - Version 1 saved-filter entries may include an optional, whitespace-normalised description of at
   most 240 characters. Missing descriptions from existing v1 payloads read as an empty string, so
   no SQL migration or version guess is required.
+
+## 26. CP-086 filter interaction addendum
+
+- Back, Lay and Selection-family controls use one searchable token-combobox behaviour over the
+  loaded canonical option data. Matching is case-insensitive and ignores display punctuation and
+  spacing; it never refreshes the provider snapshot.
+- Each selected taxonomy/provider value counts once. Each populated numeric bound counts once;
+  Exclude draws, a non-default start-time preset and a show-arbs deviation each count once.
+- Selection dependencies prune only downstream values that are no longer possible. Event remains
+  single-valued under the current filter contract; supported multi-value dimensions retain OR
+  semantics.
+- Family Reset changes only that family. Global Clear changes all transient filters and search but
+  never Profile context, settings, saved presets or provider data.
+- Saved filters serialize the same canonical filter state used by desktop and narrow controls, so
+  loading a preset repopulates tokens and grouped start-time/custom values without a UI-only model.
