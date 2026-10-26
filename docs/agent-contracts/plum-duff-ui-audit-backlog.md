@@ -23,6 +23,28 @@ safe use, `P1` should be addressed before production-quality sign-off, and `P2` 
 | P2 | Shared application header | The redundant `Tracker platform` brand subtitle adds copy noise | Remove it in a separate bounded visual batch while preserving brand/control alignment and header geometry | Copy, layout |
 | P2 | Existing pages and panels | Some surfaces may repeat headings, control labels or explanatory subtext | Review in bounded route batches; retain financial, error, security and accessibility meaning and reuse canonical shells | Copy, consistency |
 
+## CP-087 selector interaction audit — 2026-10-26
+
+This bounded audit classifies comparable current controls before treating them as defects. Native
+bounded selects remain valid ordinary single-selects. Runtime evidence covers the changed shared,
+Oddsmatcher, global-search, Accounts and Extra Place paths; other compliant rows are source-audited.
+
+| Route/component | Control | Control type | Current behaviour | Compliant? | Correction |
+| --- | --- | --- | --- | --- | --- |
+| Shared app chrome | Global search | Server-backed searchable combobox | Focus previously marked results expanded before typed intent | Fixed | Focus stays closed; typed search opens results from the first non-space character; clearing closes them. |
+| Shared app chrome | Profile switcher | Parent menu with route actions | Explicit trigger; no nested selector cascade | Yes | None. |
+| Accounts | Table filters and editor choices | Ordinary single-selects | Native bounded lists open explicitly and selection retains parent dialog | Yes | Representative browser regression retained. |
+| Sportsbook Bets | Filters and editor choices | Ordinary single-selects | Bounded controlled values; no searchable-list claim | Yes | None; business-sensitive editor migration is unnecessary. |
+| Free Bets | Filters and editor choices | Ordinary single-selects | Bounded controlled values; no searchable-list claim | Yes | None; existing lint defect is unrelated. |
+| Casino Offers | Filters and editor choices | Ordinary single-selects | Bounded controlled values; no searchable-list claim | Yes | None. |
+| Extra Places / Each Way | Result action | Anchored ordinary option list | Explicit open and selection close existed; Escape/outside/focus return were missing | Fixed | Added nested Escape, outside close and trigger focus restoration. |
+| Reports | Metric, grouping and period controls | Ordinary single-selects | Fixed bounded choices open explicitly | Yes | None. |
+| Profile Settings | Authority and list controls | Ordinary single-selects | Fixed bounded choices open explicitly | Yes | None. |
+| Calculators | Strategy/account selectors | Ordinary single-selects and direct choice controls | Fixed authoritative choices; no parent-open cascade found | Yes | None. |
+| Oddsmatcher filters | Provider and taxonomy fields | Searchable single/multi comboboxes | Focus/parent open showed options and multi-selection kept the list open | Fixed | Shared explicit three-state primitive; every selection/removal closes the list. |
+| Oddsmatcher Start time | Preset selector | Ordinary grouped single-select | Focus/parent open showed the grouped list | Fixed | Shared explicit preset selector; selection closes while custom fields remain. |
+| Common legacy dialogs | Duplicated dialog/select markup | Mixed ordinary selects and parent surfaces | No additional selector cascade found; uniform dialog focus automation remains incomplete | Exception recorded | Retain existing P1 dialog migration item; no broad rewrite in CP-087. |
+
 ## UI-CONSISTENCY-001 retrospective checklist
 
 This is the visible bounded checklist for [GitHub #92](https://github.com/wolney8/OpenForge/issues/92).

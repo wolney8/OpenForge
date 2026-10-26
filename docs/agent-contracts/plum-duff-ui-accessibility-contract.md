@@ -140,6 +140,26 @@ Prefer the canonical name in issue restatements, followed by the visible label a
 - Sticky actions remain keyboard reachable.
 - No unintentional keyboard traps.
 
+### Selector interaction taxonomy
+
+- A searchable combobox has explicit `CLOSED`, `SEARCH_RESULTS` and `SHOW_ALL` states. Focus alone
+  stays closed. Non-empty typing opens filtered results; deleting the query closes them. The arrow
+  opens all valid options and clears a stale search constraint.
+- A searchable multi-select follows the same states and renders selected values as removable
+  tokens. Selection, token removal, Backspace removal and clear-all all leave the nested list
+  closed. Duplicate selection is prohibited.
+- An ordinary single-select is for a bounded, non-searchable choice. It opens only through explicit
+  activation and closes immediately after selection.
+- Searchable option lists must not open merely because a field receives focus or a parent panel
+  opens. They open only from typed search with results or explicit show-all activation. Selection
+  closes the nested list unless a documented workflow exception exists.
+- Parent panels, dialogs and drawers must never automatically expand nested controls.
+- Escape closes the nested list first, then any child popover, then the parent surface. Focus
+  returns to the control that opened the layer being closed.
+- Covered controls expose combobox/listbox/option semantics, `aria-expanded`, `aria-controls`,
+  `aria-selected`, visible focus and ordinary Tab order. Arrow keys navigate an open list; Enter or
+  Space selects where appropriate; empty-input Backspace removes the last token.
+
 ## Layout and overflow
 
 - No changed feature may create page-level horizontal scroll.

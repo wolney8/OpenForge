@@ -48,6 +48,9 @@ Done means:
 - existing Plum Duff primitives and semantic tokens were used or an exception was justified
 - Material 3 states and WCAG 2.2 AA were checked in light and dark modes
 - keyboard order, focus visibility, accessible names and form labels were checked
+- interactive selectors have evidence for initial closed state, explicit open, typed-search open,
+  show-all open, selection close, nested Escape order, keyboard operation, focus restoration,
+  responsive containment and absence of unintended data/API side effects
 - important controls/regions have stable `data-pd-id` identifiers
 - no unintended page horizontal overflow was introduced
 - wide content and tables use intentional scroll viewports with shrinking grid/flex ancestors

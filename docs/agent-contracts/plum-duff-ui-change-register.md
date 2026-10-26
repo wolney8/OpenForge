@@ -569,3 +569,28 @@ component, browser, accessibility, typecheck and build gates pass. Repository-wi
 blocked by the unchanged Free Bet ref-during-render error. Verified backup `BACKUP-5125B5F7`
 preserves integrity, zero foreign-key failures and all 29 financial controls. Owner interaction and
 visual acceptance remain pending.
+
+## CP-087 application control interaction contract — 2026-10-26
+
+| ID | Surface | Requested behaviour | Signed-off equivalent | Status |
+| --- | --- | --- | --- | --- |
+| PD-FIX-382 / #92 | Canonical control taxonomy | Record searchable, multi-searchable, ordinary-select and parent-surface interaction rules application-wide | CP-087 owner contract plus Material/WCAG semantics | COMPLETE |
+| PD-FIX-383 / #92 | Shared selector primitives | Reuse an explicit CLOSED / SEARCH_RESULTS / SHOW_ALL state machine with nested-first Escape | CP-086 token field visual treatment corrected to CP-087 interaction rules | COMPLETE |
+| PD-FIX-384 / #54 | Oddsmatcher filter selectors | Parent opens child closed; type/search, explicit show-all and selection-close behaviour | Supplied owner sequence and retained MBB evidence | COMPLETE |
+| PD-FIX-385 / #92 | Global search | Focus stays closed, typed query alone opens results and clearing query closes results | Existing authenticated global-search authority | COMPLETE |
+| PD-FIX-386 / #92 | Extra Place result selector | Explicit open, selection close, outside/Escape close and trigger focus restoration | Existing anchored row-action/listbox pattern | COMPLETE |
+| PD-FIX-387 / #92 | Retroactive application audit | Classify representative selectors and record compliant controls and bounded exceptions | UI consistency inventory contract | COMPLETE |
+| PD-FIX-388 / #92 | Rules and Definition of Done | Persist opening, keyboard, containment and no-side-effect evidence requirements | Existing AGENTS/UI/checklist/Definition of Done files | COMPLETE |
+| PD-FIX-389 / #92 | Cross-app verification | Shared component plus Oddsmatcher, ledger and Account/Settings regression evidence | UI consistency fail-closed handoff gate | COMPLETE |
+| PD-FIX-390 / #92 | CP-087 evidence/install | Private state captures, full gates and canonical local installation | Normal-owner backup/install procedure | COMPLETE |
+
+This batch changes selector interaction and shared presentation only. It does not change financial,
+provider, Profile-isolation, ledger-lifecycle, workbook or database-schema authorities.
+
+Private state captures are stored under
+`data/private/evidence/cp087-control-interaction-contract-20261026/`. Shared component,
+Oddsmatcher, global-search, Account and Extra Place browser evidence passes; typecheck and
+production build pass. Focused changed-file lint passes. Repository-wide lint remains blocked by
+the unchanged Free Bet ref-during-render error. Verified backup `BACKUP-416DDD3C` preserves all
+29 financial controls, integrity and zero foreign-key violations; owner interaction acceptance
+remains pending.

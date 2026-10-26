@@ -89,7 +89,7 @@ NAVIGATION_RESULTS = (
 
 
 @router.get("", response_model=list[GlobalSearchResult])
-def global_search(query: str = Query(min_length=2, max_length=80)) -> list[GlobalSearchResult]:
+def global_search(query: str = Query(min_length=1, max_length=80)) -> list[GlobalSearchResult]:
     normalized_query = query.strip().casefold()
     if len(normalized_query) < 2:
         return []

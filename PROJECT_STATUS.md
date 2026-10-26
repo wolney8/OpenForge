@@ -1,5 +1,16 @@
 # Project Status — Plum Duff / OpenForge — Doc ID: PS-CODEX-001
 
+> **CP-087 application control interaction contract — 2026-10-26:** Plum Duff now records one
+> canonical selector taxonomy and uses shared searchable-combobox and grouped preset primitives
+> with explicit closed/search-results/show-all state. Oddsmatcher selectors, global search and the
+> Extra Place result menu follow nested-first close/focus rules; representative Accounts behaviour
+> remains a compliant ordinary select. Focused component/API/browser, typecheck and build gates
+> pass without provider, financial, workbook or schema changes. Verified backup
+> `BACKUP-416DDD3C` preserves all 29 financial controls and zero foreign-key violations. Broad
+> legacy dialog consolidation and owner interaction acceptance remain pending; repository-wide
+> lint retains the pre-existing Free Bet ref-during-render failure.
+
+
 > **CP-086 bounded filter-interaction correction — 2026-10-26:** Oddsmatcher filter families now
 > share one searchable token-combobox, logical badge counts, scoped Reset and canonical saved-state
 > restoration across anchored desktop panels and the narrow sheet. Start time follows the grouped

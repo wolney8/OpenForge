@@ -1461,3 +1461,11 @@ single-value choice may share the autocomplete but must retain its domain cardin
 single-value selection, keep focus inside the filter surface so Escape can close the parent and
 restore the toolbar trigger. Test duplicate prevention, Backspace removal, dependent-option
 pruning, per-family Reset and saved-preset token restoration.
+
+## Focus is not permission to open a selector
+
+Opening a parent surface or focusing its first field must not cascade into a nested listbox. Model
+searchable selectors with explicit closed, search-results and show-all states. Non-empty typing or
+the arrow opens a list; selection, query deletion, token removal and clear-all close it. Escape is
+nested-first and restores the corresponding trigger. Native bounded selects remain valid ordinary
+single-selects and should not be replaced merely for visual uniformity.

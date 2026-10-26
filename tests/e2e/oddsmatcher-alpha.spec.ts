@@ -4,7 +4,7 @@ import path from "node:path";
 
 const profileId = "profile-demo-001";
 const evidenceDirectory = path.resolve(
-  "data/private/evidence/cp086-oddsmatcher-filter-parity-20261026",
+  "data/private/evidence/cp087-control-interaction-contract-20261026",
 );
 
 let preferences = {
@@ -140,6 +140,17 @@ test("renders, filters, paginates and inspects the bounded Alpha", async ({ page
   await page.goto("/oddsmatcher");
 
   await expect(page.getByRole("heading", { name: "Oddsmatcher" })).toBeVisible();
+  const globalSearch = page.getByRole("combobox", { name: "Search profiles, accounts and Fund Manager pages" });
+  await globalSearch.focus();
+  await expect(globalSearch).toHaveAttribute("aria-expanded", "false");
+  await expect(page.getByRole("listbox", { name: "Global search results" })).toHaveCount(0);
+  await page.screenshot({ path: path.join(evidenceDirectory, "08-global-search-focused-closed.png"), fullPage: true });
+  await globalSearch.fill("p");
+  await expect(globalSearch).toHaveAttribute("aria-expanded", "true");
+  await expect(page.getByRole("listbox", { name: "Global search results" })).toBeVisible();
+  await globalSearch.fill("");
+  await expect(globalSearch).toHaveAttribute("aria-expanded", "false");
+  await expect(page.getByRole("listbox", { name: "Global search results" })).toHaveCount(0);
   await expect(page.getByLabel("Oddsmatcher Profile context")).toHaveValue("");
   await page.screenshot({ path: path.join(evidenceDirectory, "F-oddsmatcher-global-desktop.png"), fullPage: true });
   await page.getByLabel("Oddsmatcher Profile context").selectOption(profileId);
@@ -218,7 +229,9 @@ test("renders, filters, paginates and inspects the bounded Alpha", async ({ page
   const toolbar = page.locator('[data-pd-id="oddsmatcher.filters"]');
   const closeDesktopFilter = async () => {
     await page.keyboard.press("Escape");
-    await page.keyboard.press("Escape");
+    await page.waitForTimeout(25);
+    if (await page.locator(".oddsmatcher-anchored-layer").count()) await page.keyboard.press("Escape");
+    await expect(page.locator(".oddsmatcher-anchored-layer")).toHaveCount(0);
   };
 
   await toolbar.getByRole("button", { name: /^Back/ }).click();
@@ -226,20 +239,28 @@ test("renders, filters, paginates and inspects the bounded Alpha", async ({ page
   expect((await backPopover.boundingBox())?.width ?? 999).toBeLessThanOrEqual(440);
   await expect(backPopover.getByRole("heading")).toHaveCount(0);
   const bookmakerCombo = backPopover.getByRole("combobox", { name: "Bookmakers" });
+  await expect(bookmakerCombo).toHaveAttribute("aria-expanded", "false");
+  await expect(backPopover.getByRole("listbox", { name: "Bookmakers options" })).toHaveCount(0);
+  await bookmakerCombo.focus();
+  await expect(backPopover.getByRole("listbox", { name: "Bookmakers options" })).toHaveCount(0);
+  await page.screenshot({ path: path.join(evidenceDirectory, "01-searchable-closed.png"), fullPage: true });
   await bookmakerCombo.fill("will");
   await expect(backPopover.getByRole("option", { name: /William Hill/ })).toBeVisible();
   await expect(backPopover.getByRole("option", { name: /Betfred/ })).toHaveCount(0);
-  await page.screenshot({ path: path.join(evidenceDirectory, "01-back-search-results.png"), fullPage: true });
+  await page.screenshot({ path: path.join(evidenceDirectory, "02-search-results-open.png"), fullPage: true });
   await page.keyboard.press("ArrowDown");
   await page.keyboard.press("Enter");
+  await expect(backPopover.getByRole("listbox", { name: "Bookmakers options" })).toHaveCount(0);
+  await page.screenshot({ path: path.join(evidenceDirectory, "03-selected-token-list-closed.png"), fullPage: true });
   await bookmakerCombo.fill("bet");
   await backPopover.getByRole("option", { name: /Betfred/ }).click();
   await expect(backPopover.getByRole("button", { name: "Remove William Hill" })).toBeVisible();
   await expect(backPopover.getByRole("button", { name: "Remove Betfred" })).toBeVisible();
-  await bookmakerCombo.fill("");
+  await backPopover.getByRole("button", { name: "Show all bookmakers options" }).click();
+  await expect(backPopover.getByRole("option")).toHaveCount(4);
+  await page.screenshot({ path: path.join(evidenceDirectory, "04-explicit-show-all.png"), fullPage: true });
   await backPopover.getByRole("option", { name: /William Hill/ }).click();
   await expect(backPopover.getByRole("button", { name: /^Remove / })).toHaveCount(2);
-  await page.screenshot({ path: path.join(evidenceDirectory, "02-back-multiple-selections.png"), fullPage: true });
   await bookmakerCombo.focus();
   await bookmakerCombo.press("Backspace");
   await expect(backPopover.getByRole("button", { name: "Remove Betfred" })).toHaveCount(0);
@@ -317,21 +338,28 @@ test("renders, filters, paginates and inspects the bounded Alpha", async ({ page
   await toolbar.getByRole("button", { name: /^Start time/ }).click();
   const startPopover = page.getByRole("dialog", { name: "Start time filter" });
   const startCombo = startPopover.getByRole("combobox", { name: "Event start time" });
+  await expect(startCombo).toHaveAttribute("aria-expanded", "false");
+  await expect(startPopover.getByRole("listbox", { name: "Event start time options" })).toHaveCount(0);
   await startCombo.focus();
+  await expect(startPopover.getByRole("listbox", { name: "Event start time options" })).toHaveCount(0);
+  await page.screenshot({ path: path.join(evidenceDirectory, "05-start-time-parent-open-list-closed.png"), fullPage: true });
+  await startCombo.click();
   for (const group of ["Starting soon", "By day", "Custom"]) await expect(startPopover.getByRole("group", { name: group })).toBeVisible();
   for (const option of ["Any time", "Within 30 mins", "Within 1 hour", "Within 2 hours", "Within 4 hours", "Within 8 hours", "Within 12 hours", "Within 24 hours", "Today", "Tomorrow", "Next 3 days", "Custom range"]) {
     await expect(startPopover.getByRole("option", { name: option })).toBeVisible();
   }
-  await page.screenshot({ path: path.join(evidenceDirectory, "05-start-time-grouped-list.png"), fullPage: true });
+  await page.screenshot({ path: path.join(evidenceDirectory, "06-start-time-list-open.png"), fullPage: true });
   await startPopover.getByRole("option", { name: "Custom range" }).click();
+  await expect(startPopover.getByRole("listbox", { name: "Event start time options" })).toHaveCount(0);
+  await expect(startCombo).toContainText("Custom range");
+  await page.screenshot({ path: path.join(evidenceDirectory, "07-custom-selected-list-closed.png"), fullPage: true });
   await startPopover.getByRole("textbox", { name: "From" }).fill("2026-10-25T10:00");
   await startPopover.getByRole("textbox", { name: "To" }).fill("2026-10-26T18:00");
   await startPopover.getByRole("button", { name: "Reset" }).click();
-  await startCombo.focus();
+  await startCombo.click();
   await startPopover.getByRole("option", { name: "Within 24 hours" }).click();
-  await expect(startCombo).toHaveValue("Within 24 hours");
+  await expect(startCombo).toContainText("Within 24 hours");
   await expect(toolbar.getByRole("button", { name: /^Start time/ }).locator(".table-filter-badge")).toHaveText("1");
-  await page.screenshot({ path: path.join(evidenceDirectory, "06-start-time-selected-preset.png"), fullPage: true });
   await closeDesktopFilter();
 
   await toolbar.getByRole("button", { name: /^Rating/ }).click();
@@ -400,7 +428,7 @@ test("renders, filters, paginates and inspects the bounded Alpha", async ({ page
   await expect(page.getByRole("dialog", { name: "Lay filter" }).getByRole("button", { name: "Remove Smarkets" })).toBeVisible();
   await closeDesktopFilter();
   await toolbar.getByRole("button", { name: /^Start time/ }).click();
-  await expect(page.getByRole("combobox", { name: "Event start time" })).toHaveValue("Within 24 hours");
+  await expect(page.getByRole("combobox", { name: "Event start time" })).toContainText("Within 24 hours");
   await closeDesktopFilter();
   await page.locator('[data-pd-id="oddsmatcher.filters"]').getByRole("button", { name: /^Rating/ }).click();
   await page.getByLabel("Min. rating").fill("96");

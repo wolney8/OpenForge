@@ -2096,10 +2096,35 @@ function ResultAction({
   const [expanded, setExpanded] = useState(false);
   const [anchor, setAnchor] = useState<DOMRect | null>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const closeMenu = useCallback(() => {
+    setExpanded(false);
+    window.requestAnimationFrame(() => triggerRef.current?.focus());
+  }, []);
+  useEffect(() => {
+    if (!expanded) return;
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (!triggerRef.current?.contains(target) && !menuRef.current?.contains(target)) closeMenu();
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      event.stopPropagation();
+      closeMenu();
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [closeMenu, expanded]);
   const openMenu = () => {
     const nextAnchor = triggerRef.current?.getBoundingClientRect() ?? null;
     setAnchor(nextAnchor);
-    setExpanded((current) => !current);
+    if (expanded) closeMenu();
+    else setExpanded(true);
   };
   return (
     <div className="extra-place-result-action">
@@ -2120,6 +2145,8 @@ function ResultAction({
         <div
           aria-label={`Results for ${row.runner || "Extra Place row"}`}
           className="extra-place-result-menu"
+          onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); closeMenu(); } }}
+          ref={menuRef}
           role="listbox"
           style={{ top: anchor.bottom + 6, left: Math.max(8, anchor.right - 208) }}
         >
@@ -2129,7 +2156,7 @@ function ResultAction({
               key={result}
               onClick={() => {
                 onResult(result);
-                setExpanded(false);
+                closeMenu();
               }}
               role="option"
               type="button"

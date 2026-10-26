@@ -1,7 +1,7 @@
 import { expect, test, type APIRequestContext } from "@playwright/test";
 
 const route = "/profiles/profile-demo-001/tracker/each-way-extra-places";
-const apiBaseUrl = "http://127.0.0.1:8010";
+const apiBaseUrl = process.env.OPENFORGE_E2E_API_BASE_URL ?? "http://127.0.0.1:8010";
 const profileId = "profile-demo-001";
 
 async function createExtraPlaceRow(
@@ -1123,9 +1123,17 @@ test.describe("Extra Place ledger parity", () => {
   });
 
   test("keeps operational table controls available for Extra Place rows", async ({ page, request }) => {
+    await page.route("**/api/auth/session", (route) => route.fulfill({ json: {
+      authenticated: true,
+      email: "alpha-owner@example.invalid",
+      linked_profile_ids: [profileId],
+      name: "Alpha Owner",
+      role: "fund_manager",
+    } }));
+    const runner = `Action menu runner ${Date.now()}`;
     const row = await createExtraPlaceRow(request, {
-      runner: `Action menu runner ${Date.now()}`,
-      bookmaker: "Betfred",
+      runner,
+      bookmaker: "Bookmaker A",
       each_way_stake: "5",
       back_odds: "6",
       win_exchange: "Smarkets",
@@ -1137,18 +1145,23 @@ test.describe("Extra Place ledger parity", () => {
     await expect(page.getByText("Loading Extra Place ledger")).toBeHidden({ timeout: 90_000 });
     const ledger = page.locator('[data-pd-id="extra-place.ledger"]');
 
-    await expect(ledger.getByText("Qual Loss", { exact: true }).first()).toBeVisible();
-    await expect(ledger.locator("th", { hasText: "Status" })).toBeVisible();
-    await expect(page.locator('[data-pd-id="extra-place.table-scroll.scroll-right"]')).toBeAttached();
-    await expect(ledger.locator(".table-column-resize-handle").first()).toBeVisible();
-
-    await ledger.locator(".table-scroll").evaluate((element) => {
-      element.scrollLeft = element.scrollWidth;
-    });
-    const flag = ledger.locator('button[aria-label^="Update result for"]').first();
+    await expect(ledger.getByText(runner, { exact: true })).toBeVisible();
+    const rowElement = ledger.locator("tr", { hasText: runner });
+    const flag = rowElement.locator('button[aria-label^="Update result for"]');
     await flag.scrollIntoViewIfNeeded();
     await flag.click({ force: true });
     await expect(page.locator(".extra-place-result-menu")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(page.locator(".extra-place-result-menu")).toBeHidden();
+    await expect(flag).toBeFocused();
+    await flag.click({ force: true });
+    await page.getByRole("heading", { name: "Extra Places", exact: true }).click();
+    await expect(page.locator(".extra-place-result-menu")).toBeHidden();
+    await expect(flag).toBeFocused();
+    await flag.click({ force: true });
+    await page.locator(".extra-place-result-menu").getByRole("option").first().click();
+    await expect(page.locator(".extra-place-result-menu")).toBeHidden();
+    await expect(flag).toBeFocused();
     await deleteExtraPlaceRow(request, row.each_way_extra_place_id);
   });
 

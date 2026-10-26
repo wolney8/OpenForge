@@ -52,6 +52,12 @@ Complete this for every feature, bug fix, component, fixture-backed UI, route or
       labels or overlapping the controlled content.
 - [ ] Clearing an earlier value preserves every mandatory empty input/card slot needed to resume
       the workflow, while safely invalidating only dependent state.
+- [ ] Searchable selectors prove initial closed, focus-stays-closed, typed search, no-results,
+      explicit show-all, selection-close, token removal and nested-first Escape states.
+- [ ] Ordinary selects open only from explicit activation, close after selection and leave their
+      parent panel/dialog open.
+- [ ] Selector tests cover keyboard navigation, focus restoration, responsive containment and no
+      unintended data/API request or form submission.
 
 ## Layout and process state
 

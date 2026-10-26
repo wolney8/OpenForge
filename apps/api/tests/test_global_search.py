@@ -5,6 +5,12 @@ from openforge_api.db import update_profile_metadata
 from openforge_api.main import app
 
 
+def test_global_search_accepts_a_single_typed_character() -> None:
+    response = TestClient(app).get("/search?query=p")
+
+    assert response.status_code == 200
+
+
 def test_global_search_excludes_archived_profiles_from_ordinary_results() -> None:
     active_id = "profile-search-active"
     archived_id = "profile-search-archived"

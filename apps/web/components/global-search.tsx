@@ -33,7 +33,7 @@ export function GlobalSearch() {
 
   useEffect(() => {
     const trimmedQuery = query.trim();
-    if (trimmedQuery.length < 2) return;
+    if (trimmedQuery.length < 1) return;
     const controller = new AbortController();
     const timer = window.setTimeout(() => {
       setIsLoading(true);
@@ -122,15 +122,14 @@ export function GlobalSearch() {
           onChange={(event) => {
             const nextQuery = event.target.value;
             setQuery(nextQuery);
-            setIsOpen(true);
-            if (nextQuery.trim().length < 2) {
+            setIsOpen(nextQuery.trim().length >= 1);
+            if (nextQuery.trim().length < 1) {
               setResults([]);
               setIsLoading(false);
               setSearchError(false);
               setActiveIndex(-1);
             }
           }}
-          onFocus={() => setIsOpen(true)}
           onKeyDown={(event) => {
             if (event.key === "ArrowDown" && results.length > 0) {
               event.preventDefault();
@@ -154,7 +153,7 @@ export function GlobalSearch() {
           value={query}
         />
       </label>
-      {isOpen && query.trim().length >= 2 ? (
+      {isOpen && query.trim().length >= 1 ? (
         <section aria-label="Global search results" className="global-search-results" data-pd-id="global-search.results" id="global-search-results" role="listbox">
           {isLoading ? <p className="global-search-state" role="status">Searching...</p> : null}
           {!isLoading && searchError ? <p className="global-search-state error-text" role="status">Search is temporarily unavailable.</p> : null}

@@ -196,6 +196,12 @@ fixture-backed UI change. Larger existing issues belong in
 `docs/agent-contracts/plum-duff-ui-audit-backlog.md`; do not hide them or perform an unsafe visual
 rewrite.
 
+Searchable option lists must not open merely because a field receives focus or a parent panel
+opens. They open only from typed search with results or explicit show-all activation. Selection
+closes the nested list unless a documented workflow exception exists. Parent panels, dialogs and
+drawers must never automatically expand nested controls. Use the canonical selector taxonomy and
+nested-first Escape order in the UI accessibility contract.
+
 The consistency-enforcer skill is a fail-closed handoff gate. An agent must compare changed UI
 against established Plum Duff equivalents and provide automated geometry, overflow, action/icon,
 theme and accessibility evidence before asking the user to smoke test it. Unverified UI work must
