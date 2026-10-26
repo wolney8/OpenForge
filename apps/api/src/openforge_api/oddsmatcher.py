@@ -3,9 +3,11 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
-from dataclasses import dataclass
-from datetime import UTC, date, datetime
+import re
+from dataclasses import dataclass, replace
+from datetime import UTC, datetime
 from decimal import Decimal
+from pathlib import Path
 from typing import Any, Literal, cast
 
 import httpx
@@ -123,14 +125,17 @@ class OddsMatcherResponse(BaseModel):
     state: Literal["empty", "fresh", "stale"]
     warning: str | None = None
     manual_refresh_only: bool = True
+    data_source: Literal["live", "replay"] = "live"
+    replay_snapshot_id: str | None = None
+    replay_captured_at: str | None = None
     competitions: list[str]
     event_count: int
     bookmaker_count: int
     exchange_count: int
-    credits_used_today: int
     provider_credits_used: int | None
     provider_credits_remaining: int | None
-    daily_credit_ceiling: int
+    provider_last_refresh_cost: int | None
+    provider_quota_exhausted: bool = False
     opportunities: list[OpportunityResponse]
     excluded: list[ExcludedQuoteResponse]
 
@@ -172,49 +177,55 @@ class ProviderCache:
     exchange_keys: set[str]
     provider_credits_used: int | None
     provider_credits_remaining: int | None
+    provider_last_refresh_cost: int | None = None
+    provider_quota_exhausted: bool = False
+
+
+class SavedSnapshot(BaseModel):
+    schema_version: Literal["oddsmatcher-normalized-snapshot-v1"] = (
+        "oddsmatcher-normalized-snapshot-v1"
+    )
+    snapshot_id: str
+    captured_at: datetime
+    provider: Literal["The Odds API"] = "The Odds API"
+    competitions: dict[str, str]
+    event_count: int
+    bookmaker_keys: list[str]
+    exchange_keys: list[str]
+    provider_credits_used: int | None
+    provider_credits_remaining: int | None
+    provider_last_refresh_cost: int | None
+    opportunities: list[NormalizedOpportunity]
+    excluded: list[ExcludedQuoteResponse]
+
+
+class SavedSnapshotSummary(BaseModel):
+    snapshot_id: str
+    captured_at: str
+    provider: str
+    competitions: list[str]
+    event_count: int
+    bookmaker_count: int
+    exchange_count: int
+
+
+class ProviderQuotaExhausted(Exception):
+    def __init__(
+        self,
+        *,
+        used: int | None,
+        remaining: int | None,
+        last_cost: int | None,
+    ) -> None:
+        super().__init__("Provider quota exhausted")
+        self.used = used
+        self.remaining = remaining
+        self.last_cost = last_cost
 
 
 _cache: ProviderCache | None = None
 _refresh_task: asyncio.Task[ProviderCache] | None = None
 _refresh_lock = asyncio.Lock()
-_usage_day: date | None = None
-_credits_used_today = 0
-
-
-def _load_persisted_usage(today: date) -> int:
-    path = settings.the_odds_api_usage_state_path
-    if not path.exists():
-        return 0
-    try:
-        payload = json.loads(path.read_text(encoding="utf-8"))
-        if payload.get("date") != today.isoformat():
-            return 0
-        credits = int(payload["credits"])
-        if credits < 0:
-            raise ValueError("credits cannot be negative")
-        return credits
-    except (OSError, ValueError, TypeError, KeyError, json.JSONDecodeError) as error:
-        raise HTTPException(
-            status_code=503,
-            detail="Provider refresh is paused because its credit-safety state is unavailable.",
-        ) from error
-
-
-def _persist_usage(today: date, credits: int) -> None:
-    path = settings.the_odds_api_usage_state_path
-    try:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        temporary = path.with_suffix(f"{path.suffix}.tmp")
-        temporary.write_text(
-            json.dumps({"date": today.isoformat(), "credits": credits}) + "\n",
-            encoding="utf-8",
-        )
-        temporary.replace(path)
-    except OSError as error:
-        raise HTTPException(
-            status_code=503,
-            detail="Provider refresh is paused because its credit-safety state cannot be saved.",
-        ) from error
 
 
 def _account_name(provider_key: str, provider_title: str, *, exchange: bool) -> str:
@@ -374,29 +385,116 @@ def _headers_int(headers: httpx.Headers, name: str) -> int | None:
         return None
 
 
-async def _fetch_provider() -> ProviderCache:
-    global _credits_used_today, _usage_day
-    today = datetime.now(UTC).date()
-    if _usage_day != today:
-        _usage_day = today
-        _credits_used_today = _load_persisted_usage(today)
-    expected_cost = len(COMPETITIONS)
-    if _credits_used_today + expected_cost > settings.the_odds_api_daily_credit_ceiling:
-        raise HTTPException(
-            status_code=429,
-            detail=(
-                "Manual refresh is paused because the configured daily provider "
-                "credit ceiling would be exceeded."
-            ),
+_SNAPSHOT_ID = re.compile(r"^[0-9]{8}T[0-9]{6}(?:[0-9]{6})?Z-[0-9a-f]{12}$")
+
+
+def _snapshot_payload(cache: ProviderCache) -> SavedSnapshot:
+    captured = cache.fetched_at.astimezone(UTC)
+    digest_source = "|".join(
+        [captured.isoformat(), *(row.opportunity_id for row in cache.opportunities)]
+    )
+    digest = hashlib.sha256(digest_source.encode()).hexdigest()[:12]
+    snapshot_id = f"{captured.strftime('%Y%m%dT%H%M%S%fZ')}-{digest}"
+    return SavedSnapshot(
+        snapshot_id=snapshot_id,
+        captured_at=captured,
+        competitions=dict(COMPETITIONS),
+        event_count=cache.event_count,
+        bookmaker_keys=sorted(cache.bookmaker_keys),
+        exchange_keys=sorted(cache.exchange_keys),
+        provider_credits_used=cache.provider_credits_used,
+        provider_credits_remaining=cache.provider_credits_remaining,
+        provider_last_refresh_cost=cache.provider_last_refresh_cost,
+        opportunities=cache.opportunities,
+        excluded=cache.excluded,
+    )
+
+
+def _save_snapshot(cache: ProviderCache) -> SavedSnapshot:
+    snapshot = _snapshot_payload(cache)
+    directory = settings.the_odds_api_snapshot_directory_path
+    try:
+        directory.mkdir(parents=True, exist_ok=True)
+        target = directory / f"{snapshot.snapshot_id}.json"
+        temporary = directory / f".{snapshot.snapshot_id}.tmp"
+        temporary.write_text(
+            snapshot.model_dump_json(indent=2) + "\n",
+            encoding="utf-8",
         )
+        temporary.replace(target)
+    except OSError as error:
+        raise HTTPException(
+            status_code=503,
+            detail="Live odds were received, but the private replay snapshot could not be saved.",
+        ) from error
+    return snapshot
+
+
+def _read_snapshot(path: Path) -> SavedSnapshot:
+    try:
+        return SavedSnapshot.model_validate_json(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError, TypeError) as error:
+        raise HTTPException(
+            status_code=422,
+            detail="The saved Oddsmatcher snapshot is invalid and cannot be replayed.",
+        ) from error
+
+
+def _snapshot_path(snapshot_id: str) -> Path:
+    if not _SNAPSHOT_ID.fullmatch(snapshot_id):
+        raise HTTPException(status_code=404, detail="Saved snapshot not found")
+    path = settings.the_odds_api_snapshot_directory_path / f"{snapshot_id}.json"
+    if not path.is_file():
+        raise HTTPException(status_code=404, detail="Saved snapshot not found")
+    return path
+
+
+def _cache_from_snapshot(snapshot: SavedSnapshot) -> ProviderCache:
+    return ProviderCache(
+        fetched_at=snapshot.captured_at,
+        opportunities=snapshot.opportunities,
+        excluded=snapshot.excluded,
+        event_count=snapshot.event_count,
+        bookmaker_keys=set(snapshot.bookmaker_keys),
+        exchange_keys=set(snapshot.exchange_keys),
+        provider_credits_used=snapshot.provider_credits_used,
+        provider_credits_remaining=snapshot.provider_credits_remaining,
+        provider_last_refresh_cost=snapshot.provider_last_refresh_cost,
+    )
+
+
+def list_saved_snapshots() -> list[SavedSnapshotSummary]:
+    directory = settings.the_odds_api_snapshot_directory_path
+    if not directory.is_dir():
+        return []
+    summaries: list[SavedSnapshotSummary] = []
+    for path in directory.glob("*.json"):
+        try:
+            snapshot = SavedSnapshot.model_validate_json(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError, TypeError):
+            continue
+        summaries.append(
+            SavedSnapshotSummary(
+                snapshot_id=snapshot.snapshot_id,
+                captured_at=snapshot.captured_at.astimezone(UTC).isoformat(),
+                provider=snapshot.provider,
+                competitions=list(snapshot.competitions.values()),
+                event_count=snapshot.event_count,
+                bookmaker_count=len(snapshot.bookmaker_keys),
+                exchange_count=len(snapshot.exchange_keys),
+            )
+        )
+    return sorted(summaries, key=lambda item: item.captured_at, reverse=True)
+
+
+async def _fetch_provider() -> ProviderCache:
     key = settings.the_odds_api_key.strip()
     if not key:
         raise HTTPException(status_code=503, detail="The Odds API is not configured on the server.")
-    _credits_used_today += expected_cost
-    _persist_usage(today, _credits_used_today)
     payloads: dict[str, list[dict[str, Any]]] = {}
     used_header: int | None = None
     remaining_header: int | None = None
+    refresh_cost = 0
     async with httpx.AsyncClient(timeout=20) as client:
         for competition_key in COMPETITIONS:
             response = await client.get(
@@ -409,19 +507,24 @@ async def _fetch_provider() -> ProviderCache:
                     "includeLinks": "true",
                 },
             )
-            last_cost = _headers_int(response.headers, "x-requests-last") or 1
-            if last_cost != 1:
-                _credits_used_today += last_cost - 1
-                _persist_usage(today, _credits_used_today)
+            last_cost = _headers_int(response.headers, "x-requests-last")
+            if last_cost is not None:
+                refresh_cost += last_cost
             used_header = _headers_int(response.headers, "x-requests-used")
             remaining_header = _headers_int(response.headers, "x-requests-remaining")
+            if response.status_code == 429:
+                raise ProviderQuotaExhausted(
+                    used=used_header,
+                    remaining=remaining_header,
+                    last_cost=last_cost,
+                )
             response.raise_for_status()
             data = response.json()
             if not isinstance(data, list):
                 raise httpx.HTTPError("Provider returned an unexpected event payload.")
             payloads[competition_key] = data
     opportunities, excluded, count, bookmakers, exchanges = normalize_provider_events(payloads)
-    return ProviderCache(
+    cache = ProviderCache(
         fetched_at=datetime.now(UTC),
         opportunities=opportunities,
         excluded=excluded,
@@ -430,7 +533,11 @@ async def _fetch_provider() -> ProviderCache:
         exchange_keys=exchanges,
         provider_credits_used=used_header,
         provider_credits_remaining=remaining_header,
+        provider_last_refresh_cost=refresh_cost or None,
+        provider_quota_exhausted=False,
     )
+    _save_snapshot(cache)
+    return cache
 
 
 async def refresh_provider_cache() -> tuple[ProviderCache, str | None]:
@@ -441,6 +548,17 @@ async def refresh_provider_cache() -> tuple[ProviderCache, str | None]:
         task = _refresh_task
     try:
         result = await task
+    except ProviderQuotaExhausted as error:
+        if _cache is None:
+            raise HTTPException(status_code=429, detail="Provider quota exhausted.") from error
+        _cache = replace(
+            _cache,
+            provider_credits_used=error.used,
+            provider_credits_remaining=error.remaining,
+            provider_last_refresh_cost=error.last_cost,
+            provider_quota_exhausted=True,
+        )
+        return _cache, "Provider quota exhausted. Showing the last successful data as stale."
     except (httpx.HTTPError, HTTPException) as error:
         if _cache is None:
             if isinstance(error, HTTPException):
@@ -512,7 +630,7 @@ def _eligibility(account: object | None, *, provider: str, bookmaker: bool) -> E
 
 
 def _resolved_opportunities(
-    profile_id: str | None, cache: ProviderCache
+    profile_id: str | None, cache: ProviderCache, *, replay: bool = False
 ) -> list[OpportunityResponse]:
     accounts = list_accounts(profile_id) if profile_id else []
     account_index = {
@@ -615,6 +733,8 @@ def _resolved_opportunities(
             commission_rating = (
                 (Decimal("10") + Decimal(calculation.matched_result)) / Decimal("10")
             ) * Decimal("100")
+        presented_back = back.model_copy(update={"link": None}) if replay else back
+        presented_lay = lay.model_copy(update={"link": None}) if replay else lay
         rows.append(
             OpportunityResponse(
                 opportunity_id=source.opportunity_id,
@@ -628,8 +748,8 @@ def _resolved_opportunities(
                 selection=source.selection,
                 market_key=source.market_key,
                 market=source.market,
-                back=back,
-                lay=lay,
+                back=presented_back,
+                lay=presented_lay,
                 display_rating=f"{display_rating:.2f}",
                 commission_aware_rating=(
                     f"{commission_rating:.2f}" if commission_rating is not None else None
@@ -641,12 +761,13 @@ def _resolved_opportunities(
                 pnl_if_back_wins=(calculation.pnl_if_back_wins if calculation else None),
                 pnl_if_lay_wins=(calculation.pnl_if_lay_wins if calculation else None),
                 conservative_result=(calculation.matched_result if calculation else None),
-                freshness="stale" if age > STALE_AFTER_SECONDS else "fresh",
+                freshness="stale" if replay or age > STALE_AFTER_SECONDS else "fresh",
                 age_seconds=age,
                 back_eligibility=back_state,
                 lay_eligibility=lay_state,
                 can_create_prospecting_draft=(
-                    profile_id is not None
+                    not replay
+                    and profile_id is not None
                     and calculation is not None
                     and back_state.state == "eligible"
                     and lay_state.state == "eligible"
@@ -664,7 +785,11 @@ def _resolved_opportunities(
 
 
 def _response(
-    profile_id: str | None, cache: ProviderCache | None, warning: str | None = None
+    profile_id: str | None,
+    cache: ProviderCache | None,
+    warning: str | None = None,
+    *,
+    replay_snapshot_id: str | None = None,
 ) -> OddsMatcherResponse:
     if profile_id is not None and get_profile(profile_id) is None:
         raise HTTPException(status_code=404, detail="Profile not found")
@@ -672,18 +797,20 @@ def _response(
         return OddsMatcherResponse(
             fetched_at=None,
             state="empty",
+            data_source="live",
             competitions=list(COMPETITIONS.values()),
             event_count=0,
             bookmaker_count=0,
             exchange_count=0,
-            credits_used_today=_credits_used_today,
             provider_credits_used=None,
             provider_credits_remaining=None,
-            daily_credit_ceiling=settings.the_odds_api_daily_credit_ceiling,
+            provider_last_refresh_cost=None,
+            provider_quota_exhausted=False,
             opportunities=[],
             excluded=[],
         )
-    stale = (
+    replay = replay_snapshot_id is not None
+    stale = replay or (
         warning is not None
         or (datetime.now(UTC) - cache.fetched_at).total_seconds() > STALE_AFTER_SECONDS
     )
@@ -691,15 +818,18 @@ def _response(
         fetched_at=cache.fetched_at.isoformat(),
         state="stale" if stale else "fresh",
         warning=warning,
+        data_source="replay" if replay else "live",
+        replay_snapshot_id=replay_snapshot_id,
+        replay_captured_at=cache.fetched_at.isoformat() if replay else None,
         competitions=list(COMPETITIONS.values()),
         event_count=cache.event_count,
         bookmaker_count=len(cache.bookmaker_keys),
         exchange_count=len(cache.exchange_keys),
-        credits_used_today=_credits_used_today,
         provider_credits_used=cache.provider_credits_used,
         provider_credits_remaining=cache.provider_credits_remaining,
-        daily_credit_ceiling=settings.the_odds_api_daily_credit_ceiling,
-        opportunities=_resolved_opportunities(profile_id, cache),
+        provider_last_refresh_cost=cache.provider_last_refresh_cost,
+        provider_quota_exhausted=(False if replay else cache.provider_quota_exhausted),
+        opportunities=_resolved_opportunities(profile_id, cache, replay=replay),
         excluded=cache.excluded,
     )
 
@@ -720,6 +850,23 @@ async def refresh_oddsmatcher(profile_id: str) -> OddsMatcherResponse:
 @global_router.get("", response_model=OddsMatcherResponse)
 def get_global_oddsmatcher(profile_id: str | None = None) -> OddsMatcherResponse:
     return _response(profile_id, _cache)
+
+
+@global_router.get("/snapshots", response_model=list[SavedSnapshotSummary])
+def get_saved_oddsmatcher_snapshots() -> list[SavedSnapshotSummary]:
+    return list_saved_snapshots()
+
+
+@global_router.get("/snapshots/{snapshot_id}", response_model=OddsMatcherResponse)
+def get_saved_oddsmatcher_snapshot(
+    snapshot_id: str, profile_id: str | None = None
+) -> OddsMatcherResponse:
+    snapshot = _read_snapshot(_snapshot_path(snapshot_id))
+    return _response(
+        profile_id,
+        _cache_from_snapshot(snapshot),
+        replay_snapshot_id=snapshot.snapshot_id,
+    )
 
 
 @global_router.post("/refresh", response_model=OddsMatcherResponse)
@@ -861,8 +1008,6 @@ def create_prospecting_draft(profile_id: str, payload: DraftPayload) -> DraftRes
 
 
 def reset_runtime_state_for_tests() -> None:
-    global _cache, _refresh_task, _usage_day, _credits_used_today
+    global _cache, _refresh_task
     _cache = None
     _refresh_task = None
-    _usage_day = None
-    _credits_used_today = 0

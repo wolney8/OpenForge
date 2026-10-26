@@ -76,10 +76,10 @@ const feed = {
   event_count: 12,
   bookmaker_count: 9,
   exchange_count: 3,
-  credits_used_today: 3,
   provider_credits_used: 6,
   provider_credits_remaining: 494,
-  daily_credit_ceiling: 25,
+  provider_last_refresh_cost: 3,
+  provider_quota_exhausted: false,
   opportunities: Array.from({ length: 34 }, (_, index) => opportunity(index)),
   excluded: Array.from({ length: 19 }, (_, index) => ({
     competition: "Premier League",

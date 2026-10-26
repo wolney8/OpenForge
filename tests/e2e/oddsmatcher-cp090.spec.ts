@@ -24,7 +24,8 @@ const secondOpportunity = {
   lay: { ...baseOpportunity.lay, provider_key: "betfair_ex_uk", provider_name: "Betfair Exchange", account_name: "Betfair Exchange", odds: "3.90" },
 };
 const feed = { provider: "The Odds API", fetched_at: "2026-10-26T14:01:00Z", state: "fresh", warning: null, manual_refresh_only: true,
-  competitions: ["Premier League"], event_count: 2, bookmaker_count: 2, exchange_count: 2, credits_used_today: 3, provider_credits_used: 3, provider_credits_remaining: 497, daily_credit_ceiling: 25,
+  competitions: ["Premier League"], event_count: 2, bookmaker_count: 2, exchange_count: 2,  provider_credits_used: 3, provider_credits_remaining: 497, provider_last_refresh_cost: 3,
+  provider_quota_exhausted: false,
   opportunities: [baseOpportunity, secondOpportunity], excluded: [] };
 
 function previewFor(body: Record<string, string>) {

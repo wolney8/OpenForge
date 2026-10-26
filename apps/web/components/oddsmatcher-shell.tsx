@@ -42,6 +42,7 @@ import {
   type OddsMatcherFilters,
   type OddsMatcherOpportunity,
   type OddsMatcherPreferences,
+  type OddsMatcherSavedSnapshot,
   type OddsMatcherSavedFilter,
   type OpportunitySort,
 } from "@/lib/oddsmatcher";
@@ -88,6 +89,7 @@ type ProfileOption = {
 type FilterPanel =
   "all" | "selection" | "startTime" | "back" | "lay" | "rating";
 type FilterOption = SelectionOption;
+type OddsMatcherDataSource = "live" | "replay";
 
 async function responseError(response: Response, fallback: string) {
   try {
@@ -230,7 +232,10 @@ export function OddsMatcherShell({
   const [feed, setFeed] = useState<OddsMatcherFeed | null>(null);
   const [readState, setReadState] = useState<ReadState>("loading");
   const [refreshing, setRefreshing] = useState(false);
-  const [refreshQuotaBlocked, setRefreshQuotaBlocked] = useState(false);
+  const [providerQuotaExhausted, setProviderQuotaExhausted] = useState(false);
+  const [dataSource, setDataSource] = useState<OddsMatcherDataSource>("live");
+  const [savedSnapshots, setSavedSnapshots] = useState<OddsMatcherSavedSnapshot[]>([]);
+  const [savedSnapshotId, setSavedSnapshotId] = useState("");
   const refreshInFlight = useRef(false);
   const [error, setError] = useState("");
   const [filters, setFilters] = useState<OddsMatcherFilters>(
@@ -271,6 +276,23 @@ export function OddsMatcherShell({
       )
       .catch(() => setProfiles([]));
   }, []);
+  const loadSavedSnapshots = useCallback(async () => {
+    try {
+      const response = await fetch(`${apiBaseUrl}/oddsmatcher/snapshots`, {
+        cache: "no-store",
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("Saved snapshots could not be loaded.");
+      const value = await response.json() as OddsMatcherSavedSnapshot[];
+      setSavedSnapshots(value);
+      setSavedSnapshotId((current) => current || value[0]?.snapshot_id || "");
+    } catch {
+      setSavedSnapshots([]);
+    }
+  }, []);
+  useEffect(() => {
+    void Promise.resolve().then(loadSavedSnapshots);
+  }, [loadSavedSnapshots]);
   useEffect(() => {
     void fetch(`${apiBaseUrl}/fund-manager/preferences/oddsmatcher`, { credentials: "include", cache: "no-store" })
       .then(async (response) => {
@@ -305,14 +327,23 @@ export function OddsMatcherShell({
   const profileQuery = profileId ? `?profile_id=${encodeURIComponent(profileId)}` : "";
   const load = useCallback(
     async (refresh: boolean) => {
+      if (refresh && dataSource !== "live") return;
       if (refresh && refreshInFlight.current) return;
       if (refresh) refreshInFlight.current = true;
       if (refresh) setRefreshing(true);
       else setReadState("loading");
       setError("");
       try {
+        if (dataSource === "replay" && !savedSnapshotId) {
+          setFeed(null);
+          setReadState("ready");
+          return;
+        }
+        const sourcePath = dataSource === "replay"
+          ? `/oddsmatcher/snapshots/${encodeURIComponent(savedSnapshotId)}`
+          : `/oddsmatcher${refresh ? "/refresh" : ""}`;
         const response = await fetch(
-          `${apiBaseUrl}/oddsmatcher${refresh ? "/refresh" : ""}${profileQuery}`,
+          `${apiBaseUrl}${sourcePath}${profileQuery}`,
           { credentials: "include", method: refresh ? "POST" : "GET" },
         );
         if (!response.ok) {
@@ -321,14 +352,20 @@ export function OddsMatcherShell({
             "Oddsmatcher data could not be loaded.",
           );
           if (refresh && response.status === 429) {
-            setRefreshQuotaBlocked(true);
+            setProviderQuotaExhausted(true);
             setReadState((current) => current === "loading" ? "error" : current);
             return;
           }
           throw new Error(message);
         }
-        setFeed((await response.json()) as OddsMatcherFeed);
-        setRefreshQuotaBlocked(false);
+        const nextFeed = (await response.json()) as OddsMatcherFeed;
+        setFeed(nextFeed);
+        if (dataSource === "live") {
+          setProviderQuotaExhausted(
+            nextFeed.provider_quota_exhausted || nextFeed.provider_credits_remaining === 0,
+          );
+          if (refresh) void loadSavedSnapshots();
+        }
         setReadState("ready");
         setPage(1);
       } catch (caught) {
@@ -345,7 +382,7 @@ export function OddsMatcherShell({
         setRefreshing(false);
       }
     },
-    [profileQuery],
+    [dataSource, loadSavedSnapshots, profileQuery, savedSnapshotId],
   );
   useEffect(() => {
     let active = true;
@@ -365,10 +402,17 @@ export function OddsMatcherShell({
     { ...filters, showArbs: true },
     sort,
   ).filter((row) => Number(row.display_rating) > 100).length, [eligibleForPreferences, filters, sort]);
-  const refreshWouldExceedCeiling = Boolean(feed && (
-    feed.credits_used_today + feed.competitions.length > feed.daily_credit_ceiling
-  ));
-  const refreshBlocked = refreshQuotaBlocked || refreshWouldExceedCeiling;
+  const refreshBlocked = dataSource === "replay" || providerQuotaExhausted || feed?.provider_credits_remaining === 0;
+  const providerQuotaLow = Boolean(
+    dataSource === "live" &&
+    feed?.provider_credits_remaining != null &&
+    feed.provider_credits_remaining > 0 &&
+    feed.provider_credits_used != null &&
+    feed.provider_credits_remaining <= Math.max(
+      feed.provider_last_refresh_cost ?? 1,
+      Math.ceil((feed.provider_credits_used + feed.provider_credits_remaining) * 0.1),
+    )
+  );
   const pageCount = Math.max(1, Math.ceil(visible.length / pageSize));
   const currentPage = Math.min(page, pageCount);
   const rows = visible.slice(
@@ -572,6 +616,51 @@ export function OddsMatcherShell({
               : "Choose a Profile to check Account eligibility and add to Tracker."}
           </p>
         </div>
+        <div className="oddsmatcher-source-context" data-pd-id="oddsmatcher.data-source">
+          <div className="stack-tight">
+            <span className="eyebrow">Data source</span>
+            <CalculatorSegmentedControl
+              ariaLabel="Oddsmatcher data source"
+              dataPdId="oddsmatcher.data-source-control"
+              onChange={(value) => {
+                setDataSource(value);
+                setSelected(null);
+                setPage(1);
+              }}
+              options={[
+                { label: "Live", value: "live" },
+                { label: "Saved snapshot", value: "replay" },
+              ]}
+              value={dataSource}
+            />
+          </div>
+          {dataSource === "replay" ? (
+            <label className="field-control oddsmatcher-snapshot-picker">
+              <span>Saved snapshot</span>
+              <select
+                aria-label="Saved Oddsmatcher snapshot"
+                disabled={!savedSnapshots.length}
+                onChange={(event) => {
+                  setSavedSnapshotId(event.target.value);
+                  setSelected(null);
+                  setPage(1);
+                }}
+                value={savedSnapshotId}
+              >
+                {!savedSnapshots.length ? <option value="">No saved snapshots available</option> : null}
+                {savedSnapshots.map((snapshot) => (
+                  <option key={snapshot.snapshot_id} value={snapshot.snapshot_id}>
+                    {new Date(snapshot.captured_at).toLocaleString("en-GB", {
+                      day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
+                    })}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : (
+            <p className="field-hint">Manual Refresh uses the live provider and its reported account quota.</p>
+          )}
+        </div>
         <div className="oddsmatcher-primary-toolbar">
           <div className="oddsmatcher-mode-control" aria-label="Bet mode">
             <span>Bet mode</span>
@@ -660,12 +749,12 @@ export function OddsMatcherShell({
             </button>
             <button
               aria-busy={refreshing}
-              aria-label={refreshing ? "Refreshing odds" : refreshBlocked ? "Refresh unavailable: daily provider credit ceiling reached" : "Refresh odds"}
+              aria-label={refreshing ? "Refreshing odds" : dataSource === "replay" ? "Refresh unavailable in saved snapshot mode" : refreshBlocked ? "Refresh unavailable: provider quota exhausted" : "Refresh odds"}
               className="icon-button compact-action"
               data-pd-id="oddsmatcher.refresh"
               disabled={refreshing || refreshBlocked}
               onClick={() => void load(true)}
-              title={refreshBlocked ? "Refresh will be available when the provider budget resets" : "Refresh odds"}
+              title={dataSource === "replay" ? "Saved snapshots make no provider requests" : refreshBlocked ? "Provider quota exhausted" : "Refresh live odds"}
               type="button"
             >
               {refreshing ? <span aria-hidden="true" className="button-spinner" /> : <span aria-hidden="true" className="material-symbols-outlined">refresh</span>}
@@ -708,11 +797,23 @@ export function OddsMatcherShell({
             <span>Manual refresh required</span>
           )}
           {feed?.provider_credits_remaining != null ? (
-            <span>
-              {feed.provider_credits_remaining} provider credits remaining
-            </span>
+            <span>{feed.data_source === "replay" ? "Captured quota" : "Provider credits"}: {feed.provider_credits_remaining} remaining</span>
           ) : null}
+          {feed?.provider_credits_used != null ? <span>{feed.provider_credits_used} used</span> : null}
+          {feed?.provider_last_refresh_cost != null ? <span>Last refresh: {feed.provider_last_refresh_cost} credits</span> : null}
         </div>
+        {feed?.data_source === "replay" ? (
+          <div className="oddsmatcher-replay-status" role="status">
+            <strong>Saved snapshot</strong>
+            <span>
+              {new Date(feed.replay_captured_at ?? feed.fetched_at ?? "").toLocaleString("en-GB")} · testing/replay
+            </span>
+            <span>Draft creation and external quote links are disabled for replayed odds.</span>
+          </div>
+        ) : null}
+        {providerQuotaLow ? (
+          <p className="field-warning-text" role="status">Provider quota is running low.</p>
+        ) : null}
         <div className="oddsmatcher-boundary-note" role="note">
           <strong>Prospecting only · liquidity unknown.</strong>
           <span>
@@ -721,7 +822,9 @@ export function OddsMatcherShell({
           </span>
         </div>
         {readState === "loading" ? (
-          <LedgerLoadingIndicator label="Loading saved Oddsmatcher snapshot" />
+          <LedgerLoadingIndicator
+            label={dataSource === "replay" ? "Loading saved Oddsmatcher snapshot" : "Loading live Oddsmatcher snapshot"}
+          />
         ) : null}
         {error ? (
           <p className="error-text" role="alert">
@@ -735,8 +838,16 @@ export function OddsMatcherShell({
         ) : null}
         {feed?.state === "stale" ? (
           <p className="field-warning-text">
-            These prices are stale. Refresh before relying on them.
+            {feed.data_source === "replay"
+              ? "These replayed prices are historical and must not be treated as live opportunities."
+              : "These prices are stale. Refresh before relying on them."}
           </p>
+        ) : null}
+        {readState === "ready" && dataSource === "replay" && !savedSnapshots.length ? (
+          <div className="oddsmatcher-provider-state" role="status">
+            <strong>No saved snapshots are available.</strong>
+            <p>Return to Live and refresh when the provider permits requests to retain a private replay snapshot.</p>
+          </div>
         ) : null}
         {readState === "ready" && feed?.state === "empty" ? (
           <div
@@ -744,11 +855,10 @@ export function OddsMatcherShell({
             className={`oddsmatcher-provider-state${refreshBlocked ? " is-warning" : ""}`}
             role="status"
           >
-            {refreshBlocked ? (
+            {providerQuotaExhausted ? (
               <>
-                <strong>Manual refresh is paused because the configured daily provider credit ceiling would be exceeded.</strong>
+                <strong>Provider quota exhausted.</strong>
                 <p>No odds snapshot is loaded.</p>
-                <p>Refresh will be available when the provider budget resets.</p>
               </>
             ) : (
               <>
@@ -980,6 +1090,7 @@ export function OddsMatcherShell({
             onClose={() => setSelected(null)}
             opportunity={selected}
             profileId={profileId}
+            replay={feed?.data_source === "replay"}
             returnFocusRef={inspectButtonRef}
           />
         ) : null}
@@ -1384,6 +1495,7 @@ function BetSummaryDialog({
   onClose,
   opportunity,
   profileId,
+  replay,
   returnFocusRef,
 }: {
   defaultAdvanced: boolean;
@@ -1391,6 +1503,7 @@ function BetSummaryDialog({
   onClose: () => void;
   opportunity: OddsMatcherOpportunity;
   profileId: string | null;
+  replay: boolean;
   returnFocusRef: RefObject<HTMLElement | null>;
 }) {
   const [stake, setStake] = useState(defaultStake);
@@ -1464,6 +1577,7 @@ function BetSummaryDialog({
   }, [backCommissionUnsupported, backOdds, commission, customLayStake, layOdds, oddsInvalid, stake, strategy]);
 
   const createDraft = async () => {
+    if (replay) { setDraftError("Saved snapshots are for testing only and cannot create Tracker drafts."); return; }
     if (!profileId) { setDraftError("Choose a Profile to add this opportunity to Tracker."); return; }
     setDraftState("saving"); setDraftError("");
     try {
@@ -1549,9 +1663,11 @@ function BetSummaryDialog({
     }
   };
 
-  const profileStatus = !profileId
-    ? <CompactStatus icon="person_off" label="Profile required to add to Tracker" explanation="Choose a Profile to apply Account eligibility and enable Add Prospecting Draft." />
-    : null;
+  const profileStatus = replay
+    ? <CompactStatus icon="history" label="Replay · draft creation disabled" explanation="Saved odds are retained for testing and cannot be added to Tracker or treated as live." tone="warning" />
+    : !profileId
+      ? <CompactStatus icon="person_off" label="Profile required to add to Tracker" explanation="Choose a Profile to apply Account eligibility and enable Add Prospecting Draft." />
+      : null;
 
   return (
     <ModalBoundary onDismiss={onClose} returnFocusRef={returnFocusRef}>
@@ -1630,8 +1746,8 @@ function BetSummaryDialog({
                 {draftError ? <p className="field-validation-text" role="alert">{draftError}</p> : null}
                 {draftState === "saved" && profileId ? <p className="status-message" role="status">Prospecting draft saved. No balance or placed-bet state changed. <Link href={`/profiles/${profileId}/tracker/sportsbook-bets?record=${encodeURIComponent(draftId)}`}>Open Sportsbook draft</Link></p> : null}
                 <div className="oddsmatcher-prospecting-action">
-                  {!profileId ? profileStatus : null}
-                  <button className="modal-primary-button" disabled={!profileId || !opportunity.can_create_prospecting_draft || effectivePreviewState !== "ready" || draftState === "saving" || draftState === "saved"} onClick={() => void createDraft()} type="button">{draftState === "saving" ? "Adding draft…" : draftState === "saved" ? "Draft added" : "Add Prospecting Draft"}</button>
+                  {profileStatus}
+                  <button className="modal-primary-button" disabled={replay || !profileId || !opportunity.can_create_prospecting_draft || effectivePreviewState !== "ready" || draftState === "saving" || draftState === "saved"} onClick={() => void createDraft()} type="button">{draftState === "saving" ? "Adding draft…" : draftState === "saved" ? "Draft added" : "Add Prospecting Draft"}</button>
                   <button className="button-link icon-text-action" onClick={() => void navigator.clipboard.writeText(opportunityCopyText(opportunity))} type="button"><span aria-hidden="true" className="material-symbols-outlined">content_copy</span>Copy Opportunity</button>
                 </div>
               </div>

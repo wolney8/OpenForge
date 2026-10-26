@@ -706,3 +706,16 @@ filters, persistence, ledgers, liquidity or placement behaviour.
 Verification: focused component coverage passed (9 tests), CP-092 rendered-browser coverage passed
 (3 tests), the full web unit suite passed (603 tests), typecheck and production build passed, and
 changed-component lint passed. Provider responses were mocked; no provider credit was consumed.
+
+## CP-093 provider quota authority and saved snapshot replay — 2026-10-26
+
+| ID | Surface | Requested behaviour | Signed-off equivalent | Status |
+| --- | --- | --- | --- | --- |
+| PD-FIX-427 / #54 | Provider quota | Remove the local daily hard ceiling and use provider-reported usage, remaining credits and refresh cost | Existing manual-refresh and last-good provider authority | IN PROGRESS |
+| PD-FIX-428 / #54 | Private snapshots | Atomically retain normalized successful refreshes in ignored private storage and list/load them newest first | Existing private evidence/data boundary and normalized provider model | IN PROGRESS |
+| PD-FIX-429 / #54 | Data source control | Add a secondary Live / Saved snapshot control with explicit replay provenance | Existing compact segmented control and status-banner patterns | IN PROGRESS |
+| PD-FIX-430 / #54 | Replay safety | Disable draft creation and external quote links while preserving filters and calculator inspection | Existing Prospecting-only and stale-data safety boundaries | IN PROGRESS |
+| PD-FIX-431 / #54 | Regression/install | Prove quota, coalescing, snapshot, replay and last-good behaviour without live provider calls, then install canonically | Existing Oddsmatcher API/component/browser harness | IN PROGRESS |
+
+This batch changes the provider quota and read-source authorities but not odds matching,
+calculations, filters, ledgers, balances, polling, liquidity or placement behaviour.

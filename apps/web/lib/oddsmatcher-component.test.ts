@@ -27,13 +27,15 @@ function opportunity(index: number): OddsMatcherOpportunity {
 
 const feed: OddsMatcherFeed = {
   provider: "The Odds API", fetched_at: "2026-10-23T12:00:10Z", state: "fresh", warning: null,
+  data_source: "live", replay_snapshot_id: null, replay_captured_at: null,
   manual_refresh_only: true, competitions: ["Premier League", "Championship", "UEFA Champions League"],
-  event_count: 12, bookmaker_count: 9, exchange_count: 3, credits_used_today: 3,
-  provider_credits_used: 3, provider_credits_remaining: 497, daily_credit_ceiling: 25,
+  event_count: 12, bookmaker_count: 9, exchange_count: 3,
+  provider_credits_used: 49, provider_credits_remaining: 451, provider_last_refresh_cost: 3,
+  provider_quota_exhausted: false,
   opportunities: Array.from({ length: 34 }, (_, index) => opportunity(index)), excluded: [],
 };
 
-function emptyFeed(creditsUsedToday: number): OddsMatcherFeed {
+function emptyFeed(providerCreditsRemaining: number | null): OddsMatcherFeed {
   return {
     ...feed,
     fetched_at: null,
@@ -42,9 +44,10 @@ function emptyFeed(creditsUsedToday: number): OddsMatcherFeed {
     event_count: 0,
     bookmaker_count: 0,
     exchange_count: 0,
-    credits_used_today: creditsUsedToday,
     provider_credits_used: null,
-    provider_credits_remaining: null,
+    provider_credits_remaining: providerCreditsRemaining,
+    provider_last_refresh_cost: null,
+    provider_quota_exhausted: false,
     opportunities: [],
   };
 }
@@ -69,6 +72,7 @@ describe("OddsMatcherShell", () => {
       const url = String(input); const method = init?.method ?? "GET";
       requests.push({ url, method, body: init?.body ? JSON.parse(String(init.body)) : null });
       if (url.includes("/fund-manager/preferences/oddsmatcher")) return new Response(JSON.stringify(defaultOddsMatcherPreferences), { status: 200 });
+      if (url.includes("/oddsmatcher/snapshots")) return new Response(JSON.stringify([]), { status: 200 });
       if (url.includes("/account-catalogue/source")) return new Response(JSON.stringify({ schema_version: "1.0", records: [] }), { status: 200 });
       if (url.endsWith("/profiles")) return new Response(JSON.stringify([{ profile_id: "profile-demo-001", display_name: "Synthetic Alpha", status: "active" }]), { status: 200 });
       if (url.includes("matched-betting/preview")) return new Response(JSON.stringify({ selected_lay_stake: "9.62", liability: "35.59", pnl_if_back_wins: "-1.09", pnl_if_lay_wins: "-0.57", matched_result: "-1.09", outcomes: [{ key: "back-wins", label: "Back wins", bookmaker_component: "35.00", exchange_component: "-35.59", total: "-1.09" }, { key: "lay-wins", label: "Lay wins", bookmaker_component: "-10.00", exchange_component: "9.43", total: "-0.57" }] }), { status: 200 });
@@ -94,7 +98,7 @@ describe("OddsMatcherShell", () => {
   it("shows a refresh instruction only when an empty snapshot can be refreshed", async () => {
     const original = vi.mocked(fetch).getMockImplementation();
     vi.mocked(fetch).mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
-      if (isOddsMatcherFeedRequest(input)) return new Response(JSON.stringify(emptyFeed(0)), { status: 200 });
+      if (isOddsMatcherFeedRequest(input)) return new Response(JSON.stringify(emptyFeed(null)), { status: 200 });
       return original!(input, init);
     });
 
@@ -107,10 +111,10 @@ describe("OddsMatcherShell", () => {
     expect(refresh?.disabled).toBe(false);
   });
 
-  it("shows the quota-blocked empty state without contradictory Refresh guidance", async () => {
+  it("shows provider exhaustion without contradictory Refresh guidance", async () => {
     const original = vi.mocked(fetch).getMockImplementation();
     vi.mocked(fetch).mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
-      if (isOddsMatcherFeedRequest(input)) return new Response(JSON.stringify(emptyFeed(24)), { status: 200 });
+      if (isOddsMatcherFeedRequest(input)) return new Response(JSON.stringify(emptyFeed(0)), { status: 200 });
       return original!(input, init);
     });
 
@@ -118,10 +122,9 @@ describe("OddsMatcherShell", () => {
 
     const state = container.querySelector<HTMLElement>(".oddsmatcher-provider-state");
     const refresh = container.querySelector<HTMLButtonElement>('[data-pd-id="oddsmatcher.refresh"]');
-    expect(state?.querySelector("strong")?.textContent).toBe("Manual refresh is paused because the configured daily provider credit ceiling would be exceeded.");
+    expect(state?.querySelector("strong")?.textContent).toBe("Provider quota exhausted.");
     expect([...state!.querySelectorAll("p")].map((node) => node.textContent)).toEqual([
       "No odds snapshot is loaded.",
-      "Refresh will be available when the provider budget resets.",
     ]);
     expect(state?.textContent).not.toContain("Use Refresh");
     expect(refresh?.disabled).toBe(true);
@@ -143,6 +146,48 @@ describe("OddsMatcherShell", () => {
     expect(container.querySelectorAll("tbody tr")).toHaveLength(16);
     expect(container.textContent).toContain("Refresh failed. Showing the last successful data as stale.");
     expect(container.textContent).not.toContain("No odds snapshot is loaded.");
+  });
+
+  it("loads a saved snapshot without provider refresh and disables live actions", async () => {
+    const snapshotId = "20261023T120010000000Z-123456789abc";
+    const original = vi.mocked(fetch).getMockImplementation();
+    vi.mocked(fetch).mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = new URL(String(input), "http://localhost");
+      if (url.pathname.endsWith(`/oddsmatcher/snapshots/${snapshotId}`)) {
+        return new Response(JSON.stringify({
+          ...feed,
+          state: "stale",
+          data_source: "replay",
+          replay_snapshot_id: snapshotId,
+          replay_captured_at: feed.fetched_at,
+          opportunities: feed.opportunities.map((row) => ({
+            ...row,
+            can_create_prospecting_draft: false,
+            freshness: "stale",
+            back: { ...row.back, link: null },
+            lay: { ...row.lay, link: null },
+          })),
+        }), { status: 200 });
+      }
+      if (url.pathname.endsWith("/oddsmatcher/snapshots")) {
+        return new Response(JSON.stringify([{ snapshot_id: snapshotId, captured_at: feed.fetched_at, provider: feed.provider, competitions: feed.competitions, event_count: 12, bookmaker_count: 9, exchange_count: 3 }]), { status: 200 });
+      }
+      return original!(input, init);
+    });
+
+    await act(async () => { root.render(createElement(OddsMatcherShell, { profileId: "profile-demo-001" })); });
+    const replay = [...container.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent === "Saved snapshot");
+    await act(async () => { replay?.click(); await Promise.resolve(); });
+
+    expect(container.textContent).toContain("testing/replay");
+    expect(container.textContent).toContain("Draft creation and external quote links are disabled");
+    expect(container.querySelector<HTMLButtonElement>('[data-pd-id="oddsmatcher.refresh"]')?.disabled).toBe(true);
+    expect(requests.filter((request) => request.url.includes("/oddsmatcher/refresh"))).toHaveLength(0);
+    const summary = container.querySelector<HTMLButtonElement>('button[aria-label^="Open Bet Summary"]');
+    await act(async () => { summary?.click(); });
+    expect(document.body.textContent).toContain("Replay · draft creation disabled");
+    const addDraft = [...document.body.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent === "Add Prospecting Draft");
+    expect(addDraft?.disabled).toBe(true);
   });
 
   it("keeps last-good rows visible and coalesces repeat activation while refreshing", async () => {

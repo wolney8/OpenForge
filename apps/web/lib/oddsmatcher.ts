@@ -50,16 +50,29 @@ export type OddsMatcherFeed = {
   state: "empty" | "fresh" | "stale";
   warning: string | null;
   manual_refresh_only: boolean;
+  data_source: "live" | "replay";
+  replay_snapshot_id: string | null;
+  replay_captured_at: string | null;
   competitions: string[];
   event_count: number;
   bookmaker_count: number;
   exchange_count: number;
-  credits_used_today: number;
   provider_credits_used: number | null;
   provider_credits_remaining: number | null;
-  daily_credit_ceiling: number;
+  provider_last_refresh_cost: number | null;
+  provider_quota_exhausted: boolean;
   opportunities: OddsMatcherOpportunity[];
   excluded: { competition: string; event_id: string; provider_key: string; market_key: string; reason: string }[];
+};
+
+export type OddsMatcherSavedSnapshot = {
+  snapshot_id: string;
+  captured_at: string;
+  provider: string;
+  competitions: string[];
+  event_count: number;
+  bookmaker_count: number;
+  exchange_count: number;
 };
 
 export type OddsMatcherFilters = {

@@ -94,12 +94,13 @@ def cache_fixture() -> oddsmatcher.ProviderCache:
         exchange_keys=exchanges,
         provider_credits_used=4,
         provider_credits_remaining=496,
+        provider_last_refresh_cost=3,
     )
 
 
 def configure_database(tmp_path: Path) -> TestClient:
     settings.database_url = f"sqlite:///{tmp_path / 'oddsmatcher.sqlite3'}"
-    settings.the_odds_api_usage_state = str(tmp_path / "provider-usage.json")
+    settings.the_odds_api_snapshot_directory = str(tmp_path / "oddsmatcher-snapshots")
     seed_synthetic_betting_context()
     with connect() as connection:
         connection.execute(
@@ -273,34 +274,101 @@ def test_provider_failure_retains_last_good_as_stale(monkeypatch) -> None:
     assert warning == "Refresh failed. Showing the last successful data as stale."
 
 
-def test_provider_credit_ceiling_fails_before_network(monkeypatch) -> None:
+def test_provider_headers_are_authoritative_and_no_local_daily_cap_remains(
+    monkeypatch, tmp_path: Path
+) -> None:
     oddsmatcher.reset_runtime_state_for_tests()
-    original_ceiling = settings.the_odds_api_daily_credit_ceiling
     original_key = settings.the_odds_api_key
-    original_usage_state = settings.the_odds_api_usage_state
-    settings.the_odds_api_daily_credit_ceiling = 25
+    original_snapshots = settings.the_odds_api_snapshot_directory
     settings.the_odds_api_key = "configured-but-not-transmitted"
-    usage_path = Path(settings.database_url.removeprefix("sqlite:///"))
-    settings.the_odds_api_usage_state = str(usage_path.with_name("credit-ceiling.json"))
-    Path(settings.the_odds_api_usage_state).write_text(
-        json.dumps({"date": datetime.now(UTC).date().isoformat(), "credits": 24}),
-        encoding="utf-8",
+    settings.the_odds_api_snapshot_directory = str(tmp_path / "snapshots")
+    actual_client = oddsmatcher.httpx.AsyncClient
+    calls = 0
+
+    def handler(request):
+        nonlocal calls
+        calls += 1
+        payload = [provider_event()] if request.url.path.endswith("soccer_epl/odds") else []
+        return oddsmatcher.httpx.Response(
+            200,
+            request=request,
+            headers={
+                "x-requests-used": str(46 + calls),
+                "x-requests-remaining": str(454 - calls),
+                "x-requests-last": "1",
+            },
+            json=payload,
+        )
+
+    transport = oddsmatcher.httpx.MockTransport(handler)
+    monkeypatch.setattr(
+        oddsmatcher.httpx,
+        "AsyncClient",
+        lambda **kwargs: actual_client(transport=transport, **kwargs),
     )
-
-    class NetworkMustNotRun:
-        def __init__(self, *args, **kwargs) -> None:
-            raise AssertionError("The provider client must not start past the ceiling.")
-
-    monkeypatch.setattr(oddsmatcher.httpx, "AsyncClient", NetworkMustNotRun)
     try:
-        try:
-            asyncio.run(oddsmatcher._fetch_provider())
-        except oddsmatcher.HTTPException as error:
-            assert error.status_code == 429
-        else:
-            raise AssertionError("Expected the provider credit ceiling to fail closed.")
+        result = asyncio.run(oddsmatcher._fetch_provider())
+        assert calls == 3
+        assert result.provider_credits_used == 49
+        assert result.provider_credits_remaining == 451
+        assert result.provider_last_refresh_cost == 3
+        snapshots = list((tmp_path / "snapshots").glob("*.json"))
+        assert len(snapshots) == 1
+        saved = snapshots[0].read_text(encoding="utf-8")
+        assert "configured-but-not-transmitted" not in saved
+        assert "soccer_epl:event-001:h2h:HOME" in saved
     finally:
-        settings.the_odds_api_daily_credit_ceiling = original_ceiling
         settings.the_odds_api_key = original_key
-        settings.the_odds_api_usage_state = original_usage_state
+        settings.the_odds_api_snapshot_directory = original_snapshots
         oddsmatcher.reset_runtime_state_for_tests()
+
+
+def test_provider_quota_exhaustion_keeps_last_good_and_blocks_truthfully() -> None:
+    oddsmatcher.reset_runtime_state_for_tests()
+    oddsmatcher._cache = cache_fixture()
+
+    async def fail() -> oddsmatcher.ProviderCache:
+        raise oddsmatcher.ProviderQuotaExhausted(used=500, remaining=0, last_cost=1)
+
+    original = oddsmatcher._fetch_provider
+    oddsmatcher._fetch_provider = fail
+    try:
+        cache, warning = asyncio.run(oddsmatcher.refresh_provider_cache())
+    finally:
+        oddsmatcher._fetch_provider = original
+    assert cache.provider_credits_used == 500
+    assert cache.provider_credits_remaining == 0
+    assert cache.provider_quota_exhausted is True
+    assert oddsmatcher._response(None, cache, warning).provider_quota_exhausted is True
+    assert warning == "Provider quota exhausted. Showing the last successful data as stale."
+
+
+def test_saved_snapshots_list_newest_first_and_replay_is_non_actionable(tmp_path: Path) -> None:
+    client = configure_database(tmp_path)
+    older = cache_fixture()
+    older.fetched_at = datetime(2026, 10, 25, 12, tzinfo=UTC)
+    newer = cache_fixture()
+    newer.fetched_at = datetime(2026, 10, 26, 20, 35, tzinfo=UTC)
+    older_snapshot = oddsmatcher._save_snapshot(older)
+    newer_snapshot = oddsmatcher._save_snapshot(newer)
+
+    listing = client.get("/oddsmatcher/snapshots")
+    assert listing.status_code == 200
+    assert [row["snapshot_id"] for row in listing.json()] == [
+        newer_snapshot.snapshot_id,
+        older_snapshot.snapshot_id,
+    ]
+
+    replay = client.get(
+        f"/oddsmatcher/snapshots/{newer_snapshot.snapshot_id}?profile_id=profile-demo-001"
+    )
+    assert replay.status_code == 200
+    body = replay.json()
+    assert body["data_source"] == "replay"
+    assert body["replay_snapshot_id"] == newer_snapshot.snapshot_id
+    assert body["state"] == "stale"
+    assert body["opportunities"]
+    assert all(row["can_create_prospecting_draft"] is False for row in body["opportunities"])
+    assert all(row["back"]["link"] is None for row in body["opportunities"])
+    assert all(row["lay"]["link"] is None for row in body["opportunities"])
+    assert oddsmatcher._cache is not None

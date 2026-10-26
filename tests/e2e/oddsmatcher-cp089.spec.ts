@@ -14,7 +14,8 @@ const opportunity = {
   back_eligibility: { state: "eligible", reason: "Eligible", account_id: "account-b" }, lay_eligibility: { state: "eligible", reason: "Eligible", account_id: "account-l" }, can_create_prospecting_draft: true,
 };
 const feed = { provider: "The Odds API", fetched_at: "2026-10-26T14:01:00Z", state: "fresh", warning: null, manual_refresh_only: true,
-  competitions: ["Premier League"], event_count: 1, bookmaker_count: 1, exchange_count: 1, credits_used_today: 3, provider_credits_used: 3, provider_credits_remaining: 497, daily_credit_ceiling: 25,
+  competitions: ["Premier League"], event_count: 1, bookmaker_count: 1, exchange_count: 1,  provider_credits_used: 3, provider_credits_remaining: 497, provider_last_refresh_cost: 3,
+  provider_quota_exhausted: false,
   opportunities: [opportunity], excluded: [] };
 
 function previewFor(body: Record<string, string>) {

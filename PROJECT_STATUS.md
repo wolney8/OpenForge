@@ -1,5 +1,12 @@
 # Project Status — Plum Duff / OpenForge — Doc ID: PS-CODEX-001
 
+> **CP-093 provider quota and replay correction — 2026-10-26:** the local Oddsmatcher removes the
+> obsolete Plum Duff daily credit ceiling. Manual Live refresh now follows provider-reported usage,
+> remaining quota and request cost while retaining coalescing, no polling and last-good fallback.
+> Successful refreshes atomically retain normalized private snapshots for explicit testing/replay;
+> replay disables draft creation and external quote links. Automated API/component/browser evidence
+> uses mocked provider responses. Canonical installation and owner verification remain pending.
+
 > **CP-089 bounded Bet Summary correction — 2026-10-26:** the installed local Oddsmatcher keeps
 > Prospecting as its only Tracker mutation and adds an explicitly disabled Place Lay parity area.
 > Total Profit is limited to the governed Standard stake; Underlay, Overlay and Custom retain both

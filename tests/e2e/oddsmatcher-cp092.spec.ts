@@ -8,14 +8,17 @@ const baseFeed = {
   state: "empty",
   warning: null,
   manual_refresh_only: true,
+  data_source: "live",
+  replay_snapshot_id: null,
+  replay_captured_at: null,
   competitions: ["Premier League", "Championship", "UEFA Champions League"],
   event_count: 0,
   bookmaker_count: 0,
   exchange_count: 0,
-  credits_used_today: 0,
   provider_credits_used: null,
   provider_credits_remaining: null,
-  daily_credit_ceiling: 25,
+  provider_last_refresh_cost: null,
+  provider_quota_exhausted: false,
   opportunities: [],
   excluded: [],
 };
@@ -42,12 +45,13 @@ async function mockRuntime(page: Page, state: FeedState) {
     if (url.pathname.endsWith("/fund-manager/preferences/oddsmatcher")) {
       return route.fulfill({ json: { version: 1, default_back_stake: "10.00", exchange_commission_overrides: {}, excluded_bookmaker_identities: [], excluded_exchange_identities: [], show_arbs_default: false, default_advanced: false, saved_filters: [] } });
     }
+    if (url.pathname.endsWith("/oddsmatcher/snapshots")) return route.fulfill({ json: [] });
     if (url.pathname.endsWith("/oddsmatcher/refresh")) {
       refreshRequests += 1;
-      return route.fulfill({ status: 429, json: { detail: "Manual refresh is paused because the configured daily provider credit ceiling would be exceeded." } });
+      return route.fulfill({ status: 429, json: { detail: "Provider quota exhausted." } });
     }
     if (url.pathname.endsWith("/oddsmatcher")) {
-      if (state === "empty-blocked") return route.fulfill({ json: { ...baseFeed, credits_used_today: 24 } });
+      if (state === "empty-blocked") return route.fulfill({ json: { ...baseFeed, provider_credits_remaining: 0 } });
       if (state === "stale") return route.fulfill({ json: { ...baseFeed, fetched_at: "2026-10-26T14:01:00Z", state: "stale", warning: "Refresh failed. Showing the last successful data as stale.", event_count: 1, bookmaker_count: 1, exchange_count: 1, opportunities: [staleOpportunity] } });
       return route.fulfill({ json: baseFeed });
     }
@@ -66,14 +70,13 @@ test("CP-092 separates the quota-blocked empty state and disables Refresh", asyn
   await page.goto("/oddsmatcher");
   const state = page.locator(".oddsmatcher-provider-state");
   await expect(state.locator(":scope > *")).toHaveText([
-    "Manual refresh is paused because the configured daily provider credit ceiling would be exceeded.",
+    "Provider quota exhausted.",
     "No odds snapshot is loaded.",
-    "Refresh will be available when the provider budget resets.",
   ]);
   await expect(state).toHaveCSS("display", "grid");
   await expect(state).toHaveCSS("row-gap", "5.6px");
   await expect(state).not.toContainText("Use Refresh");
-  await expect(page.getByRole("button", { name: /Refresh unavailable/ })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Refresh unavailable: provider quota exhausted" })).toBeDisabled();
   expect(refreshRequests()).toBe(0);
 });
 

@@ -14,7 +14,8 @@ const baseOpportunity = {
   back_eligibility: { state: "eligible", reason: "Eligible", account_id: "account-b" }, lay_eligibility: { state: "eligible", reason: "Eligible", account_id: "account-l" }, can_create_prospecting_draft: true,
 };
 const feed = { provider: "The Odds API", fetched_at: "2026-10-26T14:01:00Z", state: "fresh", warning: null, manual_refresh_only: true,
-  competitions: ["Premier League", "Championship", "UEFA Champions League"], event_count: 1, bookmaker_count: 1, exchange_count: 1, credits_used_today: 3, provider_credits_used: 3, provider_credits_remaining: 497, daily_credit_ceiling: 25,
+  competitions: ["Premier League", "Championship", "UEFA Champions League"], event_count: 1, bookmaker_count: 1, exchange_count: 1,  provider_credits_used: 3, provider_credits_remaining: 497, provider_last_refresh_cost: 3,
+  provider_quota_exhausted: false,
   opportunities: [baseOpportunity], excluded: [] };
 const preview = { selected_lay_stake: "9.62", liability: "35.59", pnl_if_back_wins: "-1.09", pnl_if_lay_wins: "-0.57", matched_result: "-1.09",
   outcomes: [{ key: "back-wins", label: "Back wins", bookmaker_component: "35.00", exchange_component: "-35.59", total: "-1.09" }, { key: "lay-wins", label: "Lay wins", bookmaker_component: "-10.00", exchange_component: "9.43", total: "-0.57" }] };

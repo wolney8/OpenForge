@@ -356,3 +356,21 @@ Untouched ranges follow new previews; manually edited bounds persist and fail vi
 longer contain Standard. Private headless evidence is under
 `data/private/evidence/cp090-oddsmatcher-layout-state-20261026/`. Owner visual acceptance remains
 **UNVERIFIED**.
+
+## CP-093 provider quota and saved-snapshot boundary — 2026-10-26
+
+The Odds API's response headers are the quota authority. Plum Duff has no daily hard ceiling:
+manual Live refresh remains available unless the provider reports zero remaining credits or rejects
+the request for quota exhaustion. The UI reports provider used/remaining credits and summed refresh
+cost; a low-quota state warns without blocking. One active refresh, request coalescing, no polling
+and last-good stale fallback remain unchanged.
+
+Every successful Live refresh atomically stores the normalized provider cache under ignored private
+storage at `data/private/oddsmatcher-snapshots/`. The versioned snapshot contains the capture time,
+competition/event/market/selection identities, normalized back/lay quotes, timestamps, safe links,
+provider identity and captured quota metadata; it never contains the API key or raw provider payload.
+Saved snapshot mode is explicit testing/replay: it consumes no provider credits, marks prices as
+historical, disables Tracker draft creation and external quote links, and leaves calculations and
+client-side filters available. Ordinary automated UI work must use synthetic fixtures or replay;
+only explicitly named provider integration checks may spend live credits. Owner verification remains
+**UNVERIFIED**.

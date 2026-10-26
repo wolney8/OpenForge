@@ -34,8 +34,7 @@ class Settings(BaseSettings):
     google_oauth_client_id: str = ""
     google_oauth_client_secret: str = ""
     the_odds_api_key: str = ""
-    the_odds_api_daily_credit_ceiling: int = 25
-    the_odds_api_usage_state: str = "data/private/runtime/the-odds-api-usage.json"
+    the_odds_api_snapshot_directory: str = "data/private/oddsmatcher-snapshots"
     runtime_role: str = ""
     runtime_database_identity: str = ""
     runtime_source_root: str = ""
@@ -75,8 +74,8 @@ class Settings(BaseSettings):
         return path if path.is_absolute() else SOURCE_ROOT / path
 
     @property
-    def the_odds_api_usage_state_path(self) -> Path:
-        path = Path(self.the_odds_api_usage_state)
+    def the_odds_api_snapshot_directory_path(self) -> Path:
+        path = Path(self.the_odds_api_snapshot_directory)
         return path if path.is_absolute() else SOURCE_ROOT / path
 
     @property

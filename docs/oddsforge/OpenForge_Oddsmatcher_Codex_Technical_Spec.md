@@ -1372,10 +1372,17 @@ When adding real providers:
 - Prefer official APIs / affiliate feeds.
 - Do not scrape where source terms prohibit it.
 - Respect rate limits.
+- Treat provider-reported quota headers and quota responses as authoritative; do not add a separate
+  Plum Duff daily hard ceiling.
 - Use provider-specific backoff.
 - Mark stale quotes.
 - Never display odds without fetched timestamp.
 - Never silently join ambiguous selections.
+- Retain successful normalized responses in ignored private storage for explicit saved-snapshot
+  testing. Replay must be visibly historical, consume no provider credit, disable Tracker/direct
+  betting actions and avoid exposing old external quote links.
+- Use synthetic fixtures or saved snapshots for ordinary component/browser regression. Live calls
+  belong only in explicitly named provider integration checks.
 
 ### 11.4 Matching algorithm
 
