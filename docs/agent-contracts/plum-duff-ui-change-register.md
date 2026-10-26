@@ -664,12 +664,14 @@ web lint remains blocked by the pre-existing `react-hooks/refs` error in
 
 | ID | Surface | Requested behaviour | Signed-off equivalent | Status |
 | --- | --- | --- | --- | --- |
-| PD-FIX-413 / #54 | Filter panels | Contain every control and focus ring without unintended horizontal scrolling while retaining necessary vertical option scrolling | Existing anchored filter surface plus bounded two-column form grid | IN PROGRESS |
-| PD-FIX-414 / #54 | Filter density | Compact panel padding, gaps and field rhythm without reducing usable targets or labels | Current compact Oddsmatcher Rating fields and Material field tokens | IN PROGRESS |
-| PD-FIX-415 / #54 | Opportunity quote cells | Use a shared quote-block plus reserved status-slot geometry on desktop and cards | Existing Back/Lay quote block and table-cell stack primitives | IN PROGRESS |
-| PD-FIX-416 / #54 | Bet Summary geometry | Fit normal and Advanced content at the 1440×1000 owner-like viewport; scroll only at genuinely constrained heights | Existing modal boundary, safe viewport and two-column summary shell | IN PROGRESS |
-| PD-FIX-417 / #54 | Advanced lay range | Initialise Min/Current/Max from governed Underlay/Standard/Overlay preview references and validate manual bounds | Existing matched-betting preview reference-lay-stake authority and `SingleLayCustomSlider` | IN PROGRESS |
-| PD-FIX-418 / #54 | Evidence/install | Geometry, responsive, state, calculation-authority regression, private captures and canonical local installation | UI consistency gate and normal-owner install procedure | IN PROGRESS |
+| PD-FIX-413 / #54 | Filter panels | Contain every control and focus ring without unintended horizontal scrolling while retaining necessary vertical option scrolling | Existing anchored filter surface plus bounded two-column form grid | COMPLETE |
+| PD-FIX-414 / #54 | Filter density | Compact panel padding, gaps and field rhythm without reducing usable targets or labels | Current compact Oddsmatcher Rating fields and Material field tokens | COMPLETE |
+| PD-FIX-415 / #54 | Opportunity quote cells | Use a shared quote-block plus reserved status-slot geometry on desktop and cards | Existing Back/Lay quote block and table-cell stack primitives | COMPLETE |
+| PD-FIX-416 / #54 | Bet Summary geometry | Fit normal and Advanced content at the 1440×1000 owner-like viewport; scroll only at genuinely constrained heights | Existing modal boundary, safe viewport and two-column summary shell | COMPLETE |
+| PD-FIX-417 / #54 | Advanced lay range | Initialise Min/Current/Max from governed Underlay/Standard/Overlay preview references and validate manual bounds | Existing matched-betting preview reference-lay-stake authority and `SingleLayCustomSlider` | COMPLETE |
+| PD-FIX-418 / #54 | Evidence/install | Geometry, responsive, state, calculation-authority regression, private captures and canonical local installation | UI consistency gate and normal-owner install procedure | COMPLETE |
 
 This batch is limited to Oddsmatcher layout and state presentation. It does not change provider,
 filter, persistence, financial-formula, ledger, placement, liquidity or schema authorities.
+
+Verification: focused CP-090 browser coverage passed on the installed canonical runtime, the full web unit suite passed (600 tests), typecheck and production build passed, and focused lint passed. Repository-wide lint remains blocked by the unchanged Free Bet render-time ref error at `free-bet-workflow-shell.tsx:4869`. Backup `BACKUP-A2177696` verified with checksum, manifest, SQLite integrity and zero foreign-key violations. Installed database identity/fingerprint remain `normal-owner` / `7246998d43722066`; all governed financial-control totals match the pre-install backup. Private evidence is under `data/private/evidence/cp090-oddsmatcher-layout-state-20261026/`. Owner acceptance remains pending.
