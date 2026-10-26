@@ -690,3 +690,19 @@ This batch changes presentation and overlay positioning only. Provider, calculat
 filter, persistence, ledger, liquidity and placement authorities remain unchanged.
 
 Verification: CP-091 focused browser coverage passed in the feature and installed canonical runtimes; CP-090/091 Oddsmatcher regressions passed. Web unit tests passed (600), full typecheck and production build passed, and focused lint passed. Existing Profile/navigation and ledger overlays do not consume the local Oddsmatcher anchored-surface primitive; their attempted environment-level browser checks were blocked by the authenticated normal-owner harness, with no source change or data mutation. Backup `BACKUP-21542129` verified; installed financial controls match it, SQLite integrity is `ok`, and foreign-key violations remain zero. Private captures are under `data/private/evidence/cp091-oddsmatcher-containment-20261026/`. Owner acceptance remains pending.
+
+## CP-092 Oddsmatcher empty-state copy and alert layout — 2026-10-26
+
+| ID | Surface | Requested behaviour | Signed-off equivalent | Status |
+| --- | --- | --- | --- | --- |
+| PD-FIX-424 / #54 | Provider empty/quota state | Render quota-blocked and refresh-permitted empty states as mutually exclusive states | Existing provider quota response and Material status banner | COMPLETE |
+| PD-FIX-425 / #54 | Alert composition | Use explicit block structure and vertical rhythm without adjacent inline-copy concatenation | Existing Oddsmatcher boundary-note typography and spacing | COMPLETE |
+| PD-FIX-426 / #54 | Accessibility/regression | Keep refresh availability, live status and last-good stale state aligned with the governed provider state | Existing refresh and stale-data authority | COMPLETE |
+
+This batch is limited to provider-status presentation and refresh availability derived from the
+existing quota authority. It does not change provider requests, quota limits, calculations,
+filters, persistence, ledgers, liquidity or placement behaviour.
+
+Verification: focused component coverage passed (9 tests), CP-092 rendered-browser coverage passed
+(3 tests), the full web unit suite passed (603 tests), typecheck and production build passed, and
+changed-component lint passed. Provider responses were mocked; no provider credit was consumed.

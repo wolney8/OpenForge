@@ -230,6 +230,7 @@ export function OddsMatcherShell({
   const [feed, setFeed] = useState<OddsMatcherFeed | null>(null);
   const [readState, setReadState] = useState<ReadState>("loading");
   const [refreshing, setRefreshing] = useState(false);
+  const [refreshQuotaBlocked, setRefreshQuotaBlocked] = useState(false);
   const refreshInFlight = useRef(false);
   const [error, setError] = useState("");
   const [filters, setFilters] = useState<OddsMatcherFilters>(
@@ -314,14 +315,20 @@ export function OddsMatcherShell({
           `${apiBaseUrl}/oddsmatcher${refresh ? "/refresh" : ""}${profileQuery}`,
           { credentials: "include", method: refresh ? "POST" : "GET" },
         );
-        if (!response.ok)
-          throw new Error(
-            await responseError(
-              response,
-              "Oddsmatcher data could not be loaded.",
-            ),
+        if (!response.ok) {
+          const message = await responseError(
+            response,
+            "Oddsmatcher data could not be loaded.",
           );
+          if (refresh && response.status === 429) {
+            setRefreshQuotaBlocked(true);
+            setReadState((current) => current === "loading" ? "error" : current);
+            return;
+          }
+          throw new Error(message);
+        }
         setFeed((await response.json()) as OddsMatcherFeed);
+        setRefreshQuotaBlocked(false);
         setReadState("ready");
         setPage(1);
       } catch (caught) {
@@ -358,6 +365,10 @@ export function OddsMatcherShell({
     { ...filters, showArbs: true },
     sort,
   ).filter((row) => Number(row.display_rating) > 100).length, [eligibleForPreferences, filters, sort]);
+  const refreshWouldExceedCeiling = Boolean(feed && (
+    feed.credits_used_today + feed.competitions.length > feed.daily_credit_ceiling
+  ));
+  const refreshBlocked = refreshQuotaBlocked || refreshWouldExceedCeiling;
   const pageCount = Math.max(1, Math.ceil(visible.length / pageSize));
   const currentPage = Math.min(page, pageCount);
   const rows = visible.slice(
@@ -649,11 +660,12 @@ export function OddsMatcherShell({
             </button>
             <button
               aria-busy={refreshing}
-              aria-label={refreshing ? "Refreshing odds" : "Refresh odds"}
+              aria-label={refreshing ? "Refreshing odds" : refreshBlocked ? "Refresh unavailable: daily provider credit ceiling reached" : "Refresh odds"}
               className="icon-button compact-action"
               data-pd-id="oddsmatcher.refresh"
-              disabled={refreshing}
+              disabled={refreshing || refreshBlocked}
               onClick={() => void load(true)}
+              title={refreshBlocked ? "Refresh will be available when the provider budget resets" : "Refresh odds"}
               type="button"
             >
               {refreshing ? <span aria-hidden="true" className="button-spinner" /> : <span aria-hidden="true" className="material-symbols-outlined">refresh</span>}
@@ -727,12 +739,23 @@ export function OddsMatcherShell({
           </p>
         ) : null}
         {readState === "ready" && feed?.state === "empty" ? (
-          <div className="empty-state stack-tight">
-            <strong>No odds snapshot is loaded.</strong>
-            <span>
-              Use Refresh once to make one bounded provider request across the
-              approved competitions.
-            </span>
+          <div
+            aria-live="polite"
+            className={`oddsmatcher-provider-state${refreshBlocked ? " is-warning" : ""}`}
+            role="status"
+          >
+            {refreshBlocked ? (
+              <>
+                <strong>Manual refresh is paused because the configured daily provider credit ceiling would be exceeded.</strong>
+                <p>No odds snapshot is loaded.</p>
+                <p>Refresh will be available when the provider budget resets.</p>
+              </>
+            ) : (
+              <>
+                <strong>No odds snapshot is loaded.</strong>
+                <p>Use Refresh once to make one bounded provider request across the approved competitions.</p>
+              </>
+            )}
           </div>
         ) : null}
         {readState === "ready" && feed && feed.state !== "empty" ? (

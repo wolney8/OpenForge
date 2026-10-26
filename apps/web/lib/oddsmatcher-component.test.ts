@@ -33,6 +33,27 @@ const feed: OddsMatcherFeed = {
   opportunities: Array.from({ length: 34 }, (_, index) => opportunity(index)), excluded: [],
 };
 
+function emptyFeed(creditsUsedToday: number): OddsMatcherFeed {
+  return {
+    ...feed,
+    fetched_at: null,
+    state: "empty",
+    warning: null,
+    event_count: 0,
+    bookmaker_count: 0,
+    exchange_count: 0,
+    credits_used_today: creditsUsedToday,
+    provider_credits_used: null,
+    provider_credits_remaining: null,
+    opportunities: [],
+  };
+}
+
+function isOddsMatcherFeedRequest(input: RequestInfo | URL) {
+  const pathname = new URL(String(input), "http://localhost").pathname;
+  return pathname === "/api/oddsmatcher" || pathname === "/oddsmatcher";
+}
+
 describe("OddsMatcherShell", () => {
   let container: HTMLDivElement;
   let root: Root;
@@ -68,6 +89,60 @@ describe("OddsMatcherShell", () => {
     const next = [...container.querySelectorAll("button")].find(button => button.textContent === "Next");
     act(() => next?.click());
     expect(container.textContent).toContain("Page 2 of 3 · 34 rows");
+  });
+
+  it("shows a refresh instruction only when an empty snapshot can be refreshed", async () => {
+    const original = vi.mocked(fetch).getMockImplementation();
+    vi.mocked(fetch).mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (isOddsMatcherFeedRequest(input)) return new Response(JSON.stringify(emptyFeed(0)), { status: 200 });
+      return original!(input, init);
+    });
+
+    await act(async () => { root.render(createElement(OddsMatcherShell)); });
+
+    const state = container.querySelector<HTMLElement>(".oddsmatcher-provider-state");
+    const refresh = container.querySelector<HTMLButtonElement>('[data-pd-id="oddsmatcher.refresh"]');
+    expect(state?.querySelector("strong")?.textContent).toBe("No odds snapshot is loaded.");
+    expect(state?.querySelector("p")?.textContent).toBe("Use Refresh once to make one bounded provider request across the approved competitions.");
+    expect(refresh?.disabled).toBe(false);
+  });
+
+  it("shows the quota-blocked empty state without contradictory Refresh guidance", async () => {
+    const original = vi.mocked(fetch).getMockImplementation();
+    vi.mocked(fetch).mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (isOddsMatcherFeedRequest(input)) return new Response(JSON.stringify(emptyFeed(24)), { status: 200 });
+      return original!(input, init);
+    });
+
+    await act(async () => { root.render(createElement(OddsMatcherShell)); });
+
+    const state = container.querySelector<HTMLElement>(".oddsmatcher-provider-state");
+    const refresh = container.querySelector<HTMLButtonElement>('[data-pd-id="oddsmatcher.refresh"]');
+    expect(state?.querySelector("strong")?.textContent).toBe("Manual refresh is paused because the configured daily provider credit ceiling would be exceeded.");
+    expect([...state!.querySelectorAll("p")].map((node) => node.textContent)).toEqual([
+      "No odds snapshot is loaded.",
+      "Refresh will be available when the provider budget resets.",
+    ]);
+    expect(state?.textContent).not.toContain("Use Refresh");
+    expect(refresh?.disabled).toBe(true);
+  });
+
+  it("keeps a stale last-good snapshot visible instead of rendering the no-snapshot state", async () => {
+    const original = vi.mocked(fetch).getMockImplementation();
+    vi.mocked(fetch).mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (isOddsMatcherFeedRequest(input)) return new Response(JSON.stringify({
+        ...feed,
+        state: "stale",
+        warning: "Refresh failed. Showing the last successful data as stale.",
+      }), { status: 200 });
+      return original!(input, init);
+    });
+
+    await act(async () => { root.render(createElement(OddsMatcherShell)); });
+
+    expect(container.querySelectorAll("tbody tr")).toHaveLength(16);
+    expect(container.textContent).toContain("Refresh failed. Showing the last successful data as stale.");
+    expect(container.textContent).not.toContain("No odds snapshot is loaded.");
   });
 
   it("keeps last-good rows visible and coalesces repeat activation while refreshing", async () => {

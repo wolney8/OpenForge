@@ -7393,6 +7393,27 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
   font-size: 0.84rem;
 }
 
+.oddsmatcher-provider-state {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.75rem;
+  border: 1px solid var(--outline);
+  border-radius: var(--shape-medium);
+  background: var(--surface-container);
+  color: var(--text);
+  line-height: 1.45;
+}
+
+.oddsmatcher-provider-state.is-warning {
+  border-color: var(--warning);
+  background: color-mix(in srgb, var(--warning) 10%, var(--surface-container));
+}
+
+.oddsmatcher-provider-state > p {
+  margin: 0;
+  color: var(--muted);
+}
+
 .oddsmatcher-coverage {
   align-items: center;
   color: var(--muted);
