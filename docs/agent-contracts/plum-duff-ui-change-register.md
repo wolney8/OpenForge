@@ -590,7 +590,8 @@ provider, Profile-isolation, ledger-lifecycle, workbook or database-schema autho
 Private state captures are stored under
 `data/private/evidence/cp087-control-interaction-contract-20261026/`. Shared component,
 Oddsmatcher, global-search, Account and Extra Place browser evidence passes; typecheck and
-production build pass. Focused changed-file lint passes. Repository-wide lint remains blocked by
-the unchanged Free Bet ref-during-render error. Verified backup `BACKUP-416DDD3C` preserves all
+production build pass. Focused changed-file lint passes. Repository-wide web lint remains blocked by
+the unchanged Free Bet ref-during-render error; independent API lint retains 268 pre-existing
+violations. Changed API files pass focused Ruff. Verified backup `BACKUP-416DDD3C` preserves all
 29 financial controls, integrity and zero foreign-key violations; owner interaction acceptance
 remains pending.
