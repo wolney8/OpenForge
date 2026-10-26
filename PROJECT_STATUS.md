@@ -7,8 +7,9 @@
 > remains a compliant ordinary select. Focused component/API/browser, typecheck and build gates
 > pass without provider, financial, workbook or schema changes. Verified backup
 > `BACKUP-416DDD3C` preserves all 29 financial controls and zero foreign-key violations. Broad
-> legacy dialog consolidation and owner interaction acceptance remain pending; repository-wide
-> lint retains the pre-existing Free Bet ref-during-render failure.
+> legacy dialog consolidation and owner interaction acceptance remain pending. Repository-wide
+> web lint retains the pre-existing Free Bet ref-during-render failure; independent API lint also
+> retains 268 pre-existing violations, while changed API files pass focused Ruff.
 
 
 > **CP-086 bounded filter-interaction correction — 2026-10-26:** Oddsmatcher filter families now
