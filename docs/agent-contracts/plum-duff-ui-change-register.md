@@ -680,11 +680,13 @@ Verification: focused CP-090 browser coverage passed on the installed canonical 
 
 | ID | Surface | Requested behaviour | Signed-off equivalent | Status |
 | --- | --- | --- | --- | --- |
-| PD-FIX-419 / #54 | Lay quote status | Centre known/unavailable liquidity in the reserved status slot on desktop and cards without changing quote geometry | CP-090 shared quote-cell/status-slot geometry | IN PROGRESS |
-| PD-FIX-420 / #54 | Rating supporting text | Show effective rating only for non-zero applied commission whose two-decimal display differs | Existing display-rating pill and commission authority | IN PROGRESS |
-| PD-FIX-421 / #54 | Anchored overlays | Clamp/shift overlays to a 16px viewport inset and support end alignment for right-edge actions | Existing Oddsmatcher anchored-surface portal | IN PROGRESS |
-| PD-FIX-422 / #54 | My Filters | Open end-aligned beneath its trigger with rows/actions fully visible at desktop and contained responsive behaviour | Existing My Filters anchored menu | IN PROGRESS |
-| PD-FIX-423 / #54 | Evidence/install | Verify widths, resize, focus, overflow, sibling consumers and canonical normal-owner install | UI consistency gate and local install procedure | IN PROGRESS |
+| PD-FIX-419 / #54 | Lay quote status | Centre known/unavailable liquidity in the reserved status slot on desktop and cards without changing quote geometry | CP-090 shared quote-cell/status-slot geometry | COMPLETE |
+| PD-FIX-420 / #54 | Rating supporting text | Show effective rating only for non-zero applied commission whose two-decimal display differs | Existing display-rating pill and commission authority | COMPLETE |
+| PD-FIX-421 / #54 | Anchored overlays | Clamp/shift overlays to a 16px viewport inset and support end alignment for right-edge actions | Existing Oddsmatcher anchored-surface portal | COMPLETE |
+| PD-FIX-422 / #54 | My Filters | Open end-aligned beneath its trigger with rows/actions fully visible at desktop and contained responsive behaviour | Existing My Filters anchored menu | COMPLETE |
+| PD-FIX-423 / #54 | Evidence/install | Verify widths, resize, focus, overflow, sibling consumers and canonical normal-owner install | UI consistency gate and local install procedure | COMPLETE |
 
 This batch changes presentation and overlay positioning only. Provider, calculation, commission,
 filter, persistence, ledger, liquidity and placement authorities remain unchanged.
+
+Verification: CP-091 focused browser coverage passed in the feature and installed canonical runtimes; CP-090/091 Oddsmatcher regressions passed. Web unit tests passed (600), full typecheck and production build passed, and focused lint passed. Existing Profile/navigation and ledger overlays do not consume the local Oddsmatcher anchored-surface primitive; their attempted environment-level browser checks were blocked by the authenticated normal-owner harness, with no source change or data mutation. Backup `BACKUP-21542129` verified; installed financial controls match it, SQLite integrity is `ok`, and foreign-key violations remain zero. Private captures are under `data/private/evidence/cp091-oddsmatcher-containment-20261026/`. Owner acceptance remains pending.
