@@ -490,15 +490,15 @@ export function OddsMatcherShell({
         <span>{row.market}</span>
       </div>
       <div className="oddsmatcher-card-quotes">
-        <div className="oddsmatcher-card-quote"><span className="eyebrow">Back</span><QuoteBlock
+        <div className="oddsmatcher-card-quote"><span className="eyebrow">Back</span><span className="oddsmatcher-quote-cell"><QuoteBlock
           kind="back" catalogue={accountCatalogue} href={row.back.link}
           name={row.back.account_name} odds={row.back.odds} />
-          {profileId && row.back_eligibility.state !== "eligible" ? <small className={eligibilityClass(row.back_eligibility.state)}>{row.back_eligibility.reason}</small> : null}
+          <span aria-hidden={!profileId || row.back_eligibility.state === "eligible"} className="oddsmatcher-quote-status-slot">{profileId && row.back_eligibility.state !== "eligible" ? <small className={eligibilityClass(row.back_eligibility.state)}>{row.back_eligibility.reason}</small> : null}</span></span>
         </div>
-        <div className="oddsmatcher-card-quote"><span className="eyebrow">Lay</span><QuoteBlock
+        <div className="oddsmatcher-card-quote"><span className="eyebrow">Lay</span><span className="oddsmatcher-quote-cell"><QuoteBlock
           kind="lay" catalogue={accountCatalogue} href={row.lay.link}
           name={row.lay.account_name} odds={row.lay.odds} />
-          <LiquidityUnavailableStatus compact />
+          <span className="oddsmatcher-quote-status-slot"><LiquidityUnavailableStatus compact /></span></span>
         </div>
       </div>
     </article>
@@ -795,7 +795,7 @@ export function OddsMatcherShell({
                       tabIndex={0}
                     >
                       <td>
-                        <span className="table-cell-stack">
+                        <span className="table-cell-stack oddsmatcher-quote-cell">
                           <time dateTime={row.starts_at}>
                             {new Date(row.starts_at).toLocaleDateString(
                               "en-GB",
@@ -834,11 +834,11 @@ export function OddsMatcherShell({
                             name={row.back.account_name}
                             odds={row.back.odds}
                           />
-                          {profileId && row.back_eligibility.state !== "eligible" ? <small className={eligibilityClass(row.back_eligibility.state)}>{row.back_eligibility.reason}</small> : null}
+                          <span aria-hidden={!profileId || row.back_eligibility.state === "eligible"} className="oddsmatcher-quote-status-slot">{profileId && row.back_eligibility.state !== "eligible" ? <small className={eligibilityClass(row.back_eligibility.state)}>{row.back_eligibility.reason}</small> : null}</span>
                         </span>
                       </td>
                       <td>
-                        <span className="table-cell-stack oddsmatcher-lay-quote-stack">
+                        <span className="table-cell-stack oddsmatcher-quote-cell oddsmatcher-lay-quote-stack">
                           <QuoteBlock
                             kind="lay"
                             catalogue={accountCatalogue}
@@ -846,7 +846,7 @@ export function OddsMatcherShell({
                             name={row.lay.account_name}
                             odds={row.lay.odds}
                           />
-                          <LiquidityUnavailableStatus compact />
+                          <span className="oddsmatcher-quote-status-slot"><LiquidityUnavailableStatus compact /></span>
                         </span>
                       </td>
                       <td>
@@ -1370,8 +1370,9 @@ function BetSummaryDialog({
   const [commission, setCommission] = useState(opportunity.exchange_commission || "0");
   const [strategy, setStrategy] = useState<Strategy>("Standard");
   const [customLayStake, setCustomLayStake] = useState("");
-  const [customMinimum, setCustomMinimum] = useState("");
-  const [customMaximum, setCustomMaximum] = useState("");
+  const [manualMinimum, setManualMinimum] = useState("");
+  const [manualMaximum, setManualMaximum] = useState("");
+  const [rangeMode, setRangeMode] = useState<"auto" | "manual">("auto");
   const [advanced, setAdvanced] = useState(defaultAdvanced);
   const [autoBack, setAutoBack] = useState(true);
   const [autoLay, setAutoLay] = useState(true);
@@ -1448,11 +1449,29 @@ function BetSummaryDialog({
   const standardStake = preview?.reference_lay_stake_standard ?? preview?.strategy_references?.find((item) => item.strategy === "Standard")?.lay_stake ?? (strategy === "Standard" ? preview?.selected_lay_stake : "") ?? "";
   const underlayStake = preview?.reference_lay_stake_underlay ?? standardStake;
   const overlayStake = preview?.reference_lay_stake_overlay ?? standardStake;
+  const customMinimum = rangeMode === "auto" ? underlayStake : manualMinimum;
+  const customMaximum = rangeMode === "auto" ? overlayStake : manualMaximum;
   const displayedLayStake = strategy === "Custom" ? customLayStake : preview?.selected_lay_stake ?? "";
   const safePreview = effectivePreviewState === "error" ? null : preview;
-  const sliderMinimum = Math.max(0.01, Number(customMinimum || underlayStake || standardStake || "0.01"));
-  const sliderMaximum = Math.max(sliderMinimum + 0.01, Number(customMaximum || overlayStake || standardStake || sliderMinimum + 0.01));
-  const sliderCentre = Math.min(sliderMaximum, Math.max(sliderMinimum, Number(standardStake || sliderMinimum)));
+  const rangeMinimumNumber = Number(customMinimum);
+  const rangeMaximumNumber = Number(customMaximum);
+  const standardStakeNumber = Number(standardStake);
+  const rangeError = !customMinimum || !Number.isFinite(rangeMinimumNumber) || rangeMinimumNumber <= 0
+    ? "Enter a valid Range Min."
+    : !customMaximum || !Number.isFinite(rangeMaximumNumber) || rangeMaximumNumber <= 0
+      ? "Enter a valid Range Max."
+      : !Number.isFinite(standardStakeNumber) || standardStakeNumber <= 0
+        ? "The governed Standard reference is unavailable."
+        : rangeMinimumNumber > standardStakeNumber
+          ? "Range Min cannot exceed the Standard lay stake."
+          : rangeMaximumNumber < standardStakeNumber
+            ? "Range Max cannot be below the Standard lay stake."
+            : rangeMinimumNumber >= rangeMaximumNumber
+              ? "Range Min must be lower than Range Max."
+              : null;
+  const sliderMinimum = !rangeError ? rangeMinimumNumber : Math.max(0.01, Number(underlayStake || standardStake || "0.01"));
+  const sliderMaximum = !rangeError ? rangeMaximumNumber : Math.max(sliderMinimum + 0.01, Number(overlayStake || standardStake || sliderMinimum + 0.01));
+  const sliderCentre = Math.min(sliderMaximum, Math.max(sliderMinimum, standardStakeNumber || sliderMinimum));
   const sliderCurrent = Math.min(sliderMaximum, Math.max(sliderMinimum, Number(displayedLayStake || sliderCentre)));
   const isStandardMatch = strategy === "Standard" && Boolean(preview) &&
     Math.abs(Number(preview?.selected_lay_stake) - Number(standardStake)) <= 0.005;
@@ -1501,7 +1520,7 @@ function BetSummaryDialog({
   return (
     <ModalBoundary onDismiss={onClose} returnFocusRef={returnFocusRef}>
       <div className="modal-backdrop modal-backdrop-elevated" onClick={onClose}>
-        <section aria-label="Oddsmatcher Bet Summary" aria-modal="true" className="modal-panel oddsmatcher-summary-dialog" data-pd-id="oddsmatcher.bet-summary" onClick={(event) => event.stopPropagation()} role="dialog">
+        <section aria-label="Oddsmatcher Bet Summary" aria-modal="true" className={`modal-panel oddsmatcher-summary-dialog${advanced ? " is-advanced" : ""}`} data-pd-id="oddsmatcher.bet-summary" onClick={(event) => event.stopPropagation()} role="dialog">
           <header className="modal-sticky-header oddsmatcher-summary-header">
             <h2 id="oddsmatcher-summary-title">Bet Summary</h2>
             <button aria-label="Close Bet Summary" className="modal-close-button" onClick={onClose} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button>
@@ -1532,8 +1551,10 @@ function BetSummaryDialog({
                     <label className="field-control"><span>Lay Odds <small className="oddsmatcher-summary-source">{layOddsFormat}</small></span><input aria-describedby={layOddsError ? "oddsmatcher-lay-odds-error" : undefined} aria-invalid={Boolean(layOddsError) || undefined} aria-label="Lay Odds" inputMode={layOddsFormat === "Fractional" ? "text" : "decimal"} onChange={(event) => changeOddsInput("lay", event.target.value)} value={layOddsInput} />{layOddsError ? <small className="field-validation-text" id="oddsmatcher-lay-odds-error" role="alert">{layOddsError}</small> : null}</label>
                     <label className="field-control" htmlFor="oddsmatcher-lay-commission"><span>Lay Commission <small className="oddsmatcher-summary-source">{commissionSource}</small></span><PercentageTextInput ariaLabel="Lay Commission (%)" dataPdId="oddsmatcher.lay-commission" id="oddsmatcher-lay-commission" onChange={setCommission} value={commission} /></label>
                   </div>
-                  <LiquidityUnavailableStatus />
-                  <button aria-checked={autoLay} className={`material-switch oddsmatcher-auto-switch${autoLay ? " is-selected" : ""}`} onClick={() => { const next = !autoLay; setAutoLay(next); if (next) { setLayOdds(opportunity.lay.odds); setLayOddsInput(formatOdds(opportunity.lay.odds, layOddsFormat)); setLayOddsError(null); } }} role="switch" type="button"><span aria-hidden="true" className="material-switch-track"><span className="material-switch-thumb" /></span><span>Auto update lay odds</span></button>
+                  <div className="oddsmatcher-lay-meta-row">
+                    <LiquidityUnavailableStatus />
+                    <button aria-checked={autoLay} className={`material-switch oddsmatcher-auto-switch${autoLay ? " is-selected" : ""}`} onClick={() => { const next = !autoLay; setAutoLay(next); if (next) { setLayOdds(opportunity.lay.odds); setLayOddsInput(formatOdds(opportunity.lay.odds, layOddsFormat)); setLayOddsError(null); } }} role="switch" type="button"><span aria-hidden="true" className="material-switch-track"><span className="material-switch-thumb" /></span><span>Auto update lay odds</span></button>
+                  </div>
                   <div className="oddsmatcher-lay-stake-block">
                     <span className="eyebrow">Lay Stake</span>
                     <FinancialTextInput allowNegative={false} ariaLabel="Lay Stake" dataPdId="oddsmatcher.lay-stake" id="oddsmatcher-lay-stake" onBlur={() => undefined} onChange={setCustomStake} value={displayedLayStake} />
@@ -1546,8 +1567,9 @@ function BetSummaryDialog({
                   </div>
                   {advanced ? <div className="oddsmatcher-advanced-controls">
                     <CalculatorSegmentedControl ariaLabel="Lay strategy" dataPdId="oddsmatcher.strategy" onChange={setNamedStrategy} options={[{label:"Underlay",value:"Underlay"},{label:"Standard",value:"Standard"},{label:"Overlay",value:"Overlay"}]} value={strategy} />
-                    <SingleLayCustomSlider ariaLabel="Lay strategy range" centre={sliderCentre} current={sliderCurrent} maximum={sliderMaximum} maximumText={customMaximum} minimum={sliderMinimum} minimumText={customMinimum} onCommit={setCustomStake} onDraft={setCustomStake} onMaximumChange={setCustomMaximum} onMinimumChange={setCustomMinimum} />
-                    <div className="oddsmatcher-advanced-range"><span>Range Min<br/><strong>Underlay</strong></span><span>Current Lay Stake<br/><strong>{preview ? <FinancialValue value={preview.selected_lay_stake} /> : "—"}</strong></span><span>Range Max<br/><strong>Overlay</strong></span></div>
+                    <SingleLayCustomSlider ariaLabel="Lay strategy range" centre={sliderCentre} current={sliderCurrent} disabled={Boolean(rangeError)} maximum={sliderMaximum} maximumText={customMaximum} minimum={sliderMinimum} minimumText={customMinimum} onCommit={setCustomStake} onDraft={setCustomStake} onMaximumChange={(value) => { if (rangeMode === "auto") setManualMinimum(underlayStake); setManualMaximum(value); setRangeMode("manual"); }} onMinimumChange={(value) => { if (rangeMode === "auto") setManualMaximum(overlayStake); setManualMinimum(value); setRangeMode("manual"); }} />
+                    {rangeError ? <p className="field-validation-text oddsmatcher-range-error" role="alert">{rangeError}</p> : null}
+                    <div className="oddsmatcher-advanced-range"><span>Range Min<br/><strong>{customMinimum ? <FinancialValue value={customMinimum} /> : "—"}</strong><small>Underlay</small></span><span>Current Lay Stake<br/><strong>{preview ? <FinancialValue value={preview.selected_lay_stake} /> : "—"}</strong><small>{strategy}</small></span><span>Range Max<br/><strong>{customMaximum ? <FinancialValue value={customMaximum} /> : "—"}</strong><small>Overlay</small></span></div>
                   </div> : null}
                   {manual ? <button className="button-link" onClick={() => { setBackOdds(opportunity.back.odds); setBackOddsInput(formatOdds(opportunity.back.odds, backOddsFormat)); setBackOddsError(null); setLayOdds(opportunity.lay.odds); setLayOddsInput(formatOdds(opportunity.lay.odds, layOddsFormat)); setLayOddsError(null); setAutoBack(true); setAutoLay(true); }} type="button">Reset to latest quotes</button> : null}
                   {effectivePreviewState === "error" && !backCommissionUnsupported && !oddsInvalid ? <p className="field-validation-text" role="alert">Check the highlighted stake, odds or commission field.</p> : null}

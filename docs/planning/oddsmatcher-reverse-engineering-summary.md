@@ -342,3 +342,17 @@ Decimal, Fractional and Moneyline formats. Canonical decimal odds remain the cal
 authority; invalid formatted edits block preview requests. Format choices are local to the open Bet
 Summary and default to Decimal on the next summary. Private headless evidence is under
 `data/private/evidence/cp089-bet-summary-format-parity-20261026/`; owner acceptance remains pending.
+
+## CP-090 filter, quote and Advanced layout correction — 2026-10-26
+
+Oddsmatcher filter surfaces now constrain their shared grids and composite fields without a
+horizontal scrollbar while preserving vertical option scrolling. Desktop and card quotes reserve
+the same status-slot height, so unknown-liquidity evidence no longer shifts Lay relative to Back.
+
+Normal and Advanced Bet Summary are compacted for the 1440×1000 owner-like viewport; Advanced
+expands within the safe area and short viewports retain contained scrolling. Its visible Min,
+current and Max values are the calculator response's Underlay, Standard and Overlay references.
+Untouched ranges follow new previews; manually edited bounds persist and fail visibly when they no
+longer contain Standard. Private headless evidence is under
+`data/private/evidence/cp090-oddsmatcher-layout-state-20261026/`. Owner visual acceptance remains
+**UNVERIFIED**.

@@ -15,6 +15,7 @@ export function SingleLayCustomSlider({
   ariaLabel = "Custom lay stake slider",
   centre,
   current,
+  disabled = false,
   maximum,
   maximumText,
   minimum,
@@ -28,6 +29,7 @@ export function SingleLayCustomSlider({
   ariaLabel?: string;
   centre?: number;
   current: number;
+  disabled?: boolean;
   maximum: number;
   maximumText: string;
   minimum: number;
@@ -58,7 +60,7 @@ export function SingleLayCustomSlider({
       <div><span>Underlay</span><span>Standard</span><span>Overlay</span></div><span />
     </div>
     <div className="custom-slider-row">
-      <label className="field-control custom-slider-range-label"><span>Min</span><input inputMode="decimal" min="0.01" onChange={(event) => onMinimumChange(event.target.value)} step="0.01" type="number" value={minimumText} /></label>
+      <label className="field-control custom-slider-range-label"><span>Min</span><input aria-invalid={disabled || undefined} inputMode="decimal" min="0.01" onChange={(event) => onMinimumChange(event.target.value)} step="0.01" type="number" value={minimumText} /></label>
       <div className="custom-slider-track-wrap"><input
         aria-label={ariaLabel}
         aria-valuemax={maximum}
@@ -66,6 +68,7 @@ export function SingleLayCustomSlider({
         aria-valuenow={current}
         aria-valuetext={unit === "multiplier" ? `${current.toFixed(4)} times` : undefined}
         className="custom-slider-track"
+        disabled={disabled}
         max={usesSplitScale ? 100 : maximum}
         min={usesSplitScale ? 0 : minimum}
         onChange={(event) => { if (interactionActive.current) emit(onDraft, event.target.value); }}
@@ -78,7 +81,7 @@ export function SingleLayCustomSlider({
         type="range"
         value={toPosition(current)}
       /></div>
-      <label className="field-control custom-slider-range-label"><span>Max</span><input inputMode="decimal" min="0.01" onChange={(event) => onMaximumChange(event.target.value)} step="0.01" type="number" value={maximumText} /></label>
+      <label className="field-control custom-slider-range-label"><span>Max</span><input aria-invalid={disabled || undefined} inputMode="decimal" min="0.01" onChange={(event) => onMaximumChange(event.target.value)} step="0.01" type="number" value={maximumText} /></label>
     </div>
   </div>;
 }

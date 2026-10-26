@@ -340,3 +340,19 @@ This addendum supersedes the older public/non-Profile assumptions above only for
 - Fractional and Moneyline edits parse strictly back to canonical decimal odds. Invalid input
   blocks preview calculation and remains an explicit field error; format switching derives from
   canonical state so repeated switching cannot accumulate display-rounding drift.
+
+## 28. CP-090 layout and Advanced range addendum
+
+- Filter panels use bounded two-column grids and container-sized controls. Horizontal overflow is
+  invalid; long option results retain intentional vertical scrolling.
+- Back and Lay results use one quote-block plus reserved status-slot geometry. Unknown liquidity
+  remains outside the coloured quote block and cannot move its baseline.
+- At the 1440×1000 owner-like viewport, Normal and Advanced Bet Summary fit without internal body
+  scrolling. Advanced may expand inside the safe viewport; constrained-height viewports scroll the
+  modal body without clipping or releasing background scroll lock.
+- Advanced Range Min, current and Range Max come from the existing calculator's governed Underlay,
+  Standard and Overlay reference lay stakes. No client-side factor or new financial formula is
+  permitted.
+- Untouched bounds follow refreshed calculator references after stake, odds or commission changes.
+  Editing either bound makes the range a manual override. Invalid bounds disable the slider and
+  show a field-level error; they never generate a substitute calculation.

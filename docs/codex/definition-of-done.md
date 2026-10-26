@@ -54,6 +54,10 @@ Done means:
 - important controls/regions have stable `data-pd-id` identifiers
 - no unintended page horizontal overflow was introduced
 - wide content and tables use intentional scroll viewports with shrinking grid/flex ancestors
+- child controls size to their container and do not introduce unintended horizontal scrolling;
+  modal content first compacts, reflows or expands within safe viewport bounds, with internal
+  scrolling reserved for genuinely constrained viewport height rather than the default desktop
+  composition
 - dialog geometry, exact background-scroll lock/restoration, focus return and visible action footer
   were checked where relevant; nested overlays remain in the native dialog top layer
 - enabled, disabled, loading, success and error conditions match actual process preconditions

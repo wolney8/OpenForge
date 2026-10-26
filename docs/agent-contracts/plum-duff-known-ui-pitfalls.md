@@ -1486,3 +1486,11 @@ the owner's position. Portal nested help into the nearest dialog, and use the sh
 scroll lock to preserve document styles and coordinates. The CP-088 browser receipt verifies an
 unclipped liquidity explanation, exact scroll restoration, focus return and a second shared modal
 consumer.
+
+## Child controls can overflow an otherwise bounded panel
+
+Do not hide a filter panel's horizontal scrollbar without first constraining its grid, fields and
+composite controls. Use border-box sizing, `minmax(0, 1fr)`, shrinking children and inputs bounded
+to their cells. Keep genuine option-list vertical scrolling. For desktop dialogs, compact and
+reflow content or expand inside the safe viewport before enabling internal body scrolling; short
+viewports retain the contained scroll fallback.

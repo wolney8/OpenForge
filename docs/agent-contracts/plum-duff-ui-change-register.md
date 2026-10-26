@@ -659,3 +659,17 @@ regressions, full web tests, typecheck, production build and changed-file lint p
 web lint remains blocked by the pre-existing `react-hooks/refs` error in
 `free-bet-workflow-shell.tsx:4869`. Private evidence is under
 `data/private/evidence/cp089-bet-summary-format-parity-20261026/`; owner acceptance remains pending.
+
+## CP-090 Oddsmatcher layout and Advanced range state — 2026-10-26
+
+| ID | Surface | Requested behaviour | Signed-off equivalent | Status |
+| --- | --- | --- | --- | --- |
+| PD-FIX-413 / #54 | Filter panels | Contain every control and focus ring without unintended horizontal scrolling while retaining necessary vertical option scrolling | Existing anchored filter surface plus bounded two-column form grid | IN PROGRESS |
+| PD-FIX-414 / #54 | Filter density | Compact panel padding, gaps and field rhythm without reducing usable targets or labels | Current compact Oddsmatcher Rating fields and Material field tokens | IN PROGRESS |
+| PD-FIX-415 / #54 | Opportunity quote cells | Use a shared quote-block plus reserved status-slot geometry on desktop and cards | Existing Back/Lay quote block and table-cell stack primitives | IN PROGRESS |
+| PD-FIX-416 / #54 | Bet Summary geometry | Fit normal and Advanced content at the 1440×1000 owner-like viewport; scroll only at genuinely constrained heights | Existing modal boundary, safe viewport and two-column summary shell | IN PROGRESS |
+| PD-FIX-417 / #54 | Advanced lay range | Initialise Min/Current/Max from governed Underlay/Standard/Overlay preview references and validate manual bounds | Existing matched-betting preview reference-lay-stake authority and `SingleLayCustomSlider` | IN PROGRESS |
+| PD-FIX-418 / #54 | Evidence/install | Geometry, responsive, state, calculation-authority regression, private captures and canonical local installation | UI consistency gate and normal-owner install procedure | IN PROGRESS |
+
+This batch is limited to Oddsmatcher layout and state presentation. It does not change provider,
+filter, persistence, financial-formula, ledger, placement, liquidity or schema authorities.

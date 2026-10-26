@@ -574,7 +574,7 @@ Top-level **Tools** → **Oddsmatcher** (`/oddsmatcher`), then select `ALPHA-001
   - **Expect:** governed outcomes change visibly, both outcome tables remain, **Total Profit** is hidden and liquidity remains Unknown.
   - **Stop if:** maths becomes unavailable without explanation.
 - [ ] Test **Standard**.
-  - **Expect:** standard qualifying outcomes and **Total Profit** return without a Calculate button.
+  - **Expect:** standard qualifying outcomes and **Total Profit** return without a Calculate button. In Advanced, Range Min / Current / Range Max show the governed Underlay / Standard / Overlay stakes and the slider starts at Standard.
   - **Stop if:** stale Underlay values remain.
 - [ ] Test **Overlay**.
   - **Expect:** governed outcomes change visibly, both outcome tables remain, **Total Profit** is hidden and no enabled Place Bet action appears.

@@ -266,3 +266,16 @@ Complete this for every feature, bug fix, component, fixture-backed UI, route or
 - [x] Independent format controls, nested Escape/focus return, body scroll lock, desktop two-column
       geometry and 430px narrow ordering are covered by private headless captures.
 - [ ] Owner visual and interaction acceptance remains pending; no acceptance status is inferred.
+
+## CP-090 Oddsmatcher layout and Advanced range state — 2026-10-26
+
+- [x] Back, Lay and Rating panels fit their anchored content width; the shared narrow sheet also
+      contains controls while long option results retain vertical scrolling.
+- [x] Desktop and card Back/Lay quote blocks share a baseline, core height and reserved status slot.
+- [x] Normal and Advanced fit at 1440×1000 without internal scrolling; 1024×650 uses safe contained
+      body scrolling and retains the native dialog scroll lock.
+- [x] Range Min/Current/Max use the governed Underlay/Standard/Overlay preview references; automatic
+      updates, manual-bound retention and invalid-bound blocking have focused browser coverage.
+- [x] Dark-theme desktop/narrow screenshots, responsive geometry, focus containment and no-overflow
+      checks are recorded privately.
+- [ ] Owner visual and interaction acceptance remains pending; no acceptance status is inferred.
