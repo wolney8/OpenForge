@@ -54,7 +54,8 @@ Done means:
 - important controls/regions have stable `data-pd-id` identifiers
 - no unintended page horizontal overflow was introduced
 - wide content and tables use intentional scroll viewports with shrinking grid/flex ancestors
-- dialog geometry, body scroll and visible action footer were checked where relevant
+- dialog geometry, exact background-scroll lock/restoration, focus return and visible action footer
+  were checked where relevant; nested overlays remain in the native dialog top layer
 - enabled, disabled, loading, success and error conditions match actual process preconditions
 - equivalent controls in current and related routes were searched and updated or documented
 - known repeated mistakes were added to the pitfalls register with a regression test

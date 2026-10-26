@@ -14,6 +14,7 @@ from openforge_api.db import (
     connect,
     get_sportsbook_bet,
     list_accounts,
+    update_oddsmatcher_preferences_json,
     upsert_profile_exchange_commission,
 )
 from openforge_api.main import app
@@ -133,6 +134,7 @@ def test_profile_response_ranks_and_uses_authoritative_commission(tmp_path: Path
     first = body["opportunities"][0]
     assert first["display_rating"] == "97.44"
     assert first["exchange_commission"] == "0.02"
+    assert first["commission_origin"] == "profile-account"
     assert first["liquidity_state"] == "UNKNOWN"
     assert first["can_create_prospecting_draft"] is True
     assert first["standard_lay_stake"]
@@ -144,9 +146,34 @@ def test_global_response_exposes_all_quotes_without_profile_assumptions(tmp_path
     assert response.status_code == 200, response.text
     rows = response.json()["opportunities"]
     assert len(rows) == 3
-    assert all(row["exchange_commission"] is None for row in rows)
+    assert all(row["exchange_commission"] == "0" for row in rows)
+    assert all(row["commission_origin"] == "zero" for row in rows)
+    assert all(row["standard_lay_stake"] for row in rows)
     assert all(row["can_create_prospecting_draft"] is False for row in rows)
     assert all("Choose a Profile" in row["back_eligibility"]["reason"] for row in rows)
+
+
+def test_preference_commission_fills_missing_profile_commission(tmp_path: Path) -> None:
+    client = configure_database(tmp_path)
+    with connect() as connection:
+        connection.execute(
+            "DELETE FROM profile_exchange_commissions WHERE profile_id = ?",
+            ("profile-demo-001",),
+        )
+    update_oddsmatcher_preferences_json(json.dumps({
+        "version": 1,
+        "default_back_stake": "10.00",
+        "exchange_commission_overrides": {"smarkets": "0.03"},
+        "excluded_bookmaker_identities": [],
+        "excluded_exchange_identities": [],
+        "show_arbs_default": False,
+        "default_advanced": False,
+        "saved_filters": [],
+    }))
+    row = client.get("/profiles/profile-demo-001/oddsmatcher").json()["opportunities"][0]
+    assert row["exchange_commission"] == "0.03"
+    assert row["commission_origin"] == "oddsmatcher-default"
+    assert row["can_create_prospecting_draft"] is True
 
 
 def test_ineligible_profile_cannot_reuse_another_profiles_accounts(tmp_path: Path) -> None:

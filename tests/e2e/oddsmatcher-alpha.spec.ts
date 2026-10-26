@@ -51,6 +51,7 @@ function opportunity(index: number) {
     display_rating: String(95 + index / 100),
     commission_aware_rating: "94.00",
     exchange_commission: "0.02",
+    commission_origin: "profile-account",
     standard_lay_stake: "9.62",
     liability: "35.59",
     pnl_if_back_wins: "-1.09",

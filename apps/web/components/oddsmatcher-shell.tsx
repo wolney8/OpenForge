@@ -106,7 +106,37 @@ function CompactStatus({ icon = "block", label, explanation, tone = "neutral" }:
   tone?: "neutral" | "warning" | "error";
 }) {
   const [open, setOpen] = useState(false);
+  const [position, setPosition] = useState({ left: 12, top: 12, width: 288 });
+  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
   const id = useId();
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  useLayoutEffect(() => {
+    if (!open) return;
+    const update = () => {
+      const trigger = triggerRef.current;
+      if (!trigger) return;
+      setPortalTarget(trigger.closest("dialog") ?? document.body);
+      const rect = trigger.getBoundingClientRect();
+      const width = Math.min(320, Math.max(220, window.innerWidth - 24));
+      const left = Math.min(Math.max(12, rect.left), Math.max(12, window.innerWidth - width - 12));
+      const top = rect.bottom + 84 <= window.innerHeight
+        ? rect.bottom + 8
+        : Math.max(12, rect.top - 84);
+      setPosition({ left, top, width });
+    };
+    const closeOnOutsidePointer = (event: PointerEvent) => {
+      if (!triggerRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    update();
+    window.addEventListener("resize", update);
+    window.addEventListener("scroll", update, true);
+    document.addEventListener("pointerdown", closeOnOutsidePointer);
+    return () => {
+      window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", update, true);
+      document.removeEventListener("pointerdown", closeOnOutsidePointer);
+    };
+  }, [open]);
   return (
     <span className={`compact-status compact-status-${tone}${open ? " is-open" : ""}`}>
       <button
@@ -116,14 +146,29 @@ function CompactStatus({ icon = "block", label, explanation, tone = "neutral" }:
         className="compact-status-trigger"
         onBlur={() => setOpen(false)}
         onClick={() => setOpen((current) => !current)}
+        onFocus={() => setOpen(true)}
+        onKeyDown={(event) => { if (event.key === "Escape") { setOpen(false); event.currentTarget.focus(); } }}
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => { if (document.activeElement !== triggerRef.current) setOpen(false); }}
+        ref={triggerRef}
         type="button"
       >
         <span aria-hidden="true" className="material-symbols-outlined">{icon}</span>
         <span>{label}</span>
       </button>
-      <span className="compact-status-tooltip" id={id} role="tooltip">{explanation}</span>
+      {open && portalTarget ? createPortal(
+        <span className="compact-status-tooltip compact-status-tooltip-portal" id={id} role="tooltip" style={position}>{explanation}</span>,
+        portalTarget,
+      ) : null}
     </span>
   );
+}
+
+function LiquidityUnavailableStatus({ compact = false }: { compact?: boolean }) {
+  return <CompactStatus
+    explanation="This provider supplies a lay price but not available exchange depth. Confirm exchange liquidity before placing a bet."
+    label={compact ? "Unavailable" : "Liquidity unavailable"}
+  />;
 }
 function QuoteLink({ href, label, disabled = false }: { href: string | null; label: string; disabled?: boolean }) {
   return href && !disabled ? (
@@ -441,7 +486,9 @@ export function OddsMatcherShell({
         </div>
         <div className="oddsmatcher-card-quote"><span className="eyebrow">Lay</span><QuoteBlock
           kind="lay" catalogue={accountCatalogue} href={row.lay.link}
-          name={row.lay.account_name} odds={row.lay.odds} reason="Liquidity unknown" /></div>
+          name={row.lay.account_name} odds={row.lay.odds} />
+          <LiquidityUnavailableStatus compact />
+        </div>
       </div>
     </article>
   );
@@ -780,27 +827,23 @@ export function OddsMatcherShell({
                         </span>
                       </td>
                       <td>
-                        <QuoteBlock
-                          kind="lay"
-                          catalogue={accountCatalogue}
-                          href={row.lay.link}
-                          name={row.lay.account_name}
-                          odds={row.lay.odds}
-                          reason="Liquidity unknown"
-                        />
+                        <span className="table-cell-stack oddsmatcher-lay-quote-stack">
+                          <QuoteBlock
+                            kind="lay"
+                            catalogue={accountCatalogue}
+                            href={row.lay.link}
+                            name={row.lay.account_name}
+                            odds={row.lay.odds}
+                          />
+                          <LiquidityUnavailableStatus compact />
+                        </span>
                       </td>
                       <td>
                         <span className="table-cell-stack oddsmatcher-rating-cell">
                           <strong className={`oddsmatcher-rating-pill oddsmatcher-rating-${oddsMatcherRatingTone(row.display_rating)}`}>
                             {Number(row.display_rating).toFixed(2)}%
                           </strong>
-                          <span>
-                            {row.commission_aware_rating
-                              ? `After commission · ${Number(row.commission_aware_rating).toFixed(2)}%`
-                              : profileId
-                                ? "Commission unavailable"
-                                : "Choose Profile for commission"}
-                          </span>
+                          {row.commission_aware_rating ? <span>After commission · {Number(row.commission_aware_rating).toFixed(2)}%</span> : null}
                         </span>
                       </td>
                       <td>
@@ -891,7 +934,6 @@ export function OddsMatcherShell({
           <BetSummaryDialog
             defaultStake={defaultStake}
             defaultAdvanced={preferences.default_advanced}
-            defaultCommission={preferences.exchange_commission_overrides[selected.lay.provider_key] ?? ""}
             onClose={() => setSelected(null)}
             onOpenSettings={() => { setSelected(null); setSettingsOpen(true); }}
             opportunity={selected}
@@ -914,14 +956,12 @@ function QuoteBlock({
   href,
   name,
   odds,
-  reason,
 }: {
   kind: "back" | "lay";
   catalogue: MasterAccountCatalogueRecord[];
   href: string | null;
   name: string;
   odds: string;
-  reason?: string;
 }) {
   const provider = findMasterAccountCatalogueEntry(catalogue, { accountName: name });
   const displayName = kind === "lay"
@@ -938,10 +978,6 @@ function QuoteBlock({
       </span>
       <span className="oddsmatcher-quote-price">
         <b>{Number.isFinite(Number(odds)) ? Number(odds).toFixed(2) : "—"}</b>
-        {reason ? <CompactStatus
-          explanation="This provider supplies the lay price but not available exchange depth. Confirm liquidity before placing a bet."
-          label="Unavailable"
-        /> : null}
       </span>
     </span>
   );
@@ -1298,7 +1334,6 @@ function SavedFiltersDialog({ activeId, filters, onClose, onLoad, onSave, onSetA
 
 function BetSummaryDialog({
   defaultAdvanced,
-  defaultCommission,
   defaultStake,
   onClose,
   onOpenSettings,
@@ -1307,7 +1342,6 @@ function BetSummaryDialog({
   returnFocusRef,
 }: {
   defaultAdvanced: boolean;
-  defaultCommission: string;
   defaultStake: string;
   onClose: () => void;
   onOpenSettings: () => void;
@@ -1316,9 +1350,10 @@ function BetSummaryDialog({
   returnFocusRef: RefObject<HTMLElement | null>;
 }) {
   const [stake, setStake] = useState(defaultStake);
+  const [backCommission, setBackCommission] = useState("0");
   const [backOdds, setBackOdds] = useState(opportunity.back.odds);
   const [layOdds, setLayOdds] = useState(opportunity.lay.odds);
-  const [commission, setCommission] = useState(opportunity.exchange_commission ?? defaultCommission);
+  const [commission, setCommission] = useState(opportunity.exchange_commission || "0");
   const [strategy, setStrategy] = useState<Strategy>("Standard");
   const [advanced, setAdvanced] = useState(defaultAdvanced);
   const [autoBack, setAutoBack] = useState(true);
@@ -1330,12 +1365,21 @@ function BetSummaryDialog({
   const [draftId, setDraftId] = useState("");
   const retryToken = useRef(crypto.randomUUID());
   const version = useRef(0);
-  const commissionSource = opportunity.exchange_commission ? "Profile Account" : defaultCommission ? "Oddsmatcher default" : null;
+  const commissionSource = opportunity.commission_origin === "profile-account"
+    ? "Profile Account"
+    : opportunity.commission_origin === "oddsmatcher-default"
+      ? "Oddsmatcher default"
+      : "0% default";
+  const backCommissionUnsupported = backCommission.trim() === "" || !Number.isFinite(Number(backCommission)) || Number(backCommission) !== 0;
+  const effectivePreviewState = backCommissionUnsupported ? "error" : previewState;
   const manual = !autoBack || !autoLay || isManualQuote(opportunity, backOdds, layOdds);
 
   useEffect(() => {
     const current = ++version.current;
     const controller = new AbortController();
+    if (backCommissionUnsupported) {
+      return () => controller.abort();
+    }
     void Promise.resolve().then(async () => {
       if (controller.signal.aborted) return;
       setPreviewState("loading");
@@ -1360,7 +1404,7 @@ function BetSummaryDialog({
       }
     });
     return () => controller.abort();
-  }, [backOdds, commission, layOdds, stake, strategy]);
+  }, [backCommissionUnsupported, backOdds, commission, layOdds, stake, strategy]);
 
   const createDraft = async () => {
     if (!profileId) { setDraftError("Choose a Profile to add this opportunity to Tracker."); return; }
@@ -1381,11 +1425,8 @@ function BetSummaryDialog({
   };
 
   const profileStatus = !profileId
-    ? <CompactStatus icon="person_off" label="Profile required" explanation="Choose a Profile to apply Account eligibility and Profile exchange commission and to enable Add Prospecting Draft." />
+    ? <CompactStatus icon="person_off" label="Profile required to add to Tracker" explanation="Choose a Profile to apply Account eligibility and enable Add Prospecting Draft." />
     : null;
-  const commissionStatus = !commissionSource
-    ? <CompactStatus icon="percent" label="Commission unavailable" tone="warning" explanation="No Profile Account commission or Oddsmatcher default is recorded. Add a governed exchange commission in Profile Accounts or Oddsmatcher Settings." />
-    : <span className="oddsmatcher-summary-source">{commissionSource}</span>;
 
   return (
     <ModalBoundary onDismiss={onClose} returnFocusRef={returnFocusRef}>
@@ -1405,23 +1446,23 @@ function BetSummaryDialog({
               <div className="oddsmatcher-summary-left">
                 <section className="oddsmatcher-bet-card oddsmatcher-bet-card-back">
                   <header><h3>Back Bet</h3>{opportunity.back.link ? <a className="button-link icon-text-action" href={opportunity.back.link} rel="noreferrer" target="_blank">Go to {opportunity.back.account_name}<span aria-hidden="true" className="material-symbols-outlined">open_in_new</span></a> : null}</header>
-                  <div className="oddsmatcher-card-account"><strong>{opportunity.back.account_name}</strong>{profileStatus ?? <span className={eligibilityClass(opportunity.back_eligibility.state)}>{opportunity.back_eligibility.reason}</span>}</div>
+                  {profileId ? <div className="oddsmatcher-card-account"><span className={eligibilityClass(opportunity.back_eligibility.state)}>{opportunity.back_eligibility.reason}</span></div> : null}
                   <label className="field-control" htmlFor="oddsmatcher-back-stake"><span>Back Stake</span><FinancialTextInput allowNegative={false} ariaLabel="Back Stake" dataPdId="oddsmatcher.back-stake" id="oddsmatcher-back-stake" onBlur={() => undefined} onChange={setStake} value={stake} /></label>
                   <div className="oddsmatcher-summary-input-row">
                     <label className="field-control"><span>Back Odds</span><input aria-label="Back Odds" inputMode="decimal" onChange={(event) => { setBackOdds(event.target.value); setAutoBack(false); }} value={backOdds} /></label>
-                    <label className="field-control"><span>Back Commission</span><input aria-label="Back commission not applied" disabled value="Not applied" /></label>
+                    <label className="field-control" htmlFor="oddsmatcher-back-commission"><span>Back Commission</span><PercentageTextInput ariaLabel="Back Commission (%)" dataPdId="oddsmatcher.back-commission" id="oddsmatcher-back-commission" onChange={setBackCommission} value={backCommission} />{backCommissionUnsupported ? <small className="field-validation-text">The current qualifying contract supports 0% bookmaker commission.</small> : null}</label>
                   </div>
                   <button aria-checked={autoBack} className={`material-switch oddsmatcher-auto-switch${autoBack ? " is-selected" : ""}`} onClick={() => { const next = !autoBack; setAutoBack(next); if (next) setBackOdds(opportunity.back.odds); }} role="switch" type="button"><span aria-hidden="true" className="material-switch-track"><span className="material-switch-thumb" /></span><span>Auto update back odds</span></button>
                 </section>
 
                 <section className="oddsmatcher-bet-card oddsmatcher-bet-card-lay">
                   <header><h3>Lay Bet</h3><button aria-label={`${simpleExchangeName(opportunity.lay.account_name)} link unavailable`} className="button-link icon-text-action" disabled title="Exchange link unavailable" type="button">Go to {simpleExchangeName(opportunity.lay.account_name)}<span aria-hidden="true" className="material-symbols-outlined">open_in_new</span></button></header>
-                  <div className="oddsmatcher-card-account"><strong>{simpleExchangeName(opportunity.lay.account_name)}</strong>{profileStatus ?? <span className={eligibilityClass(opportunity.lay_eligibility.state)}>{opportunity.lay_eligibility.reason}</span>}{commissionStatus}</div>
+                  {profileId ? <div className="oddsmatcher-card-account"><span className={eligibilityClass(opportunity.lay_eligibility.state)}>{opportunity.lay_eligibility.reason}</span></div> : null}
                   <div className="oddsmatcher-summary-input-row">
                     <label className="field-control"><span>Lay Odds</span><input aria-label="Lay Odds" inputMode="decimal" onChange={(event) => { setLayOdds(event.target.value); setAutoLay(false); }} value={layOdds} /></label>
-                    <label className="field-control" htmlFor="oddsmatcher-lay-commission"><span>Lay Commission</span><PercentageTextInput ariaLabel="Lay Commission (%)" dataPdId="oddsmatcher.lay-commission" id="oddsmatcher-lay-commission" onChange={setCommission} value={commission} /></label>
+                    <label className="field-control" htmlFor="oddsmatcher-lay-commission"><span>Lay Commission <small className="oddsmatcher-summary-source">{commissionSource}</small></span><PercentageTextInput ariaLabel="Lay Commission (%)" dataPdId="oddsmatcher.lay-commission" id="oddsmatcher-lay-commission" onChange={setCommission} value={commission} /></label>
                   </div>
-                  <CompactStatus label="Liquidity unavailable" explanation="This provider supplies the lay price but not available exchange depth. Confirm liquidity before placing a bet." />
+                  <LiquidityUnavailableStatus />
                   <button aria-checked={autoLay} className={`material-switch oddsmatcher-auto-switch${autoLay ? " is-selected" : ""}`} onClick={() => { const next = !autoLay; setAutoLay(next); if (next) setLayOdds(opportunity.lay.odds); }} role="switch" type="button"><span aria-hidden="true" className="material-switch-track"><span className="material-switch-thumb" /></span><span>Auto update lay odds</span></button>
                   <div className="oddsmatcher-lay-stake-block">
                     <span className="eyebrow">Lay Stake</span>
@@ -1434,7 +1475,7 @@ function BetSummaryDialog({
                     <div className="oddsmatcher-advanced-range"><span>Range Min<br/><strong>Underlay</strong></span><span>Current Lay Stake<br/><strong>{preview ? <FinancialValue value={preview.selected_lay_stake} /> : "—"}</strong></span><span>Range Max<br/><strong>Overlay</strong></span></div>
                   </div> : null}
                   {manual ? <button className="button-link" onClick={() => { setBackOdds(opportunity.back.odds); setLayOdds(opportunity.lay.odds); setAutoBack(true); setAutoLay(true); }} type="button">Reset to latest quotes</button> : null}
-                  {previewState === "error" ? <p className="field-validation-text" role="alert">Enter complete valid stake, odds and commission values.</p> : null}
+                  {effectivePreviewState === "error" && !backCommissionUnsupported ? <p className="field-validation-text" role="alert">Check the highlighted stake, odds or commission field.</p> : null}
                 </section>
               </div>
 
@@ -1447,7 +1488,7 @@ function BetSummaryDialog({
                   <div><strong>{opportunity.selection}</strong><span>{opportunity.market}</span></div>
                   <small>{opportunity.back.account_name} back · {formatObserved(opportunity.age_seconds)} · {simpleExchangeName(opportunity.lay.account_name)} lay · {formatObserved(opportunity.age_seconds)}</small>
                 </section>
-                {previewState === "loading" ? <LedgerLoadingIndicator label="Updating Bet Summary" /> : null}
+                {effectivePreviewState === "loading" ? <LedgerLoadingIndicator label="Updating Bet Summary" /> : null}
                 {preview ? <div className="oddsmatcher-outcome-stack">
                   <OutcomeTable heading={`If back (${opportunity.back.account_name}) bet wins`} outcome={preview.outcomes?.find((item) => item.key === "back-wins")} total={preview.pnl_if_back_wins} />
                   <OutcomeTable heading={`If lay (${simpleExchangeName(opportunity.lay.account_name)}) bet wins`} outcome={preview.outcomes?.find((item) => item.key === "lay-wins")} total={preview.pnl_if_lay_wins} />
@@ -1457,7 +1498,7 @@ function BetSummaryDialog({
                 {draftState === "saved" && profileId ? <p className="status-message" role="status">Prospecting draft saved. No balance or placed-bet state changed. <Link href={`/profiles/${profileId}/tracker/sportsbook-bets?record=${encodeURIComponent(draftId)}`}>Open Sportsbook draft</Link></p> : null}
                 <div className="oddsmatcher-prospecting-action">
                   {!profileId ? profileStatus : null}
-                  <button className="modal-primary-button" disabled={!profileId || !opportunity.can_create_prospecting_draft || previewState !== "ready" || draftState === "saving" || draftState === "saved"} onClick={() => void createDraft()} type="button">{draftState === "saving" ? "Adding draft…" : draftState === "saved" ? "Draft added" : "Add Prospecting Draft"}</button>
+                  <button className="modal-primary-button" disabled={!profileId || !opportunity.can_create_prospecting_draft || effectivePreviewState !== "ready" || draftState === "saving" || draftState === "saved"} onClick={() => void createDraft()} type="button">{draftState === "saving" ? "Adding draft…" : draftState === "saved" ? "Draft added" : "Add Prospecting Draft"}</button>
                   <button className="button-link icon-text-action" onClick={() => void navigator.clipboard.writeText(opportunityCopyText(opportunity))} type="button"><span aria-hidden="true" className="material-symbols-outlined">content_copy</span>Copy Opportunity</button>
                 </div>
               </div>

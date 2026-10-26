@@ -3,6 +3,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useState,
   useSyncExternalStore,
   type Dispatch,
@@ -14,7 +15,12 @@ import { usePathname } from "next/navigation";
 export const TRACKER_ROUTE_RESELECT_EVENT = "openforge:tracker-route-reselected";
 
 let bodyScrollLockCount = 0;
-let previousBodyOverflow: string | null = null;
+let bodyScrollState: {
+  body: Pick<CSSStyleDeclaration, "left" | "overflow" | "overscrollBehavior" | "paddingRight" | "position" | "right" | "top" | "width">;
+  documentOverflow: string;
+  scrollX: number;
+  scrollY: number;
+} | null = null;
 const PERSISTED_STATE_EVENT = "plum-duff:persisted-state-change";
 const persistedStateCache = new Map<string, { raw: string | null; value: unknown }>();
 
@@ -233,23 +239,61 @@ export function useDialogFocusLifecycle(
 }
 
 export function useBodyScrollLock(active: boolean) {
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!active) {
       return;
     }
 
     if (bodyScrollLockCount === 0) {
-      previousBodyOverflow = document.body.style.overflow;
+      const body = document.body.style;
+      const scrollbarWidth = Math.max(0, window.innerWidth - document.documentElement.clientWidth);
+      const computedPadding = Number.parseFloat(window.getComputedStyle(document.body).paddingRight) || 0;
+      bodyScrollState = {
+        body: {
+          left: body.left,
+          overflow: body.overflow,
+          overscrollBehavior: body.overscrollBehavior,
+          paddingRight: body.paddingRight,
+          position: body.position,
+          right: body.right,
+          top: body.top,
+          width: body.width,
+        },
+        documentOverflow: document.documentElement.style.overflow,
+        scrollX: window.scrollX,
+        scrollY: window.scrollY,
+      };
+      document.documentElement.style.overflow = "hidden";
+      body.position = "fixed";
+      body.top = `${-bodyScrollState.scrollY}px`;
+      body.left = `${-bodyScrollState.scrollX}px`;
+      body.right = "0";
+      body.width = "100%";
       document.body.style.overflow = "hidden";
+      body.overscrollBehavior = "none";
+      if (scrollbarWidth) body.paddingRight = `${computedPadding + scrollbarWidth}px`;
     }
 
     bodyScrollLockCount += 1;
 
     return () => {
       bodyScrollLockCount = Math.max(0, bodyScrollLockCount - 1);
-      if (bodyScrollLockCount === 0) {
-        document.body.style.overflow = previousBodyOverflow ?? "";
-        previousBodyOverflow = null;
+      if (bodyScrollLockCount === 0 && bodyScrollState) {
+        const previous = bodyScrollState;
+        const body = document.body.style;
+        document.documentElement.style.overflow = previous.documentOverflow;
+        body.left = previous.body.left;
+        body.overflow = previous.body.overflow;
+        body.overscrollBehavior = previous.body.overscrollBehavior;
+        body.paddingRight = previous.body.paddingRight;
+        body.position = previous.body.position;
+        body.right = previous.body.right;
+        body.top = previous.body.top;
+        body.width = previous.body.width;
+        bodyScrollState = null;
+        if (previous.scrollX !== 0 || previous.scrollY !== 0) {
+          window.scrollTo(previous.scrollX, previous.scrollY);
+        }
       }
     };
   }, [active]);

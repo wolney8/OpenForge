@@ -16,7 +16,7 @@ function opportunity(index: number): OddsMatcherOpportunity {
     market_key: "h2h", market: "Match Odds / 1X2",
     back: { provider_key: "bookmaker_a", provider_name: "Bookmaker A", account_name: "Bookmaker A", odds: "4.5", observed_at: "2026-10-23T12:00:00Z", link: "https://example.invalid/back" },
     lay: { provider_key: "smarkets", provider_name: "Smarkets", account_name: "Smarkets", odds: "4.7", observed_at: "2026-10-23T12:00:05Z", link: "https://example.invalid/lay" },
-    display_rating: String(95 + index / 100), commission_aware_rating: "94.00", exchange_commission: "0.02",
+    display_rating: String(95 + index / 100), commission_aware_rating: "94.00", exchange_commission: "0.02", commission_origin: "profile-account",
     standard_lay_stake: "9.62", liability: "35.59", pnl_if_back_wins: "-1.09", pnl_if_lay_wins: "-0.57", conservative_result: "-1.09",
     liquidity_state: "UNKNOWN", freshness: "fresh", age_seconds: 30,
     back_eligibility: { state: "eligible", reason: "Eligible", account_id: "account-b" },
@@ -108,7 +108,9 @@ describe("OddsMatcherShell", () => {
     expect(container.textContent).toContain("Unavailable");
     const summary = container.querySelector<HTMLButtonElement>('button[aria-label^="Open Bet Summary"]');
     await act(async () => { summary?.click(); });
-    expect(document.body.textContent).toContain("This provider supplies the lay price but not available exchange depth");
+    const liquidityStatus = document.body.querySelector<HTMLButtonElement>('button[aria-label^="Liquidity unavailable"]');
+    await act(async () => { liquidityStatus?.focus(); });
+    expect(document.body.textContent).toContain("This provider supplies a lay price but not available exchange depth");
     expect(document.body.textContent).toContain("Lay Stake");
     expect(document.body.textContent).toContain("Total Profit");
     expect(document.body.textContent).not.toContain("Place Bet");

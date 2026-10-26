@@ -16,11 +16,13 @@ from openforge_api.calculators import MatchedBettingPayload, _calculate
 from openforge_api.config import settings
 from openforge_api.db import (
     create_sportsbook_bet,
+    get_oddsmatcher_preferences_json,
     get_profile,
     get_profile_exchange_commission_map,
     get_sportsbook_bet,
     list_accounts,
 )
+from openforge_api.fund_manager_preferences import OddsMatcherPreferences
 from openforge_api.lay_plan import LayPlan, OddsMatcherSourceSnapshot
 from openforge_api.sportsbook import SportsbookBetResponse, prepare_write_response
 
@@ -93,6 +95,7 @@ class OpportunityResponse(BaseModel):
     display_rating: str
     commission_aware_rating: str | None
     exchange_commission: str | None
+    commission_origin: Literal["profile-account", "oddsmatcher-default", "zero"]
     standard_lay_stake: str | None
     liability: str | None
     pnl_if_back_wins: str | None
@@ -516,6 +519,15 @@ def _resolved_opportunities(
         (str(account.type), str(account.account).casefold()): account for account in accounts
     }
     commissions = get_profile_exchange_commission_map(profile_id) if profile_id else {}
+    try:
+        preferences = OddsMatcherPreferences.model_validate_json(
+            get_oddsmatcher_preferences_json()
+        )
+    except Exception as error:
+        raise HTTPException(
+            status_code=503,
+            detail="Stored Oddsmatcher preferences are invalid and require review.",
+        ) from error
     now = datetime.now(UTC)
     rows: list[OpportunityResponse] = []
     for source in cache.opportunities:
@@ -556,9 +568,25 @@ def _resolved_opportunities(
         eligible_lays = [item for item in lay_candidates if item[1].state != "unavailable"]
         back, back_state = max(eligible_backs or back_candidates, key=lambda item: item[0].odds)
         lay, lay_state = min(eligible_lays or lay_candidates, key=lambda item: item[0].odds)
-        commission = commissions.get(lay.account_name)
+        profile_commission = commissions.get(lay.account_name)
+        default_commission = (
+            preferences.exchange_commission_overrides.get(lay.provider_key)
+            if profile_id
+            else None
+        )
+        if profile_commission is not None:
+            commission = profile_commission
+            commission_origin: Literal[
+                "profile-account", "oddsmatcher-default", "zero"
+            ] = "profile-account"
+        elif default_commission is not None:
+            commission = default_commission
+            commission_origin = "oddsmatcher-default"
+        else:
+            commission = "0"
+            commission_origin = "zero"
         calculation = None
-        if commission and back_state.state != "unavailable" and lay_state.state != "unavailable":
+        if back_state.state != "unavailable" and lay_state.state != "unavailable":
             try:
                 calculation = _calculate(
                     MatchedBettingPayload(
@@ -572,12 +600,6 @@ def _resolved_opportunities(
                 )
             except (ValueError, ArithmeticError):
                 calculation = None
-        if profile_id and not commission and lay_state.state != "unavailable":
-            lay_state = EligibilityResponse(
-                state="unavailable",
-                reason=f"Record {lay.account_name} commission before using this price.",
-                account_id=lay_state.account_id,
-            )
         observed_values = [value for value in (back.observed_at, lay.observed_at) if value]
         parsed = []
         for value in observed_values:
@@ -613,6 +635,7 @@ def _resolved_opportunities(
                     f"{commission_rating:.2f}" if commission_rating is not None else None
                 ),
                 exchange_commission=commission,
+                commission_origin=commission_origin,
                 standard_lay_stake=(calculation.selected_lay_stake if calculation else None),
                 liability=(calculation.liability if calculation else None),
                 pnl_if_back_wins=(calculation.pnl_if_back_wins if calculation else None),
@@ -724,8 +747,7 @@ def _find_opportunity(profile_id: str, opportunity_id: str) -> OpportunityRespon
         raise HTTPException(
             status_code=409,
             detail=(
-                "Profile Account eligibility or exchange commission must be resolved "
-                "before creating this draft."
+                "Profile Account eligibility must be resolved before creating this draft."
             ),
         )
     return row

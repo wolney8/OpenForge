@@ -188,6 +188,11 @@ Requirements:
 New dialog work must use a shared dialog primitive when one is available. Until the current modal
 shell is migrated, new behaviour must not copy another ad hoc modal implementation.
 
+An open modal owns document interaction and scroll. The shared boundary must lock the exact page
+position without a visible jump, prevent background scroll chaining, restore the prior position and
+styles on every dismissal path, and return focus to the invoking control. Help or tooltip content
+inside a native modal must portal into that dialog's top layer so clipping ancestors cannot hide it.
+
 ## Tables and data grids
 
 - Use `table-scroll` for wide tables. `table-wrap` is not a supported substitute.

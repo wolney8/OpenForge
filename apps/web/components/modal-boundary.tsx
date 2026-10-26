@@ -2,6 +2,7 @@
 
 import { useLayoutEffect, useRef, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
+import { useBodyScrollLock } from "@/lib/ledger-ui";
 
 /**
  * Preserve the signed-off backdrop/panel while owning browser top-layer modality.
@@ -14,6 +15,7 @@ export function ModalBoundary({ children, onDismiss, returnFocusRef }: {
   returnFocusRef?: RefObject<HTMLElement | null>;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  useBodyScrollLock(true);
   useLayoutEffect(() => {
     const dialog = ref.current;
     if (!dialog) return;

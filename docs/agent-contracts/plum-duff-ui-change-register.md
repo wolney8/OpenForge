@@ -618,3 +618,18 @@ ledger, liquidity and placement authorities. Oddsmatcher owner acceptance remain
 Installed locally after verified backup `BACKUP-C17AE882`; `normal-owner` fingerprint
 `7246998d43722066`, schema `invited-subscribers-v1`, all 13 financial-table row/hash projections,
 SQLite integrity and zero foreign-key violations match the pre-install state.
+
+## CP-088 owner-smoke follow-up — 2026-10-26
+
+| ID | Surface | Requested behaviour | Signed-off equivalent | Status |
+| --- | --- | --- | --- | --- |
+| PD-FIX-401 / #54 | Rating and Refresh | Preserve compact Rating focus and contained coalesced Refresh state | CP-088 compact inputs and shared button spinner | IN PROGRESS |
+| PD-FIX-402 / #54 | Quote liquidity | Move compact unavailable state below the Lay quote and portal its accessible explanation above clipping ancestors | Retained MBB quote hierarchy and anchored-surface top layer | IN PROGRESS |
+| PD-FIX-403 / #54 | Commission resolution | Apply Profile commission, then persisted default, then explicit 0% without making Profile context a calculation prerequisite | Existing preferences and calculator validation authorities | IN PROGRESS |
+| PD-FIX-404 / #54 | Bet Summary composition | Preserve genuine desktop two-column hierarchy, compact Profile state and responsive ordering | Retained private MBB Advanced evidence and current Material modal shell | IN PROGRESS |
+| PD-FIX-405 / #54 | Shared modal ownership | Lock document scroll and interaction, preserve position, prevent chaining and restore focus/scroll on dismissal | `ModalBoundary`, ledger editor scroll ownership and native modal semantics | IN PROGRESS |
+| PD-FIX-406 / #54 | Evidence/install | Focused financial/UI regression, private comparison, verified backup and canonical installation | UI consistency gate and normal-owner procedure | IN PROGRESS |
+
+This follow-up changes commission fallback only within the approved Oddsmatcher opportunity and
+Bet Summary workflow. It does not change the matched-betting formula, provider integration,
+filter state, ledger settlement or owner-acceptance status.

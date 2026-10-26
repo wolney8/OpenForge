@@ -528,7 +528,7 @@ Top-level **Tools** → **Oddsmatcher** (`/oddsmatcher`), then select `ALPHA-001
   - **Expect:** table-first page, **No Profile / All opportunities**, Normal/Qualifying, search, filters, **Refresh**, **Settings/My Filters** state and no placed-bet action.
   - **Stop if:** page fails, another Profile's data appears or any action implies automatic placement.
 - [ ] Open one Bet Summary without a Profile selected.
-  - **Expect:** all-provider opportunity context is visible and **Add Prospecting Draft** is disabled with **Choose a Profile to add to Tracker**.
+  - **Expect:** the calculator uses an explicit governed commission fallback and **Add Prospecting Draft** is disabled with **Profile required to add to Tracker**.
   - **Stop if:** a Profile restriction or commission is applied as universal, or a draft can be created.
 - [ ] Select `ALPHA-001` as **Profile context**.
   - **Expect:** Account eligibility and exchange commission become Profile-specific and the URL retains the context.
@@ -562,7 +562,7 @@ Top-level **Tools** → **Oddsmatcher** (`/oddsmatcher`), then select `ALPHA-001
   - **Expect:** filters reset without an unrequested provider refresh.
   - **Stop if:** quota changes or unrelated Profile state resets.
 - [ ] Open one **Bet Summary**.
-  - **Expect:** it matches the selected row, presents compact Back/Lay and outcomes panes, and says **Liquidity unavailable** with an accessible explanation.
+  - **Expect:** it matches the selected row, presents simultaneous Back/Lay and outcomes panes on desktop, and says **Liquidity unavailable** with an accessible unclipped explanation.
   - **Stop if:** context is mismatched or executability is claimed.
 - [ ] Verify event, market, selection, bookmaker/exchange and quote time.
   - **Expect:** every value matches the chosen opportunity.

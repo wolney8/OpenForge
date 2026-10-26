@@ -1477,3 +1477,12 @@ and permits duplicate provider calls. Use the shared contained spinner inside th
 target, expose `aria-busy`, disable/coalesce repeat activation and retain last-good content. A
 background refresh error may mark that content stale; it must not replace valid rows with an
 unrelated empty/loading surface.
+
+## Native modal overlays can escape their visual top layer
+
+Portalling a tooltip to `document.body` from inside a native `<dialog>` can leave it behind the
+dialog or clipped, while locking only `body { overflow: hidden }` can jump to the page top and lose
+the owner's position. Portal nested help into the nearest dialog, and use the shared reference-counted
+scroll lock to preserve document styles and coordinates. The CP-088 browser receipt verifies an
+unclipped liquidity explanation, exact scroll restoration, focus return and a second shared modal
+consumer.

@@ -18,7 +18,7 @@ function row(overrides: Partial<OddsMatcherOpportunity> = {}): OddsMatcherOpport
     market_key: "h2h", market: "Match Odds / 1X2",
     back: { provider_key: "bookmaker_a", provider_name: "Bookmaker A", account_name: "Bookmaker A", odds: "4.5", observed_at: "2026-10-23T12:00:00Z", link: null },
     lay: { provider_key: "smarkets", provider_name: "Smarkets", account_name: "Smarkets", odds: "4.7", observed_at: "2026-10-23T12:00:05Z", link: null },
-    display_rating: "95.74", commission_aware_rating: "93.00", exchange_commission: "0.02",
+    display_rating: "95.74", commission_aware_rating: "93.00", exchange_commission: "0.02", commission_origin: "profile-account",
     standard_lay_stake: "9.62", liability: "35.59", pnl_if_back_wins: "-1.09",
     pnl_if_lay_wins: "-0.57", conservative_result: "-1.09", liquidity_state: "UNKNOWN",
     freshness: "fresh", age_seconds: 30,

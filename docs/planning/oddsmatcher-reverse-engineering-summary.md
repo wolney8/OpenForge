@@ -314,9 +314,11 @@ owner interaction and visual acceptance remain **UNVERIFIED**.
 
 The owner accepted the CP-087 shared combobox open/close, selection and focus-return contract at
 component level. Overall Oddsmatcher acceptance remains pending. Manual Refresh now uses a contained
-busy state, coalesces repeat activation and retains last-good opportunities. Unknown liquidity and
-missing Profile/commission context use compact, focusable status disclosures without changing their
-authority.
+busy state, coalesces repeat activation and retains last-good opportunities. Unknown liquidity uses
+a compact status below the lay quote with a portalled, focusable explanation. With no Profile,
+Back and Lay commission are explicit 0%. With a selected Profile, Lay commission resolves
+server-side from Profile Account, then validated Oddsmatcher default, then explicit 0%. Missing
+Profile context gates Tracker creation rather than calculation.
 
 Bet Summary retains the existing matched-betting preview endpoint and Prospecting-draft mutation.
 Its presentation is a responsive two-pane calculator: Back/Lay inputs and Advanced strategy controls
@@ -324,4 +326,6 @@ on the left; event/rating context, authoritative outcome components, conservativ
 the Profile-gated Prospecting action on the right. Advanced adds strategy controls without removing
 normal fields or results. Deliberate MBB differences remain Prospecting instead of placement,
 unknown-liquidity truth, Profile eligibility and Plum Duff tokens. Private comparison evidence is
-under `data/private/evidence/cp088-oddsmatcher-bet-summary-20261026/`.
+under `data/private/evidence/cp088-owner-smoke-followup-20261026/`. The approved qualifying
+contract supports zero bookmaker commission; the visible Back Commission field blocks a non-zero
+value with an adjacent explanation rather than silently ignoring it.
