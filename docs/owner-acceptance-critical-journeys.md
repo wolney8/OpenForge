@@ -562,8 +562,8 @@ Top-level **Tools** → **Oddsmatcher** (`/oddsmatcher`), then select `ALPHA-001
   - **Expect:** filters reset without an unrequested provider refresh.
   - **Stop if:** quota changes or unrelated Profile state resets.
 - [ ] Open one **Bet Summary**.
-  - **Expect:** it matches the selected row, presents simultaneous Back/Lay and outcomes panes on desktop, and says **Liquidity unavailable** with an accessible unclipped explanation.
-  - **Stop if:** context is mismatched or executability is claimed.
+  - **Expect:** it matches the selected row, presents simultaneous Back/Lay and outcomes panes on desktop, says **Liquidity unavailable**, and shows a disabled **Place lay bet** stub with calculated Stake/Liability plus its direct-placement explanation.
+  - **Stop if:** context is mismatched, executability is claimed, or the placement stub performs any action.
 - [ ] Verify event, market, selection, bookmaker/exchange and quote time.
   - **Expect:** every value matches the chosen opportunity.
   - **Stop if:** any context belongs to another event, selection or Profile.
@@ -571,13 +571,13 @@ Top-level **Tools** → **Oddsmatcher** (`/oddsmatcher`), then select `ALPHA-001
   - **Expect:** lay stake, liability, back-win, lay-win and conservative result recalculate live.
   - **Stop if:** a Calculate button is required or unknown liquidity becomes executable.
 - [ ] Test **Underlay**.
-  - **Expect:** governed outcomes change visibly while liquidity remains Unknown.
+  - **Expect:** governed outcomes change visibly, both outcome tables remain, **Total Profit** is hidden and liquidity remains Unknown.
   - **Stop if:** maths becomes unavailable without explanation.
 - [ ] Test **Standard**.
-  - **Expect:** standard qualifying outcomes return without a Calculate button.
+  - **Expect:** standard qualifying outcomes and **Total Profit** return without a Calculate button.
   - **Stop if:** stale Underlay values remain.
 - [ ] Test **Overlay**.
-  - **Expect:** governed outcomes change visibly and no Place Bet action appears.
+  - **Expect:** governed outcomes change visibly, both outcome tables remain, **Total Profit** is hidden and no enabled Place Bet action appears.
   - **Stop if:** any placed-bet action becomes available.
 - [ ] Manually change one odds field.
   - **Expect:** that field stops automatic quote updates.
@@ -585,6 +585,9 @@ Top-level **Tools** → **Oddsmatcher** (`/oddsmatcher`), then select `ALPHA-001
 - [ ] Reset/re-enable the automatic quote value.
   - **Expect:** the quoted value returns and automatic quote updates resume for that field.
   - **Stop if:** reset does not restore the quoted value or persists the manual value as provider data.
+- [ ] Open the Bet Summary **Settings** gear and change Back/Lay formats independently.
+  - **Expect:** only Decimal, Fractional and Moneyline are offered; visible modal odds update immediately while the scanner table remains Decimal and calculation economics do not change.
+  - **Stop if:** a format changes the provider quote, Profile, stake, strategy, commission or main-table display.
 - [ ] Click **Add Prospecting Draft** once and record the returned ID.
   - **Expect:** one success result and no balance mutation.
   - **Stop if:** retry duplicates it, it is Placed or balances change.

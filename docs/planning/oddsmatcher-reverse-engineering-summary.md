@@ -329,3 +329,16 @@ unknown-liquidity truth, Profile eligibility and Plum Duff tokens. Private compa
 under `data/private/evidence/cp088-owner-smoke-followup-20261026/`. The approved qualifying
 contract supports zero bookmaker commission; the visible Back Commission field blocks a non-zero
 value with an adjacent explanation rather than silently ignoring it.
+
+## CP-089 Bet Summary interaction boundary — 2026-10-26
+
+Bet Summary now includes a disabled `Place lay bet` parity area showing calculated stake and
+liability. It has no request or mutation path; Prospecting remains the only Tracker action. Standard
+matching alone shows the conservative Total Profit headline. Underlay, Overlay and Custom stakes
+retain both outcome tables and omit that single-number headline.
+
+The Settings action opens a compact calculator-display surface with independent Back and Lay
+Decimal, Fractional and Moneyline formats. Canonical decimal odds remain the calculation and draft
+authority; invalid formatted edits block preview requests. Format choices are local to the open Bet
+Summary and default to Decimal on the next summary. Private headless evidence is under
+`data/private/evidence/cp089-bet-summary-format-parity-20261026/`; owner acceptance remains pending.

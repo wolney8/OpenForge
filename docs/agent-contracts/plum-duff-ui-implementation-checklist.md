@@ -251,3 +251,18 @@ Complete this for every feature, bug fix, component, fixture-backed UI, route or
 - [x] Dark-theme private captures and responsive computed geometry pass. Existing semantic tokens
       and contrast-tested primitives are unchanged; owner light-theme visual acceptance is pending.
 - [ ] Canonical owner Bet Summary visual acceptance remains pending.
+
+## CP-089 Bet Summary placement stub, biased outcomes and odds formats — 2026-10-26
+
+- [x] Reused the matched-betting preview, `FinancialValue`, `FinancialTextInput`,
+      `SingleLayCustomSlider`, segmented controls and nested `ModalBoundary`; no placement endpoint,
+      ledger engine or formula was added.
+- [x] Disabled Place Lay semantics, calculated Stake/Liability, focus description and the unchanged
+      Prospecting-only mutation boundary are covered by the focused browser receipt.
+- [x] Standard-only Total Profit uses numeric calculator state within `0.005`; Underlay, Overlay and
+      Custom retain both outcome tables with the headline absent, and restoring Standard restores it.
+- [x] Decimal/Fractional/Moneyline formatting uses the approved M14 conversion contract; strict
+      field errors stop preview calls and repeated display switching retains canonical decimal odds.
+- [x] Independent format controls, nested Escape/focus return, body scroll lock, desktop two-column
+      geometry and 430px narrow ordering are covered by private headless captures.
+- [ ] Owner visual and interaction acceptance remains pending; no acceptance status is inferred.

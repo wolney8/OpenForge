@@ -637,3 +637,17 @@ filter state, ledger settlement or owner-acceptance status.
 Verified backup `BACKUP-B2266D9C` precedes installation. Focused API, component and browser tests,
 full web tests, typecheck, production build and changed-file lint pass. Private evidence is under
 `data/private/evidence/cp088-owner-smoke-followup-20261026/`; owner visual acceptance remains pending.
+
+## CP-089 Bet Summary lay-placement stub, biased outcomes and odds formats — 2026-10-26
+
+| ID | Surface | Requested behaviour | Signed-off equivalent | Status |
+| --- | --- | --- | --- | --- |
+| PD-FIX-407 / #54 | Place Lay parity area | Show calculated Stake/Liability in an explicitly disabled, non-mutating placement stub | Retained MBB placement hierarchy plus Plum Duff disabled-action semantics | COMPLETE |
+| PD-FIX-408 / #54 | Biased outcomes | Show Total Profit only for canonical Standard stake while retaining both outcome tables in every mode | Existing matched-betting preview and strategy-reference authority | COMPLETE |
+| PD-FIX-409 / #54 | Bet Summary odds formats | Add modal-local Decimal/Fractional/Moneyline presentation and strict canonical-decimal parsing | Approved M14 odds-conversion contract and existing odds normaliser | COMPLETE |
+| PD-FIX-410 / #54 | Calculator Settings | Open a compact, focus-managed format surface from the existing Bet Summary Settings action | Shared `ModalBoundary` and compact settings dialog pattern | COMPLETE |
+| PD-FIX-411 / #54 | Responsive/accessibility | Preserve two-column/narrow hierarchy, scroll ownership, field validation and disabled explanation | CP-088 Bet Summary/modal contract | COMPLETE |
+| PD-FIX-412 / #54 | Evidence/install | Deterministic conversion/strategy tests, private captures, backup and canonical local installation | UI consistency and normal-owner install gate | NEEDS VERIFICATION — verified backup `BACKUP-54F7D709`; canonical install pending |
+
+This batch changes Bet Summary presentation and canonical-input conversion only. It does not alter
+provider data, matched-betting formulas, ledger lifecycle, balances or placement capabilities.

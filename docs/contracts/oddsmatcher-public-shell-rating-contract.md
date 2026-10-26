@@ -325,3 +325,18 @@ This addendum supersedes the older public/non-Profile assumptions above only for
   never Profile context, settings, saved presets or provider data.
 - Saved filters serialize the same canonical filter state used by desktop and narrow controls, so
   loading a preset repopulates tokens and grouped start-time/custom values without a UI-only model.
+
+## 27. CP-089 Bet Summary placement and presentation addendum
+
+- `Place lay bet` is a disabled presentation stub. It shows the governed selected lay stake and
+  liability, explains that direct exchange placement is unavailable, and has no mutation or
+  credential path. `Add Prospecting Draft` remains the only Tracker mutation.
+- Both governed outcome tables remain visible for Standard, Underlay, Overlay and Custom stakes.
+  The conservative `Total Profit` headline appears only when the active strategy is Standard and
+  the selected stake equals the calculator's Standard reference within half a penny (`0.005`).
+- Bet Summary owns independent Back and Lay display formats: Decimal, Fractional or Moneyline.
+  The format is modal-local, defaults to Decimal for every newly opened summary, and never changes
+  provider, table, Tracker or calculation data. Canonical decimal odds remain authoritative.
+- Fractional and Moneyline edits parse strictly back to canonical decimal odds. Invalid input
+  blocks preview calculation and remains an explicit field error; format switching derives from
+  canonical state so repeated switching cannot accumulate display-rounding drift.

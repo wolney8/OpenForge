@@ -7705,10 +7705,14 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
 .oddsmatcher-summary-input-row input,
 .oddsmatcher-bet-card > .field-control input { min-height: 2.75rem; }
 .oddsmatcher-auto-switch { justify-self: start; }
-.oddsmatcher-lay-stake-block { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 0.3rem 0.75rem; padding: 0.75rem; border-radius: var(--shape-medium); background: var(--surface-strong); }
+.oddsmatcher-lay-stake-block { display: grid; grid-template-columns: minmax(10rem,0.8fr) minmax(0,1fr); align-items: end; gap: 0.3rem 0.75rem; padding: 0.75rem; border-radius: var(--shape-medium); background: var(--surface-strong); }
 .oddsmatcher-lay-stake-block > .eyebrow { grid-column: 1 / -1; }
-.oddsmatcher-lay-stake-block > strong { font-size: clamp(1.35rem, 2.5vw, 2rem); }
 .oddsmatcher-lay-stake-block > span:last-child { color: var(--muted); }
+.oddsmatcher-place-lay-stub { display: grid; grid-template-columns: minmax(10rem,0.75fr) minmax(0,1fr); align-items: center; gap: 0.35rem 0.75rem; padding: 0.75rem; border: 1px solid var(--outline); border-radius: var(--shape-medium); background: var(--surface-container-high); }
+.oddsmatcher-place-lay-stub button { min-height: 2.75rem; border: 1px solid var(--outline); border-radius: var(--shape-full); background: var(--surface-strong); color: var(--muted); font: inherit; font-weight: 750; cursor: not-allowed; opacity: 0.72; }
+.oddsmatcher-place-lay-stub button:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.oddsmatcher-place-lay-stub strong { font-size: 0.82rem; }
+.oddsmatcher-place-lay-stub small { grid-column: 1 / -1; color: var(--muted); }
 .oddsmatcher-advanced-controls { display: grid; gap: 0.65rem; padding-top: 0.7rem; border-top: 1px solid var(--outline); }
 .oddsmatcher-advanced-controls > input[type="range"] { width: 100%; accent-color: var(--primary); }
 .oddsmatcher-advanced-range { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; color: var(--muted); font-size: 0.72rem; text-align: center; }
@@ -7729,6 +7733,10 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
 .oddsmatcher-total-profit strong { font-size: clamp(1.35rem, 2.5vw, 2rem); }
 .oddsmatcher-total-profit small { grid-column: 1 / -1; color: var(--muted); }
 .oddsmatcher-prospecting-action { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 0.55rem; padding-top: 0.3rem; }
+.oddsmatcher-calculator-settings-backdrop { z-index: 150; }
+.oddsmatcher-calculator-settings-dialog { display: grid; gap: 1rem; width: min(30rem, calc(100dvw - 2rem)); }
+.oddsmatcher-calculator-settings-dialog h2 { margin: 0; }
+.oddsmatcher-calculator-settings-fields { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 0.75rem; }
 .compact-status { position: relative; display: inline-flex; min-width: 0; }
 .compact-status-trigger { display: inline-flex; align-items: center; gap: 0.3rem; min-height: 2rem; padding: 0.2rem 0.45rem; border: 0; border-radius: var(--shape-full); background: var(--surface-container-high); color: var(--muted); font: inherit; font-size: 0.75rem; font-weight: 720; cursor: help; }
 .compact-status-trigger .material-symbols-outlined { font-size: 1rem; }
@@ -7780,6 +7788,10 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
   .oddsmatcher-summary-controls .oddsmatcher-mode-control { grid-column: 1 / -1; }
   .oddsmatcher-summary-input-row { grid-template-columns: minmax(0, 1fr); }
   .oddsmatcher-bet-card > header { align-items: flex-start; flex-direction: column; }
+  .oddsmatcher-lay-stake-block,
+  .oddsmatcher-place-lay-stub,
+  .oddsmatcher-calculator-settings-fields { grid-template-columns: minmax(0, 1fr); }
+  .oddsmatcher-place-lay-stub small { grid-column: 1; }
   .oddsmatcher-prospecting-action { align-items: stretch; flex-direction: column; }
   .oddsmatcher-prospecting-action > * { width: 100%; justify-content: center; }
 }

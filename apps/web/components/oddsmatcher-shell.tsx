@@ -17,13 +17,13 @@ import {
 import { createPortal } from "react-dom";
 import { CalculatorSegmentedControl } from "@/components/calculator-segmented-control";
 import { CommissionInput } from "@/components/commission-input";
-import { CopyableFinancialValue } from "@/components/copyable-financial-value";
 import { FinancialValue } from "@/components/financial-value";
 import { FinancialTextInput } from "@/components/financial-text-input";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { ModalBoundary } from "@/components/modal-boundary";
 import { PercentageTextInput } from "@/components/percentage-text-input";
+import { SingleLayCustomSlider } from "@/components/single-lay-custom-slider";
 import { apiBaseUrl } from "@/lib/api";
 import {
   findMasterAccountCatalogueEntry,
@@ -51,9 +51,13 @@ import {
   type OptionListMode,
   type SelectionOption,
 } from "@/components/selection-controls";
+import { formatOdds, ODDS_FORMATS, parseOdds, type OddsFormat } from "@/lib/odds-format";
 
 type Preview = {
   selected_lay_stake: string;
+  reference_lay_stake_standard: string;
+  reference_lay_stake_underlay: string | null;
+  reference_lay_stake_overlay: string | null;
   liability: string;
   pnl_if_back_wins: string;
   pnl_if_lay_wins: string;
@@ -66,8 +70,15 @@ type Preview = {
     promotion_component?: string | null;
     total: string;
   }>;
+  strategy_references: Array<{
+    strategy: string;
+    lay_stake: string;
+    liability: string;
+    back_wins_total: string;
+    back_loses_total: string;
+  }>;
 };
-type Strategy = "Underlay" | "Standard" | "Overlay";
+type Strategy = "Underlay" | "Standard" | "Overlay" | "Custom";
 type ReadState = "loading" | "ready" | "error";
 type ProfileOption = {
   profile_id: string;
@@ -935,7 +946,6 @@ export function OddsMatcherShell({
             defaultStake={defaultStake}
             defaultAdvanced={preferences.default_advanced}
             onClose={() => setSelected(null)}
-            onOpenSettings={() => { setSelected(null); setSettingsOpen(true); }}
             opportunity={selected}
             profileId={profileId}
             returnFocusRef={inspectButtonRef}
@@ -1336,7 +1346,6 @@ function BetSummaryDialog({
   defaultAdvanced,
   defaultStake,
   onClose,
-  onOpenSettings,
   opportunity,
   profileId,
   returnFocusRef,
@@ -1344,7 +1353,6 @@ function BetSummaryDialog({
   defaultAdvanced: boolean;
   defaultStake: string;
   onClose: () => void;
-  onOpenSettings: () => void;
   opportunity: OddsMatcherOpportunity;
   profileId: string | null;
   returnFocusRef: RefObject<HTMLElement | null>;
@@ -1353,8 +1361,17 @@ function BetSummaryDialog({
   const [backCommission, setBackCommission] = useState("0");
   const [backOdds, setBackOdds] = useState(opportunity.back.odds);
   const [layOdds, setLayOdds] = useState(opportunity.lay.odds);
+  const [backOddsFormat, setBackOddsFormat] = useState<OddsFormat>("Decimal");
+  const [layOddsFormat, setLayOddsFormat] = useState<OddsFormat>("Decimal");
+  const [backOddsInput, setBackOddsInput] = useState(formatOdds(opportunity.back.odds, "Decimal"));
+  const [layOddsInput, setLayOddsInput] = useState(formatOdds(opportunity.lay.odds, "Decimal"));
+  const [backOddsError, setBackOddsError] = useState<string | null>(null);
+  const [layOddsError, setLayOddsError] = useState<string | null>(null);
   const [commission, setCommission] = useState(opportunity.exchange_commission || "0");
   const [strategy, setStrategy] = useState<Strategy>("Standard");
+  const [customLayStake, setCustomLayStake] = useState("");
+  const [customMinimum, setCustomMinimum] = useState("");
+  const [customMaximum, setCustomMaximum] = useState("");
   const [advanced, setAdvanced] = useState(defaultAdvanced);
   const [autoBack, setAutoBack] = useState(true);
   const [autoLay, setAutoLay] = useState(true);
@@ -1363,6 +1380,8 @@ function BetSummaryDialog({
   const [draftState, setDraftState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [draftError, setDraftError] = useState("");
   const [draftId, setDraftId] = useState("");
+  const [calculatorSettingsOpen, setCalculatorSettingsOpen] = useState(false);
+  const settingsButtonRef = useRef<HTMLButtonElement>(null);
   const retryToken = useRef(crypto.randomUUID());
   const version = useRef(0);
   const commissionSource = opportunity.commission_origin === "profile-account"
@@ -1371,13 +1390,14 @@ function BetSummaryDialog({
       ? "Oddsmatcher default"
       : "0% default";
   const backCommissionUnsupported = backCommission.trim() === "" || !Number.isFinite(Number(backCommission)) || Number(backCommission) !== 0;
-  const effectivePreviewState = backCommissionUnsupported ? "error" : previewState;
+  const oddsInvalid = Boolean(backOddsError || layOddsError);
+  const effectivePreviewState = backCommissionUnsupported || oddsInvalid ? "error" : previewState;
   const manual = !autoBack || !autoLay || isManualQuote(opportunity, backOdds, layOdds);
 
   useEffect(() => {
     const current = ++version.current;
     const controller = new AbortController();
-    if (backCommissionUnsupported) {
+    if (backCommissionUnsupported || oddsInvalid) {
       return () => controller.abort();
     }
     void Promise.resolve().then(async () => {
@@ -1392,7 +1412,7 @@ function BetSummaryDialog({
           body: JSON.stringify({
             bet_type: "qualifying", free_bet_mode: "SNR", promotion_mode: "standard", strategy,
             back_stake: stake, back_odds: backOdds, lay_odds: layOdds, exchange_commission: commission,
-            manual_lay_stake: "", promotion_value: "", bonus_trigger: "Lay Wins",
+            manual_lay_stake: strategy === "Custom" ? customLayStake : "", promotion_value: "", bonus_trigger: "Lay Wins",
             bonus_backing_bet: "Normal", retention_percent: "70", underlay_factor: "0.928", overlay_factor: "1.300",
           }),
         });
@@ -1404,7 +1424,7 @@ function BetSummaryDialog({
       }
     });
     return () => controller.abort();
-  }, [backCommissionUnsupported, backOdds, commission, layOdds, stake, strategy]);
+  }, [backCommissionUnsupported, backOdds, commission, customLayStake, layOdds, oddsInvalid, stake, strategy]);
 
   const createDraft = async () => {
     if (!profileId) { setDraftError("Choose a Profile to add this opportunity to Tracker."); return; }
@@ -1413,7 +1433,8 @@ function BetSummaryDialog({
       const response = await fetch(`${apiBaseUrl}/profiles/${profileId}/oddsmatcher/prospecting-drafts`, {
         method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ opportunity_id: opportunity.opportunity_id, retry_token: retryToken.current,
-          back_stake: stake, back_odds: backOdds, lay_odds: layOdds, exchange_commission: commission, strategy }),
+          back_stake: stake, back_odds: backOdds, lay_odds: layOdds, exchange_commission: commission, strategy,
+          custom_lay_stake: strategy === "Custom" ? customLayStake : "" }),
       });
       if (!response.ok) throw new Error(await responseError(response, "Prospecting draft could not be created."));
       const value = (await response.json()) as { sportsbook_bet: { sportsbook_bet_id: string } };
@@ -1421,6 +1442,55 @@ function BetSummaryDialog({
     } catch (caught) {
       setDraftError(caught instanceof Error ? caught.message : "Prospecting draft could not be created.");
       setDraftState("error");
+    }
+  };
+
+  const standardStake = preview?.reference_lay_stake_standard ?? preview?.strategy_references?.find((item) => item.strategy === "Standard")?.lay_stake ?? (strategy === "Standard" ? preview?.selected_lay_stake : "") ?? "";
+  const underlayStake = preview?.reference_lay_stake_underlay ?? standardStake;
+  const overlayStake = preview?.reference_lay_stake_overlay ?? standardStake;
+  const displayedLayStake = strategy === "Custom" ? customLayStake : preview?.selected_lay_stake ?? "";
+  const safePreview = effectivePreviewState === "error" ? null : preview;
+  const sliderMinimum = Math.max(0.01, Number(customMinimum || underlayStake || standardStake || "0.01"));
+  const sliderMaximum = Math.max(sliderMinimum + 0.01, Number(customMaximum || overlayStake || standardStake || sliderMinimum + 0.01));
+  const sliderCentre = Math.min(sliderMaximum, Math.max(sliderMinimum, Number(standardStake || sliderMinimum)));
+  const sliderCurrent = Math.min(sliderMaximum, Math.max(sliderMinimum, Number(displayedLayStake || sliderCentre)));
+  const isStandardMatch = strategy === "Standard" && Boolean(preview) &&
+    Math.abs(Number(preview?.selected_lay_stake) - Number(standardStake)) <= 0.005;
+  const setNamedStrategy = (value: Strategy) => {
+    setStrategy(value);
+    if (value !== "Custom") setCustomLayStake("");
+  };
+  const setCustomStake = (value: string) => {
+    const numeric = Number(value);
+    if (standardStake && Number.isFinite(numeric) && Math.abs(numeric - Number(standardStake)) <= 0.005) {
+      setNamedStrategy("Standard");
+      return;
+    }
+    setCustomLayStake(value);
+    setStrategy("Custom");
+  };
+  const changeOddsInput = (kind: "back" | "lay", value: string) => {
+    const format = kind === "back" ? backOddsFormat : layOddsFormat;
+    const parsed = parseOdds(value, format);
+    if (kind === "back") {
+      setBackOddsInput(value);
+      setBackOddsError(parsed.error);
+      if (parsed.canonicalDecimal) { setBackOdds(parsed.canonicalDecimal); setAutoBack(false); }
+    } else {
+      setLayOddsInput(value);
+      setLayOddsError(parsed.error);
+      if (parsed.canonicalDecimal) { setLayOdds(parsed.canonicalDecimal); setAutoLay(false); }
+    }
+  };
+  const changeOddsFormat = (kind: "back" | "lay", format: OddsFormat) => {
+    if (kind === "back") {
+      setBackOddsFormat(format);
+      setBackOddsInput(formatOdds(backOdds, format));
+      setBackOddsError(null);
+    } else {
+      setLayOddsFormat(format);
+      setLayOddsInput(formatOdds(layOdds, format));
+      setLayOddsError(null);
     }
   };
 
@@ -1439,8 +1509,8 @@ function BetSummaryDialog({
           <div className="oddsmatcher-summary-body">
             <div className="oddsmatcher-summary-controls">
               <div className="oddsmatcher-mode-control"><span>Bet Type</span><strong>Normal / Qualifying Bet</strong></div>
-              <button aria-checked={advanced} className={`material-switch${advanced ? " is-selected" : ""}`} data-pd-id="oddsmatcher.advanced" onClick={() => { setAdvanced((value) => !value); if (advanced) setStrategy("Standard"); }} role="switch" type="button"><span aria-hidden="true" className="material-switch-track"><span className="material-switch-thumb" /></span><span>Advanced</span></button>
-              <button aria-label="Open Oddsmatcher settings" className="icon-button compact-action" onClick={onOpenSettings} title="Oddsmatcher settings" type="button"><span aria-hidden="true" className="material-symbols-outlined">settings</span></button>
+              <button aria-checked={advanced} className={`material-switch${advanced ? " is-selected" : ""}`} data-pd-id="oddsmatcher.advanced" onClick={() => { setAdvanced((value) => !value); if (advanced) setNamedStrategy("Standard"); }} role="switch" type="button"><span aria-hidden="true" className="material-switch-track"><span className="material-switch-thumb" /></span><span>Advanced</span></button>
+              <button aria-label="Open Bet Summary settings" className="icon-button compact-action" onClick={() => setCalculatorSettingsOpen(true)} ref={settingsButtonRef} title="Bet Summary settings" type="button"><span aria-hidden="true" className="material-symbols-outlined">settings</span></button>
             </div>
             <div className="oddsmatcher-summary-layout">
               <div className="oddsmatcher-summary-left">
@@ -1449,33 +1519,38 @@ function BetSummaryDialog({
                   {profileId ? <div className="oddsmatcher-card-account"><span className={eligibilityClass(opportunity.back_eligibility.state)}>{opportunity.back_eligibility.reason}</span></div> : null}
                   <label className="field-control" htmlFor="oddsmatcher-back-stake"><span>Back Stake</span><FinancialTextInput allowNegative={false} ariaLabel="Back Stake" dataPdId="oddsmatcher.back-stake" id="oddsmatcher-back-stake" onBlur={() => undefined} onChange={setStake} value={stake} /></label>
                   <div className="oddsmatcher-summary-input-row">
-                    <label className="field-control"><span>Back Odds</span><input aria-label="Back Odds" inputMode="decimal" onChange={(event) => { setBackOdds(event.target.value); setAutoBack(false); }} value={backOdds} /></label>
+                    <label className="field-control"><span>Back Odds <small className="oddsmatcher-summary-source">{backOddsFormat}</small></span><input aria-describedby={backOddsError ? "oddsmatcher-back-odds-error" : undefined} aria-invalid={Boolean(backOddsError) || undefined} aria-label="Back Odds" inputMode={backOddsFormat === "Fractional" ? "text" : "decimal"} onChange={(event) => changeOddsInput("back", event.target.value)} value={backOddsInput} />{backOddsError ? <small className="field-validation-text" id="oddsmatcher-back-odds-error" role="alert">{backOddsError}</small> : null}</label>
                     <label className="field-control" htmlFor="oddsmatcher-back-commission"><span>Back Commission</span><PercentageTextInput ariaLabel="Back Commission (%)" dataPdId="oddsmatcher.back-commission" id="oddsmatcher-back-commission" onChange={setBackCommission} value={backCommission} />{backCommissionUnsupported ? <small className="field-validation-text">The current qualifying contract supports 0% bookmaker commission.</small> : null}</label>
                   </div>
-                  <button aria-checked={autoBack} className={`material-switch oddsmatcher-auto-switch${autoBack ? " is-selected" : ""}`} onClick={() => { const next = !autoBack; setAutoBack(next); if (next) setBackOdds(opportunity.back.odds); }} role="switch" type="button"><span aria-hidden="true" className="material-switch-track"><span className="material-switch-thumb" /></span><span>Auto update back odds</span></button>
+                  <button aria-checked={autoBack} className={`material-switch oddsmatcher-auto-switch${autoBack ? " is-selected" : ""}`} onClick={() => { const next = !autoBack; setAutoBack(next); if (next) { setBackOdds(opportunity.back.odds); setBackOddsInput(formatOdds(opportunity.back.odds, backOddsFormat)); setBackOddsError(null); } }} role="switch" type="button"><span aria-hidden="true" className="material-switch-track"><span className="material-switch-thumb" /></span><span>Auto update back odds</span></button>
                 </section>
 
                 <section className="oddsmatcher-bet-card oddsmatcher-bet-card-lay">
                   <header><h3>Lay Bet</h3><button aria-label={`${simpleExchangeName(opportunity.lay.account_name)} link unavailable`} className="button-link icon-text-action" disabled title="Exchange link unavailable" type="button">Go to {simpleExchangeName(opportunity.lay.account_name)}<span aria-hidden="true" className="material-symbols-outlined">open_in_new</span></button></header>
                   {profileId ? <div className="oddsmatcher-card-account"><span className={eligibilityClass(opportunity.lay_eligibility.state)}>{opportunity.lay_eligibility.reason}</span></div> : null}
                   <div className="oddsmatcher-summary-input-row">
-                    <label className="field-control"><span>Lay Odds</span><input aria-label="Lay Odds" inputMode="decimal" onChange={(event) => { setLayOdds(event.target.value); setAutoLay(false); }} value={layOdds} /></label>
+                    <label className="field-control"><span>Lay Odds <small className="oddsmatcher-summary-source">{layOddsFormat}</small></span><input aria-describedby={layOddsError ? "oddsmatcher-lay-odds-error" : undefined} aria-invalid={Boolean(layOddsError) || undefined} aria-label="Lay Odds" inputMode={layOddsFormat === "Fractional" ? "text" : "decimal"} onChange={(event) => changeOddsInput("lay", event.target.value)} value={layOddsInput} />{layOddsError ? <small className="field-validation-text" id="oddsmatcher-lay-odds-error" role="alert">{layOddsError}</small> : null}</label>
                     <label className="field-control" htmlFor="oddsmatcher-lay-commission"><span>Lay Commission <small className="oddsmatcher-summary-source">{commissionSource}</small></span><PercentageTextInput ariaLabel="Lay Commission (%)" dataPdId="oddsmatcher.lay-commission" id="oddsmatcher-lay-commission" onChange={setCommission} value={commission} /></label>
                   </div>
                   <LiquidityUnavailableStatus />
-                  <button aria-checked={autoLay} className={`material-switch oddsmatcher-auto-switch${autoLay ? " is-selected" : ""}`} onClick={() => { const next = !autoLay; setAutoLay(next); if (next) setLayOdds(opportunity.lay.odds); }} role="switch" type="button"><span aria-hidden="true" className="material-switch-track"><span className="material-switch-thumb" /></span><span>Auto update lay odds</span></button>
+                  <button aria-checked={autoLay} className={`material-switch oddsmatcher-auto-switch${autoLay ? " is-selected" : ""}`} onClick={() => { const next = !autoLay; setAutoLay(next); if (next) { setLayOdds(opportunity.lay.odds); setLayOddsInput(formatOdds(opportunity.lay.odds, layOddsFormat)); setLayOddsError(null); } }} role="switch" type="button"><span aria-hidden="true" className="material-switch-track"><span className="material-switch-thumb" /></span><span>Auto update lay odds</span></button>
                   <div className="oddsmatcher-lay-stake-block">
                     <span className="eyebrow">Lay Stake</span>
-                    <strong>{preview ? <CopyableFinancialValue label="Lay stake" value={preview.selected_lay_stake} /> : "—"}</strong>
-                    <span>Liability: {preview ? <FinancialValue value={preview.liability} /> : "—"}</span>
+                    <FinancialTextInput allowNegative={false} ariaLabel="Lay Stake" dataPdId="oddsmatcher.lay-stake" id="oddsmatcher-lay-stake" onBlur={() => undefined} onChange={setCustomStake} value={displayedLayStake} />
+                    <span>Liability: {safePreview ? <FinancialValue value={safePreview.liability} /> : "—"}</span>
+                  </div>
+                  <div className="oddsmatcher-place-lay-stub" data-pd-id="oddsmatcher.place-lay-stub">
+                    <button aria-describedby="oddsmatcher-place-lay-explanation" aria-disabled="true" onClick={(event) => event.preventDefault()} type="button">Place lay bet</button>
+                    <strong>Stake: {safePreview ? <FinancialValue value={safePreview.selected_lay_stake} /> : "—"} <span aria-hidden="true">|</span> Liability: {safePreview ? <FinancialValue value={safePreview.liability} /> : "—"}</strong>
+                    <small id="oddsmatcher-place-lay-explanation">Direct exchange placement is not enabled yet.</small>
                   </div>
                   {advanced ? <div className="oddsmatcher-advanced-controls">
-                    <CalculatorSegmentedControl ariaLabel="Lay strategy" dataPdId="oddsmatcher.strategy" onChange={setStrategy} options={[{label:"Underlay",value:"Underlay"},{label:"Standard",value:"Standard"},{label:"Overlay",value:"Overlay"}]} value={strategy} />
-                    <input aria-label="Lay strategy range" max="2" min="0" onChange={(event) => setStrategy((["Underlay","Standard","Overlay"] as Strategy[])[Number(event.target.value)])} step="1" type="range" value={({Underlay:0,Standard:1,Overlay:2} as const)[strategy]} />
+                    <CalculatorSegmentedControl ariaLabel="Lay strategy" dataPdId="oddsmatcher.strategy" onChange={setNamedStrategy} options={[{label:"Underlay",value:"Underlay"},{label:"Standard",value:"Standard"},{label:"Overlay",value:"Overlay"}]} value={strategy} />
+                    <SingleLayCustomSlider ariaLabel="Lay strategy range" centre={sliderCentre} current={sliderCurrent} maximum={sliderMaximum} maximumText={customMaximum} minimum={sliderMinimum} minimumText={customMinimum} onCommit={setCustomStake} onDraft={setCustomStake} onMaximumChange={setCustomMaximum} onMinimumChange={setCustomMinimum} />
                     <div className="oddsmatcher-advanced-range"><span>Range Min<br/><strong>Underlay</strong></span><span>Current Lay Stake<br/><strong>{preview ? <FinancialValue value={preview.selected_lay_stake} /> : "—"}</strong></span><span>Range Max<br/><strong>Overlay</strong></span></div>
                   </div> : null}
-                  {manual ? <button className="button-link" onClick={() => { setBackOdds(opportunity.back.odds); setLayOdds(opportunity.lay.odds); setAutoBack(true); setAutoLay(true); }} type="button">Reset to latest quotes</button> : null}
-                  {effectivePreviewState === "error" && !backCommissionUnsupported ? <p className="field-validation-text" role="alert">Check the highlighted stake, odds or commission field.</p> : null}
+                  {manual ? <button className="button-link" onClick={() => { setBackOdds(opportunity.back.odds); setBackOddsInput(formatOdds(opportunity.back.odds, backOddsFormat)); setBackOddsError(null); setLayOdds(opportunity.lay.odds); setLayOddsInput(formatOdds(opportunity.lay.odds, layOddsFormat)); setLayOddsError(null); setAutoBack(true); setAutoLay(true); }} type="button">Reset to latest quotes</button> : null}
+                  {effectivePreviewState === "error" && !backCommissionUnsupported && !oddsInvalid ? <p className="field-validation-text" role="alert">Check the highlighted stake, odds or commission field.</p> : null}
                 </section>
               </div>
 
@@ -1489,10 +1564,10 @@ function BetSummaryDialog({
                   <small>{opportunity.back.account_name} back · {formatObserved(opportunity.age_seconds)} · {simpleExchangeName(opportunity.lay.account_name)} lay · {formatObserved(opportunity.age_seconds)}</small>
                 </section>
                 {effectivePreviewState === "loading" ? <LedgerLoadingIndicator label="Updating Bet Summary" /> : null}
-                {preview ? <div className="oddsmatcher-outcome-stack">
-                  <OutcomeTable heading={`If back (${opportunity.back.account_name}) bet wins`} outcome={preview.outcomes?.find((item) => item.key === "back-wins")} total={preview.pnl_if_back_wins} />
-                  <OutcomeTable heading={`If lay (${simpleExchangeName(opportunity.lay.account_name)}) bet wins`} outcome={preview.outcomes?.find((item) => item.key === "lay-wins")} total={preview.pnl_if_lay_wins} />
-                  <div className="oddsmatcher-total-profit"><span>Total Profit</span><strong><FinancialValue value={preview.matched_result} /></strong><small>Conservative / worst-case result</small></div>
+                {safePreview ? <div className="oddsmatcher-outcome-stack">
+                  <OutcomeTable heading={`If back (${opportunity.back.account_name}) bet wins`} outcome={safePreview.outcomes?.find((item) => item.key === "back-wins")} total={safePreview.pnl_if_back_wins} />
+                  <OutcomeTable heading={`If lay (${simpleExchangeName(opportunity.lay.account_name)}) bet wins`} outcome={safePreview.outcomes?.find((item) => item.key === "lay-wins")} total={safePreview.pnl_if_lay_wins} />
+                  {isStandardMatch ? <div className="oddsmatcher-total-profit"><span>Total Profit</span><strong><FinancialValue value={safePreview.matched_result} /></strong><small>Conservative / worst-case result</small></div> : null}
                 </div> : null}
                 {draftError ? <p className="field-validation-text" role="alert">{draftError}</p> : null}
                 {draftState === "saved" && profileId ? <p className="status-message" role="status">Prospecting draft saved. No balance or placed-bet state changed. <Link href={`/profiles/${profileId}/tracker/sportsbook-bets?record=${encodeURIComponent(draftId)}`}>Open Sportsbook draft</Link></p> : null}
@@ -1504,6 +1579,7 @@ function BetSummaryDialog({
               </div>
             </div>
           </div>
+          {calculatorSettingsOpen ? <BetSummarySettingsDialog backFormat={backOddsFormat} layFormat={layOddsFormat} onBackFormatChange={(format) => changeOddsFormat("back", format)} onClose={() => setCalculatorSettingsOpen(false)} onLayFormatChange={(format) => changeOddsFormat("lay", format)} returnFocusRef={settingsButtonRef} /> : null}
         </section>
       </div>
     </ModalBoundary>
@@ -1512,4 +1588,26 @@ function BetSummaryDialog({
 
 function OutcomeTable({ heading, outcome, total }: { heading: string; outcome?: Preview["outcomes"][number]; total: string }) {
   return <section className="oddsmatcher-outcome-card"><h3>{heading}</h3><div className="table-scroll"><table className="data-table"><thead><tr><th>Bookmaker</th><th>Exchange</th><th>Total</th></tr></thead><tbody><tr><td>{outcome ? <FinancialValue value={outcome.bookmaker_component} /> : "—"}</td><td>{outcome ? <FinancialValue value={outcome.exchange_component} /> : "—"}</td><td><strong><FinancialValue value={outcome?.total ?? total} /></strong></td></tr></tbody></table></div></section>;
+}
+
+function BetSummarySettingsDialog({ backFormat, layFormat, onBackFormatChange, onClose, onLayFormatChange, returnFocusRef }: {
+  backFormat: OddsFormat;
+  layFormat: OddsFormat;
+  onBackFormatChange: (format: OddsFormat) => void;
+  onClose: () => void;
+  onLayFormatChange: (format: OddsFormat) => void;
+  returnFocusRef: RefObject<HTMLElement | null>;
+}) {
+  return <ModalBoundary onDismiss={onClose} returnFocusRef={returnFocusRef}>
+    <div className="modal-backdrop modal-backdrop-elevated oddsmatcher-calculator-settings-backdrop" onClick={onClose}>
+      <section aria-label="Bet Summary settings" aria-modal="true" className="modal-panel oddsmatcher-calculator-settings-dialog" data-pd-id="oddsmatcher.bet-summary.settings" onClick={(event) => event.stopPropagation()} role="dialog">
+        <header className="calculator-panel-heading-row"><div><span className="eyebrow">Calculator display</span><h2>Bet Summary Settings</h2></div><button aria-label="Close Bet Summary settings" className="modal-close-button" onClick={onClose} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button></header>
+        <div className="oddsmatcher-calculator-settings-fields">
+          <label className="field-control" htmlFor="oddsmatcher-back-odds-format"><span>Back Odds Format</span><select id="oddsmatcher-back-odds-format" onChange={(event) => onBackFormatChange(event.target.value as OddsFormat)} value={backFormat}>{ODDS_FORMATS.map((format) => <option key={format} value={format}>{format}</option>)}</select></label>
+          <label className="field-control" htmlFor="oddsmatcher-lay-odds-format"><span>Lay Odds Format</span><select id="oddsmatcher-lay-odds-format" onChange={(event) => onLayFormatChange(event.target.value as OddsFormat)} value={layFormat}>{ODDS_FORMATS.map((format) => <option key={format} value={format}>{format}</option>)}</select></label>
+        </div>
+        <div className="modal-action-row"><button className="button-link" onClick={onClose} type="button">Close</button></div>
+      </section>
+    </div>
+  </ModalBoundary>;
 }
