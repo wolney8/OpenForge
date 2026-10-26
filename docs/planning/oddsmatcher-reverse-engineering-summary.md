@@ -309,3 +309,19 @@ Logical badge counts, dependent Selection pruning and saved-filter restoration o
 canonical filter state. Private captures are under
 `data/private/evidence/cp086-oddsmatcher-filter-parity-20261026/`. Automated evidence is verified;
 owner interaction and visual acceptance remain **UNVERIFIED**.
+
+## CP-088 status and Bet Summary presentation — 2026-10-26
+
+The owner accepted the CP-087 shared combobox open/close, selection and focus-return contract at
+component level. Overall Oddsmatcher acceptance remains pending. Manual Refresh now uses a contained
+busy state, coalesces repeat activation and retains last-good opportunities. Unknown liquidity and
+missing Profile/commission context use compact, focusable status disclosures without changing their
+authority.
+
+Bet Summary retains the existing matched-betting preview endpoint and Prospecting-draft mutation.
+Its presentation is a responsive two-pane calculator: Back/Lay inputs and Advanced strategy controls
+on the left; event/rating context, authoritative outcome components, conservative Total Profit and
+the Profile-gated Prospecting action on the right. Advanced adds strategy controls without removing
+normal fields or results. Deliberate MBB differences remain Prospecting instead of placement,
+unknown-liquidity truth, Profile eligibility and Plum Duff tokens. Private comparison evidence is
+under `data/private/evidence/cp088-oddsmatcher-bet-summary-20261026/`.

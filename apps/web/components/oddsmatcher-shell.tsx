@@ -4,6 +4,7 @@ import Link from "next/link";
 import {
   useCallback,
   useEffect,
+  useId,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -14,14 +15,15 @@ import {
   type RefObject,
 } from "react";
 import { createPortal } from "react-dom";
-import { CalculatorOutcomes } from "@/components/calculator-outcomes";
 import { CalculatorSegmentedControl } from "@/components/calculator-segmented-control";
 import { CommissionInput } from "@/components/commission-input";
 import { CopyableFinancialValue } from "@/components/copyable-financial-value";
 import { FinancialValue } from "@/components/financial-value";
+import { FinancialTextInput } from "@/components/financial-text-input";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { ModalBoundary } from "@/components/modal-boundary";
+import { PercentageTextInput } from "@/components/percentage-text-input";
 import { apiBaseUrl } from "@/lib/api";
 import {
   findMasterAccountCatalogueEntry,
@@ -56,6 +58,14 @@ type Preview = {
   pnl_if_back_wins: string;
   pnl_if_lay_wins: string;
   matched_result: string;
+  outcomes: Array<{
+    key: string;
+    label: string;
+    bookmaker_component: string;
+    exchange_component: string;
+    promotion_component?: string | null;
+    total: string;
+  }>;
 };
 type Strategy = "Underlay" | "Standard" | "Overlay";
 type ReadState = "loading" | "ready" | "error";
@@ -88,6 +98,32 @@ function eligibilityClass(state: "eligible" | "warning" | "unavailable") {
     : state === "warning"
       ? "field-warning-text"
       : "field-hint";
+}
+function CompactStatus({ icon = "block", label, explanation, tone = "neutral" }: {
+  icon?: string;
+  label: string;
+  explanation: string;
+  tone?: "neutral" | "warning" | "error";
+}) {
+  const [open, setOpen] = useState(false);
+  const id = useId();
+  return (
+    <span className={`compact-status compact-status-${tone}${open ? " is-open" : ""}`}>
+      <button
+        aria-describedby={open ? id : undefined}
+        aria-expanded={open}
+        aria-label={`${label}. ${explanation}`}
+        className="compact-status-trigger"
+        onBlur={() => setOpen(false)}
+        onClick={() => setOpen((current) => !current)}
+        type="button"
+      >
+        <span aria-hidden="true" className="material-symbols-outlined">{icon}</span>
+        <span>{label}</span>
+      </button>
+      <span className="compact-status-tooltip" id={id} role="tooltip">{explanation}</span>
+    </span>
+  );
 }
 function QuoteLink({ href, label, disabled = false }: { href: string | null; label: string; disabled?: boolean }) {
   return href && !disabled ? (
@@ -129,6 +165,7 @@ export function OddsMatcherShell({
   const [feed, setFeed] = useState<OddsMatcherFeed | null>(null);
   const [readState, setReadState] = useState<ReadState>("loading");
   const [refreshing, setRefreshing] = useState(false);
+  const refreshInFlight = useRef(false);
   const [error, setError] = useState("");
   const [filters, setFilters] = useState<OddsMatcherFilters>(
     emptyOddsMatcherFilters,
@@ -202,6 +239,8 @@ export function OddsMatcherShell({
   const profileQuery = profileId ? `?profile_id=${encodeURIComponent(profileId)}` : "";
   const load = useCallback(
     async (refresh: boolean) => {
+      if (refresh && refreshInFlight.current) return;
+      if (refresh) refreshInFlight.current = true;
       if (refresh) setRefreshing(true);
       else setReadState("loading");
       setError("");
@@ -230,6 +269,7 @@ export function OddsMatcherShell({
           refresh && current === "ready" ? "ready" : "error",
         );
       } finally {
+        if (refresh) refreshInFlight.current = false;
         setRefreshing(false);
       }
     },
@@ -542,16 +582,14 @@ export function OddsMatcherShell({
             </button>
             <button
               aria-busy={refreshing}
-              aria-label={refreshing ? "Refreshing opportunities" : "Refresh opportunities"}
+              aria-label={refreshing ? "Refreshing odds" : "Refresh odds"}
               className="icon-button compact-action"
               data-pd-id="oddsmatcher.refresh"
               disabled={refreshing}
               onClick={() => void load(true)}
               type="button"
             >
-              <span aria-hidden="true" className="material-symbols-outlined">
-                refresh
-              </span>
+              {refreshing ? <span aria-hidden="true" className="button-spinner" /> : <span aria-hidden="true" className="material-symbols-outlined">refresh</span>}
             </button>
             <button
               className="button-link icon-text-action"
@@ -855,6 +893,7 @@ export function OddsMatcherShell({
             defaultAdvanced={preferences.default_advanced}
             defaultCommission={preferences.exchange_commission_overrides[selected.lay.provider_key] ?? ""}
             onClose={() => setSelected(null)}
+            onOpenSettings={() => { setSelected(null); setSettingsOpen(true); }}
             opportunity={selected}
             profileId={profileId}
             returnFocusRef={inspectButtonRef}
@@ -899,7 +938,10 @@ function QuoteBlock({
       </span>
       <span className="oddsmatcher-quote-price">
         <b>{Number.isFinite(Number(odds)) ? Number(odds).toFixed(2) : "—"}</b>
-        {reason ? <small>{reason}</small> : null}
+        {reason ? <CompactStatus
+          explanation="This provider supplies the lay price but not available exchange depth. Confirm liquidity before placing a bet."
+          label="Unavailable"
+        /> : null}
       </span>
     </span>
   );
@@ -1103,7 +1145,7 @@ function FilterDialog({
     </fieldset> : null}
     {show("rating") ? <fieldset aria-label="Rating filter fields" className="oddsmatcher-filter-group">
       {groupHeading("Rating")}
-      <div className="form-grid oddsmatcher-filter-fields"><label className="field-control"><span>Min. rating</span><input inputMode="decimal" onChange={(event) => onChange("minRating", event.target.value)} placeholder="Any" value={filters.minRating} /></label><label className="field-control"><span>Max. rating</span><input inputMode="decimal" onChange={(event) => onChange("maxRating", event.target.value)} placeholder="Any" value={filters.maxRating} /></label></div>
+      <div className="form-grid oddsmatcher-filter-fields oddsmatcher-rating-fields"><label className="field-control"><span>Min. rating</span><input inputMode="decimal" onChange={(event) => onChange("minRating", event.target.value)} placeholder="Any" value={filters.minRating} /></label><label className="field-control"><span>Max. rating</span><input inputMode="decimal" onChange={(event) => onChange("maxRating", event.target.value)} placeholder="Any" value={filters.maxRating} /></label></div>
       <label className="toggle-row"><input checked={filters.showArbs} onChange={(event) => onChange("showArbs", event.target.checked)} type="checkbox" /><span><strong>Show arbs</strong><small>Ratings above 100% are hidden by default.</small></span></label>
       {reset("rating")}
     </fieldset> : null}
@@ -1259,6 +1301,7 @@ function BetSummaryDialog({
   defaultCommission,
   defaultStake,
   onClose,
+  onOpenSettings,
   opportunity,
   profileId,
   returnFocusRef,
@@ -1267,6 +1310,7 @@ function BetSummaryDialog({
   defaultCommission: string;
   defaultStake: string;
   onClose: () => void;
+  onOpenSettings: () => void;
   opportunity: OddsMatcherOpportunity;
   profileId: string | null;
   returnFocusRef: RefObject<HTMLElement | null>;
@@ -1274,23 +1318,20 @@ function BetSummaryDialog({
   const [stake, setStake] = useState(defaultStake);
   const [backOdds, setBackOdds] = useState(opportunity.back.odds);
   const [layOdds, setLayOdds] = useState(opportunity.lay.odds);
-  const [commission, setCommission] = useState(
-    opportunity.exchange_commission ?? defaultCommission,
-  );
+  const [commission, setCommission] = useState(opportunity.exchange_commission ?? defaultCommission);
   const [strategy, setStrategy] = useState<Strategy>("Standard");
   const [advanced, setAdvanced] = useState(defaultAdvanced);
+  const [autoBack, setAutoBack] = useState(true);
+  const [autoLay, setAutoLay] = useState(true);
   const [preview, setPreview] = useState<Preview | null>(null);
-  const [previewState, setPreviewState] = useState<
-    "loading" | "ready" | "error"
-  >("loading");
-  const [draftState, setDraftState] = useState<
-    "idle" | "saving" | "saved" | "error"
-  >("idle");
+  const [previewState, setPreviewState] = useState<"loading" | "ready" | "error">("loading");
+  const [draftState, setDraftState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [draftError, setDraftError] = useState("");
   const [draftId, setDraftId] = useState("");
   const retryToken = useRef(crypto.randomUUID());
   const version = useRef(0);
-  const manual = isManualQuote(opportunity, backOdds, layOdds);
+  const commissionSource = opportunity.exchange_commission ? "Profile Account" : defaultCommission ? "Oddsmatcher default" : null;
+  const manual = !autoBack || !autoLay || isManualQuote(opportunity, backOdds, layOdds);
 
   useEffect(() => {
     const current = ++version.current;
@@ -1298,378 +1339,136 @@ function BetSummaryDialog({
     void Promise.resolve().then(async () => {
       if (controller.signal.aborted) return;
       setPreviewState("loading");
-      setPreview(null);
       try {
-        const response = await fetch(
-          `${apiBaseUrl}/fund-manager/calculators/matched-betting/preview`,
-          {
-            method: "POST",
-            credentials: "include",
-            headers: { "Content-Type": "application/json" },
-            signal: controller.signal,
-            body: JSON.stringify({
-              bet_type: "qualifying",
-              free_bet_mode: "SNR",
-              promotion_mode: "standard",
-              strategy,
-              back_stake: stake,
-              back_odds: backOdds,
-              lay_odds: layOdds,
-              exchange_commission: commission,
-              manual_lay_stake: "",
-              promotion_value: "",
-              bonus_trigger: "Lay Wins",
-              bonus_backing_bet: "Normal",
-              retention_percent: "70",
-              underlay_factor: "0.928",
-              overlay_factor: "1.300",
-            }),
-          },
-        );
+        const response = await fetch(`${apiBaseUrl}/fund-manager/calculators/matched-betting/preview`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          signal: controller.signal,
+          body: JSON.stringify({
+            bet_type: "qualifying", free_bet_mode: "SNR", promotion_mode: "standard", strategy,
+            back_stake: stake, back_odds: backOdds, lay_odds: layOdds, exchange_commission: commission,
+            manual_lay_stake: "", promotion_value: "", bonus_trigger: "Lay Wins",
+            bonus_backing_bet: "Normal", retention_percent: "70", underlay_factor: "0.928", overlay_factor: "1.300",
+          }),
+        });
         if (!response.ok) throw new Error();
         const value = (await response.json()) as Preview;
-        if (current === version.current) {
-          setPreview(value);
-          setPreviewState("ready");
-        }
+        if (current === version.current) { setPreview(value); setPreviewState("ready"); }
       } catch (caught) {
-        if (
-          current === version.current &&
-          !(caught instanceof DOMException && caught.name === "AbortError")
-        )
-          setPreviewState("error");
+        if (current === version.current && !(caught instanceof DOMException && caught.name === "AbortError")) setPreviewState("error");
       }
     });
     return () => controller.abort();
   }, [backOdds, commission, layOdds, stake, strategy]);
 
   const createDraft = async () => {
-    if (!profileId) {
-      setDraftError("Choose a Profile to add this opportunity to Tracker.");
-      return;
-    }
-    setDraftState("saving");
-    setDraftError("");
+    if (!profileId) { setDraftError("Choose a Profile to add this opportunity to Tracker."); return; }
+    setDraftState("saving"); setDraftError("");
     try {
-      const response = await fetch(
-        `${apiBaseUrl}/profiles/${profileId}/oddsmatcher/prospecting-drafts`,
-        {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            opportunity_id: opportunity.opportunity_id,
-            retry_token: retryToken.current,
-            back_stake: stake,
-            back_odds: backOdds,
-            lay_odds: layOdds,
-            exchange_commission: commission,
-            strategy,
-          }),
-        },
-      );
-      if (!response.ok)
-        throw new Error(
-          await responseError(
-            response,
-            "Prospecting draft could not be created.",
-          ),
-        );
-      const value = (await response.json()) as {
-        sportsbook_bet: { sportsbook_bet_id: string };
-      };
-      setDraftId(value.sportsbook_bet.sportsbook_bet_id);
-      setDraftState("saved");
+      const response = await fetch(`${apiBaseUrl}/profiles/${profileId}/oddsmatcher/prospecting-drafts`, {
+        method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ opportunity_id: opportunity.opportunity_id, retry_token: retryToken.current,
+          back_stake: stake, back_odds: backOdds, lay_odds: layOdds, exchange_commission: commission, strategy }),
+      });
+      if (!response.ok) throw new Error(await responseError(response, "Prospecting draft could not be created."));
+      const value = (await response.json()) as { sportsbook_bet: { sportsbook_bet_id: string } };
+      setDraftId(value.sportsbook_bet.sportsbook_bet_id); setDraftState("saved");
     } catch (caught) {
-      setDraftError(
-        caught instanceof Error
-          ? caught.message
-          : "Prospecting draft could not be created.",
-      );
+      setDraftError(caught instanceof Error ? caught.message : "Prospecting draft could not be created.");
       setDraftState("error");
     }
   };
 
+  const profileStatus = !profileId
+    ? <CompactStatus icon="person_off" label="Profile required" explanation="Choose a Profile to apply Account eligibility and Profile exchange commission and to enable Add Prospecting Draft." />
+    : null;
+  const commissionStatus = !commissionSource
+    ? <CompactStatus icon="percent" label="Commission unavailable" tone="warning" explanation="No Profile Account commission or Oddsmatcher default is recorded. Add a governed exchange commission in Profile Accounts or Oddsmatcher Settings." />
+    : <span className="oddsmatcher-summary-source">{commissionSource}</span>;
+
   return (
     <ModalBoundary onDismiss={onClose} returnFocusRef={returnFocusRef}>
       <div className="modal-backdrop modal-backdrop-elevated" onClick={onClose}>
-        <section
-          aria-label="Oddsmatcher Bet Summary"
-          aria-modal="true"
-          className="modal-panel oddsmatcher-summary-dialog"
-          data-pd-id="oddsmatcher.bet-summary"
-          onClick={(event) => event.stopPropagation()}
-          role="dialog"
-        >
-          <header className="modal-sticky-header workflow-panel-header">
-            <div className="stack-tight">
-              <span className="eyebrow">Bet Summary · Normal / Qualifying</span>
-              <h2>{opportunity.event_name}</h2>
-              <p>
-                {opportunity.selection} · {opportunity.market} ·{" "}
-                {opportunity.competition}
-              </p>
-            </div>
-            <button
-              aria-label="Close Bet Summary"
-              className="modal-close-button"
-              onClick={onClose}
-              type="button"
-            >
-              <span aria-hidden="true" className="material-symbols-outlined">
-                close
-              </span>
-            </button>
+        <section aria-label="Oddsmatcher Bet Summary" aria-modal="true" className="modal-panel oddsmatcher-summary-dialog" data-pd-id="oddsmatcher.bet-summary" onClick={(event) => event.stopPropagation()} role="dialog">
+          <header className="modal-sticky-header oddsmatcher-summary-header">
+            <h2 id="oddsmatcher-summary-title">Bet Summary</h2>
+            <button aria-label="Close Bet Summary" className="modal-close-button" onClick={onClose} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button>
           </header>
-          <div className="oddsmatcher-summary-body stack">
-            <div className="oddsmatcher-quote-context">
-              <span>
-                {opportunity.back.account_name} back ·{" "}
-                <time dateTime={opportunity.back.observed_at}>
-                  {formatObserved(opportunity.age_seconds)}
-                </time>
-              </span>
-              <span>
-                {opportunity.lay.account_name} lay ·{" "}
-                <time dateTime={opportunity.lay.observed_at}>
-                  {formatObserved(opportunity.age_seconds)}
-                </time>
-              </span>
-              <strong>
-                {Number(opportunity.display_rating).toFixed(2)}% rating
-              </strong>
+          <div className="oddsmatcher-summary-body">
+            <div className="oddsmatcher-summary-controls">
+              <div className="oddsmatcher-mode-control"><span>Bet Type</span><strong>Normal / Qualifying Bet</strong></div>
+              <button aria-checked={advanced} className={`material-switch${advanced ? " is-selected" : ""}`} data-pd-id="oddsmatcher.advanced" onClick={() => { setAdvanced((value) => !value); if (advanced) setStrategy("Standard"); }} role="switch" type="button"><span aria-hidden="true" className="material-switch-track"><span className="material-switch-thumb" /></span><span>Advanced</span></button>
+              <button aria-label="Open Oddsmatcher settings" className="icon-button compact-action" onClick={onOpenSettings} title="Oddsmatcher settings" type="button"><span aria-hidden="true" className="material-symbols-outlined">settings</span></button>
             </div>
-            <div className="oddsmatcher-boundary-note" role="note">
-              <strong>Liquidity unknown</strong>
-              <span>
-                The provider supplies a lay price without available depth. The
-                required lay stake is a calculation, not proof it can be
-                matched.
-              </span>
-            </div>
-            <div className="form-grid oddsmatcher-calculator-fields">
-              <label className="field-control">
-                <span>Back stake</span>
-                <input
-                  inputMode="decimal"
-                  onChange={(event) => setStake(event.target.value)}
-                  value={stake}
-                />
-              </label>
-              <label className="field-control">
-                <span>Back odds</span>
-                <input
-                  inputMode="decimal"
-                  onChange={(event) => setBackOdds(event.target.value)}
-                  value={backOdds}
-                />
-              </label>
-              <label className="field-control">
-                <span>Lay odds</span>
-                <input
-                  inputMode="decimal"
-                  onChange={(event) => setLayOdds(event.target.value)}
-                  value={layOdds}
-                />
-              </label>
-              <label className="field-control">
-                <span>Exchange commission</span>
-                <input
-                  inputMode="decimal"
-                  onChange={(event) => setCommission(event.target.value)}
-                  value={commission}
-                />
-              </label>
-            </div>
-            {manual ? (
-              <div className="status-message">
-                <span>
-                  Manual price entered. Provider refreshes will not overwrite
-                  this summary.
-                </span>
-                <button
-                  className="button-link"
-                  onClick={() => {
-                    setBackOdds(opportunity.back.odds);
-                    setLayOdds(opportunity.lay.odds);
-                  }}
-                  type="button"
-                >
-                  Reset to latest quotes
-                </button>
+            <div className="oddsmatcher-summary-layout">
+              <div className="oddsmatcher-summary-left">
+                <section className="oddsmatcher-bet-card oddsmatcher-bet-card-back">
+                  <header><h3>Back Bet</h3>{opportunity.back.link ? <a className="button-link icon-text-action" href={opportunity.back.link} rel="noreferrer" target="_blank">Go to {opportunity.back.account_name}<span aria-hidden="true" className="material-symbols-outlined">open_in_new</span></a> : null}</header>
+                  <div className="oddsmatcher-card-account"><strong>{opportunity.back.account_name}</strong>{profileStatus ?? <span className={eligibilityClass(opportunity.back_eligibility.state)}>{opportunity.back_eligibility.reason}</span>}</div>
+                  <label className="field-control" htmlFor="oddsmatcher-back-stake"><span>Back Stake</span><FinancialTextInput allowNegative={false} ariaLabel="Back Stake" dataPdId="oddsmatcher.back-stake" id="oddsmatcher-back-stake" onBlur={() => undefined} onChange={setStake} value={stake} /></label>
+                  <div className="oddsmatcher-summary-input-row">
+                    <label className="field-control"><span>Back Odds</span><input aria-label="Back Odds" inputMode="decimal" onChange={(event) => { setBackOdds(event.target.value); setAutoBack(false); }} value={backOdds} /></label>
+                    <label className="field-control"><span>Back Commission</span><input aria-label="Back commission not applied" disabled value="Not applied" /></label>
+                  </div>
+                  <button aria-checked={autoBack} className={`material-switch oddsmatcher-auto-switch${autoBack ? " is-selected" : ""}`} onClick={() => { const next = !autoBack; setAutoBack(next); if (next) setBackOdds(opportunity.back.odds); }} role="switch" type="button"><span aria-hidden="true" className="material-switch-track"><span className="material-switch-thumb" /></span><span>Auto update back odds</span></button>
+                </section>
+
+                <section className="oddsmatcher-bet-card oddsmatcher-bet-card-lay">
+                  <header><h3>Lay Bet</h3><button aria-label={`${simpleExchangeName(opportunity.lay.account_name)} link unavailable`} className="button-link icon-text-action" disabled title="Exchange link unavailable" type="button">Go to {simpleExchangeName(opportunity.lay.account_name)}<span aria-hidden="true" className="material-symbols-outlined">open_in_new</span></button></header>
+                  <div className="oddsmatcher-card-account"><strong>{simpleExchangeName(opportunity.lay.account_name)}</strong>{profileStatus ?? <span className={eligibilityClass(opportunity.lay_eligibility.state)}>{opportunity.lay_eligibility.reason}</span>}{commissionStatus}</div>
+                  <div className="oddsmatcher-summary-input-row">
+                    <label className="field-control"><span>Lay Odds</span><input aria-label="Lay Odds" inputMode="decimal" onChange={(event) => { setLayOdds(event.target.value); setAutoLay(false); }} value={layOdds} /></label>
+                    <label className="field-control" htmlFor="oddsmatcher-lay-commission"><span>Lay Commission</span><PercentageTextInput ariaLabel="Lay Commission (%)" dataPdId="oddsmatcher.lay-commission" id="oddsmatcher-lay-commission" onChange={setCommission} value={commission} /></label>
+                  </div>
+                  <CompactStatus label="Liquidity unavailable" explanation="This provider supplies the lay price but not available exchange depth. Confirm liquidity before placing a bet." />
+                  <button aria-checked={autoLay} className={`material-switch oddsmatcher-auto-switch${autoLay ? " is-selected" : ""}`} onClick={() => { const next = !autoLay; setAutoLay(next); if (next) setLayOdds(opportunity.lay.odds); }} role="switch" type="button"><span aria-hidden="true" className="material-switch-track"><span className="material-switch-thumb" /></span><span>Auto update lay odds</span></button>
+                  <div className="oddsmatcher-lay-stake-block">
+                    <span className="eyebrow">Lay Stake</span>
+                    <strong>{preview ? <CopyableFinancialValue label="Lay stake" value={preview.selected_lay_stake} /> : "—"}</strong>
+                    <span>Liability: {preview ? <FinancialValue value={preview.liability} /> : "—"}</span>
+                  </div>
+                  {advanced ? <div className="oddsmatcher-advanced-controls">
+                    <CalculatorSegmentedControl ariaLabel="Lay strategy" dataPdId="oddsmatcher.strategy" onChange={setStrategy} options={[{label:"Underlay",value:"Underlay"},{label:"Standard",value:"Standard"},{label:"Overlay",value:"Overlay"}]} value={strategy} />
+                    <input aria-label="Lay strategy range" max="2" min="0" onChange={(event) => setStrategy((["Underlay","Standard","Overlay"] as Strategy[])[Number(event.target.value)])} step="1" type="range" value={({Underlay:0,Standard:1,Overlay:2} as const)[strategy]} />
+                    <div className="oddsmatcher-advanced-range"><span>Range Min<br/><strong>Underlay</strong></span><span>Current Lay Stake<br/><strong>{preview ? <FinancialValue value={preview.selected_lay_stake} /> : "—"}</strong></span><span>Range Max<br/><strong>Overlay</strong></span></div>
+                  </div> : null}
+                  {manual ? <button className="button-link" onClick={() => { setBackOdds(opportunity.back.odds); setLayOdds(opportunity.lay.odds); setAutoBack(true); setAutoLay(true); }} type="button">Reset to latest quotes</button> : null}
+                  {previewState === "error" ? <p className="field-validation-text" role="alert">Enter complete valid stake, odds and commission values.</p> : null}
+                </section>
               </div>
-            ) : null}
-            <label className="toggle-row">
-              <input
-                checked={advanced}
-                onChange={(event) => {
-                  setAdvanced(event.target.checked);
-                  if (!event.target.checked) setStrategy("Standard");
-                }}
-                type="checkbox"
-              />
-              <span>
-                <strong>Advanced</strong>
-                <small>
-                  Compare the existing Underlay, Standard and Overlay
-                  authorities.
-                </small>
-              </span>
-            </label>
-            {advanced ? (
-              <CalculatorSegmentedControl
-                ariaLabel="Lay strategy"
-                dataPdId="oddsmatcher.strategy"
-                onChange={setStrategy}
-                options={[
-                  { label: "Underlay", value: "Underlay" },
-                  { label: "Standard", value: "Standard" },
-                  { label: "Overlay", value: "Overlay" },
-                ]}
-                value={strategy}
-              />
-            ) : null}
-            {previewState === "loading" ? (
-              <LedgerLoadingIndicator label="Updating Bet Summary" />
-            ) : null}
-            {previewState === "error" ? (
-              <p className="field-validation-text" role="alert">
-                Enter complete valid stake, odds and commission values.
-              </p>
-            ) : null}
-            {preview ? (
-              <>
-                <div className="stat-strip oddsmatcher-summary-values">
-                  <article className="stat-card">
-                    <span className="eyebrow">Required lay stake</span>
-                    <strong>
-                      <CopyableFinancialValue
-                        label="Required lay stake"
-                        value={preview.selected_lay_stake}
-                      />
-                    </strong>
-                  </article>
-                  <article className="stat-card">
-                    <span className="eyebrow">Liability</span>
-                    <strong>
-                      <FinancialValue value={preview.liability} />
-                    </strong>
-                  </article>
-                  <article className="stat-card">
-                    <span className="eyebrow">Worst case</span>
-                    <strong>
-                      <FinancialValue value={preview.matched_result} />
-                    </strong>
-                  </article>
+
+              <div className="oddsmatcher-summary-right">
+                <section className="oddsmatcher-event-summary">
+                  <span aria-hidden="true" className="material-symbols-outlined oddsmatcher-event-icon">sports_soccer</span>
+                  <span className={`oddsmatcher-rating-pill oddsmatcher-rating-${oddsMatcherRatingTone(opportunity.display_rating)}`}>{Number(opportunity.display_rating).toFixed(2)}%</span>
+                  <time dateTime={opportunity.starts_at}>{new Date(opportunity.starts_at).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}</time>
+                  <div><h3>{opportunity.event_name}</h3><span>{opportunity.competition}</span></div>
+                  <div><strong>{opportunity.selection}</strong><span>{opportunity.market}</span></div>
+                  <small>{opportunity.back.account_name} back · {formatObserved(opportunity.age_seconds)} · {simpleExchangeName(opportunity.lay.account_name)} lay · {formatObserved(opportunity.age_seconds)}</small>
+                </section>
+                {previewState === "loading" ? <LedgerLoadingIndicator label="Updating Bet Summary" /> : null}
+                {preview ? <div className="oddsmatcher-outcome-stack">
+                  <OutcomeTable heading={`If back (${opportunity.back.account_name}) bet wins`} outcome={preview.outcomes?.find((item) => item.key === "back-wins")} total={preview.pnl_if_back_wins} />
+                  <OutcomeTable heading={`If lay (${simpleExchangeName(opportunity.lay.account_name)}) bet wins`} outcome={preview.outcomes?.find((item) => item.key === "lay-wins")} total={preview.pnl_if_lay_wins} />
+                  <div className="oddsmatcher-total-profit"><span>Total Profit</span><strong><FinancialValue value={preview.matched_result} /></strong><small>Conservative / worst-case result</small></div>
+                </div> : null}
+                {draftError ? <p className="field-validation-text" role="alert">{draftError}</p> : null}
+                {draftState === "saved" && profileId ? <p className="status-message" role="status">Prospecting draft saved. No balance or placed-bet state changed. <Link href={`/profiles/${profileId}/tracker/sportsbook-bets?record=${encodeURIComponent(draftId)}`}>Open Sportsbook draft</Link></p> : null}
+                <div className="oddsmatcher-prospecting-action">
+                  {!profileId ? profileStatus : null}
+                  <button className="modal-primary-button" disabled={!profileId || !opportunity.can_create_prospecting_draft || previewState !== "ready" || draftState === "saving" || draftState === "saved"} onClick={() => void createDraft()} type="button">{draftState === "saving" ? "Adding draft…" : draftState === "saved" ? "Draft added" : "Add Prospecting Draft"}</button>
+                  <button className="button-link icon-text-action" onClick={() => void navigator.clipboard.writeText(opportunityCopyText(opportunity))} type="button"><span aria-hidden="true" className="material-symbols-outlined">content_copy</span>Copy Opportunity</button>
                 </div>
-                <CalculatorOutcomes
-                  columns={["Bookmaker and exchange"]}
-                  inspectionId="oddsmatcher.outcomes"
-                  rows={[
-                    {
-                      key: "back-wins",
-                      label: "Back wins",
-                      components: [[preview.pnl_if_back_wins]],
-                      total: preview.pnl_if_back_wins,
-                    },
-                    {
-                      key: "lay-wins",
-                      label: "Lay wins",
-                      components: [[preview.pnl_if_lay_wins]],
-                      total: preview.pnl_if_lay_wins,
-                    },
-                  ]}
-                />
-              </>
-            ) : null}
-            <div className="stat-strip">
-              <article className="stat-card">
-                <span className="eyebrow">Bookmaker Account</span>
-                <strong>{opportunity.back.account_name}</strong>
-                <p
-                  className={eligibilityClass(
-                    opportunity.back_eligibility.state,
-                  )}
-                >
-                  {opportunity.back_eligibility.reason}
-                </p>
-              </article>
-              <article className="stat-card">
-                <span className="eyebrow">Exchange Account</span>
-                <strong>{opportunity.lay.account_name}</strong>
-                <p
-                  className={eligibilityClass(
-                    opportunity.lay_eligibility.state,
-                  )}
-                >
-                  {opportunity.lay_eligibility.reason}
-                </p>
-              </article>
+              </div>
             </div>
-            {draftError ? (
-              <p className="field-validation-text" role="alert">
-                {draftError}
-              </p>
-            ) : null}
-            {draftState === "saved" && profileId ? (
-              <p className="status-message" role="status">
-                Prospecting draft saved. No balance or placed-bet state changed.{" "}
-                <Link
-                  href={`/profiles/${profileId}/tracker/sportsbook-bets?record=${encodeURIComponent(draftId)}`}
-                >
-                  Open Sportsbook draft
-                </Link>
-              </p>
-            ) : null}
-            {!profileId ? (
-              <p className="field-hint">
-                Choose a Profile to add this opportunity to Tracker.
-              </p>
-            ) : null}
           </div>
-          <footer className="modal-sticky-footer">
-            <div className="tracker-nav">
-              <QuoteLink
-                href={opportunity.back.link}
-                label={`${opportunity.back.account_name} quote`}
-              />
-              <QuoteLink
-                href={opportunity.lay.link}
-                label={`${opportunity.lay.account_name} quote`}
-              />
-              <button
-                className="button-link"
-                onClick={() =>
-                  void navigator.clipboard.writeText(
-                    opportunityCopyText(opportunity),
-                  )
-                }
-                type="button"
-              >
-                Copy opportunity
-              </button>
-            </div>
-            <button
-              className="modal-primary-button"
-              disabled={
-                !profileId ||
-                !opportunity.can_create_prospecting_draft ||
-                previewState !== "ready" ||
-                draftState === "saving" ||
-                draftState === "saved"
-              }
-              onClick={() => void createDraft()}
-              type="button"
-            >
-              {draftState === "saving"
-                ? "Adding draft…"
-                : draftState === "saved"
-                  ? "Draft added"
-                  : "Add Prospecting Draft"}
-            </button>
-          </footer>
         </section>
       </div>
     </ModalBoundary>
   );
+}
+
+function OutcomeTable({ heading, outcome, total }: { heading: string; outcome?: Preview["outcomes"][number]; total: string }) {
+  return <section className="oddsmatcher-outcome-card"><h3>{heading}</h3><div className="table-scroll"><table className="data-table"><thead><tr><th>Bookmaker</th><th>Exchange</th><th>Total</th></tr></thead><tbody><tr><td>{outcome ? <FinancialValue value={outcome.bookmaker_component} /> : "—"}</td><td>{outcome ? <FinancialValue value={outcome.exchange_component} /> : "—"}</td><td><strong><FinancialValue value={outcome?.total ?? total} /></strong></td></tr></tbody></table></div></section>;
 }

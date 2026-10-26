@@ -1469,3 +1469,11 @@ searchable selectors with explicit closed, search-results and show-all states. N
 the arrow opens a list; selection, query deletion, token removal and clear-all close it. Escape is
 nested-first and restores the corresponding trigger. Native bounded selects remain valid ordinary
 single-selects and should not be replaced merely for visual uniformity.
+
+## Manual refresh must not become silent or destructive
+
+An icon-only refresh that keeps the ordinary glyph while work is pending gives no process feedback
+and permits duplicate provider calls. Use the shared contained spinner inside the stable action
+target, expose `aria-busy`, disable/coalesce repeat activation and retain last-good content. A
+background refresh error may mark that content stale; it must not replace valid rows with an
+unrelated empty/loading surface.

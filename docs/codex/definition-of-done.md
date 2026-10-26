@@ -90,6 +90,8 @@ Done means:
 - relevant edge cases are covered
 - profile isolation is covered when applicable
 - anything not tested is explicitly stated
+- user-initiated refresh/reload actions have a contained busy state, stable geometry, duplicate
+  invocation prevention and deterministic success/error resolution
 - non-interactive checks were used by default and generated/downloaded files were not automatically
   opened
 - any desktop interaction had fresh approval for the exact application and disposable file, and did

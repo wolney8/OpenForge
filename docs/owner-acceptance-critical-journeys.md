@@ -509,6 +509,10 @@ The recorded source revision/database identity and a clearly named disposable re
 **Status:**
 OWNER ACCEPTANCE PENDING
 
+**Component acceptance:** The owner accepted the shared CP-087 searchable-combobox open/close,
+selection and focus-return interaction on 26 October 2026. This does not accept the overall
+Oddsmatcher journey or its remaining visual and workflow boundaries.
+
 **What this proves:**
 The global Alpha shows ranked real Match Odds opportunities, applies optional Profile context without hiding global opportunities, preserves liquidity truth, recalculates qualifying outcomes and creates one unplaced Prospecting draft only after a Profile is selected.
 
@@ -533,7 +537,7 @@ Top-level **Tools** → **Oddsmatcher** (`/oddsmatcher`), then select `ALPHA-001
   - **Expect:** quota evidence is visible without exposing the API key.
   - **Stop if:** current quota cannot be established.
 - [ ] Click **Refresh** exactly once and record quota after.
-  - **Expect:** approximately three credits for the three approved competitions, subject to provider headers.
+  - **Expect:** the Refresh action shows a contained busy indicator, remains the same size and cannot be activated again until it settles. Existing opportunities remain visible. Approximately three credits are used for the three approved competitions, subject to provider headers.
   - **Expect:** EPL, Championship and Champions League where available; bookmaker backs, exchange lays and **Liquidity unknown**.
   - **Stop if:** requests repeat, quota falls unexpectedly, liquidity is fabricated or an error clears last-good data.
 - [ ] Test **Search**.
@@ -558,7 +562,7 @@ Top-level **Tools** → **Oddsmatcher** (`/oddsmatcher`), then select `ALPHA-001
   - **Expect:** filters reset without an unrequested provider refresh.
   - **Stop if:** quota changes or unrelated Profile state resets.
 - [ ] Open one **Bet Summary**.
-  - **Expect:** it matches the selected row and says **Liquidity unknown**.
+  - **Expect:** it matches the selected row, presents compact Back/Lay and outcomes panes, and says **Liquidity unavailable** with an accessible explanation.
   - **Stop if:** context is mismatched or executability is claimed.
 - [ ] Verify event, market, selection, bookmaker/exchange and quote time.
   - **Expect:** every value matches the chosen opportunity.

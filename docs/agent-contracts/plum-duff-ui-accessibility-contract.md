@@ -225,6 +225,10 @@ Every asynchronous or actionable UI defines:
 - success confirmation stating what changed;
 - enabled and disabled preconditions.
 
+User-initiated async refresh or reload actions expose a contained busy state, prevent accidental
+duplicate invocation, preserve stable geometry, and resolve to success or error without a silent
+waiting state. Background refresh preserves last-good content when that content remains valid.
+
 An action must be disabled unless its exact business preconditions are true. The interface must
 state why a disabled action cannot run. Do not show a working-looking disabled control.
 

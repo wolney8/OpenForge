@@ -100,7 +100,7 @@ async function mockRuntime(page: Page) {
       return route.fulfill({ status: 201, json: { created: true, sportsbook_bet: { sportsbook_bet_id: "ODD-DEMO-001" } } });
     }
     if (url.includes("/fund-manager/calculators/matched-betting/preview")) {
-      return route.fulfill({ json: { selected_lay_stake: "9.62", liability: "35.59", pnl_if_back_wins: "-1.09", pnl_if_lay_wins: "-0.57", matched_result: "-1.09" } });
+      return route.fulfill({ json: { selected_lay_stake: "9.62", liability: "35.59", pnl_if_back_wins: "-1.09", pnl_if_lay_wins: "-0.57", matched_result: "-1.09", outcomes: [{ key: "back-wins", label: "Back wins", bookmaker_component: "35.00", exchange_component: "-35.59", total: "-1.09" }, { key: "lay-wins", label: "Lay wins", bookmaker_component: "-10.00", exchange_component: "9.43", total: "-0.57" }] } });
     }
     if (url.includes("/oddsmatcher")) {
       providerRequests += 1;
@@ -156,8 +156,8 @@ test("renders, filters, paginates and inspects the bounded Alpha", async ({ page
   await page.getByLabel("Oddsmatcher Profile context").selectOption(profileId);
   await expect(page).toHaveURL(new RegExp(`profileId=${profileId}`));
   await expect(page.getByText("Page 1 of 3 · 34 rows").first()).toBeVisible();
-  await expect(page.getByText("Liquidity unknown").first()).toBeVisible();
-  const refreshButton = page.getByRole("button", { name: "Refresh opportunities" });
+  await expect(page.getByText("Unavailable", { exact: true }).first()).toBeVisible();
+  const refreshButton = page.getByRole("button", { name: "Refresh odds" });
   await expect(refreshButton.locator(".material-symbols-outlined")).toHaveText("refresh");
   await expect(refreshButton.locator("span")).toHaveCount(1);
   for (const heading of ["Date", "Event", "Bet", "Back Odds", "Lay Odds", "Rating", "Actions"]) {
@@ -211,7 +211,7 @@ test("renders, filters, paginates and inspects the bounded Alpha", async ({ page
       headers,
     };
   });
-  const liquidityLabel = page.getByText("Liquidity unknown", { exact: true }).first();
+  const liquidityLabel = page.getByText("Unavailable", { exact: true }).first();
   await expect(liquidityLabel).toBeVisible();
   expect((await liquidityLabel.boundingBox())?.height).toBeLessThan(44);
   await expect(page.getByRole("button", { name: "Add Prospecting Draft" })).toHaveCount(0);
@@ -373,11 +373,11 @@ test("renders, filters, paginates and inspects the bounded Alpha", async ({ page
   await page.getByRole("button", { name: /^Open Bet Summary/ }).first().click();
   const dialog = page.getByRole("dialog", { name: "Oddsmatcher Bet Summary" });
   await expect(dialog).toBeVisible();
-  await expect(dialog).toContainText("Liquidity unknown");
-  await expect(dialog).toContainText("Required lay stake");
-  await expect(dialog.getByRole("button", { name: "Add Prospecting Draft" })).toBeEnabled();
+  await expect(dialog).toContainText("Liquidity unavailable");
+  await expect(dialog).toContainText("Lay Stake");
+  await expect(dialog.getByRole("button", { name: "Add Prospecting Draft", exact: true })).toBeEnabled();
   await expect(dialog).not.toContainText("Place Bet");
-  await dialog.getByRole("checkbox", { name: /Advanced/ }).check();
+  await dialog.getByRole("switch", { name: "Advanced" }).click();
   await expect(dialog.getByRole("group", { name: "Lay strategy" })).toBeVisible();
   await page.screenshot({ path: path.join(evidenceDirectory, "J-bet-summary-desktop.png"), fullPage: true });
   await page.keyboard.press("Escape");

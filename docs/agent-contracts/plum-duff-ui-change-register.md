@@ -594,4 +594,23 @@ production build pass. Focused changed-file lint passes. Repository-wide web lin
 the unchanged Free Bet ref-during-render error; independent API lint retains 268 pre-existing
 violations. Changed API files pass focused Ruff. Verified backup `BACKUP-416DDD3C` preserves all
 29 financial controls, integrity and zero foreign-key violations; owner interaction acceptance
-remains pending.
+is recorded for the shared combobox open/close, selection and focus-return contract. Oddsmatcher
+overall and the other CP-087 representative surfaces remain pending.
+
+## CP-088 Oddsmatcher status cleanup and Bet Summary parity — 2026-10-26
+
+| ID | Surface | Requested behaviour | Signed-off equivalent | Status |
+| --- | --- | --- | --- | --- |
+| PD-FIX-391 / #54 | CP-087 selector interaction | Record owner acceptance for the shared combobox/open-close contract without accepting Oddsmatcher overall | CP-087 component contract and owner smoke | COMPLETE |
+| PD-FIX-392 / #54 | Rating filter fields | Compact numeric inputs with contained visible focus | Back/Lay filter numeric inputs | COMPLETE |
+| PD-FIX-393 / #54 | Manual refresh | Contained busy state, duplicate prevention, stable geometry and last-good results | Shared compact action spinner | COMPLETE |
+| PD-FIX-394 / #54 | Liquidity/Profile/commission status | Compact visible state with keyboard/tap-accessible explanation and governed commission precedence | Contextual-help and status primitives | COMPLETE |
+| PD-FIX-395 / #54 | Bet Summary shell | Large contained header/control row and responsive two-pane composition | Existing modal boundary and calculator shell | COMPLETE |
+| PD-FIX-396 / #54 | Bet Summary calculator | Back/Lay cards, normal controls retained in Advanced, strategy controls and live governed preview | Current matched-betting preview authority | COMPLETE |
+| PD-FIX-397 / #54 | Bet Summary results/action | Event summary, outcome tables, conservative Total Profit and Profile-gated Prospecting action | FinancialValue, semantic table and primary action primitives | COMPLETE |
+| PD-FIX-398 / #54 | Responsive/accessibility | Contracted mobile order, local scroll, focus return, tooltips and no overflow | ModalBoundary and Material controls | COMPLETE |
+| PD-FIX-399 / #92 | Shared async rule | Persist contained busy-state and duplicate-invocation rule | UI contract and Definition of Done | COMPLETE |
+| PD-FIX-400 / #54 | Evidence/install | Private comparisons, focused tests, backup and canonical local installation | UI consistency gate and normal-owner process | COMPLETE |
+
+This batch is presentation and interaction work. It preserves the provider, calculator, Profile,
+ledger, liquidity and placement authorities. Oddsmatcher owner acceptance remains pending.

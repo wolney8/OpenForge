@@ -237,3 +237,17 @@ Complete this for every feature, bug fix, component, fixture-backed UI, route or
 - [ ] Raw CP-081A MBB screenshots are absent from current private storage, so a fresh pixel-level
       side-by-side comparison is not claimed; the committed derived observations remain the source.
 - [ ] Canonical owner visual acceptance remains pending and must not be inferred from automation.
+
+## CP-088 Oddsmatcher refresh and Bet Summary presentation — 2026-10-26
+
+- [x] Reused `ModalBoundary`, Material switch/icon actions, compact financial inputs,
+      `FinancialValue`, calculator preview outcomes and Prospecting mutation authority.
+- [x] Refresh preserves last-good rows, exposes a contained spinner and blocks duplicate activation;
+      no provider request is caused by presentation state.
+- [x] Rating focus, compact disclosures, two-pane desktop geometry, 430px stack order, focus return,
+      keyboard tooltip access and page overflow are covered headlessly.
+- [x] Normal and Advanced retain the same required inputs/results; strategy changes use the existing
+      preview authority and no Place Bet/direct-placement action exists.
+- [x] Dark-theme private captures and responsive computed geometry pass. Existing semantic tokens
+      and contrast-tested primitives are unchanged; owner light-theme visual acceptance is pending.
+- [ ] Canonical owner Bet Summary visual acceptance remains pending.

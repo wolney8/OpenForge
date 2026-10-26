@@ -50,7 +50,7 @@ describe("OddsMatcherShell", () => {
       if (url.includes("/fund-manager/preferences/oddsmatcher")) return new Response(JSON.stringify(defaultOddsMatcherPreferences), { status: 200 });
       if (url.includes("/account-catalogue/source")) return new Response(JSON.stringify({ schema_version: "1.0", records: [] }), { status: 200 });
       if (url.endsWith("/profiles")) return new Response(JSON.stringify([{ profile_id: "profile-demo-001", display_name: "Synthetic Alpha", status: "active" }]), { status: 200 });
-      if (url.includes("matched-betting/preview")) return new Response(JSON.stringify({ selected_lay_stake: "9.62", liability: "35.59", pnl_if_back_wins: "-1.09", pnl_if_lay_wins: "-0.57", matched_result: "-1.09" }), { status: 200 });
+      if (url.includes("matched-betting/preview")) return new Response(JSON.stringify({ selected_lay_stake: "9.62", liability: "35.59", pnl_if_back_wins: "-1.09", pnl_if_lay_wins: "-0.57", matched_result: "-1.09", outcomes: [{ key: "back-wins", label: "Back wins", bookmaker_component: "35.00", exchange_component: "-35.59", total: "-1.09" }, { key: "lay-wins", label: "Lay wins", bookmaker_component: "-10.00", exchange_component: "9.43", total: "-0.57" }] }), { status: 200 });
       if (url.includes("prospecting-drafts")) return new Response(JSON.stringify({ created: true, sportsbook_bet: { sportsbook_bet_id: "ODD-DEMO" } }), { status: 201 });
       return new Response(JSON.stringify(feed), { status: 200 });
     }));
@@ -70,6 +70,30 @@ describe("OddsMatcherShell", () => {
     expect(container.textContent).toContain("Page 2 of 3 · 34 rows");
   });
 
+  it("keeps last-good rows visible and coalesces repeat activation while refreshing", async () => {
+    await act(async () => { root.render(createElement(OddsMatcherShell, { profileId: "profile-demo-001" })); });
+    let release: (() => void) | undefined;
+    const pending = new Promise<void>((resolve) => { release = resolve; });
+    const original = vi.mocked(fetch).getMockImplementation();
+    vi.mocked(fetch).mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).includes("/oddsmatcher/refresh")) {
+        requests.push({ url: String(input), method: init?.method ?? "GET", body: null });
+        await pending;
+        return new Response(JSON.stringify(feed), { status: 200 });
+      }
+      return original!(input, init);
+    });
+    const refresh = container.querySelector<HTMLButtonElement>('[data-pd-id="oddsmatcher.refresh"]');
+    await act(async () => { refresh?.click(); await Promise.resolve(); });
+    expect(refresh?.getAttribute("aria-busy")).toBe("true");
+    expect(refresh?.getAttribute("aria-label")).toBe("Refreshing odds");
+    expect(container.querySelectorAll("tbody tr")).toHaveLength(16);
+    refresh?.click();
+    expect(requests.filter((request) => request.url.includes("/oddsmatcher/refresh"))).toHaveLength(1);
+    await act(async () => { release?.(); await pending; });
+    expect(refresh?.getAttribute("aria-busy")).toBe("false");
+  });
+
   it("uses one global tool and requires explicit Profile context for Tracker drafts", async () => {
     await act(async () => { root.render(createElement(OddsMatcherShell)); });
     expect(requests.some(request => request.url.endsWith("/oddsmatcher"))).toBe(true);
@@ -81,11 +105,12 @@ describe("OddsMatcherShell", () => {
 
   it("shows unknown liquidity, live calculator results and creates only an explicit Prospecting draft", async () => {
     await act(async () => { root.render(createElement(OddsMatcherShell, { profileId: "profile-demo-001" })); });
-    expect(container.textContent).toContain("Liquidity unknown");
+    expect(container.textContent).toContain("Unavailable");
     const summary = container.querySelector<HTMLButtonElement>('button[aria-label^="Open Bet Summary"]');
     await act(async () => { summary?.click(); });
-    expect(document.body.textContent).toContain("The provider supplies a lay price without available depth");
-    expect(document.body.textContent).toContain("Required lay stake");
+    expect(document.body.textContent).toContain("This provider supplies the lay price but not available exchange depth");
+    expect(document.body.textContent).toContain("Lay Stake");
+    expect(document.body.textContent).toContain("Total Profit");
     expect(document.body.textContent).not.toContain("Place Bet");
     const add = [...document.body.querySelectorAll("button")].find(button => button.textContent === "Add Prospecting Draft");
     await act(async () => { add?.click(); });
@@ -98,17 +123,33 @@ describe("OddsMatcherShell", () => {
     await act(async () => { root.render(createElement(OddsMatcherShell, { profileId: "profile-demo-001" })); });
     const summary = container.querySelector<HTMLButtonElement>('button[aria-label^="Open Bet Summary"]');
     await act(async () => { summary?.click(); });
-    const inputs = [...document.body.querySelectorAll<HTMLInputElement>("input")];
-    const backOdds = inputs.find(input => input.parentElement?.textContent?.includes("Back odds"));
+    const backOdds = document.body.querySelector<HTMLInputElement>('input[aria-label="Back Odds"]');
     await act(async () => {
       if (backOdds) {
         Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(backOdds, "4.6");
         backOdds.dispatchEvent(new Event("input", { bubbles: true }));
       }
     });
-    expect(document.body.textContent).toContain("Manual price entered");
+    const autoBack = document.body.querySelector<HTMLButtonElement>('button[aria-label="Auto update back odds"]') ?? [...document.body.querySelectorAll<HTMLButtonElement>('button[role="switch"]')].find(button => button.textContent?.includes("Auto update back odds"));
+    expect(autoBack?.getAttribute("aria-checked")).toBe("false");
     const reset = [...document.body.querySelectorAll("button")].find(button => button.textContent === "Reset to latest quotes");
     await act(async () => { reset?.click(); });
-    expect(document.body.textContent).not.toContain("Manual price entered");
+    expect(autoBack?.getAttribute("aria-checked")).toBe("true");
+  });
+
+  it("preserves normal inputs and results when Advanced is toggled", async () => {
+    await act(async () => { root.render(createElement(OddsMatcherShell, { profileId: "profile-demo-001" })); });
+    const summary = container.querySelector<HTMLButtonElement>('button[aria-label^="Open Bet Summary"]');
+    await act(async () => { summary?.click(); });
+    const advanced = document.body.querySelector<HTMLButtonElement>('[data-pd-id="oddsmatcher.advanced"]');
+    expect(document.body.textContent).toContain("Back Stake");
+    expect(document.body.textContent).toContain("Total Profit");
+    await act(async () => { advanced?.click(); });
+    expect(document.body.textContent).toContain("Underlay");
+    expect(document.body.textContent).toContain("Current Lay Stake");
+    expect(document.body.textContent).toContain("Back Stake");
+    await act(async () => { advanced?.click(); });
+    expect(document.body.textContent).not.toContain("Range Min");
+    expect(document.body.textContent).toContain("Total Profit");
   });
 });
