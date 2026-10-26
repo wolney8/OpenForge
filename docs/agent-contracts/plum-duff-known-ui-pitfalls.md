@@ -1494,3 +1494,13 @@ composite controls. Use border-box sizing, `minmax(0, 1fr)`, shrinking children 
 to their cells. Keep genuine option-list vertical scrolling. For desktop dialogs, compact and
 reflow content or expand inside the safe viewport before enabling internal body scrolling; short
 viewports retain the contained scroll fallback.
+
+## 2026-10-26: Trigger-start popovers and intrinsic status widths drifted from their visual anchors
+
+- Area: Oddsmatcher quote status rows and anchored filter/saved-filter surfaces.
+- Root cause: the status slot did not own the quote block's governed width, while every overlay used
+  trigger-start positioning even for right-edge actions.
+- Prevention: quote status content centres inside the same governed quote width; anchored overlays
+  support start/end alignment and clamp to a 16px viewport inset on open, scroll and resize.
+- Regression test: `tests/e2e/oddsmatcher-cp091.spec.ts` covers known/unavailable status centring,
+  1440–430px overlay containment, page overflow, Escape and focus restoration.

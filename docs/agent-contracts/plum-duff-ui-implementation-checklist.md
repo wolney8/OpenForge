@@ -279,3 +279,12 @@ Complete this for every feature, bug fix, component, fixture-backed UI, route or
 - [x] Dark-theme desktop/narrow screenshots, responsive geometry, focus containment and no-overflow
       checks are recorded privately.
 - [ ] Owner visual and interaction acceptance remains pending; no acceptance status is inferred.
+
+## CP-091 Oddsmatcher liquidity, rating and popover containment — 2026-10-26
+
+- [x] Known and unavailable liquidity centre within the reserved quote status geometry on desktop and cards.
+- [x] Effective-rating supporting text requires non-zero commission and a different two-decimal result.
+- [x] Oddsmatcher anchored overlays clamp to a 16px safe inset and My Filters uses end alignment.
+- [x] Resize, horizontal overflow, Escape/focus restoration and 1440/1100/900/760/430 widths are covered.
+- [x] Profile/navigation and ledger overlays were inspected; they do not consume the local Oddsmatcher primitive.
+- [ ] Owner visual acceptance remains pending.

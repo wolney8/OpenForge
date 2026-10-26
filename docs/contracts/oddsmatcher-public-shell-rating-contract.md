@@ -356,3 +356,11 @@ This addendum supersedes the older public/non-Profile assumptions above only for
 - Untouched bounds follow refreshed calculator references after stake, odds or commission changes.
   Editing either bound makes the range a manual override. Invalid bounds disable the slider and
   show a field-level error; they never generate a substitute calculation.
+
+## 29. CP-091 supporting-rating and overlay presentation
+
+- The display-rating pill remains authoritative and unchanged.
+- Effective-rating supporting text renders only when the applied exchange commission is greater than
+  zero and the effective and display ratings differ when presented to two decimal places.
+- Quote liquidity status uses the reserved quote width and centre alignment. Unknown remains unknown.
+- Oddsmatcher anchored overlays clamp to a 16px viewport inset; right-edge actions use end alignment.

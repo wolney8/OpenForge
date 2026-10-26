@@ -181,6 +181,15 @@ function LiquidityUnavailableStatus({ compact = false }: { compact?: boolean }) 
     label={compact ? "Unavailable" : "Liquidity unavailable"}
   />;
 }
+function effectiveRatingSupportingText(row: OddsMatcherOpportunity) {
+  const commission = Number(row.exchange_commission);
+  const display = Number(row.display_rating);
+  const effective = Number(row.commission_aware_rating);
+  if (!Number.isFinite(commission) || commission <= 0 || !Number.isFinite(display) || !Number.isFinite(effective)) return null;
+  if (display.toFixed(2) === effective.toFixed(2)) return null;
+  return `After ${Number((commission * 100).toFixed(2))}% commission · ${effective.toFixed(2)}%`;
+}
+
 function QuoteLink({ href, label, disabled = false }: { href: string | null; label: string; disabled?: boolean }) {
   return href && !disabled ? (
     <a
@@ -854,7 +863,7 @@ export function OddsMatcherShell({
                           <strong className={`oddsmatcher-rating-pill oddsmatcher-rating-${oddsMatcherRatingTone(row.display_rating)}`}>
                             {Number(row.display_rating).toFixed(2)}%
                           </strong>
-                          {row.commission_aware_rating ? <span>After commission · {Number(row.commission_aware_rating).toFixed(2)}%</span> : null}
+                          {effectiveRatingSupportingText(row) ? <span>{effectiveRatingSupportingText(row)}</span> : null}
                         </span>
                       </td>
                       <td>
@@ -1030,7 +1039,8 @@ function OpportunityActions({
   );
 }
 
-function AnchoredSurface({ children, className = "", label, onClose, returnFocusRef }: {
+function AnchoredSurface({ alignment = "start", children, className = "", label, onClose, returnFocusRef }: {
+  alignment?: "start" | "end";
   children: ReactNode;
   className?: string;
   label: string;
@@ -1045,7 +1055,7 @@ function AnchoredSurface({ children, className = "", label, onClose, returnFocus
     if (!trigger || !surface) return;
     const place = () => {
       const rect = trigger.getBoundingClientRect();
-      const margin = 12;
+      const margin = 16;
       const width = Math.min(440, window.innerWidth - margin * 2);
       const measuredHeight = Math.min(surface.scrollHeight, window.innerHeight - margin * 2);
       const roomBelow = window.innerHeight - rect.bottom - margin;
@@ -1053,7 +1063,10 @@ function AnchoredSurface({ children, className = "", label, onClose, returnFocus
         ? rect.bottom + 6
         : Math.max(margin, rect.top - measuredHeight - 6);
       setPosition({
-        left: Math.min(Math.max(margin, rect.left), window.innerWidth - width - margin),
+        left: Math.min(
+          Math.max(margin, alignment === "end" ? rect.right - width : rect.left),
+          window.innerWidth - width - margin,
+        ),
         top,
         width,
         maxHeight: Math.max(180, window.innerHeight - top - margin),
@@ -1069,7 +1082,7 @@ function AnchoredSurface({ children, className = "", label, onClose, returnFocus
       window.removeEventListener("scroll", place, true);
       if (trigger.isConnected) trigger.focus({ preventScroll: true });
     };
-  }, [returnFocusRef]);
+  }, [alignment, returnFocusRef]);
   if (typeof document === "undefined") return null;
   return createPortal(
     <div className="oddsmatcher-anchored-layer" onPointerDown={(event) => {
@@ -1326,7 +1339,7 @@ function SavedFiltersDialog({ activeId, filters, onClose, onLoad, onSave, onSetA
     return false;
   };
   return <>
-    <AnchoredSurface className="oddsmatcher-saved-filters-menu" label="My Filters" onClose={onClose} returnFocusRef={returnFocusRef}>
+    <AnchoredSurface alignment="end" className="oddsmatcher-saved-filters-menu" label="My Filters" onClose={onClose} returnFocusRef={returnFocusRef}>
       <header className="oddsmatcher-popover-heading"><div><span className="eyebrow">Reusable opportunity filters</span><strong>My Filters</strong></div><button aria-label="Close My Filters" className="icon-button compact-action" onClick={onClose} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button></header>
       <div className="oddsmatcher-saved-filter-actions">
         <button className="modal-primary-button" onClick={(event) => { editorTriggerRef.current = event.currentTarget; setEditing("new"); }} type="button">Save as…</button>

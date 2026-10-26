@@ -675,3 +675,16 @@ This batch is limited to Oddsmatcher layout and state presentation. It does not 
 filter, persistence, financial-formula, ledger, placement, liquidity or schema authorities.
 
 Verification: focused CP-090 browser coverage passed on the installed canonical runtime, the full web unit suite passed (600 tests), typecheck and production build passed, and focused lint passed. Repository-wide lint remains blocked by the unchanged Free Bet render-time ref error at `free-bet-workflow-shell.tsx:4869`. Backup `BACKUP-A2177696` verified with checksum, manifest, SQLite integrity and zero foreign-key violations. Installed database identity/fingerprint remain `normal-owner` / `7246998d43722066`; all governed financial-control totals match the pre-install backup. Private evidence is under `data/private/evidence/cp090-oddsmatcher-layout-state-20261026/`. Owner acceptance remains pending.
+
+## CP-091 Oddsmatcher liquidity, rating and popover containment — 2026-10-26
+
+| ID | Surface | Requested behaviour | Signed-off equivalent | Status |
+| --- | --- | --- | --- | --- |
+| PD-FIX-419 / #54 | Lay quote status | Centre known/unavailable liquidity in the reserved status slot on desktop and cards without changing quote geometry | CP-090 shared quote-cell/status-slot geometry | IN PROGRESS |
+| PD-FIX-420 / #54 | Rating supporting text | Show effective rating only for non-zero applied commission whose two-decimal display differs | Existing display-rating pill and commission authority | IN PROGRESS |
+| PD-FIX-421 / #54 | Anchored overlays | Clamp/shift overlays to a 16px viewport inset and support end alignment for right-edge actions | Existing Oddsmatcher anchored-surface portal | IN PROGRESS |
+| PD-FIX-422 / #54 | My Filters | Open end-aligned beneath its trigger with rows/actions fully visible at desktop and contained responsive behaviour | Existing My Filters anchored menu | IN PROGRESS |
+| PD-FIX-423 / #54 | Evidence/install | Verify widths, resize, focus, overflow, sibling consumers and canonical normal-owner install | UI consistency gate and local install procedure | IN PROGRESS |
+
+This batch changes presentation and overlay positioning only. Provider, calculation, commission,
+filter, persistence, ledger, liquidity and placement authorities remain unchanged.

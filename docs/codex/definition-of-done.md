@@ -58,6 +58,8 @@ Done means:
   modal content first compacts, reflows or expands within safe viewport bounds, with internal
   scrolling reserved for genuinely constrained viewport height rather than the default desktop
   composition
+- anchored overlays flip, shift or clamp inside the usable viewport or container and never
+  introduce horizontal page overflow
 - dialog geometry, exact background-scroll lock/restoration, focus return and visible action footer
   were checked where relevant; nested overlays remain in the native dialog top layer
 - enabled, disabled, loading, success and error conditions match actual process preconditions
