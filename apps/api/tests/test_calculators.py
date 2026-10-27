@@ -322,8 +322,8 @@ def test_qualifying_reference_stakes_preserve_directional_invariant(
                 "back_odds": back_odds,
                 "lay_odds": lay_odds,
                 "exchange_commission": commission,
-                "underlay_factor": "0.928",
-                "overlay_factor": "1.300",
+                "underlay_bias_percent": "0.02",
+                "overlay_bias_percent": "0.02",
             },
         )
         assert response.status_code == 200, response.text
@@ -339,6 +339,71 @@ def test_qualifying_reference_stakes_preserve_directional_invariant(
     assert Decimal(responses["Overlay"]["pnl_if_lay_wins"]) > Decimal(
         responses["Standard"]["pnl_if_lay_wins"]
     )
+
+
+def test_qualifying_reference_stakes_use_canonical_two_percent_bias(
+    tmp_path: Path,
+) -> None:
+    configure_temp_database(tmp_path)
+    client = TestClient(app)
+
+    responses = {}
+    for strategy in ("Underlay", "Standard", "Overlay"):
+        response = client.post(
+            "/fund-manager/calculators/matched-betting/preview",
+            json={
+                "bet_type": "qualifying",
+                "strategy": strategy,
+                "back_stake": "10",
+                "back_odds": "4.05",
+                "lay_odds": "4.00",
+                "exchange_commission": "0.005",
+            },
+        )
+        assert response.status_code == 200, response.text
+        responses[strategy] = response.json()
+
+    assert responses["Underlay"]["selected_lay_stake"] == "9.94"
+    assert responses["Standard"]["selected_lay_stake"] == "10.14"
+    assert responses["Overlay"]["selected_lay_stake"] == "10.34"
+    assert abs(
+        Decimal(responses["Standard"]["pnl_if_back_wins"])
+        - Decimal(responses["Standard"]["pnl_if_lay_wins"])
+    ) <= Decimal("0.01")
+
+
+def test_qualifying_custom_bias_changes_references_without_changing_defaults(
+    tmp_path: Path,
+) -> None:
+    configure_temp_database(tmp_path)
+    client = TestClient(app)
+    common = {
+        "bet_type": "qualifying",
+        "back_stake": "10",
+        "back_odds": "4.05",
+        "lay_odds": "4.00",
+        "exchange_commission": "0.005",
+    }
+
+    underlay = client.post(
+        "/fund-manager/calculators/matched-betting/preview",
+        json={**common, "strategy": "Underlay", "underlay_bias_percent": "0.05"},
+    )
+    overlay = client.post(
+        "/fund-manager/calculators/matched-betting/preview",
+        json={**common, "strategy": "Overlay", "overlay_bias_percent": "0.10"},
+    )
+    defaults = client.post(
+        "/fund-manager/calculators/matched-betting/preview",
+        json={**common, "strategy": "Standard", "manual_lay_stake": "9.50"},
+    )
+
+    assert underlay.status_code == overlay.status_code == defaults.status_code == 200
+    assert underlay.json()["selected_lay_stake"] == "9.63"
+    assert overlay.json()["selected_lay_stake"] == "11.15"
+    assert defaults.json()["reference_lay_stake_underlay"] == "9.94"
+    assert defaults.json()["reference_lay_stake_standard"] == "10.14"
+    assert defaults.json()["reference_lay_stake_overlay"] == "10.34"
 
 
 @pytest.mark.parametrize(

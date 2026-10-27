@@ -430,8 +430,8 @@ def test_multilay_preview_resolves_when_extra_outcomes_are_present(tmp_path: Pat
     preview = preview_response.json()
     assert preview["calculation_state"] == "resolved"
     assert preview["reference_lay_stake_standard"] == "9.65"
-    assert preview["reference_lay_stake_underlay"] == "8.96"
-    assert preview["reference_lay_stake_overlay"] == "12.55"
+    assert preview["reference_lay_stake_underlay"] == "9.46"
+    assert preview["reference_lay_stake_overlay"] == "9.84"
     assert preview["scenario_pnl_if_back_wins"] is not None
     assert preview["scenario_pnl_if_lay_wins"] is not None
     assert preview["projected_current_pnl"] is not None

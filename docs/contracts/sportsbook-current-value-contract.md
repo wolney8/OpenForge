@@ -177,10 +177,11 @@ Base reference formulas:
 
 - `match_rating = round(back_odds / lay_odds_1, 4)` when odds exist and strategy is not `No Lay`
 - `standard_ref_lay_stake = round((back_stake * back_odds) / (lay_odds_1 - commission_1), 2)`
-- `underlay_ref_lay_stake = round(standard_ref_lay_stake * default_underlay_factor, 2)`,
-  where the governed factor is greater than zero and below one
-- `overlay_ref_lay_stake = round(standard_ref_lay_stake * default_overlay_factor, 2)`,
-  where the governed factor is above one
+- `underlay_ref_lay_stake = round(standard_ref_lay_stake * (1 - abs(default_underlay_bias)), 2)`
+- `overlay_ref_lay_stake = round(standard_ref_lay_stake * (1 + abs(default_overlay_bias)), 2)`
+- the Oddsmatcher technical specification is authoritative for Normal/Qualifying bias and defines
+  `defaultUnderlayPct = 0.02` and `defaultOverlayPct = 0.02`; these are deviations around the
+  rounded Standard stake, not the workbook-backed Free Bet factors
 - the directional invariant is `Underlay < Standard < Overlay` after governed money rounding;
   equality at an unrepresentably small stake is unavailable for range interaction rather than
   silently reordered
@@ -193,7 +194,8 @@ Base reference formulas:
 
 The older outcome-target endpoints could reverse their stake order around Standard for valid odds.
 They remain provenance for historical workbook values, but are not the strategy-reference authority
-for new Normal/Qualifying calculations.
+for new Normal/Qualifying calculations. The `0.928` / `1.300` factors remain independently sourced
+Free Bet settings and must not be reused by the Normal/Qualifying path.
 
 Liability:
 

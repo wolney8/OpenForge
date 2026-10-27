@@ -21,12 +21,12 @@ const liveFeed = { provider: "The Odds API", fetched_at: "2026-10-26T20:35:00Z",
 function preview(body: Record<string, string>) {
   const scale = Number(body.back_stake || "10") / 10;
   const standard = (10.14 * scale).toFixed(2);
-  const underlay = (Number(standard) * 0.928).toFixed(2);
-  const overlay = (Number(standard) * 1.3).toFixed(2);
+  const underlay = (Number(standard) * 0.98).toFixed(2);
+  const overlay = (Number(standard) * 1.02).toFixed(2);
   const selected = body.strategy === "Underlay" ? underlay : body.strategy === "Overlay" ? overlay : body.strategy === "Custom" ? body.manual_lay_stake : standard;
   return { selected_lay_stake: selected, reference_lay_stake_standard: standard, reference_lay_stake_underlay: underlay, reference_lay_stake_overlay: overlay, liability: (Number(selected) * 3).toFixed(2), pnl_if_back_wins: "0.08", pnl_if_lay_wins: "0.09", matched_result: "0.08",
     outcomes: [{ key: "back-wins", label: "Back wins", bookmaker_component: "30.50", exchange_component: "-30.42", total: "0.08" }, { key: "lay-wins", label: "Lay wins", bookmaker_component: "-10.00", exchange_component: "10.09", total: "0.09" }],
-    strategy_references: [{ strategy: "Underlay", lay_stake: underlay, liability: "28.23", back_wins_total: "2.27", back_loses_total: "-0.64" }, { strategy: "Standard", lay_stake: standard, liability: "30.42", back_wins_total: "0.08", back_loses_total: "0.09" }, { strategy: "Overlay", lay_stake: overlay, liability: "39.54", back_wins_total: "-9.04", back_loses_total: "3.13" }] };
+    strategy_references: [{ strategy: "Underlay", lay_stake: underlay, liability: "29.82", back_wins_total: "0.68", back_loses_total: "-0.11" }, { strategy: "Standard", lay_stake: standard, liability: "30.42", back_wins_total: "0.08", back_loses_total: "0.09" }, { strategy: "Overlay", lay_stake: overlay, liability: "31.02", back_wins_total: "-0.52", back_loses_total: "0.29" }] };
 }
 
 async function mock(page: Page) {
@@ -55,6 +55,7 @@ async function mock(page: Page) {
 }
 
 test("CP-094 universal source settings and Bet Summary hierarchy", async ({ page }) => {
+  test.setTimeout(60_000);
   await fs.mkdir(evidence, { recursive: true });
   const receipt = await mock(page);
   await page.setViewportSize({ width: 1440, height: 1000 });
@@ -100,17 +101,25 @@ test("CP-094 universal source settings and Bet Summary hierarchy", async ({ page
   await popover.screenshot({ path: path.join(evidence, "06-summary-settings-popover.png") });
   await page.keyboard.press("Escape");
   await dialog.getByRole("switch", { name: "Advanced" }).click();
-  await expect(dialog.getByLabel("Range Min")).toHaveValue("9.41");
+  await expect(dialog.getByLabel("Range Min")).toHaveValue("9.94");
   await expect(dialog.getByLabel("Lay strategy range")).toHaveAttribute("aria-valuenow", "10.14");
-  await expect(dialog.getByLabel("Range Max")).toHaveValue("13.18");
+  await expect(dialog.getByLabel("Range Max")).toHaveValue("10.34");
   await page.screenshot({ path: path.join(evidence, "07-advanced-hierarchy-1440x1000.png") });
   await dialog.locator(".custom-slider-summary-layout").screenshot({ path: path.join(evidence, "08-valid-min-standard-max.png") });
   await dialog.getByRole("button", { name: "Underlay", exact: true }).click();
-  await expect(dialog.getByRole("textbox", { name: "Lay Stake" })).toHaveValue("9.41");
+  await expect(dialog.getByRole("textbox", { name: "Lay Stake" })).toHaveValue("9.94");
   await page.screenshot({ path: path.join(evidence, "09-underlay.png") });
   await dialog.getByRole("button", { name: "Overlay", exact: true }).click();
-  await expect(dialog.getByRole("textbox", { name: "Lay Stake" })).toHaveValue("13.18");
+  await expect(dialog.getByRole("textbox", { name: "Lay Stake" })).toHaveValue("10.34");
   await page.screenshot({ path: path.join(evidence, "10-overlay.png") });
+  await dialog.getByLabel("Range Min").fill("9.80");
+  await dialog.getByLabel("Range Max").fill("10.50");
+  await dialog.getByRole("button", { name: "Close Bet Summary" }).click();
+  await page.locator(".oddsmatcher-opportunity-card, .oddsmatcher-table tbody tr").first().click();
+  dialog = page.getByRole("dialog", { name: "Oddsmatcher Bet Summary" });
+  await dialog.getByRole("switch", { name: "Advanced" }).click();
+  await expect(dialog.getByLabel("Range Min")).toHaveValue("9.94");
+  await expect(dialog.getByLabel("Range Max")).toHaveValue("10.34");
   await page.setViewportSize({ width: 430, height: 900 });
   const geometry = await dialog.evaluate(node => ({ pageWidth: document.documentElement.scrollWidth, viewport: document.documentElement.clientWidth, dialogRight: node.getBoundingClientRect().right, placeAfterRange: Boolean(node.querySelector(".oddsmatcher-advanced-controls")?.compareDocumentPosition(node.querySelector('[data-pd-id="oddsmatcher.place-lay-stub"]')!) & Node.DOCUMENT_POSITION_FOLLOWING) }));
   expect(geometry.pageWidth).toBeLessThanOrEqual(geometry.viewport + 1);

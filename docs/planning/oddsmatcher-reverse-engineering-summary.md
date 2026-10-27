@@ -382,8 +382,16 @@ universal Fund Manager preferences in versioned `oddsmatcher_preferences_json`; 
 longer owns a second source selector. Replay forces both update controls off and disabled while
 retaining the CP-093 refresh, link, Prospecting and zero-credit boundaries.
 
-The Normal/Qualifying reference authority now uses the existing governed `0.928` Underlay and
-`1.300` Overlay factors around the even-profit Standard stake. This replaces outcome-target
+The Normal/Qualifying reference authority uses the Oddsmatcher specification's default 2% bias:
+Underlay is the rounded Standard stake multiplied by `0.98`, and Overlay by `1.02`. CP-095 corrects
+CP-094's unsupported reuse of workbook-backed Free Bet factors. This replaces outcome-target
 endpoints that could reverse their stake order. Bet Summary renders the resulting strict
 Underlay/Standard/Overlay range through the shared slider and anchored overlay patterns. Automated
 verification uses mocked/replay data; owner visual acceptance remains **UNVERIFIED**.
+
+Provenance: commit `19e3614c` introduced `0.928` / `1.300` as workbook-backed Free Bet defaults in
+`free_bet_current_value.py`, while the same commit recorded the independent Oddsmatcher bias formula
+and 2% defaults. Commit `e64b516d` exposed the Free Bet factors on the shared calculator request;
+commit `cfebc79e` then reused them in the Normal/Qualifying Sportsbook path without a supporting
+contract. CP-095 removes that unsupported cross-domain reuse and retains the factors only for the
+Free Bet authority.

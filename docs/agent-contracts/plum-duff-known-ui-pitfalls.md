@@ -1512,7 +1512,9 @@ viewports retain the contained scroll fallback.
   composed locally instead of reusing the settings, anchored-surface, select and directional-range
   authorities.
 - Prevention: persistent defaults live in Fund Manager Settings; nested settings use the shared
-  anchored overlay; field labels omit the selected format; the calculation authority guarantees
-  `Underlay < Standard < Overlay` before presentation.
+  anchored overlay; field labels omit the selected format; the Normal/Qualifying calculation
+  authority applies the Oddsmatcher specification's 2% Underlay/Overlay bias around rounded
+  Standard and guarantees `Underlay < Standard < Overlay` before presentation. Workbook-backed
+  Free Bet factors are a separate authority.
 - Regression test: `tests/e2e/oddsmatcher-cp094.spec.ts` covers settings persistence, replay safety,
   nested Escape, Advanced hierarchy, directional references and 1440/430px containment.

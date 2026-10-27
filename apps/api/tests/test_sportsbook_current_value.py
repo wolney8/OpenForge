@@ -135,8 +135,8 @@ def test_underlay_and_overlay_reference_values_are_distinct() -> None:
         as_of_date=date(2026, 7, 1),
     )
 
-    assert underlay_result.actual_lay_stake_1 == Decimal("8.75")
-    assert overlay_result.actual_lay_stake_1 == Decimal("12.26")
+    assert underlay_result.actual_lay_stake_1 == Decimal("9.24")
+    assert overlay_result.actual_lay_stake_1 == Decimal("9.62")
     assert underlay_result.actual_lay_stake_1 != overlay_result.actual_lay_stake_1
 
 
@@ -352,8 +352,8 @@ def test_multilay_rows_still_expose_first_leg_reference_stakes_for_guidance() ->
 
     assert result.calculation_state == "review_required"
     assert result.reference_lay_stake_standard == Decimal("9.65")
-    assert result.reference_lay_stake_underlay == Decimal("8.96")
-    assert result.reference_lay_stake_overlay == Decimal("12.55")
+    assert result.reference_lay_stake_underlay == Decimal("9.46")
+    assert result.reference_lay_stake_overlay == Decimal("9.84")
     assert result.projected_current_pnl is None
 
 

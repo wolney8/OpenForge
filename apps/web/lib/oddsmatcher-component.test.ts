@@ -78,8 +78,8 @@ describe("OddsMatcherShell", () => {
       if (url.endsWith("/profiles")) return new Response(JSON.stringify([{ profile_id: "profile-demo-001", display_name: "Synthetic Alpha", status: "active" }]), { status: 200 });
       if (url.includes("matched-betting/preview")) {
         const payload = init?.body ? JSON.parse(String(init.body)) as { strategy?: string; manual_lay_stake?: string } : {};
-        const selected = payload.strategy === "Underlay" ? "9.41" : payload.strategy === "Overlay" ? "13.18" : payload.strategy === "Custom" ? payload.manual_lay_stake || "10.14" : "10.14";
-        return new Response(JSON.stringify({ selected_lay_stake: selected, reference_lay_stake_standard: "10.14", reference_lay_stake_underlay: "9.41", reference_lay_stake_overlay: "13.18", liability: "35.59", pnl_if_back_wins: "-1.09", pnl_if_lay_wins: "-0.57", matched_result: "-1.09", outcomes: [{ key: "back-wins", label: "Back wins", bookmaker_component: "35.00", exchange_component: "-35.59", total: "-1.09" }, { key: "lay-wins", label: "Lay wins", bookmaker_component: "-10.00", exchange_component: "9.43", total: "-0.57" }], strategy_references: [{ strategy: "Underlay", lay_stake: "9.41", liability: "", back_wins_total: "", back_loses_total: "" }, { strategy: "Standard", lay_stake: "10.14", liability: "", back_wins_total: "", back_loses_total: "" }, { strategy: "Overlay", lay_stake: "13.18", liability: "", back_wins_total: "", back_loses_total: "" }] }), { status: 200 });
+        const selected = payload.strategy === "Underlay" ? "9.94" : payload.strategy === "Overlay" ? "10.34" : payload.strategy === "Custom" ? payload.manual_lay_stake || "10.14" : "10.14";
+        return new Response(JSON.stringify({ selected_lay_stake: selected, reference_lay_stake_standard: "10.14", reference_lay_stake_underlay: "9.94", reference_lay_stake_overlay: "10.34", liability: "30.42", pnl_if_back_wins: "0.08", pnl_if_lay_wins: "0.09", matched_result: "0.08", outcomes: [{ key: "back-wins", label: "Back wins", bookmaker_component: "30.50", exchange_component: "-30.42", total: "0.08" }, { key: "lay-wins", label: "Lay wins", bookmaker_component: "-10.00", exchange_component: "10.09", total: "0.09" }], strategy_references: [{ strategy: "Underlay", lay_stake: "9.94", liability: "29.82", back_wins_total: "0.68", back_loses_total: "-0.11" }, { strategy: "Standard", lay_stake: "10.14", liability: "30.42", back_wins_total: "0.08", back_loses_total: "0.09" }, { strategy: "Overlay", lay_stake: "10.34", liability: "31.02", back_wins_total: "-0.52", back_loses_total: "0.29" }] }), { status: 200 });
       }
       if (url.includes("prospecting-drafts")) return new Response(JSON.stringify({ created: true, sportsbook_bet: { sportsbook_bet_id: "ODD-DEMO" } }), { status: 201 });
       return new Response(JSON.stringify(feed), { status: 200 });
@@ -192,6 +192,11 @@ describe("OddsMatcherShell", () => {
     expect(requests.filter((request) => request.url.includes("/oddsmatcher/refresh"))).toHaveLength(0);
     const summary = container.querySelector<HTMLButtonElement>('button[aria-label^="Open Bet Summary"]');
     await act(async () => { summary?.click(); });
+    const previewRequest = requests.find(request => request.url.includes("matched-betting/preview"));
+    expect(previewRequest?.body).toMatchObject({
+      underlay_bias_percent: "0.02",
+      overlay_bias_percent: "0.02",
+    });
     expect(document.body.textContent).toContain("Replay · draft creation disabled");
     const addDraft = [...document.body.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent === "Add Prospecting Draft");
     expect(addDraft?.disabled).toBe(true);

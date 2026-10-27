@@ -1466,7 +1466,7 @@ function BetSummaryDialog({
             bet_type: "qualifying", free_bet_mode: "SNR", promotion_mode: "standard", strategy,
             back_stake: stake, back_odds: backOdds, lay_odds: layOdds, exchange_commission: commission,
             manual_lay_stake: strategy === "Custom" ? customLayStake : "", promotion_value: "", bonus_trigger: "Lay Wins",
-            bonus_backing_bet: "Normal", retention_percent: "70", underlay_factor: "0.928", overlay_factor: "1.300",
+            bonus_backing_bet: "Normal", retention_percent: "70", underlay_bias_percent: "0.02", overlay_bias_percent: "0.02",
           }),
         });
         if (!response.ok) throw new Error();

@@ -84,6 +84,8 @@ class MatchedBettingPayload(BaseModel):
     retention_percent: str = Field(default="70", max_length=40)
     underlay_factor: str = Field(default="0.928", max_length=40)
     overlay_factor: str = Field(default="1.300", max_length=40)
+    underlay_bias_percent: str = Field(default="0.02", max_length=40)
+    overlay_bias_percent: str = Field(default="0.02", max_length=40)
     profit_boost_mode: Literal["displayed_odds", "total_return", "profit_only", "percentage"] = (
         "displayed_odds"
     )
@@ -175,6 +177,17 @@ class MatchedBettingPayload(BaseModel):
         if Decimal(parsed) <= 0:
             raise PydanticCustomError(
                 "calculator_factor_positive", "Enter a factor greater than zero."
+            )
+        return parsed
+
+    @field_validator("underlay_bias_percent", "overlay_bias_percent", mode="before")
+    @classmethod
+    def validate_bias_percent(cls, value: Any) -> str:
+        parsed = validate_complete_decimal_string(value, message=DECIMAL_AMOUNT_MESSAGE)
+        if Decimal(parsed) <= 0 or Decimal(parsed) >= 1:
+            raise PydanticCustomError(
+                "calculator_bias_range",
+                "Enter a lay-stake bias greater than zero and below one.",
             )
         return parsed
 
@@ -1131,8 +1144,8 @@ def _calculate(payload: MatchedBettingPayload, *, _include_custom: bool = True) 
                 lay_odds_1=payload.lay_odds,
                 lay_commission_1=payload.exchange_commission,
                 lay_actual=payload.manual_lay_stake,
-                default_underlay_factor=payload.underlay_factor,
-                default_overlay_factor=payload.overlay_factor,
+                default_underlay_bias=payload.underlay_bias_percent,
+                default_overlay_bias=payload.overlay_bias_percent,
             ),
             as_of_date=date.today(),
         )
@@ -1170,8 +1183,8 @@ def _calculate(payload: MatchedBettingPayload, *, _include_custom: bool = True) 
                         match_strategy=reference_strategy,
                         lay_odds_1=payload.lay_odds,
                         lay_commission_1=payload.exchange_commission,
-                        default_underlay_factor=payload.underlay_factor,
-                        default_overlay_factor=payload.overlay_factor,
+                        default_underlay_bias=payload.underlay_bias_percent,
+                        default_overlay_bias=payload.overlay_bias_percent,
                     ),
                     as_of_date=date.today(),
                 )
