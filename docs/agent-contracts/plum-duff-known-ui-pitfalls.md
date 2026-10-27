@@ -1518,3 +1518,13 @@ viewports retain the contained scroll fallback.
   Free Bet factors are a separate authority.
 - Regression test: `tests/e2e/oddsmatcher-cp094.spec.ts` covers settings persistence, replay safety,
   nested Escape, Advanced hierarchy, directional references and 1440/430px containment.
+
+## High-frequency calculator edits must refresh in the background
+
+Once a calculator has a usable authoritative preview, slider movement, named strategy changes and
+ordinary field edits keep that preview visible while a short debounced replacement request runs.
+Abort obsolete requests and accept only the latest response. Do not reuse route/ledger blocking
+overlays for this high-frequency path, move focus, dim the modal or repeatedly announce progress.
+Calculation-dependent mutations may remain unavailable until the latest authoritative response;
+unrelated controls remain interactive. Initial load may use the established blocking state when no
+usable preview exists.

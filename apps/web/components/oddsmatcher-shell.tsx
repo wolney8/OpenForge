@@ -1430,6 +1430,7 @@ function BetSummaryDialog({
   const [autoLay, setAutoLay] = useState(replay ? false : defaultAutoLay);
   const [preview, setPreview] = useState<Preview | null>(null);
   const [previewState, setPreviewState] = useState<"loading" | "ready" | "error">("loading");
+  const [previewPending, setPreviewPending] = useState(false);
   const [draftState, setDraftState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [draftError, setDraftError] = useState("");
   const [draftId, setDraftId] = useState("");
@@ -1437,6 +1438,7 @@ function BetSummaryDialog({
   const settingsButtonRef = useRef<HTMLButtonElement>(null);
   const retryToken = useRef(crypto.randomUUID());
   const version = useRef(0);
+  const previewRef = useRef<Preview | null>(null);
   const commissionSource = opportunity.commission_origin === "profile-account"
     ? "Profile Account"
     : opportunity.commission_origin === "oddsmatcher-default"
@@ -1451,11 +1453,19 @@ function BetSummaryDialog({
     const current = ++version.current;
     const controller = new AbortController();
     if (backCommissionUnsupported || oddsInvalid) {
+      void Promise.resolve().then(() => {
+        if (current === version.current) setPreviewPending(false);
+      });
       return () => controller.abort();
     }
-    void Promise.resolve().then(async () => {
+    const hasUsablePreview = previewRef.current !== null;
+    void Promise.resolve().then(() => {
+      if (current !== version.current) return;
+      setPreviewPending(hasUsablePreview);
+      if (!hasUsablePreview) setPreviewState("loading");
+    });
+    const timer = window.setTimeout(() => void (async () => {
       if (controller.signal.aborted) return;
-      setPreviewState("loading");
       try {
         const response = await fetch(`${apiBaseUrl}/fund-manager/calculators/matched-betting/preview`, {
           method: "POST",
@@ -1471,12 +1481,20 @@ function BetSummaryDialog({
         });
         if (!response.ok) throw new Error();
         const value = (await response.json()) as Preview;
-        if (current === version.current) { setPreview(value); setPreviewState("ready"); }
+        if (current === version.current) {
+          previewRef.current = value;
+          setPreview(value);
+          setPreviewPending(false);
+          setPreviewState("ready");
+        }
       } catch (caught) {
-        if (current === version.current && !(caught instanceof DOMException && caught.name === "AbortError")) setPreviewState("error");
+        if (current === version.current && !(caught instanceof DOMException && caught.name === "AbortError")) {
+          setPreviewPending(false);
+          setPreviewState("error");
+        }
       }
-    });
-    return () => controller.abort();
+    })(), hasUsablePreview ? 140 : 0);
+    return () => { window.clearTimeout(timer); controller.abort(); };
   }, [backCommissionUnsupported, backOdds, commission, customLayStake, layOdds, oddsInvalid, stake, strategy]);
 
   const createDraft = async () => {
@@ -1504,8 +1522,14 @@ function BetSummaryDialog({
   const overlayStake = preview?.reference_lay_stake_overlay ?? standardStake;
   const customMinimum = rangeMode === "auto" ? underlayStake : manualMinimum;
   const customMaximum = rangeMode === "auto" ? overlayStake : manualMaximum;
-  const displayedLayStake = strategy === "Custom" ? customLayStake : preview?.selected_lay_stake ?? "";
-  const safePreview = effectivePreviewState === "error" ? null : preview;
+  const displayedLayStake = strategy === "Custom"
+    ? customLayStake
+    : strategy === "Underlay"
+      ? underlayStake
+      : strategy === "Overlay"
+        ? overlayStake
+        : standardStake;
+  const safePreview = backCommissionUnsupported || oddsInvalid ? null : preview;
   const rangeMinimumNumber = Number(customMinimum);
   const rangeMaximumNumber = Number(customMaximum);
   const standardStakeNumber = Number(standardStake);
@@ -1575,7 +1599,7 @@ function BetSummaryDialog({
   return (
     <ModalBoundary onDismiss={onClose} returnFocusRef={returnFocusRef}>
       <div className="modal-backdrop modal-backdrop-elevated" onClick={onClose}>
-        <section aria-label="Oddsmatcher Bet Summary" aria-modal="true" className={`modal-panel oddsmatcher-summary-dialog${advanced ? " is-advanced" : ""}`} data-pd-id="oddsmatcher.bet-summary" onClick={(event) => event.stopPropagation()} role="dialog">
+        <section aria-label="Oddsmatcher Bet Summary" aria-modal="true" className={`modal-panel oddsmatcher-summary-dialog${advanced ? " is-advanced" : ""}`} data-pd-id="oddsmatcher.bet-summary" data-preview-pending={previewPending || undefined} onClick={(event) => event.stopPropagation()} role="dialog">
           <header className="modal-sticky-header oddsmatcher-summary-header">
             <h2 id="oddsmatcher-summary-title">Bet Summary</h2>
             <button aria-label="Close Bet Summary" className="modal-close-button" onClick={onClose} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button>
@@ -1594,7 +1618,7 @@ function BetSummaryDialog({
                   <label className="field-control" htmlFor="oddsmatcher-back-stake"><span>Back Stake</span><FinancialTextInput allowNegative={false} ariaLabel="Back Stake" dataPdId="oddsmatcher.back-stake" id="oddsmatcher-back-stake" onBlur={() => undefined} onChange={setStake} value={stake} /></label>
                   <div className="oddsmatcher-summary-input-row">
                     <label className="field-control"><span>Back Odds</span><input aria-describedby={backOddsError ? "oddsmatcher-back-odds-error" : undefined} aria-invalid={Boolean(backOddsError) || undefined} aria-label="Back Odds" inputMode={backOddsFormat === "Fractional" ? "text" : "decimal"} onChange={(event) => changeOddsInput("back", event.target.value)} value={backOddsInput} />{backOddsError ? <small className="field-validation-text" id="oddsmatcher-back-odds-error" role="alert">{backOddsError}</small> : null}</label>
-                    <label className="field-control" htmlFor="oddsmatcher-back-commission"><span>Back Commission</span><PercentageTextInput ariaLabel="Back Commission (%)" dataPdId="oddsmatcher.back-commission" id="oddsmatcher-back-commission" onChange={setBackCommission} value={backCommission} />{backCommissionUnsupported ? <small className="field-validation-text">The current qualifying contract supports 0% bookmaker commission.</small> : null}</label>
+                    <label className="field-control" htmlFor="oddsmatcher-back-commission"><span>Back Commission</span><PercentageTextInput ariaLabel="Back Commission" dataPdId="oddsmatcher.back-commission" id="oddsmatcher-back-commission" onChange={setBackCommission} value={backCommission} />{backCommissionUnsupported ? <small className="field-validation-text">The current qualifying contract supports 0% bookmaker commission.</small> : null}</label>
                   </div>
                   <button aria-checked={autoBack} aria-disabled={replay} className={`material-switch oddsmatcher-auto-switch${autoBack ? " is-selected" : ""}`} disabled={replay} onClick={() => { const next = !autoBack; setAutoBack(next); if (next) { setBackOdds(opportunity.back.odds); setBackOddsInput(formatOdds(opportunity.back.odds, backOddsFormat)); setBackOddsError(null); } }} role="switch" title={replay ? "Automatic quote updates are unavailable for saved snapshots" : undefined} type="button"><span aria-hidden="true" className="material-switch-track"><span className="material-switch-thumb" /></span><span>Auto-update Back Odds</span></button>
                 </section>
@@ -1604,7 +1628,7 @@ function BetSummaryDialog({
                   {profileId ? <div className="oddsmatcher-card-account"><span className={eligibilityClass(opportunity.lay_eligibility.state)}>{opportunity.lay_eligibility.reason}</span></div> : null}
                   <div className="oddsmatcher-summary-input-row">
                     <label className="field-control"><span>Lay Odds</span><input aria-describedby={layOddsError ? "oddsmatcher-lay-odds-error" : undefined} aria-invalid={Boolean(layOddsError) || undefined} aria-label="Lay Odds" inputMode={layOddsFormat === "Fractional" ? "text" : "decimal"} onChange={(event) => changeOddsInput("lay", event.target.value)} value={layOddsInput} />{layOddsError ? <small className="field-validation-text" id="oddsmatcher-lay-odds-error" role="alert">{layOddsError}</small> : null}</label>
-                    <label className="field-control" htmlFor="oddsmatcher-lay-commission"><span>Lay Commission <small className="oddsmatcher-summary-source">{commissionSource}</small></span><PercentageTextInput ariaLabel="Lay Commission (%)" dataPdId="oddsmatcher.lay-commission" id="oddsmatcher-lay-commission" onChange={setCommission} value={commission} /></label>
+                    <label className="field-control" htmlFor="oddsmatcher-lay-commission" title={`Commission source: ${commissionSource}`}><span>Lay Commission</span><PercentageTextInput ariaLabel="Lay Commission" dataPdId="oddsmatcher.lay-commission" id="oddsmatcher-lay-commission" onChange={setCommission} value={commission} /></label>
                   </div>
                   <div className="oddsmatcher-lay-meta-row"><LiquidityUnavailableStatus /></div>
                   <button aria-checked={autoLay} aria-disabled={replay} className={`material-switch oddsmatcher-auto-switch${autoLay ? " is-selected" : ""}`} disabled={replay} onClick={() => { const next = !autoLay; setAutoLay(next); if (next) { setLayOdds(opportunity.lay.odds); setLayOddsInput(formatOdds(opportunity.lay.odds, layOddsFormat)); setLayOddsError(null); } }} role="switch" title={replay ? "Automatic quote updates are unavailable for saved snapshots" : undefined} type="button"><span aria-hidden="true" className="material-switch-track"><span className="material-switch-thumb" /></span><span>Auto-update Lay Odds</span></button>
@@ -1638,7 +1662,7 @@ function BetSummaryDialog({
                   <div><strong>{opportunity.selection}</strong><span>{opportunity.market}</span></div>
                   <small>{opportunity.back.account_name} back · {formatObserved(opportunity.age_seconds)} · {simpleExchangeName(opportunity.lay.account_name)} lay · {formatObserved(opportunity.age_seconds)}</small>
                 </section>
-                {effectivePreviewState === "loading" ? <LedgerLoadingIndicator label="Updating Bet Summary" /> : null}
+                {effectivePreviewState === "loading" && !preview ? <LedgerLoadingIndicator label="Loading Bet Summary" /> : null}
                 {safePreview ? <div className="oddsmatcher-outcome-stack">
                   <OutcomeTable heading={`If back (${opportunity.back.account_name}) bet wins`} outcome={safePreview.outcomes?.find((item) => item.key === "back-wins")} total={safePreview.pnl_if_back_wins} />
                   <OutcomeTable heading={`If lay (${simpleExchangeName(opportunity.lay.account_name)}) bet wins`} outcome={safePreview.outcomes?.find((item) => item.key === "lay-wins")} total={safePreview.pnl_if_lay_wins} />
@@ -1648,7 +1672,7 @@ function BetSummaryDialog({
                 {draftState === "saved" && profileId ? <p className="status-message" role="status">Prospecting draft saved. No balance or placed-bet state changed. <Link href={`/profiles/${profileId}/tracker/sportsbook-bets?record=${encodeURIComponent(draftId)}`}>Open Sportsbook draft</Link></p> : null}
                 <div className="oddsmatcher-prospecting-action">
                   {profileStatus}
-                  <button className="modal-primary-button" disabled={replay || !profileId || !opportunity.can_create_prospecting_draft || effectivePreviewState !== "ready" || draftState === "saving" || draftState === "saved"} onClick={() => void createDraft()} type="button">{draftState === "saving" ? "Adding draft…" : draftState === "saved" ? "Draft added" : "Add Prospecting Draft"}</button>
+                  <button className="modal-primary-button" disabled={replay || !profileId || !opportunity.can_create_prospecting_draft || effectivePreviewState !== "ready" || previewPending || draftState === "saving" || draftState === "saved"} onClick={() => void createDraft()} type="button">{draftState === "saving" ? "Adding draft…" : draftState === "saved" ? "Draft added" : "Add Prospecting Draft"}</button>
                   <button className="button-link icon-text-action" onClick={() => void navigator.clipboard.writeText(opportunityCopyText(opportunity))} type="button"><span aria-hidden="true" className="material-symbols-outlined">content_copy</span>Copy Opportunity</button>
                 </div>
               </div>

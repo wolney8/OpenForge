@@ -288,3 +288,15 @@ Complete this for every feature, bug fix, component, fixture-backed UI, route or
 - [x] Resize, horizontal overflow, Escape/focus restoration and 1440/1100/900/760/430 widths are covered.
 - [x] Profile/navigation and ledger overlays were inspected; they do not consume the local Oddsmatcher primitive.
 - [ ] Owner visual acceptance remains pending.
+
+## CP-096 Bet Summary background preview — 2026-10-27
+
+- [x] Routine calculation edits retain the last usable authoritative preview and never render the
+      modal-blocking ledger overlay.
+- [x] Preview requests debounce, abort superseded work and accept only the latest response.
+- [x] Named strategies and the lay slider update their local stake presentation immediately while
+      outcome money remains API-authoritative.
+- [x] Back/Lay Odds and Commission fields share paired geometry, typography, focus treatment and
+      concise accessible labels; the percent adornment stays inside one field surface.
+- [x] Desktop, 430px, focus, reduced-motion and private headless evidence are covered.
+- [ ] Owner interaction and visual acceptance remain pending.

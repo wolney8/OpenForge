@@ -775,3 +775,16 @@ Python source lint retains 13 pre-existing formatting findings on unchanged line
 `BACKUP-01433E92` preceded canonical installation. `normal-owner` fingerprint remains
 `7246998d43722066`, integrity is `ok`, foreign-key violations remain zero and all 29 financial
 controls are unchanged. Owner interaction and acceptance remain pending.
+
+## CP-096 Oddsmatcher Bet Summary background preview — 2026-10-27
+
+| ID | Surface | Requested behaviour | Signed-off equivalent | Status |
+| --- | --- | --- | --- | --- |
+| PD-FIX-443 / #54 | Preview request lifecycle | Keep a usable authoritative preview visible while debounced replacement requests run; abort and ignore stale responses | Existing background-refresh and latest-request-wins authorities | IN PROGRESS |
+| PD-FIX-444 / #54 | Advanced lay interaction | Update slider, selected stake and named strategy immediately without dimming or blocking the modal | Existing single-lay slider and calculator segmented control | IN PROGRESS |
+| PD-FIX-445 / #54 | Odds and commission fields | Match paired field geometry, typography, focus and suffix alignment with concise visible labels | Existing `field-control` and `PercentageTextInput` primitives | IN PROGRESS |
+| PD-FIX-446 / #54 | Accessibility and responsive containment | Preserve focus, avoid repeated live announcements, respect reduced motion and retain paired fields at 430px | Existing modal and field accessibility contracts | IN PROGRESS |
+| PD-FIX-447 / #54 | Verification and canonical install | Prove authoritative latest-response behaviour, calculations and geometry headlessly, then install without provider or owner-data writes | Existing Oddsmatcher component/browser harness and canonical local install procedure | IN PROGRESS |
+
+This batch changes only Bet Summary preview interaction and paired field presentation. It does not
+change the calculator formula, provider, filtering, liquidity, ledger or placement authorities.
