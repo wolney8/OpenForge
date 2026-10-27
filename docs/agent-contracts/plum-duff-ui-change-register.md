@@ -733,15 +733,23 @@ of one live refresh and a newly retained replay snapshot remains pending.
 
 | ID | Surface | Requested behaviour | Signed-off equivalent | Status |
 | --- | --- | --- | --- | --- |
-| PD-FIX-432 / #54 | Lay-reference calculation | Correct the authoritative Underlay / Standard / Overlay stake ordering without sorting presentation values | Existing qualifying calculator contract and deterministic Sportsbook fixtures | IN PROGRESS |
-| PD-FIX-433 / #54 | Universal Oddsmatcher settings | Move data source, saved snapshot and automatic quote-update defaults into Fund Manager Settings using the existing versioned preferences authority | Existing Fund Manager settings panels and `oddsmatcher_preferences_json` validation boundary | IN PROGRESS |
-| PD-FIX-434 / #54 | Replay safety | Apply the universal saved-snapshot choice without provider calls and force automatic quote updates, refresh, drafts and external links off in replay | Existing CP-093 replay boundary | IN PROGRESS |
-| PD-FIX-435 / #54 | Bet Summary controls | Use shared field/select/switch controls, concise odds labels and an anchored settings surface | Existing calculator controls and Oddsmatcher anchored surfaces | IN PROGRESS |
-| PD-FIX-436 / #54 | Advanced composition | Present lay stake, strategy controls, range slider and Min / Current / Max references in one stable hierarchy with Place Lay last | Existing single-lay slider and calculator segmented control | IN PROGRESS |
-| PD-FIX-437 / #54 | Durable copy/consistency rules | Record concise field-label, anchored-settings and calculation-reference rules in existing contracts | Existing known-pitfalls and Oddsmatcher contract records | IN PROGRESS |
-| PD-FIX-438 / #54 | Verification and canonical install | Prove calculations, preference round trip, replay safety, accessibility and responsive geometry before bounded localhost installation | Existing API/component/browser harness and canonical local install procedure | IN PROGRESS |
+| PD-FIX-432 / #54 | Lay-reference calculation | Correct the authoritative Underlay / Standard / Overlay stake ordering without sorting presentation values | Existing qualifying calculator contract and deterministic Sportsbook fixtures | COMPLETE |
+| PD-FIX-433 / #54 | Universal Oddsmatcher settings | Move data source, saved snapshot and automatic quote-update defaults into Fund Manager Settings using the existing versioned preferences authority | Existing Fund Manager settings panels and `oddsmatcher_preferences_json` validation boundary | COMPLETE |
+| PD-FIX-434 / #54 | Replay safety | Apply the universal saved-snapshot choice without provider calls and force automatic quote updates, refresh, drafts and external links off in replay | Existing CP-093 replay boundary | COMPLETE |
+| PD-FIX-435 / #54 | Bet Summary controls | Use shared field/select/switch controls, concise odds labels and an anchored settings surface | Existing calculator controls and Oddsmatcher anchored surfaces | COMPLETE |
+| PD-FIX-436 / #54 | Advanced composition | Present lay stake, strategy controls, range slider and Min / Current / Max references in one stable hierarchy with Place Lay last | Existing single-lay slider and calculator segmented control | COMPLETE |
+| PD-FIX-437 / #54 | Durable copy/consistency rules | Record concise field-label, anchored-settings and calculation-reference rules in existing contracts | Existing known-pitfalls and Oddsmatcher contract records | COMPLETE |
+| PD-FIX-438 / #54 | Verification and canonical install | Prove calculations, preference round trip, replay safety, accessibility and responsive geometry before bounded localhost installation | Existing API/component/browser harness and canonical local install procedure | COMPLETE |
 
 This batch is limited to the demonstrated lay-reference defect, existing Oddsmatcher preference
 authority, Bet Summary control hierarchy and their direct tests/documentation. It does not change
 provider acquisition, filters, liquidity, ledger money, placement permissions or owner financial
 records.
+
+Verification: 193 focused API tests, 605 web unit tests and six CP-089/090/093/094 browser tests
+pass; full typecheck and production build pass; changed web files and API rules pass focused lint.
+Repository-wide lint retains the unchanged Free Bet render-time ref error, and five unrelated full
+API failures reproduce on the pre-change installed baseline. Verified backup `BACKUP-47FDCC0A`
+preceded canonical installation. `normal-owner` fingerprint remains `7246998d43722066`, SQLite
+integrity is `ok`, foreign-key violations remain zero and all 29 financial controls are unchanged.
+Owner interaction and visual acceptance remain pending.

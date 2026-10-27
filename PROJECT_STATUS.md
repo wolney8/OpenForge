@@ -6,8 +6,10 @@
 > as 9.41 / 10.14 / 13.18. Universal Live/Saved Snapshot and automatic quote-update defaults use
 > the existing versioned Fund Manager preferences JSON. Bet Summary uses a real Bet Type select,
 > an anchored format surface and a shared range primitive with Place Lay last. Automated API,
-> component and private headless evidence pass without provider calls; canonical installation and
-> owner verification remain pending.
+> component and private headless evidence pass without provider calls. Verified backup
+> `BACKUP-47FDCC0A` preceded installation on canonical localhost:3010/8010 at `cfebc79e…`;
+> database identity, fingerprint, integrity, foreign keys and all 29 financial controls remain
+> unchanged. Owner interaction and visual acceptance remain pending.
 
 > **CP-093 provider quota and replay correction — 2026-10-26:** the local Oddsmatcher removes the
 > obsolete Plum Duff daily credit ceiling. Manual Live refresh now follows provider-reported usage,
