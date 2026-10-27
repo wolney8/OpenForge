@@ -770,8 +770,8 @@ scope only for regression verification.
 
 Verification: 190 focused qualifying/Sportsbook tests and 47 Free Bet/conversion/settings
 regressions pass; all 605 web unit tests and three sequential CP-093/094 browser tests pass. Full
-web/API typecheck and the production build pass; focused changed-file lint passes. The wider Python
-source lint retains 13 pre-existing formatting findings on unchanged lines. Verified backup
+web/API typecheck and the production build pass; focused web-component and changed-test lint passes.
+Python source lint retains 13 pre-existing formatting findings on unchanged lines. Verified backup
 `BACKUP-01433E92` preceded canonical installation. `normal-owner` fingerprint remains
 `7246998d43722066`, integrity is `ok`, foreign-key violations remain zero and all 29 financial
 controls are unchanged. Owner interaction and acceptance remain pending.
