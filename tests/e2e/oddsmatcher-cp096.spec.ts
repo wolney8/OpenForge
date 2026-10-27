@@ -92,6 +92,8 @@ test("CP-096 Bet Summary refreshes calculations in the background", async ({ pag
   const slider = dialog.getByLabel("Lay strategy range");
   await slider.focus();
   await slider.press("End");
+  await slider.press("Home");
+  await slider.press("End");
   await expect(dialog.getByRole("textbox", { name: "Lay Stake" })).toHaveValue("10.40");
   await expect(dialog.locator('.ledger-loading-overlay')).toHaveCount(0);
   await expect(dialog.getByText("Updating Bet Summary")).toHaveCount(0);
