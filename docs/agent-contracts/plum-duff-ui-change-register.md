@@ -780,11 +780,19 @@ controls are unchanged. Owner interaction and acceptance remain pending.
 
 | ID | Surface | Requested behaviour | Signed-off equivalent | Status |
 | --- | --- | --- | --- | --- |
-| PD-FIX-443 / #54 | Preview request lifecycle | Keep a usable authoritative preview visible while debounced replacement requests run; abort and ignore stale responses | Existing background-refresh and latest-request-wins authorities | IN PROGRESS |
-| PD-FIX-444 / #54 | Advanced lay interaction | Update slider, selected stake and named strategy immediately without dimming or blocking the modal | Existing single-lay slider and calculator segmented control | IN PROGRESS |
-| PD-FIX-445 / #54 | Odds and commission fields | Match paired field geometry, typography, focus and suffix alignment with concise visible labels | Existing `field-control` and `PercentageTextInput` primitives | IN PROGRESS |
-| PD-FIX-446 / #54 | Accessibility and responsive containment | Preserve focus, avoid repeated live announcements, respect reduced motion and retain paired fields at 430px | Existing modal and field accessibility contracts | IN PROGRESS |
-| PD-FIX-447 / #54 | Verification and canonical install | Prove authoritative latest-response behaviour, calculations and geometry headlessly, then install without provider or owner-data writes | Existing Oddsmatcher component/browser harness and canonical local install procedure | IN PROGRESS |
+| PD-FIX-443 / #54 | Preview request lifecycle | Keep a usable authoritative preview visible while debounced replacement requests run; abort and ignore stale responses | Existing background-refresh and latest-request-wins authorities | COMPLETE |
+| PD-FIX-444 / #54 | Advanced lay interaction | Update slider, selected stake and named strategy immediately without dimming or blocking the modal | Existing single-lay slider and calculator segmented control | COMPLETE |
+| PD-FIX-445 / #54 | Odds and commission fields | Match paired field geometry, typography, focus and suffix alignment with concise visible labels | Existing `field-control` and `PercentageTextInput` primitives | COMPLETE |
+| PD-FIX-446 / #54 | Accessibility and responsive containment | Preserve focus, avoid repeated live announcements, respect reduced motion and retain paired fields at 430px | Existing modal and field accessibility contracts | COMPLETE |
+| PD-FIX-447 / #54 | Verification and canonical install | Prove authoritative latest-response behaviour, calculations and geometry headlessly, then install without provider or owner-data writes | Existing Oddsmatcher component/browser harness and canonical local install procedure | COMPLETE |
 
 This batch changes only Bet Summary preview interaction and paired field presentation. It does not
 change the calculator formula, provider, filtering, liquidity, ledger or placement authorities.
+
+Verification: 605 web unit tests, CP-094 and CP-096 sequential browser regressions, full web
+typecheck, production build and focused component lint pass. The installed CP-096 browser receipt
+passes against localhost:3010. Verified backup `BACKUP-9F42FF29` preceded installation; database
+identity `normal-owner`, fingerprint `7246998d43722066` and schema `invited-subscribers-v1` remain
+unchanged. Private evidence is under
+`data/private/evidence/cp096-oddsmatcher-background-preview-20261027/`. Owner interaction and visual
+acceptance remain pending.
