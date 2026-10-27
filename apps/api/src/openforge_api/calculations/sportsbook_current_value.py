@@ -72,6 +72,8 @@ class SportsbookCalculationInput:
     manual_override_reason: str = ""
     reference_lay_stakes: tuple[str | None, str | None, str | None] | None = None
     planned_lay_stake: str = ""
+    default_underlay_factor: str = "0.928"
+    default_overlay_factor: str = "1.300"
 
 
 @dataclass(frozen=True)
@@ -163,13 +165,16 @@ def _manual_override_fallback(
 
 
 def _resolve_reference_lay_stakes(
-    back_stake: Decimal, back_odds: Decimal, lay_odds_1: Decimal, commission_1: Decimal
+    back_stake: Decimal,
+    back_odds: Decimal,
+    lay_odds_1: Decimal,
+    commission_1: Decimal,
+    underlay_factor: Decimal,
+    overlay_factor: Decimal,
 ) -> tuple[Decimal, Decimal, Decimal]:
     standard = quantize_money((back_stake * back_odds) / (lay_odds_1 - commission_1))
-    underlay = quantize_money(
-        (back_stake * (back_odds - Decimal("1"))) / (lay_odds_1 - Decimal("1"))
-    )
-    overlay = quantize_money(back_stake / (Decimal("1") - commission_1))
+    underlay = quantize_money(standard * underlay_factor)
+    overlay = quantize_money(standard * overlay_factor)
     return standard, underlay, overlay
 
 
@@ -369,6 +374,8 @@ def calculate_sportsbook_current_value(
     bonus_retention_rate = parse_decimal(calculation_input.bonus_retention_rate)
     lay_odds_1 = parse_decimal(calculation_input.lay_odds_1)
     commission_1 = parse_decimal(calculation_input.lay_commission_1)
+    underlay_factor = parse_decimal(calculation_input.default_underlay_factor)
+    overlay_factor = parse_decimal(calculation_input.default_overlay_factor)
 
     no_lay_mode = calculation_input.match_strategy == "No Lay"
     manual_lay_mode = calculation_input.match_strategy in {"Custom", "Partial Lay"}
@@ -522,8 +529,24 @@ def calculate_sportsbook_current_value(
                 counts_as_open=counts_as_open,
                 is_overdue=is_overdue,
             )
+        if (
+            underlay_factor is None
+            or overlay_factor is None
+            or underlay_factor <= 0
+            or underlay_factor >= 1
+            or overlay_factor <= 1
+        ):
+            raise ValueError(
+                "Lay-reference factors must keep Underlay below Standard "
+                "and Overlay above Standard."
+            )
         ref_standard, ref_underlay, ref_overlay = _resolve_reference_lay_stakes(
-            back_stake, back_odds, lay_odds_1, commission_1
+            back_stake,
+            back_odds,
+            lay_odds_1,
+            commission_1,
+            underlay_factor,
+            overlay_factor,
         )
     if calculation_input.reference_lay_stakes is not None:
         parsed_references = tuple(

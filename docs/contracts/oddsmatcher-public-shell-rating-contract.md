@@ -227,6 +227,12 @@ Observed modal math behavior:
 - modal labels should separate back and lay sides clearly and show live values without a calculate button
 - the modal should preserve the table context behind it rather than replacing the page
 - advanced controls should render inline in the lay panel, not as a separate modal
+- Live/Saved Snapshot and automatic Back/Lay quote-update defaults are universal Fund Manager
+  preferences. The scanner renders their active status but does not own a second source selector.
+- Saved Snapshot mode forces both automatic quote-update controls off and disabled, and retains the
+  existing replay restrictions on refresh, external quote actions and Prospecting drafts.
+- Bet Summary display-format settings use a trigger-anchored surface inside the existing modal;
+  they do not create a second modal layer.
 
 ## 20. Audit trail requirements
 

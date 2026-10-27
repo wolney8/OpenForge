@@ -40,8 +40,8 @@ def test_qualifying_and_free_bet_configuration_matrix(
     stake, back_odds, lay_odds, commission = map(Decimal, ("10", "4", "4.2", "0.02"))
     if backing == "Normal":
         standard = stake * back_odds / (lay_odds - commission)
-        underlay = stake * (back_odds - 1) / (lay_odds - 1)
-        overlay = stake / (1 - commission)
+        underlay = Decimal(placed(standard)) * Decimal("0.928")
+        overlay = Decimal(placed(standard)) * Decimal("1.300")
         payload: dict[str, str] = {"bet_type": "qualifying"}
     elif backing == "SNR":
         standard = stake * (back_odds - 1) / (lay_odds - commission)
@@ -210,8 +210,8 @@ def test_cashback_strategy_matrix(client: TestClient, offer: str, strategy: str)
     stake, back_odds, lay_odds, commission = map(Decimal, ("10", "4", "4.2", "0.02"))
     expected = {
         "Standard": stake * back_odds / (lay_odds - commission),
-        "Underlay": stake * (back_odds - 1) / (lay_odds - 1),
-        "Overlay": stake / (1 - commission),
+        "Underlay": Decimal(placed(stake * back_odds / (lay_odds - commission))) * Decimal("0.928"),
+        "Overlay": Decimal(placed(stake * back_odds / (lay_odds - commission))) * Decimal("1.300"),
         "Custom": Decimal("8.13"),
         "Partial Lay": Decimal("8.13"),
     }[strategy]
@@ -256,8 +256,8 @@ def test_profit_boost_source_and_strategy_matrix(
     stake, lay_odds, commission = map(Decimal, ("10", "4.2", "0.02"))
     expected = {
         "Standard": stake * odds / (lay_odds - commission),
-        "Underlay": stake * (odds - 1) / (lay_odds - 1),
-        "Overlay": stake / (1 - commission),
+        "Underlay": Decimal(placed(stake * odds / (lay_odds - commission))) * Decimal("0.928"),
+        "Overlay": Decimal(placed(stake * odds / (lay_odds - commission))) * Decimal("1.300"),
         "Custom": Decimal("6.13"),
         "Partial Lay": Decimal("6.13"),
     }[strategy]

@@ -728,3 +728,20 @@ Provider responses were mocked and no live provider credits were consumed. Verif
 `7246998d43722066`, SQLite integrity is `ok`, foreign-key violations remain zero, and all 3,438
 rows across 18 governed financial/control tables retain their pre-install hashes. Owner verification
 of one live refresh and a newly retained replay snapshot remains pending.
+
+## CP-094 Oddsmatcher Bet Summary and universal settings — 2026-10-27
+
+| ID | Surface | Requested behaviour | Signed-off equivalent | Status |
+| --- | --- | --- | --- | --- |
+| PD-FIX-432 / #54 | Lay-reference calculation | Correct the authoritative Underlay / Standard / Overlay stake ordering without sorting presentation values | Existing qualifying calculator contract and deterministic Sportsbook fixtures | IN PROGRESS |
+| PD-FIX-433 / #54 | Universal Oddsmatcher settings | Move data source, saved snapshot and automatic quote-update defaults into Fund Manager Settings using the existing versioned preferences authority | Existing Fund Manager settings panels and `oddsmatcher_preferences_json` validation boundary | IN PROGRESS |
+| PD-FIX-434 / #54 | Replay safety | Apply the universal saved-snapshot choice without provider calls and force automatic quote updates, refresh, drafts and external links off in replay | Existing CP-093 replay boundary | IN PROGRESS |
+| PD-FIX-435 / #54 | Bet Summary controls | Use shared field/select/switch controls, concise odds labels and an anchored settings surface | Existing calculator controls and Oddsmatcher anchored surfaces | IN PROGRESS |
+| PD-FIX-436 / #54 | Advanced composition | Present lay stake, strategy controls, range slider and Min / Current / Max references in one stable hierarchy with Place Lay last | Existing single-lay slider and calculator segmented control | IN PROGRESS |
+| PD-FIX-437 / #54 | Durable copy/consistency rules | Record concise field-label, anchored-settings and calculation-reference rules in existing contracts | Existing known-pitfalls and Oddsmatcher contract records | IN PROGRESS |
+| PD-FIX-438 / #54 | Verification and canonical install | Prove calculations, preference round trip, replay safety, accessibility and responsive geometry before bounded localhost installation | Existing API/component/browser harness and canonical local install procedure | IN PROGRESS |
+
+This batch is limited to the demonstrated lay-reference defect, existing Oddsmatcher preference
+authority, Bet Summary control hierarchy and their direct tests/documentation. It does not change
+provider acquisition, filters, liquidity, ledger money, placement permissions or owner financial
+records.

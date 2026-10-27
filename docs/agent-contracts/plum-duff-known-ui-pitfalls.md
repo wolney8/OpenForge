@@ -1504,3 +1504,15 @@ viewports retain the contained scroll fallback.
   support start/end alignment and clamp to a 16px viewport inset on open, scroll and resize.
 - Regression test: `tests/e2e/oddsmatcher-cp091.spec.ts` covers known/unavailable status centring,
   1440–430px overlay containment, page overflow, Escape and focus restoration.
+
+## 2026-10-27: Local calculator controls obscured shared semantics
+
+- Area: Oddsmatcher Bet Summary settings, quote-update defaults and Advanced lay range.
+- Root cause: a nested settings modal, static Bet Type surface and outcome-target endpoints were
+  composed locally instead of reusing the settings, anchored-surface, select and directional-range
+  authorities.
+- Prevention: persistent defaults live in Fund Manager Settings; nested settings use the shared
+  anchored overlay; field labels omit the selected format; the calculation authority guarantees
+  `Underlay < Standard < Overlay` before presentation.
+- Regression test: `tests/e2e/oddsmatcher-cp094.spec.ts` covers settings persistence, replay safety,
+  nested Escape, Advanced hierarchy, directional references and 1440/430px containment.

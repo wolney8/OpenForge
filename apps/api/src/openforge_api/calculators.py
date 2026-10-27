@@ -1131,6 +1131,8 @@ def _calculate(payload: MatchedBettingPayload, *, _include_custom: bool = True) 
                 lay_odds_1=payload.lay_odds,
                 lay_commission_1=payload.exchange_commission,
                 lay_actual=payload.manual_lay_stake,
+                default_underlay_factor=payload.underlay_factor,
+                default_overlay_factor=payload.overlay_factor,
             ),
             as_of_date=date.today(),
         )
@@ -1168,6 +1170,8 @@ def _calculate(payload: MatchedBettingPayload, *, _include_custom: bool = True) 
                         match_strategy=reference_strategy,
                         lay_odds_1=payload.lay_odds,
                         lay_commission_1=payload.exchange_commission,
+                        default_underlay_factor=payload.underlay_factor,
+                        default_overlay_factor=payload.overlay_factor,
                     ),
                     as_of_date=date.today(),
                 )

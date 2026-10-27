@@ -159,7 +159,25 @@ class OddsMatcherPreferences(BaseModel):
     excluded_exchange_identities: list[str] = Field(default_factory=list, max_length=20)
     show_arbs_default: bool = False
     default_advanced: bool = False
+    data_source: Literal["live", "replay"] = "live"
+    saved_snapshot_id: str = Field(default="", max_length=160)
+    auto_update_back_odds: bool = False
+    auto_update_lay_odds: bool = False
     saved_filters: list[OddsMatcherSavedFilter] = Field(default_factory=list, max_length=50)
+
+    @field_validator("saved_snapshot_id")
+    @classmethod
+    def valid_snapshot_id(cls, value: str) -> str:
+        cleaned = value.strip()
+        if cleaned and not all(character.isalnum() or character in "-_" for character in cleaned):
+            raise ValueError("Saved snapshot identity is invalid.")
+        return cleaned
+
+    @model_validator(mode="after")
+    def replay_has_snapshot(self) -> "OddsMatcherPreferences":
+        if self.data_source == "replay" and not self.saved_snapshot_id:
+            raise ValueError("Saved snapshot mode requires a selected snapshot.")
+        return self
 
     @field_validator("default_back_stake")
     @classmethod

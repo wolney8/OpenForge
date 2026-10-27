@@ -1,5 +1,14 @@
 # Project Status — Plum Duff / OpenForge — Doc ID: PS-CODEX-001
 
+> **CP-094 Oddsmatcher settings and Bet Summary correction — 2026-10-27:** the qualifying
+> calculation authority now derives directional references from the existing governed factors and
+> enforces `Underlay < Standard < Overlay`; the former 10.20 / 10.14 / 10.00 reversal class resolves
+> as 9.41 / 10.14 / 13.18. Universal Live/Saved Snapshot and automatic quote-update defaults use
+> the existing versioned Fund Manager preferences JSON. Bet Summary uses a real Bet Type select,
+> an anchored format surface and a shared range primitive with Place Lay last. Automated API,
+> component and private headless evidence pass without provider calls; canonical installation and
+> owner verification remain pending.
+
 > **CP-093 provider quota and replay correction — 2026-10-26:** the local Oddsmatcher removes the
 > obsolete Plum Duff daily credit ceiling. Manual Live refresh now follows provider-reported usage,
 > remaining quota and request cost while retaining coalescing, no polling and last-good fallback.

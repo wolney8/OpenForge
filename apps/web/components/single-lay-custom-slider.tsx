@@ -20,6 +20,7 @@ export function SingleLayCustomSlider({
   maximumText,
   minimum,
   minimumText,
+  layout = "default",
   onCommit,
   onDraft,
   onMaximumChange,
@@ -34,6 +35,7 @@ export function SingleLayCustomSlider({
   maximumText: string;
   minimum: number;
   minimumText: string;
+  layout?: "default" | "summary";
   onCommit: (value: string) => void;
   onDraft: (value: string) => void;
   onMaximumChange: (value: string) => void;
@@ -55,32 +57,41 @@ export function SingleLayCustomSlider({
   const emit = (callback: (value: string) => void, position: string) => {
     callback(fromPosition(Number(position)).toFixed(unit === "multiplier" ? 4 : 2));
   };
+  const range = <div className="custom-slider-track-wrap"><input
+    aria-label={ariaLabel}
+    aria-valuemax={maximum}
+    aria-valuemin={minimum}
+    aria-valuenow={current}
+    aria-valuetext={unit === "multiplier" ? `${current.toFixed(4)} times` : undefined}
+    className="custom-slider-track"
+    disabled={disabled}
+    max={usesSplitScale ? 100 : maximum}
+    min={usesSplitScale ? 0 : minimum}
+    onChange={(event) => { if (interactionActive.current) emit(onDraft, event.target.value); }}
+    onKeyDown={(event) => { if (COMMIT_KEYS.has(event.key)) interactionActive.current = true; }}
+    onKeyUp={(event) => { if (COMMIT_KEYS.has(event.key) && interactionActive.current) { emit(onCommit, event.currentTarget.value); interactionActive.current = false; } }}
+    onPointerCancel={() => { interactionActive.current = false; }}
+    onPointerDown={() => { interactionActive.current = true; }}
+    onPointerUp={(event) => { if (interactionActive.current) { emit(onCommit, event.currentTarget.value); interactionActive.current = false; } }}
+    step={usesSplitScale ? 0.25 : 0.01}
+    type="range"
+    value={toPosition(current)}
+  /></div>;
+  if (layout === "summary") return <div className="custom-slider-card-controls custom-slider-summary-layout" data-pd-id="calculator.custom-slider">
+    {range}
+    <div className="custom-slider-summary-values">
+      <label className="field-control custom-slider-range-label"><span>Range Min</span><input aria-invalid={disabled || undefined} inputMode="decimal" min="0.01" onChange={(event) => onMinimumChange(event.target.value)} step="0.01" type="number" value={minimumText} /></label>
+      <div className="custom-slider-current"><span>Current Lay Stake</span><strong>£{current.toFixed(2)}</strong></div>
+      <label className="field-control custom-slider-range-label"><span>Range Max</span><input aria-invalid={disabled || undefined} inputMode="decimal" min="0.01" onChange={(event) => onMaximumChange(event.target.value)} step="0.01" type="number" value={maximumText} /></label>
+    </div>
+  </div>;
   return <div className="custom-slider-card-controls" data-pd-id="calculator.custom-slider">
     <div className="custom-slider-direction-labels" aria-hidden="true"><span />
       <div><span>Underlay</span><span>Standard</span><span>Overlay</span></div><span />
     </div>
     <div className="custom-slider-row">
       <label className="field-control custom-slider-range-label"><span>Min</span><input aria-invalid={disabled || undefined} inputMode="decimal" min="0.01" onChange={(event) => onMinimumChange(event.target.value)} step="0.01" type="number" value={minimumText} /></label>
-      <div className="custom-slider-track-wrap"><input
-        aria-label={ariaLabel}
-        aria-valuemax={maximum}
-        aria-valuemin={minimum}
-        aria-valuenow={current}
-        aria-valuetext={unit === "multiplier" ? `${current.toFixed(4)} times` : undefined}
-        className="custom-slider-track"
-        disabled={disabled}
-        max={usesSplitScale ? 100 : maximum}
-        min={usesSplitScale ? 0 : minimum}
-        onChange={(event) => { if (interactionActive.current) emit(onDraft, event.target.value); }}
-        onKeyDown={(event) => { if (COMMIT_KEYS.has(event.key)) interactionActive.current = true; }}
-        onKeyUp={(event) => { if (COMMIT_KEYS.has(event.key) && interactionActive.current) { emit(onCommit, event.currentTarget.value); interactionActive.current = false; } }}
-        onPointerCancel={() => { interactionActive.current = false; }}
-        onPointerDown={() => { interactionActive.current = true; }}
-        onPointerUp={(event) => { if (interactionActive.current) { emit(onCommit, event.currentTarget.value); interactionActive.current = false; } }}
-        step={usesSplitScale ? 0.25 : 0.01}
-        type="range"
-        value={toPosition(current)}
-      /></div>
+      {range}
       <label className="field-control custom-slider-range-label"><span>Max</span><input aria-invalid={disabled || undefined} inputMode="decimal" min="0.01" onChange={(event) => onMaximumChange(event.target.value)} step="0.01" type="number" value={maximumText} /></label>
     </div>
   </div>;

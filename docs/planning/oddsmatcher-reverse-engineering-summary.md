@@ -374,3 +374,16 @@ historical, disables Tracker draft creation and external quote links, and leaves
 client-side filters available. Ordinary automated UI work must use synthetic fixtures or replay;
 only explicitly named provider integration checks may spend live credits. Owner verification remains
 **UNVERIFIED**.
+
+## CP-094 universal settings and Advanced lay-reference correction — 2026-10-27
+
+Live/Saved Snapshot selection, selected capture and Back/Lay automatic quote-update defaults are
+universal Fund Manager preferences in versioned `oddsmatcher_preferences_json`; the scanner no
+longer owns a second source selector. Replay forces both update controls off and disabled while
+retaining the CP-093 refresh, link, Prospecting and zero-credit boundaries.
+
+The Normal/Qualifying reference authority now uses the existing governed `0.928` Underlay and
+`1.300` Overlay factors around the even-profit Standard stake. This replaces outcome-target
+endpoints that could reverse their stake order. Bet Summary renders the resulting strict
+Underlay/Standard/Overlay range through the shared slider and anchored overlay patterns. Automated
+verification uses mocked/replay data; owner visual acceptance remains **UNVERIFIED**.

@@ -136,6 +136,10 @@ export type OddsMatcherPreferences = {
   excluded_exchange_identities: string[];
   show_arbs_default: boolean;
   default_advanced: boolean;
+  data_source: "live" | "replay";
+  saved_snapshot_id: string;
+  auto_update_back_odds: boolean;
+  auto_update_lay_odds: boolean;
   saved_filters: OddsMatcherSavedFilter[];
 };
 
@@ -147,6 +151,10 @@ export const defaultOddsMatcherPreferences: OddsMatcherPreferences = {
   excluded_exchange_identities: [],
   show_arbs_default: false,
   default_advanced: false,
+  data_source: "live",
+  saved_snapshot_id: "",
+  auto_update_back_odds: false,
+  auto_update_lay_odds: false,
   saved_filters: [],
 };
 

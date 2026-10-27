@@ -123,8 +123,8 @@ test("CP-090 quote cells align and Bet Summary uses governed range references", 
   await expect(page.locator("body")).toHaveCSS("position", "fixed");
   await page.screenshot({ path: path.join(evidence, "07-normal-summary-1440x1000.png") });
   await dialog.locator('[data-pd-id="oddsmatcher.advanced"]').click();
-  await expect(dialog.getByLabel("Min")).toHaveValue("8.90");
-  await expect(dialog.getByLabel("Max")).toHaveValue("10.40");
+  await expect(dialog.getByLabel("Range Min")).toHaveValue("8.90");
+  await expect(dialog.getByLabel("Range Max")).toHaveValue("10.40");
   await expect(dialog.getByLabel("Lay strategy range")).toHaveAttribute("aria-valuenow", "9.62");
   const advancedGeometry = await dialog.evaluate(node => ({ clientHeight: node.clientHeight, scrollHeight: node.scrollHeight, bodyClient: node.querySelector<HTMLElement>(".oddsmatcher-summary-body")!.clientHeight, bodyScroll: node.querySelector<HTMLElement>(".oddsmatcher-summary-body")!.scrollHeight, viewport: innerHeight, maxHeight: getComputedStyle(node).maxHeight, gridRows: getComputedStyle(node).gridTemplateRows, backdropPadding: getComputedStyle(node.parentElement!).padding }));
   expect(advancedGeometry.clientHeight).toBeLessThanOrEqual(advancedGeometry.viewport - 20);
@@ -132,17 +132,17 @@ test("CP-090 quote cells align and Bet Summary uses governed range references", 
   expect(advancedGeometry.clientHeight).toBeGreaterThan(normalGeometry.clientHeight);
   await page.screenshot({ path: path.join(evidence, "08-advanced-summary-1440x1000.png") });
   await dialog.getByLabel("Back Stake").fill("20.00");
-  await expect(dialog.getByLabel("Min")).toHaveValue("17.80");
-  await expect(dialog.getByLabel("Max")).toHaveValue("20.80");
-  await dialog.getByLabel("Min").fill("17.00");
+  await expect(dialog.getByLabel("Range Min")).toHaveValue("17.80");
+  await expect(dialog.getByLabel("Range Max")).toHaveValue("20.80");
+  await dialog.getByLabel("Range Min").fill("17.00");
   await dialog.getByLabel("Back Stake").fill("30.00");
-  await expect(dialog.getByLabel("Min")).toHaveValue("17.00");
-  await dialog.getByLabel("Max").fill("20.00");
-  await expect(dialog.getByText("Range Max cannot be below the Standard lay stake.")).toBeVisible();
+  await expect(dialog.getByLabel("Range Min")).toHaveValue("17.00");
+  await dialog.getByLabel("Range Max").fill("20.00");
+  await expect(dialog.getByText("Range Max must be higher than the Standard lay stake.")).toBeVisible();
   await expect(dialog.getByLabel("Lay strategy range")).toBeDisabled();
   await page.screenshot({ path: path.join(evidence, "09-advanced-governed-range.png") });
-  await dialog.getByLabel("Min").fill("26.00");
-  await dialog.getByLabel("Max").fill("31.20");
+  await dialog.getByLabel("Range Min").fill("26.00");
+  await dialog.getByLabel("Range Max").fill("31.20");
   await expect(dialog.getByLabel("Lay strategy range")).toBeEnabled();
 
   await page.setViewportSize({ width: 1024, height: 650 });

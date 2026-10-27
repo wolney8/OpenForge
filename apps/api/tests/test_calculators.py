@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from datetime import date
+from decimal import Decimal
 from pathlib import Path
 
 import pytest
@@ -290,6 +291,54 @@ def test_bonus_lock_in_routes_every_normal_strategy_through_offer_aware_referenc
     )
     assert custom.status_code == 200
     assert custom.json()["selected_lay_stake"] == "2.25"
+
+
+@pytest.mark.parametrize(
+    ("stake", "back_odds", "lay_odds", "commission"),
+    [
+        ("10", "4.05", "4.00", "0.005"),  # previous 10.20 / 10.14 / 10.00 reversal class
+        ("10", "4.00", "4.20", "0.02"),
+        ("25", "2.40", "2.52", "0.05"),
+        ("3.50", "8.00", "8.40", "0"),
+    ],
+)
+def test_qualifying_reference_stakes_preserve_directional_invariant(
+    tmp_path: Path,
+    stake: str,
+    back_odds: str,
+    lay_odds: str,
+    commission: str,
+) -> None:
+    configure_temp_database(tmp_path)
+    client = TestClient(app)
+    responses = {}
+    for strategy in ("Underlay", "Standard", "Overlay"):
+        response = client.post(
+            "/fund-manager/calculators/matched-betting/preview",
+            json={
+                "bet_type": "qualifying",
+                "strategy": strategy,
+                "back_stake": stake,
+                "back_odds": back_odds,
+                "lay_odds": lay_odds,
+                "exchange_commission": commission,
+                "underlay_factor": "0.928",
+                "overlay_factor": "1.300",
+            },
+        )
+        assert response.status_code == 200, response.text
+        responses[strategy] = response.json()
+
+    underlay = Decimal(responses["Underlay"]["selected_lay_stake"])
+    standard = Decimal(responses["Standard"]["selected_lay_stake"])
+    overlay = Decimal(responses["Overlay"]["selected_lay_stake"])
+    assert underlay < standard < overlay
+    assert Decimal(responses["Underlay"]["pnl_if_back_wins"]) > Decimal(
+        responses["Standard"]["pnl_if_back_wins"]
+    )
+    assert Decimal(responses["Overlay"]["pnl_if_lay_wins"]) > Decimal(
+        responses["Standard"]["pnl_if_lay_wins"]
+    )
 
 
 @pytest.mark.parametrize(

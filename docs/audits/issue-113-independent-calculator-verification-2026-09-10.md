@@ -163,8 +163,8 @@ and [MBB matched-betting calculator](https://matchedbettingblog.com/matched-bett
 | Family | Mode | Authority | Fixture | Expected | Actual | Rounding | External parity | Status | Follow-up |
 |---|---|---|---|---|---|---|---|---|---|
 | Standard | Standard | Sportsbook workbook contract | AUD-STD-01 | L 9.57; P&L -0.62/-0.62 | exact | half-up penny | MBB lay-win -0.63; documented authority difference | PASS | none |
-| Standard | Underlay | Sportsbook workbook contract | AUD-STD-02 | L 9.38; P&L -0.02/-0.81 | exact | stake then components | MBB L 9.37; documented | PASS | none |
-| Standard | Overlay | Sportsbook workbook contract | AUD-STD-03 | L 10.20; P&L -2.64/0.00 | exact | half-up penny; rounded zero canonicalised | MBB L 10.21; documented | PASS | #105 delta verified |
+| Standard | Underlay | Sportsbook workbook contract | AUD-STD-02 | L 8.88; P&L +1.58/-1.30 | exact | governed 0.928 factor applied to the rounded standard reference | Historical MBB observation superseded by CP-094 directional authority | PASS | Underlay remains below Standard |
+| Standard | Overlay | Sportsbook workbook contract | AUD-STD-03 | L 12.44; P&L -9.81/+2.19 | exact | governed 1.300 factor applied to the rounded standard reference | Historical MBB observation superseded by CP-094 directional authority | PASS | Overlay remains above Standard |
 | Standard | Custom | Sportsbook contract, explicit actual lay | AUD-STD-04 | L 9.00; P&L 1.20/-1.18 | exact | entered stake, penny branches | UNVERIFIED current MBB | PASS | none |
 | Standard | Part Lay (one exposed leg) | Sportsbook contract | AUD-STD-05 | L 4.00; P&L 17.20/-6.08 | exact | entered stake, penny branches | UNVERIFIED current MBB | PASS | multi-part remains outside exposed contract |
 | Standard | Free Bet SNR, all exposed strategies | Free Bet workbook contract | AUD-FB-01/03/04 | base 7.18; under 6.66; over 9.33 | exact | rounded base, then factor | UNVERIFIED current external | PASS | none |

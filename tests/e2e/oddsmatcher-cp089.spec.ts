@@ -64,7 +64,7 @@ test("CP-089 Bet Summary presentation, canonical formats and disabled placement"
   const dialog = page.getByRole("dialog", { name: "Oddsmatcher Bet Summary" });
   await expect(dialog.getByText("Total Profit", { exact: true })).toBeVisible();
   await expect(dialog.getByRole("button", { name: "Place lay bet" })).toHaveAttribute("aria-disabled", "true");
-  await expect(dialog.getByText("Direct exchange placement is not enabled yet.")).toBeVisible();
+  await expect(dialog).toContainText("Direct exchange placement is not enabled.");
   const placeLayStub = dialog.locator('[data-pd-id="oddsmatcher.place-lay-stub"]');
   await expect(placeLayStub).toContainText("Stake:");
   await expect(placeLayStub).toContainText("9.62");
@@ -84,11 +84,11 @@ test("CP-089 Bet Summary presentation, canonical formats and disabled placement"
   await expect(dialog.getByText("Total Profit", { exact: true })).toHaveCount(0);
   await expect(dialog.locator(".oddsmatcher-outcome-card")).toHaveCount(2);
   await page.screenshot({ path: path.join(evidence, "03-overlay-outcomes.png") });
-  await dialog.getByLabel("Lay Stake").fill("9.10");
+  await dialog.getByRole("textbox", { name: "Lay Stake" }).fill("9.10");
   await expect.poll(() => receipt.previews.at(-1)?.strategy).toBe("Custom");
   await expect(dialog.getByText("Total Profit", { exact: true })).toHaveCount(0);
   await page.screenshot({ path: path.join(evidence, "04-custom-stake-outcomes.png") });
-  await dialog.getByLabel("Lay Stake").fill("9.62");
+  await dialog.getByRole("textbox", { name: "Lay Stake" }).fill("9.62");
   await expect.poll(() => receipt.previews.at(-1)?.strategy).toBe("Standard");
   await expect(dialog.getByText("Total Profit", { exact: true })).toBeVisible();
 
@@ -114,7 +114,9 @@ test("CP-089 Bet Summary presentation, canonical formats and disabled placement"
   await settingsTrigger.click();
   await settings.getByLabel("Back Odds Format").selectOption("Moneyline");
   await settings.getByLabel("Lay Odds Format").selectOption("Moneyline");
-  await settings.getByRole("button", { name: "Close", exact: true }).click();
+  await page.keyboard.press("Escape");
+  await expect(settings).toBeHidden();
+  await expect(dialog).toBeVisible();
   await expect(dialog.getByLabel("Back Odds")).toHaveValue("+250");
   await dialog.getByLabel("Lay Odds").fill("not odds");
   await expect(dialog.getByText(/Enter Moneyline odds/)).toBeVisible();

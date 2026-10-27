@@ -177,14 +177,23 @@ Base reference formulas:
 
 - `match_rating = round(back_odds / lay_odds_1, 4)` when odds exist and strategy is not `No Lay`
 - `standard_ref_lay_stake = round((back_stake * back_odds) / (lay_odds_1 - commission_1), 2)`
-- `underlay_ref_lay_stake = round((back_stake * (back_odds - 1)) / (lay_odds_1 - 1), 2)`
-- `overlay_ref_lay_stake = round(back_stake / (1 - commission_1), 2)`
+- `underlay_ref_lay_stake = round(standard_ref_lay_stake * default_underlay_factor, 2)`,
+  where the governed factor is greater than zero and below one
+- `overlay_ref_lay_stake = round(standard_ref_lay_stake * default_overlay_factor, 2)`,
+  where the governed factor is above one
+- the directional invariant is `Underlay < Standard < Overlay` after governed money rounding;
+  equality at an unrepresentably small stake is unavailable for range interaction rather than
+  silently reordered
 - `selected_lay_stake`
   - `0` for `No Lay`
   - `lay_actual` if provided
   - strategy reference stake for `Standard`, `Underlay`, `Overlay`
   - blank unless manually supplied for `Custom` and `Partial Lay`
   - workbook uses underlay-style selected reference for `Multilay` and `Multilay-Underlay`, but actual multi-lay branch stakes remain separate
+
+The older outcome-target endpoints could reverse their stake order around Standard for valid odds.
+They remain provenance for historical workbook values, but are not the strategy-reference authority
+for new Normal/Qualifying calculations.
 
 Liability:
 

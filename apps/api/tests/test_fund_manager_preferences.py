@@ -94,6 +94,10 @@ def test_oddsmatcher_preferences_round_trip_and_saved_filter_lifecycle(tmp_path:
         "excluded_exchange_identities": [],
         "show_arbs_default": False,
         "default_advanced": False,
+        "data_source": "live",
+        "saved_snapshot_id": "",
+        "auto_update_back_odds": False,
+        "auto_update_lay_odds": False,
         "saved_filters": [],
     }
 
@@ -104,6 +108,10 @@ def test_oddsmatcher_preferences_round_trip_and_saved_filter_lifecycle(tmp_path:
         "excluded_bookmaker_identities": ["bookmaker_a"],
         "show_arbs_default": True,
         "default_advanced": True,
+        "data_source": "replay",
+        "saved_snapshot_id": "20261026T203500Z-demo",
+        "auto_update_back_odds": True,
+        "auto_update_lay_odds": True,
         "saved_filters": [{
             "id": "filter-001",
             "name": "High rating",
@@ -121,6 +129,10 @@ def test_oddsmatcher_preferences_round_trip_and_saved_filter_lifecycle(tmp_path:
     assert saved.json()["saved_filters"][0]["description"] == (
         "Premier League opportunities above the target rating."
     )
+    assert saved.json()["data_source"] == "replay"
+    assert saved.json()["saved_snapshot_id"] == "20261026T203500Z-demo"
+    assert saved.json()["auto_update_back_odds"] is True
+    assert saved.json()["auto_update_lay_odds"] is True
     assert TestClient(app).get("/fund-manager/preferences/oddsmatcher").json() == saved.json()
 
     renamed = saved.json()
@@ -163,6 +175,14 @@ def test_oddsmatcher_preferences_reject_invalid_contracts(tmp_path: Path) -> Non
 
     assert client.put(
         "/fund-manager/preferences/oddsmatcher", json={**base, "unknown": True}
+    ).status_code == 422
+    assert client.put(
+        "/fund-manager/preferences/oddsmatcher",
+        json={**base, "data_source": "replay", "saved_snapshot_id": ""},
+    ).status_code == 422
+    assert client.put(
+        "/fund-manager/preferences/oddsmatcher",
+        json={**base, "saved_snapshot_id": "../../private"},
     ).status_code == 422
     assert client.put(
         "/fund-manager/preferences/oddsmatcher",

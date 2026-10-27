@@ -61,6 +61,17 @@ Rules:
 4. A one-off override requires a short code comment and task-summary justification.
 5. Equivalent controls in one region must share structure and computed styling.
 
+Before creating or positioning a control, inspect and reuse the established platform pattern for
+the same interaction. Equivalent actions use the same component type, hierarchy, spacing,
+dismissal, keyboard and responsive behaviour unless a documented product reason requires a
+difference. Do not solve a layout defect by inventing another local control pattern; fix or reuse
+the shared primitive where appropriate.
+
+UI copy must be concise and task-relevant. Do not repeat information already evident from the
+control, selected setting or surrounding context. Prefer short noun labels over instructional
+prose. Preserve explanatory copy where it communicates safety, validation, unavailable capability
+or a non-obvious consequence.
+
 ## Material 3 and token rules
 
 - Use named Plum Duff variables for colour, surface, outline, focus, status, shadow and back/lay

@@ -33,11 +33,11 @@ const replayFeed = {
   opportunities: [{ ...opportunity, freshness: "stale", can_create_prospecting_draft: false, back: { ...opportunity.back, link: null } }],
 };
 
-async function mockRuntime(page: Page) {
+async function mockRuntime(page: Page, replay = false) {
   let refreshRequests = 0;
   await page.route("**/api/**", async (route) => {
     const url = new URL(route.request().url());
-    if (url.pathname.endsWith("/fund-manager/preferences/oddsmatcher")) return route.fulfill({ json: { version: 1, default_back_stake: "10.00", exchange_commission_overrides: {}, excluded_bookmaker_identities: [], excluded_exchange_identities: [], show_arbs_default: false, default_advanced: false, saved_filters: [] } });
+    if (url.pathname.endsWith("/fund-manager/preferences/oddsmatcher")) return route.fulfill({ json: { version: 1, default_back_stake: "10.00", exchange_commission_overrides: {}, excluded_bookmaker_identities: [], excluded_exchange_identities: [], show_arbs_default: false, default_advanced: false, data_source: replay ? "replay" : "live", saved_snapshot_id: replay ? snapshotId : "", auto_update_back_odds: false, auto_update_lay_odds: false, saved_filters: [] } });
     if (url.pathname.endsWith(`/oddsmatcher/snapshots/${snapshotId}`)) return route.fulfill({ json: replayFeed });
     if (url.pathname.endsWith("/oddsmatcher/snapshots")) return route.fulfill({ json: [{ snapshot_id: snapshotId, captured_at: liveFeed.fetched_at, provider: "The Odds API", competitions: liveFeed.competitions, event_count: 1, bookmaker_count: 1, exchange_count: 1 }] });
     if (url.pathname.endsWith("/oddsmatcher/refresh")) {
@@ -71,9 +71,8 @@ test("CP-093 shows provider quota and coalesces live manual refresh", async ({ p
 });
 
 test("CP-093 replays a saved snapshot without provider calls or draft actions", async ({ page }) => {
-  const requestCount = await mockRuntime(page);
+  const requestCount = await mockRuntime(page, true);
   await page.goto(`/oddsmatcher?profileId=${profileId}`);
-  await page.getByRole("button", { name: "Saved snapshot" }).click();
   await expect(page.getByText(/testing\/replay/)).toBeVisible();
   await expect(page.getByText("Draft creation and external quote links are disabled for replayed odds.")).toBeVisible();
   await expect(page.getByRole("button", { name: "Refresh unavailable in saved snapshot mode" })).toBeDisabled();
@@ -92,14 +91,11 @@ test("CP-093 replays a saved snapshot without provider calls or draft actions", 
   await page.keyboard.press("Escape");
   await expect(dialog).toBeHidden();
   await page.setViewportSize({ width: 430, height: 900 });
-  await expect(page.getByRole("button", { name: "Saved snapshot", exact: true })).toBeVisible();
   const geometry = await page.evaluate(() => ({
     viewport: document.documentElement.clientWidth,
     pageWidth: document.documentElement.scrollWidth,
-    sourceRight: document.querySelector("[data-pd-id='oddsmatcher.data-source']")?.getBoundingClientRect().right ?? 0,
   }));
   expect(geometry.pageWidth).toBeLessThanOrEqual(geometry.viewport + 1);
-  expect(geometry.sourceRight).toBeLessThanOrEqual(geometry.viewport + 1);
   await page.evaluate(() => { document.documentElement.dataset.theme = "dark"; });
   await expect(page.getByText(/testing\/replay/)).toBeVisible();
   expect(requestCount()).toBe(0);

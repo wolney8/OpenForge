@@ -46,6 +46,10 @@ Done means:
 - `docs/agent-contracts/plum-duff-ui-accessibility-contract.md` was followed
 - the UI implementation checklist was completed
 - existing Plum Duff primitives and semantic tokens were used or an exception was justified
+- equivalent interactions reuse the established component type, hierarchy, spacing, dismissal,
+  keyboard and responsive behaviour; local substitute controls require a documented product reason
+- touched UI copy is concise and does not repeat a selected setting or surrounding context unless
+  needed for safety, validation, unavailable capability or a non-obvious consequence
 - Material 3 states and WCAG 2.2 AA were checked in light and dark modes
 - keyboard order, focus visibility, accessible names and form labels were checked
 - interactive selectors have evidence for initial closed state, explicit open, typed-search open,
