@@ -758,12 +758,20 @@ Owner interaction and visual acceptance remain pending.
 
 | ID | Surface | Requested behaviour | Signed-off equivalent | Status |
 | --- | --- | --- | --- | --- |
-| PD-FIX-439 / #54 | Calculation provenance | Trace `0.928` / `1.300` and retain them only where independently sourced | Workbook-backed Free Bet settings and Oddsmatcher technical specification | IN PROGRESS |
-| PD-FIX-440 / #54 | Qualifying lay references | Initialise Underlay / Overlay from the canonical 2% bias around rounded Standard stake | Oddsmatcher technical specification `defaultUnderlayPct` / `defaultOverlayPct` | IN PROGRESS |
-| PD-FIX-441 / #54 | Advanced outcomes | Recalculate liability and both outcomes from the selected absolute lay stake without redefining global bias | Existing sportsbook current-value calculator and Advanced slider contract | IN PROGRESS |
-| PD-FIX-442 / #54 | Regression/install | Preserve CP-094 UI/settings/replay behaviour, verify deterministic fixtures and install canonically without provider calls | Existing API/component/browser harness and normal-owner install procedure | IN PROGRESS |
+| PD-FIX-439 / #54 | Calculation provenance | Trace `0.928` / `1.300` and retain them only where independently sourced | Workbook-backed Free Bet settings and Oddsmatcher technical specification | COMPLETE |
+| PD-FIX-440 / #54 | Qualifying lay references | Initialise Underlay / Overlay from the canonical 2% bias around rounded Standard stake | Oddsmatcher technical specification `defaultUnderlayPct` / `defaultOverlayPct` | COMPLETE |
+| PD-FIX-441 / #54 | Advanced outcomes | Recalculate liability and both outcomes from the selected absolute lay stake without redefining global bias | Existing sportsbook current-value calculator and Advanced slider contract | COMPLETE |
+| PD-FIX-442 / #54 | Regression/install | Preserve CP-094 UI/settings/replay behaviour, verify deterministic fixtures and install canonically without provider calls | Existing API/component/browser harness and normal-owner install procedure | COMPLETE |
 
 This correction is limited to the qualifying/Sportsbook Underlay and Overlay reference authority,
 its deterministic fixtures and direct documentation. The workbook-backed Free Bet factors remain a
 separate authority and CP-094 presentation, persistence, replay and placement boundaries remain in
 scope only for regression verification.
+
+Verification: 190 focused qualifying/Sportsbook tests and 47 Free Bet/conversion/settings
+regressions pass; all 605 web unit tests and three sequential CP-093/094 browser tests pass. Full
+web/API typecheck and the production build pass; focused changed-file lint passes. The wider Python
+source lint retains 13 pre-existing formatting findings on unchanged lines. Verified backup
+`BACKUP-01433E92` preceded canonical installation. `normal-owner` fingerprint remains
+`7246998d43722066`, integrity is `ok`, foreign-key violations remain zero and all 29 financial
+controls are unchanged. Owner interaction and acceptance remain pending.
