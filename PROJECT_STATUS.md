@@ -235,6 +235,17 @@ Primary-root routing still points here/the same owner notebook. Preserve unrelat
 | CP-054 | 2026-09-26 21:15 BST | Restored latest compatible local runtime, promoted accepted repairs to protected Preview and added an owner notebook/model handover; no personal cutover | [#101](https://github.com/wolney8/OpenForge/issues/101), [#104](https://github.com/wolney8/OpenForge/issues/104), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Evidence](docs/audits/platform-quality-audit.md#cp-054-operational-consolidation-and-model-handover--2026-09-26-2115-bst) |
 | CP-055 | 2026-09-26 23:29:27 BST | Delivered explicit Profile relationships, Reports Explorer V1 and Accounts-only portability locally; additive schema preserves all prior data, Preview promotion held on recovery/session resources | [#111](https://github.com/wolney8/OpenForge/issues/111), [#109](https://github.com/wolney8/OpenForge/issues/109), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Evidence](docs/audits/platform-quality-audit.md#cp-055-personal-foundation-reports-explorer-and-account-authority) |
 
+## CP-100 read-only financial availability audit
+
+Recorded 2026-10-28 against [#105](https://github.com/wolney8/OpenForge/issues/105) and
+[#114](https://github.com/wolney8/OpenForge/issues/114). Accepted source `217617e9…` is preserved
+on a non-main remote branch. With the universal range at `All Dates`, 106 active-Profile records
+currently contribute an unavailable measure: 91 Sportsbook liabilities, three Casino P&L values
+and 12 Extra Place P&L values. Fourteen explicit No-Lay liabilities are reconstructable under the
+existing calculation contract; the remaining values are not reconstructable from stored authority.
+No import or lifecycle mapping defect was proven. Exact record evidence remains private. No owner
+row, schema, provider state or runtime was changed; remediation requires a separate owner decision.
+
 ## Reference index
 
 - [Feature status](FEATURE_STATUS.md)

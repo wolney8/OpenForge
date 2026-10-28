@@ -2154,3 +2154,21 @@ and markets are authorised.
 | PD-PR-081-05 | Create authorised idempotent Prospecting Sportsbook drafts without placement or balance mutation | COMPLETE — Profile Account authority, deterministic retry and unchanged balances tested |
 | PD-PR-081-06 | Verify regression, private screenshots, documentation, backup and bounded localhost:3010 installation | COMPLETE — backup `BACKUP-C48C9FC1`; canonical local install verified; owner acceptance pending |
 | PD-PR-081-07 | Update the matched-betting workflow coverage matrix without implementing deferred workflows | COMPLETE — matrix retained in `docs/planning/oddsmatcher-reverse-engineering-summary.md` |
+
+## CP-100 accepted-source preservation and unavailable-value audit
+
+Recorded 2026-10-28 under [#105](https://github.com/wolney8/OpenForge/issues/105) and
+[#114](https://github.com/wolney8/OpenForge/issues/114). This is read-only classification, not
+approval to repair owner data or change financial membership.
+
+| ID | Requested outcome | Status |
+| --- | --- | --- |
+| PD-AUDIT-100-01 | Preserve exact accepted runtime source `217617e9…` without changing main, Production or the local runtime | PROVEN — non-main remote preservation ref resolves to the exact SHA; public-file safety scan passed |
+| PD-AUDIT-100-02 | Re-query every active `Unavailable` contributor under the Fund Manager `All Dates` authority | CODE-VERIFIED — 106 active records: 91 Sportsbook liability, 3 Casino P&L and 12 Extra Place P&L; exact record evidence is private |
+| PD-AUDIT-100-03 | Separate source, import, lifecycle, calculation and expected-unavailable causes, then propose repair tiers without writing data | DOCUMENTED — 14 explicit No-Lay liabilities are reconstructable; 92 active records are not; no import or lifecycle defect was proven |
+
+Tier decisions remain open: a bounded No-Lay calculation correction; explicit approval before any
+synthetic-residue deletion; owner review for ambiguous historical values; and retention of truthful
+`Unavailable` where authority is insufficient. `normal-owner` remains 73 tables / 6,738 rows with
+fingerprint `7246998d43722066`, integrity `ok`, zero foreign-key violations and exact content-hash
+parity with the verified CP-099 backup.
