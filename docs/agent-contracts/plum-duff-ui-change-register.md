@@ -816,7 +816,14 @@ snapshot/live, outcome-value and Place Lay behavior remain unchanged. Automated 
 | PD-FIX-452 / #54 | Bet Summary Outcomes | Replace the two feature-local outcome tables with the established Calculator Outcomes primitive and two qualifying scenarios | `CalculatorOutcomes` | COMPLETE |
 | PD-FIX-453 / #54 | CP-097 alignment regression | Remove the outcome-heading workaround and restore the fixture heading/card alignment | Existing Oddsmatcher right-column card alignment | COMPLETE |
 | PD-FIX-454 / #54 | Shared calculator regression | Preserve Calculator Outcomes, promotion columns and legitimate matched-result summaries while adding the compact Bet Summary configuration | Existing calculator parity browser coverage | COMPLETE |
-| PD-FIX-455 / #54 | Verification and local install | Verify relational axes, desktop/430px containment, strategy-specific Total Profit and canonical installation | Existing Bet Summary and Calculator browser harnesses | NEEDS VERIFICATION |
+| PD-FIX-455 / #54 | Verification and local install | Verify relational axes, desktop/430px containment, strategy-specific Total Profit and canonical installation | Existing Bet Summary and Calculator browser harnesses | COMPLETE |
 
 This batch is presentation-only. Calculation values, strategy maths, API, Profile, provider,
 commission, Prospecting and placement behaviour remain unchanged.
+
+Verification: all 605 web unit tests, full web typecheck, production build, focused lint, the
+Bet Summary desktop/430px browser path and the existing Calculator Outcomes responsive regression
+pass. The canonical localhost browser path also passes after installation. Measured label, money
+and liability centres differ by less than 0.01px; the Copy action occupies its independent slot.
+Private evidence is under `data/private/evidence/cp098-bet-summary-outcomes-20261028/`. Owner visual
+acceptance remains pending.
