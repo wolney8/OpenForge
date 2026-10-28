@@ -118,6 +118,7 @@ def test_health_and_oauth_routes_remain_public_when_data_routes_are_protected() 
         assert query["redirect_uri"] == ["http://localhost:3010/api/auth/google/callback"]
         assert query["code_challenge_method"] == ["S256"]
         assert query["scope"] == ["openid email profile"]
+        assert query["prompt"] == ["select_account"]
         assert OAUTH_STATE_COOKIE_NAME in login_response.cookies
         state_cookie_header = login_response.headers["set-cookie"].casefold()
         assert "httponly" in state_cookie_header
@@ -505,6 +506,20 @@ def test_root_return_target_uses_fund_manager_dashboard(monkeypatch) -> None:
 
         assert state_payload is not None
         assert state_payload["next"] == "/"
+
+
+def test_google_login_rejects_external_return_targets() -> None:
+    with configured_auth():
+        client = TestClient(app, follow_redirects=False)
+        for unsafe_target in ("https://example.invalid", "//example.invalid"):
+            login_response = client.get(
+                "/auth/google/login", params={"next": unsafe_target}
+            )
+            state_cookie = login_response.cookies[OAUTH_STATE_COOKIE_NAME]
+            state_payload = auth_module._verify_payload(state_cookie)
+
+            assert state_payload is not None
+            assert state_payload["next"] == "/"
 
 
 def test_google_callback_rejects_verified_identity_outside_owner_allowlist(monkeypatch) -> None:

@@ -21,6 +21,20 @@ function ownerToken(): string {
   return `${payload}.${signature}`;
 }
 
+function expiredOwnerToken(): string {
+  const payload = Buffer.from(
+    JSON.stringify({
+      aud: "plum-duff",
+      email: "founder@example.invalid",
+      exp: Math.floor(Date.now() / 1000) - 1,
+      iss: "plum-duff-api",
+      role: "fund_manager",
+    })
+  ).toString("base64url");
+  const signature = createHmac("sha256", secret).update(payload).digest("base64url");
+  return `${payload}.${signature}`;
+}
+
 afterEach(() => {
   process.env = { ...originalEnvironment };
 });
@@ -64,7 +78,7 @@ describe("application route proxy", () => {
     expect(response.headers.get("location")).toBeNull();
   });
 
-  it("explains when a present session cannot be validated", async () => {
+  it("distinguishes unavailable validation configuration from an expired session", async () => {
     process.env.OPENFORGE_AUTH_REQUIRED = "true";
     delete process.env.OPENFORGE_AUTH_SESSION_SECRET;
     delete process.env.OPENFORGE_AUTH_OWNER_EMAILS;
@@ -76,7 +90,23 @@ describe("application route proxy", () => {
 
     expect(response.status).toBe(307);
     expect(response.headers.get("location")).toBe(
-      "http://localhost:3010/login?error=session_expired&next=%2Fprofiles"
+      "http://localhost:3010/login?error=session_validation_unavailable&next=%2Fprofiles"
+    );
+  });
+
+  it("continues to classify a configured expired session as ended", async () => {
+    process.env.OPENFORGE_AUTH_REQUIRED = "true";
+    process.env.OPENFORGE_AUTH_SESSION_SECRET = secret;
+    process.env.OPENFORGE_AUTH_OWNER_EMAILS = "founder@example.invalid";
+    const request = new NextRequest("http://localhost:3010/oddsmatcher", {
+      headers: { Cookie: `pd_session=${expiredOwnerToken()}` },
+    });
+
+    const response = await proxy(request);
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe(
+      "http://localhost:3010/login?error=session_expired&next=%2Foddsmatcher"
     );
   });
 });

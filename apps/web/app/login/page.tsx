@@ -12,6 +12,7 @@ const errorMessages: Record<string, string> = {
   oauth_session_failed: "Sign-in couldn't be completed. Please try again.",
   not_authorized: "Access unavailable. Contact the administrator.",
   session_expired: "Your session ended. Sign in to continue.",
+  session_validation_unavailable: "We couldn't validate your session. Try again or sign in.",
 };
 
 export default async function LoginPage({

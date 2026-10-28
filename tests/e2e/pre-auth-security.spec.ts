@@ -62,7 +62,9 @@ test.describe("pre-auth privacy and session controls", () => {
     });
     await page.route("**/api/profiles", (route) => route.fulfill({ json: [] }));
     await page.goto("/profiles");
-    await expect(page.getByRole("heading", { name: "Unable to verify session" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "We couldn't validate your session" })).toBeVisible();
+    await expect(page.getByText("Your session may still be valid. Try again or sign in again.")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Sign in again" })).toBeVisible();
     await expect(page.locator('[data-pd-id="app-shell.top-bar"]')).toHaveCount(0);
     await page.getByRole("button", { name: "Try again" }).click();
     await expect(page.locator('[data-pd-id="app-shell.top-bar"]')).toBeVisible();
@@ -93,6 +95,13 @@ test.describe("pre-auth privacy and session controls", () => {
     await expect(page.getByText("Sign-in isn't available right now. Please try again.")).toBeVisible();
     await expect(page.getByRole("link", { name: "Sign in with Google" })).toBeVisible();
     expect(await page.locator("body").innerText()).not.toMatch(forbiddenPublicTerms);
+
+    await page.goto("/login?error=session_validation_unavailable&next=%2Foddsmatcher");
+    await expect(page.getByText("We couldn't validate your session. Try again or sign in.")).toBeVisible();
+    await expect(page.getByRole("link", { name: "Sign in with Google" })).toHaveAttribute(
+      "href",
+      "/api/auth/google/login?next=%2Foddsmatcher",
+    );
 
     await page.goto("/route-that-does-not-exist");
     await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();
@@ -329,7 +338,11 @@ test.describe("pre-auth privacy and session controls", () => {
 
     await page.goto("/profiles");
     const checksBeforeSearch = sessionChecks;
-    await page.locator('[data-pd-id="global-search.input"]').fill("demo");
+    const searchInput = page.locator('[data-pd-id="global-search.input"]');
+    if (!await searchInput.isVisible()) {
+      await page.getByRole("button", { name: "Open Plum Duff search" }).click();
+    }
+    await searchInput.fill("demo");
     await expect.poll(() => sessionChecks).toBeGreaterThan(checksBeforeSearch);
     await expect(page).toHaveURL(/\/profiles$/);
   });

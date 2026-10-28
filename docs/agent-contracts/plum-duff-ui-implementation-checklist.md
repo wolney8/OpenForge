@@ -322,3 +322,16 @@ Complete this for every feature, bug fix, component, fixture-backed UI, route or
 - [x] Existing Calculator Outcomes, promotion columns and legitimate summaries remain unchanged.
 - [x] Desktop/430px geometry, focus, light/dark, reduced motion and private evidence are verified.
 - [ ] Owner visual verification remains pending.
+
+## CP-099 Oddsmatcher consistency and session-state audit — 2026-10-28
+
+- [x] Fund Manager Oddsmatcher defaults reuse the Bet Summary switch geometry without grid-item
+      stretching; desktop and 430px geometry match.
+- [x] Lay Stake uses a compact field while its label, value and liability retain one measured
+      centre axis and Copy remains an independent adjacent action.
+- [x] Missing frontend validation configuration is fail closed and is not described as expiry;
+      a true invalid/expired session still uses the session-ended state.
+- [x] Valid, missing, expired, transient-unavailable, OAuth renewal, logout and safe internal return
+      paths have focused automated evidence without exposing credentials or cookies.
+- [ ] Canonical 3010/8010 restart uses the same role-bound owner auth environment; owner Google SSO
+      behaviour remains pending direct owner verification.

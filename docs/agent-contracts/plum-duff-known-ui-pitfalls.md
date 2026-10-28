@@ -1410,6 +1410,10 @@ is reached. Start both canonical services through role-bound launchers, load the
 environment, and fail closed before serving 3010 when required auth settings are incomplete. A
 present but invalid session must produce the existing owner-facing session-ended message.
 
+Switch controls retain their platform-standard geometry regardless of the width of the containing
+settings row. Alignment must be assessed relationally across the complete conceptual group, not
+just by centring an individual control's bounding box.
+
 ## Selected Range and point-chart state must not fork
 
 Selected Range is a persisted Fund Manager preference. Profile settings and browser storage must

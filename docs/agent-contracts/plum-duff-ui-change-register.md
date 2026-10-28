@@ -827,3 +827,26 @@ pass. The canonical localhost browser path also passes after installation. Measu
 and liability centres differ by less than 0.01px; the Copy action occupies its independent slot.
 Private evidence is under `data/private/evidence/cp098-bet-summary-outcomes-20261028/`. Owner visual
 acceptance remains pending.
+
+## CP-099 Oddsmatcher consistency and session-state audit — 2026-10-28
+
+| ID | Surface | Requested behaviour | Signed-off equivalent | Status |
+| --- | --- | --- | --- | --- |
+| PD-FIX-456 / #54 | Fund Manager Oddsmatcher defaults | Keep each switch at the Bet Summary switch geometry even when its settings row spans the panel | Existing `material-switch` and `oddsmatcher-auto-switch` primitive | COMPLETE |
+| PD-FIX-457 / #54 | Bet Summary Lay Stake | Reduce the money field width while retaining the label/value/liability centre axis and independent Copy action | Existing compact financial input and CP-098 balanced action slots | COMPLETE |
+| PD-FIX-458 / #62 | Session-state accuracy | Distinguish an invalid/expired session from unavailable frontend validation configuration while remaining fail closed | Existing authoritative session bootstrap, branded Login alert and role-bound launcher | COMPLETE |
+| PD-FIX-459 / #62 | Auth boundary verification and local install | Prove protected API denial, OAuth session renewal, logout, safe return and canonical web/API environment parity before installation | Existing auth fixtures, proxy tests and normal-owner launchers | NEEDS VERIFICATION — automated gates pass; canonical install and one genuine owner Google return remain |
+
+This batch changes only the two named Oddsmatcher presentation details and session-state accuracy.
+It does not change OAuth credentials, identity authority, calculations, provider behaviour,
+financial data, schema or other Oddsmatcher UI.
+
+Observed runtime cause: API 8010 used the role-bound owner environment while web 3010 had been
+started directly with none of the required auth values. Next therefore rejected a valid API-issued
+cookie before the authoritative session endpoint and labelled the configuration failure as expiry.
+The proxy now keeps that state fail closed but presents validation-unavailable; true invalid/expired
+sessions still present session-ended. Missing and invalid cookies remain HTTP 401 at protected APIs,
+logout revokes the database-backed session, and OAuth callback tests prove state/PKCE, allowlist,
+new application-session issuance and safe internal return paths. The Google authorization request
+uses `prompt=select_account`; an existing upstream Google session can avoid another password entry
+without bypassing the Plum Duff callback or session checks.

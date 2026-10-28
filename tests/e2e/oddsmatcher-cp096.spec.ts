@@ -4,6 +4,7 @@ import path from "node:path";
 
 const evidence = path.resolve("data/private/evidence/cp096-oddsmatcher-background-preview-20261027");
 const cp098Evidence = path.resolve("data/private/evidence/cp098-bet-summary-outcomes-20261028");
+const cp099Evidence = path.resolve("data/private/evidence/cp099-oddsmatcher-auth-consistency-20261028");
 const profileId = "profile-demo-001";
 const baseOpportunity = {
   opportunity_id: "soccer_epl:event-1:h2h:HOME", provider: "The Odds API", competition_key: "soccer_epl", competition: "Premier League", event_id: "event-1",
@@ -67,6 +68,7 @@ test("CP-096 Bet Summary refreshes calculations in the background", async ({ pag
   test.setTimeout(60_000);
   await fs.mkdir(evidence, { recursive: true });
   await fs.mkdir(cp098Evidence, { recursive: true });
+  await fs.mkdir(cp099Evidence, { recursive: true });
   const receipt = { previews: [] as Record<string, string>[] };
   await mock(page, receipt);
   await page.setViewportSize({ width: 1440, height: 1000 });
@@ -107,9 +109,10 @@ test("CP-096 Bet Summary refreshes calculations in the background", async ({ pag
   expect(Math.abs(layStakeGeometry.wrapperCentre - layStakeGeometry.contentCentre)).toBeLessThanOrEqual(1);
   expect(Math.abs(layStakeGeometry.liabilityCentre - layStakeGeometry.contentCentre)).toBeLessThanOrEqual(1);
   expect(layStakeGeometry.copyCentre).toBeGreaterThan(layStakeGeometry.contentCentre);
-  expect(layStakeGeometry.wrapperWidth).toBeGreaterThanOrEqual(207);
-  expect(layStakeGeometry.wrapperWidth).toBeLessThanOrEqual(209);
+  expect(layStakeGeometry.wrapperWidth).toBeGreaterThanOrEqual(175);
+  expect(layStakeGeometry.wrapperWidth).toBeLessThanOrEqual(177);
   expect(Math.abs(layStakeGeometry.wrapperHeight - layStakeGeometry.inputHeight)).toBeLessThanOrEqual(2);
+  await dialog.locator(".oddsmatcher-lay-stake-block").screenshot({ path: path.join(cp099Evidence, "02-lay-stake-compact-desktop.png") });
   await layStake.fill("9.10");
   await expect(layStake).toHaveValue("9.10");
   await expect(dialog).toHaveAttribute("data-preview-pending", "true");
@@ -230,6 +233,7 @@ test("CP-096 Bet Summary refreshes calculations in the background", async ({ pag
   expect(Math.abs(narrowAlignment.liabilityCentre - narrowAlignment.contentCentre)).toBeLessThanOrEqual(1);
   await dialog.locator(".oddsmatcher-lay-stake-block").scrollIntoViewIfNeeded();
   await dialog.locator(".oddsmatcher-lay-stake-block").screenshot({ path: path.join(cp098Evidence, "02-narrow-lay-stake-centre-axis.png") });
+  await dialog.locator(".oddsmatcher-lay-stake-block").screenshot({ path: path.join(cp099Evidence, "03-lay-stake-compact-430.png") });
   await dialog.locator(".oddsmatcher-outcome-stack").scrollIntoViewIfNeeded();
   await dialog.locator(".oddsmatcher-outcome-stack").screenshot({ path: path.join(cp098Evidence, "07-narrow-shared-outcomes.png") });
   await page.emulateMedia({ reducedMotion: "reduce" });
@@ -238,4 +242,5 @@ test("CP-096 Bet Summary refreshes calculations in the background", async ({ pag
   await page.screenshot({ path: path.join(evidence, "06-reduced-motion.png") });
   await fs.writeFile(path.join(evidence, "verification.json"), JSON.stringify({ previewRequests: receipt.previews, geometry, narrow }, null, 2));
   await fs.writeFile(path.join(cp098Evidence, "verification.json"), JSON.stringify({ layStakeGeometry, sharedOutcomeGeometry, desktopOutcomeColumns, narrow, narrowAlignment }, null, 2));
+  await fs.writeFile(path.join(cp099Evidence, "lay-stake-geometry.json"), JSON.stringify({ layStakeGeometry, narrowAlignment }, null, 2));
 });

@@ -3,6 +3,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 const evidence = path.resolve("data/private/evidence/cp094-oddsmatcher-summary-settings-20261027");
+const cp099Evidence = path.resolve("data/private/evidence/cp099-oddsmatcher-auth-consistency-20261028");
 const snapshotId = "20261026T203500Z-demo";
 const profileId = "profile-demo-001";
 const opportunity = {
@@ -57,12 +58,31 @@ async function mock(page: Page) {
 test("CP-094 universal source settings and Bet Summary hierarchy", async ({ page }) => {
   test.setTimeout(60_000);
   await fs.mkdir(evidence, { recursive: true });
+  await fs.mkdir(cp099Evidence, { recursive: true });
   const receipt = await mock(page);
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto("/settings#oddsmatcher");
   await page.getByRole("tab", { name: "Oddsmatcher" }).click();
   const settingsPanel = page.locator('[data-pd-id="fund-manager-settings.oddsmatcher"]');
   await expect(settingsPanel).toBeVisible();
+  const settingsSwitches = settingsPanel.getByRole("switch", { name: /Auto-update/ });
+  await expect(settingsSwitches).toHaveCount(2);
+  const settingsSwitchGeometry = await settingsSwitches.evaluateAll((switches) => switches.map((control) => {
+    const track = control.querySelector<HTMLElement>(".material-switch-track")!;
+    const row = control.parentElement!;
+    return {
+      controlWidth: control.getBoundingClientRect().width,
+      rowWidth: row.getBoundingClientRect().width,
+      trackHeight: track.getBoundingClientRect().height,
+      trackWidth: track.getBoundingClientRect().width,
+    };
+  }));
+  expect(settingsSwitchGeometry.every((item) => item.controlWidth < item.rowWidth * 0.75)).toBe(true);
+  expect(new Set(settingsSwitchGeometry.map((item) => item.trackWidth)).size).toBe(1);
+  expect(settingsSwitchGeometry.every((item) => item.trackWidth >= 51 && item.trackWidth <= 53)).toBe(true);
+  expect(settingsSwitchGeometry.every((item) => item.trackHeight >= 31 && item.trackHeight <= 33)).toBe(true);
+  await settingsPanel.getByText("Bet Summary defaults", { exact: true }).locator("xpath=..").screenshot({ path: path.join(cp099Evidence, "01-settings-compact-switches-desktop.png") });
+  await fs.writeFile(path.join(cp099Evidence, "settings-switch-geometry.json"), JSON.stringify(settingsSwitchGeometry, null, 2));
   await settingsPanel.screenshot({ path: path.join(evidence, "01-fund-manager-oddsmatcher-settings.png") });
   await page.screenshot({ path: path.join(evidence, "02-live-source-settings-1440x1000.png") });
   await settingsPanel.getByRole("button", { name: "Saved Snapshot" }).click();

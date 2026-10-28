@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { BrandLogo } from "@/components/brand-logo";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
@@ -43,6 +44,7 @@ export function SessionBootstrapGate({
 }: {
   children: (session: FundManagerSession) => React.ReactNode;
 }) {
+  const router = useRouter();
   const [attempt, setAttempt] = useState(0);
   const [showChecking, setShowChecking] = useState(false);
   const [state, setState] = useState<BootstrapState>({
@@ -112,8 +114,8 @@ export function SessionBootstrapGate({
               <strong>Plum Duff</strong>
             </div>
             <span className="eyebrow">Session</span>
-            <h1>Unable to verify session</h1>
-            <p className="error-text">{state.error}</p>
+            <h1>We couldn&apos;t validate your session</h1>
+            <p className="error-text">Your session may still be valid. Try again or sign in again.</p>
             <div className="tracker-nav tracker-nav-right">
               <button className="button-link" onClick={() => {
                 setShowChecking(false);
@@ -121,6 +123,12 @@ export function SessionBootstrapGate({
                 setAttempt((value) => value + 1);
               }} type="button">
                 Try again
+              </button>
+              <button className="button-link" onClick={() => {
+                const next = `${window.location.pathname}${window.location.search}`;
+                router.push(`/login?error=session_validation_unavailable&next=${encodeURIComponent(next)}`);
+              }} type="button">
+                Sign in again
               </button>
             </div>
           </>

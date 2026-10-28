@@ -9,11 +9,23 @@ function authenticationRequired() {
   return process.env.OPENFORGE_AUTH_REQUIRED === "true" || Boolean(process.env.VERCEL);
 }
 
+function sessionValidationConfigured(subscriberPath: boolean): boolean {
+  const secret = process.env.OPENFORGE_AUTH_SESSION_SECRET ?? "";
+  if (Buffer.byteLength(secret, "utf8") < 32) return false;
+  return subscriberPath || Boolean(process.env.OPENFORGE_AUTH_OWNER_EMAILS?.trim());
+}
+
 export async function proxy(request: NextRequest) {
   const subscriberPath = request.nextUrl.pathname.startsWith("/subscriber");
   if (!authenticationRequired() && !subscriberPath && !request.cookies.has(AUTH_SESSION_COOKIE)) return NextResponse.next();
 
   const token = request.cookies.get(AUTH_SESSION_COOKIE)?.value ?? "";
+  if (token && !sessionValidationConfigured(subscriberPath)) {
+    const loginUrl = new URL("/login", request.url);
+    loginUrl.searchParams.set("error", "session_validation_unavailable");
+    loginUrl.searchParams.set("next", `${request.nextUrl.pathname}${request.nextUrl.search}`);
+    return NextResponse.redirect(loginUrl);
+  }
   const isAuthenticated = await verifyFounderSessionToken(
     token,
     process.env.OPENFORGE_AUTH_SESSION_SECRET ?? "",

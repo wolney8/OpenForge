@@ -7806,7 +7806,7 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
 }
 .oddsmatcher-auto-switch { justify-self: start; }
 .oddsmatcher-lay-meta-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.35rem 0.75rem; min-width: 0; }
-.oddsmatcher-lay-stake-block { display: grid; grid-template-columns: 2.75rem minmax(9rem, 13rem) 2.75rem; justify-content: center; align-items: center; gap: 0.4rem; padding: 0.45rem 0.6rem; border-radius: var(--shape-medium); background: var(--surface-strong); }
+.oddsmatcher-lay-stake-block { display: grid; grid-template-columns: 2.75rem minmax(9rem, 11rem) 2.75rem; justify-content: center; align-items: center; gap: 0.4rem; padding: 0.45rem 0.6rem; border-radius: var(--shape-medium); background: var(--surface-strong); }
 .oddsmatcher-lay-stake-content { grid-column: 2; display: grid; justify-items: center; gap: 0.18rem; min-width: 0; text-align: center; }
 .oddsmatcher-lay-stake-content > span:first-child { font-size: 0.78rem; font-weight: 720; color: var(--muted); }
 .oddsmatcher-lay-stake-content > .financial-text-input { min-height: 2.75rem; font-size: 1.35rem; font-weight: 760; text-align: center; }
