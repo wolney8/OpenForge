@@ -331,6 +331,8 @@ Complete this for every feature, bug fix, component, fixture-backed UI, route or
       centre axis and Copy remains an independent adjacent action.
 - [x] Missing frontend validation configuration is fail closed and is not described as expiry;
       a true invalid/expired session still uses the session-ended state.
+- [x] The canonical `/oddsmatcher` page route uses the shared protected-route proxy; missing or
+      invalid application sessions cannot mount its authenticated shell or reach protected APIs.
 - [x] Valid, missing, expired, transient-unavailable, OAuth renewal, logout and safe internal return
       paths have focused automated evidence without exposing credentials or cookies.
 - [x] Canonical 3010/8010 restart uses the same role-bound owner auth environment; owner Google SSO

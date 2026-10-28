@@ -55,6 +55,9 @@ describe("application route proxy", () => {
   });
 
   it("protects the Fund Manager account route while leaving registration public", async () => {
+    process.env.OPENFORGE_AUTH_REQUIRED = "true";
+    process.env.OPENFORGE_AUTH_SESSION_SECRET = secret;
+    process.env.OPENFORGE_AUTH_OWNER_EMAILS = "founder@example.invalid";
     const protectedRequest = new NextRequest("http://localhost:3010/account");
     const protectedResponse = await proxy(protectedRequest);
     expect(protectedResponse.status).toBe(307);
@@ -63,6 +66,7 @@ describe("application route proxy", () => {
     );
 
     expect(config.matcher).not.toContain("/register");
+    expect(config.matcher).toContain("/oddsmatcher");
   });
 
   it("allows an allowlisted current Fund Manager session", async () => {

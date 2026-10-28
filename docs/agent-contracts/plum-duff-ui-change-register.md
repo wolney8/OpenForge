@@ -851,7 +851,11 @@ new application-session issuance and safe internal return paths. The Google auth
 uses `prompt=select_account`; an existing upstream Google session can avoid another password entry
 without bypassing the Plum Duff callback or session checks.
 
-Verification: 605 web unit tests, 26 focused API auth/launcher tests, 12 focused browser paths,
+The installed boundary check also found `/oddsmatcher` absent from the Next route matcher. Its
+client bootstrap still withheld authenticated content and its APIs returned 401, but the page shell
+returned HTTP 200. The canonical route is now guarded by the same proxy as other Fund Manager tools.
+
+Verification: 610 web unit tests, 26 focused API auth/launcher tests, 12 focused browser paths,
 web/API typecheck, production build and focused changed-source lint pass. The settings switches use
 the shared 52×32 track; Lay Stake reduced from 208px to 176px and retains its measured centre axis
 at desktop and 430px. Backup `normal-owner-pre-cp099-20261028T103216Z.sqlite3` has SHA-256
