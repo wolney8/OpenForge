@@ -2189,3 +2189,14 @@ Recommendation pending owner decision: keep planned records visible but separate
 `Not Placed` from committed `Placed/Pending` exposure. The existing future-dated
 `countTrueOpenPositions` helper is useful precedent but is too narrow to become the full authority
 because it excludes overdue/missing-date committed rows and Extra Place.
+
+## CP-102 planned-pipeline and committed-exposure correction
+
+| ID | Requested outcome | Status |
+| --- | --- | --- |
+| PD-FIX-324 | Introduce one shared `PLANNED` / `COMMITTED` / `REALISED` / `EXCLUDED` authority across actual exposure consumers | CODE-VERIFIED — domain and aggregation regressions pass; runtime installation pending |
+| PD-FIX-325 | Exclude planned rows from actual P&L, current liability, open counts, overdue exposure and actual financial-readiness failures while preserving planning visibility | CODE-VERIFIED — full web tests, typecheck and build pass; runtime installation pending |
+| PD-AUDIT-102-01 | Recalculate committed, planned and realised unavailable counts and re-evaluate the 46 cleanup candidates | DOCUMENTED PRIVATELY — read-only normal-owner evidence captured; final post-install hash comparison pending |
+
+Covered by existing issues [#105](https://github.com/wolney8/OpenForge/issues/105) and
+[#114](https://github.com/wolney8/OpenForge/issues/114); live GitHub status is not changed in this checkpoint.

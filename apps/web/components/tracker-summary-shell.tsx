@@ -31,6 +31,7 @@ import {
 } from "@/lib/fee-period-summary";
 import { saveTrackerDatePreset } from "@/lib/tracker-settings-client";
 import { buildOperationalLedgerHref } from "@/lib/operational-actions";
+import { isCommittedExposure } from "@/lib/exposure-membership";
 import {
   formatHumanDisplayDate,
   formatResolvedDateRange,
@@ -505,7 +506,7 @@ export function TrackerSummaryShell({ profileId, profileTitle, variant }: Tracke
       ...data.sportsbookBets
         .filter(
           (row) =>
-            row.counts_as_open &&
+            isCommittedExposure("sportsbook", row) &&
             !row.is_overdue &&
             isWithinResolvedRange(row.date_settled, resolvedRange.start, resolvedRange.end)
         )
@@ -521,7 +522,7 @@ export function TrackerSummaryShell({ profileId, profileTitle, variant }: Tracke
       ...data.freeBets
         .filter(
           (row) =>
-            row.counts_as_open &&
+            isCommittedExposure("free-bet", row) &&
             !row.is_overdue &&
             isWithinResolvedRange(row.date_settled, resolvedRange.start, resolvedRange.end)
         )
@@ -537,7 +538,7 @@ export function TrackerSummaryShell({ profileId, profileTitle, variant }: Tracke
       ...data.casinoOffers
         .filter(
           (row) =>
-            row.counts_as_open &&
+            isCommittedExposure("casino", row) &&
             !row.is_overdue &&
             isWithinResolvedRange(row.date_settling, resolvedRange.start, resolvedRange.end)
         )
@@ -565,6 +566,7 @@ export function TrackerSummaryShell({ profileId, profileTitle, variant }: Tracke
       ...data.sportsbookBets
         .filter(
           (row) =>
+            isCommittedExposure("sportsbook", row) &&
             row.is_overdue &&
             isWithinResolvedRange(row.date_settled, resolvedRange.start, resolvedRange.end)
         )
@@ -580,6 +582,7 @@ export function TrackerSummaryShell({ profileId, profileTitle, variant }: Tracke
       ...data.freeBets
         .filter(
           (row) =>
+            isCommittedExposure("free-bet", row) &&
             row.is_overdue &&
             isWithinResolvedRange(row.date_settled, resolvedRange.start, resolvedRange.end)
         )
@@ -595,6 +598,7 @@ export function TrackerSummaryShell({ profileId, profileTitle, variant }: Tracke
       ...data.casinoOffers
         .filter(
           (row) =>
+            isCommittedExposure("casino", row) &&
             row.is_overdue &&
             isWithinResolvedRange(row.date_settling, resolvedRange.start, resolvedRange.end)
         )

@@ -73,13 +73,13 @@ Per-profile comparison rows expose:
 - free-bet rows requiring action
 - casino-offer rows requiring action
 
-The Fund Manager directory's `open-position count` is a current-state operational count, not the
-broader workbook `counts_as_open` reporting flag and not a selected-range count:
+The Fund Manager directory's `open-position count` uses the same shared committed-exposure
+membership as Profile Operations and Reports. It does not depend on a future due date:
 
-- sportsbook/free-bet: `status = Placed`, `result = Pending`, valid settlement time `> now`
-- casino: `status = Started`, `result = Pending`, valid settlement time `> now`
-- overdue, missing-date, prospecting/available and settled rows are excluded from Open positions
-- excluded problem rows remain represented by the ledger-specific Actions indicators
+- sportsbook/free-bet/Extra Place: domain-authoritative `Placed`
+- casino: domain-authoritative `Started` or `In Progress`
+- overdue and missing-date committed rows remain open; planning and realised rows are excluded
+- planning reminders remain represented by ledger-specific Actions indicators
 
 Combined outputs expose sums of the same fields plus:
 

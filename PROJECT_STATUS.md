@@ -256,6 +256,14 @@ Profile liability, Reports exposure and alerts. No lifecycle rule or owner row w
 Option B (separate planning from committed exposure) is recommended for owner decision. Exact
 record and deletion-preview evidence remains private.
 
+## CP-102 planned and committed exposure split
+
+Recorded 2026-10-28 under [#105](https://github.com/wolney8/OpenForge/issues/105) and
+[#114](https://github.com/wolney8/OpenForge/issues/114). The owner approved one shared financial
+membership authority. Planning rows remain visible but no longer enter actual P&L, committed
+liability, open-position counts, overdue exposure or exposure-readiness failures. Stored lifecycle
+values and owner financial rows remain unchanged. Owner verification remains pending.
+
 ## Reference index
 
 - [Feature status](FEATURE_STATUS.md)

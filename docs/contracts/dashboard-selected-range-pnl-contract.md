@@ -156,12 +156,14 @@ Selected-range P&L:
 
 Open and overdue counts:
 
-- `open_bet_count = count(sportsbook counts_as_open true) + count(free_bet counts_as_open true) + count(casino counts_as_open true)`
-- `overdue_bet_count = count(sportsbook is_overdue true) + count(free_bet is_overdue true) + count(casino is_overdue true)`
+- `open_bet_count = count(rows where shared financial_membership = COMMITTED)` across applicable domains
+- `overdue_bet_count = count(COMMITTED rows where the domain overdue helper is true)`
+- `Prospecting`, `Not Placed`, `Available`, and `Not Yet Awarded` planning rows remain in their ledgers but do not enter actual P&L, open exposure, or current-liability readiness
 
 Part-laid count:
 
 - count sportsbook and free-bet rows where:
+  - `financial_membership = COMMITTED`
   - `lay_status = Part Laid`
   - `date_range_tag = In Date Range`
 

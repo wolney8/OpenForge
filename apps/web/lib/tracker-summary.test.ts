@@ -246,7 +246,7 @@ describe("profile directory operational helpers", () => {
     expect(formatTrackingTenure("2024-01-01", asOf)).toBe("+2 years");
   });
 
-  it("counts only committed pending rows whose settlement is still in the future", () => {
+  it("counts every domain-authoritative committed row without relying on due dates", () => {
     const asOf = new Date("2026-07-16T12:00:00Z");
     const futureRows: TrackerSummaryDataset = {
       ...dataset,
@@ -262,9 +262,21 @@ describe("profile directory operational helpers", () => {
       casinoOffers: [
         { ...dataset.casinoOffers[0]!, status: "Started", result: "Pending", date_settling: "2026-07-17T12:00:00Z", counts_as_open: true },
       ],
+      eachWayExtraPlaces: [
+        {
+          each_way_extra_place_id: "EP-COMMITTED", placed_at: "", runner: "Runner A", race: "Race A",
+          bookmaker: "Bookie A", mode: "Extra Place", status: "Placed", result: "Pending",
+          current_value: "1.00", final_value: null, win_liability: "2.00", place_liability: "1.00",
+        },
+        {
+          each_way_extra_place_id: "EP-PLANNED", placed_at: "", runner: "Runner B", race: "Race B",
+          bookmaker: "Bookie A", mode: "Extra Place", status: "Prospecting", result: "Pending",
+          current_value: null, final_value: null, win_liability: null, place_liability: null,
+        },
+      ],
     };
 
-    expect(countTrueOpenPositions(futureRows, asOf)).toBe(3);
+    expect(countTrueOpenPositions(futureRows, asOf)).toBe(6);
   });
 });
 
@@ -580,7 +592,7 @@ describe("summarizeTrackerData", () => {
     expect(summary.bookmakerBreakdown[0]?.totalPnl).toBeCloseTo(5.3, 6);
   });
 
-  it("keeps selected-range live values separate from formal free-bet reporting inclusion", () => {
+  it("keeps an available unplaced Free Bet in planning without adding actual P&L", () => {
     const range = resolveDateRange({
       preset: "Week (Mon-Sun)",
       today: new Date("2026-07-01T10:00:00Z"),
@@ -617,12 +629,12 @@ describe("summarizeTrackerData", () => {
       new Date("2026-07-01T10:00:00Z")
     );
 
-    expect(summary.profitQuickView.freeBets.reportingValue).toBeCloseTo(14.3, 6);
-    expect(summary.profitQuickView.openCurrentValue).toBeCloseTo(13.2, 6);
+    expect(summary.profitQuickView.freeBets.reportingValue).toBeCloseTo(7.8, 6);
+    expect(summary.profitQuickView.openCurrentValue).toBeCloseTo(6.7, 6);
     expect(summary.weeklyReports[0]?.freeBetPnl).toBeCloseTo(7.8, 6);
     expect(summary.monthlyReports[0]?.freeBetPnl).toBeCloseTo(7.8, 6);
-    expect(summary.reportingModel.selectedRange.grossBettingPnl).toBeCloseTo(14.9, 6);
-    expect(summary.reportingModel.selectedRange.retainedProfit).toBeCloseTo(-0.1, 6);
+    expect(summary.reportingModel.selectedRange.grossBettingPnl).toBeCloseTo(8.4, 6);
+    expect(summary.reportingModel.selectedRange.retainedProfit).toBeCloseTo(-6.6, 6);
   });
 
   it("keeps Each Way / Extra Place rows as a distinct selected-range and reporting module", () => {
@@ -772,9 +784,9 @@ describe("Reports required output readiness", () => {
     result=summarizeTrackerData(source,range);expect(result.profitQuickView.eachWayExtraPlaces.reportingValue).toBe(0);
     expect(result.weeklyReports[0]!.eachWayExtraPlacePnl).toBe(0);
     Object.assign(source.eachWayExtraPlaces[0]!,{status:"Prospecting",result:"Pending",current_value:null,final_value:null});
-    result=summarizeTrackerData(source,range);expect(result.profitQuickView.eachWayExtraPlaces.reportingValue).toBeNaN();expect(result.profitQuickView.eachWayExtraPlaces.finalValue).toBe(0);
+    result=summarizeTrackerData(source,range);expect(result.profitQuickView.eachWayExtraPlaces.reportingValue).toBe(0);expect(result.profitQuickView.eachWayExtraPlaces.finalValue).toBe(0);
     source.eachWayExtraPlaces[0]!.final_value="7.00";
-    result=summarizeTrackerData(source,range);expect(result.profitQuickView.eachWayExtraPlaces.finalValue).toBe(7);
+    result=summarizeTrackerData(source,range);expect(result.profitQuickView.eachWayExtraPlaces.finalValue).toBe(0);
   });
 });
 
@@ -822,7 +834,7 @@ describe.each(["sportsbook", "free-bets"] as const)("%s required liability outpu
     }
   });
 
-  it("keeps zero, known liability and existing open/date membership authoritative", () => {
+  it("keeps zero and known committed liability authoritative", () => {
     const source = fixture();
     const row = source.sportsbookBets[0] ?? source.freeBets[0]!;
     expect(summarizeTrackerData(source, range).betsQuickView.currentLiability).toBe(15);
@@ -830,7 +842,12 @@ describe.each(["sportsbook", "free-bets"] as const)("%s required liability outpu
     expect(summarizeTrackerData(source, range).betsQuickView.currentLiability).toBe(0);
     row.calculated_liability_1 = null;
     row.counts_as_open = false;
+    expect(summarizeTrackerData(source, range).betsQuickView.currentLiability).toBeNaN();
+    row.status = "Settled";
+    row.result = "Lay Won";
     expect(summarizeTrackerData(source, range).betsQuickView.currentLiability).toBe(0);
+    row.status = "Placed";
+    row.result = "Pending";
     row.counts_as_open = true;
     row.date_settled = "2026-08-01T12:00:00";
     expect(summarizeTrackerData(source, range).betsQuickView.currentLiability).toBe(0);
@@ -850,6 +867,33 @@ describe.each(["sportsbook", "free-bets"] as const)("%s required liability outpu
     expect(result.betsQuickView.currentLiability).toBeNaN();
     expect(result.profitQuickView.overallPnl).toBe(12.5);
   });
+});
+
+it("keeps planned rows visible without contaminating committed exposure or actual P&L", () => {
+  const range = resolveDateRange({ preset: "All Dates", today: new Date("2026-07-01T10:00:00Z") });
+  const source: TrackerSummaryDataset = {
+    accounts: [], cashAdjustments: [], casinoOffers: [], freeBets: [], eachWayExtraPlaces: [],
+    sportsbookBets: [
+      {
+        ...dataset.sportsbookBets[1]!, sportsbook_bet_id: "SB-PLAN-PROSPECT",
+        status: "Prospecting", counts_as_open: true, calculated_liability_1: null,
+        reporting_value: null, projected_current_pnl: null, final_net_pnl: null,
+      },
+      {
+        ...dataset.sportsbookBets[1]!, sportsbook_bet_id: "SB-PLAN-NOT-PLACED",
+        status: "Not Placed", counts_as_open: true, calculated_liability_1: null,
+        reporting_value: null, projected_current_pnl: null, final_net_pnl: null,
+      },
+    ],
+  };
+
+  const result = summarizeTrackerData(source, range);
+  expect(result.activityQuickView.sportsbookCount).toBe(2);
+  expect(result.betsQuickView.openBets).toBe(0);
+  expect(result.betsQuickView.currentLiability).toBe(0);
+  expect(result.profitQuickView.sportsbook.reportingValue).toBe(0);
+  expect(result.financialReadinessIssues).toEqual([]);
+  expect(buildFormalReportRecords(source)).toEqual([]);
 });
 
 

@@ -291,9 +291,9 @@ Error/blank handling:
   - `Prospecting`
   - `Not Placed`
   - `Placed`
-- This membership currently mixes planning and committed exposure. CP-101 documents
-  the consumers and recommends a separate owner decision before changing it; this
-  calculation correction does not alter lifecycle membership.
+- `counts_as_open` remains a workflow/current-value helper. Actual exposure consumers use the
+  shared financial membership authority: `Prospecting` and `Not Placed` are `PLANNED`; `Placed`
+  is `COMMITTED`; settled history is `REALISED`.
 - overdue positions:
   - `counts_as_open = true` and `date_settled < today`
 - current-value reports:

@@ -1,5 +1,10 @@
 import { formatFinancialValue } from "./financial-display";
 import { sumAccountMoney, type AccountMoneyIssue } from "./account-money";
+import {
+  financialMembership,
+  isCommittedExposure,
+  isFinanciallyRecognised,
+} from "./exposure-membership";
 
 export type DatePreset =
   | "Today"
@@ -161,32 +166,16 @@ export function formatTrackingTenure(value: string, asOf = new Date()): string {
   return `+${elapsedYears} years`;
 }
 
-function hasFutureSettlement(
-  status: string,
-  result: string,
-  settlementValue: string,
-  committedStatus: string,
-  asOf: Date
-): boolean {
-  if (status !== committedStatus || result !== "Pending") return false;
-  const settlement = parseDateInput(settlementValue);
-  return settlement !== null && settlement.getTime() > asOf.getTime();
-}
-
 export function countTrueOpenPositions(
   dataset: TrackerSummaryDataset,
   asOf = new Date()
 ): number {
+  void asOf;
   return (
-    dataset.sportsbookBets.filter((row) =>
-      hasFutureSettlement(row.status, row.result, row.date_settled, "Placed", asOf)
-    ).length +
-    dataset.freeBets.filter((row) =>
-      hasFutureSettlement(row.status, row.result, row.date_settled, "Placed", asOf)
-    ).length +
-    dataset.casinoOffers.filter((row) =>
-      hasFutureSettlement(row.status, row.result, row.date_settling, "Started", asOf)
-    ).length
+    dataset.sportsbookBets.filter((row) => isCommittedExposure("sportsbook", row)).length +
+    dataset.freeBets.filter((row) => isCommittedExposure("free-bet", row)).length +
+    dataset.casinoOffers.filter((row) => isCommittedExposure("casino", row)).length +
+    (dataset.eachWayExtraPlaces ?? []).filter((row) => isCommittedExposure("extra-place", row)).length
   );
 }
 
@@ -364,7 +353,6 @@ export type FinancialReadinessIssue = {
   reason: string;
 };
 
-const reportFreeBetStatuses = new Set(["Placed", "Settled"]);
 const cashAdjustmentTypesForDashboard = new Set([
   "Deduction",
   "Subscription",
@@ -474,16 +462,22 @@ export function buildFormalReportRecords(dataset: TrackerSummaryDataset): Formal
     const date = parseDateInput(rawDate);
     if (date) records.push({ id, module, label, date, weekKey: getWeekKey(toPeriodDate(date)), value, component });
   };
-  for (const row of dataset.sportsbookBets) add(row.sportsbook_bet_id, "sportsbook-bets",
-    row.event_name || row.offer_name || "Sportsbook activity", row.date_settled, sportsbookDisplayValue(row), "sportsbookPnl");
+  for (const row of dataset.sportsbookBets) {
+    if (isFinanciallyRecognised("sportsbook", row)) add(row.sportsbook_bet_id, "sportsbook-bets",
+      row.event_name || row.offer_name || "Sportsbook activity", row.date_settled, sportsbookDisplayValue(row), "sportsbookPnl");
+  }
   for (const row of dataset.freeBets) {
-    if (reportFreeBetStatuses.has(row.status)) add(row.free_bet_id, "free-bets",
+    if (isFinanciallyRecognised("free-bet", row)) add(row.free_bet_id, "free-bets",
       row.event_name || "Free Bet", row.date_settled, freeBetDisplayValue(row), "freeBetPnl");
   }
-  for (const row of dataset.casinoOffers) add(row.casino_offer_id, "casino-offers",
-    row.offer_name || "Casino activity", row.date_settling, readSummaryMoney(row.resolved_net_pnl), "casinoPnl");
-  for (const row of dataset.eachWayExtraPlaces ?? []) add(row.each_way_extra_place_id, "each-way-extra-places",
-    row.runner || row.race || "Extra Place activity", row.placed_at, eachWayExtraPlaceDisplayValue(row), "eachWayExtraPlacePnl");
+  for (const row of dataset.casinoOffers) {
+    if (isFinanciallyRecognised("casino", row)) add(row.casino_offer_id, "casino-offers",
+      row.offer_name || "Casino activity", row.date_settling, readSummaryMoney(row.resolved_net_pnl), "casinoPnl");
+  }
+  for (const row of dataset.eachWayExtraPlaces ?? []) {
+    if (isFinanciallyRecognised("extra-place", row)) add(row.each_way_extra_place_id, "each-way-extra-places",
+      row.runner || row.race || "Extra Place activity", row.placed_at, eachWayExtraPlaceDisplayValue(row), "eachWayExtraPlacePnl");
+  }
   for (const row of dataset.cashAdjustments) add(row.cash_adjustment_id, "cash-adjustments",
     row.description || row.adjustment_type, row.adjustment_date, readSummaryMoney(row.signed_amount),
     row.adjustment_type === "Withdrawal" ? "withdrawals" : costAdjustmentTypes.has(row.adjustment_type) ? "costs" : "funding");
@@ -841,76 +835,88 @@ export function summarizeTrackerData(
     .sort((left, right) => right.snapshot_at.localeCompare(left.snapshot_at))
     .slice(0, 20);
 
-  const sportsbookReportingValue = sportsbookInRange.reduce(
+  const recognisedSportsbook = sportsbookInRange.filter((row) =>
+    isFinanciallyRecognised("sportsbook", row)
+  );
+  const recognisedFreeBets = freeBetsInRange.filter((row) =>
+    isFinanciallyRecognised("free-bet", row)
+  );
+  const recognisedCasino = casinoInRange.filter((row) =>
+    isFinanciallyRecognised("casino", row)
+  );
+  const recognisedEachWayExtraPlaces = eachWayExtraPlacesInRange.filter((row) =>
+    isFinanciallyRecognised("extra-place", row)
+  );
+  const openSportsbook = sportsbookInRange.filter((row) =>
+    isCommittedExposure("sportsbook", row)
+  );
+  const openFreeBets = freeBetsInRange.filter((row) =>
+    isCommittedExposure("free-bet", row)
+  );
+  const openCasino = casinoInRange.filter((row) =>
+    isCommittedExposure("casino", row)
+  );
+  const openEachWayExtraPlaces = eachWayExtraPlacesInRange.filter((row) =>
+    isCommittedExposure("extra-place", row)
+  );
+
+  const sportsbookReportingValue = recognisedSportsbook.reduce(
     (sum, row) => sum + sportsbookDisplayValue(row),
     0
   );
-  const sportsbookFinancialIssues = sportsbookInRange.filter((row) => !Number.isFinite(sportsbookDisplayValue(row)))
+  const sportsbookFinancialIssues = recognisedSportsbook.filter((row) => !Number.isFinite(sportsbookDisplayValue(row)))
     .map((row) => `${row.sportsbook_bet_id} · ${row.event_name || row.bookmaker}: ${row.calculation_notes?.join("; ") || "financial inputs require correction"}`);
-  const sportsbookOpenCurrentValue = sportsbookInRange
-    .filter((row) => row.counts_as_open)
+  const sportsbookOpenCurrentValue = openSportsbook
     .reduce((sum, row) => sum + (row.calculation_state === "review_required" ? NaN : readSummaryMoney(row.projected_current_pnl)), 0);
   const sportsbookSettledFinalValue = sportsbookInRange
-    .filter((row) => !row.counts_as_open)
+    .filter((row) => financialMembership("sportsbook", row) === "REALISED")
     .reduce((sum, row) => sum + (row.calculation_state === "review_required" ? NaN : readSummaryMoney(row.final_net_pnl)), 0);
-  const freeBetReportingValue = freeBetsInRange.reduce(
+  const freeBetReportingValue = recognisedFreeBets.reduce(
     (sum, row) => sum + freeBetDisplayValue(row),
     0
   );
-  const freeBetFinancialIssues = freeBetsInRange.filter((row) => !Number.isFinite(freeBetDisplayValue(row)))
+  const freeBetFinancialIssues = recognisedFreeBets.filter((row) => !Number.isFinite(freeBetDisplayValue(row)))
     .map((row) => `${row.free_bet_id} · ${row.event_name || row.bookmaker}: ${row.calculation_notes?.join("; ") || "financial inputs require correction"}`);
-  const freeBetOpenCurrentValue = freeBetsInRange
-    .filter((row) => row.counts_as_open)
+  const freeBetOpenCurrentValue = openFreeBets
     .reduce((sum, row) => sum + (Number.isFinite(freeBetDisplayValue(row)) ? parseMoney(row.projected_current_pnl) : NaN), 0);
   const freeBetSettledFinalValue = freeBetsInRange
-    .filter((row) => !row.counts_as_open)
+    .filter((row) => financialMembership("free-bet", row) === "REALISED")
     .reduce((sum, row) => sum + (Number.isFinite(freeBetDisplayValue(row)) ? parseMoney(row.final_net_pnl) : NaN), 0);
-  const casinoReportingValue = casinoInRange.reduce(
+  const casinoReportingValue = recognisedCasino.reduce(
     (sum, row) => sum + readSummaryMoney(row.resolved_net_pnl),
     0
   );
   const casinoSettledFinalValue = casinoInRange
-    .filter((row) => !row.counts_as_open)
+    .filter((row) => financialMembership("casino", row) === "REALISED")
     .reduce((sum, row) => sum + readSummaryMoney(row.resolved_net_pnl), 0);
-  const eachWayExtraPlaceReportingValue = eachWayExtraPlacesInRange.reduce(
+  const eachWayExtraPlaceReportingValue = recognisedEachWayExtraPlaces.reduce(
     (sum, row) => sum + eachWayExtraPlaceDisplayValue(row),
     0
   );
-  const eachWayExtraPlaceOpenCurrentValue = eachWayExtraPlacesInRange
-    .filter((row) => row.status === "Placed" && row.result === "Pending")
+  const eachWayExtraPlaceOpenCurrentValue = openEachWayExtraPlaces
     .reduce((sum, row) => sum + readSummaryMoney(row.current_value), 0);
   const eachWayExtraPlaceSettledFinalValue = eachWayExtraPlacesInRange
-    .filter((row) => row.status !== "Placed" || row.result !== "Pending")
-    .reduce((sum, row) => sum + (
-      row.status === "Prospecting" && row.result === "Pending" && !row.final_value?.trim()
-        ? 0 : readSummaryMoney(row.final_value)
-    ), 0);
+    .filter((row) => financialMembership("extra-place", row) === "REALISED")
+    .reduce((sum, row) => sum + readSummaryMoney(row.final_value), 0);
   const selectedRangeCashAdjustments = cashAdjustmentsInRange
     .filter((row) => cashAdjustmentTypesForDashboard.has(row.adjustment_type))
     .reduce((sum, row) => sum + readSummaryMoney(row.signed_amount), 0);
 
-  // Dashboard operational metrics follow the same resolved range as its P&L.
-  // Account balances remain current-state values and are intentionally handled above.
-  const openSportsbook = sportsbookInRange.filter((row) => row.counts_as_open);
-  const openFreeBets = freeBetsInRange.filter((row) => row.counts_as_open);
-  const openCasino = casinoInRange.filter((row) => row.counts_as_open);
-  const openEachWayExtraPlaces = eachWayExtraPlacesInRange.filter(
-    (row) => row.status === "Placed" && row.result === "Pending"
-  );
-
   const overdueBets =
-    sportsbookInRange.filter((row) => row.is_overdue).length +
-    freeBetsInRange.filter((row) => row.is_overdue).length +
-    casinoInRange.filter((row) => row.is_overdue).length;
+    openSportsbook.filter((row) => row.is_overdue).length +
+    openFreeBets.filter((row) => row.is_overdue).length +
+    openCasino.filter((row) => row.is_overdue).length;
 
   const partLaidBets =
     dataset.sportsbookBets.filter(
       (row) =>
+        isCommittedExposure("sportsbook", row) &&
         row.lay_status === "Part Laid" &&
         dateWithinRange(parseDateInput(row.date_settled), resolvedDateRange)
     ).length +
     dataset.freeBets.filter(
       (row) =>
+        isCommittedExposure("free-bet", row) &&
         row.lay_status === "Part Laid" &&
         dateWithinRange(parseDateInput(row.date_settled), resolvedDateRange)
     ).length;
@@ -923,28 +929,28 @@ export function summarizeTrackerData(
       0
     );
   const financialReadinessIssues: FinancialReadinessIssue[] = [
-    ...sportsbookInRange.flatMap((row) => !Number.isFinite(sportsbookDisplayValue(row)) ? [{
+    ...recognisedSportsbook.flatMap((row) => !Number.isFinite(sportsbookDisplayValue(row)) ? [{
       module: "sportsbook-bets" as const,
       recordId: row.sportsbook_bet_id,
       kind: "pnl" as const,
       field: row.calculation_state === "review_required" ? "calculation inputs" : "reporting value",
       reason: row.calculation_notes?.join("; ") || "Required Sportsbook financial inputs need review.",
     }] : []),
-    ...freeBetsInRange.flatMap((row) => !Number.isFinite(freeBetDisplayValue(row)) ? [{
+    ...recognisedFreeBets.flatMap((row) => !Number.isFinite(freeBetDisplayValue(row)) ? [{
       module: "free-bets" as const,
       recordId: row.free_bet_id,
       kind: "pnl" as const,
       field: "reporting value",
       reason: row.calculation_notes?.join("; ") || "Required Free Bet financial inputs need review.",
     }] : []),
-    ...casinoInRange.flatMap((row) => !Number.isFinite(readSummaryMoney(row.resolved_net_pnl)) ? [{
+    ...recognisedCasino.flatMap((row) => !Number.isFinite(readSummaryMoney(row.resolved_net_pnl)) ? [{
       module: "casino-offers" as const,
       recordId: row.casino_offer_id,
       kind: "pnl" as const,
       field: "resolved net P&L",
       reason: "Resolved Casino P&L is missing or invalid.",
     }] : []),
-    ...eachWayExtraPlacesInRange.flatMap((row) => !Number.isFinite(eachWayExtraPlaceDisplayValue(row)) ? [{
+    ...recognisedEachWayExtraPlaces.flatMap((row) => !Number.isFinite(eachWayExtraPlaceDisplayValue(row)) ? [{
       module: "each-way-extra-places" as const,
       recordId: row.each_way_extra_place_id,
       kind: "pnl" as const,
@@ -1179,9 +1185,11 @@ export function summarizeTrackerData(
 
   for (const row of sportsbookInRange) {
     const next = bookmakerRow(row.bookmaker);
-    next.sportsbookPnl += sportsbookDisplayValue(row);
+    if (isFinanciallyRecognised("sportsbook", row)) {
+      next.sportsbookPnl += sportsbookDisplayValue(row);
+    }
     next.totalPnl = next.sportsbookPnl + next.freeBetPnl + next.casinoPnl + next.eachWayExtraPlacePnl;
-    if (row.counts_as_open) {
+    if (isCommittedExposure("sportsbook", row)) {
       next.openRowCount += 1;
       next.sportsbookOpenRowCount += 1;
     }
@@ -1190,9 +1198,11 @@ export function summarizeTrackerData(
 
   for (const row of freeBetsInRange) {
     const next = bookmakerRow(row.bookmaker);
-    next.freeBetPnl += freeBetDisplayValue(row);
+    if (isFinanciallyRecognised("free-bet", row)) {
+      next.freeBetPnl += freeBetDisplayValue(row);
+    }
     next.totalPnl = next.sportsbookPnl + next.freeBetPnl + next.casinoPnl + next.eachWayExtraPlacePnl;
-    if (row.counts_as_open) {
+    if (isCommittedExposure("free-bet", row)) {
       next.openRowCount += 1;
       next.freeBetOpenRowCount += 1;
     }
@@ -1201,9 +1211,11 @@ export function summarizeTrackerData(
 
   for (const row of casinoInRange) {
     const next = bookmakerRow(row.bookmaker);
-    next.casinoPnl += readSummaryMoney(row.resolved_net_pnl);
+    if (isFinanciallyRecognised("casino", row)) {
+      next.casinoPnl += readSummaryMoney(row.resolved_net_pnl);
+    }
     next.totalPnl = next.sportsbookPnl + next.freeBetPnl + next.casinoPnl + next.eachWayExtraPlacePnl;
-    if (row.counts_as_open) {
+    if (isCommittedExposure("casino", row)) {
       next.openRowCount += 1;
       next.casinoOpenRowCount += 1;
     }
@@ -1212,9 +1224,11 @@ export function summarizeTrackerData(
 
   for (const row of eachWayExtraPlacesInRange) {
     const next = bookmakerRow(row.bookmaker);
-    next.eachWayExtraPlacePnl += eachWayExtraPlaceDisplayValue(row);
+    if (isFinanciallyRecognised("extra-place", row)) {
+      next.eachWayExtraPlacePnl += eachWayExtraPlaceDisplayValue(row);
+    }
     next.totalPnl = next.sportsbookPnl + next.freeBetPnl + next.casinoPnl + next.eachWayExtraPlacePnl;
-    if (row.status === "Placed" && row.result === "Pending") {
+    if (isCommittedExposure("extra-place", row)) {
       next.openRowCount += 1;
       next.extraPlaceOpenRowCount += 1;
     }

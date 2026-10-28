@@ -425,3 +425,11 @@ the explicit non-placement action that selects which reviewed plan will be saved
 | ID | Area | Requested change | Signed-off authority | Status |
 | --- | --- | --- | --- | --- |
 | PD-FIX-323 | Sportsbook calculation and financial summary | Preserve `No Lay` stake/liability as `0.00` when back inputs are incomplete; keep P&L unavailable and leave other strategies unchanged | Sportsbook cash-first current-value contract; issues [#105](https://github.com/wolney8/OpenForge/issues/105) and [#114](https://github.com/wolney8/OpenForge/issues/114) | COMPLETE LOCALLY — focused calculation/summary checks pass; owner lifecycle decision remains separate |
+
+## 2026-10-28 CP-102 planned and committed exposure split
+
+| ID | Area | Requested change | Signed-off authority | Status |
+| --- | --- | --- | --- | --- |
+| PD-FIX-324 | Shared reporting authority | Classify lifecycle rows as planned, committed, realised or excluded and use that authority for every actual-exposure consumer | Owner CP-102 decision; liability/exposure contract; issues [#105](https://github.com/wolney8/OpenForge/issues/105) and [#114](https://github.com/wolney8/OpenForge/issues/114) | CODE-VERIFIED — runtime installation pending |
+| PD-FIX-325 | Profile Operations, Reports and Fund Manager | Keep planning rows visible while excluding them from actual P&L, liability, open counts, overdue exposure and readiness | Same shared authority; existing summary/report components | CODE-VERIFIED — runtime installation pending |
+| PD-AUDIT-102-01 | Read-only normal-owner evidence | Recalculate financial membership and synthetic-residue impact without changing rows | CP-102 no-mutation boundary | DOCUMENTED PRIVATELY — post-install hash comparison pending |

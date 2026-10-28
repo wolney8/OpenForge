@@ -1,12 +1,12 @@
 # Calculation Contract: Liability And Exposure Aggregation
 
-_Last updated: 2026-06-30_
+_Last updated: 2026-10-28_
 
 ## 0. Contract status
 
-- Status: Draft
-- Owner: Codex planning draft
-- Human approval required before implementation: Yes
+- Status: Approved for current implementation
+- Owner: Fund Manager
+- Human approval required before implementation: Satisfied by CP-102 owner decision
 - Related workflow contract: To confirm
 - Related spreadsheet source: `Sportsbook Bets`, `Free Bets`, `Dashboard`
 - Related source-pack file: `_input/TRACKER_CALCULATION_SPEC_CASH_FIRST_MAY2026.md`
@@ -85,7 +85,8 @@ It supports:
 | `record_id` | string | Yes | row key | entered/system | Yes | per-row reference |
 | `row_type` | enum | Yes | ledger type | derived | Yes | sportsbook or free_bet |
 | `status` | enum | Yes | row | entered | Yes | open-state inclusion |
-| `counts_as_open` | boolean | Yes | row helper | calculated | Yes | open-state inclusion flag |
+| `financial_membership` | enum | Yes | shared lifecycle authority | calculated | Yes | `PLANNED`, `COMMITTED`, `REALISED`, or `EXCLUDED` |
+| `counts_as_open` | boolean | No | legacy row helper | calculated | Yes | workflow-open flag; must not define committed exposure |
 | `lay_stake_1` | money | No | row | derived/entered | Yes | liability input |
 | `lay_odds_1` | decimal | No | row | entered | Yes | liability input |
 | `lay_stake_2` | money | No | row | derived/entered | Yes | multi-lay branch |
@@ -128,11 +129,12 @@ Dashboard/profile current liability baseline:
 
 Open exposure inclusion:
 
-- include only rows where `counts_as_open = true`
+- include only rows where shared `financial_membership = COMMITTED`
 
 Error/blank handling:
 
-- if lay stake or odds are missing, branch liability is blank or zero-equivalent for aggregate purposes
+- if a committed row lacks governed liability, the aggregate is unavailable; missing is never zero
+- explicit No-Lay liability remains governed `0.00`
 
 ## 10. Assumptions
 
@@ -155,10 +157,16 @@ Error/blank handling:
 
 - profile-specific exposure must be isolated by `profile_id`
 - cross-profile exposure is allowed only as a derived aggregate in fund-manager screens
-- open-position inclusion rule:
-  - sportsbook `Prospecting`, `Not Placed`, `Placed`
-  - free-bet `Prospecting`, `Available`, `Placed`
-- overdue inclusion follows each row's helper logic
+- planning membership never contributes committed exposure:
+  - sportsbook `Prospecting`, `Not Placed`
+  - free-bet `Prospecting`, `Not Yet Awarded`, `Available`
+  - casino `Prospecting`
+  - Extra Place `Prospecting`
+- committed membership follows domain lifecycle authority:
+  - sportsbook/free-bet/Extra Place `Placed`
+  - casino `Started`, `In Progress`
+- realised membership follows domain terminal authority; void/cancel/error states are excluded
+- overdue exposure requires both `COMMITTED` membership and the domain overdue helper
 
 ## 14. Scenario outcomes
 
@@ -171,7 +179,7 @@ Error/blank handling:
 ## 15. Status and reporting inclusion
 
 - open positions:
-  - include rows with `counts_as_open = true`
+  - include rows with shared `financial_membership = COMMITTED`
 - overdue positions:
   - include rows with `is_overdue = true`
 - current-value reports:
@@ -195,7 +203,8 @@ Error/blank handling:
 
 - `liability_single_branch_matches_row_formula`
 - `liability_multi_branch_row_total_sums_active_branches`
-- `profile_current_liability_includes_open_rows_only`
+- `profile_current_liability_includes_committed_rows_only`
+- `planned_rows_remain_visible_but_do_not_change_exposure`
 - `profile_current_liability_excludes_other_profiles`
 - `overdue_and_open_counts_follow_helper_flags`
 
@@ -222,6 +231,5 @@ Error/blank handling:
 
 - reviewer: To confirm
 - review date: To confirm
-- approval outcome: Pending
-- follow-up required before implementation:
-  - confirm whether dashboard aggregate should remain workbook-parity `Liability1` only or evolve to full row-total liability for multi-lay rows
+- approval outcome: Approved for the planned/committed/realised membership split
+- follow-up required: multi-lay exposure continues to use its existing governed exchange-exposure authority
