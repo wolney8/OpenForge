@@ -264,6 +264,21 @@ membership authority. Planning rows remain visible but no longer enter actual P&
 liability, open-position counts, overdue exposure or exposure-readiness failures. Stored lifecycle
 values and owner financial rows remain unchanged. Owner verification remains pending.
 
+## CP-103 governed synthetic-residue cleanup
+
+Recorded 2026-10-28 under [#105](https://github.com/wolney8/OpenForge/issues/105) and
+[#114](https://github.com/wolney8/OpenForge/issues/114). The owner-approved scope remained exact:
+35 provenance-proven synthetic Sportsbook lifecycle-test rows and 11 synthetic Extra Place
+visual-test residues in the designated synthetic Profile. A fresh verified normal-owner backup and
+private exact-ID manifest preceded one atomic maintenance transaction. Ordinary Placed Sportsbook
+deletion remains prohibited; Extra Place reused its existing governed deletion authority.
+
+All 46 business rows were removed, while immutable financial history retained one baseline and one
+removal event per row. No non-candidate business/audit row changed. Committed unavailable liability
+changed from 35 to 0 and planned pipeline from 399 to 388. Three unresolved historical Casino P&L
+rows and every non-approved incomplete record remain untouched. Owner review remains pending; this
+checkpoint does not assert that all financial history is clean.
+
 ## Reference index
 
 - [Feature status](FEATURE_STATUS.md)

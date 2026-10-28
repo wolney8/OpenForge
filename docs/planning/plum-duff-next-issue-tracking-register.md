@@ -2200,3 +2200,13 @@ because it excludes overdue/missing-date committed rows and Extra Place.
 
 Covered by existing issues [#105](https://github.com/wolney8/OpenForge/issues/105) and
 [#114](https://github.com/wolney8/OpenForge/issues/114); live GitHub status is not changed in this checkpoint.
+
+## CP-103 governed cleanup of proven synthetic records
+
+Updated 2026-10-28. The owner approved only the exact CP-100/101/102 candidate manifest.
+
+| ID | Scope | State |
+| --- | --- | --- |
+| PD-FIX-326 / #105 / #114 | Manifest-bound maintenance removal of 35 synthetic Placed Sportsbook lifecycle-test rows without weakening ordinary deletion | COMPLETE LOCALLY — exact count removed; immutable history retained; normal deletion still fails closed |
+| PD-FIX-327 / #114 | Existing governed removal of 11 synthetic Prospecting Extra Place residues | COMPLETE LOCALLY — exact count removed; no other planned row changed |
+| PD-AUDIT-103-01 / #114 | Fresh backup, dependency/provenance revalidation, atomic rollback, post-delete exposure/readiness and private receipt | COMPLETE LOCALLY — integrity/FK and non-candidate comparisons pass; owner review pending |
