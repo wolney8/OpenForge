@@ -192,6 +192,7 @@ describe("OddsMatcherShell", () => {
     expect(requests.filter((request) => request.url.includes("/oddsmatcher/refresh"))).toHaveLength(0);
     const summary = container.querySelector<HTMLButtonElement>('button[aria-label^="Open Bet Summary"]');
     await act(async () => { summary?.click(); });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 10)); });
     const previewRequest = requests.find(request => request.url.includes("matched-betting/preview"));
     expect(previewRequest?.body).toMatchObject({
       underlay_bias_percent: "0.02",

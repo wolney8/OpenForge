@@ -796,3 +796,14 @@ identity `normal-owner`, fingerprint `7246998d43722066` and schema `invited-subs
 unchanged. Private evidence is under
 `data/private/evidence/cp096-oddsmatcher-background-preview-20261027/`. Owner interaction and visual
 acceptance remain pending.
+
+## CP-097 Bet Summary micro alignment polish — 2026-10-28
+
+| ID | Surface | Requested behaviour | Signed-off equivalent | Status |
+| --- | --- | --- | --- | --- |
+| PD-FIX-448 / #54 | Lay Stake money field | Centre the currency prefix and editable numeric value as one composition without changing field geometry or behavior | Existing `FinancialTextInput` adorned-field primitive | IN PROGRESS |
+| PD-FIX-449 / #54 | Outcome headings | Keep both headings left aligned and inset them by the result table's existing first-cell padding | Existing Oddsmatcher outcome table spacing | IN PROGRESS |
+| PD-FIX-450 / #54 | Verification and local install | Verify editing, copy action, equal insets, responsive containment and calculation regression before canonical installation | Existing CP-096 Bet Summary browser harness | IN PROGRESS |
+
+This batch changes presentation only. Calculator, API, Advanced, slider, commission, Profile,
+snapshot/live, outcome-value and Place Lay behavior remain unchanged.

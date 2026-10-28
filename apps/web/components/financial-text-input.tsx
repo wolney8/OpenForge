@@ -17,6 +17,7 @@ type FinancialTextInputProps = {
   valueTone?: "neutral" | "positive" | "negative";
   allowNegative?: boolean;
   clearInitialZeroOnFocus?: boolean;
+  contentAlignment?: "start" | "center";
   sanitizeInput?: boolean;
 };
 
@@ -34,12 +35,13 @@ export function FinancialTextInput({
   valueTone = "neutral",
   allowNegative = true,
   clearInitialZeroOnFocus = false,
+  contentAlignment = "start",
   sanitizeInput = true,
 }: FinancialTextInputProps) {
   const handledInitialZeroRef = useRef(false);
 
   return (
-    <span className={`adorned-text-input financial-text-input financial-text-input-${valueTone}`}>
+    <span className={`adorned-text-input financial-text-input financial-text-input-${valueTone}${contentAlignment === "center" ? " financial-text-input-centered" : ""}`}>
       <span aria-hidden="true" className="financial-text-input-prefix">£</span>
       <input
         disabled={disabled}

@@ -1634,7 +1634,7 @@ function BetSummaryDialog({
                   <button aria-checked={autoLay} aria-disabled={replay} className={`material-switch oddsmatcher-auto-switch${autoLay ? " is-selected" : ""}`} disabled={replay} onClick={() => { const next = !autoLay; setAutoLay(next); if (next) { setLayOdds(opportunity.lay.odds); setLayOddsInput(formatOdds(opportunity.lay.odds, layOddsFormat)); setLayOddsError(null); } }} role="switch" title={replay ? "Automatic quote updates are unavailable for saved snapshots" : undefined} type="button"><span aria-hidden="true" className="material-switch-track"><span className="material-switch-thumb" /></span><span>Auto-update Lay Odds</span></button>
                   <div className="oddsmatcher-lay-stake-block">
                     <span>Lay Stake</span>
-                    <FinancialTextInput allowNegative={false} ariaLabel="Lay Stake" dataPdId="oddsmatcher.lay-stake" id="oddsmatcher-lay-stake" onBlur={() => undefined} onChange={setCustomStake} value={displayedLayStake} />
+                    <FinancialTextInput allowNegative={false} ariaLabel="Lay Stake" contentAlignment="center" dataPdId="oddsmatcher.lay-stake" id="oddsmatcher-lay-stake" onBlur={() => undefined} onChange={setCustomStake} value={displayedLayStake} />
                     <button aria-label="Copy lay stake" className="icon-button compact-action" onClick={() => void navigator.clipboard.writeText(displayedLayStake)} title="Copy lay stake" type="button"><span aria-hidden="true" className="material-symbols-outlined">content_copy</span></button>
                     <span>Liability: {safePreview ? <FinancialValue value={safePreview.liability} /> : "—"}</span>
                   </div>

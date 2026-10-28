@@ -300,3 +300,12 @@ Complete this for every feature, bug fix, component, fixture-backed UI, route or
       concise accessible labels; the percent adornment stays inside one field surface.
 - [x] Desktop, 430px, focus, reduced-motion and private headless evidence are covered.
 - [ ] Owner interaction and visual acceptance remain pending.
+
+## CP-097 Bet Summary micro alignment polish — 2026-10-28
+
+- [x] Lay Stake uses the shared money-input primitive's centered-content variant; the currency
+      prefix and editable value centre as one composition without changing outer field geometry.
+- [x] Both outcome headings remain left aligned and use the result table's first-cell inset.
+- [x] Editing, copy-action placement, calculation regression, desktop/430px containment and
+      computed geometry are covered by the existing Bet Summary browser path.
+- [ ] Owner visual verification remains pending.

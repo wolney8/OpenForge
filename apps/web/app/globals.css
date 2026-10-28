@@ -1318,6 +1318,22 @@ html[data-theme="dark"] .fund-manager-avatar {
   font-weight: 800;
 }
 
+.financial-text-input-centered {
+  width: 100%;
+  grid-template-columns: auto auto;
+  justify-content: center;
+}
+
+.financial-text-input-centered .financial-text-input-prefix {
+  padding-left: 0;
+}
+
+.adorned-text-input.financial-text-input-centered input {
+  width: 7ch;
+  padding-inline: 0.45rem 0;
+  text-align: left;
+}
+
 .adorned-text-input input {
   box-sizing: border-box;
   width: 100%;
@@ -7767,7 +7783,7 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
 .oddsmatcher-bet-card > header { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; }
 .oddsmatcher-bet-card h3,
 .oddsmatcher-event-summary h3,
-.oddsmatcher-outcome-card h3 { margin: 0; }
+.oddsmatcher-outcome-card h3 { margin: 0; padding-inline-start: 0.55rem; text-align: left; }
 .oddsmatcher-bet-card header .button-link { min-height: 2.75rem; padding: 0.25rem 0.45rem; }
 .oddsmatcher-card-account { display: flex; flex-wrap: wrap; align-items: center; gap: 0.45rem 0.75rem; color: var(--muted); }
 .oddsmatcher-summary-input-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; align-items: start; }
