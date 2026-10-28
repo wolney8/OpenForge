@@ -433,3 +433,11 @@ the explicit non-placement action that selects which reviewed plan will be saved
 | PD-FIX-324 | Shared reporting authority | Classify lifecycle rows as planned, committed, realised or excluded and use that authority for every actual-exposure consumer | Owner CP-102 decision; liability/exposure contract; issues [#105](https://github.com/wolney8/OpenForge/issues/105) and [#114](https://github.com/wolney8/OpenForge/issues/114) | CODE-VERIFIED — runtime installation pending |
 | PD-FIX-325 | Profile Operations, Reports and Fund Manager | Keep planning rows visible while excluding them from actual P&L, liability, open counts, overdue exposure and readiness | Same shared authority; existing summary/report components | CODE-VERIFIED — runtime installation pending |
 | PD-AUDIT-102-01 | Read-only normal-owner evidence | Recalculate financial membership and synthetic-residue impact without changing rows | CP-102 no-mutation boundary | DOCUMENTED PRIVATELY — post-install hash comparison pending |
+
+## 2026-10-28 CP-103 governed synthetic-residue cleanup
+
+| ID | Area | Requested outcome | Authority / issue | Status |
+|---|---|---|---|---|
+| PD-FIX-326 | Sportsbook maintenance | Remove only the exact approved 35 provenance-proven synthetic Placed lifecycle-test rows through a manifest-bound maintenance path; ordinary Placed deletion remains prohibited | Owner CP-103 approval; financial history contract; issues [#105](https://github.com/wolney8/OpenForge/issues/105) and [#114](https://github.com/wolney8/OpenForge/issues/114) | IN PROGRESS |
+| PD-FIX-327 | Extra Place cleanup | Remove only the exact approved 11 ALPHA Prospecting visual-test residues through the existing governed deletion authority | Owner CP-103 approval; existing Extra Place deletion contract; issue [#114](https://github.com/wolney8/OpenForge/issues/114) | IN PROGRESS |
+| PD-AUDIT-103-01 | Backup, manifest and receipt | Revalidate provenance/dependencies, create a fresh verified backup, execute atomically, and retain a private before/after rollback receipt | Owner CP-103 hard-abort conditions and normal-owner recovery authority | IN PROGRESS |
