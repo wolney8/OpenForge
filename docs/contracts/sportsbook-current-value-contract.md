@@ -1,6 +1,6 @@
 # Calculation Contract: Sportsbook Cash-First Current Value
 
-_Last updated: 2026-06-30_
+_Last updated: 2026-10-28_
 
 ## 0. Contract status
 
@@ -200,6 +200,10 @@ Free Bet settings and must not be reused by the Normal/Qualifying path.
 Liability:
 
 - `liability_i = round(lay_stake_i * (lay_odds_i - 1), 2)`
+- `No Lay` resolves selected lay stake and exchange liability to `0.00` before
+  validating back-side inputs. Missing back stake/odds still leave rating, scenario
+  P&L, current/final P&L and reporting value unresolved; the row is not financially
+  complete merely because its exchange exposure is known zero.
 
 Scenario formulas:
 
@@ -287,6 +291,9 @@ Error/blank handling:
   - `Prospecting`
   - `Not Placed`
   - `Placed`
+- This membership currently mixes planning and committed exposure. CP-101 documents
+  the consumers and recommends a separate owner decision before changing it; this
+  calculation correction does not alter lifecycle membership.
 - overdue positions:
   - `counts_as_open = true` and `date_settled < today`
 - current-value reports:

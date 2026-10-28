@@ -2172,3 +2172,20 @@ synthetic-residue deletion; owner review for ambiguous historical values; and re
 `Unavailable` where authority is insufficient. `normal-owner` remains 73 tables / 6,738 rows with
 fingerprint `7246998d43722066`, integrity `ok`, zero foreign-key violations and exact content-hash
 parity with the verified CP-099 backup.
+
+## CP-101 No-Lay liability correction and exposure-membership decision
+
+Recorded 2026-10-28 under [#105](https://github.com/wolney8/OpenForge/issues/105) and
+[#114](https://github.com/wolney8/OpenForge/issues/114). No owner-data cleanup or lifecycle change
+is authorised in this checkpoint.
+
+| ID | Requested outcome | Status |
+| --- | --- | --- |
+| PD-FIX-323 | Resolve governed No-Lay stake/liability zero before missing back-input validation while leaving P&L/rating/settlement economics unavailable | COMPLETE LOCALLY — deterministic API and summary regressions pass; installation recorded separately |
+| PD-AUDIT-101-01 | Trace every actual/planned exposure consumer and assess the current mixed open membership | DOCUMENTED — Profile liability, Dashboard, Reports exposure and alerts are mixed; Account cash is independent; one narrower committed-count helper already exists |
+| PD-AUDIT-101-02 | Prepare an exact, non-mutating deletion/dependency preview for 35 Sportsbook and 11 Extra Place residues | DOCUMENTED PRIVATELY — 11 Extra Place rows are eligible for governed deletion; all 35 Placed Sportsbook rows are blocked by the current audited delete contract |
+
+Recommendation pending owner decision: keep planned records visible but separate `Prospecting` and
+`Not Placed` from committed `Placed/Pending` exposure. The existing future-dated
+`countTrueOpenPositions` helper is useful precedent but is too narrow to become the full authority
+because it excludes overdue/missing-date committed rows and Extra Place.

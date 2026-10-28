@@ -246,6 +246,16 @@ existing calculation contract; the remaining values are not reconstructable from
 No import or lifecycle mapping defect was proven. Exact record evidence remains private. No owner
 row, schema, provider state or runtime was changed; remediation requires a separate owner decision.
 
+## CP-101 No-Lay liability and exposure-membership audit
+
+Recorded 2026-10-28 against [#105](https://github.com/wolney8/OpenForge/issues/105) and
+[#114](https://github.com/wolney8/OpenForge/issues/114). The governed No-Lay stake/liability zero
+now resolves before missing back-side inputs; P&L remains unavailable. The current
+`Prospecting`/`Not Placed`/`Placed` open set still mixes planned and committed exposure across
+Profile liability, Reports exposure and alerts. No lifecycle rule or owner row was changed.
+Option B (separate planning from committed exposure) is recommended for owner decision. Exact
+record and deletion-preview evidence remains private.
+
 ## Reference index
 
 - [Feature status](FEATURE_STATUS.md)

@@ -292,11 +292,17 @@ def calculate_sportsbook_current_value(
     as_of_date: date,
 ) -> SportsbookCalculationResult:
     from dataclasses import asdict
-    from openforge_api.multi_lay_actual import execution_from, calculate_actual
+
+    from openforge_api.multi_lay_actual import calculate_actual, execution_from
+
     execution = execution_from(calculation_input.multi_lay_outcomes_json)
     if execution is not None:
         legs = json.loads(calculation_input.multi_lay_outcomes_json)
-        if legs[0].get("calculationVersion") != "multi-lay-v2" or calculation_input.offer_type != "Bet & Get" or calculation_input.match_strategy not in {"Multilay", "Multilay-Underlay"}:
+        if (
+            legs[0].get("calculationVersion") != "multi-lay-v2"
+            or calculation_input.offer_type != "Bet & Get"
+            or calculation_input.match_strategy not in {"Multilay", "Multilay-Underlay"}
+        ):
             raise ValueError("Actual Multi-Lay requires a supported versioned Normal plan.")
         actual = calculate_actual(asdict(calculation_input), legs, execution)
         def actual_money(name: str) -> Decimal | None:
@@ -318,7 +324,11 @@ def calculate_sportsbook_current_value(
             final_net_pnl=actual_money("final_net_pnl"),
             reporting_value=actual_money("reporting_value"),
             lay_status=actual["lay_status"], counts_as_open=actual["counts_as_open"],
-            is_overdue=bool(actual["counts_as_open"] and settled_date is not None and settled_date < as_of_date),
+            is_overdue=bool(
+                actual["counts_as_open"]
+                and settled_date is not None
+                and settled_date < as_of_date
+            ),
         )
     notes: list[str] = []
     counts_as_open = calculation_input.status in OPEN_STATUSES
@@ -407,11 +417,16 @@ def calculate_sportsbook_current_value(
         )
 
     if back_stake is None or back_odds is None:
+        # No Lay has a governed selected lay stake and exchange exposure of zero,
+        # even when missing back-side inputs keep P&L and rating unresolved.
+        no_lay_zero = Decimal("0.00") if no_lay_mode else None
         override_result = _manual_override_fallback(
             calculation_input,
             counts_as_open=counts_as_open,
             is_overdue=is_overdue,
             note="Required numeric inputs are missing.",
+            actual_lay_stake=no_lay_zero,
+            liability=no_lay_zero,
         )
         if override_result is not None:
             return override_result
@@ -426,8 +441,8 @@ def calculate_sportsbook_current_value(
             reference_lay_stake_standard=None,
             reference_lay_stake_underlay=None,
             reference_lay_stake_overlay=None,
-            actual_lay_stake_1=None,
-            calculated_liability_1=None,
+            actual_lay_stake_1=no_lay_zero,
+            calculated_liability_1=no_lay_zero,
             scenario_pnl_if_back_wins=None,
             scenario_pnl_if_lay_wins=None,
             projected_current_pnl=None,

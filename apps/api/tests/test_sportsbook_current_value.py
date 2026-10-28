@@ -162,6 +162,74 @@ def test_no_lay_mug_bet_uses_workbook_cash_return_branch() -> None:
     assert result.lay_status == "Not Laid"
 
 
+def test_no_lay_missing_exchange_inputs_keeps_zero_liability() -> None:
+    result = calculate_sportsbook_current_value(
+        SportsbookCalculationInput(
+            profile_id="PROFILE-001",
+            record_id="SB-NO-LAY-NO-EXCHANGE",
+            status="Prospecting",
+            result="Pending",
+            offer_type="Mug Bet",
+            back_stake="5.00",
+            back_odds="4.33",
+            match_strategy="No Lay",
+            lay_odds_1="",
+            lay_commission_1="",
+        ),
+        as_of_date=date(2026, 7, 1),
+    )
+
+    assert result.actual_lay_stake_1 == Decimal("0.00")
+    assert result.calculated_liability_1 == Decimal("0.00")
+    assert result.lay_status == "Not Laid"
+
+
+def test_no_lay_missing_back_inputs_resolves_only_lay_side_zeroes() -> None:
+    result = calculate_sportsbook_current_value(
+        SportsbookCalculationInput(
+            profile_id="PROFILE-001",
+            record_id="SB-NO-LAY-INCOMPLETE-BACK",
+            status="Prospecting",
+            result="Pending",
+            offer_type="Mug Bet",
+            back_stake="",
+            back_odds="",
+            match_strategy="No Lay",
+        ),
+        as_of_date=date(2026, 7, 1),
+    )
+
+    assert result.calculation_state == "incomplete"
+    assert result.actual_lay_stake_1 == Decimal("0.00")
+    assert result.calculated_liability_1 == Decimal("0.00")
+    assert result.match_rating is None
+    assert result.projected_current_pnl is None
+    assert result.actual_net_pnl is None
+    assert result.final_net_pnl is None
+    assert result.reporting_value is None
+
+
+def test_standard_and_partial_lay_incomplete_inputs_keep_unknown_liability() -> None:
+    for strategy in ("Standard", "Partial Lay"):
+        result = calculate_sportsbook_current_value(
+            SportsbookCalculationInput(
+                profile_id="PROFILE-001",
+                record_id=f"SB-{strategy.upper().replace(' ', '-')}-INCOMPLETE",
+                status="Prospecting",
+                result="Pending",
+                offer_type="Bet & Get",
+                back_stake="",
+                back_odds="",
+                match_strategy=strategy,
+            ),
+            as_of_date=date(2026, 7, 1),
+        )
+
+        assert result.calculation_state == "incomplete"
+        assert result.actual_lay_stake_1 is None
+        assert result.calculated_liability_1 is None
+
+
 def test_custom_and_partial_lay_require_or_use_explicit_lay_actual() -> None:
     incomplete = calculate_sportsbook_current_value(
         SportsbookCalculationInput(

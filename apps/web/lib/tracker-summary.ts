@@ -434,14 +434,11 @@ export function readSummaryMoney(value: string | null | undefined): number {
   return Number.isFinite(parsed) ? parsed : NaN;
 }
 
-function firstMoneyValue(...values: Array<string | null | undefined>): number {
-  const firstValue = values.find((value) => value != null && value.trim() !== "");
-  return parseMoney(firstValue);
-}
-
 function sportsbookDisplayValue(row: SportsbookSummaryRecord): number {
   if (row.calculation_state === "review_required") return NaN;
-  return firstMoneyValue(row.reporting_value, row.final_net_pnl, row.projected_current_pnl);
+  const value = [row.reporting_value, row.final_net_pnl, row.projected_current_pnl]
+    .find((item) => item != null && item.trim() !== "");
+  return readSummaryMoney(value);
 }
 
 export function freeBetDisplayValue(row: FreeBetSummaryRecord): number {
@@ -852,10 +849,10 @@ export function summarizeTrackerData(
     .map((row) => `${row.sportsbook_bet_id} · ${row.event_name || row.bookmaker}: ${row.calculation_notes?.join("; ") || "financial inputs require correction"}`);
   const sportsbookOpenCurrentValue = sportsbookInRange
     .filter((row) => row.counts_as_open)
-    .reduce((sum, row) => sum + (row.calculation_state === "review_required" ? NaN : parseMoney(row.projected_current_pnl)), 0);
+    .reduce((sum, row) => sum + (row.calculation_state === "review_required" ? NaN : readSummaryMoney(row.projected_current_pnl)), 0);
   const sportsbookSettledFinalValue = sportsbookInRange
     .filter((row) => !row.counts_as_open)
-    .reduce((sum, row) => sum + (row.calculation_state === "review_required" ? NaN : parseMoney(row.final_net_pnl)), 0);
+    .reduce((sum, row) => sum + (row.calculation_state === "review_required" ? NaN : readSummaryMoney(row.final_net_pnl)), 0);
   const freeBetReportingValue = freeBetsInRange.reduce(
     (sum, row) => sum + freeBetDisplayValue(row),
     0

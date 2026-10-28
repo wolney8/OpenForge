@@ -814,7 +814,12 @@ describe.each(["sportsbook", "free-bets"] as const)("%s required liability outpu
     const row = source.sportsbookBets[0] ?? source.freeBets[0]!;
     Object.assign(row, { calculation_state: "incomplete", calculated_liability_1: null,
       reporting_value: null, projected_current_pnl: null });
-    expect(summarizeTrackerData(source, range).betsQuickView.currentLiability).toBeNaN();
+    const result = summarizeTrackerData(source, range);
+    expect(result.betsQuickView.currentLiability).toBeNaN();
+    if (module === "sportsbook") {
+      expect(result.profitQuickView.overallPnl).toBeNaN();
+      expect(result.profitQuickView.openCurrentValue).toBeNaN();
+    }
   });
 
   it("keeps zero, known liability and existing open/date membership authoritative", () => {

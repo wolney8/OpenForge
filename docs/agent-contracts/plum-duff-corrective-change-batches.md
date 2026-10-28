@@ -419,3 +419,9 @@ Multi-Lay native save/reopen 3/3, and Standard Normal/SNR conversion/reopen/sett
 The Underlay/Overlay plan actions remain because, after removal of the strategy dropdown, they are
 the explicit non-placement action that selects which reviewed plan will be saved. Their labels are
 `Use … plan`, their pressed state is exposed, and Copy remains clipboard-only.
+
+## 2026-10-28 CP-101 No-Lay liability correction
+
+| ID | Area | Requested change | Signed-off authority | Status |
+| --- | --- | --- | --- | --- |
+| PD-FIX-323 | Sportsbook calculation and financial summary | Preserve `No Lay` stake/liability as `0.00` when back inputs are incomplete; keep P&L unavailable and leave other strategies unchanged | Sportsbook cash-first current-value contract; issues [#105](https://github.com/wolney8/OpenForge/issues/105) and [#114](https://github.com/wolney8/OpenForge/issues/114) | COMPLETE LOCALLY — focused calculation/summary checks pass; owner lifecycle decision remains separate |
