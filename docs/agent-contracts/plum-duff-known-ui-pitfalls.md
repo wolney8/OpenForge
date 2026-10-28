@@ -1528,3 +1528,12 @@ overlays for this high-frequency path, move focus, dim the modal or repeatedly a
 Calculation-dependent mutations may remain unavailable until the latest authoritative response;
 unrelated controls remain interactive. Initial load may use the established blocking state when no
 usable preview exists.
+
+## Relational alignment and local approximations
+
+- Do not call an individual value centred when an adjacent action shifts the conceptual group away
+  from its label or supporting value. Measure the shared axis and place secondary actions in an
+  independent or balanced slot.
+- Do not reproduce an established platform information hierarchy with feature-local tables or
+  cards. Reuse or minimally generalise the signed-off shared component and cover its existing users
+  with focused regression evidence.

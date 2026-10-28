@@ -309,3 +309,16 @@ Complete this for every feature, bug fix, component, fixture-backed UI, route or
 - [x] Editing, copy-action placement, calculation regression, desktop/430px containment and
       computed geometry are covered by the existing Bet Summary browser path.
 - [ ] Owner visual verification remains pending.
+
+## CP-098 Bet Summary relational alignment and shared Outcomes — 2026-10-28
+
+- [x] Lay Stake label, money value and liability share one measured centre axis; Copy occupies a
+      balanced secondary action slot and does not affect that axis.
+- [x] Oddsmatcher uses `CalculatorOutcomes` with Bookmaker, Exchange and Total for the two
+      qualifying scenarios; no promotion column or duplicate matched-result summary is rendered.
+- [x] The fixture summary retains its pre-CP-097 alignment and standalone scenario headings are
+      removed.
+- [x] Standard retains the separate Total Profit card; Underlay, Overlay and Custom do not.
+- [x] Existing Calculator Outcomes, promotion columns and legitimate summaries remain unchanged.
+- [x] Desktop/430px geometry, focus, light/dark, reduced motion and private evidence are verified.
+- [ ] Owner visual verification remains pending.

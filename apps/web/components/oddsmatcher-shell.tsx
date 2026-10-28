@@ -16,6 +16,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { CalculatorSegmentedControl } from "@/components/calculator-segmented-control";
+import { CalculatorOutcomes } from "@/components/calculator-outcomes";
 import { FinancialValue } from "@/components/financial-value";
 import { FinancialTextInput } from "@/components/financial-text-input";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
@@ -1552,6 +1553,8 @@ function BetSummaryDialog({
   const sliderCurrent = Math.min(sliderMaximum, Math.max(sliderMinimum, Number(displayedLayStake || sliderCentre)));
   const isStandardMatch = strategy === "Standard" && Boolean(preview) &&
     Math.abs(Number(preview?.selected_lay_stake) - Number(standardStake)) <= 0.005;
+  const backWinOutcome = safePreview?.outcomes?.find((item) => item.key === "back-wins");
+  const layWinOutcome = safePreview?.outcomes?.find((item) => item.key === "lay-wins");
   const setNamedStrategy = (value: Strategy) => {
     setStrategy(value);
     if (value !== "Custom") setCustomLayStake("");
@@ -1633,10 +1636,12 @@ function BetSummaryDialog({
                   <div className="oddsmatcher-lay-meta-row"><LiquidityUnavailableStatus /></div>
                   <button aria-checked={autoLay} aria-disabled={replay} className={`material-switch oddsmatcher-auto-switch${autoLay ? " is-selected" : ""}`} disabled={replay} onClick={() => { const next = !autoLay; setAutoLay(next); if (next) { setLayOdds(opportunity.lay.odds); setLayOddsInput(formatOdds(opportunity.lay.odds, layOddsFormat)); setLayOddsError(null); } }} role="switch" title={replay ? "Automatic quote updates are unavailable for saved snapshots" : undefined} type="button"><span aria-hidden="true" className="material-switch-track"><span className="material-switch-thumb" /></span><span>Auto-update Lay Odds</span></button>
                   <div className="oddsmatcher-lay-stake-block">
-                    <span>Lay Stake</span>
-                    <FinancialTextInput allowNegative={false} ariaLabel="Lay Stake" contentAlignment="center" dataPdId="oddsmatcher.lay-stake" id="oddsmatcher-lay-stake" onBlur={() => undefined} onChange={setCustomStake} value={displayedLayStake} />
+                    <div className="oddsmatcher-lay-stake-content">
+                      <span>Lay Stake</span>
+                      <FinancialTextInput allowNegative={false} ariaLabel="Lay Stake" contentAlignment="center" dataPdId="oddsmatcher.lay-stake" id="oddsmatcher-lay-stake" onBlur={() => undefined} onChange={setCustomStake} value={displayedLayStake} />
+                      <span>Liability: {safePreview ? <FinancialValue value={safePreview.liability} /> : "—"}</span>
+                    </div>
                     <button aria-label="Copy lay stake" className="icon-button compact-action" onClick={() => void navigator.clipboard.writeText(displayedLayStake)} title="Copy lay stake" type="button"><span aria-hidden="true" className="material-symbols-outlined">content_copy</span></button>
-                    <span>Liability: {safePreview ? <FinancialValue value={safePreview.liability} /> : "—"}</span>
                   </div>
                   {advanced ? <div className="oddsmatcher-advanced-controls">
                     <CalculatorSegmentedControl ariaLabel="Lay strategy" dataPdId="oddsmatcher.strategy" onChange={setNamedStrategy} options={[{label:"Underlay",value:"Underlay"},{label:"Standard",value:"Standard"},{label:"Overlay",value:"Overlay"}]} value={strategy} />
@@ -1664,8 +1669,10 @@ function BetSummaryDialog({
                 </section>
                 {effectivePreviewState === "loading" && !preview ? <LedgerLoadingIndicator label="Loading Bet Summary" /> : null}
                 {safePreview ? <div className="oddsmatcher-outcome-stack">
-                  <OutcomeTable heading={`If back (${opportunity.back.account_name}) bet wins`} outcome={safePreview.outcomes?.find((item) => item.key === "back-wins")} total={safePreview.pnl_if_back_wins} />
-                  <OutcomeTable heading={`If lay (${simpleExchangeName(opportunity.lay.account_name)}) bet wins`} outcome={safePreview.outcomes?.find((item) => item.key === "lay-wins")} total={safePreview.pnl_if_lay_wins} />
+                  <CalculatorOutcomes columns={["Bookmaker", "Exchange"]} compact inspectionId="oddsmatcher.bet-summary.outcomes" rows={[
+                    { key: "back-wins", label: "Back bet wins", tone: "positive", components: [[backWinOutcome?.bookmaker_component], [backWinOutcome?.exchange_component]], total: backWinOutcome?.total ?? safePreview.pnl_if_back_wins },
+                    { key: "lay-wins", label: "Lay bet wins", tone: "exchange", components: [[layWinOutcome?.bookmaker_component], [layWinOutcome?.exchange_component]], total: layWinOutcome?.total ?? safePreview.pnl_if_lay_wins },
+                  ]} />
                   {isStandardMatch ? <div className="oddsmatcher-total-profit"><span>Total Profit</span><strong><FinancialValue value={safePreview.matched_result} /></strong><small>Conservative / worst-case result</small></div> : null}
                 </div> : null}
                 {draftError ? <p className="field-validation-text" role="alert">{draftError}</p> : null}
@@ -1683,10 +1690,6 @@ function BetSummaryDialog({
       </div>
     </ModalBoundary>
   );
-}
-
-function OutcomeTable({ heading, outcome, total }: { heading: string; outcome?: Preview["outcomes"][number]; total: string }) {
-  return <section className="oddsmatcher-outcome-card"><h3>{heading}</h3><div className="table-scroll"><table className="data-table"><thead><tr><th>Bookmaker</th><th>Exchange</th><th>Total</th></tr></thead><tbody><tr><td>{outcome ? <FinancialValue value={outcome.bookmaker_component} /> : "—"}</td><td>{outcome ? <FinancialValue value={outcome.exchange_component} /> : "—"}</td><td><strong><FinancialValue value={outcome?.total ?? total} /></strong></td></tr></tbody></table></div></section>;
 }
 
 function BetSummarySettingsDialog({ backFormat, layFormat, onBackFormatChange, onClose, onLayFormatChange, returnFocusRef }: {

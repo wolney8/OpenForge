@@ -249,6 +249,14 @@ describe("OddsMatcherShell", () => {
     expect(document.body.textContent).toContain("This provider supplies a lay price but not available exchange depth");
     expect(document.body.textContent).toContain("Lay Stake");
     expect(document.body.textContent).toContain("Total Profit");
+    const outcomes = document.body.querySelector('[data-pd-id="oddsmatcher.bet-summary.outcomes"]');
+    expect(outcomes?.classList.contains("calculator-outcomes-matrix")).toBe(true);
+    expect(outcomes?.querySelectorAll('[role="row"]')).toHaveLength(3);
+    expect(outcomes?.textContent).toContain("Back bet wins");
+    expect(outcomes?.textContent).toContain("Lay bet wins");
+    expect(outcomes?.textContent).not.toContain("Bonus");
+    expect(document.body.textContent).not.toContain("If back (");
+    expect(document.body.textContent).not.toContain("If lay (");
     expect(document.body.textContent).not.toContain("Place Bet");
     const add = [...document.body.querySelectorAll("button")].find(button => button.textContent === "Add Prospecting Draft");
     await act(async () => { add?.click(); });

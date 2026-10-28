@@ -807,3 +807,16 @@ acceptance remain pending.
 
 This batch changes presentation only. Calculator, API, Advanced, slider, commission, Profile,
 snapshot/live, outcome-value and Place Lay behavior remain unchanged. Automated geometry found the money composition centred within 0.01px at desktop and 430px; both headings use the same 8.8px inset. The focused browser path passed against the canonical localhost runtime. Owner visual verification remains pending.
+
+## CP-098 Bet Summary relational alignment and shared Outcomes — 2026-10-28
+
+| ID | Surface | Requested behaviour | Signed-off equivalent | Status |
+| --- | --- | --- | --- | --- |
+| PD-FIX-451 / #54 | Lay Stake relationship | Give the label, editable money value and liability one visual centre axis while keeping Copy adjacent without bias | Shared financial input plus balanced action-slot geometry | COMPLETE |
+| PD-FIX-452 / #54 | Bet Summary Outcomes | Replace the two feature-local outcome tables with the established Calculator Outcomes primitive and two qualifying scenarios | `CalculatorOutcomes` | COMPLETE |
+| PD-FIX-453 / #54 | CP-097 alignment regression | Remove the outcome-heading workaround and restore the fixture heading/card alignment | Existing Oddsmatcher right-column card alignment | COMPLETE |
+| PD-FIX-454 / #54 | Shared calculator regression | Preserve Calculator Outcomes, promotion columns and legitimate matched-result summaries while adding the compact Bet Summary configuration | Existing calculator parity browser coverage | COMPLETE |
+| PD-FIX-455 / #54 | Verification and local install | Verify relational axes, desktop/430px containment, strategy-specific Total Profit and canonical installation | Existing Bet Summary and Calculator browser harnesses | NEEDS VERIFICATION |
+
+This batch is presentation-only. Calculation values, strategy maths, API, Profile, provider,
+commission, Prospecting and placement behaviour remain unchanged.

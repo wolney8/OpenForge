@@ -37,6 +37,7 @@ export function CalculatorOutcomeValueDisplay({ label, value }: { label: string;
 export function CalculatorOutcomes({
   className,
   columns = [],
+  compact = false,
   busy = false,
   description,
   headingAction,
@@ -48,6 +49,7 @@ export function CalculatorOutcomes({
   className?: string;
   busy?: boolean;
   columns?: string[];
+  compact?: boolean;
   description?: ReactNode;
   headingAction?: ReactNode;
   inspectionId: string;
@@ -55,7 +57,7 @@ export function CalculatorOutcomes({
   summary?: ReactNode;
   title?: ReactNode;
 }) {
-  return <CalculatorTableSection busy={busy} className={`calculator-outcomes-matrix extra-place-outcome-matrix${className ? ` ${className}` : ""}`} headingAction={headingAction} inspectionId={inspectionId} title={title}>
+  return <CalculatorTableSection busy={busy} className={`calculator-outcomes-matrix extra-place-outcome-matrix${compact ? " calculator-outcomes-compact" : ""}${className ? ` ${className}` : ""}`} headingAction={headingAction} inspectionId={inspectionId} title={title}>
     {description ? <p className="calculator-section-guidance">{description}</p> : null}
     <div className="calculator-outcomes-table extra-place-outcome-table" role="table">
       {columns.length > 0 ? <div className={`extra-place-outcome-row extra-place-outcome-row-heading calculator-outcome-columns-${Math.min(columns.length, 3)}`} role="row">

@@ -46,6 +46,10 @@ Done means:
 - `docs/agent-contracts/plum-duff-ui-accessibility-contract.md` was followed
 - the UI implementation checklist was completed
 - existing Plum Duff primitives and semantic tokens were used or an exception was justified
+- alignment was checked relationally across each conceptual group; secondary actions do not
+  distort the shared visual axis of labels, values and supporting information
+- an established component with the same information hierarchy was reused or minimally
+  generalised instead of being approximated locally
 - equivalent interactions reuse the established component type, hierarchy, spacing, dismissal,
   keyboard and responsive behaviour; local substitute controls require a documented product reason
 - touched UI copy is concise and does not repeat a selected setting or surrounding context unless

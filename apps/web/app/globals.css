@@ -7782,8 +7782,7 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
 .oddsmatcher-bet-card-lay { background: color-mix(in srgb, var(--lay-panel-bg) 34%, var(--surface-container)); }
 .oddsmatcher-bet-card > header { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; }
 .oddsmatcher-bet-card h3,
-.oddsmatcher-event-summary h3,
-.oddsmatcher-outcome-card h3 { margin: 0; padding-inline-start: 0.55rem; text-align: left; }
+.oddsmatcher-event-summary h3 { margin: 0; }
 .oddsmatcher-bet-card header .button-link { min-height: 2.75rem; padding: 0.25rem 0.45rem; }
 .oddsmatcher-card-account { display: flex; flex-wrap: wrap; align-items: center; gap: 0.45rem 0.75rem; color: var(--muted); }
 .oddsmatcher-summary-input-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; align-items: start; }
@@ -7807,10 +7806,12 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
 }
 .oddsmatcher-auto-switch { justify-self: start; }
 .oddsmatcher-lay-meta-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.35rem 0.75rem; min-width: 0; }
-.oddsmatcher-lay-stake-block { display: grid; grid-template-columns: minmax(9rem, 13rem) auto; justify-content: center; justify-items: center; align-items: center; gap: 0.18rem 0.4rem; padding: 0.45rem 0.6rem; border-radius: var(--shape-medium); background: var(--surface-strong); text-align: center; }
-.oddsmatcher-lay-stake-block > span:first-child { grid-column: 1 / -1; font-size: 0.78rem; font-weight: 720; color: var(--muted); }
-.oddsmatcher-lay-stake-block > .financial-text-input { min-height: 2.75rem; font-size: 1.35rem; font-weight: 760; text-align: center; }
-.oddsmatcher-lay-stake-block > span:last-child { grid-column: 1 / -1; color: var(--muted); }
+.oddsmatcher-lay-stake-block { display: grid; grid-template-columns: 2.75rem minmax(9rem, 13rem) 2.75rem; justify-content: center; align-items: center; gap: 0.4rem; padding: 0.45rem 0.6rem; border-radius: var(--shape-medium); background: var(--surface-strong); }
+.oddsmatcher-lay-stake-content { grid-column: 2; display: grid; justify-items: center; gap: 0.18rem; min-width: 0; text-align: center; }
+.oddsmatcher-lay-stake-content > span:first-child { font-size: 0.78rem; font-weight: 720; color: var(--muted); }
+.oddsmatcher-lay-stake-content > .financial-text-input { min-height: 2.75rem; font-size: 1.35rem; font-weight: 760; text-align: center; }
+.oddsmatcher-lay-stake-content > span:last-child { color: var(--muted); }
+.oddsmatcher-lay-stake-block > .compact-action { grid-column: 3; justify-self: center; }
 .oddsmatcher-place-lay-stub { display: grid; grid-template-columns: minmax(9rem,0.65fr) minmax(0,1fr); align-items: center; gap: 0.2rem 0.55rem; padding: 0; border: 1px solid var(--outline); border-radius: var(--shape-medium); background: var(--surface-container-high); }
 .oddsmatcher-place-lay-stub button { min-height: 2.75rem; border: 1px solid var(--outline); border-radius: var(--shape-full); background: var(--surface-strong); color: var(--muted); font: inherit; font-weight: 750; cursor: not-allowed; opacity: 0.72; }
 .oddsmatcher-place-lay-stub button:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
@@ -7837,12 +7838,6 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
 .oddsmatcher-event-summary > div,
 .oddsmatcher-event-summary > small { grid-column: 1 / -1; display: grid; gap: 0.15rem; }
 .oddsmatcher-event-summary > small { color: var(--muted); }
-.oddsmatcher-outcome-card { display: grid; gap: 0.3rem; }
-.oddsmatcher-outcome-card .table-scroll { border-radius: var(--shape-medium); }
-.oddsmatcher-outcome-card .data-table th,
-.oddsmatcher-outcome-card .data-table td { padding: 0.4rem 0.55rem; text-align: right; }
-.oddsmatcher-outcome-card .data-table th:first-child,
-.oddsmatcher-outcome-card .data-table td:first-child { text-align: left; }
 .oddsmatcher-total-profit { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 0.1rem 0.6rem; padding: 0.6rem; border-radius: var(--shape-large); background: var(--primary-soft); }
 .oddsmatcher-total-profit strong { font-size: clamp(1.35rem, 2.5vw, 2rem); }
 .oddsmatcher-total-profit small { grid-column: 1 / -1; color: var(--muted); }
@@ -13682,6 +13677,25 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
   .extra-place-outcome-row > strong:last-child::before { display: block; color: var(--on-surface-variant); font-size: 0.72rem; font-weight: 700; text-transform: uppercase; }
   .calculator-outcome-scenario-row > span::before,
   .calculator-outcome-scenario-row > strong:last-child::before { content: attr(data-label); }
+}
+
+/* The shared Outcomes hierarchy also serves bounded side panels. Preserve its
+   scenario columns while they remain readable, then use the established
+   stacked treatment below the compact panel threshold. This follows the base
+   matrix rules so the compact configuration wins without changing calculators. */
+@container calculator-outcomes (min-width: 30rem) and (max-width: 48rem) {
+  .calculator-outcomes-compact .extra-place-outcome-row-heading {
+    display: grid;
+  }
+
+  .calculator-outcomes-compact .calculator-outcomes-table .calculator-outcome-scenario-row[class*="calculator-outcome-columns-"],
+  .calculator-outcomes-compact .extra-place-outcome-row-heading {
+    grid-template-columns: minmax(8.5rem, 1.35fr) repeat(2, minmax(5.5rem, 1fr)) minmax(5rem, 0.8fr);
+  }
+
+  .calculator-outcomes-compact .calculator-outcome-scenario-row > [data-label]::before {
+    display: none;
+  }
 }
 
 .calculator-reference-tone-standard { --calculator-reference-accent: var(--primary); }

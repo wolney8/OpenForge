@@ -173,6 +173,11 @@ use the canonical primitive and computed styling.
   establish composed parity. Shared rows remain content-driven: shorter segments do not inherit
   empty trailing tracks merely to equalise panel bottoms. Existing presentation schemes use the
   stable shared header action slot and restore their established browser-local UI preference.
+- Alignment is relational, not merely local. Labels, values, actions and supporting information
+  that form one conceptual group share an intentional visual axis. Secondary actions occupy a
+  balanced or independent slot and must not distort the primary content's perceived alignment.
+- When an established platform component already solves the same information hierarchy, reuse or
+  minimally generalise it instead of creating a feature-local approximation.
 - Calculator section titles and contextual help use the shared heading primitive. The help action
   stays immediately beside its title in one non-wrapping heading row at desktop, half-width and
   ordinary narrow widths; never place it in an accidental second row. Same-level calculator
