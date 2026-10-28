@@ -835,7 +835,7 @@ acceptance remains pending.
 | PD-FIX-456 / #54 | Fund Manager Oddsmatcher defaults | Keep each switch at the Bet Summary switch geometry even when its settings row spans the panel | Existing `material-switch` and `oddsmatcher-auto-switch` primitive | COMPLETE |
 | PD-FIX-457 / #54 | Bet Summary Lay Stake | Reduce the money field width while retaining the label/value/liability centre axis and independent Copy action | Existing compact financial input and CP-098 balanced action slots | COMPLETE |
 | PD-FIX-458 / #62 | Session-state accuracy | Distinguish an invalid/expired session from unavailable frontend validation configuration while remaining fail closed | Existing authoritative session bootstrap, branded Login alert and role-bound launcher | COMPLETE |
-| PD-FIX-459 / #62 | Auth boundary verification and local install | Prove protected API denial, OAuth session renewal, logout, safe return and canonical web/API environment parity before installation | Existing auth fixtures, proxy tests and normal-owner launchers | NEEDS VERIFICATION — automated gates pass; canonical install and one genuine owner Google return remain |
+| PD-FIX-459 / #62 | Auth boundary verification and local install | Prove protected API denial, OAuth session renewal, logout, safe return and canonical web/API environment parity before installation | Existing auth fixtures, proxy tests and normal-owner launchers | COMPLETE locally — one genuine owner Google renewal remains owner verification |
 
 This batch changes only the two named Oddsmatcher presentation details and session-state accuracy.
 It does not change OAuth credentials, identity authority, calculations, provider behaviour,
@@ -850,3 +850,12 @@ logout revokes the database-backed session, and OAuth callback tests prove state
 new application-session issuance and safe internal return paths. The Google authorization request
 uses `prompt=select_account`; an existing upstream Google session can avoid another password entry
 without bypassing the Plum Duff callback or session checks.
+
+Verification: 605 web unit tests, 26 focused API auth/launcher tests, 12 focused browser paths,
+web/API typecheck, production build and focused changed-source lint pass. The settings switches use
+the shared 52×32 track; Lay Stake reduced from 208px to 176px and retains its measured centre axis
+at desktop and 430px. Backup `normal-owner-pre-cp099-20261028T103216Z.sqlite3` has SHA-256
+`857cede0799ea5df77c42f7dcb2bb97f7325957f70c2455ab8c5953d50749ab1`, integrity `ok` and zero
+foreign-key violations. Canonical web/API restarts now use matching role-bound auth fingerprints;
+the existing owner session remained valid after restart. Database identity `normal-owner`,
+fingerprint `7246998d43722066`, all 73 table hashes and all 6,738 rows remain unchanged.

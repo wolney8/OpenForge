@@ -333,5 +333,5 @@ Complete this for every feature, bug fix, component, fixture-backed UI, route or
       a true invalid/expired session still uses the session-ended state.
 - [x] Valid, missing, expired, transient-unavailable, OAuth renewal, logout and safe internal return
       paths have focused automated evidence without exposing credentials or cookies.
-- [ ] Canonical 3010/8010 restart uses the same role-bound owner auth environment; owner Google SSO
+- [x] Canonical 3010/8010 restart uses the same role-bound owner auth environment; owner Google SSO
       behaviour remains pending direct owner verification.
