@@ -801,9 +801,9 @@ acceptance remain pending.
 
 | ID | Surface | Requested behaviour | Signed-off equivalent | Status |
 | --- | --- | --- | --- | --- |
-| PD-FIX-448 / #54 | Lay Stake money field | Centre the currency prefix and editable numeric value as one composition without changing field geometry or behavior | Existing `FinancialTextInput` adorned-field primitive | IN PROGRESS |
-| PD-FIX-449 / #54 | Outcome headings | Keep both headings left aligned and inset them by the result table's existing first-cell padding | Existing Oddsmatcher outcome table spacing | IN PROGRESS |
-| PD-FIX-450 / #54 | Verification and local install | Verify editing, copy action, equal insets, responsive containment and calculation regression before canonical installation | Existing CP-096 Bet Summary browser harness | IN PROGRESS |
+| PD-FIX-448 / #54 | Lay Stake money field | Centre the currency prefix and editable numeric value as one composition without changing field geometry or behavior | Existing `FinancialTextInput` adorned-field primitive | COMPLETE |
+| PD-FIX-449 / #54 | Outcome headings | Keep both headings left aligned and inset them by the result table's existing first-cell padding | Existing Oddsmatcher outcome table spacing | COMPLETE |
+| PD-FIX-450 / #54 | Verification and local install | Verify editing, copy action, equal insets, responsive containment and calculation regression before canonical installation | Existing CP-096 Bet Summary browser harness | COMPLETE |
 
 This batch changes presentation only. Calculator, API, Advanced, slider, commission, Profile,
-snapshot/live, outcome-value and Place Lay behavior remain unchanged.
+snapshot/live, outcome-value and Place Lay behavior remain unchanged. Automated geometry found the money composition centred within 0.01px at desktop and 430px; both headings use the same 8.8px inset. The focused browser path passed against the canonical localhost runtime. Owner visual verification remains pending.
