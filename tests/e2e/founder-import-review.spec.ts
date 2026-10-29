@@ -93,6 +93,33 @@ function workspace() {
         confidence: "blocked",
         context: { ...baseItem.context, provider: "Historical Provider", pnl: "" },
       },
+      {
+        ...baseItem,
+        item_id: "review-account-values-123456",
+        import_id: "account-import-2",
+        source_sheet: "Accounts",
+        source_row: 15,
+        category: "accounts_partial",
+        issue_type: "invalid_stake_access",
+        issue_types: ["invalid_stake_access", "invalid_promo_access", "invalid_account_payload"],
+        reason: "Unsupported Account access values.",
+        proposed_target: "Profile Account",
+        confidence: "blocked",
+        source_fields: {
+          ...baseItem.source_fields,
+          Account: "Demo Provider",
+          Type: "Bookie",
+          Status: "Restricted",
+          CurrentBalance: "0.00",
+          PendingWithdrawalAmount: "",
+          Channel: "Online",
+          "Stake Access": "Unknown",
+          "Promo Access": "Unknown",
+          LastBalanceUpdate: "2026-08-03T11:48:29",
+          Notes: "Synthetic fixture",
+        },
+        context: { ...baseItem.context, provider: "Demo Provider", pnl: "" },
+      },
     ],
     source_summary: {
       accounts: {
@@ -171,7 +198,7 @@ function workspace() {
       excluded_count: 0,
       deferred_count: 0,
       review_status_counts: {
-        UNREVIEWED: 3,
+        UNREVIEWED: 4,
         REVIEWED_ACCEPTED: 0,
         REVIEWED_OVERRIDDEN: 0,
         DEFERRED: 0,
@@ -431,11 +458,50 @@ test("filter modal and missing-provider actions use canonical dialogs", async ({
   await filters.getByRole("button", { name: "Done" }).click();
 
   await page.getByRole("button", { name: "Missing Provider" }).click();
-  await page.getByRole("button", { name: "Review Accounts row 14" }).click();
+  await page.getByRole("button", { name: "Review Historical Provider Account mapping" }).click();
   const editor = page.getByRole("dialog", { name: "Review import mapping" });
   await expect(editor.getByRole("option", { name: "Map to existing provider" })).toBeAttached();
   await expect(editor.getByRole("option", { name: "Add to Account Catalogue and use for this Account" })).toBeAttached();
   await expect(editor.getByRole("option", { name: "Mark historical / archived" })).toBeAttached();
+});
+
+test("Account exceptions show identity, cash evidence and safe choices without bet-row copy", async ({ page }) => {
+  await mockShell(page);
+  await page.setViewportSize({ width: 430, height: 860 });
+  await page.goto("/profiles/profile-demo/imports/import-run-demo/review");
+
+  await page.getByLabel("Search import exceptions").fill("Demo Provider");
+  const row = page.getByRole("row").filter({ hasText: "Demo Provider" });
+  await expect(row).toContainText("Bookie · Restricted");
+  await expect(row).toContainText("Stake Unknown · Promos Unknown");
+  await expect(row).toContainText("£0.00");
+  await expect(row).not.toContainText("No modern bet inputs");
+
+  const review = row.getByRole("button", { name: "Review Demo Provider Account mapping" });
+  await review.click();
+  const editor = page.getByRole("dialog", { name: "Review import mapping" });
+  await expect(editor.locator('[data-pd-id="profile-import.account-evidence"]')).toContainText("Demo Provider");
+  await expect(editor.locator('[data-pd-id="profile-import.account-evidence"]')).toContainText("Current balance");
+  await expect(editor.locator('[data-pd-id="profile-import.account-evidence"]')).toContainText("£0.00");
+  await expect(editor.locator('[data-pd-id="profile-import.account-choices"]')).toContainText("Stake Access: Normal, Limited, Severely Limited, Blocked, or Not Checked.");
+  await expect(editor.locator('[data-pd-id="profile-import.account-choices"]')).toContainText("Promo Access: Full, Restricted, None, or Not Checked.");
+  await expect(editor.getByRole("option", { name: "Accept proposed mapping" })).toHaveCount(0);
+  await expect(editor.getByRole("option", { name: "Defer pending Account decision" })).toBeAttached();
+
+  for (const theme of ["light", "dark"]) {
+    await page.locator("html").evaluate((element, value) => element.setAttribute("data-theme", value), theme);
+    const geometry = await page.evaluate(() => ({
+      body: document.body.scrollWidth,
+      document: document.documentElement.scrollWidth,
+      viewport: window.innerWidth,
+    }));
+    expect(geometry.body).toBeLessThanOrEqual(geometry.viewport);
+    expect(geometry.document).toBeLessThanOrEqual(geometry.viewport);
+  }
+
+  await page.keyboard.press("Escape");
+  await expect(editor).toBeHidden();
+  await expect(review).toBeFocused();
 });
 
 test("missing provider can be confirmed once globally and linked to the Profile Account", async ({ page }) => {
@@ -465,7 +531,7 @@ test("missing provider can be confirmed once globally and linked to the Profile 
   await page.setViewportSize({ width: 768, height: 800 });
   await page.goto("/profiles/profile-demo/imports/import-run-demo/review");
   await page.getByRole("button", { name: "Missing Provider" }).click();
-  await page.getByRole("button", { name: "Review Accounts row 14" }).click();
+  await page.getByRole("button", { name: "Review Historical Provider Account mapping" }).click();
   const editor = page.getByRole("dialog", { name: "Review import mapping" });
   await editor.getByLabel("Decision").selectOption("create_provider_candidate");
   await expect(editor.getByLabel("Canonical brand name")).toHaveValue("Historical Provider");

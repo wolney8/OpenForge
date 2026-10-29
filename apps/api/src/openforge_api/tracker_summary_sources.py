@@ -10,7 +10,7 @@ from openforge_api.accounts import list_profile_accounts
 from openforge_api.balance_snapshots import list_profile_balance_snapshots
 from openforge_api.cash_adjustments import list_profile_cash_adjustments
 from openforge_api.casino_offers import list_profile_casino_offers
-from openforge_api.db import connect, list_profiles, reuse_mutation_connection
+from openforge_api.db import connect, get_profile, list_profiles, reuse_mutation_connection
 from openforge_api.each_way_extra_places import list_profile_each_way_extra_places
 from openforge_api.free_bets import list_profile_free_bets
 from openforge_api.fund_manager_fee_periods import list_profile_fee_periods
@@ -48,7 +48,14 @@ def _read_profile_snapshot(profile_id: str) -> dict[str, Any]:
         list_profile_fee_periods,
         get_tracker_settings,
     )
-    return dict(zip(keys, (reader(profile_id) for reader in readers), strict=True))
+    snapshot: dict[str, Any] = dict(
+        zip(keys, (reader(profile_id) for reader in readers), strict=True)
+    )
+    profile = get_profile(profile_id)
+    snapshot["current_cash_snapshot"] = (
+        profile.current_cash_snapshot if profile is not None else ""
+    )
+    return snapshot
 
 
 def _read_combined_profile_snapshots(

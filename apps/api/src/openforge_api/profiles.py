@@ -217,7 +217,9 @@ class ProfileOnboardingCreatePayload(BaseModel):
     def validate_profile_onboarding(self) -> "ProfileOnboardingCreatePayload":
         if self.tracking_start_date > date.today():
             raise ValueError("Tracking start date cannot be in the future")
-        if self.profile_relationship == "Personal" and (self.management_fee_percent != 0 or self.investment_fee_percent != 0):
+        if self.profile_relationship == "Personal" and (
+            self.management_fee_percent != 0 or self.investment_fee_percent != 0
+        ):
             raise ValueError("Personal Profiles require 0% management and investment fees")
         if self.management_fee_percent + self.investment_fee_percent > 100:
             raise ValueError("Combined management and investment fees cannot exceed 100%")
@@ -483,7 +485,15 @@ def create_profile_onboarding_route(
         weekly_extra_place_loss_budget=(
             f"{payload.weekly_extra_place_loss_budget:.2f}"
         ),
-        current_cash_snapshot=f"{current_cash_snapshot:.2f}",
+        # Import-created Profiles with no reviewed Accounts have no
+        # authoritative current-cash observation yet.  The canonical blank
+        # value means unavailable; a calculated zero from one or more
+        # reviewed Accounts remains the authoritative £0.00 state.
+        current_cash_snapshot=(
+            ""
+            if payload.setup_path == "import" and not resolved_accounts
+            else f"{current_cash_snapshot:.2f}"
+        ),
         default_exchange_name=default_exchange_name,
         accounts=resolved_accounts,
         exchange_commissions=exchange_commissions,

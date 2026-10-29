@@ -449,3 +449,25 @@ the explicit non-placement action that selects which reviewed plan will be saved
 | PD-FIX-466 | Dashboard cash readiness | Prove known cash remains £342.50 and missing cash-counting Account count changes only from four to zero; preserve three historical Casino unknowns | CP-104 aggregate/readiness contract | COMPLETE LOCALLY — known cash £342.50 before/after; missing balances 4 → 0; Casino unknowns remain 3 |
 | PD-FIX-327 | Extra Place cleanup | Remove only the exact approved 11 ALPHA Prospecting visual-test residues through the existing governed deletion authority | Owner CP-103 approval; existing Extra Place deletion contract; issue [#114](https://github.com/wolney8/OpenForge/issues/114) | COMPLETE LOCALLY — 11/11 removed through the existing governed authority |
 | PD-AUDIT-103-01 | Backup, manifest and receipt | Revalidate provenance/dependencies, create a fresh verified backup, execute atomically, and retain a private before/after rollback receipt | Owner CP-103 hard-abort conditions and normal-owner recovery authority | COMPLETE LOCALLY — exact manifest, fresh verified backup, atomic rollback proof, private receipt and post-delete integrity comparison retained |
+
+## 2026-10-29 CP-106 real-workbook acceptance gate
+
+| ID | Area | Requested outcome | Authority / issue | Status |
+|---|---|---|---|---|
+| PD-AUDIT-106-01 | Real workbook preflight | Inspect the immutable owner workbook, establish supported scope, and fail closed before apply when Profile identity or destination identity is unresolved | Round-trip contract; [#95](https://github.com/wolney8/OpenForge/issues/95) and [#104](https://github.com/wolney8/OpenForge/issues/104) | BLOCKED — source has no stable Profile ID; ALPHA-001 is inferred only; 29 mapping reviews and 21 native-ID collisions require governed review before apply |
+| PD-FIX-467 | Cutover regression fixture | Keep the profile-isolation cutover fixture aligned with the additive `profile_relationship` column by naming the copied columns explicitly | Import/cutover regression contract; [#104](https://github.com/wolney8/OpenForge/issues/104) | COMPLETE / CODE-VERIFIED — focused workbook/API suite passes 108 with 17 skipped; no runtime or financial behaviour changed |
+| PD-DOC-106-01 | Owner workbook journey | Keep one concise acceptance path with an explicit Profile-identity gate and no write before reviewed approval | Owner acceptance guide; [#95](https://github.com/wolney8/OpenForge/issues/95) | COMPLETE / DOCUMENTED — guide contains ten owner checks; acceptance remains pending behind PD-AUDIT-106-01 |
+
+## 2026-10-29 CP-106E future funded-account constraint
+
+| ID | Area | Requested outcome | Authority / issue | Status |
+|---|---|---|---|---|
+| PD-DOC-106E-01 | Profile and funding semantics | Preserve blank/unavailable, authoritative `£0.00`, and separately governed funded capital as distinct states; never derive bankroll or profit from funding | Owner CP-106E constraint; `FUNDED-ACCOUNT-BOUNDARY-001` | DOCUMENTED / DEFERRED — no funded-account model, schema, validation, calculation or runtime behaviour implemented |
+| PD-FIX-468 | Import Profile onboarding and shared money display | Persist canonical blank current cash when an import Profile has no reviewed Accounts; keep explicit zero valid through API and shared `FinancialValue` | Owner CP-106E approval; Profile onboarding and cash-readiness contracts; [#95](https://github.com/wolney8/OpenForge/issues/95) and [#104](https://github.com/wolney8/OpenForge/issues/104) | NEEDS VERIFICATION — focused API/web tests, typecheck, build and lint pass; installed into normal-owner for owner verification; workbook Apply remains blocked |
+
+## 2026-10-29 CP-106F Account review evidence
+
+| ID | Area | Requested outcome | Authority / issue | Status |
+|---|---|---|---|---|
+| PD-FIX-469 | Workbook Account review | Present Account exceptions with provider, type, lifecycle, cash and field-specific evidence so the owner can decide without interpreting generic bet-row copy | Owner CP-106F approval; Account import field-map contract; [#95](https://github.com/wolney8/OpenForge/issues/95) and [#104](https://github.com/wolney8/OpenForge/issues/104) | COMPLETE / CODE-VERIFIED — full focused review browser suite, 430px containment, themes, keyboard/focus, typecheck and build pass; owner Account decisions remain pending |
+| PD-AUDIT-106F-01 | Destination Account identity | Classify invalid values, missing catalogue providers and duplicate provider rows; trace dependent ledger impact and proposed main-bank authority without creating Accounts/providers or applying the workbook | Owner CP-106F no-write boundary; workbook checksum and import-run authority | DOCUMENTED PRIVATELY — exact 15 items and Starling authority reconciled; no review decision or import write made |

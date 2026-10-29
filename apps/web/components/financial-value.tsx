@@ -35,7 +35,11 @@ export function FinancialValue({
   animate = true, className = "", label, showPositiveSign = false,
   tone: tonePreference = "auto", title, value, zeroTone = "neutral",
 }: FinancialValueProps) {
-  const numericValue = typeof value === "number" ? value : Number(value);
+  const numericValue = typeof value === "number"
+    ? value
+    : value.trim()
+      ? Number(value)
+      : Number.NaN;
   const isValid = Number.isFinite(numericValue);
   const tone = isValid
     ? tonePreference === "auto" ? moneyTone(numericValue, { zeroTone }) : tonePreference

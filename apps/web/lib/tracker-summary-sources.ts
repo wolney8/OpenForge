@@ -32,6 +32,7 @@ export type TrackerSummarySources = TrackerSummaryDataset & {
 };
 
 type ApiTrackerSummarySources = {
+  current_cash_snapshot: string;
   accounts: AccountSummaryRecord[];
   sportsbook_bets: SportsbookSummaryRecord[];
   free_bets: FreeBetSummaryRecord[];
@@ -73,6 +74,7 @@ function mapTrackerSummarySources(
 ): TrackerSummarySources {
   const base = `${apiBaseUrl}/profiles/${profileId}`;
   const sources: TrackerSummarySources = {
+    currentCashSnapshot: response.current_cash_snapshot,
     accounts: response.accounts,
     sportsbookBets: response.sportsbook_bets,
     freeBets: response.free_bets,

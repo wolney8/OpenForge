@@ -412,35 +412,47 @@ OWNER ACCEPTANCE PENDING
 Workbook identities, inputs, formulas, validation and relationships survive a controlled daily-use cycle without premature writes.
 
 **Use this Profile/test identity:**
-A disposable copy of the original workbook and one owner-approved destination. Keep the original untouched.
+The original workbook as read-only source, a separate disposable working copy, and one explicitly owner-approved destination Profile. Keep the original untouched.
 
 **Start here:**
 Profile → **Tracker** → **Settings** → **Import/Export**
 
 #### Steps
 
-- [ ] **A. Export-content check:** choose Profile/range, review counts, then **Export as New Workbook**.
-  - **Expect:** stated rows for that Profile only, with visible Profile name and ID.
-  - **Stop if:** counts are wrong, another Profile appears or supported rows are absent.
-- [ ] **B. Formula/dropdown and self-contained check:** inspect the disposable export in the approved spreadsheet host.
-  - **Expect:** supported formulas, dropdowns and next-row behaviour work without an external-link warning.
-  - **Stop if:** another workbook is required, fields shift or missing money becomes zero.
-- [ ] **C. Harmless note edit:** change one non-financial note.
-  - **Expect:** IDs, relationships and financial outputs do not change.
-  - **Stop if:** anything else changes unexpectedly.
-- [ ] **D. Save, close and reopen** the disposable workbook.
-  - **Expect:** note, formulas, validation and visible/machine Profile identity remain.
-  - **Stop if:** content is lost, duplicated or externally linked.
-- [ ] **E. No-write import review:** import it and stop at review.
-  - **Expect:** only the intended edit; stable IDs; no cross-Profile row or unexplained financial change.
-  - **Stop if:** review proposes duplicates, overwrite, new money values or the wrong destination.
-- [ ] **F. Do not select Apply** during this journey.
-  - **Expect:** owner data remains unchanged.
-  - **Stop if:** any write occurs before separate approval.
+- [ ] Confirm the source filename and select the explicitly approved destination Profile.
+  - **Expect:** source identity/hash and destination Profile ID are shown before review.
+  - **Stop if:** the Profile is inferred from names or record IDs rather than explicitly selected.
+- [ ] Open the import preview without applying it.
+  - **Expect:** recognised, unsupported and skipped sheets/records are counted separately.
+  - **Stop if:** preview changes Profile or financial data.
+- [ ] Review new, matching, conflicting and unsupported records.
+  - **Expect:** each review item shows domain, source identity, current value, workbook value and proposed action.
+  - **Stop if:** exact native IDs are treated as proven matches without import provenance.
+- [ ] Resolve every required mapping/conflict and review the final apply counts.
+  - **Expect:** no unexplained provider mapping, duplicate Account or missing financial value is silently normalised.
+  - **Stop if:** missing money becomes zero or review items disappear without a decision.
+- [ ] Apply once only after the destination and final proposal are correct.
+  - **Expect:** a signed/current approval and an audit receipt; unrelated Profiles remain unchanged.
+  - **Stop if:** approval is stale, partial or targets another Profile.
+- [ ] Repeat the same Apply action once.
+  - **Expect:** idempotent result with no duplicate rows or balance changes.
+  - **Stop if:** another business row is created or an existing row changes again.
+- [ ] Inspect Accounts and each imported ledger plus Reports/exposure for the destination Profile.
+  - **Expect:** imported records follow their lifecycle; planned rows do not become committed exposure; unavailable values remain unavailable.
+  - **Stop if:** another Profile leaks, totals change unexpectedly or planned rows become money at risk.
+- [ ] Export with **Export as New Workbook** and inspect it headlessly or in the separately approved spreadsheet host.
+  - **Expect:** visible Profile name/ID, supported rows, formulas and validation, with no external workbook dependency.
+  - **Stop if:** rows are absent, linked externally or contain private local paths.
+- [ ] Compare one Account and one row from each supported ledger across source, Plum Duff and export.
+  - **Expect:** identity, lifecycle and authoritative financial fields reconcile or have an explicit classified difference.
+  - **Stop if:** a difference is unexplained or described as formatting-only without evidence.
+- [ ] Confirm the original source workbook is unchanged.
+  - **Expect:** original hash/size/timestamp match the recorded baseline; all outputs are separate artefacts.
+  - **Stop if:** the source was saved, rewritten or opened through desktop automation without permission.
 
 #### Pass criteria
 
-- [ ] Counts match the generated workbook; it is self-contained; the edit survives; no-write review is exact and Profile-safe.
+- [ ] Preview is intelligible; apply is Profile-safe and idempotent; supported records work in Plum Duff; export is self-contained; round-trip differences are classified; the source remains unchanged.
 
 #### Evidence to record
 

@@ -7,6 +7,15 @@ const account = (id: string, balance: string, included = true, pending = "0.00")
 const summary = (balance:string, included=true, pending="0.00") => summarizeTrackerData({accounts:[account("known","10.00"),account("tested",balance,included,pending)],sportsbookBets:[],freeBets:[],casinoOffers:[],eachWayExtraPlaces:[],cashAdjustments:[],balanceSnapshots:[]} as TrackerSummaryDataset, resolveDateRange({preset:"All Dates"}));
 
 describe("#91 independent exact-cent Account totals",()=>{
+  it("preserves an import Profile's unknown cash when no Account observation exists",()=>{
+    const result=summarizeTrackerData({currentCashSnapshot:"",accounts:[],sportsbookBets:[],freeBets:[],casinoOffers:[],eachWayExtraPlaces:[],cashAdjustments:[],balanceSnapshots:[]} as TrackerSummaryDataset,resolveDateRange({preset:"All Dates"}));
+    expect(result.accountQuickView.cashSnapshot).toBeNaN();
+    expect(result.accountQuickView.moneyIssues).toEqual([]);
+  });
+  it("preserves an authoritative zero snapshot when no Accounts exist",()=>{
+    const result=summarizeTrackerData({currentCashSnapshot:"0.00",accounts:[],sportsbookBets:[],freeBets:[],casinoOffers:[],eachWayExtraPlaces:[],cashAdjustments:[],balanceSnapshots:[]} as TrackerSummaryDataset,resolveDateRange({preset:"All Dates"}));
+    expect(result.accountQuickView.cashSnapshot).toBe(0);
+  });
   it.each(["", "NaN", "1.234", "90071992547409.93"])("invalid/unknown/unrepresentable %s is not fabricated in a cell",raw=>expect(accountMoneyDisplayValue(raw)).toBe("Unavailable"));
   it("zero remains a valid individual observation",()=>expect(accountMoneyDisplayValue("0")).toBe("0.00"));
   it.each([["12.34",22.34],["0.00",10],["-1.25",8.75]])("%s plus £10",(raw,expected)=>expect(summary(raw).accountQuickView.cashSnapshot).toBe(expected));

@@ -117,7 +117,12 @@ def configure_cutover_database(tmp_path: Path, *, catalogue_count: int = 1) -> N
     now = "2026-08-30T10:00:00+00:00"
     with connect() as connection:
         connection.execute(
-            "INSERT INTO profiles (profile_id, display_name, profile_code, status, tracking_start_date, management_fee_percent, investment_fee_percent, current_cash_snapshot) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            """
+            INSERT INTO profiles (
+              profile_id, display_name, profile_code, status, tracking_start_date,
+              management_fee_percent, investment_fee_percent, current_cash_snapshot
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
             (
                 PROFILE_ID,
                 "Synthetic Cutover",
@@ -2053,9 +2058,12 @@ def test_workbook_identity_retry_changed_payload_and_profile_isolation(
         assert other["ready"] and not other["collision_counts"]
         assert not other["rows"][0]["existing_destinations"]
         connection.execute(
-            "INSERT INTO profiles SELECT 'another-profile', display_name, 'OTHER', status, "
+            "INSERT INTO profiles (profile_id, display_name, profile_code, status, "
             "tracking_start_date, management_fee_percent, investment_fee_percent, "
-            "current_cash_snapshot FROM profiles WHERE profile_id = ?",
+            "current_cash_snapshot, profile_relationship) "
+            "SELECT 'another-profile', display_name, 'OTHER', status, tracking_start_date, "
+            "management_fee_percent, investment_fee_percent, current_cash_snapshot, "
+            "profile_relationship FROM profiles WHERE profile_id = ?",
             (PROFILE_ID,),
         )
         original_run = dict(
