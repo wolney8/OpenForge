@@ -14,10 +14,13 @@ def test_atomic_observations_retry_isolation_and_restore(tmp_path, monkeypatch):
     created = client.post(
         "/profiles/onboarding",
         json={
+            "profile_relationship": "Managed subscriber",
             "display_name": "Synthetic observations",
             "profile_code": "OBS-001",
             "setup_path": "import",
             "tracking_start_date": "2026-09-01",
+            "management_fee_percent": "0.00",
+            "investment_fee_percent": "0.00",
             "enabled_modules": ["sportsbook-bets", "free-bets", "cash-adjustments"],
             "accounts": [],
             "quick_actions": [],
@@ -89,10 +92,13 @@ def test_atomic_observations_retry_isolation_and_restore(tmp_path, monkeypatch):
     other = client.post(
         "/profiles/onboarding",
         json={
+            "profile_relationship": "Managed subscriber",
             "display_name": "Synthetic second Account owner",
             "profile_code": "OBS-002",
             "setup_path": "import",
             "tracking_start_date": "2026-09-01",
+            "management_fee_percent": "0.00",
+            "investment_fee_percent": "0.00",
             "enabled_modules": ["sportsbook-bets", "free-bets", "cash-adjustments"],
             "accounts": [],
             "quick_actions": [],

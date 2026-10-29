@@ -8,6 +8,7 @@ from fastapi import HTTPException
 
 from openforge_api.db import (
     connect,
+    create_account,
     create_each_way_extra_place,
     create_sportsbook_bet,
     delete_sportsbook_bet,
@@ -16,11 +17,17 @@ from openforge_api.governed_synthetic_cleanup import (
     CP103_EXTRA_PLACE_COUNT,
     CP103_OPERATION_ID,
     CP103_SPORTSBOOK_COUNT,
+    CP105_ACCOUNT_AUTHORITY,
+    CP105_ACCOUNT_NOTE,
+    CP105_OPERATION_ID,
+    AccountCleanupCandidate,
+    AccountCleanupManifest,
     CleanupCandidate,
     CleanupManifest,
     GovernedCleanupAbort,
     canonical_sha256,
     execute_cp103_cleanup,
+    execute_cp105_account_cleanup,
 )
 
 
@@ -355,3 +362,200 @@ def test_ordinary_placed_sportsbook_delete_remains_prohibited() -> None:
         )
 
     assert error.value.status_code == 409
+
+
+def _seed_cp105_manifest() -> AccountCleanupManifest:
+    for profile_id, profile_code, display_name in (
+        ("profile-demo-001", "ALPHA-001", "Synthetic Alpha"),
+        ("profile-demo-002", "BRAVO-002", "Synthetic Bravo"),
+    ):
+        seed_synthetic_profile(
+            profile_id,
+            display_name=display_name,
+            profile_code=profile_code,
+        )
+    for account_id, (profile_id, _profile_code, provider) in (
+        CP105_ACCOUNT_AUTHORITY.items()
+    ):
+        create_account(
+            profile_id,
+            {
+                "account_id": account_id,
+                "account": provider,
+                "type": "Exchange",
+                "counts_in_cash_total": True,
+                "channel": "Online",
+                "status": "Active",
+                "lifecycle_status": "Active",
+                "signup_offer_status": "Unknown",
+                "restrictions_json": "[]",
+                "current_balance": "",
+                "pending_withdrawal_amount": "",
+                "last_balance_update": "",
+                "group_name": provider,
+                "platform": provider,
+                "sign_up_date": "",
+                "notes": CP105_ACCOUNT_NOTE,
+            },
+        )
+    with connect() as connection:
+        candidates = []
+        for account_id, (profile_id, _profile_code, _provider) in (
+            CP105_ACCOUNT_AUTHORITY.items()
+        ):
+            row = dict(
+                connection.execute(
+                    "SELECT * FROM accounts WHERE account_id = ?", (account_id,)
+                ).fetchone()
+            )
+            audit = connection.execute(
+                "SELECT audit_id, payload_json FROM account_audit "
+                "WHERE account_id = ?",
+                (account_id,),
+            ).fetchone()
+            candidates.append(
+                AccountCleanupCandidate(
+                    account_id=account_id,
+                    profile_id=profile_id,
+                    row_sha256=canonical_sha256(row),
+                    created_audit_id=str(audit["audit_id"]),
+                    created_audit_payload_sha256=canonical_sha256(
+                        json.loads(str(audit["payload_json"]))
+                    ),
+                )
+            )
+    return AccountCleanupManifest(
+        schema_version=1,
+        operation_id=CP105_OPERATION_ID,
+        candidates=tuple(candidates),
+    )
+
+
+def test_cp105_account_cleanup_is_exact_and_retains_profile_tombstones() -> None:
+    manifest = _seed_cp105_manifest()
+    seed_synthetic_account(
+        profile_id="profile-demo-001", name="Exchange A", account_type="Exchange"
+    )
+    first = manifest.candidates[0]
+    provider = CP105_ACCOUNT_AUTHORITY[first.account_id][2]
+    notification_id = f"account_review:{first.profile_id}:{first.account_id}:synthetic"
+    with connect() as connection:
+        connection.execute(
+            "INSERT INTO notification_events "
+            "(event_id, viewer_email, notification_id, profile_id, "
+            "notification_type, payload_json, recorded_at) "
+            "VALUES (?, 'owner@example.invalid', ?, ?, 'account_review', ?, "
+            "'2026-10-29T00:00:00Z')",
+            (
+                f"event:{notification_id}",
+                notification_id,
+                first.profile_id,
+                json.dumps(
+                    {"record_id": first.account_id, "bookmaker_label": provider}
+                ),
+            ),
+        )
+        connection.execute(
+            "INSERT INTO notification_user_state "
+            "(email, notification_id, read_at, cleared_at, updated_at) "
+            "VALUES ('owner@example.invalid', ?, '2026-10-29T00:00:00Z', NULL, "
+            "'2026-10-29T00:00:00Z')",
+            (notification_id,),
+        )
+
+    result = execute_cp105_account_cleanup(manifest)
+
+    assert result.accounts_deleted == 4
+    assert len(result.profile_audit_ids) == 4
+    with connect() as connection:
+        placeholders = ",".join("?" for _ in CP105_ACCOUNT_AUTHORITY)
+        assert connection.execute(
+            f"SELECT COUNT(*) FROM accounts WHERE account_id IN ({placeholders})",
+            tuple(CP105_ACCOUNT_AUTHORITY),
+        ).fetchone()[0] == 0
+        assert connection.execute(
+            "SELECT COUNT(*) FROM accounts WHERE account = 'Exchange A'"
+        ).fetchone()[0] == 1
+        assert connection.execute(
+            "SELECT COUNT(*) FROM account_audit WHERE account_id IN "
+            f"({placeholders})",
+            tuple(CP105_ACCOUNT_AUTHORITY),
+        ).fetchone()[0] == 0
+        assert connection.execute(
+            "SELECT COUNT(*) FROM profile_audit "
+            "WHERE action = 'maintenance_account_deleted'"
+        ).fetchone()[0] == 4
+        assert connection.execute(
+            "SELECT COUNT(*) FROM notification_events WHERE notification_id = ?",
+            (notification_id,),
+        ).fetchone()[0] == 1
+        assert connection.execute(
+            "SELECT COUNT(*) FROM notification_user_state WHERE notification_id = ?",
+            (notification_id,),
+        ).fetchone()[0] == 1
+
+
+def test_cp105_rejects_wrong_manifest_without_mutation() -> None:
+    manifest = _seed_cp105_manifest()
+    with pytest.raises(GovernedCleanupAbort, match="count_mismatch"):
+        execute_cp105_account_cleanup(
+            AccountCleanupManifest(
+                schema_version=1,
+                operation_id=CP105_OPERATION_ID,
+                candidates=manifest.candidates[:-1],
+            )
+        )
+    with connect() as connection:
+        assert connection.execute("SELECT COUNT(*) FROM accounts").fetchone()[0] == 4
+
+
+def test_cp105_rejects_account_activity_and_dependencies() -> None:
+    manifest = _seed_cp105_manifest()
+    first = manifest.candidates[0]
+    with connect() as connection:
+        connection.execute(
+            "INSERT INTO account_audit "
+            "(audit_id, account_id, profile_id, action, changed_at, payload_json) "
+            "VALUES ('cp105-extra-audit', ?, ?, 'updated', '2026-10-29T00:00:00Z', '{}')",
+            (first.account_id, first.profile_id),
+        )
+    with pytest.raises(GovernedCleanupAbort, match="audit_history_mismatch"):
+        execute_cp105_account_cleanup(manifest)
+
+    with connect() as connection:
+        connection.execute(
+            "DELETE FROM account_audit WHERE audit_id = 'cp105-extra-audit'"
+        )
+        connection.execute(
+            "INSERT INTO balance_snapshots "
+            "(balance_snapshot_id, profile_id, snapshot_at, snapshot_type, "
+            "account_id, balance_amount, notes, created_at) "
+            "VALUES ('cp105-snapshot', ?, '2026-10-29T00:00:00Z', 'Manual', ?, "
+            "'1.00', 'Synthetic dependency', '2026-10-29T00:00:00Z')",
+            (first.profile_id, first.account_id),
+        )
+    with pytest.raises(GovernedCleanupAbort, match="balance_snapshots.account_id"):
+        execute_cp105_account_cleanup(manifest)
+    with connect() as connection:
+        assert connection.execute("SELECT COUNT(*) FROM accounts").fetchone()[0] == 4
+
+
+def test_cp105_rolls_back_all_accounts_and_tombstones_on_failure() -> None:
+    manifest = _seed_cp105_manifest()
+    blocked_id = manifest.candidates[-1].account_id
+    with connect() as connection:
+        connection.execute(
+            "CREATE TRIGGER cp105_test_abort BEFORE DELETE ON accounts "
+            f"WHEN OLD.account_id = '{blocked_id}' "
+            "BEGIN SELECT RAISE(ABORT, 'cp105 rollback proof'); END"
+        )
+
+    with pytest.raises(Exception, match="cp105 rollback proof"):
+        execute_cp105_account_cleanup(manifest)
+
+    with connect() as connection:
+        assert connection.execute("SELECT COUNT(*) FROM accounts").fetchone()[0] == 4
+        assert connection.execute(
+            "SELECT COUNT(*) FROM profile_audit "
+            "WHERE action = 'maintenance_account_deleted'"
+        ).fetchone()[0] == 0

@@ -1,5 +1,14 @@
 # Project Status — Plum Duff / OpenForge — Doc ID: PS-CODEX-001
 
+> **CP-105 governed synthetic Account cleanup — 2026-10-29:** owner approval was limited to four
+> provenance-proven Matchbook/Smarkets Exchange Account residues across ALPHA-001 and BRAVO-002.
+> A fresh independently readable backup and exact manifest preceded one fail-closed transaction.
+> Only the four Account rows and their four creation-audit children were removed; four Profile
+> maintenance tombstones and existing derived notification history remain. Known cash is £342.50
+> before and after, actionable missing balances change from four to zero, and every ledger,
+> commission, setting and Casino row remains content-identical to the backup. Three historical
+> Casino P&L values remain unavailable. Owner first-load verification remains pending.
+
 > **CP-095 Oddsmatcher bias-authority correction — 2026-10-27:** the Normal/Qualifying reference
 > authority now follows the Oddsmatcher technical specification's 2% bias around Standard. The
 > former CP-094 reuse of Free Bet factors is removed; a £10.14 Standard resolves to £9.94 / £10.14 /
