@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { FinancialValue, FinancialValueReplayGroup } from "@/components/financial-value";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { BettingPnlReadValue } from "@/components/betting-pnl-read-value";
+import { FinancialAggregateReadValue } from "@/components/financial-aggregate-read-value";
 import { CurrentAccountCash, currentAccountCashIssueCount } from "@/components/current-account-cash";
 import { ReplayableProgressFill, ReplayableProgressRing } from "@/components/replayable-progress";
 import {
@@ -160,7 +161,9 @@ export function PortfolioDashboardView({
   const bettingActivityCount =
     summary.activityQuickView.sportsbookCount + summary.activityQuickView.freeBetCount +
     summary.activityQuickView.casinoCount + summary.activityQuickView.eachWayExtraPlaceCount;
-  const performanceAvailable = Number.isFinite(summary.profitQuickView.overallPnl);
+  const performanceAggregate = summary.reportingModel.selectedRange.grossBettingPnlAggregate;
+  const performanceAvailable = performanceAggregate.isComplete;
+  const performancePartial = performanceAggregate.unknownCount > 0 && performanceAggregate.knownCount > 0;
   const showPerformanceChart = bettingActivityCount > 0 && performanceAvailable;
   const pnlReadinessIssues = (summary.financialReadinessIssues ?? []).filter((issue) => issue.kind === "pnl");
   const liabilityReadinessIssues = (summary.financialReadinessIssues ?? []).filter((issue) => issue.kind === "liability");
@@ -184,7 +187,7 @@ export function PortfolioDashboardView({
           className={`dashboard-visual-card dashboard-performance-card portfolio-hero-card ${
             showPerformanceChart ? "has-chart" : "is-compact-state"
           }`}
-          data-performance-state={showPerformanceChart ? "chart" : performanceAvailable ? "no-activity" : "unavailable"}
+          data-performance-state={showPerformanceChart ? "chart" : performancePartial ? "partial" : performanceAvailable ? "no-activity" : "unavailable"}
           data-pd-id="dashboard.selected-range-performance"
         >
           <div className="dashboard-visual-header">
@@ -225,9 +228,13 @@ export function PortfolioDashboardView({
               }`}
               inert={isRangeSaving ? true : undefined}
             >
-              <strong className={`dashboard-hero-value ${showPerformanceChart ? "" : "is-compact"}`}>
-                <BettingPnlReadValue state="ready" activityCount={bettingActivityCount} value={summary.profitQuickView.overallPnl} />
-              </strong>
+              <div className={`dashboard-hero-value ${showPerformanceChart ? "" : "is-compact"}`}>
+                {performanceAggregate.unknownCount > 0 ? (
+                  <FinancialAggregateReadValue aggregate={performanceAggregate} label="selected range profit and loss" state="ready" subject="profit and loss" />
+                ) : (
+                  <BettingPnlReadValue state="ready" activityCount={bettingActivityCount} value={summary.profitQuickView.overallPnl} />
+                )}
+              </div>
               {showPerformanceChart ? <DashboardChartSurface
                 area={dashboardSparkline.area}
                 label="Selected range P&L trend"

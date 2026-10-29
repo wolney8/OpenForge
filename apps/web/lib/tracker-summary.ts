@@ -1,6 +1,11 @@
 import { formatFinancialValue } from "./financial-display";
 import { sumAccountMoney, type AccountMoneyIssue } from "./account-money";
 import {
+  aggregateFinancialValues,
+  combineFinancialAggregates,
+  type FinancialAggregateResult,
+} from "./financial-aggregate";
+import {
   financialMembership,
   isCommittedExposure,
   isFinanciallyRecognised,
@@ -317,8 +322,10 @@ export type TrackerSummaryResult = {
   reportingModel: {
     selectedRange: {
       grossBettingPnl: number;
+      grossBettingPnlAggregate: FinancialAggregateResult;
       cashAdjustments: number;
       retainedProfit: number;
+      retainedProfitAggregate: FinancialAggregateResult;
       openCurrentValue: number;
       settledFinalValue: number;
     };
@@ -1243,6 +1250,20 @@ export function summarizeTrackerData(
     eachWayExtraPlaceReportingValue +
     withdrawals +
     deductionsAndSubscriptions;
+  const grossBettingPnlAggregate = aggregateFinancialValues([
+    ...recognisedSportsbook.map(sportsbookDisplayValue),
+    ...recognisedFreeBets.map(freeBetDisplayValue),
+    ...recognisedCasino.map((row) => readSummaryMoney(row.resolved_net_pnl)),
+    ...recognisedEachWayExtraPlaces.map(eachWayExtraPlaceDisplayValue),
+  ]);
+  const retainedProfitAggregate = combineFinancialAggregates([
+    grossBettingPnlAggregate,
+    aggregateFinancialValues(
+      cashAdjustmentsInRange
+        .filter((row) => row.adjustment_type === "Withdrawal" || costAdjustmentTypes.has(row.adjustment_type))
+        .map((row) => readSummaryMoney(row.signed_amount)),
+    ),
+  ]);
 
   return {
     resolvedDateRange,
@@ -1324,8 +1345,10 @@ export function summarizeTrackerData(
     reportingModel: {
       selectedRange: {
         grossBettingPnl: sportsbookReportingValue + freeBetReportingValue + casinoReportingValue + eachWayExtraPlaceReportingValue,
+        grossBettingPnlAggregate,
         cashAdjustments: selectedRangeCashAdjustments,
         retainedProfit,
+        retainedProfitAggregate,
         openCurrentValue: sportsbookOpenCurrentValue + freeBetOpenCurrentValue + eachWayExtraPlaceOpenCurrentValue,
         settledFinalValue:
           sportsbookSettledFinalValue + freeBetSettledFinalValue + casinoSettledFinalValue + eachWayExtraPlaceSettledFinalValue,

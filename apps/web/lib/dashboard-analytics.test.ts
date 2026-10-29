@@ -41,8 +41,10 @@ function summaryWithPnl(value: number): TrackerSummaryResult {
     reportingModel: {
       selectedRange: {
         grossBettingPnl: value,
+        grossBettingPnlAggregate: { knownValue: value, knownCount: 1, unknownCount: 0, isComplete: true },
         cashAdjustments: 0,
         retainedProfit: value,
+        retainedProfitAggregate: { knownValue: value, knownCount: 1, unknownCount: 0, isComplete: true },
         openCurrentValue: 0,
         settledFinalValue: value,
       },

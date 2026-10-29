@@ -2766,18 +2766,46 @@ html[data-theme="dark"] .notification-count-badge {
 }
 
 .betting-pnl-empty,
-.betting-pnl-read-state {
+.betting-pnl-read-state,
+.financial-aggregate-read-state {
   display: grid;
   gap: 0.25rem;
 }
 
 .betting-pnl-empty small,
-.betting-pnl-read-state small {
+.betting-pnl-read-state small,
+.financial-aggregate-read-state small {
   color: var(--muted);
   font-size: 0.92rem;
   font-weight: 650;
   letter-spacing: normal;
   line-height: 1.35;
+}
+
+.financial-known-qualifier {
+  color: var(--muted);
+  font-size: 0.72em;
+  font-weight: 750;
+  letter-spacing: normal;
+}
+
+.dashboard-point-rail {
+  display: grid;
+  min-width: 0;
+  gap: 0.75rem;
+}
+
+.dashboard-point-rail > span {
+  display: grid;
+  min-width: 0;
+  gap: 0.25rem;
+  align-content: start;
+}
+
+.dashboard-point-rail > span > small:first-child {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 750;
 }
 
 .dashboard-period-control {

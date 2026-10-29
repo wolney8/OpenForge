@@ -279,6 +279,19 @@ changed from 35 to 0 and planned pipeline from 399 to 388. Three unresolved hist
 rows and every non-approved incomplete record remain untouched. Owner review remains pending; this
 checkpoint does not assert that all financial history is clean.
 
+## CP-104 Dashboard partial financial readiness
+
+Recorded 2026-10-29 under [#111](https://github.com/wolney8/OpenForge/issues/111),
+[#116](https://github.com/wolney8/OpenForge/issues/116) and
+[#114](https://github.com/wolney8/OpenForge/issues/114). Operational Selected Range Performance
+now retains the authoritative known subtotal and identifies three unresolved historical Casino
+rows as incomplete, while formal reports remain strict. A current-request key and abort ownership
+prevent cached or superseded sources from appearing as the current Profile/range result. Four
+active cash-counting Matchbook/Smarkets Accounts in the two designated synthetic Profiles have no
+authoritative balance history; their warning remains and cleanup/deactivation requires a separate
+owner decision. No Account, Profile, Casino, lifecycle or financial row changed. Owner verification
+remains pending.
+
 ## Reference index
 
 - [Feature status](FEATURE_STATUS.md)

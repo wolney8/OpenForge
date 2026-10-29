@@ -1,5 +1,6 @@
 "use client";
 import { FinancialReadValue } from "@/components/financial-read-value";
+import { FinancialAggregateReadValue } from "@/components/financial-aggregate-read-value";
 import { BettingPnlReadValue } from "@/components/betting-pnl-read-value";
 import { AccountMoneyStatus } from "@/components/account-money-status";
 import { CurrentAccountCash } from "@/components/current-account-cash";
@@ -21,7 +22,7 @@ import { apiBaseUrl } from "@/lib/api";
 import { beginRouteTransition, beginShellLoading, endShellLoading } from "@/lib/shell-loading";
 import { AccessScopeBadge } from "./access-scope-badge";
 import { FinancialValue as PlatformFinancialValue, FinancialValueReplayGroup, FinancialValueReplayRow } from "./financial-value";
-import { JsonRequestError, readCachedJson } from "@/lib/client-json-cache";
+import { JsonRequestError } from "@/lib/client-json-cache";
 import {
   fetchCombinedTrackerSummarySources,
   fetchTrackerSummarySources,
@@ -43,14 +44,7 @@ import {
   countTrueOpenPositions,
   resolveDateRange,
   summarizeTrackerData,
-  type AccountSummaryRecord,
-  type BalanceSnapshotSummaryRecord,
-  type CashAdjustmentSummaryRecord,
-  type CasinoSummaryRecord,
-  type EachWayExtraPlaceSummaryRecord,
   type DatePreset,
-  type FreeBetSummaryRecord,
-  type SportsbookSummaryRecord,
   type TrackerSummaryDataset,
 } from "@/lib/tracker-summary";
 import {
@@ -470,7 +464,7 @@ export function CrossProfileAnalytics({
   const [feePeriods, setFeePeriods] = useState<Map<string, FeePeriodApiRecord[]>>(new Map());
   const [trackerSettings, setTrackerSettings] = useState<Map<string, TrackerSettingsRecord>>(new Map());
   const [failures, setFailures] = useState<ProfileLoadFailure[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [resolvedSourceRequestKey, setResolvedSourceRequestKey] = useState("");
   const [activeTab, setActiveTab] = useState<AnalyticsTab>(initialTab);
   const [directoryQuery, setDirectoryQuery] = useState("");
   const [directoryStatus, setDirectoryStatus] = useState<DirectoryStatus>(initialDirectoryStatus);
@@ -540,63 +534,23 @@ export function CrossProfileAnalytics({
     profileRecords,
     selectedProfileIds,
   ]);
+  const sourceRequestKey = useMemo(
+    () => `${isReportAnalysisTab ? resolvedReportSelection.scope : "profile"}:${[...requestedProfileIds].sort().join(",")}:${loadRevision}`,
+    [isReportAnalysisTab, loadRevision, requestedProfileIds, resolvedReportSelection.scope],
+  );
+  const isLoading = resolvedSourceRequestKey !== sourceRequestKey;
 
   useEffect(() => {
     const controller = new AbortController();
-    let stateTimer: number | null = null;
-    const cachedDatasets = new Map<string, TrackerSummaryDataset>();
-    const cachedFeePeriods = new Map<string, FeePeriodApiRecord[]>();
-    const cachedTrackerSettings = new Map<string, TrackerSettingsRecord>();
-
     const requestedProfiles = profiles.filter((profile) => requestedProfileIds.includes(profile.profileId));
+    let shellLoadingActive = initialTab !== "profiles";
+    const finishShellLoading = () => {
+      if (!shellLoadingActive) return;
+      shellLoadingActive = false;
+      endShellLoading();
+    };
 
-    for (const profile of requestedProfiles) {
-      const base = `${apiBaseUrl}/profiles/${profile.profileId}`;
-      const accounts = readCachedJson<AccountSummaryRecord[]>(`${base}/accounts`);
-      const sportsbookBets = readCachedJson<SportsbookSummaryRecord[]>(`${base}/sportsbook-bets`);
-      const freeBets = readCachedJson<FreeBetSummaryRecord[]>(`${base}/free-bets`);
-      const casinoOffers = readCachedJson<CasinoSummaryRecord[]>(`${base}/casino-offers`);
-      const cashAdjustments = readCachedJson<CashAdjustmentSummaryRecord[]>(`${base}/cash-adjustments`);
-      const eachWayExtraPlaces = readCachedJson<EachWayExtraPlaceSummaryRecord[]>(`${base}/each-way-extra-places`);
-      const balanceSnapshots = readCachedJson<BalanceSnapshotSummaryRecord[]>(`${base}/balance-snapshots`);
-      const periods = readCachedJson<FeePeriodApiRecord[]>(`${base}/fee-periods`);
-      const settings = readCachedJson<TrackerSettingsRecord>(`${base}/tracker-settings`);
-
-      if (accounts && sportsbookBets && freeBets && casinoOffers && cashAdjustments && eachWayExtraPlaces && balanceSnapshots) {
-        cachedDatasets.set(profile.profileId, {
-          accounts,
-          sportsbookBets,
-          freeBets,
-          casinoOffers,
-          cashAdjustments,
-          eachWayExtraPlaces,
-          balanceSnapshots,
-        });
-      }
-      if (periods) cachedFeePeriods.set(profile.profileId, periods);
-      if (settings) cachedTrackerSettings.set(profile.profileId, settings);
-    }
-
-    const hasCompleteCriticalCache =
-      cachedDatasets.size === requestedProfiles.length &&
-      cachedTrackerSettings.size === requestedProfiles.length &&
-      cachedFeePeriods.size === requestedProfiles.length;
-
-    // React state updates from effects remain asynchronous, but the task is
-    // cancelled if the request settles first. This prevents a delayed loading
-    // write from overwriting a successful post-auth response.
-    stateTimer = window.setTimeout(() => {
-      if (controller.signal.aborted) return;
-      if (hasCompleteCriticalCache) {
-        setDatasets(cachedDatasets);
-        if (cachedFeePeriods.size > 0) setFeePeriods(cachedFeePeriods);
-        if (cachedTrackerSettings.size > 0) setTrackerSettings(cachedTrackerSettings);
-        setIsLoading(false);
-      } else {
-        setIsLoading(true);
-      }
-    }, 0);
-    if (!hasCompleteCriticalCache && initialTab !== "profiles") beginShellLoading();
+    if (shellLoadingActive) beginShellLoading();
 
     const loadProfiles = async (): Promise<ProfileSourceLoadResult[]> => {
       if (isReportAnalysisTab) {
@@ -632,13 +586,7 @@ export function CrossProfileAnalytics({
     };
 
     void loadProfiles().then((results) => {
-      if (controller.signal.aborted) {
-        return;
-      }
-      if (stateTimer !== null) {
-        window.clearTimeout(stateTimer);
-        stateTimer = null;
-      }
+      if (controller.signal.aborted) return;
 
       const nextDatasets = new Map<string, TrackerSummaryDataset>();
       const nextFeePeriods = new Map<string, FeePeriodApiRecord[]>();
@@ -671,27 +619,25 @@ export function CrossProfileAnalytics({
       setFeePeriods(nextFeePeriods);
       setTrackerSettings(nextTrackerSettings);
       setFailures(nextFailures);
-      setIsLoading(false);
-      if (!hasCompleteCriticalCache && initialTab !== "profiles") endShellLoading();
+      setResolvedSourceRequestKey(sourceRequestKey);
+      finishShellLoading();
     }).catch((reason: unknown) => {
       if (controller.signal.aborted) return;
-      if (stateTimer !== null) window.clearTimeout(stateTimer);
       setFailures(requestedProfiles.map((profile) => ({
         profileId: profile.profileId,
         displayName: profile.displayName,
         message: reason instanceof Error ? reason.message : "Unknown profile load error",
         status: reason instanceof JsonRequestError ? reason.status : undefined,
       })));
-      setIsLoading(false);
-      if (!hasCompleteCriticalCache && initialTab !== "profiles") endShellLoading();
+      setResolvedSourceRequestKey(sourceRequestKey);
+      finishShellLoading();
     });
 
     return () => {
       controller.abort();
-      if (stateTimer !== null) window.clearTimeout(stateTimer);
-      if (!hasCompleteCriticalCache && initialTab !== "profiles") endShellLoading();
+      finishShellLoading();
     };
-  }, [initialTab, isReportAnalysisTab, profiles, requestedProfileIds, loadRevision, resolvedReportSelection.scope]);
+  }, [initialTab, isReportAnalysisTab, profiles, requestedProfileIds, loadRevision, resolvedReportSelection.scope, sourceRequestKey]);
 
   useEffect(() => {
     const retryableFailures = failures.filter((failure) => failure.status !== 404);
@@ -798,6 +744,7 @@ export function CrossProfileAnalytics({
   // Directory-only reads must not hide or replay confirmed Active-Profile totals.
   // A missing/failed Active source is not an authoritative zero or partial total.
   const profileReadState = (ids: string[], kind: "summary" | "fees" = "summary"): "loading" | "ready" | "error" => {
+    if (isLoading) return "loading";
     if (failures.some((failure) => ids.includes(failure.profileId))) return "error";
     const missing = ids.filter((id) => kind === "fees" ? !feePeriods.has(id) : !datasets.has(id) || !trackerSettings.has(id));
     if (missing.length === 0) return "ready";
@@ -1041,14 +988,10 @@ export function CrossProfileAnalytics({
       .toSorted((left, right) => {
         if (reportProfileTableSort === "profile-asc") return left.displayName.localeCompare(right.displayName);
         if (reportProfileTableSort === "pnl-asc") {
-          if (!Number.isFinite(left.grossBettingPnl)) return Number.isFinite(right.grossBettingPnl) ? 1 : left.displayName.localeCompare(right.displayName);
-          if (!Number.isFinite(right.grossBettingPnl)) return -1;
-          return left.grossBettingPnl - right.grossBettingPnl || left.displayName.localeCompare(right.displayName);
+          return left.grossBettingPnlAggregate.knownValue - right.grossBettingPnlAggregate.knownValue || left.displayName.localeCompare(right.displayName);
         }
         if (reportProfileTableSort === "open-desc") return right.openBets - left.openBets || left.displayName.localeCompare(right.displayName);
-        if (!Number.isFinite(left.grossBettingPnl)) return Number.isFinite(right.grossBettingPnl) ? 1 : left.displayName.localeCompare(right.displayName);
-        if (!Number.isFinite(right.grossBettingPnl)) return -1;
-        return right.grossBettingPnl - left.grossBettingPnl || left.displayName.localeCompare(right.displayName);
+        return right.grossBettingPnlAggregate.knownValue - left.grossBettingPnlAggregate.knownValue || left.displayName.localeCompare(right.displayName);
       });
   }, [combined.profileRows, reportProfileTableQuery, reportProfileTableSort]);
   const reportProfileTablePageCount = Math.max(1, Math.ceil(reportProfileRows.length / reportProfileTablePageSize));
@@ -1667,10 +1610,17 @@ export function CrossProfileAnalytics({
             <FinancialValueReplayGroup>
             <article className="dashboard-visual-card dashboard-performance-card">
               <div className="dashboard-visual-header"><div><span className="eyebrow">Combined P&amp;L</span><h3>Selected Range Performance</h3></div><span className="badge">{preset}</span></div>
-              <strong className="dashboard-hero-value"><FinancialReadValue state={selectedReadState} subject="combined profit and loss" label="Combined selected range profit and loss" value={combined.totals.grossBettingPnl}/></strong>
+              <div className="dashboard-hero-value is-compact">
+                <FinancialAggregateReadValue
+                  aggregate={combined.selectedRangeFinancials.grossBettingPnl}
+                  label="combined selected range profit and loss"
+                  state={selectedReadState}
+                  subject="combined profit and loss"
+                />
+              </div>
               <div className="dashboard-point-rail profiles-command-rail" aria-label="Selected range metrics">
                 <span><small>Profiles In Scope</small>{selectedProfileIds.length}</span>
-                <span><small>Retained Profit</small><FinancialReadValue state={selectedReadState} subject="retained profit" value={combined.totals.retainedProfit}/></span>
+                <span><small>Retained Profit</small><FinancialAggregateReadValue aggregate={combined.selectedRangeFinancials.retainedProfit} label="retained profit" state={selectedReadState} subject="retained profit" /></span>
                 <span><small>Cash Snapshot</small>{selectedReadState === "ready" && !Number.isFinite(combined.totals.cashSnapshot) && combined.incompleteCashAccountCount > 0 ? <>Known cash <FinancialValue value={combined.knownCashSubtotal} /><small>Incomplete — {combined.incompleteCashAccountCount} Account {combined.incompleteCashAccountCount === 1 ? "balance" : "balances"} missing</small></> : <FinancialReadValue state={selectedReadState} subject="Account cash" value={combined.totals.cashSnapshot}/>}</span>
               </div>
             </article>
@@ -1742,7 +1692,7 @@ export function CrossProfileAnalytics({
             </div></div>
             <LedgerPagination ariaLabel="Profile Performance" currentPage={Math.min(reportProfileTablePage,reportProfileTablePageCount)} onPageChange={setReportProfileTablePage} onPageSizeChange={(size)=>{setReportProfileTablePageSize(size);setReportProfileTablePage(1);}} pageCount={reportProfileTablePageCount} pageSize={reportProfileTablePageSize} position="top" totalRows={reportProfileRows.length}/>
             <div className="table-shell"><table className="profile-analytics-table"><thead><tr><th scope="col">Profile</th><th scope="col">Status</th><th scope="col">Betting P&amp;L</th><th scope="col">Retained Profit</th><th scope="col">Open Items</th><th scope="col">Report</th></tr></thead><tbody>
-              {visibleReportProfileRows.length?visibleReportProfileRows.map((row)=><FinancialValueReplayRow key={row.profileId} data-pd-id={`reports.profile.${row.profileId}`}><td><strong>{row.displayName}</strong><br/><small>{row.profileCode}</small></td><td><span className="table-chip">{normalizeProfileStatus(row.status)}</span></td><td><FinancialReadValue state={profileReadState([row.profileId])} subject={`${row.displayName} betting profit and loss`} value={row.grossBettingPnl}/></td><td><FinancialReadValue state={profileReadState([row.profileId])} subject={`${row.displayName} retained profit`} value={row.retainedProfit}/></td><td>{row.openBets}</td><td><Link className="report-value-link" href={`/profiles/${row.profileId}/tracker/reports?source=combined-reports`}><span className="material-symbols-outlined" aria-hidden="true">open_in_new</span>View Report</Link></td></FinancialValueReplayRow>):<tr><td colSpan={6}>No Profiles match this scope and search.</td></tr>}
+              {visibleReportProfileRows.length?visibleReportProfileRows.map((row)=><FinancialValueReplayRow key={row.profileId} data-pd-id={`reports.profile.${row.profileId}`}><td><strong>{row.displayName}</strong><br/><small>{row.profileCode}</small></td><td><span className="table-chip">{normalizeProfileStatus(row.status)}</span></td><td><FinancialAggregateReadValue aggregate={row.grossBettingPnlAggregate} label={`${row.displayName} betting profit and loss`} state={profileReadState([row.profileId])} subject={`${row.displayName} betting profit and loss`}/></td><td><FinancialAggregateReadValue aggregate={row.retainedProfitAggregate} label={`${row.displayName} retained profit`} state={profileReadState([row.profileId])} subject={`${row.displayName} retained profit`}/></td><td>{row.openBets}</td><td><Link className="report-value-link" href={`/profiles/${row.profileId}/tracker/reports?source=combined-reports`}><span className="material-symbols-outlined" aria-hidden="true">open_in_new</span>View Report</Link></td></FinancialValueReplayRow>):<tr><td colSpan={6}>No Profiles match this scope and search.</td></tr>}
             </tbody></table></div>
             <LedgerPagination ariaLabel="Profile Performance" currentPage={Math.min(reportProfileTablePage,reportProfileTablePageCount)} onPageChange={setReportProfileTablePage} onPageSizeChange={(size)=>{setReportProfileTablePageSize(size);setReportProfileTablePage(1);}} pageCount={reportProfileTablePageCount} pageSize={reportProfileTablePageSize} position="bottom" totalRows={reportProfileRows.length}/>
           </section>

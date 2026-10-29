@@ -337,3 +337,13 @@ Complete this for every feature, bug fix, component, fixture-backed UI, route or
       paths have focused automated evidence without exposing credentials or cookies.
 - [x] Canonical 3010/8010 restart uses the same role-bound owner auth environment; owner Google SSO
       behaviour remains pending direct owner verification.
+
+## CP-104 Dashboard partial financial readiness — 2026-10-29
+
+- [x] Loading, complete, partial, unavailable and source-failure states remain distinct.
+- [x] Known operational P&L is retained with an explicit unknown-record count; missing money is
+      never converted to zero, and formal-report strictness is unchanged.
+- [x] Current-request ownership prevents cached or superseded range/Profile responses from being
+      displayed as current.
+- [x] Selected-range metric blocks use structural spacing and remain contained at 430px.
+- [ ] Owner verification of first-login and partial-known presentation remains pending.

@@ -1541,3 +1541,12 @@ usable preview exists.
 - Do not reproduce an established platform information hierarchy with feature-local tables or
   cards. Reuse or minimally generalise the signed-off shared component and cover its existing users
   with focused regression evidence.
+
+## Cached financial sources can masquerade as a completed current read
+
+Do not initialise a range/Profile financial summary as ready from a module-level response cache.
+A missing historical value can poison an ordinary numeric reduction, while a cached pre-mutation
+summary can briefly replay that failure after login. Keep loading active until the current
+no-store request resolves, key readiness to the exact request identity, and abort or ignore
+superseded responses. Operational partial aggregates preserve known values and count unknown
+rows; formal reports retain their stricter completeness contract.

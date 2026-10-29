@@ -259,3 +259,18 @@ its governed final output and must not claim independent recalculation or resolv
 - Growing report/detail lists use the shared 16-row pagination control. Sorting and filtering occur
   before pagination; totals cover the full governed scope; list pages are independent and reset or
   clamp safely when their governing criteria change.
+
+## CP-104 operational partial-readiness boundary
+
+- Operational Selected Range Performance and retained-profit summaries expose an explicit
+  aggregate of known value, known row count and unknown row count. A partial result shows the
+  known subtotal and the unknown count; an unknown row is never assigned zero.
+- A complete result has no unknown applicable rows. `Unavailable` is reserved for a completed
+  read with no authoritative values, or an explicit source failure. Loading remains a separate
+  state until the current Profile/scope request resolves.
+- Formal report values retain their existing strict completeness semantics. The operational
+  partial aggregate does not change formal accounting membership or permit an incomplete formal
+  total to be presented as complete.
+- Cross-Profile financial summaries are hydrated from the current no-store request. Module-level
+  cached sources cannot be presented as current, and aborted or superseded requests cannot update
+  the active Profile/scope result.

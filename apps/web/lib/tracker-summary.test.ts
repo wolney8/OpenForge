@@ -774,6 +774,24 @@ describe("Reports required output readiness", () => {
     expect(result.cashAdjustmentBreakdown.deductionsAndSubscriptions).toBe(-9);
     expect(result.betsQuickView.selectedRangeCashAdjustments).toBe(193);
   });
+  it("keeps the known operational subtotal when three historical Casino records are unavailable", () => {
+    const source=fixture();
+    source.casinoOffers.push(...[1,2,3].map((index)=>({
+      ...source.casinoOffers[0]!,
+      casino_offer_id:`CASINO-UNKNOWN-${index}`,
+      resolved_net_pnl:null,
+    })));
+    const result=summarizeTrackerData(source,range);
+    expect(result.reportingModel.selectedRange.grossBettingPnl).toBeNaN();
+    expect(result.reportingModel.selectedRange.grossBettingPnlAggregate).toEqual({
+      knownValue:5,knownCount:1,unknownCount:3,isComplete:false,
+    });
+    expect(result.reportingModel.selectedRange.retainedProfit).toBeNaN();
+    expect(result.reportingModel.selectedRange.retainedProfitAggregate).toEqual({
+      knownValue:-4,knownCount:3,unknownCount:3,isComplete:false,
+    });
+    expect(result.weeklyReports[0]!.retainedProfit).toBeNaN();
+  });
   it("preserves Extra Place historical current/final and explicit Void outputs with independent exposure readiness", () => {
     const source=fixture();source.eachWayExtraPlaces=[{each_way_extra_place_id:"EP-READ",placed_at:"2026-07-01T12:00:00",runner:"Synthetic",race:"Synthetic",bookmaker:"Bookie A",mode:"Extra Place",status:"Placed",result:"Pending",current_value:null,final_value:null,win_liability:null,place_liability:null}];
     let result=summarizeTrackerData(source,range);

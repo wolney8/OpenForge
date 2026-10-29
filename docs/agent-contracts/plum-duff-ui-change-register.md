@@ -863,3 +863,12 @@ at desktop and 430px. Backup `normal-owner-pre-cp099-20261028T103216Z.sqlite3` h
 foreign-key violations. Canonical web/API restarts now use matching role-bound auth fingerprints;
 the existing owner session remained valid after restart. Database identity `normal-owner`,
 fingerprint `7246998d43722066`, all 73 table hashes and all 6,738 rows remain unchanged.
+
+## CP-104 Dashboard loading and partial financial readiness — 2026-10-29
+
+| ID | Surface | Requested behaviour | Signed-off equivalent | Status |
+| --- | --- | --- | --- | --- |
+| PD-FIX-460 / #111 | Selected Range Performance | Keep loading, complete, partial and unavailable states distinct; show a known subtotal plus unknown-record count without treating missing money as zero | Existing `FinancialReadValue`, partial-known Account cash and cross-profile reporting contract | COMPLETE — aggregate/unit/browser checks |
+| PD-FIX-461 / #111 | Summary request ownership | A fresh authenticated load stays pending until the current no-store source request resolves; cached or superseded responses cannot appear as current | Existing latest-request-wins and section loading contract | COMPLETE — delayed-response browser receipt |
+| PD-FIX-462 / #116 | Missing Account cash audit | Classify the four Matchbook/Smarkets rows from authoritative Account, audit and snapshot data without changing balances or lifecycle | Existing Account cash completeness authority | COMPLETE — read-only normal-owner audit; cleanup decision pending |
+| PD-FIX-463 / #111 | Formal Reports boundary | Preserve formal-report completeness semantics while limiting known-subtotal presentation to operational selected-range consumers | Cross-profile reporting contract | COMPLETE — strict numeric outputs unchanged |

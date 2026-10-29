@@ -6,6 +6,7 @@ import type {
 } from "./tracker-summary";
 import type { OperationalActionCounts } from "./operational-actions";
 import { sumAccountMoney, type AccountMoneyIssue } from "./account-money";
+import { combineFinancialAggregates, type FinancialAggregateResult } from "./financial-aggregate";
 
 export type ProfileReportingInput = {
   profileId: string;
@@ -23,7 +24,9 @@ export type ProfileComparisonRow = {
   profileCode: string;
   status: string;
   grossBettingPnl: number;
+  grossBettingPnlAggregate: FinancialAggregateResult;
   retainedProfit: number;
+  retainedProfitAggregate: FinancialAggregateResult;
   cashSnapshot: number;
   openCurrentValue: number;
   settledFinalValue: number;
@@ -44,10 +47,14 @@ export type CrossProfileReportingResult = {
   cashIssues?: AccountMoneyIssue[];
   knownCashSubtotal: number;
   incompleteCashAccountCount: number;
+  selectedRangeFinancials: {
+    grossBettingPnl: FinancialAggregateResult;
+    retainedProfit: FinancialAggregateResult;
+  };
   profileRows: ProfileComparisonRow[];
   totals: Omit<
     ProfileComparisonRow,
-    "profileId" | "displayName" | "profileCode" | "status"
+    "profileId" | "displayName" | "profileCode" | "status" | "grossBettingPnlAggregate" | "retainedProfitAggregate"
   >;
   moduleBreakdown: ModuleBreakdownRow[];
   bookmakerBreakdown: BookmakerBreakdownRow[];
@@ -125,7 +132,9 @@ export function aggregateCrossProfileReporting(
       profileCode,
       status,
       grossBettingPnl: summary.reportingModel.selectedRange.grossBettingPnl,
+      grossBettingPnlAggregate: summary.reportingModel.selectedRange.grossBettingPnlAggregate,
       retainedProfit: summary.reportingModel.selectedRange.retainedProfit,
+      retainedProfitAggregate: summary.reportingModel.selectedRange.retainedProfitAggregate,
       cashSnapshot: summary.accountQuickView.cashSnapshot,
       openCurrentValue: summary.reportingModel.selectedRange.openCurrentValue,
       settledFinalValue: summary.reportingModel.selectedRange.settledFinalValue,
@@ -177,6 +186,14 @@ export function aggregateCrossProfileReporting(
   );
 
   const moduleMap = new Map<string, ModuleBreakdownRow>();
+  const selectedRangeFinancials = {
+    grossBettingPnl: combineFinancialAggregates(
+      profiles.map((profile) => profile.summary.reportingModel.selectedRange.grossBettingPnlAggregate),
+    ),
+    retainedProfit: combineFinancialAggregates(
+      profiles.map((profile) => profile.summary.reportingModel.selectedRange.retainedProfitAggregate),
+    ),
+  };
   totals.cashSnapshot=sumAccountMoney(profileRows.map(row=>({account_id:row.profileId,account:row.displayName,current_balance:String(row.cashSnapshot),pending_withdrawal_amount:"0.00"})),"current_balance").value;
   const bookmakerMap = new Map<string, BookmakerBreakdownRow>();
 
@@ -229,6 +246,7 @@ export function aggregateCrossProfileReporting(
     cashIssues,
     knownCashSubtotal,
     incompleteCashAccountCount,
+    selectedRangeFinancials,
     totals,
     moduleBreakdown: [...moduleMap.values()],
     bookmakerBreakdown: [...bookmakerMap.values()].sort(

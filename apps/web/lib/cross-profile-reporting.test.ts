@@ -56,7 +56,21 @@ function fixtureSummary(
       retainedProfit: profile.selectedRange.retainedProfit,
     },
     reportingModel: {
-      selectedRange: profile.selectedRange,
+      selectedRange: {
+        ...profile.selectedRange,
+        grossBettingPnlAggregate: {
+          knownValue: profile.selectedRange.grossBettingPnl,
+          knownCount: 1,
+          unknownCount: 0,
+          isComplete: true,
+        },
+        retainedProfitAggregate: {
+          knownValue: profile.selectedRange.retainedProfit,
+          knownCount: 1,
+          unknownCount: 0,
+          isComplete: true,
+        },
+      },
       formalReports: {
         weeklyPeriods: profile.weeklyReports.length,
         monthlyPeriods: profile.monthlyReports.length,
@@ -153,6 +167,26 @@ describe("aggregateCrossProfileReporting", () => {
     expect(result.totals.grossBettingPnl).toBe(0);
     expect(result.weeklyReports).toEqual([]);
     expect(result.yearlyReports).toEqual([]);
+  });
+
+  it("combines known selected-range subtotals without converting unknown Profile records to zero", () => {
+    const partial = structuredClone(inputs[0]!);
+    partial.summary.reportingModel.selectedRange.grossBettingPnl = Number.NaN;
+    partial.summary.reportingModel.selectedRange.retainedProfit = Number.NaN;
+    partial.summary.reportingModel.selectedRange.grossBettingPnlAggregate = {
+      knownValue: 7.5, knownCount: 2, unknownCount: 3, isComplete: false,
+    };
+    partial.summary.reportingModel.selectedRange.retainedProfitAggregate = {
+      knownValue: 5, knownCount: 3, unknownCount: 3, isComplete: false,
+    };
+    const result = aggregateCrossProfileReporting([partial, inputs[1]!]);
+    expect(result.totals.grossBettingPnl).toBeNaN();
+    expect(result.selectedRangeFinancials.grossBettingPnl).toEqual({
+      knownValue: 5, knownCount: 3, unknownCount: 3, isComplete: false,
+    });
+    expect(result.selectedRangeFinancials.retainedProfit).toEqual({
+      knownValue: 1.5, knownCount: 4, unknownCount: 3, isComplete: false,
+    });
   });
 
   it("recalculates all aggregate families from an explicit profile subset", () => {
