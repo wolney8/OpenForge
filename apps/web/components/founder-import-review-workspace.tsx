@@ -419,6 +419,10 @@ function optionsFor(item: ReviewItem) {
     ["mark_historical_provider", "Mark historical / archived"],
     ["defer", "Defer"],
   ];
+  if (item.source_sheet === "Accounts" && item.category === "accounts_partial") return [
+    ["defer", "Defer pending Account decision"],
+    ["exclude", "Exclude from this import"],
+  ];
   if (item.category === "historical_extra_place") return [
     ["historical_extra_place", "Historical Extra Place"],
     ["keep_sportsbook_historical", "Keep as Sportsbook historical EP"],
@@ -452,6 +456,16 @@ function statusClass(status: ReviewStatus) {
 }
 
 function issueExplanation(item: ReviewItem): string {
+  if (item.source_sheet === "Accounts") {
+    const provider = sourceField(item, "Account") || item.context.provider || "This Account";
+    const invalid: string[] = [];
+    if (item.issue_types.includes("invalid_stake_access")) invalid.push(`Stake Access “${sourceField(item, "Stake Access") || "blank"}”`);
+    if (item.issue_types.includes("invalid_promo_access")) invalid.push(`Promo Access “${sourceField(item, "Promo Access") || "blank"}”`);
+    if (item.issue_types.includes("invalid_account_payload") && sourceField(item, "Channel").includes(",")) invalid.push(`Channel “${sourceField(item, "Channel")}”`);
+    if (item.issue_types.includes("duplicate_provider_account")) return `${provider} resolves to the same catalogue provider as another workbook Account. The operational row must be chosen explicitly.`;
+    if (item.category === "missing_provider") return `${provider} has no exact or governed alias match in the global Account Catalogue.`;
+    if (invalid.length) return `${invalid.join(" and ")} cannot be stored under the current Account contract.`;
+  }
   if (item.issue_types.includes("advanced_lay")) return "This row uses a legacy lay arrangement that cannot be reconstructed safely from the available fields.";
   if (item.issue_types.includes("missing_strategy")) return "The workbook does not identify which matching strategy produced this row.";
   if (item.issue_types.includes("text_length")) return "A source value is longer than the current ledger field allows.";
@@ -463,12 +477,45 @@ function issueExplanation(item: ReviewItem): string {
 }
 
 function reviewReason(item: ReviewItem): string {
+  if (item.source_sheet === "Accounts" && item.issue_types.includes("duplicate_provider_account")) return "Two workbook rows would create one Profile provider identity. Their status, balance and provenance differ, so they cannot be merged automatically.";
+  if (item.source_sheet === "Accounts" && item.category === "accounts_partial") return "The source value must be mapped to an allowed canonical Account value or deferred. Unknown financial values remain unknown.";
   if (item.category === "missing_provider") return "A global provider relationship must be confirmed before this Profile account can be created.";
   if (item.category === "historical_extra_place") return "You must choose whether to retain it in Sportsbook or preserve it as an incomplete historical Extra Place.";
   if (item.issue_types.includes("advanced_lay") || item.issue_types.includes("missing_strategy")) return "Plum Duff can preserve the source financial outcome, but cannot claim that its current calculator reproduced the bet.";
   if (item.issue_types.includes("text_length")) return "The full source text must be retained while a shorter canonical value is selected.";
   if (item.issue_types.includes("missing_offer_name")) return "The target ledger requires a label, but no marketing name can be inferred safely.";
   return "The importer needs an explicit business decision before this row can be marked ready.";
+}
+
+function accountReviewChoices(item: ReviewItem): string[] {
+  if (item.source_sheet !== "Accounts") return [];
+  if (item.category === "missing_provider") return [
+    "Map to an existing provider only when exact identity evidence exists.",
+    "Add a validated catalogue provider in a separately governed step.",
+    "Retain as unsupported historical/planning data, or defer.",
+  ];
+  if (item.issue_types.includes("duplicate_provider_account")) return [
+    "Choose the operational source row and defer the other row.",
+    "Keep both only if separate Account identity evidence exists.",
+    "Defer both when the relationship remains ambiguous.",
+  ];
+  const choices: string[] = [];
+  if (item.issue_types.includes("invalid_stake_access")) choices.push("Stake Access: Normal, Limited, Severely Limited, Blocked, or Not Checked.");
+  if (item.issue_types.includes("invalid_promo_access")) choices.push("Promo Access: Full, Restricted, None, or Not Checked.");
+  if (sourceField(item, "Channel").includes(",")) choices.push("Channel: Online, Mobile, Retail, or Unknown (one value only).");
+  choices.push("Defer the Account when the source evidence is not authoritative.");
+  return choices;
+}
+
+function accountBalanceLabel(item: ReviewItem): string {
+  const balance = sourceField(item, "CurrentBalance");
+  if (balance === "") return "Not recorded";
+  const parsed = Number(balance);
+  return Number.isFinite(parsed) ? `£${parsed.toFixed(2)}` : "Invalid source value";
+}
+
+function isAccountReviewItem(item: ReviewItem): boolean {
+  return item.source_sheet === "Accounts";
 }
 
 function interpretation(item: ReviewItem): string {
@@ -655,6 +702,7 @@ export function FounderImportReviewWorkspace({
   const [preflightRequestState, setPreflightRequestState] = useState<PreflightRequestState>("IDLE");
   const [approvalError, setApprovalError] = useState("");
   const editorRef = useRef<HTMLElement | null>(null);
+  const editorReturnFocusRef = useRef<HTMLElement | null>(null);
   const filterRef = useRef<HTMLElement | null>(null);
   const loadoutRef = useRef<HTMLDivElement | null>(null);
   const reviewTableRef = useRef<HTMLDivElement | null>(null);
@@ -801,9 +849,8 @@ export function FounderImportReviewWorkspace({
     dialog.focus();
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape" || saving) return;
-      setEditing(null);
-      setDraft(null);
-      setFilterOpen(false);
+      if (editing) closeEditor();
+      else setFilterOpen(false);
     };
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
@@ -841,8 +888,19 @@ export function FounderImportReviewWorkspace({
   }
 
   function openEditor(item: ReviewItem) {
+    editorReturnFocusRef.current = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null;
     setEditing(item);
     setDraft(initialDraft(item));
+  }
+
+  function closeEditor() {
+    setEditing(null);
+    setDraft(null);
+    const returnTarget = editorReturnFocusRef.current;
+    editorReturnFocusRef.current = null;
+    window.requestAnimationFrame(() => returnTarget?.focus());
   }
 
   function toggleSelected(itemId: string) {
@@ -1399,7 +1457,7 @@ export function FounderImportReviewWorkspace({
       <LedgerPagination ariaLabel="Import review" currentPage={effectivePage} onPageChange={setPage} onPageSizeChange={(value) => { setPageSize(value); setPage(1); }} pageCount={pageCount} pageSize={pageSize} position="top" totalRows={filtered.length} />
       <LedgerTableScroll dataPdId="founder-import-review.table-scroll">
         <table className="data-table import-review-table">
-          <thead><tr><th scope="col">Select</th><th scope="col">Source</th><th scope="col">Provider / Event</th><th scope="col">Bet context</th><th scope="col">P&amp;L</th><th scope="col">Proposed target</th><th scope="col">Issue</th><th scope="col">Review state</th><th scope="col">Actions</th></tr></thead>
+          <thead><tr><th scope="col">Select</th><th scope="col">Source</th><th scope="col">Account / Event</th><th scope="col">Source context</th><th scope="col">Financial value</th><th scope="col">Proposed target</th><th scope="col">Issue</th><th scope="col">Review state</th><th scope="col">Actions</th></tr></thead>
           <tbody>{rows.length ? rows.map((item) => {
             const provider = catalogue.find((record) =>
               [record.brand_name, record.short_display_name].some(
@@ -1410,13 +1468,13 @@ export function FounderImportReviewWorkspace({
             return <FinancialValueReplayRow aria-selected={isSelected} className={isSelected ? "is-selected-row" : undefined} key={item.item_id} onClick={(event) => { if (!rowInteractionTarget(event.target)) toggleSelected(item.item_id); }} onKeyDown={(event) => { if (event.key === " " && !rowInteractionTarget(event.target)) { event.preventDefault(); toggleSelected(item.item_id); } }} tabIndex={0}>
               <td><input aria-label={`Select ${item.source_sheet} row ${item.source_row} for review action`} checked={isSelected} onChange={() => toggleSelected(item.item_id)} type="checkbox" /></td>
               <td><div className="table-cell-stack table-cell-stack-centered"><strong>{item.source_sheet} · {item.source_row}</strong><span className="table-status">{item.source_record_id || "No source ID"}</span><span className="spreadsheet-row-id" title={item.import_id}>{item.import_id.slice(0, 18)}…</span></div></td>
-              <td><div className="table-cell-stack table-cell-stack-centered">{item.context.provider ? <AccountProviderIdentity fallbackName={item.context.provider} provider={provider} /> : "—"}<span className="table-status import-review-truncate" title={item.context.event || item.context.offer_name}>{item.context.event || item.context.offer_name || "No event label"}</span></div></td>
-              <td><div className="table-cell-stack table-cell-stack-centered"><strong>{item.context.offer_type || "—"}</strong><span className="table-status">{[item.context.stake && `Stake ${item.context.stake}`, item.context.odds && `Odds ${item.context.odds}`, item.context.exchange].filter(Boolean).join(" · ") || "No modern bet inputs"}</span></div></td>
-              <td><div className="table-cell-stack table-cell-stack-centered">{item.context.pnl ? <FinancialValue value={item.context.pnl} /> : "—"}<span className="table-status">{item.calculation_provenance.replaceAll("_", " ")}</span></div></td>
+              <td><div className="table-cell-stack table-cell-stack-centered">{item.context.provider ? <AccountProviderIdentity fallbackName={item.context.provider} provider={provider} /> : "—"}<span className="table-status import-review-truncate" title={isAccountReviewItem(item) ? `${sourceField(item, "Type")} · ${sourceField(item, "Status")}` : item.context.event || item.context.offer_name}>{isAccountReviewItem(item) ? [sourceField(item, "Type"), sourceField(item, "Status")].filter(Boolean).join(" · ") : item.context.event || item.context.offer_name || "No event label"}</span></div></td>
+              <td><div className="table-cell-stack table-cell-stack-centered"><strong>{isAccountReviewItem(item) ? sourceField(item, "Channel") || "Channel not recorded" : item.context.offer_type || "—"}</strong><span className="table-status">{isAccountReviewItem(item) ? [sourceField(item, "Stake Access") && `Stake ${sourceField(item, "Stake Access")}`, sourceField(item, "Promo Access") && `Promos ${sourceField(item, "Promo Access")}`].filter(Boolean).join(" · ") || "Access not recorded" : [item.context.stake && `Stake ${item.context.stake}`, item.context.odds && `Odds ${item.context.odds}`, item.context.exchange].filter(Boolean).join(" · ") || "No modern bet inputs"}</span></div></td>
+              <td><div className="table-cell-stack table-cell-stack-centered">{isAccountReviewItem(item) ? <strong>{accountBalanceLabel(item)}</strong> : item.context.pnl ? <FinancialValue value={item.context.pnl} /> : "—"}<span className="table-status">{isAccountReviewItem(item) ? "Current balance" : item.calculation_provenance.replaceAll("_", " ")}</span></div></td>
               <td><span className="import-review-truncate" title={item.proposed_target}>{item.proposed_target}</span></td>
               <td><div className="table-cell-stack table-cell-stack-centered"><span className="table-chip table-chip-warning">{labels[item.issue_type] ?? item.issue_type.replaceAll("_", " ")}</span><span className="table-status import-review-truncate" title={issueExplanation(item)}>{issueExplanation(item)}</span></div></td>
               <td><div className="table-cell-stack table-cell-stack-centered"><span className={`table-chip ${statusClass(item.review_status)}`}>{statusLabels[item.review_status]}</span>{item.decision?.note ? <span className="table-status">{item.decision.note}</span> : null}</div></td>
-              <td><button aria-label={`Review ${item.source_sheet} row ${item.source_row}`} className="icon-button table-action-button" onClick={() => openEditor(item)} title={`Review ${item.source_sheet} row ${item.source_row}`} type="button"><span aria-hidden="true" className="material-symbols-outlined">edit_note</span></button></td>
+              <td><button aria-label={isAccountReviewItem(item) ? `Review ${item.context.provider} Account mapping` : `Review ${item.source_sheet} row ${item.source_row}`} className="icon-button table-action-button" onClick={() => openEditor(item)} title={isAccountReviewItem(item) ? `Review ${item.context.provider} Account mapping` : `Review ${item.source_sheet} row ${item.source_row}`} type="button"><span aria-hidden="true" className="material-symbols-outlined">edit_note</span></button></td>
             </FinancialValueReplayRow>;
           }) : <tr><td className="empty-cell" colSpan={9}>No import exceptions match the current view.</td></tr>}</tbody>
         </table>
@@ -1500,16 +1558,27 @@ export function FounderImportReviewWorkspace({
     />
 
     {editing && draft && typeof document !== "undefined" ? createPortal(
-      <div className="modal-backdrop modal-backdrop-elevated" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) { setEditing(null); setDraft(null); } }}>
+      <div className="modal-backdrop modal-backdrop-elevated" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) closeEditor(); }}>
         <section aria-labelledby="import-review-editor-title" aria-modal="true" className="modal-panel workflow-editor-modal import-review-editor-modal" ref={editorRef} role="dialog" tabIndex={-1}>
           <header className="workflow-panel-header workflow-editor-header">
             <div><span className="eyebrow">{editing.source_sheet} · row {editing.source_row}</span><h2 id="import-review-editor-title">Review import mapping</h2></div>
-            <button aria-label="Close import mapping review" className="modal-close-button" disabled={saving} onClick={() => { setEditing(null); setDraft(null); }} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button>
+            <button aria-label="Close import mapping review" className="modal-close-button" disabled={saving} onClick={closeEditor} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button>
           </header>
           <div className="workflow-editor-body import-review-evidence-body">
             <section className="content-subpanel stack-tight"><span className="eyebrow">What is wrong</span><strong>{labels[editing.issue_type] ?? editing.issue_type.replaceAll("_", " ")}</strong><span>{issueExplanation(editing)}</span></section>
-            <section className="content-subpanel stack-tight"><span className="eyebrow">Workbook evidence</span><dl className="spreadsheet-row-details import-review-evidence-grid">
-              {[
+            <section className="content-subpanel stack-tight" data-pd-id={isAccountReviewItem(editing) ? "profile-import.account-evidence" : "profile-import.workbook-evidence"}><span className="eyebrow">Workbook evidence</span><dl className="spreadsheet-row-details import-review-evidence-grid">
+              {(isAccountReviewItem(editing) ? [
+                ["Account", sourceField(editing, "Account") || editing.context.provider],
+                ["Type", sourceField(editing, "Type")],
+                ["Status", sourceField(editing, "Status")],
+                ["Current balance", accountBalanceLabel(editing)],
+                ["Pending withdrawal", sourceField(editing, "PendingWithdrawalAmount") ? `£${sourceField(editing, "PendingWithdrawalAmount")}` : "Not recorded"],
+                ["Channel", sourceField(editing, "Channel") || "Not recorded"],
+                ["Stake Access", sourceField(editing, "Stake Access") || "Not recorded"],
+                ["Promo Access", sourceField(editing, "Promo Access") || "Not recorded"],
+                ["Last balance observation", sourceField(editing, "LastBalanceUpdate") || "Not recorded"],
+                ["Notes", sourceField(editing, "Notes") || "None"],
+              ] : [
                 ["Source", `${editing.source_sheet} row ${editing.source_row}`],
                 ["Provider", editing.context.provider], ["Event", editing.context.event],
                 ["Status / result", [editing.context.status, editing.context.result].filter(Boolean).join(" / ")],
@@ -1518,8 +1587,9 @@ export function FounderImportReviewWorkspace({
                 ["Exchange", editing.context.exchange], ["Lay odds / stake", [editing.context.lay_odds, editing.context.lay_stake].filter(Boolean).join(" / ")],
                 ["Current / source P&L", editing.context.pnl ? `£${editing.context.pnl}` : "Not available"],
                 ["Notes / strategy", editing.context.notes],
-              ].filter(([, value]) => value).map(([name, value]) => <div key={name}><dt>{name}</dt><dd>{value}</dd></div>)}
+              ]).filter(([, value]) => value).map(([name, value]) => <div key={name}><dt>{name}</dt><dd>{value}</dd></div>)}
             </dl></section>
+            {isAccountReviewItem(editing) ? <section className="content-subpanel stack-tight" data-pd-id="profile-import.account-choices"><span className="eyebrow">Safe choices</span><ul>{accountReviewChoices(editing).map((choice) => <li key={choice}>{choice}</li>)}</ul></section> : null}
             <section className="content-subpanel stack-tight"><span className="eyebrow">Plum Duff interpretation</span><span>{interpretation(editing)}</span></section>
             <section className="content-subpanel stack-tight"><span className="eyebrow">Why review is required</span><span>{reviewReason(editing)}</span></section>
             <div className="form-grid">
@@ -1550,7 +1620,7 @@ export function FounderImportReviewWorkspace({
             <details><summary>Technical details</summary><p>{editing.reason}</p>{editing.missing_fields.length ? <p>Unsupported fields: {editing.missing_fields.join(", ")}.</p> : null}<p className="spreadsheet-row-id">{editing.import_id}</p><dl className="spreadsheet-row-details">{Object.entries(editing.source_fields).filter(([, value]) => value !== "" && value !== null).map(([name, value]) => <div key={name}><dt>{name}</dt><dd>{String(value)}</dd></div>)}</dl></details>
           </div>
           <footer className="workflow-editor-footer tracker-nav">
-            <button className="button-link" disabled={saving} onClick={() => { setEditing(null); setDraft(null); }} type="button">Cancel</button>
+            <button className="button-link" disabled={saving} onClick={closeEditor} type="button">Cancel</button>
             <button className="button-link icon-text-action" disabled={saving || (draft.action === "create_provider_candidate" && !draft.providerCatalogueAcknowledged)} onClick={() => void saveDecision(true)} type="button"><span aria-hidden="true" className="material-symbols-outlined">skip_next</span><span>Save &amp; next</span></button>
             <button className="modal-primary-button icon-text-action" disabled={saving || (draft.action === "create_provider_candidate" && !draft.providerCatalogueAcknowledged)} onClick={() => void saveDecision()} type="button">{saving ? <span aria-hidden="true" className="button-spinner" /> : <span aria-hidden="true" className="material-symbols-outlined">save</span>}<span>{saving ? "Saving" : draft.action === "create_provider_candidate" ? "Add provider and use" : "Save decision"}</span></button>
           </footer>

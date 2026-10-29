@@ -91,6 +91,9 @@ def test_tracker_summary_sources_reuse_signed_off_read_contracts(tmp_path: Path)
 
     assert response.status_code == 200
     sources = response.json()
+    assert sources["current_cash_snapshot"] == client.get(
+        f"/profiles/{profile_id}"
+    ).json()["current_cash_snapshot"]
     endpoints = {
         "accounts": "accounts",
         "sportsbook_bets": "sportsbook-bets",
@@ -139,10 +142,14 @@ def test_tracker_summary_sources_reuse_one_connection(monkeypatch) -> None:
         assert profile_id == "profile-demo-001"
         return [profile_id]
 
+    class Profile:
+        current_cash_snapshot = ""
+
     monkeypatch.setattr(tracker_summary_sources, "connect", shared_connection)
     monkeypatch.setattr(tracker_summary_sources, "reuse_mutation_connection", reuse_connection)
     for name in reader_names:
         monkeypatch.setattr(tracker_summary_sources, name, reader)
+    monkeypatch.setattr(tracker_summary_sources, "get_profile", lambda profile_id: Profile())
 
     result = asyncio.run(
         tracker_summary_sources.get_profile_tracker_summary_sources("profile-demo-001")
@@ -158,6 +165,7 @@ def test_tracker_summary_sources_reuse_one_connection(monkeypatch) -> None:
         "balance_snapshots",
         "fee_periods",
         "tracker_settings",
+        "current_cash_snapshot",
     }
     assert events == ["connect", "reuse"]
 
@@ -379,6 +387,11 @@ def test_combined_tracker_summary_sources_use_one_connection_for_64_profiles(
         "get_tracker_settings",
     ):
         monkeypatch.setattr(tracker_summary_sources, name, reader)
+    monkeypatch.setattr(
+        tracker_summary_sources,
+        "get_profile",
+        lambda profile_id: SimpleNamespace(current_cash_snapshot=""),
+    )
 
     result = asyncio.run(
         tracker_summary_sources.get_combined_tracker_summary_sources(
@@ -1073,6 +1086,7 @@ def test_profile_onboarding_import_path_creates_target_without_duplicate_setup(
         accounts=[],
         main_bank_catalogue_id="",
         quick_actions=[],
+        starting_bankroll="0.00",
     )
 
     response = client.post("/profiles/onboarding", json=payload)
@@ -1081,10 +1095,36 @@ def test_profile_onboarding_import_path_creates_target_without_duplicate_setup(
     created = response.json()
     profile_id = created["profile"]["profile_id"]
     assert created["profile"]["display_name"] == "Synthetic Profile"
+    assert created["profile"]["current_cash_snapshot"] == ""
+    assert created["onboarding"]["starting_bankroll"] == "0.00"
     assert created["selected_account_count"] == 0
     assert created["selected_quick_action_count"] == 0
     assert client.get(f"/profiles/{profile_id}/accounts").json() == []
     assert client.get(f"/profiles/{profile_id}/onboarding").status_code == 200
+    assert client.get(f"/profiles/{profile_id}").json()["current_cash_snapshot"] == ""
+    listed = client.get("/profiles").json()
+    assert next(row for row in listed if row["profile_id"] == profile_id)[
+        "current_cash_snapshot"
+    ] == ""
+
+
+def test_profile_onboarding_preserves_authoritative_zero_cash_snapshot(
+    tmp_path: Path,
+) -> None:
+    configure_temp_database(tmp_path)
+    configure_profile_catalogue(tmp_path)
+    client = TestClient(app)
+    payload = profile_onboarding_payload()
+    payload["setup_path"] = "import"
+    payload["main_bank_catalogue_id"] = ""
+    payload["quick_actions"] = []
+    for account in payload["accounts"]:
+        account["opening_balance"] = "0.00"
+
+    response = client.post("/profiles/onboarding", json=payload)
+
+    assert response.status_code == 201, response.text
+    assert response.json()["profile"]["current_cash_snapshot"] == "0.00"
 
 
 def test_profile_onboarding_can_be_reused_for_isolated_profiles(tmp_path: Path) -> None:

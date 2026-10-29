@@ -3,6 +3,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { fetchCombinedTrackerSummarySources } from "./tracker-summary-sources";
 
 const emptySource = {
+  current_cash_snapshot: "",
   accounts: [],
   sportsbook_bets: [],
   free_bets: [],

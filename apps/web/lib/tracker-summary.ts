@@ -148,6 +148,7 @@ export type BalanceSnapshotSummaryRecord = {
 };
 
 export type TrackerSummaryDataset = {
+  currentCashSnapshot?: string;
   accounts: AccountSummaryRecord[];
   sportsbookBets: SportsbookSummaryRecord[];
   freeBets: FreeBetSummaryRecord[];
@@ -802,10 +803,24 @@ export function summarizeTrackerData(
     && row.status !== "Archived"
     && row.lifecycle_status !== "Archived"
   );
-  const cash=sumAccountMoney(includedAccounts,"current_balance");
-  const bookieCash=sumAccountMoney(includedAccounts.filter(row=>row.type==="Bookie"),"current_balance");
-  const exchangeCash=sumAccountMoney(includedAccounts.filter(row=>row.type==="Exchange"),"current_balance");
-  const bankCash=sumAccountMoney(includedAccounts.filter(row=>row.type==="Bank"),"current_balance");
+  const hasPersistedCashAuthority = dataset.currentCashSnapshot !== undefined;
+  const persistedCash = hasPersistedCashAuthority
+    ? sumAccountMoney([{
+        account_id: "profile-current-cash",
+        account: "Profile current cash",
+        current_balance: dataset.currentCashSnapshot ?? "",
+        pending_withdrawal_amount: "",
+      }], "current_balance")
+    : null;
+  const cash = includedAccounts.length === 0 && persistedCash
+    ? { ...persistedCash, issues: [] }
+    : sumAccountMoney(includedAccounts,"current_balance");
+  const emptyCategoryCash = includedAccounts.length === 0 && persistedCash
+    ? { ...persistedCash, issues: [] }
+    : null;
+  const bookieCash=emptyCategoryCash ?? sumAccountMoney(includedAccounts.filter(row=>row.type==="Bookie"),"current_balance");
+  const exchangeCash=emptyCategoryCash ?? sumAccountMoney(includedAccounts.filter(row=>row.type==="Exchange"),"current_balance");
+  const bankCash=emptyCategoryCash ?? sumAccountMoney(includedAccounts.filter(row=>row.type==="Bank"),"current_balance");
   const bookieBalance=bookieCash.value;
   const exchangeBalance=exchangeCash.value;
   const bankBalance=bankCash.value;
