@@ -1922,6 +1922,40 @@ def test_import_rollback_removes_created_reviewed_exchange_commission(
     assert saved is None
 
 
+def test_checkpoint_rollback_removes_created_row_missing_from_legacy_audit(
+    tmp_path: Path,
+) -> None:
+    from openforge_api.profile_workbook_cutover import (
+        _profile_snapshot,
+        _remove_rows_absent_from_checkpoint,
+    )
+
+    configure_cutover_database(tmp_path)
+    with connect() as connection:
+        snapshot = _profile_snapshot(connection, PROFILE_ID)
+        checkpoint = {"snapshot_json": json.dumps(snapshot)}
+        connection.execute(
+            """
+            INSERT INTO accounts (
+              account_id, profile_id, account, type, counts_in_cash_total,
+              channel, status, current_balance, pending_withdrawal_amount,
+              last_balance_update, group_name, platform, created_at, updated_at
+            ) VALUES (?, ?, 'Synthetic Exchange', 'Exchange', 1, 'Unknown',
+                      'Not Using', '', '', '', 'Synthetic Exchange', 'Proprietary', ?, ?)
+            """,
+            ("PA-UNTRACKED", PROFILE_ID, "2026-10-30T00:00:00+00:00", "2026-10-30T00:00:00+00:00"),
+        )
+
+        deleted = _remove_rows_absent_from_checkpoint(connection, checkpoint, PROFILE_ID)
+        saved = connection.execute(
+            "SELECT 1 FROM accounts WHERE profile_id = ? AND account_id = 'PA-UNTRACKED'",
+            (PROFILE_ID,),
+        ).fetchone()
+
+    assert deleted == 1
+    assert saved is None
+
+
 def test_pending_signup_blank_balance_stays_unknown(tmp_path: Path) -> None:
     from openforge_api.profile_workbook_cutover import _catalogue_records
 
