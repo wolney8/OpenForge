@@ -892,3 +892,82 @@ def test_profile_workbook_upload_rejects_non_xlsx_and_oversize(
         },
     )
     assert oversized.status_code == 413
+
+
+def test_completed_content_version_is_no_op_when_filename_changes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    configure_database(tmp_path)
+    monkeypatch.setattr(
+        "openforge_api.profile_workbook_imports.require_request_session",
+        lambda _request: SimpleNamespace(email="founder@example.invalid"),
+    )
+    content = b"synthetic immutable workbook content"
+    checksum = hashlib.sha256(content).hexdigest()
+    mapping_version = workbook_imports.FOUNDER_MAPPING_VERSION
+    import_run_id = (
+        "profile-import-"
+        + hashlib.sha256(
+            f"profile-import-test:{checksum}:{mapping_version}".encode("utf-8")
+        ).hexdigest()[:32]
+    )
+    summary = workbook_imports._empty_summary()
+    summary["source_lineage"] = {
+        "schema_version": "profile-workbook-lineage-v1",
+        "lineage_id": "synthetic-lineage",
+        "source_version": {"version_id": "synthetic-version", "sha256": checksum},
+    }
+    now = "2026-10-30T12:00:00+00:00"
+    with connect() as connection:
+        connection.execute(
+            """
+            INSERT INTO profile_import_runs (
+              import_run_id, profile_id, owner_email, source_filename, workbook_checksum,
+              workbook_size_bytes, effective_at, mapping_version, status, summary_json,
+              reconciliation_json, completed_at, created_at, updated_at
+            ) VALUES (?, 'profile-import-test', 'founder@example.invalid',
+                      'original-running-workbook.xlsx', ?, ?, ?, ?, 'COMPLETE', ?, '{}',
+                      ?, ?, ?)
+            """,
+            (
+                import_run_id,
+                checksum,
+                len(content),
+                now,
+                mapping_version,
+                json.dumps(summary),
+                now,
+                now,
+                now,
+            ),
+        )
+    monkeypatch.setattr(workbook_imports, "_decode_workbook", lambda _payload: content)
+
+    response = TestClient(app).post(
+        "/profiles/profile-import-test/workbook-imports/analyse",
+        json={
+            "source_filename": "renamed-running-workbook.xlsx",
+            "workbook_base64": base64.b64encode(content).decode("ascii"),
+            "effective_at": "2026-10-30T13:00:00+00:00",
+        },
+    )
+
+    assert response.status_code == 200
+    workspace = response.json()
+    assert workspace["metadata"]["import_run_id"] == import_run_id
+    assert workspace["metadata"]["source_version_state"] == "ALREADY_IMPORTED"
+    assert workspace["metadata"]["source_filename"] == "original-running-workbook.xlsx"
+    with connect() as connection:
+        persisted = connection.execute(
+            "SELECT source_filename, completed_at, COUNT(*) OVER () AS run_count "
+            "FROM profile_import_runs WHERE profile_id = 'profile-import-test'"
+        ).fetchone()
+        audits = connection.execute(
+            "SELECT COUNT(*) AS count FROM profile_import_write_audit "
+            "WHERE import_run_id = ?",
+            (import_run_id,),
+        ).fetchone()
+    assert persisted["source_filename"] == "original-running-workbook.xlsx"
+    assert persisted["completed_at"] == now
+    assert persisted["run_count"] == 1
+    assert audits["count"] == 0

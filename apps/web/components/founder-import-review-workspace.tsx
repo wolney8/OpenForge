@@ -93,8 +93,19 @@ type ReviewItem = {
   };
   source_fields: Record<string, string | number | boolean | null>;
   calculation_provenance: string;
+  incremental?: IncrementalDeltaRow;
   review_status: ReviewStatus;
   decision: ReviewDecision | null;
+};
+
+type SourceLineage = {
+  lineage_id: string;
+  workbook_family: string;
+  baseline_import_run_id: string;
+  source_version: {
+    version_id: string;
+    predecessor_import_run_id: string;
+  };
 };
 
 type Workspace = {
@@ -191,6 +202,8 @@ type Workspace = {
     provider_conflict_count: number;
     historical_ep_count: number;
     real_import_performed: false;
+    source_version_state?: "ALREADY_IMPORTED" | "RECONCILIATION_FAILED" | "REVIEW";
+    source_lineage?: SourceLineage;
   };
   items: ReviewItem[];
   source_summary?: {
@@ -234,6 +247,8 @@ type Workspace = {
         }>;
       };
     };
+    incremental_delta?: IncrementalDelta;
+    source_lineage?: SourceLineage;
   };
   financial_reconciliation?: Record<"week" | "month" | "year", {
     period_key: string;
@@ -268,6 +283,51 @@ type Workspace = {
     import_ready: boolean;
     real_import_performed: false;
   };
+};
+
+type IncrementalDeltaStatus =
+  | "UNCHANGED"
+  | "NEW"
+  | "CHANGED"
+  | "CONFLICT"
+  | "SOURCE_MISSING"
+  | "UNSUPPORTED";
+
+type IncrementalFieldDifference = {
+  field: string;
+  label: string;
+  previous_source: unknown;
+  current_plum_duff: unknown;
+  new_source: unknown;
+  classification: string;
+  financial: boolean;
+};
+
+type IncrementalDeltaRow = {
+  import_key: string;
+  status: IncrementalDeltaStatus;
+  comparison: string;
+  write_action: "create" | "update" | "none";
+  requires_review: boolean;
+  source_namespace: string;
+  source_record_id: string;
+  source_row: number | null;
+  ledger: string;
+  entity_type: string;
+  entity_id: string;
+  field_differences: IncrementalFieldDifference[];
+  reason: string;
+};
+
+type IncrementalDelta = {
+  schema_version: string;
+  mode: "INITIAL" | "INCREMENTAL";
+  counts: Record<IncrementalDeltaStatus, number>;
+  comparison_counts: Record<string, number>;
+  attention_count: number;
+  protected_local_change_count: number;
+  rows: IncrementalDeltaRow[];
+  fingerprint: string;
 };
 
 type ReviewResolution = {
@@ -363,6 +423,7 @@ const loadouts = [
   ["missing_offer_name", "Missing Offer Name"],
   ["missing_strategy", "Missing Strategy"],
   ["override_missing_reason", "Override Missing Reason"],
+  ["incremental_conflict", "Incremental conflict"],
   ["ready", "Ready After Review"],
   ["deferred", "Deferred"],
 ] as const;
@@ -375,6 +436,8 @@ const labels: Record<string, string> = {
   override_missing_reason: "Override missing reason",
   missing_provider: "Missing provider",
   historical_extra_place: "Historical Extra Place",
+  incremental_conflict: "Concurrent change",
+  settled_financial_change: "Settled financial change",
   sportsbook_partial: "Sportsbook partial",
   free_bets_partial: "Free Bet partial",
   casino_partial: "Casino partial",
@@ -413,6 +476,10 @@ const safeBatchActions: Record<string, { action: string; label: string; descript
 };
 
 function optionsFor(item: ReviewItem) {
+  if (item.category === "incremental_conflict") return [
+    ["accept_proposed", "Apply reviewed workbook change"],
+    ["defer", "Keep Plum Duff value / defer"],
+  ];
   if (item.category === "missing_provider") return [
     ["map_existing_provider", "Map to existing provider"],
     ["create_provider_candidate", "Add to Account Catalogue and use for this Account"],
@@ -455,7 +522,37 @@ function statusClass(status: ReviewStatus) {
   return "table-chip-neutral";
 }
 
+function deltaStatusClass(status: IncrementalDeltaStatus) {
+  if (status === "NEW" || status === "CHANGED") return "table-chip-info";
+  if (status === "CONFLICT" || status === "UNSUPPORTED") return "table-chip-danger";
+  if (status === "SOURCE_MISSING") return "table-chip-warning";
+  return "table-chip-neutral";
+}
+
+function deltaStatusLabel(status: IncrementalDeltaStatus) {
+  return {
+    UNCHANGED: "Unchanged",
+    NEW: "New",
+    CHANGED: "Updated",
+    CONFLICT: "Conflict",
+    SOURCE_MISSING: "Missing from latest source",
+    UNSUPPORTED: "Unsupported",
+  }[status];
+}
+
+function deltaValue(value: unknown): string {
+  if (value === null || value === undefined || value === "") return "Not recorded";
+  if (Array.isArray(value)) return value.map(String).join(", ") || "Not recorded";
+  if (typeof value === "object") return "Structured value changed";
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  return String(value);
+}
+
 function issueExplanation(item: ReviewItem): string {
+  if (item.category === "incremental_conflict") {
+    if (item.issue_types.includes("settled_financial_change")) return "A later workbook changes an authoritative financial field on a settled record.";
+    return "The workbook and Plum Duff no longer share the same canonical value for this record.";
+  }
   if (item.source_sheet === "Accounts") {
     const provider = sourceField(item, "Account") || item.context.provider || "This Account";
     const invalid: string[] = [];
@@ -477,6 +574,7 @@ function issueExplanation(item: ReviewItem): string {
 }
 
 function reviewReason(item: ReviewItem): string {
+  if (item.category === "incremental_conflict") return "Review the previous source, current Plum Duff value and newer workbook value before choosing whether the workbook change may be applied.";
   if (item.source_sheet === "Accounts" && item.issue_types.includes("duplicate_provider_account")) return "Two workbook rows would create one Profile provider identity. Their status, balance and provenance differ, so they cannot be merged automatically.";
   if (item.source_sheet === "Accounts" && item.category === "accounts_partial") return "The source value must be mapped to an allowed canonical Account value or deferred. Unknown financial values remain unknown.";
   if (item.category === "missing_provider") return "A global provider relationship must be confirmed before this Profile account can be created.";
@@ -542,6 +640,8 @@ function decisionEffect(action: string, item: ReviewItem): string {
     historical_imported_behavior: "Keeps the historical override behaviour without inventing a missing reason.",
     create_provider_candidate: "Creates one Fund Manager-confirmed global catalogue provider using the proposed metadata, then links this Profile Account to it. The workbook remains unchanged.",
   };
+  if (item.category === "incremental_conflict" && action === "accept_proposed") return "Applies only the reviewed workbook-changed fields. Plum Duff-only fields and source-missing records remain untouched.";
+  if (item.category === "incremental_conflict" && action === "defer") return "Keeps the current Plum Duff record unchanged and leaves this workbook difference unapplied.";
   return effects[action] ?? `Records this decision against ${item.source_sheet} row ${item.source_row} without modifying the workbook.`;
 }
 
@@ -707,6 +807,7 @@ export function FounderImportReviewWorkspace({
   const [rollbackConfirmationOpen, setRollbackConfirmationOpen] = useState(false);
   const [preflightRequestState, setPreflightRequestState] = useState<PreflightRequestState>("IDLE");
   const [approvalError, setApprovalError] = useState("");
+  const [showUnchangedDelta, setShowUnchangedDelta] = useState(false);
   const editorRef = useRef<HTMLElement | null>(null);
   const editorReturnFocusRef = useRef<HTMLElement | null>(null);
   const filterRef = useRef<HTMLElement | null>(null);
@@ -1279,6 +1380,13 @@ export function FounderImportReviewWorkspace({
   const pnlImpactIsZero = Number(workspace.reconciliation.pnl_impact) === 0;
   const selectedDecisionCount = workspace.items.filter((item) => selected.has(item.item_id) && item.decision).length;
   const accountChanges = workspace.source_summary?.accounts?.change_reconciliation;
+  const incrementalDelta = workspace.source_summary?.incremental_delta;
+  const incrementalAttentionRows = (incrementalDelta?.rows ?? []).filter((row) =>
+    row.status !== "UNCHANGED" || row.comparison === "plum_duff_only_change"
+  );
+  const incrementalUnchangedRows = (incrementalDelta?.rows ?? []).filter((row) =>
+    row.status === "UNCHANGED" && row.comparison !== "plum_duff_only_change"
+  );
   const finalSummary = workspace.final_import_summary;
   const importResult = workspace.import_result;
   const execution = workspace.execution;
@@ -1385,6 +1493,7 @@ export function FounderImportReviewWorkspace({
         {workflowState === "COMPLETE" ? <div className="tracker-nav tracker-nav-right"><a className="modal-primary-button icon-text-action" href="#profile-import-reconciliation"><span aria-hidden="true" className="material-symbols-outlined">fact_check</span><span>View reconciliation</span></a></div> : null}
         {["IMPORTING", "RECONCILING"].includes(workflowState) ? <p>The server-side action continues if you leave. Returning to this page restores its persisted progress.</p> : null}
       </section>
+      {workspace.metadata.source_version_state === "ALREADY_IMPORTED" ? <section aria-live="polite" className="content-subpanel stack-tight" data-pd-id="profile-import.already-imported" role="status"><div className="workflow-panel-header"><div><strong>This workbook content version was already imported.</strong><span>The filename may differ, but its content checksum is unchanged. No creates, updates or financial mutations were made.</span></div><span className="table-chip table-chip-success">No change</span></div></section> : null}
       {["ANALYSING", "ANALYSED"].includes(workspace.run_status ?? "") && job ? <section className="content-subpanel stack-tight import-analysis-status" aria-live="polite" data-pd-id="founder-import-review.analysis-progress">
         <div className="workflow-panel-header"><div><strong>{job.stage}</strong><span>{analysisUsesStages ? `Stage ${analysisStageNumber} of ${analysisWorkTotal} · progress saved` : job.total_rows ? `${job.rows_analysed} / ${job.total_rows} rows analysed` : "Analysis continues if you leave this page."}</span></div><span className="table-chip table-chip-info">{analysisUsesStages ? `${analysisWorkCompleted}/${analysisWorkTotal}` : `${job.percentage}%`}</span></div>
         <div aria-label={analysisUsesStages ? `${job.stage}: ${analysisWorkCompleted} of ${analysisWorkTotal} work stages complete` : `${job.stage}: ${job.percentage}%`} aria-valuemax={analysisUsesStages ? analysisWorkTotal : 100} aria-valuemin={0} aria-valuenow={analysisUsesStages ? analysisWorkCompleted : job.percentage} className="import-analysis-progress" role="progressbar"><span style={{ width: `${analysisProgressPercentage}%` }} /></div>
@@ -1424,6 +1533,37 @@ export function FounderImportReviewWorkspace({
         <article className="stat-card"><span className="eyebrow">Historical EP</span><strong>{workspace.metadata.historical_ep_count}</strong><span>Explicit destination required</span></article>
         <article className="stat-card"><span className="eyebrow">P&amp;L impact</span><strong><FinancialValue value={workspace.reconciliation.pnl_impact} /></strong><span>{pnlImpactIsZero ? "£0.00 change to imported P&L" : `${workspace.reconciliation.pnl_impact_items.length} review decisions change imported P&L`}</span></article>
       </section>
+      {incrementalDelta ? <section className="content-subpanel stack" data-pd-id="profile-import.incremental-delta" aria-labelledby="profile-import-incremental-title">
+        <header className="workflow-panel-header">
+          <div><span className="eyebrow">Workbook source version</span><h2 id="profile-import-incremental-title">{incrementalDelta.mode === "INITIAL" ? "Initial migration baseline" : "Incremental changes"}</h2></div>
+          <span className={`table-chip ${incrementalDelta.counts.CONFLICT || incrementalDelta.counts.UNSUPPORTED ? "table-chip-warning" : "table-chip-info"}`}>{incrementalDelta.attention_count} requiring attention</span>
+        </header>
+        <div className="stat-card-grid import-review-stat-grid import-review-compact-stats" aria-label="Incremental workbook comparison">
+          <article className="stat-card"><span className="eyebrow">Unchanged</span><strong>{incrementalDelta.counts.UNCHANGED ?? 0}</strong><span>No write</span></article>
+          <article className="stat-card"><span className="eyebrow">New</span><strong>{incrementalDelta.counts.NEW ?? 0}</strong><span>Proposed create</span></article>
+          <article className="stat-card"><span className="eyebrow">Updated</span><strong>{incrementalDelta.counts.CHANGED ?? 0}</strong><span>Proposed field updates</span></article>
+          <article className="stat-card"><span className="eyebrow">Conflicts</span><strong>{incrementalDelta.counts.CONFLICT ?? 0}</strong><span>Owner review required</span></article>
+          <article className="stat-card"><span className="eyebrow">Missing</span><strong>{incrementalDelta.counts.SOURCE_MISSING ?? 0}</strong><span>Retained in Plum Duff</span></article>
+          <article className="stat-card"><span className="eyebrow">Unsupported</span><strong>{incrementalDelta.counts.UNSUPPORTED ?? 0}</strong><span>No write</span></article>
+        </div>
+        {incrementalDelta.protected_local_change_count ? <p className="field-support-text">{incrementalDelta.protected_local_change_count} {incrementalDelta.protected_local_change_count === 1 ? "record has" : "records have"} newer Plum Duff changes. Those local values will not be overwritten.</p> : null}
+        {incrementalAttentionRows.length ? <LedgerTableScroll dataPdId="profile-import.incremental-attention-scroll">
+          <table className="data-table" data-pd-id="profile-import.incremental-attention-table">
+            <thead><tr><th scope="col">Source record</th><th scope="col">Ledger</th><th scope="col">State</th><th scope="col">Field-level comparison</th><th scope="col">Planned action</th></tr></thead>
+            <tbody>{incrementalAttentionRows.map((row) => <tr key={`${row.source_namespace}-${row.source_record_id}-${row.status}`}>
+              <td><div className="table-cell-stack"><strong>{row.source_record_id || "No stable source ID"}</strong><span className="table-status">{row.source_namespace.replaceAll("_", " ")} · row {row.source_row ?? "—"}</span></div></td>
+              <td>{row.ledger.replaceAll("_", " ")}</td>
+              <td><div className="table-cell-stack"><span className={`table-chip ${deltaStatusClass(row.status)}`}>{deltaStatusLabel(row.status)}</span>{row.comparison === "plum_duff_only_change" ? <span className="table-status">Plum Duff has newer local changes</span> : null}</div></td>
+              <td>{row.field_differences.length ? <div className="table-cell-stack">{row.field_differences.map((change) => <span key={change.field}><strong>{change.label}:</strong> {deltaValue(change.previous_source)} → {deltaValue(change.current_plum_duff)} → {deltaValue(change.new_source)}{change.financial ? " · financial review" : ""}</span>)}</div> : <span>{row.reason || (row.status === "NEW" ? "New stable business identity" : "No governed value changed")}</span>}</td>
+              <td>{row.write_action === "create" ? "Proposed create" : row.write_action === "update" ? "Proposed update" : "No automatic write"}</td>
+            </tr>)}</tbody>
+          </table>
+        </LedgerTableScroll> : <p className="field-support-text">No source-version changes require attention.</p>}
+        {incrementalUnchangedRows.length ? <div className="stack-tight">
+          <button aria-expanded={showUnchangedDelta} className="button-link icon-text-action" onClick={() => setShowUnchangedDelta((value) => !value)} type="button"><span aria-hidden="true" className="material-symbols-outlined">{showUnchangedDelta ? "expand_less" : "expand_more"}</span><span>{showUnchangedDelta ? "Hide" : "Show"} {incrementalUnchangedRows.length} unchanged records</span></button>
+          {showUnchangedDelta ? <LedgerTableScroll dataPdId="profile-import.incremental-unchanged-scroll"><table className="data-table"><thead><tr><th scope="col">Source record</th><th scope="col">Ledger</th><th scope="col">Action</th></tr></thead><tbody>{incrementalUnchangedRows.map((row) => <tr key={`unchanged-${row.source_namespace}-${row.source_record_id}`}><td>{row.source_record_id}</td><td>{row.ledger.replaceAll("_", " ")}</td><td>No change</td></tr>)}</tbody></table></LedgerTableScroll> : null}
+        </div> : null}
+      </section> : null}
       {!pnlImpactIsZero ? <details className="content-subpanel stack-tight import-impact-details" open><summary>Review decisions affecting imported P&amp;L</summary>{workspace.reconciliation.pnl_impact_items.map((item) => <div className="workflow-panel-header" key={item.item_id}><span>{item.source_sheet} row {item.source_row} · {item.action.replaceAll("_", " ")}</span><FinancialValue value={item.value} /></div>)}</details> : null}
       {annualReconciliation ? <details className="content-subpanel stack-tight import-financial-reconciliation">
         <summary id="import-financial-reconciliation-title">Financial reconciliation · {accountedRows} / {sourceRows} rows accounted · {futureOpenRows} future-settling open</summary>
@@ -1439,7 +1579,7 @@ export function FounderImportReviewWorkspace({
           <span className="field-support-text">{accountChanges.counts.workbook_accounts_accounted ?? accountChanges.entries.length} workbook Accounts are represented: {accountChanges.counts.resolved_workbook_accounts ?? 0} resolved and {accountChanges.counts.workbook_accounts_not_found_globally ?? 0} unresolved.</span>
           <span className="field-support-text">Balance updates include point-in-time balance writes for new Accounts, so the New and Balance updates counts can overlap. {accountChanges.counts.balance_writes_for_new_accounts ?? 0} balance writes belong to new Accounts; {accountChanges.counts.balance_updates_for_existing_accounts ?? 0} belong to existing Accounts.</span>
         </div>
-        <div className="tracker-nav"><span className="field-support-text">Global provider metadata remains in the Account Catalogue. This plan contains Profile-specific state only.</span><label className="field-control"><span>Accounts absent from workbook</span><select aria-label="Profile Accounts absent from workbook strategy" disabled={saving} onChange={(event) => void updateAccountAbsenceStrategy(event.target.value)} value={accountChanges.default_absent_strategy}><option value="leave_unchanged">Leave unchanged</option><option value="archive">Archive at import</option><option value="deactivate">Deactivate at import</option></select></label></div>
+        <div className="tracker-nav"><span className="field-support-text">Global provider metadata remains in the Account Catalogue. This plan contains Profile-specific state only.</span><label className="field-control"><span>Accounts absent from workbook</span><select aria-label="Profile Accounts absent from workbook strategy" disabled={saving || incrementalDelta?.mode === "INCREMENTAL"} onChange={(event) => void updateAccountAbsenceStrategy(event.target.value)} value={accountChanges.default_absent_strategy}><option value="leave_unchanged">Leave unchanged</option>{incrementalDelta?.mode !== "INCREMENTAL" ? <><option value="archive">Archive at import</option><option value="deactivate">Deactivate at import</option></> : null}</select>{incrementalDelta?.mode === "INCREMENTAL" ? <span className="field-support-text">A later source version cannot archive or deactivate Accounts merely because they are absent. Use a separate governed Account action.</span> : null}</label></div>
         <div className="table-scroll"><table className="data-table"><thead><tr><th scope="col">Workbook row</th><th scope="col">Provider</th><th scope="col">Type</th><th scope="col">Planned action</th><th scope="col">Changes</th></tr></thead><tbody>{accountChanges.entries.map((entry) => <tr key={`${entry.source_row}-${entry.canonical_brand}`}><td>{entry.source_row}</td><td>{entry.canonical_brand}</td><td><span className="table-chip table-chip-neutral">{entry.account_type}</span></td><td><span className={`table-chip ${entry.action === "blocked" ? "table-chip-danger" : entry.action === "unchanged" ? "table-chip-neutral" : "table-chip-info"}`}>{entry.action}</span></td><td>{entry.changes.length ? entry.changes.map((change) => change.field.replaceAll("_", " ")).join(", ") : "No changes"}</td></tr>)}</tbody></table></div>
         {accountChanges.existing_absent_from_workbook.length ? <p className="field-support-text">{accountChanges.existing_absent_from_workbook.length} existing Profile Accounts are absent from this workbook. The selected strategy is recorded explicitly and is not applied during dry run.</p> : null}
       </details> : null}
@@ -1572,6 +1712,7 @@ export function FounderImportReviewWorkspace({
           </header>
           <div className="workflow-editor-body import-review-evidence-body">
             <section className="content-subpanel stack-tight"><span className="eyebrow">What is wrong</span><strong>{labels[editing.issue_type] ?? editing.issue_type.replaceAll("_", " ")}</strong><span>{issueExplanation(editing)}</span></section>
+            {editing.incremental?.field_differences.length ? <section className="content-subpanel stack-tight" data-pd-id="profile-import.incremental-three-way-review"><span className="eyebrow">Three-way comparison</span><div className="table-scroll"><table className="data-table"><thead><tr><th scope="col">Field</th><th scope="col">Previous workbook</th><th scope="col">Current Plum Duff</th><th scope="col">New workbook</th></tr></thead><tbody>{editing.incremental.field_differences.map((change) => <tr key={change.field}><th scope="row">{change.label}{change.financial ? " · financial" : ""}</th><td>{deltaValue(change.previous_source)}</td><td>{deltaValue(change.current_plum_duff)}</td><td>{deltaValue(change.new_source)}</td></tr>)}</tbody></table></div></section> : null}
             <section className="content-subpanel stack-tight" data-pd-id={isAccountReviewItem(editing) ? "profile-import.account-evidence" : "profile-import.workbook-evidence"}><span className="eyebrow">Workbook evidence</span><dl className="spreadsheet-row-details import-review-evidence-grid">
               {(isAccountReviewItem(editing) ? [
                 ["Account", sourceField(editing, "Account") || editing.context.provider],

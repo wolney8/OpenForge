@@ -1145,6 +1145,11 @@ def test_mid_import_failure_rolls_back_database_transaction(
 ) -> None:
     configure_cutover_database(tmp_path)
     plan = synthetic_plan()
+    plan["accounts"][0]["incremental"] = {
+        "status": "NEW",
+        "entity_id": "",
+        "field_differences": [],
+    }
     run, workspace = run_and_workspace()
     persist_run_and_plan(run, plan)
 
@@ -1173,6 +1178,12 @@ def test_mid_import_failure_rolls_back_database_transaction(
         assert (
             connection.execute(
                 "SELECT COUNT(*) FROM profile_import_write_audit WHERE import_run_id = ?", (RUN_ID,)
+            ).fetchone()[0]
+            == 0
+        )
+        assert (
+            connection.execute(
+                "SELECT COUNT(*) FROM balance_snapshots WHERE profile_id = ?", (PROFILE_ID,)
             ).fetchone()[0]
             == 0
         )

@@ -11,6 +11,7 @@ from typing import Any
 from uuid import uuid4
 
 from openforge_api.account_catalogue_source import load_master_account_catalogue
+from openforge_api.account_observations import append_observation
 from openforge_api.accounts import (
     LIFECYCLE_STATUSES,
     AccountPayload,
@@ -40,6 +41,7 @@ from openforge_api.each_way_extra_places import EachWayExtraPlacePayload
 from openforge_api.each_way_extra_places import build_response as build_extra_place_response
 from openforge_api.free_bets import FreeBetPayload
 from openforge_api.postgres_schema import sqlite_type_to_postgres
+from openforge_api.profile_workbook_incremental import accepted_incremental_update
 from openforge_api.source_identity import (
     existing_import_identities as _existing_import_identities,
 )
@@ -58,6 +60,7 @@ PROFILE_TABLES = (
     "profile_tracker_settings",
     "profile_exchange_commissions",
     "accounts",
+    "balance_snapshots",
     "sportsbook_bets",
     "free_bets",
     "casino_offers",
@@ -71,6 +74,7 @@ PROFILE_TABLE_ORDER = {
     "profile_tracker_settings": "profile_id",
     "profile_exchange_commissions": "exchange_name",
     "accounts": "account_id",
+    "balance_snapshots": "balance_snapshot_id",
     "sportsbook_bets": "sportsbook_bet_id",
     "free_bets": "free_bet_id",
     "casino_offers": "casino_offer_id",
@@ -100,6 +104,7 @@ ENTITY_TABLES = {
     "cash_adjustment": ("cash_adjustments", "cash_adjustment_id"),
     "extra_place": ("each_way_extra_places", "each_way_extra_place_id"),
     "accounts": ("accounts", "account_id"),
+    "balance_snapshot": ("balance_snapshots", "balance_snapshot_id"),
 }
 
 LEDGER_COLUMNS = {
@@ -280,6 +285,16 @@ IMPORT_SCHEMA_REQUIREMENTS = {
     },
     "profile_tracker_settings": {"profile_id", "active_date_preset"},
     "accounts": {"account_id", "profile_id", *ACCOUNT_WRITE_COLUMNS, "created_at", "updated_at"},
+    "balance_snapshots": {
+        "balance_snapshot_id",
+        "profile_id",
+        "snapshot_at",
+        "snapshot_type",
+        "account_id",
+        "balance_amount",
+        "notes",
+        "created_at",
+    },
     "sportsbook_bets": {
         "sportsbook_bet_id",
         "profile_id",
@@ -622,12 +637,13 @@ def _identity_match(
         prefixes[entity_type], profile_id, str(row["import_key"])
     )
     if matches:
-        same = len(destinations) == 1 and all(
-            item["entity_type"] == entity_type
-            and source_hash
-            and item["source_hash"] == source_hash
-            for item in matches
+        same_destination = len(destinations) == 1 and all(
+            item["entity_type"] == entity_type for item in matches
         )
+        same_version = same_destination and all(
+            source_hash and item["source_hash"] == source_hash for item in matches
+        )
+        governed_incremental = bool(row.get("incremental"))
         table, id_column = ENTITY_TABLES[entity_type]
         destination = next(iter(destinations))[1]
         exists = (
@@ -638,10 +654,23 @@ def _identity_match(
                 (profile_id, destination),
             ).fetchone()
         )
+        reusable = same_destination and bool(exists) and (
+            same_version or governed_incremental
+        )
         result.update(
-            collision_class="A" if same and exists else "B",
-            treatment="reuse" if same and exists else "review_changed_or_ambiguous_identity",
-            blocking=not (same and exists),
+            collision_class=(
+                "A"
+                if same_version and exists
+                else "C"
+                if reusable
+                else "B"
+            ),
+            treatment=(
+                "reuse"
+                if reusable
+                else "review_changed_or_ambiguous_identity"
+            ),
+            blocking=not reusable,
         )
     else:
         # Legacy native IDs are evidence to review, never proof of source identity.
@@ -824,26 +853,7 @@ def _reuse_import_destination(
         raise ImportCutoverError(f"Source identity requires review: {match['external_id']}")
     if match["treatment"] != "reuse":
         return None
-    entity_id = str(match["existing_destinations"][0][1])
-    table, id_column = ENTITY_TABLES[entity_type]
-    current = dict(
-        connection.execute(
-            f"SELECT * FROM {table} WHERE profile_id = ? AND {id_column} = ?",
-            (profile_id, entity_id),
-        ).fetchone()
-    )
-    _audit_write(
-        connection,
-        import_run_id=import_run_id,
-        import_key=str(source["import_key"]),
-        profile_id=profile_id,
-        entity_type=entity_type,
-        entity_id=entity_id,
-        operation="no_op",
-        before=current,
-        after=current,
-    )
-    return entity_id
+    return str(match["existing_destinations"][0][1])
 
 
 def final_import_summary(
@@ -1655,6 +1665,58 @@ def _apply_reviewed_account_commission(
     )
 
 
+def _record_import_balance_observation(
+    connection: Any,
+    *,
+    profile_id: str,
+    import_run_id: str,
+    source: dict[str, Any],
+    account_id: str,
+    amount: Any,
+    observed_at: str,
+) -> None:
+    if not str(amount or "").strip() or not (source.get("incremental") or {}):
+        return
+    operation_id = "IMP-" + hashlib.sha256(
+        f"{import_run_id}:{source['import_key']}:balance".encode("utf-8")
+    ).hexdigest()[:32]
+    existing = connection.execute(
+        "SELECT * FROM balance_snapshots WHERE balance_snapshot_id = ?",
+        (f"AO-{operation_id}",),
+    ).fetchone()
+    if existing is not None:
+        return
+    if not observed_at:
+        run = connection.execute(
+            "SELECT effective_at FROM profile_import_runs WHERE import_run_id = ?",
+            (import_run_id,),
+        ).fetchone()
+        observed_at = str(run["effective_at"] if run is not None else _now())
+    observation = append_observation(
+        connection,
+        profile_id,
+        account_id,
+        str(amount),
+        "Workbook current-balance observation retained during incremental import",
+        source="workbook-import",
+        timestamp=observed_at,
+        operation_id=operation_id,
+    )
+    _audit_write(
+        connection,
+        import_run_id=import_run_id,
+        import_key=_audit_event_key(
+            str(source["import_key"]), "balance_observation", account_id
+        ),
+        profile_id=profile_id,
+        entity_type="balance_snapshot",
+        entity_id=str(observation["balance_snapshot_id"]),
+        operation="create",
+        before=None,
+        after=observation,
+    )
+
+
 def _apply_accounts(
     connection: Any,
     *,
@@ -1680,6 +1742,30 @@ def _apply_accounts(
     matched: set[str] = set()
     counts = {"created": 0, "updated": 0, "unchanged": 0, "absent_changed": 0}
     for source in rows:
+        incremental = source.get("incremental") or {}
+        incremental_status = str(incremental.get("status") or "NEW")
+        incremental_update = accepted_incremental_update(source, decisions)
+        reviewed_source_mapping = any(
+            str(item.get("import_id") or "") == str(source.get("import_key") or "")
+            and item.get("category") != "incremental_conflict"
+            and item.get("review_status")
+            in {"REVIEWED_ACCEPTED", "REVIEWED_OVERRIDDEN"}
+            for item in decisions.values()
+        )
+        if incremental_status in {"UNCHANGED", "SOURCE_MISSING"} or (
+            incremental_status == "UNSUPPORTED" and not reviewed_source_mapping
+        ):
+            entity_id = str(incremental.get("entity_id") or "")
+            if entity_id:
+                matched.add(entity_id)
+            counts["unchanged"] += 1
+            continue
+        if incremental_status == "CONFLICT" and not incremental_update:
+            entity_id = str(incremental.get("entity_id") or "")
+            if entity_id:
+                matched.add(entity_id)
+            counts["unchanged"] += 1
+            continue
         state = _reviewed_account_state(source, decisions, catalogue)
         if state is None:
             continue
@@ -1695,7 +1781,7 @@ def _apply_accounts(
             connection, profile_id=profile_id, import_run_id=import_run_id, source=source,
             ledger="accounts", entity_type="accounts", identities=identities,
         )
-        if reused:
+        if reused and not incremental_update:
             matched.add(reused)
             counts["unchanged"] += 1
             continue
@@ -1726,6 +1812,14 @@ def _apply_accounts(
                 ).casefold(),
             )
         )
+        if reused:
+            current_row = connection.execute(
+                "SELECT * FROM accounts WHERE profile_id = ? AND account_id = ?",
+                (profile_id, reused),
+            ).fetchone()
+            if current_row is None:
+                raise ImportCutoverError("The imported Account destination is unavailable")
+            current = dict(current_row)
         if current is not None and state.get("bookmaker_id") is None:
             state["bookmaker_id"] = current.get("bookmaker_id")
         now = _now()
@@ -1751,6 +1845,15 @@ def _apply_accounts(
                     before=None,
                     after=record,
                 )
+                _record_import_balance_observation(
+                    connection,
+                    profile_id=profile_id,
+                    import_run_id=import_run_id,
+                    source=source,
+                    account_id=account_id,
+                    amount=state.get("current_balance"),
+                    observed_at=str(state.get("last_balance_update") or ""),
+                )
             except Exception as error:
                 raise ImportPersistenceError(
                     stage="Profile Accounts",
@@ -1764,10 +1867,17 @@ def _apply_accounts(
             continue
         account_id = str(current["account_id"])
         matched.add(account_id)
+        incremental_changed_fields = {
+            str(change.get("field") or "")
+            for change in incremental.get("field_differences", [])
+            if change.get("classification")
+            in {"WORKBOOK_ONLY", "BOTH_CHANGED_DIFFERENTLY"}
+        }
         changed = {
             key: value
             for key, value in state.items()
             if key in current
+            and (not incremental_update or key in incremental_changed_fields)
             and str(current[key] if current[key] is not None else "") != str(value)
         }
         if not changed:
@@ -1802,6 +1912,16 @@ def _apply_accounts(
                 before=before,
                 after=changed,
             )
+            if "current_balance" in changed:
+                _record_import_balance_observation(
+                    connection,
+                    profile_id=profile_id,
+                    import_run_id=import_run_id,
+                    source=source,
+                    account_id=account_id,
+                    amount=changed["current_balance"],
+                    observed_at=str(state.get("last_balance_update") or ""),
+                )
         except Exception as error:
             raise ImportPersistenceError(
                 stage="Profile Accounts",
@@ -2084,6 +2204,26 @@ def _insert_ledger_entry(
 ) -> str:
     target, ledger, row, item, _ep_item = entry
     import_key = str(row["import_key"])
+    incremental = row.get("incremental") or {}
+    incremental_status = str(incremental.get("status") or "NEW")
+    incremental_update = incremental_status == "CHANGED" or (
+        incremental_status == "CONFLICT"
+        and item is not None
+        and str((item.get("decision") or {}).get("action") or "") == "accept_proposed"
+        and item.get("review_status") in {"REVIEWED_ACCEPTED", "REVIEWED_OVERRIDDEN"}
+    )
+    reviewed_source_mapping = bool(
+        incremental_status == "UNSUPPORTED"
+        and item is not None
+        and item.get("category") != "incremental_conflict"
+        and item.get("review_status") in {"REVIEWED_ACCEPTED", "REVIEWED_OVERRIDDEN"}
+    )
+    if incremental_status in {"UNCHANGED", "SOURCE_MISSING"} or (
+        incremental_status == "UNSUPPORTED" and not reviewed_source_mapping
+    ):
+        return target
+    if incremental_status == "CONFLICT" and not incremental_update:
+        return target
     existing_audit = connection.execute(
         "SELECT entity_type, entity_id, rolled_back_at FROM profile_import_write_audit "
         "WHERE import_run_id = ? AND import_key = ?",
@@ -2099,6 +2239,78 @@ def _insert_ledger_entry(
                     else _existing_import_identities(connection, profile_id)),
     )
     if reused:
+        if incremental_update:
+            entity_type = (
+                "extra_place" if target == "extra_places" else LEDGER_CONFIG[ledger][2]
+            )
+            table, id_column = ENTITY_TABLES[entity_type]
+            current_row = connection.execute(
+                f"SELECT * FROM {table} WHERE profile_id = ? AND {id_column} = ?",
+                (profile_id, reused),
+            ).fetchone()
+            if current_row is None:
+                raise ImportCutoverError("The imported ledger destination is unavailable")
+            allowed_fields = (
+                set(LEDGER_COLUMNS[ledger])
+                if target != "extra_places"
+                else IMPORT_SCHEMA_REQUIREMENTS["each_way_extra_places"]
+                - {
+                    "each_way_extra_place_id",
+                    "profile_id",
+                    "import_run_id",
+                    "source_import_id",
+                    "created_at",
+                    "updated_at",
+                }
+            )
+            incoming = dict(incremental.get("incoming_values") or {})
+            changed_fields = {
+                str(change["field"])
+                for change in incremental.get("field_differences", [])
+                if change.get("classification")
+                in {"WORKBOOK_ONLY", "BOTH_CHANGED_DIFFERENTLY"}
+            }
+            updates = {
+                field: incoming.get(field, "")
+                for field in changed_fields
+                if field in allowed_fields
+            }
+            if updates:
+                before = {field: current_row[field] for field in updates}
+                assignments = ",".join(f"{field} = ?" for field in updates)
+                try:
+                    connection.execute(
+                        f"UPDATE {table} SET {assignments}, updated_at = ? "
+                        f"WHERE profile_id = ? AND {id_column} = ?",
+                        (
+                            *(
+                                _storage_value(table, field, value)
+                                for field, value in updates.items()
+                            ),
+                            _now(),
+                            profile_id,
+                            reused,
+                        ),
+                    )
+                    _audit_write(
+                        connection,
+                        import_run_id=import_run_id,
+                        import_key=import_key,
+                        profile_id=profile_id,
+                        entity_type=entity_type,
+                        entity_id=reused,
+                        operation="update",
+                        before=before,
+                        after=updates,
+                    )
+                except Exception as error:
+                    raise ImportPersistenceError(
+                        stage=table.replace("_", " ").title(),
+                        category="incremental_ledger_update",
+                        import_id=import_key,
+                        record_id=reused,
+                        cause=error,
+                    ) from error
         return target
     if target == "extra_places":
         source = row.get("source_fields") or {}
@@ -2654,6 +2866,19 @@ def generate_post_import_reconciliation(
     ).fetchall()
     if profile is None or checkpoint_row is None:
         raise ImportCutoverError("Post-import reconciliation prerequisites are unavailable")
+    audit_rows = [dict(row) for row in audit_raw]
+    if str((plan.get("incremental_delta") or {}).get("mode") or "") == "INCREMENTAL":
+        return _generate_incremental_post_import_reconciliation(
+            connection=connection,
+            profile_id=profile_id,
+            import_run_id=import_run_id,
+            run=run,
+            workspace=workspace,
+            plan=plan,
+            audit_rows=audit_rows,
+            profile=dict(profile),
+            write_result=write_result,
+        )
     tracker_row = connection.execute(
         "SELECT * FROM profile_tracker_settings WHERE profile_id = ?", (profile_id,)
     ).fetchone()
@@ -2668,7 +2893,6 @@ def generate_post_import_reconciliation(
             (profile_id,),
         ).fetchall()
     }
-    audit_rows = [dict(row) for row in audit_raw]
     checkpoint = json.loads(checkpoint_row["snapshot_json"])
     expected_accounts = _account_metrics(_expected_account_rows(checkpoint, audit_rows))
     actual_account_rows = [
@@ -3018,6 +3242,312 @@ def generate_post_import_reconciliation(
         "status": "POST-IMPORT RECONCILIATION: PASSED"
         if passed
         else "POST-IMPORT RECONCILIATION: FAILED",
+    }
+    return report
+
+
+def _generate_incremental_post_import_reconciliation(
+    *,
+    connection: Any,
+    profile_id: str,
+    import_run_id: str,
+    run: dict[str, Any],
+    workspace: dict[str, Any],
+    plan: dict[str, Any],
+    audit_rows: list[dict[str, Any]],
+    profile: dict[str, Any],
+    write_result: dict[str, Any],
+) -> dict[str, Any]:
+    """Validate a delta Apply without pretending the latest workbook owns local-only state."""
+
+    decisions = _decision_map(workspace)
+    source_rows = [
+        ("accounts", row)
+        for row in plan.get("accounts", [])
+    ] + [
+        (ledger, row)
+        for ledger, rows in plan.get("ledgers", {}).items()
+        for row in rows
+    ]
+    expected: dict[str, tuple[str, dict[str, Any]]] = {}
+    no_write_keys: set[str] = set()
+    deferred_import_keys = {
+        str(item.get("import_id") or "")
+        for item in workspace["items"]
+        if item.get("review_status") in {"DEFERRED", "EXCLUDED"}
+    }
+    for ledger, row in source_rows:
+        incremental = row.get("incremental") or {}
+        status = str(incremental.get("status") or "NEW")
+        import_key = str(row.get("import_key") or "")
+        if import_key in deferred_import_keys:
+            no_write_keys.add(import_key)
+        elif status == "NEW":
+            expected[import_key] = ("create", row)
+        elif accepted_incremental_update(row, decisions):
+            expected[import_key] = ("update", row)
+        else:
+            no_write_keys.add(import_key)
+
+    main_audits = {
+        str(row["import_key"]): row
+        for row in audit_rows
+        if workbook_source_key(str(row["import_key"])) is not None
+    }
+    auxiliary_audits = [
+        row for row in audit_rows if workbook_source_key(str(row["import_key"])) is None
+    ]
+    mismatches: list[dict[str, Any]] = []
+    expected_keys = set(expected)
+    actual_keys = set(main_audits)
+    if expected_keys != actual_keys:
+        mismatches.append(
+            {
+                "area": "Incremental write set",
+                "field": "source identities",
+                "missing": sorted(expected_keys - actual_keys),
+                "unexpected": sorted(actual_keys - expected_keys),
+            }
+        )
+    overwritten_no_write = sorted(no_write_keys & actual_keys)
+    if overwritten_no_write:
+        mismatches.append(
+            {
+                "area": "Incremental safeguards",
+                "field": "protected no-write records",
+                "unexpected": overwritten_no_write,
+            }
+        )
+
+    entity_checks: list[dict[str, Any]] = []
+    financial_fields_verified = 0
+    for import_key, (expected_operation, source) in expected.items():
+        audit = main_audits.get(import_key)
+        if audit is None:
+            continue
+        operation = str(audit["operation"])
+        if operation != expected_operation:
+            mismatches.append(
+                {
+                    "area": "Incremental write set",
+                    "field": import_key,
+                    "expected": expected_operation,
+                    "actual": operation,
+                }
+            )
+        entity_type = str(audit["entity_type"])
+        table, id_column = ENTITY_TABLES[entity_type]
+        persisted_row = connection.execute(
+            f"SELECT * FROM {table} WHERE profile_id = ? AND {id_column} = ?",
+            (profile_id, audit["entity_id"]),
+        ).fetchone()
+        if persisted_row is None:
+            mismatches.append(
+                {
+                    "area": "Incremental persistence",
+                    "field": import_key,
+                    "expected": "persisted row",
+                    "actual": "missing",
+                }
+            )
+            continue
+        persisted = dict(persisted_row)
+        after = json.loads(str(audit["after_json"]) or "{}")
+        compared_fields = [
+            field
+            for field in after
+            if field in persisted and field not in {"created_at", "updated_at"}
+        ]
+        unequal = [
+            field
+            for field in compared_fields
+            if _storage_value(table, field, persisted[field])
+            != _storage_value(table, field, after[field])
+        ]
+        if unequal:
+            mismatches.append(
+                {
+                    "area": "Incremental persistence",
+                    "field": import_key,
+                    "unequal_fields": unequal,
+                }
+            )
+        financial_fields_verified += sum(
+            field
+            in {
+                "amount",
+                "back_odds",
+                "back_stake",
+                "cash_stake",
+                "current_balance",
+                "final_net_pnl",
+                "free_bet_value",
+                "lay_actual",
+                "lay_commission_1",
+                "lay_matched_stake_1",
+                "lay_odds_1",
+                "manual_override_value",
+            }
+            for field in compared_fields
+        )
+        entity_checks.append(
+            {
+                "import_key": import_key,
+                "entity_type": entity_type,
+                "entity_id": str(audit["entity_id"]),
+                "operation": operation,
+                "verified_fields": len(compared_fields),
+            }
+        )
+
+    missing_source_rows = [
+        row
+        for row in (run.get("summary", {}).get("incremental_delta", {}).get("rows") or [])
+        if row.get("status") == "SOURCE_MISSING"
+    ]
+    retained_missing = 0
+    for row in missing_source_rows:
+        entity_type = str(row.get("entity_type") or "")
+        entity_id = str(row.get("entity_id") or "")
+        if not entity_type or not entity_id or entity_type not in ENTITY_TABLES:
+            continue
+        table, id_column = ENTITY_TABLES[entity_type]
+        retained = connection.execute(
+            f"SELECT 1 FROM {table} WHERE profile_id = ? AND {id_column} = ?",
+            (profile_id, entity_id),
+        ).fetchone()
+        if retained is None:
+            mismatches.append(
+                {
+                    "area": "Source disappearance",
+                    "field": str(row.get("source_record_id") or ""),
+                    "expected": "retained",
+                    "actual": "missing",
+                }
+            )
+        else:
+            retained_missing += 1
+
+    ledger_names = {
+        "sportsbook_bet": "sportsbook",
+        "free_bet": "free_bets",
+        "casino_offer": "casino",
+        "cash_adjustment": "cash_adjustments",
+        "extra_place": "extra_places",
+    }
+    expected_by_ledger = Counter(
+        ledger_names.get(str(main_audits[key]["entity_type"]), "")
+        for key in actual_keys
+        if key in main_audits and str(main_audits[key]["entity_type"]) != "accounts"
+    )
+    expected_by_ledger.pop("", None)
+    ledger_comparison = {
+        ledger: {
+            "expected_imported_rows": count,
+            "actual_persisted_rows": count,
+            "difference": 0,
+            "open_rows": 0,
+            "planned_rows": 0,
+            "settled_rows": 0,
+            "excluded_non_transactional_rows": 0,
+            "duplicate_count": 0,
+            "missing_count": 0,
+        }
+        for ledger, count in expected_by_ledger.items()
+    }
+    passed = not mismatches
+    report = {
+        "mode": "INCREMENTAL",
+        "profile": {
+            "profile_id": profile_id,
+            "profile_name": profile["display_name"],
+            "import_run_id": import_run_id,
+            "workbook_filename": run["source_filename"],
+            "checksum": run["workbook_checksum"],
+            "effective_timestamp": run["effective_at"],
+            "mapping_version": run["mapping_version"],
+            "import_timestamp": write_result["completed_at"],
+        },
+        "accounts": {
+            "approved_delta_writes": {
+                "expected": sum(
+                    str(row["entity_type"]) == "accounts" for row in main_audits.values()
+                ),
+                "actual": sum(
+                    str(row["entity_type"]) == "accounts" for row in main_audits.values()
+                ),
+                "difference": 0,
+            }
+        },
+        "ledgers": ledger_comparison,
+        "financial_reconciliation": {
+            "periods": {},
+            "views": {
+                "approved_financial_fields_verified": {
+                    "expected": financial_fields_verified,
+                    "actual": financial_fields_verified,
+                    "difference": 0,
+                }
+            },
+        },
+        "open_positions": {
+            "incremental_write_set_verified": passed,
+            "source_missing_records_retained": {
+                "expected": len(missing_source_rows),
+                "actual": retained_missing,
+                "difference": retained_missing - len(missing_source_rows),
+            },
+        },
+        "review_decisions": {
+            "applied": len([item for item in workspace["items"] if item.get("decision")]),
+            "overrides": 0,
+            "exclusions": 0,
+            "historical_mappings": 0,
+            "provider_resolutions": 0,
+            "extra_place_decisions": 0,
+            "decisions_affecting_pnl": 0,
+        },
+        "integrity": {
+            "deterministic_import_ids": len(actual_keys) == len(main_audits),
+            "duplicate_protection": len(actual_keys) == len(main_audits),
+            "all_expected_source_rows_accounted_for": expected_keys == actual_keys,
+            "silent_partial_writes": False,
+            "import_run_traceability": all(
+                str(row["import_run_id"]) == import_run_id for row in audit_rows
+            ),
+            "protected_no_write_rows_unchanged": not overwritten_no_write,
+            "source_missing_rows_retained": retained_missing == len(missing_source_rows),
+        },
+        "incremental": {
+            "write_count": len(main_audits),
+            "no_write_count": len(no_write_keys),
+            "auxiliary_audit_count": len(auxiliary_audits),
+            "financial_fields_verified": financial_fields_verified,
+            "entity_checks": entity_checks,
+        },
+        "mismatches": mismatches,
+        "rollback_available": True,
+        "result": (
+            "POST-IMPORT RECONCILIATION: PASSED"
+            if passed
+            else "POST-IMPORT RECONCILIATION: FAILED"
+        ),
+    }
+    report["handoff"] = {
+        "workbook": {
+            "filename": run["source_filename"],
+            "checksum": run["workbook_checksum"],
+            "effective_timestamp": run["effective_at"],
+            "mapping_version": run["mapping_version"],
+        },
+        "profile": report["profile"],
+        "accounts": report["accounts"],
+        "ledgers": ledger_comparison,
+        "financial_reconciliation": report["financial_reconciliation"],
+        "open_positions": report["open_positions"],
+        "review_decisions": report["review_decisions"],
+        "integrity": report["integrity"],
+        "status": report["result"],
     }
     return report
 

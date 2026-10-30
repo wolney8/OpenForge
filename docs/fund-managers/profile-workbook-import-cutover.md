@@ -39,6 +39,17 @@ Every changed entity has an import write-audit entry containing the ImportRunID,
 source/import key, target Profile, operation and before/after state. Reusing a run or deterministic
 entity identity is blocked.
 
+For a later version of the same Profile workbook, the server reuses the stable source business
+identity but never the earlier approval. Review is delta-first: unchanged and Plum Duff-only rows
+are no-write, new rows are proposed creates, workbook-only rows are proposed field updates,
+divergent or settled-financial changes require review, and records missing from the new source are
+retained. Account disappearance cannot archive or deactivate an Account during an incremental
+Apply; that requires a separate governed Account action.
+
+The lineage is independent of filename. Each content checksum is an immutable version and carries
+its predecessor ImportRun. Uploading the same completed content under another filename returns the
+existing version with an explicit no-change result.
+
 ## Post-Import Reconciliation
 
 After commit, Plum Duff re-reads persisted rows from the active runtime database. It compares the
@@ -69,6 +80,7 @@ Normal rollback uses the application checkpoint and write audit, not a whole-dat
 
 - removes rows created solely by the ImportRun;
 - restores prior Profile settings and Account fields changed by the ImportRun;
+- restores/removes Account balance observations created by the ImportRun;
 - verifies the resulting Profile checksum against the pre-import checkpoint;
 - records a durable rollback event;
 - prevents repeat rollback.

@@ -503,3 +503,12 @@ the explicit non-placement action that selects which reviewed plan will be saved
 | PD-FIX-476 | Lifecycle reconciliation | Derive planned, committed and realised expectations from the canonical import rows and CP-102 membership semantics | CP-102 exposure authority; CP-106K open-position diagnosis; #95/#104 | COMPLETE / CODE-VERIFIED — projection is 8 planned, 15 committed and 931 realised; disposable full Apply passes post-import reconciliation |
 | PD-FIX-477 | Rollback state and approval | Report reconciliation-triggered rollback coherently and prevent completed/delayed preflight work from reviving consumed approval | CP-106K rollback and idempotency contract; #95/#104 | COMPLETE / CODE-VERIFIED — rollback preserves failure evidence, clears approval and requires a new reviewed plan |
 | PD-AUDIT-106K-01 | Replacement no-write plan | Generate fresh destination/decision/plan/idempotency fingerprints against empty WILL-PERSONAL without applying workbook rows | CP-106K no-write boundary; #95/#104 | NEEDS OWNER APPROVAL — refreshed plan is validated; Apply remains blocked |
+
+## 2026-10-30 CP-107 repeated workbook import
+
+| ID | Area | Requested behaviour | Authority | Status |
+|---|---|---|---|---|
+| PD-FIX-478 | Workbook source custody | Keep one stable Profile-scoped workbook lineage while treating each content checksum as an immutable source version independent of filename | CP-107 lineage and content-identity decision; #95/#104 | IN PROGRESS |
+| PD-FIX-479 | Incremental reconciliation | Classify stable business identities as unchanged, new, changed, conflict, source-missing or unsupported through a three-way source/Plum Duff/source comparison | Existing native source identity, write-plan and write-audit authorities; #95/#104 | IN PROGRESS |
+| PD-FIX-480 | Governed incremental Apply | Write only newly approved or safely changed rows; protect Plum Duff-only edits, settled financial history, missing source rows and unsupported identities | Existing approval, lifecycle, financial, rollback and idempotency contracts; #95/#104 | IN PROGRESS |
+| PD-FIX-481 | Delta review and regression evidence | Default the owner review to attention-requiring deltas, retain field-level before/current/after evidence and prove no-op replay, Profile isolation and rollback with synthetic fixtures | Signed-off import review workspace and CP-107 test matrix; #95/#104 | IN PROGRESS |

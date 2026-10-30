@@ -52,6 +52,11 @@ from openforge_api.profile_workbook_cutover import (
     validate_import_approval_preflight,
     validate_import_preflight,
 )
+from openforge_api.profile_workbook_incremental import (
+    build_incremental_delta,
+    build_incremental_review_items,
+    build_lineage_metadata,
+)
 
 router = APIRouter(prefix="/profiles/{profile_id}/workbook-imports", tags=["profile-imports"])
 execution_router = APIRouter(
@@ -531,6 +536,15 @@ def _approval_request_state(run: dict[str, Any]) -> dict[str, Any]:
 def _workspace(profile_id: str, import_run_id: str) -> dict[str, Any]:
     run = _load_run(profile_id, import_run_id)
     with connect() as connection:
+        source_lineage = run["summary"].get("source_lineage") or build_lineage_metadata(
+            connection,
+            profile_id=profile_id,
+            import_run_id=import_run_id,
+            workbook_checksum=str(run["workbook_checksum"]),
+            source_filename=str(run["source_filename"]),
+            effective_at=str(run["effective_at"]),
+            mapping_version=str(run["mapping_version"]),
+        )
         item_rows = connection.execute(
             """
             SELECT item_json FROM profile_import_review_items
@@ -563,6 +577,14 @@ def _workspace(profile_id: str, import_run_id: str) -> dict[str, Any]:
         ),
         "real_import_performed": False,
         "raw_workbook_retained": False,
+        "source_lineage": source_lineage,
+        "source_version_state": (
+            "ALREADY_IMPORTED"
+            if run["status"] == "COMPLETE"
+            else "RECONCILIATION_FAILED"
+            if run["status"] == "POST_IMPORT_RECONCILIATION_FAILED"
+            else "REVIEW"
+        ),
     }
     workspace = apply_review_decisions(metadata, items, decisions)
     workspace["run_status"] = run["status"]
@@ -870,12 +892,53 @@ def _analyse_workbook_job(
             ),
         )
         now = _now()
+        plan = build_base_write_plan(result)
         with connect() as connection:
+            delta = build_incremental_delta(
+                connection,
+                profile_id=profile_id,
+                import_run_id=import_run_id,
+                workbook_checksum=str(result["metadata"]["sha256"]),
+                source_filename=source_filename,
+                effective_at=effective_at,
+                mapping_version=str(result["metadata"]["mapping_version"]),
+                plan=plan,
+            )
+            account_delta_by_key = {
+                str(row.get("import_key")): row.get("incremental") or {}
+                for row in plan.get("accounts", [])
+            }
+            for entry in result["accounts"]["change_reconciliation"].get("entries", []):
+                incremental = account_delta_by_key.get(str(entry.get("import_key")))
+                if not incremental:
+                    continue
+                entry["action"] = {
+                    "NEW": "create",
+                    "CHANGED": "update",
+                    "CONFLICT": "review",
+                    "UNSUPPORTED": "blocked",
+                }.get(str(incremental.get("status")), "unchanged")
+                entry["changes"] = [
+                    {
+                        "field": change["label"],
+                        "from": change["current_plum_duff"],
+                        "to": change["new_source"],
+                    }
+                    for change in incremental.get("field_differences", [])
+                    if change.get("classification")
+                    in {"WORKBOOK_ONLY", "BOTH_CHANGED_DIFFERENTLY"}
+                ]
+            items.extend(
+                build_incremental_review_items(
+                    workbook_checksum=str(result["metadata"]["sha256"]),
+                    delta=delta,
+                )
+            )
             save_base_write_plan(
                 connection,
                 import_run_id=import_run_id,
                 profile_id=profile_id,
-                plan=build_base_write_plan(result),
+                plan=plan,
             )
             for item in items:
                 connection.execute(
@@ -906,6 +969,8 @@ def _analyse_workbook_job(
                     ),
                 )
         summary = _summary(result)
+        summary["source_lineage"] = delta["lineage"]
+        summary["incremental_delta"] = delta
         validation_blocked_count = int(
             summary.get("readiness", {}).get("validation_blocked_rows", 0)
         )
@@ -1061,6 +1126,21 @@ def list_profile_workbook_imports(profile_id: str, request: Request) -> list[dic
             "extra_places": result_ledgers.get("extra_places", 0),
         }
         record["raw_workbook_retained"] = bool(record["raw_workbook_retained"])
+        with connect() as connection:
+            record["source_lineage"] = summary.get(
+                "source_lineage"
+            ) or build_lineage_metadata(
+                connection,
+                profile_id=profile_id,
+                import_run_id=str(record["import_run_id"]),
+                workbook_checksum=str(record["workbook_checksum"]),
+                source_filename=str(record["source_filename"]),
+                effective_at=str(record["effective_at"]),
+                mapping_version=str(record["mapping_version"]),
+            )
+        record["incremental_counts"] = (
+            summary.get("incremental_delta", {}).get("counts", {})
+        )
         record["attempts"] = attempts_by_run.get(str(record["import_run_id"]), [])
         # ImportRun status is the current workflow authority. Attempts are immutable history and
         # must not make a terminal historical execution masquerade as the active review state.
@@ -1310,6 +1390,19 @@ def analyse_profile_workbook(
             :32
         ]
     )
+    with connect() as connection:
+        existing = connection.execute(
+            "SELECT status FROM profile_import_runs "
+            "WHERE profile_id = ? AND workbook_checksum = ? AND mapping_version = ?",
+            (profile_id, checksum, mapping_version),
+        ).fetchone()
+    if existing is not None and str(existing["status"]) in {
+        "COMPLETE",
+        "POST_IMPORT_RECONCILIATION_FAILED",
+    }:
+        # A content checksum is an immutable source-version identity. A renamed copy of an
+        # already applied version is therefore an explicit no-op, not a new approval scope.
+        return _workspace(profile_id, import_run_id)
     now = _now()
     status = "ANALYSING"
     started = _event(
@@ -1324,6 +1417,16 @@ def analyse_profile_workbook(
         events=[started],
     )
     with connect() as connection:
+        lineage = build_lineage_metadata(
+            connection,
+            profile_id=profile_id,
+            import_run_id=import_run_id,
+            workbook_checksum=checksum,
+            source_filename=payload.source_filename,
+            effective_at=payload.effective_at,
+            mapping_version=mapping_version,
+        )
+        summary["source_lineage"] = lineage
         connection.execute(
             """
             INSERT INTO profile_import_runs (
@@ -1394,6 +1497,18 @@ def put_profile_workbook_account_absence_strategy(
     reconciliation = run["summary"].get("accounts", {}).get("change_reconciliation")
     if not reconciliation:
         raise HTTPException(status_code=409, detail="Account reconciliation is not ready")
+    plan = load_base_write_plan(profile_id, import_run_id)
+    if (
+        payload.strategy != "leave_unchanged"
+        and (plan or {}).get("incremental_delta", {}).get("mode") == "INCREMENTAL"
+    ):
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Accounts missing from a later workbook version must remain unchanged. "
+                "Archive or deactivate them through a separate governed Account action."
+            ),
+        )
     reconciliation["default_absent_strategy"] = payload.strategy
     for row in reconciliation.get("existing_absent_from_workbook", []):
         row["planned_action"] = payload.strategy

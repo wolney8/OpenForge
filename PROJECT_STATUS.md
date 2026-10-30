@@ -1,5 +1,12 @@
 # Project Status — Plum Duff / OpenForge — Doc ID: PS-CODEX-001
 
+> **CP-107 repeated workbook source versions — 2026-10-30:** the import architecture now records
+> one Profile-scoped workbook lineage and immutable checksum versions, with CP-106M as the existing
+> WILL-PERSONAL baseline. Synthetic coverage proves three-way comparison, delta-only review,
+> Profile isolation, protected local edits, settled-financial review, governed Account balance
+> observations, source-missing no-delete, repeat-content no-op and transactional rollback. No owner
+> workbook or Profile data was changed. Installation and owner acceptance remain pending.
+
 > **CP-105 governed synthetic Account cleanup — 2026-10-29:** owner approval was limited to four
 > provenance-proven Matchbook/Smarkets Exchange Account residues across ALPHA-001 and BRAVO-002.
 > A fresh independently readable backup and exact manifest preceded one fail-closed transaction.

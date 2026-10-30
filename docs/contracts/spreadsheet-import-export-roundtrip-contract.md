@@ -1,6 +1,6 @@
 # Workflow Contract: Spreadsheet Import and Export Round Trip
 
-_Last updated: 2026-09-26 12:20 BST_
+_Last updated: 2026-10-30_
 
 ## Status and sources
 
@@ -54,6 +54,30 @@ The current source pack and calculation contracts outrank an older workbook expo
 - Only an unconfirmed dry-run review may be deleted. Confirmed import audit cannot be deleted.
 - Raw uploaded workbook bytes are processed in memory and are not retained as batch storage.
 
+## Repeated source-version imports
+
+- Initial migration and later source versions share one stable, Profile-scoped workbook lineage.
+  A content SHA-256 identifies an immutable source version; filenames and modification times do
+  not. Renaming identical content is an already-imported no-op.
+- The successful `WILL-PERSONAL` CP-106M import is the baseline source version for its lineage.
+  Later content hashes require a fresh review, plan, destination, decision and idempotency
+  fingerprint; an earlier approval never authorises a later version.
+- Stable business identity is Profile + logical source namespace + native source ID. Row number is
+  location evidence only. Governed fallback identities remain review-required when ambiguous.
+- Previously imported rows use three-way comparison: prior imported source, current canonical Plum
+  Duff state and the new source. Workbook-only changes may be proposed; Plum Duff-only changes are
+  retained; divergent changes are conflicts; identical convergence is a no-op.
+- Delta states are `UNCHANGED`, `NEW`, `CHANGED`, `CONFLICT`, `SOURCE_MISSING` and `UNSUPPORTED`.
+  Apply writes only approved `NEW`, safe `CHANGED` and explicitly resolved `CONFLICT` rows.
+  Source-missing and unsupported/deferred rows never write or delete.
+- A later authoritative Account balance is a new current-balance observation with source timestamp
+  and provenance. It does not rewrite prior observations; blank remains unknown and never becomes
+  zero.
+- A settled financial-field change always requires field-level review showing prior source,
+  current Plum Duff and new source values.
+- Unknown workbook structure fails closed through the versioned parser contract. A renamed file is
+  accepted only when its workbook structure remains compatible.
+
 ## Export workflow
 
 - Export always identifies its profile scope and selected date/report mode.
@@ -87,6 +111,10 @@ The current source pack and calculation contracts outrank an older workbook expo
 - valid profile-targeted import
 - unknown header/status and invalid date dry-run errors
 - idempotent re-import
+- same-content/different-filename no-op after successful Apply
+- incremental new/unchanged/changed/source-missing classifications
+- three-way protection for Plum Duff-only and divergent concurrent edits
+- settled financial change review, Account balance observation and rollback
 - independent cross-Profile source identities and denied cross-Profile parent links
 - manual override without reason blocked
 - derived helper fields recomputed

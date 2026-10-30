@@ -294,7 +294,7 @@ function financialReconciliation(
   };
 }
 
-async function mockShell(page: Page) {
+async function mockShell(page: Page, importWorkspace = workspace()) {
   await page.route("**/api/auth/session", async (route) => {
     await route.fulfill({
       contentType: "application/json",
@@ -313,7 +313,7 @@ async function mockShell(page: Page) {
   });
   await page.route("**/profiles/profile-demo/workbook-imports/import-run-demo", async (route) => {
     if (route.request().method() === "GET") {
-      await route.fulfill({ contentType: "application/json", body: JSON.stringify(workspace()) });
+      await route.fulfill({ contentType: "application/json", body: JSON.stringify(importWorkspace) });
       return;
     }
     await route.fallback();
@@ -340,6 +340,129 @@ async function mockShell(page: Page) {
     await route.fulfill({ json: [] });
   });
 }
+
+test("incremental review prioritises delta rows and retains source-missing records", async ({ page }) => {
+  const incremental = dryRunReadyWorkspace();
+  incremental.metadata = {
+    ...incremental.metadata,
+    source_version_state: "REVIEW",
+    source_lineage: {
+      schema_version: "profile-workbook-lineage-v1",
+      lineage_id: "workbook-lineage-demo",
+      source_type: "workbook",
+      profile_id: "profile-demo",
+      workbook_family: "plum-duff-matched-betting-tracker-v1",
+      baseline_import_run_id: "baseline-run",
+      baseline_version_id: "baseline-version",
+      source_version: {
+        version_id: "next-version",
+        sha256: "a".repeat(64),
+        filename: "renamed-running-workbook.xlsx",
+        observed_at: "2026-10-30T12:00:00Z",
+        effective_at: "2026-10-30T12:00:00Z",
+        mapping_version: "founder-snapshot-v8",
+        predecessor_import_run_id: "baseline-run",
+        predecessor_version_id: "baseline-version",
+      },
+    },
+  };
+  incremental.source_summary = {
+    ...incremental.source_summary,
+    incremental_delta: {
+      schema_version: "profile-workbook-incremental-delta-v1",
+      mode: "INCREMENTAL",
+      counts: { UNCHANGED: 998, NEW: 1, CHANGED: 1, CONFLICT: 1, SOURCE_MISSING: 1, UNSUPPORTED: 0 },
+      comparison_counts: { same_canonical_values: 998, workbook_only_change: 1, both_changed_differently: 1 },
+      attention_count: 3,
+      protected_local_change_count: 1,
+      fingerprint: "delta-fingerprint",
+      rows: [
+        {
+          status: "CHANGED",
+          comparison: "workbook_only_change",
+          write_action: "update",
+          requires_review: false,
+          source_namespace: "sportsbook",
+          source_record_id: "QB-001",
+          source_hash: "one",
+          source_row: 14,
+          ledger: "sportsbook",
+          entity_type: "sportsbook_bet",
+          entity_id: "SB-001",
+          field_differences: [{
+            field: "back_stake",
+            label: "Back stake",
+            previous_source: "10.00",
+            current_plum_duff: "10.00",
+            new_source: "12.00",
+            classification: "WORKBOOK_ONLY",
+            financial: true,
+          }],
+          reason: "",
+        },
+        {
+          status: "SOURCE_MISSING",
+          comparison: "missing_from_latest_source",
+          write_action: "none",
+          requires_review: false,
+          source_namespace: "casino",
+          source_record_id: "CO-002",
+          source_hash: "two",
+          source_row: 18,
+          ledger: "casino",
+          entity_type: "casino_offer",
+          entity_id: "CO-002",
+          field_differences: [],
+          reason: "The record is absent from the latest workbook; Plum Duff will retain it.",
+        },
+        {
+          status: "UNCHANGED",
+          comparison: "same_canonical_values",
+          write_action: "none",
+          requires_review: false,
+          source_namespace: "free_bets",
+          source_record_id: "FB-003",
+          source_hash: "three",
+          source_row: 20,
+          ledger: "free_bets",
+          entity_type: "free_bet",
+          entity_id: "FB-003",
+          field_differences: [],
+          reason: "",
+        },
+      ],
+    },
+  };
+  incremental.source_summary.accounts.change_reconciliation.default_absent_strategy = "leave_unchanged";
+  await mockShell(page, incremental);
+  await page.goto("/profiles/profile-demo/imports/import-run-demo/review");
+
+  const delta = page.locator('[data-pd-id="profile-import.incremental-delta"]');
+  await expect(delta.getByRole("heading", { name: "Incremental changes" })).toBeVisible();
+  await expect(delta).toContainText("998");
+  await expect(delta).toContainText("QB-001");
+  await expect(delta).toContainText("Back stake: 10.00 → 10.00 → 12.00");
+  await expect(delta).toContainText("CO-002");
+  await expect(delta).toContainText("No automatic write");
+  await expect(delta).not.toContainText("incoming_values");
+  await delta.getByRole("button", { name: "Show 1 unchanged records" }).click();
+  await expect(delta).toContainText("FB-003");
+  await page.getByText(/Profile Account changes ·/).click();
+  const absence = page.getByLabel("Profile Accounts absent from workbook strategy");
+  await expect(absence).toBeDisabled();
+  await expect(page.getByText(/later source version cannot archive or deactivate Accounts/)).toBeVisible();
+
+  for (const width of [1280, 430]) {
+    await page.setViewportSize({ width, height: 900 });
+    const geometry = await page.evaluate(() => ({
+      body: document.body.scrollWidth,
+      document: document.documentElement.scrollWidth,
+      viewport: window.innerWidth,
+    }));
+    expect(geometry.body).toBeLessThanOrEqual(geometry.viewport);
+    expect(geometry.document).toBeLessThanOrEqual(geometry.viewport);
+  }
+});
 
 test("founder review uses canonical controls and exposes explicit EP choices", async ({ page }) => {
   await mockShell(page);
