@@ -90,6 +90,10 @@ LEDGER_CONFIG = {
 }
 
 ENTITY_TABLES = {
+    "profile_exchange_commissions": (
+        "profile_exchange_commissions",
+        "exchange_name",
+    ),
     "sportsbook_bet": ("sportsbook_bets", "sportsbook_bet_id"),
     "free_bet": ("free_bets", "free_bet_id"),
     "casino_offer": ("casino_offers", "casino_offer_id"),
