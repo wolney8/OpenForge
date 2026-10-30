@@ -494,3 +494,12 @@ the explicit non-placement action that selects which reviewed plan will be saved
 |---|---|---|---|---|
 | PD-FIX-474 | Import rollback | Restore reviewed exchange-commission writes and remove target-Profile rows absent from the exact pre-import checkpoint | CP-106J rollback contract; #95/#104 | COMPLETE / CODE-VERIFIED — focused rollback tests pass; failed Apply restored the exact WILL-PERSONAL checkpoint with no business rows remaining |
 | PD-AUDIT-106J-01 | Governed Apply | Execute only the approved hash-bound plan and stop on any post-import mismatch | CP-106J owner approval; #95/#104 | BROKEN / BLOCKING — all 1,079 planned rows were written transiently and financial reconciliation matched, but Account/open-position expected counts disagreed; governed rollback completed and the approval was not reused |
+
+## 2026-10-30 CP-106K reconciliation correction
+
+| ID | Area | Requested behaviour | Authority | Status |
+|---|---|---|---|---|
+| PD-FIX-475 | Account reconciliation | Derive Account totals and types from the reviewed canonical plan and retain distinct deterministic creation/commission audit identities | CP-106K Account and audit diagnosis; #95/#104 | COMPLETE / CODE-VERIFIED — BetConnect creation and zero-commission audits coexist; disposable full Apply reconciles 125 Accounts as 118 Bookmakers, 6 Exchanges and 1 Bank |
+| PD-FIX-476 | Lifecycle reconciliation | Derive planned, committed and realised expectations from the canonical import rows and CP-102 membership semantics | CP-102 exposure authority; CP-106K open-position diagnosis; #95/#104 | COMPLETE / CODE-VERIFIED — projection is 8 planned, 15 committed and 931 realised; disposable full Apply passes post-import reconciliation |
+| PD-FIX-477 | Rollback state and approval | Report reconciliation-triggered rollback coherently and prevent completed/delayed preflight work from reviving consumed approval | CP-106K rollback and idempotency contract; #95/#104 | COMPLETE / CODE-VERIFIED — rollback preserves failure evidence, clears approval and requires a new reviewed plan |
+| PD-AUDIT-106K-01 | Replacement no-write plan | Generate fresh destination/decision/plan/idempotency fingerprints against empty WILL-PERSONAL without applying workbook rows | CP-106K no-write boundary; #95/#104 | NEEDS OWNER APPROVAL — refreshed plan is validated; Apply remains blocked |
