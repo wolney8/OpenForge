@@ -168,25 +168,45 @@ def test_lay_win_void_and_cancelled_are_realised_without_open_exposure(tmp_path:
         json={"exchange_name": "Matchbook", "commission_rate": "0.02"},
     ).status_code == 200
 
-    for status, result, expected in (
-        ("Settled", "Lay Won", "-0.56"),
-        ("Void", "Void", "0.00"),
-        ("Cancelled", "Void", "0.00"),
+    for terminal_status, result, expected, history_operation in (
+        ("Settled", "Lay Won", "-0.56", "settled"),
+        ("Void", "Void", "0.00", "edited"),
+        ("Cancelled", "Void", "0.00", "edited"),
     ):
-        response = client.post(
+        created_response = client.post(
             "/profiles/profile-demo-001/sportsbook-bets",
             json=payload(
-                event_name=f"CP-108 {status}",
-                status=status,
+                event_name=f"CP-108 {terminal_status}",
+                status="Placed",
+                lay_actual="9.63",
+                lay_matched_stake_1="9.63",
+            ),
+        )
+        assert created_response.status_code == 201, created_response.text
+        created = created_response.json()
+        assert created["counts_as_open"] is True
+
+        response = client.put(
+            f"/profiles/profile-demo-001/sportsbook-bets/{created['sportsbook_bet_id']}",
+            json=payload(
+                event_name=f"CP-108 {terminal_status}",
+                status=terminal_status,
                 result=result,
                 lay_actual="9.63",
                 lay_matched_stake_1="9.63",
             ),
         )
-        assert response.status_code == 201, response.text
+        assert response.status_code == 200, response.text
         row = response.json()
         assert row["counts_as_open"] is False
         assert row["final_net_pnl"] == expected
+        history = client.get(
+            "/profiles/profile-demo-001/financial-history/sportsbook/"
+            f"{created['sportsbook_bet_id']}"
+        ).json()
+        assert [event["operation"] for event in history] == ["created", history_operation]
+        assert history[-1]["before_snapshot"]["status"] == "Placed"
+        assert history[-1]["after_snapshot"]["status"] == terminal_status
 
 
 def test_committed_transition_rechecks_profile_account_eligibility(tmp_path: Path) -> None:
