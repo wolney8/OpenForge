@@ -3501,6 +3501,39 @@ def _restore_checkpoint_rows(connection: Any, checkpoint: Any, profile_id: str) 
                 )
 
 
+def _remove_rows_absent_from_checkpoint(
+    connection: Any, checkpoint: Any, profile_id: str
+) -> int:
+    """Remove target-Profile rows created after the governed checkpoint.
+
+    The checkpoint remains the rollback authority when multiple writes from one
+    source row share a legacy audit key. The post-import state checksum gate
+    prevents this reconciliation from discarding later Profile activity.
+    """
+
+    snapshot = json.loads(str(checkpoint["snapshot_json"]))
+    deleted = 0
+    for table in PROFILE_TABLES:
+        identifier = PROFILE_TABLE_ORDER[table]
+        expected = {
+            str(row[identifier]) for row in snapshot.get(table, []) if identifier in row
+        }
+        current = connection.execute(
+            f"SELECT {identifier} FROM {table} WHERE profile_id = ?",
+            (profile_id,),
+        ).fetchall()
+        extra = [str(row[identifier]) for row in current if str(row[identifier]) not in expected]
+        if not extra:
+            continue
+        placeholders = ",".join("?" for _ in extra)
+        result = connection.execute(
+            f"DELETE FROM {table} WHERE profile_id = ? AND {identifier} IN ({placeholders})",
+            (profile_id, *extra),
+        )
+        deleted += int(result.rowcount)
+    return deleted
+
+
 def rollback_incomplete_import(
     *,
     profile_id: str,
@@ -3542,6 +3575,9 @@ def rollback_incomplete_import(
             ).fetchone()
         )
         if checkpoint is not None:
+            deleted += _remove_rows_absent_from_checkpoint(
+                connection, checkpoint, profile_id
+            )
             _restore_checkpoint_rows(connection, checkpoint, profile_id)
         if checkpoint is None or _profile_state_checksum(
             connection, profile_id
@@ -3678,6 +3714,9 @@ def rollback_import(
             ).fetchone()
         )
         if checkpoint is not None:
+            deleted += _remove_rows_absent_from_checkpoint(
+                connection, checkpoint, profile_id
+            )
             _restore_checkpoint_rows(connection, checkpoint, profile_id)
         if checkpoint is None or _profile_state_checksum(
             connection, profile_id
