@@ -711,7 +711,7 @@ def _save_preflight_result(
     if (
         preflight.get("status") == "PASSED"
         and run.get("approved_at")
-        and run["status"] in {"FAILED", "IMPORT_FAILED", "ROLLED_BACK"}
+        and run["status"] in {"FAILED", "IMPORT_FAILED"}
     ):
         next_status = "READY_APPROVED"
     with connect() as connection:

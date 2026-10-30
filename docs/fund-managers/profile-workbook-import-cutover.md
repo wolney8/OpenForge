@@ -53,6 +53,11 @@ The persisted report ends with exactly one of:
 
 A failed reconciliation does not mark cutover complete and leaves scoped rollback available.
 
+Dry-run Account totals, Account-type totals and lifecycle membership are projected from the same
+reviewed canonical rows used by persistence. Planned, committed and realised membership follows
+the shared exposure contract; calculator-specific open flags are not a second reconciliation
+authority.
+
 Import History also exposes a downloadable reconciliation handoff containing the workbook
 checksum/effective timestamp, target Profile and ImportRunID, Account and ledger comparisons,
 financial periods and views, open-position checks, review-decision totals, integrity checks and the
@@ -67,6 +72,11 @@ Normal rollback uses the application checkpoint and write audit, not a whole-dat
 - verifies the resulting Profile checksum against the pre-import checkpoint;
 - records a durable rollback event;
 - prevents repeat rollback.
+
+After rollback, the authoritative run and execution outcome is `ROLLED_BACK`. Failure reason,
+failed check, rollback ID and original Apply execution ID remain available as evidence. The prior
+approval is consumed; a delayed preflight result cannot revive it, and another Apply requires a
+new reviewed plan fingerprint and owner approval.
 
 Rollback is deliberately blocked if Profile data changed after the import, because silently
 overwriting later edits would be unsafe. Such a case requires Fund Manager review and an

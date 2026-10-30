@@ -397,6 +397,13 @@ def _entity_id(prefix: str, profile_id: str, import_key: str) -> str:
     return f"{prefix}-{digest}"
 
 
+def _audit_event_key(source_import_key: str, event_type: str, subject: str) -> str:
+    """Return a stable key for a distinct audited event from one source row."""
+
+    normalized_subject = " ".join(subject.strip().casefold().split())
+    return f"{source_import_key}::{event_type}::{normalized_subject}"
+
+
 def build_base_write_plan(result: dict[str, Any]) -> dict[str, Any]:
     """Persist canonical mapped rows, never raw workbook bytes."""
     account_rows = [
@@ -464,6 +471,8 @@ def build_base_write_plan(result: dict[str, Any]) -> dict[str, Any]:
             )
     return {
         "schema_version": "profile-workbook-write-plan-v1",
+        "reconciliation_contract": "canonical-plan-projection-v1",
+        "audit_identity_contract": "source-event-subject-v1",
         "profile_settings": [
             {key: row.get(key) for key in ("setting", "parsed_value", "target", "classification")}
             for row in result["profile_settings"]
@@ -859,6 +868,7 @@ def final_import_summary(
         except (ValueError, KeyError, TypeError) as error:
             account_validation_blockers.append({**row, "review_error": str(error)})
     effective_providers: dict[str, dict[str, Any]] = {}
+    effective_account_states: list[dict[str, Any]] = []
     for row in (plan or {}).get("accounts", []):
         try:
             state = _reviewed_account_state(row, decisions, catalogue)
@@ -866,6 +876,7 @@ def final_import_summary(
             continue
         if state is None:
             continue
+        effective_account_states.append(state)
         provider_id = str(state["catalogue_id"])
         if provider_id in effective_providers:
             previous = effective_providers[provider_id]
@@ -918,6 +929,11 @@ def final_import_summary(
                     planned_ledger_counts["extra_places"] += 1
                 else:
                     planned_ledger_counts[ledger] += 1
+    projected_membership = (
+        _projected_import_membership(plan, decisions)
+        if plan is not None
+        else {"totals": {}, "by_ledger": {}, "rows": []}
+    )
     with connect() as connection:
         identity_preflight = destination_identity_preflight(
             connection, profile_id=run["profile_id"], plan=plan, decisions=decisions,
@@ -1031,6 +1047,12 @@ def final_import_summary(
                 for row in account_changes.get("existing_absent_from_workbook", [])
             ),
             "unresolved_providers": len(importable_provider_blockers),
+            "type_counts": dict(
+                Counter(
+                    "Bookmaker" if state.get("type") == "Bookie" else str(state.get("type"))
+                    for state in effective_account_states
+                )
+            ),
         },
         "ledgers": {
             key: {
@@ -1038,8 +1060,15 @@ def final_import_summary(
                 "transactional_rows": planned_ledger_counts[key],
                 "non_transactional": value.get("non_transactional", 0),
                 "historical_or_partial": value.get("partial", 0),
-                "open": value.get("open", 0),
-                "settled": value.get("settled", 0),
+                "planned": projected_membership["by_ledger"].get(key, {}).get(
+                    "PLANNED", 0
+                ),
+                "open": projected_membership["by_ledger"].get(key, {}).get(
+                    "COMMITTED", 0
+                ),
+                "settled": projected_membership["by_ledger"].get(key, {}).get(
+                    "REALISED", 0
+                ),
                 "future_settling_open": value.get("future_settling_open", 0),
             }
             for key, value in ledger_summaries.items()
@@ -1050,12 +1079,20 @@ def final_import_summary(
                 "transactional_rows": planned_ledger_counts["extra_places"],
                 "non_transactional": 0,
                 "historical_or_partial": planned_ledger_counts["extra_places"],
-                "open": 0,
-                "settled": 0,
+                "planned": projected_membership["by_ledger"]
+                .get("extra_places", {})
+                .get("PLANNED", 0),
+                "open": projected_membership["by_ledger"]
+                .get("extra_places", {})
+                .get("COMMITTED", 0),
+                "settled": projected_membership["by_ledger"]
+                .get("extra_places", {})
+                .get("REALISED", 0),
                 "future_settling_open": 0,
             }
         },
         "extra_places": run["summary"].get("extra_places", {}),
+        "lifecycle_membership": projected_membership,
         "financial": {
             "periods": financial,
             "review_pnl_impact": workspace["reconciliation"]["pnl_impact"],
@@ -1604,7 +1641,11 @@ def _apply_reviewed_account_commission(
     _audit_write(
         connection,
         import_run_id=import_run_id,
-        import_key=str(source["import_key"]),
+        import_key=_audit_event_key(
+            str(source["import_key"]),
+            "profile_exchange_commission",
+            exchange_name,
+        ),
         profile_id=profile_id,
         entity_type="profile_exchange_commissions",
         entity_id=exchange_name,
@@ -2414,6 +2455,90 @@ def _period_names(value: str, effective_at: str) -> set[str]:
     return names
 
 
+def _import_financial_membership(entity_type: str, status: str) -> str:
+    """Classify imported rows using the governed planned/committed/realised split."""
+
+    normalized = status.strip().casefold()
+    if entity_type == "sportsbook_bet":
+        if normalized in {"prospecting", "not placed"}:
+            return "PLANNED"
+        if normalized in {"placed", "pending"}:
+            return "COMMITTED"
+        return "REALISED"
+    if entity_type == "free_bet":
+        if normalized in {"prospecting", "available", "not yet awarded"}:
+            return "PLANNED"
+        if normalized in {"placed", "pending"}:
+            return "COMMITTED"
+        return "REALISED"
+    if entity_type == "casino_offer":
+        if normalized == "prospecting":
+            return "PLANNED"
+        if normalized in {"started", "in progress", "pending"}:
+            return "COMMITTED"
+        return "REALISED"
+    if entity_type == "extra_place":
+        if normalized == "prospecting":
+            return "PLANNED"
+        if normalized in {"placed", "pending"}:
+            return "COMMITTED"
+        return "REALISED"
+    if entity_type == "cash_adjustment":
+        return "REALISED"
+    raise ImportCutoverError(f"Unsupported import membership entity {entity_type}")
+
+
+def _projected_import_membership(
+    plan: dict[str, Any], decisions: dict[str, dict[str, Any]]
+) -> dict[str, Any]:
+    entity_types = {
+        "sportsbook": "sportsbook_bet",
+        "free_bets": "free_bet",
+        "casino": "casino_offer",
+        "cash_adjustments": "cash_adjustment",
+        "extra_places": "extra_place",
+    }
+    totals: Counter[str] = Counter()
+    by_ledger: dict[str, Counter[str]] = {
+        ledger: Counter() for ledger in entity_types
+    }
+    rows: list[dict[str, str]] = []
+    for target, ledger, row, item, _ep_item in _ledger_write_entries(plan, decisions):
+        entity_type = entity_types[target]
+        if target == "extra_places":
+            status = "Settled"
+        else:
+            payload = {
+                key: value
+                for key, value in dict(row.get("mapped_payload") or {}).items()
+                if key in LEDGER_COLUMNS[ledger]
+            }
+            payload = _apply_decision(payload, row, item)
+            status = str(payload.get("status") or row.get("status") or "")
+        membership = _import_financial_membership(entity_type, status)
+        totals[membership] += 1
+        by_ledger[target][membership] += 1
+        rows.append(
+            {
+                "import_key": str(row["import_key"]),
+                "record_id": str(row.get("source_record_id") or ""),
+                "ledger": target,
+                "status": status,
+                "membership": membership,
+            }
+        )
+    return {
+        "totals": {key: totals[key] for key in ("PLANNED", "COMMITTED", "REALISED")},
+        "by_ledger": {
+            ledger: {
+                key: counts[key] for key in ("PLANNED", "COMMITTED", "REALISED")
+            }
+            for ledger, counts in by_ledger.items()
+        },
+        "rows": rows,
+    }
+
+
 def _actual_imported_value(
     *,
     entity_type: str,
@@ -2435,7 +2560,8 @@ def _actual_imported_value(
         )
         return (
             _decimal(sportsbook_response.reporting_value),
-            bool(sportsbook_response.counts_as_open),
+            _import_financial_membership(entity_type, str(row.get("status") or ""))
+            == "COMMITTED",
             str(row.get("date_settled") or ""),
             _decimal(sportsbook_response.calculated_liability_1),
         )
@@ -2466,7 +2592,8 @@ def _actual_imported_value(
         )
         return (
             _decimal(calculation.reporting_value),
-            bool(calculation.counts_as_open),
+            _import_financial_membership(entity_type, str(row.get("status") or ""))
+            == "COMMITTED",
             str(row.get("date_settled") or ""),
             _decimal(calculation.calculated_liability_1),
         )
@@ -2474,7 +2601,8 @@ def _actual_imported_value(
         casino_response = build_casino_response(CasinoOfferRecord(**row))
         return (
             _decimal(casino_response.resolved_net_pnl),
-            bool(casino_response.counts_as_open),
+            _import_financial_membership(entity_type, str(row.get("status") or ""))
+            == "COMMITTED",
             str(row.get("date_settling") or ""),
             Decimal("0"),
         )
@@ -2484,7 +2612,8 @@ def _actual_imported_value(
         )
         return (
             _decimal(extra_place_response.get("current_value")),
-            row.get("status") != "Settled",
+            _import_financial_membership(entity_type, str(row.get("status") or ""))
+            == "COMMITTED",
             str(row.get("placed_at") or ""),
             _decimal(extra_place_response.get("win_liability"))
             + _decimal(extra_place_response.get("place_liability")),
@@ -2588,7 +2717,14 @@ def generate_post_import_reconciliation(
     future_open = 0
     calculation_errors: list[dict[str, str]] = []
     ledger_actual: dict[str, dict[str, int]] = {
-        name: {"persisted": 0, "open": 0, "settled": 0, "duplicates": 0, "missing": 0}
+        name: {
+            "persisted": 0,
+            "planned": 0,
+            "open": 0,
+            "settled": 0,
+            "duplicates": 0,
+            "missing": 0,
+        }
         for name in ledger_entity_types.values()
     }
     seen_entities: set[tuple[str, str]] = set()
@@ -2624,7 +2760,10 @@ def generate_post_import_reconciliation(
         except Exception as error:
             calculation_errors.append({"import_id": str(audit["import_key"]), "reason": str(error)})
             continue
-        if is_open:
+        membership = _import_financial_membership(
+            entity_type, str(persisted["status"] if "status" in persisted.keys() else "")
+        )
+        if membership == "COMMITTED":
             ledger_actual[ledger_name]["open"] += 1
             if entity_type != "cash_adjustment":
                 open_total += value
@@ -2636,6 +2775,8 @@ def generate_post_import_reconciliation(
                     future_open += 1
             except ValueError:
                 pass
+        elif membership == "PLANNED":
+            ledger_actual[ledger_name]["planned"] += 1
         else:
             ledger_actual[ledger_name]["settled"] += 1
             if entity_type != "cash_adjustment":
@@ -2665,6 +2806,7 @@ def generate_post_import_reconciliation(
             "actual_persisted_rows": actual["persisted"],
             "difference": actual["persisted"] - expected_count,
             "open_rows": actual["open"],
+            "planned_rows": actual["planned"],
             "settled_rows": actual["settled"],
             "excluded_non_transactional_rows": (
                 source_summary.get("non_transactional", 0) if ledger_name == "sportsbook" else 0
@@ -3184,6 +3326,10 @@ def validate_import_approval_preflight(
 
 def failed_import_safety(profile_id: str, import_run_id: str) -> dict[str, Any]:
     with connect() as connection:
+        run_row = connection.execute(
+            "SELECT status, approved_at FROM profile_import_runs WHERE import_run_id = ?",
+            (import_run_id,),
+        ).fetchone()
         checkpoint = connection.execute(
             "SELECT snapshot_json, snapshot_checksum FROM profile_import_checkpoints "
             "WHERE profile_id = ? AND import_run_id = ?",
@@ -3201,12 +3347,17 @@ def failed_import_safety(profile_id: str, import_run_id: str) -> dict[str, Any]:
             and _profile_state_checksum(connection, profile_id)
             == _checkpoint_state_checksum(checkpoint)
         )
+        approval_retryable = bool(
+            run_row
+            and str(run_row["status"]) in {"READY_APPROVED", "FAILED", "IMPORT_FAILED"}
+            and str(run_row["approved_at"] or "")
+        )
     return {
         "checkpoint_available": checkpoint is not None,
         "profile_matches_checkpoint": checkpoint_matches,
         "committed_write_audit_rows": audit_count,
         "no_partial_profile_changes": checkpoint_matches and audit_count == 0,
-        "retry_available": checkpoint_matches and audit_count == 0,
+        "retry_available": checkpoint_matches and audit_count == 0 and approval_retryable,
     }
 
 
@@ -3252,7 +3403,7 @@ def completed_import_rollback_safety(
 
 def approved_run_is_retryable(run: dict[str, Any]) -> bool:
     return run["status"] == "READY_APPROVED" or (
-        run["status"] in {"FAILED", "IMPORT_FAILED", "ROLLED_BACK"} and bool(run.get("approved_at"))
+        run["status"] in {"FAILED", "IMPORT_FAILED"} and bool(run.get("approved_at"))
     )
 
 
@@ -3641,17 +3792,33 @@ def rollback_incomplete_import(
                 "completed_at = ?, updated_at = ? WHERE execution_id = ?",
                 (now, _json(error), now, now, execution_id),
             )
+        rollback_error = {
+            **error,
+            "failure_reason": str(error.get("failure_reason") or "IMPORT_EXECUTION_FAILED"),
+            "failed_check": str(error.get("failed_check") or error.get("stage") or ""),
+            "rollback_id": event_id,
+            "original_apply_execution_id": execution_id,
+        }
         connection.execute(
-            "UPDATE profile_import_runs SET status = 'IMPORT_FAILED', "
+            "UPDATE profile_import_executions SET error_json = ? WHERE import_run_id = ?",
+            (_json(rollback_error), import_run_id),
+        )
+        if execution_id:
+            connection.execute(
+                "UPDATE profile_import_attempts SET error_json = ? WHERE execution_id = ?",
+                (_json(rollback_error), execution_id),
+            )
+        connection.execute(
+            "UPDATE profile_import_runs SET status = 'ROLLED_BACK', approved_at = '', "
             "result_json = ?, rollback_status = 'COMPLETE', rolled_back_at = ?, updated_at = ? "
             "WHERE profile_id = ? AND import_run_id = ?",
             (
                 _json(
                     {
-                        "status": "IMPORT_FAILED",
+                        "status": "ROLLED_BACK",
                         "safe_state": "The pre-import Profile state was restored.",
-                        "retry_available": True,
-                        "latest_attempt": error,
+                        "retry_available": False,
+                        "latest_attempt": rollback_error,
                     }
                 ),
                 now,
@@ -3771,9 +3938,104 @@ def rollback_import(
                 now,
             ),
         )
+        rollback_metadata = (
+            reconcile_rolled_back_execution_metadata(
+                connection,
+                import_run_id=import_run_id,
+                execution_id=execution_id,
+                rollback_event_id=event_id,
+                prior_result=result,
+                updated_at=now,
+            )
+            if execution_id
+            else {
+                "failure_reason": (
+                    "POST_APPLY_RECONCILIATION_FAILED"
+                    if str(result.get("status") or "")
+                    == "POST_IMPORT_RECONCILIATION_FAILED"
+                    else "OWNER_REQUESTED_ROLLBACK"
+                )
+            }
+        )
         connection.execute(
             "UPDATE profile_import_runs SET status = 'ROLLED_BACK', rollback_status = 'COMPLETE', "
-            "rolled_back_at = ?, updated_at = ? WHERE profile_id = ? AND import_run_id = ?",
-            (now, now, profile_id, import_run_id),
+            "rolled_back_at = ?, result_json = ?, updated_at = ? "
+            "WHERE profile_id = ? AND import_run_id = ?",
+            (
+                now,
+                _json(
+                    {
+                        **result,
+                        "status": "ROLLED_BACK",
+                        "rollback": {
+                            "status": "COMPLETE",
+                            "rollback_event_id": event_id,
+                            "original_execution_id": execution_id,
+                            "failure_reason": rollback_metadata["failure_reason"],
+                        },
+                    }
+                ),
+                now,
+                profile_id,
+                import_run_id,
+            ),
         )
     return {"status": "ROLLED_BACK", "rollback_event_id": event_id, **summary}
+
+
+def reconcile_rolled_back_execution_metadata(
+    connection: Any,
+    *,
+    import_run_id: str,
+    execution_id: str,
+    rollback_event_id: str,
+    prior_result: dict[str, Any],
+    updated_at: str,
+) -> dict[str, Any]:
+    """Supersede a failed Apply status after its governed rollback completes."""
+
+    rollback = connection.execute(
+        "SELECT status FROM profile_import_rollback_events "
+        "WHERE rollback_event_id = ? AND import_run_id = ?",
+        (rollback_event_id, import_run_id),
+    ).fetchone()
+    attempt = connection.execute(
+        "SELECT status, rollback_status FROM profile_import_attempts "
+        "WHERE execution_id = ? AND import_run_id = ?",
+        (execution_id, import_run_id),
+    ).fetchone()
+    if (
+        rollback is None
+        or str(rollback["status"]) != "COMPLETE"
+        or attempt is None
+        or str(attempt["status"]) != "ROLLED_BACK"
+        or str(attempt["rollback_status"]) != "COMPLETE"
+    ):
+        raise ImportCutoverError(
+            "Execution status cannot be reconciled before rollback completes"
+        )
+    failed_reconciliation = prior_result.get("post_import_reconciliation") or {}
+    failure_reason = (
+        "POST_APPLY_RECONCILIATION_FAILED"
+        if str(prior_result.get("status") or "")
+        == "POST_IMPORT_RECONCILIATION_FAILED"
+        else "OWNER_REQUESTED_ROLLBACK"
+    )
+    metadata = {
+        "failure_reason": failure_reason,
+        "failed_check": failed_reconciliation.get("mismatches", []),
+        "rollback_id": rollback_event_id,
+        "original_apply_execution_id": execution_id,
+    }
+    connection.execute(
+        "UPDATE profile_import_executions SET status = 'ROLLED_BACK', "
+        "stage = 'ROLLED_BACK', error_json = ?, completed_at = ?, updated_at = ? "
+        "WHERE execution_id = ? AND import_run_id = ?",
+        (_json(metadata), updated_at, updated_at, execution_id, import_run_id),
+    )
+    connection.execute(
+        "UPDATE profile_import_attempts SET error_json = ?, updated_at = ? "
+        "WHERE execution_id = ? AND import_run_id = ?",
+        (_json(metadata), updated_at, execution_id, import_run_id),
+    )
+    return metadata

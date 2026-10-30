@@ -322,7 +322,12 @@ def validate_staged_execution_readiness(
         and preflight.get("workbook_checksum") == run.get("workbook_checksum")
         and preflight.get("mapping_version") == run.get("mapping_version")
     )
-    if not run.get("approved_at") or not summary["ready"] or not preflight_valid:
+    if (
+        run.get("status") != "READY_APPROVED"
+        or not run.get("approved_at")
+        or not summary["ready"]
+        or not preflight_valid
+    ):
         raise ImportCutoverError("The approved import plan is not ready for staged execution")
     decisions = _decision_map(workspace)
     units = _planned_units(plan, decisions)

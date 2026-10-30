@@ -686,10 +686,22 @@ def test_integer_backed_boolean_storage_is_explicit() -> None:
     assert _storage_value("sportsbook_bets", "status", "Placed") == "Placed"
 
 
-def test_rolled_back_approved_run_remains_retryable() -> None:
-    assert approved_run_is_retryable(
+def test_rolled_back_approval_is_consumed() -> None:
+    assert not approved_run_is_retryable(
         {"status": "ROLLED_BACK", "approved_at": "2026-08-30T10:00:00+00:00"}
     )
+
+
+def test_import_membership_separates_planning_from_committed_exposure() -> None:
+    from openforge_api.profile_workbook_cutover import _import_financial_membership
+
+    assert _import_financial_membership("sportsbook_bet", "Prospecting") == "PLANNED"
+    assert _import_financial_membership("sportsbook_bet", "Not Placed") == "PLANNED"
+    assert _import_financial_membership("sportsbook_bet", "Placed") == "COMMITTED"
+    assert _import_financial_membership("free_bet", "Prospecting") == "PLANNED"
+    assert _import_financial_membership("free_bet", "Not Yet Awarded") == "PLANNED"
+    assert _import_financial_membership("free_bet", "Placed") == "COMMITTED"
+    assert _import_financial_membership("free_bet", "Settled") == "REALISED"
 
 
 def test_settled_import_preserves_approved_workbook_value() -> None:
@@ -1245,7 +1257,22 @@ def test_staged_import_is_resumable_and_reconciles(tmp_path: Path) -> None:
         run=load_persisted_run(run),
     )
     assert rollback["checkpoint_reconciled"] is True
+    rolled_back_execution = load_import_execution(RUN_ID)
+    assert rolled_back_execution is not None
+    assert rolled_back_execution["status"] == "ROLLED_BACK"
+    assert rolled_back_execution["stage"] == "ROLLED_BACK"
+    assert rolled_back_execution["error"]["failure_reason"] == "OWNER_REQUESTED_ROLLBACK"
+    assert rolled_back_execution["error"]["rollback_id"] == rollback["rollback_event_id"]
     assert failed_import_safety(PROFILE_ID, RUN_ID)["no_partial_profile_changes"] is True
+    with pytest.raises(ImportCutoverError, match="not ready for staged execution"):
+        start_import_execution(
+            profile_id=PROFILE_ID,
+            import_run_id=RUN_ID,
+            actor_email="founder@example.invalid",
+            run=load_persisted_run(run),
+            workspace=workspace,
+            plan=plan,
+        )
 
 
 def test_founder_snapshot_v8_september_baseline_reconciles_at_scale(
@@ -1606,7 +1633,7 @@ def test_founder_snapshot_v8_september_baseline_reconciles_at_scale(
         )
 
 
-def test_staged_failure_restores_checkpoint_and_remains_retryable(
+def test_staged_failure_restores_checkpoint_and_consumes_approval(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     configure_cutover_database(tmp_path)
@@ -1659,7 +1686,7 @@ def test_staged_failure_restores_checkpoint_and_remains_retryable(
     assert execution["status"] == "ROLLED_BACK", json.dumps(execution["error"], sort_keys=True)
     safety = failed_import_safety(PROFILE_ID, RUN_ID)
     assert safety["no_partial_profile_changes"] is True
-    assert safety["retry_available"] is True
+    assert safety["retry_available"] is False
     with connect() as connection:
         assert (
             connection.execute(
@@ -1687,34 +1714,8 @@ def test_staged_failure_restores_checkpoint_and_remains_retryable(
         )
         assert summary["job"]["events"][-1]["kind"] == "import_failed"
 
-    # A safely rolled-back attempt must remain eligible for the same exact
-    # non-mutating persistence preflight before it is retried.
-    preflight = validate_import_preflight(
-        profile_id=PROFILE_ID,
-        import_run_id=RUN_ID,
-        run=load_persisted_run(run),
-        workspace=workspace,
-        plan=plan,
-    )
-    assert preflight["status"] == "PASSED"
-    assert preflight["writes_committed"] is False
-
-    monkeypatch.undo()
-    execution = start_import_execution(
-        profile_id=PROFILE_ID,
-        import_run_id=RUN_ID,
-        actor_email="founder@example.invalid",
-        run=load_persisted_run(run),
-        workspace=workspace,
-        plan=plan,
-    )
-    second_execution_id = execution["execution_id"]
-    second_checkpoint_id = execution["progress"]["checkpoint_id"]
-    assert second_execution_id != first_execution_id
-    assert second_checkpoint_id != first_checkpoint_id
-    assert execution["attempt_count"] == 2
-    while execution["status"] == "RUNNING":
-        execution = advance_import_execution(
+    with pytest.raises(ImportCutoverError, match="not ready for staged execution"):
+        start_import_execution(
             profile_id=PROFILE_ID,
             import_run_id=RUN_ID,
             actor_email="founder@example.invalid",
@@ -1722,7 +1723,25 @@ def test_staged_failure_restores_checkpoint_and_remains_retryable(
             workspace=workspace,
             plan=plan,
         )
-    assert execution["status"] == "COMPLETE"
+    from openforge_api.profile_workbook_imports import _save_preflight_result
+
+    rolled_back_run = load_persisted_run(run)
+    _save_preflight_result(
+        import_run_id=RUN_ID,
+        profile_id=PROFILE_ID,
+        run=rolled_back_run,
+        result={
+            "status": "PASSED",
+            "validation_mode": "schema_and_domain_contracts",
+            "writes_committed": False,
+        },
+    )
+    with connect() as connection:
+        persisted = connection.execute(
+            "SELECT status, approved_at FROM profile_import_runs WHERE import_run_id = ?",
+            (RUN_ID,),
+        ).fetchone()
+        assert tuple(persisted) == ("ROLLED_BACK", "")
     with connect() as connection:
         attempts = connection.execute(
             "SELECT execution_id, attempt_number, status FROM profile_import_attempts "
@@ -1731,7 +1750,6 @@ def test_staged_failure_restores_checkpoint_and_remains_retryable(
         ).fetchall()
         assert [tuple(row) for row in attempts] == [
             (first_execution_id, 1, "ROLLED_BACK"),
-            (second_execution_id, 2, "COMPLETE"),
         ]
         checkpoints = connection.execute(
             "SELECT execution_id, checkpoint_id, status FROM "
@@ -1739,48 +1757,15 @@ def test_staged_failure_restores_checkpoint_and_remains_retryable(
             "ORDER BY created_at",
             (RUN_ID,),
         ).fetchall()
-        assert {tuple(row) for row in checkpoints} == {
+        assert [tuple(row) for row in checkpoints] == [
             (first_execution_id, first_checkpoint_id, "RESTORED"),
-            (second_execution_id, second_checkpoint_id, "AVAILABLE"),
-        }
+        ]
         first_active = connection.execute(
             "SELECT COUNT(*) FROM profile_import_attempt_write_audit "
             "WHERE execution_id = ? AND rolled_back_at = ''",
             (first_execution_id,),
         ).fetchone()[0]
-        second_active = connection.execute(
-            "SELECT COUNT(*) FROM profile_import_attempt_write_audit "
-            "WHERE execution_id = ? AND rolled_back_at = ''",
-            (second_execution_id,),
-        ).fetchone()[0]
         assert first_active == 0
-        assert second_active > 0
-        current_checksum = _profile_state_checksum(connection, PROFILE_ID)
-
-    stale_first_attempt = load_persisted_run(run)
-    stale_first_attempt["status"] = "COMPLETE"
-    stale_first_attempt["rollback_status"] = "AVAILABLE"
-    stale_first_attempt["result"] = {
-        "execution_id": first_execution_id,
-        "post_import_state_checksum": current_checksum,
-    }
-    with pytest.raises(ImportCutoverError, match="latest import execution attempt"):
-        rollback_import(
-            profile_id=PROFILE_ID,
-            import_run_id=RUN_ID,
-            actor_email="founder@example.invalid",
-            run=stale_first_attempt,
-        )
-    with connect() as connection:
-        assert _profile_state_checksum(connection, PROFILE_ID) == current_checksum
-        assert (
-            connection.execute(
-                "SELECT COUNT(*) FROM profile_import_attempt_write_audit "
-                "WHERE execution_id = ? AND rolled_back_at = ''",
-                (second_execution_id,),
-            ).fetchone()[0]
-            == second_active
-        )
 
 
 def test_reviewed_access_and_deferred_provider_share_account_preflight(tmp_path: Path) -> None:
@@ -1807,9 +1792,13 @@ def test_reviewed_access_and_deferred_provider_share_account_preflight(tmp_path:
 
 
 def test_reviewed_exchange_commission_accepts_explicit_zero(tmp_path: Path) -> None:
-    from openforge_api.founder_import_review import ReviewDecisionPayload, _decision_overrides
+    from openforge_api.founder_import_review import (
+        ReviewDecisionPayload,
+        _decision_overrides,
+    )
     from openforge_api.profile_workbook_cutover import (
         _apply_reviewed_account_commission,
+        _audit_write,
         _catalogue_records,
         _reviewed_account_state,
     )
@@ -1863,6 +1852,29 @@ def test_reviewed_exchange_commission_accepts_explicit_zero(tmp_path: Path) -> N
         ).fetchone()
         assert saved is not None
         assert saved["commission_rate"] == "0.00"
+        _audit_write(
+            connection,
+            import_run_id=RUN_ID,
+            import_key=str(row["import_key"]),
+            profile_id=PROFILE_ID,
+            entity_type="accounts",
+            entity_id="PA-SYNTHETIC",
+            operation="create",
+            before=None,
+            after={"account_id": "PA-SYNTHETIC"},
+        )
+        audits = connection.execute(
+            "SELECT import_key, entity_type FROM profile_import_write_audit "
+            "WHERE import_run_id = ? ORDER BY import_key",
+            (RUN_ID,),
+        ).fetchall()
+        assert [(audit["import_key"], audit["entity_type"]) for audit in audits] == [
+            (row["import_key"], "accounts"),
+            (
+                f"{row['import_key']}::profile_exchange_commission::bookmaker 1",
+                "profile_exchange_commissions",
+            ),
+        ]
 
 
 def test_import_rollback_removes_created_reviewed_exchange_commission(
