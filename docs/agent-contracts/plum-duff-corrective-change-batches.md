@@ -487,3 +487,10 @@ the explicit non-placement action that selects which reviewed plan will be saved
 | PD-FIX-472 | Historical ledger compatibility | Retain reviewed settled economics when an unavailable historical exchange cannot be reconstructed, without relaxing new placed-bet validation or creating an Account | CP-106I owner decisions; workbook review and ledger validation contracts; #95/#104 | COMPLETE / CODE-VERIFIED — seven missing identities remain explicit; 13 historical values and one Mug Bet correction pass rollback-only preflight |
 | PD-FIX-473 | Planning and main-bank ordering | Import six Prospecting/Not Placed rows as planning with no actual exposure/P&L and set BANK-STARLING only after its Account exists | CP-102 membership authority; CP-106I Account-first requirement; #95/#104 | COMPLETE / CODE-VERIFIED — rollback-only plan creates six planning rows and resolves Starling after Account creation |
 | PD-AUDIT-106I-01 | Final Apply preview | Persist all 14 decisions, bind Profile/workbook/decisions/plan/destination hashes, and produce an owner-readable no-write preview | CP-106I dry-run safety contract; #95/#104 | NEEDS VERIFICATION — zero mandatory reviews; no Profile business rows written; workbook Apply remains owner-blocked |
+
+## 2026-10-30 CP-106J governed Apply and rollback
+
+| ID | Area | Requested behaviour | Authority | Status |
+|---|---|---|---|---|
+| PD-FIX-474 | Import rollback | Restore reviewed exchange-commission writes and remove target-Profile rows absent from the exact pre-import checkpoint | CP-106J rollback contract; #95/#104 | COMPLETE / CODE-VERIFIED — focused rollback tests pass; failed Apply restored the exact WILL-PERSONAL checkpoint with no business rows remaining |
+| PD-AUDIT-106J-01 | Governed Apply | Execute only the approved hash-bound plan and stop on any post-import mismatch | CP-106J owner approval; #95/#104 | BROKEN / BLOCKING — all 1,079 planned rows were written transiently and financial reconciliation matched, but Account/open-position expected counts disagreed; governed rollback completed and the approval was not reused |
