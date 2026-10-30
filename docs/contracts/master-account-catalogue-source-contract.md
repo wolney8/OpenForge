@@ -1,6 +1,6 @@
 # Master Account Catalogue Source Contract
 
-Last updated: 2026-08-28
+Last updated: 2026-10-30
 
 ## Status
 
@@ -26,6 +26,8 @@ The master source may contain public or Fund Manager-maintained reference metada
 - legal operator, group, platform, and risk-team references
 - licence and canonical-domain references
 - active/archive state
+- lifecycle (`ACTIVE`, `RETIRED`, or `SUSPENDED`), eligibility for new activity, historical names,
+  and explicit predecessor/successor transitions
 - accessible display colours and approved local logo path
 - source, confidence, and verification date
 - introduction timestamp used to surface recently added providers during Profile account selection
@@ -73,10 +75,16 @@ personal data, cookies, tokens, or login details. Those remain profile-scoped da
 - A provider is eligible only when the profile jurisdiction and at least one enabled profile
   channel match. Providers with subdivision restrictions additionally require a matching profile
   subdivision.
+- Stable provider identity is independent of the current display name. Historical Account and bet
+  rows retain the provider identity and source name used at the time; catalogue succession never
+  rewrites historical rows or implies Account succession.
+- BETDAQ is the canonical boundary example: historical BETDAQ activity remains BETDAQ, BETDAQ is
+  retired for new activity, and Matchbook is its new-activity successor. A BETDAQ Account is never
+  changed into a Matchbook Account without separate continuity evidence and an explicit decision.
 
 ## Validation
 
-- schema version is `1.0`
+- schema version is `1.1` (`1.0` remains readable for compatibility)
 - catalogue ids are unique and contain letters, numbers, or hyphens only
 - brand names are unique within an account type
 - jurisdictions use ISO alpha-2 codes; `IRE`, `USA`, and currency code `EUR` are invalid
@@ -129,3 +137,18 @@ Recommended model, pending explicit profile-architecture approval:
 
 `To confirm`: whether each profile may override jurisdiction and channels independently, or whether
 the MVP should enforce one Fund Manager-wide jurisdiction/channel set for every managed profile.
+
+## Future result-provider boundary
+
+Odds providers supply fixture, market, selection, price and quote timestamps. Result providers
+supply event identity, event status, score/result and finality metadata. Plum Duff remains the
+settlement authority: a provider result can create only a deterministic settlement proposal after
+exact fixture, market, selection and settlement-period matching. It must never directly overwrite
+a bet result.
+
+Future result-assisted settlement is `provider result → deterministic settlement proposal →
+governed settlement`. It fails closed for fixture mismatches, postponement/rescheduling,
+abandonment/cancellation, voids, normal-time/extra-time/penalty ambiguity, market-period mismatch,
+promotional early-payout differences and missing finality. The Odds API should be evaluated first
+because its score event IDs may align with its odds event IDs. Sportradar remains a future richer
+status/secondary-validation feasibility candidate. No result API integration is approved here.

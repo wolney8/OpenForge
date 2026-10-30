@@ -244,6 +244,7 @@ ACCOUNT_WRITE_COLUMNS = (
     "type",
     "counts_in_cash_total",
     "channel",
+    "access_channels_json",
     "status",
     "lifecycle_status",
     "restrictions_json",
@@ -1440,6 +1441,7 @@ def _account_write_state(
             "platform": provider.platform,
             "lifecycle_status": lifecycle_status,
             "current_balance": current_balance,
+            "access_channels_json": source_state.get("access_channels_json") or "[]",
             "restrictions_json": _json(restrictions),
             "stake_access": source_state.get("stake_access") or "Not Checked",
             "promo_access": source_state.get("promo_access") or "Not Checked",
@@ -1485,9 +1487,14 @@ def _reviewed_account_state(
                 {
                     key: value
                     for key, value in decision.get("override_fields", {}).items()
-                    if key in {"stake_access", "promo_access"}
+                    if key in {"stake_access", "promo_access", "access_channels"}
                 }
             )
+    if "access_channels" in mapped:
+        from openforge_api.account_channels import access_channels_json, legacy_channel_projection
+
+        mapped["access_channels_json"] = access_channels_json(mapped["access_channels"])
+        mapped["channel"] = legacy_channel_projection(mapped["access_channels"])
     state = _account_write_state(mapped, catalogue_id=catalogue_id, provider=provider)
     AccountPayload.model_validate(
         {**state, "restrictions": json.loads(str(state["restrictions_json"]))}

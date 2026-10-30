@@ -46,6 +46,7 @@ ALLOWED_OVERRIDE_FIELDS = {
     "strategy",
     "stake_access",
     "promo_access",
+    "access_channels",
     "offer_type",
     "result",
 }
@@ -110,7 +111,9 @@ class ReviewDecisionPayload(BaseModel):
     target_type: str = Field(default="", max_length=80)
     catalogue_id: str = Field(default="", max_length=80)
     note: str = Field(default="", max_length=1000)
-    override_fields: dict[str, str | int | float | bool | None] = Field(default_factory=dict)
+    override_fields: dict[str, str | int | float | bool | list[str] | None] = Field(
+        default_factory=dict
+    )
 
     @model_validator(mode="after")
     def validate_reasoned_action(self) -> "ReviewDecisionPayload":
@@ -683,22 +686,34 @@ def _allowed_actions(item: dict[str, Any]) -> set[str]:
 
 def _decision_overrides(item: dict[str, Any], payload: ReviewDecisionPayload) -> dict[str, Any]:
     overrides = dict(payload.override_fields)
-    access_fields = set(overrides) & {"stake_access", "promo_access"}
+    access_fields = set(overrides) & {"stake_access", "promo_access", "access_channels"}
     classification_fields = set(overrides) & {"offer_type", "result"}
     if access_fields:
         from typing import get_args
 
         from openforge_api.accounts import PromoAccessValue, StakeAccessValue
 
-        allowed = {
-            "stake_access": get_args(StakeAccessValue),
-            "promo_access": get_args(PromoAccessValue),
-        }
+        allowed_stake = get_args(StakeAccessValue)
+        allowed_promo = get_args(PromoAccessValue)
+        if "access_channels" in overrides:
+            from openforge_api.account_channels import normalize_access_channels
+
+            try:
+                if not isinstance(overrides["access_channels"], list):
+                    raise ValueError
+                overrides["access_channels"] = normalize_access_channels(
+                    overrides["access_channels"]
+                )
+            except ValueError as error:
+                raise HTTPException(
+                    status_code=422, detail="Choose canonical Account access channels"
+                ) from error
         if (
             item["category"] != "accounts_partial"
             or payload.action != "edit_mapping"
             or not payload.note.strip()
-            or any(overrides[key] not in allowed[key] for key in access_fields)
+            or ("stake_access" in overrides and overrides["stake_access"] not in allowed_stake)
+            or ("promo_access" in overrides and overrides["promo_access"] not in allowed_promo)
         ):
             raise HTTPException(
                 status_code=422,

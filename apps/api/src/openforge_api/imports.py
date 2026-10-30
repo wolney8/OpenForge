@@ -377,11 +377,13 @@ STAKE_ACCESS_IMPORT_MAP = {
     "severely limited": "Severely Limited", "heavily limited": "Severely Limited",
     "minimum only": "Severely Limited", "blocked": "Blocked",
     "not checked": "Not Checked",
+    "unknown": "Not Checked",
 }
 PROMO_ACCESS_IMPORT_MAP = {
     "full": "Full", "restricted": "Restricted", "some promos": "Restricted",
     "boosts only": "Restricted", "none": "None", "no promos": "None",
     "not checked": "Not Checked",
+    "unknown": "Not Checked",
 }
 
 # Type-scoped workbook spellings that have an established canonical catalogue identity.
@@ -1899,6 +1901,11 @@ def map_account_import_fields(
         validated = AccountPayload.model_validate(
             {**mapped, "restriction_details": restriction_details}
         ).model_dump(mode="json")
+        from openforge_api.account_channels import access_channels_json
+
+        validated["access_channels_json"] = access_channels_json(
+            validated.get("access_channels", [])
+        )
         validated["restriction_details_json"] = json.dumps(
             validated.pop("restriction_details"), sort_keys=True
         )

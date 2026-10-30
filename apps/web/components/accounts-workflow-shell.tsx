@@ -23,6 +23,7 @@ import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
 import { MaterialDateField, MaterialDateTimeField } from "@/components/material-date-time-field";
 import { StatusToast } from "@/components/status-toast";
+import { SearchableCombobox, type OptionListMode } from "@/components/selection-controls";
 import { fromDateTimeLocalValue, toDateTimeLocalValue } from "@/lib/date-format";
 import {
   scrollToElementTopAfterRender,
@@ -62,6 +63,7 @@ type AccountRecord = {
   type: string;
   counts_in_cash_total: boolean;
   channel: string;
+  access_channels: string[];
   status: string;
   lifecycle_status: string;
   signup_offer_status: "Unknown" | "Yes" | "No";
@@ -97,6 +99,7 @@ type AccountFormState = {
   type: string;
   counts_in_cash_total: boolean;
   channel: string;
+  access_channels: string[];
   status: string;
   lifecycle_status: string;
   signup_offer_status: "Unknown" | "Yes" | "No";
@@ -262,6 +265,7 @@ function createBlankForm(): AccountFormState {
     type: "",
     counts_in_cash_total: true,
     channel: "Unknown",
+    access_channels: [],
     status: "Not Signed Up",
     lifecycle_status: "Not Signed Up",
     signup_offer_status: "Unknown",
@@ -292,6 +296,7 @@ function recordToForm(record: AccountRecord, commissionRate = ""): AccountFormSt
     type: record.type,
     counts_in_cash_total: record.counts_in_cash_total,
     channel: record.channel,
+    access_channels: record.access_channels,
     status: record.status,
     lifecycle_status: record.lifecycle_status,
     signup_offer_status: record.signup_offer_status,
@@ -423,6 +428,7 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialIssue
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [workflowVisible, setWorkflowVisible] = useState(false);
   const [formState, setFormState] = useState<AccountFormState>(createBlankForm);
+  const [accessChannelMode, setAccessChannelMode] = useState<OptionListMode>("CLOSED");
   const [pristineFormState, setPristineFormState] = useState<AccountFormState>(createBlankForm);
   const [tableMode, setTableMode] = useState<AccountTableMode>("All");
   const [tableFilters, setTableFilters] = useState<AccountTableFilters>(() => ({
@@ -1518,6 +1524,13 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialIssue
                           retail: "Retail",
                         })[channel]).join(", ") || "Unknown"
                       : "Unknown",
+                    access_channels: entry
+                      ? entry.operating_channels.map((channel) => ({
+                          web: "Online",
+                          mobile: "Mobile",
+                          retail: "Retail",
+                        })[channel])
+                      : [],
                     group_name: entry?.operator_group ?? "",
                     platform: entry?.platform ?? "",
                     commission_rate: entry?.account_type === "Exchange"
@@ -1549,6 +1562,22 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialIssue
             <span>Type</span>
             <input aria-readonly="true" placeholder="Inherited from Account Catalogue" readOnly value={resolvedAccountType} />
           </label>
+          <div className="field-span-2">
+            <SearchableCombobox
+              dataPdId="accounts.editor.access-channels"
+              id="account-access-channels"
+              label="Access channels"
+              mode={accessChannelMode}
+              onChange={(accessChannels) => setFormState((current) => ({
+                ...current,
+                access_channels: accessChannels,
+                channel: accessChannels.join(", ") || "Unknown",
+              }))}
+              onModeChange={setAccessChannelMode}
+              options={["Online", "Mobile", "Retail", "Unknown"].map((value) => ({ id: value, name: value }))}
+              values={formState.access_channels}
+            />
+          </div>
           <label className="field-control">
             <span>Signup / lifecycle</span>
             <select

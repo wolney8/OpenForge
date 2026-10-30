@@ -5,6 +5,7 @@ export type AccountAuthorityRecord = {
   type: string;
   counts_in_cash_total: boolean;
   channel: string;
+  access_channels?: string[];
   status: string;
   lifecycle_status?: string;
   restrictions_json?: string;

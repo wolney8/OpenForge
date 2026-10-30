@@ -7,7 +7,15 @@ from decimal import Decimal
 from typing import Literal, cast
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field, ValidationInfo, field_validator
+from pydantic import BaseModel, Field, ValidationInfo, field_validator, model_validator
+
+from openforge_api.account_channels import (
+    access_channels_from_json,
+    access_channels_from_legacy,
+    access_channels_json,
+    legacy_channel_projection,
+    normalize_access_channels,
+)
 
 from openforge_api.account_catalogue_source import load_master_account_catalogue
 from openforge_api.db import (
@@ -142,6 +150,7 @@ class AccountPayload(BaseModel):
     type: AccountTypeValue
     counts_in_cash_total: bool = True
     channel: str = "Unknown"
+    access_channels: list[str] = Field(default_factory=list)
     status: StatusValue
     lifecycle_status: LifecycleValue | None = None
     signup_offer_status: SignupOfferStatusValue = "Unknown"
@@ -160,17 +169,27 @@ class AccountPayload(BaseModel):
     sign_up_date: str = Field(default="", max_length=20)
     notes: str = Field(default="", max_length=1000)
 
-    @field_validator("channel")
+    @model_validator(mode="before")
     @classmethod
-    def normalize_channels(cls, value: str) -> str:
-        channels = [item.strip().title() for item in value.split(",") if item.strip()]
-        if not channels:
-            return "Unknown"
-        if "Unknown" in channels and len(channels) > 1:
-            raise ValueError("Unknown cannot be combined with an operating channel")
-        if any(channel not in CHANNEL_LABELS for channel in channels):
-            raise ValueError("channel must use Online, Mobile, Retail, or Unknown")
-        return ", ".join(dict.fromkeys(channels))
+    def translate_legacy_channel(cls, value: object) -> object:
+        if not isinstance(value, dict):
+            return value
+        translated = dict(value)
+        if "access_channels" not in translated:
+            translated["access_channels"] = access_channels_from_legacy(
+                str(translated.get("channel") or "")
+            )
+        return translated
+
+    @field_validator("access_channels")
+    @classmethod
+    def validate_access_channels(cls, value: list[str]) -> list[str]:
+        return normalize_access_channels(value)
+
+    @model_validator(mode="after")
+    def project_legacy_channel(self) -> "AccountPayload":
+        self.channel = legacy_channel_projection(self.access_channels)
+        return self
 
 
 class AccountResponse(AccountPayload):
@@ -251,6 +270,9 @@ def resolve_catalogue_fields(payload: AccountPayload) -> dict[str, object]:
     values["restriction_details_json"] = payload.restriction_details.model_dump_json()
     values.pop("restrictions", None)
     values.pop("restriction_details", None)
+    values["access_channels_json"] = access_channels_json(payload.access_channels)
+    values["channel"] = legacy_channel_projection(payload.access_channels)
+    values.pop("access_channels", None)
     master_catalogue = load_master_account_catalogue()
     expected_master_type = "Bookmaker" if payload.type == "Bookie" else payload.type
     master_entry = next(
@@ -266,6 +288,7 @@ def resolve_catalogue_fields(payload: AccountPayload) -> dict[str, object]:
                 )
             )
             and record.status == "Active"
+            and record.eligible_for_new_activity
         ),
         None,
     )
@@ -303,6 +326,9 @@ def resolve_catalogue_fields(payload: AccountPayload) -> dict[str, object]:
 
 def build_account_response(record: object) -> AccountResponse:
     values = dict(record.__dict__)
+    values["access_channels"] = access_channels_from_json(
+        str(values.pop("access_channels_json", "[]"))
+    )
     try:
         restrictions = json.loads(values.pop("restrictions_json", "[]"))
     except json.JSONDecodeError:
@@ -352,7 +378,9 @@ def set_profile_catalogue_account_selection(
         (
             record
             for record in catalogue.records
-            if record.catalogue_id == catalogue_id and record.status == "Active"
+            if record.catalogue_id == catalogue_id
+            and record.status == "Active"
+            and record.eligible_for_new_activity
         ),
         None,
     )
@@ -410,10 +438,10 @@ def set_profile_catalogue_account_selection(
         account=provider.brand_name,
         type=type_value,
         counts_in_cash_total=payload.counts_in_cash_total,
-        channel=", ".join(
+        access_channels=[
             {"web": "Online", "mobile": "Mobile", "retail": "Retail"}[channel]
             for channel in provider.operating_channels
-        ) or "Unknown",
+        ],
         status=status,
         lifecycle_status=lifecycle,
         signup_offer_status=(
@@ -569,6 +597,7 @@ def archive_profile_account(profile_id: str, account_id: str) -> AccountResponse
             "type": existing.type,
             "counts_in_cash_total": False,
             "channel": existing.channel,
+            "access_channels_json": existing.access_channels_json,
             "status": "Archived",
             "lifecycle_status": "Archived",
             "restrictions_json": existing.restrictions_json,

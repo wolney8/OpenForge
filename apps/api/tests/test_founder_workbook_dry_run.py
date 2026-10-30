@@ -368,6 +368,38 @@ def test_pending_signup_account_without_source_balance_remains_unknown(
     assert mapped["counts_in_cash_total"] is False
 
 
+def test_account_import_preserves_multiple_channels_and_unknown_access_semantics(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        "openforge_api.imports.resolve_account_catalogue_record",
+        lambda _name, _type: synthetic_catalogue().records[0],
+    )
+    mapped, errors, warnings = map_account_import_fields(
+        {
+            "Account": "Demo Bet",
+            "Type": "Bookie",
+            "Status": "Active",
+            "Channel": "Online, In Store",
+            "Stake Access": "Unknown",
+            "Promo Access": "Unknown",
+            "CurrentBalance": "0.00",
+            "Counts In Cash Total": True,
+        }
+    )
+
+    assert errors == []
+    assert mapped["access_channels"] == ["Online", "Retail"]
+    assert json.loads(str(mapped["access_channels_json"])) == ["Online", "Retail"]
+    assert mapped["channel"] == "Online, Retail"
+    assert mapped["stake_access"] == "Not Checked"
+    assert mapped["promo_access"] == "Not Checked"
+    assert {warning["code"] for warning in warnings} >= {
+        "normalized_stake_access",
+        "normalized_promo_access",
+    }
+
+
 def test_terminal_historical_extra_place_with_audited_pnl_is_automatic(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
