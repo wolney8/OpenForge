@@ -711,7 +711,6 @@ def _decision_overrides(item: dict[str, Any], payload: ReviewDecisionPayload) ->
                 ) from error
         if (
             item["category"] != "accounts_partial"
-            or str(item.get("source_fields", {}).get("Type") or "") != "Exchange"
             or payload.action != "edit_mapping"
             or not payload.note.strip()
             or ("stake_access" in overrides and overrides["stake_access"] not in allowed_stake)
@@ -732,6 +731,7 @@ def _decision_overrides(item: dict[str, Any], payload: ReviewDecisionPayload) ->
             ) from error
         if (
             item["category"] != "accounts_partial"
+            or str(item.get("source_fields", {}).get("Type") or "") != "Exchange"
             or payload.action != "edit_mapping"
             or not payload.note.strip()
             or commission_rate < Decimal("0")
