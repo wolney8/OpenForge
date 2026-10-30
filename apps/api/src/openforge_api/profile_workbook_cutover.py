@@ -921,6 +921,24 @@ def final_import_summary(
             "SELECT profile_id, display_name FROM profiles WHERE profile_id = ?",
             (run["profile_id"],),
         ).fetchone()
+    account_identity_rows = [
+        row
+        for row in identity_preflight["rows"]
+        if row.get("source_namespace") == "account"
+    ]
+    operational_account_rows = [row for row in account_identity_rows if row.get("operational")]
+    reviewed_account_counts = {
+        **account_changes.get("counts", {}),
+        "new_profile_accounts": sum(
+            row.get("treatment") == "insert" for row in operational_account_rows
+        ),
+        "existing_profile_accounts_matched": sum(
+            bool(row.get("existing_destinations")) for row in operational_account_rows
+        ),
+        "resolved_workbook_accounts": len(operational_account_rows),
+        "workbook_accounts_accounted": len(account_identity_rows),
+        "workbook_accounts_not_found_globally": len(importable_provider_blockers),
+    }
     return {
         "ready": (
             not blocking
@@ -1001,7 +1019,7 @@ def final_import_summary(
         ],
         "accounts": {
             "total_source": run["summary"].get("accounts", {}).get("row_count", 0),
-            **account_changes.get("counts", {}),
+            **reviewed_account_counts,
             "absent_strategy": account_changes.get("default_absent_strategy", "leave_unchanged"),
             "archived_or_deactivated": sum(
                 row.get("planned_action") in {"archive", "deactivate"}
