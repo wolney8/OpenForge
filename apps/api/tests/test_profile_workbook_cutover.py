@@ -1785,6 +1785,65 @@ def test_reviewed_access_and_deferred_provider_share_account_preflight(tmp_path:
     assert _reviewed_account_state(row, {"review": decision}, _catalogue_records()) is None
 
 
+def test_reviewed_exchange_commission_accepts_explicit_zero(tmp_path: Path) -> None:
+    from openforge_api.founder_import_review import ReviewDecisionPayload, _decision_overrides
+    from openforge_api.profile_workbook_cutover import (
+        _apply_reviewed_account_commission,
+        _catalogue_records,
+        _reviewed_account_state,
+    )
+
+    configure_cutover_database(tmp_path)
+    row = synthetic_plan()["accounts"][0]
+    row["mapped_profile_state"]["commission_rate"] = None
+    item = {
+        "category": "accounts_partial",
+        "source_sheet": "Accounts",
+        "source_fields": {"Type": "Exchange"},
+        "import_id": row["import_key"],
+        "review_status": "REVIEWED_OVERRIDDEN",
+    }
+    payload = ReviewDecisionPayload(
+        item_id="review-synthetic-1234",
+        source_fingerprint="a" * 64,
+        action="edit_mapping",
+        note="Owner confirmed zero commission",
+        override_fields={"commission_rate": "0.00"},
+    )
+    item["decision"] = {
+        "action": "edit_mapping",
+        "override_fields": _decision_overrides(item, payload),
+    }
+
+    catalogue = _catalogue_records()
+    provider_id = str(row["catalogue_id"])
+    catalogue[provider_id] = catalogue[provider_id].model_copy(
+        update={"account_type": "Exchange"}
+    )
+    state = _reviewed_account_state(row, {"review": item}, catalogue)
+
+    assert state is not None
+    assert item["decision"]["override_fields"]["commission_rate"] == "0.00"
+    run, _workspace = run_and_workspace()
+    persist_run_and_plan(run, synthetic_plan())
+    with connect() as connection:
+        _apply_reviewed_account_commission(
+            connection,
+            profile_id=PROFILE_ID,
+            import_run_id=RUN_ID,
+            source=row,
+            state=state,
+            decisions={"review": item},
+        )
+        saved = connection.execute(
+            "SELECT commission_rate FROM profile_exchange_commissions "
+            "WHERE profile_id = ? AND exchange_name = ?",
+            (PROFILE_ID, state["account"]),
+        ).fetchone()
+        assert saved is not None
+        assert saved["commission_rate"] == "0.00"
+
+
 def test_pending_signup_blank_balance_stays_unknown(tmp_path: Path) -> None:
     from openforge_api.profile_workbook_cutover import _catalogue_records
 
