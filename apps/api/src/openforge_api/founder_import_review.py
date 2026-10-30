@@ -768,6 +768,18 @@ def _decision_overrides(item: dict[str, Any], payload: ReviewDecisionPayload) ->
         "historical_imported_behavior",
     }:
         overrides["calculation_provenance"] = "imported_historical"
+    if (
+        payload.action == "historical_imported_calculation"
+        and item.get("category") in {"sportsbook_partial", "free_bets_partial"}
+        and not str((item.get("source_fields") or {}).get("Exchange") or "").strip()
+    ):
+        overrides.update(
+            {
+                "legacy_compatibility_rule": "settled_missing_counterparty_v1",
+                "unresolved_identity_field": "exchange_name",
+                "unresolved_identity_state": "unavailable_in_source",
+            }
+        )
     if payload.action == "preserve_and_shorten":
         overrides["canonical_text_rule"] = "truncate_to_200_with_full_source_preserved"
     if payload.action == "historical_casino_label":

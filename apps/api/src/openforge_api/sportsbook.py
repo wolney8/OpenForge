@@ -52,7 +52,6 @@ from openforge_api.db import (
     update_sportsbook_bet,
     update_sportsbook_partial_lay_reminder,
 )
-
 from openforge_api.free_bet_awards import AwardRequest
 from openforge_api.free_bet_input import validate_free_bet_commission
 from openforge_api.multi_profile_entry import (
@@ -112,6 +111,7 @@ ResultValue = Literal[
     "Mixed",
 ]
 MatchStrategyValue = Literal[
+    "",
     "Standard",
     "Underlay",
     "Overlay",
@@ -268,9 +268,31 @@ class SportsbookBetPayload(SportsbookBetFields):
         if self.match_strategy != "No Lay":
             required_fields.append(("lay_odds_1", self.lay_odds_1))
 
+        reviewed_historical_terminal = (
+            isinstance(info.context, dict)
+            and info.context.get("reviewed_historical_terminal") is True
+            and self.status == "Settled"
+            and self.result != "Pending"
+            and bool(self.manual_override_value)
+            and bool(self.manual_override_reason.strip())
+        )
+        if (
+            self.match_strategy != "No Lay"
+            and not self.exchange_name.strip()
+            and not reviewed_historical_terminal
+        ):
+            required_fields.append(("exchange_name", self.exchange_name))
+
         errors: list[InitErrorDetails] = [
             {
-                "type": PydanticCustomError("sportsbook_odds_required", "Enter odds."),
+                        "type": PydanticCustomError(
+                            "sportsbook_exchange_required"
+                            if field_name == "exchange_name"
+                            else "sportsbook_odds_required",
+                            "Choose an exchange."
+                            if field_name == "exchange_name"
+                            else "Enter odds.",
+                        ),
                 "loc": (field_name,),
                 "input": value,
             }

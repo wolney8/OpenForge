@@ -40,13 +40,16 @@ from openforge_api.each_way_extra_places import EachWayExtraPlacePayload
 from openforge_api.each_way_extra_places import build_response as build_extra_place_response
 from openforge_api.free_bets import FreeBetPayload
 from openforge_api.postgres_schema import sqlite_type_to_postgres
+from openforge_api.source_identity import (
+    existing_import_identities as _existing_import_identities,
+)
+from openforge_api.source_identity import (
+    logical_source_namespace,
+    workbook_source_key,
+)
 from openforge_api.sportsbook import SportsbookBetPayload, list_profile_sportsbook_bets
 from openforge_api.sportsbook import build_response as build_sportsbook_response
 from openforge_api.tracker_settings import DATE_PRESET_VALUES
-from openforge_api.source_identity import (
-    logical_source_namespace, workbook_source_key,
-    existing_import_identities as _existing_import_identities,
-)
 from openforge_api.tracker_summary_sources import get_profile_tracker_summary_sources
 
 PROFILE_TABLES = (
@@ -895,9 +898,7 @@ def final_import_summary(
                     ),
                     None,
                 )
-                if row["action"] == "exclude_non_transactional" or (
-                    item and item["review_status"] in {"EXCLUDED", "DEFERRED"}
-                ):
+                if item and item["review_status"] in {"EXCLUDED", "DEFERRED"}:
                     continue
                 ep_item = _decision_for(decisions, import_key, category="historical_extra_place")
                 if ep_item and ep_item["review_status"] in {"EXCLUDED", "DEFERRED"}:
@@ -1381,6 +1382,16 @@ def _apply_profile_settings(
         }.get(table)
         if table_name is None:
             continue
+        if target == "onboarding.main_bank_catalogue_id":
+            imported_bank = connection.execute(
+                "SELECT 1 FROM accounts WHERE profile_id = ? AND catalogue_id = ? "
+                "AND type = 'Bank' AND lifecycle_status <> 'Archived'",
+                (profile_id, str(parsed_value)),
+            ).fetchone()
+            if imported_bank is None:
+                raise ImportCutoverError(
+                    "The reviewed main bank must resolve to an imported active Bank Account"
+                )
         current = connection.execute(
             f"SELECT {field} FROM {table_name} WHERE profile_id = ?", (profile_id,)
         ).fetchone()
@@ -1414,6 +1425,18 @@ def _apply_profile_settings(
             ) from error
         count += 1
     return count
+
+
+def _profile_setting_phase(
+    settings: list[dict[str, Any]], *, main_bank: bool
+) -> list[dict[str, Any]]:
+    """Keep the imported main-bank reference behind Account creation."""
+
+    return [
+        item
+        for item in settings
+        if (str(item.get("target") or "") == "onboarding.main_bank_catalogue_id") is main_bank
+    ]
 
 
 def _catalogue_records() -> dict[str, Any]:
@@ -1796,6 +1819,20 @@ def _apply_decision(
         for field in ("offer_type", "result"):
             if overrides.get(field):
                 payload[field] = overrides[field]
+        if (
+            overrides.get("offer_type") == "Mug Bet"
+            and overrides.get("strategy") == "No Lay"
+            and overrides.get("result") == "Lose"
+        ):
+            payload.update(
+                {
+                    "lay_actual": "0.00",
+                    "lay_matched_stake_1": "0.00",
+                    "lay_odds_1": "",
+                    "lay_commission_1": "",
+                    "exchange_name": "",
+                }
+            )
         if overrides.get("manual_override_reason"):
             if "final_net_pnl" in payload and "manual_override_value" not in payload:
                 # Casino's governed reason field is UserNotes, not a new SQL column.
@@ -1846,6 +1883,7 @@ def _apply_decision(
         imported_value
         and not realised_value
         and not str(row.get("current_worst_case_pnl") or "")
+        and str(payload.get("status") or "") not in {"Prospecting", "Not Placed"}
         and "manual_override_value" in payload
         and not str(payload.get("manual_override_value") or "")
     ):
@@ -1923,8 +1961,6 @@ def _ledger_write_entries(
                 ),
                 None,
             )
-            if row["action"] == "exclude_non_transactional":
-                continue
             if item and item["review_status"] in {"EXCLUDED", "DEFERRED"}:
                 continue
             ep_item = ep_decisions.get(import_key)
@@ -2225,6 +2261,57 @@ def _profile_state_checksum(connection: Any, profile_id: str) -> str:
     return _checksum(_profile_snapshot(connection, profile_id))
 
 
+def final_dry_run_contract(
+    *,
+    connection: Any,
+    run: dict[str, Any],
+    workspace: dict[str, Any],
+    plan: dict[str, Any],
+) -> dict[str, str]:
+    decisions = {
+        str(item["item_id"]): item["decision"]
+        for item in workspace["items"]
+        if item.get("decision")
+    }
+    return {
+        "profile_id": str(run["profile_id"]),
+        "workbook_checksum": str(run["workbook_checksum"]),
+        "destination_state_checksum": _profile_state_checksum(
+            connection, str(run["profile_id"])
+        ),
+        "review_decision_checksum": _checksum(decisions),
+        "write_plan_checksum": _checksum(plan),
+    }
+
+
+def assert_final_dry_run_current(
+    *,
+    connection: Any,
+    run: dict[str, Any],
+    workspace: dict[str, Any],
+    plan: dict[str, Any],
+) -> None:
+    approved = (run.get("summary") or {}).get("final_dry_run") or {}
+    # Older governed runs pre-date the final-dry-run fingerprint contract.
+    # New runs that persist the contract fail closed on every protected input.
+    if not approved:
+        return
+    current = final_dry_run_contract(
+        connection=connection, run=run, workspace=workspace, plan=plan
+    )
+    for field in (
+        "profile_id",
+        "workbook_checksum",
+        "destination_state_checksum",
+        "review_decision_checksum",
+        "write_plan_checksum",
+    ):
+        if not approved.get(field) or str(approved[field]) != current[field]:
+            raise ImportCutoverError(
+                "The destination, review decisions, or write plan changed after the final dry run"
+            )
+
+
 def _profile_state_manifest(connection: Any, profile_id: str) -> dict[str, Any]:
     """Return row-level fingerprints without exposing Profile field values."""
     snapshot = _profile_snapshot(connection, profile_id)
@@ -2334,6 +2421,8 @@ def _actual_imported_value(
 ) -> tuple[Decimal, bool, str, Decimal]:
     effective_date = date.fromisoformat(effective_at[:10])
     if entity_type == "sportsbook_bet":
+        if str(row.get("status") or "") in {"Prospecting", "Not Placed"}:
+            return Decimal("0"), False, str(row.get("date_settled") or ""), Decimal("0")
         sportsbook_response = build_sportsbook_response(
             profile_id,
             SportsbookBetRecord(**row),
@@ -2869,7 +2958,7 @@ def _apply_write_plan(
             connection,
             profile_id=profile_id,
             import_run_id=import_run_id,
-            settings=plan["profile_settings"],
+            settings=_profile_setting_phase(plan["profile_settings"], main_bank=False),
         )
     except ImportPersistenceError:
         raise
@@ -2887,6 +2976,12 @@ def _apply_write_plan(
             rows=plan["accounts"],
             decisions=decisions,
             absent_strategy=absent_strategy,
+        )
+        setting_count += _apply_profile_settings(
+            connection,
+            profile_id=profile_id,
+            import_run_id=import_run_id,
+            settings=_profile_setting_phase(plan["profile_settings"], main_bank=True),
         )
     except (ImportCutoverError, ImportPersistenceError):
         raise
@@ -3032,7 +3127,12 @@ def validate_import_approval_preflight(
                     context={
                         "restore_terminal_void_history": bool(
                             row.get("automatic_historical_void_zero")
-                        )
+                        ),
+                        "reviewed_historical_terminal": bool(
+                            item
+                            and (item.get("decision") or {}).get("action")
+                            == "historical_imported_calculation"
+                        ),
                     },
                 )
             elif ledger == "free_bets":
@@ -3162,6 +3262,9 @@ def execute_import(
     plan: dict[str, Any],
 ) -> dict[str, Any]:
     with connect() as connection:
+        assert_final_dry_run_current(
+            connection=connection, run=run, workspace=workspace, plan=plan
+        )
         written = connection.execute(
             "SELECT 1 FROM profile_import_write_audit WHERE import_run_id = ? "
             "AND profile_id = ? AND rolled_back_at = '' LIMIT 1", (import_run_id, profile_id),

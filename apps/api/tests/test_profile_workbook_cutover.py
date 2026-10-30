@@ -24,13 +24,16 @@ from openforge_api.profile_workbook_cutover import (
     _checksum,
     _historical_extra_place_date,
     _ledger_write_entries,
+    _profile_setting_phase,
     _profile_state_checksum,
     _storage_value,
     approved_run_is_retryable,
+    assert_final_dry_run_current,
     build_base_write_plan,
     completed_import_rollback_safety,
     execute_import,
     failed_import_safety,
+    final_dry_run_contract,
     final_import_summary,
     rollback_import,
     save_base_write_plan,
@@ -1396,7 +1399,17 @@ def test_founder_snapshot_v8_september_baseline_reconciles_at_scale(
     excluded = clones(sportsbook_rows[0], prefix="prospecting", count=5)
     for row in excluded:
         row["action"] = "exclude_non_transactional"
+        row["status"] = "Prospecting"
         row["realised_pnl"] = ""
+        row["mapped_payload"].update(
+            {
+                "status": "Prospecting",
+                "result": "Pending",
+                "match_strategy": "",
+                "manual_override_value": "",
+                "manual_override_reason": "",
+            }
+        )
     sportsbook_rows.extend(excluded)
     plan["ledgers"]["free_bets"].extend(
         clones(plan["ledgers"]["free_bets"][0], prefix="free-bet", count=165)
@@ -1551,8 +1564,16 @@ def test_founder_snapshot_v8_september_baseline_reconciles_at_scale(
                 "SELECT COUNT(*) FROM sportsbook_bets WHERE profile_id = ?",
                 (PROFILE_ID,),
             ).fetchone()[0]
-            == persisted_counts["sportsbook"]
+            == persisted_counts["sportsbook"] + persisted_counts["excluded_non_transactional"]
         )
+        imported_planning = connection.execute(
+            "SELECT status, manual_override_value FROM sportsbook_bets "
+            "WHERE profile_id = ? AND sportsbook_bet_id LIKE 'SB-%' "
+            "AND status IN ('Prospecting', 'Not Placed')",
+            (PROFILE_ID,),
+        ).fetchall()
+        assert len(imported_planning) == persisted_counts["excluded_non_transactional"]
+        assert all(row["manual_override_value"] == "" for row in imported_planning)
         assert (
             connection.execute(
                 "SELECT COUNT(*) FROM free_bets WHERE profile_id = ?", (PROFILE_ID,)
@@ -1869,6 +1890,127 @@ def test_historical_acceptance_uses_final_source_not_current_reference() -> None
     result = _apply_decision(payload, row, item)
     assert result["manual_override_value"] == "-2.34"
     assert result["manual_override_reason"] == "Owner accepted source result"
+
+
+def test_reviewed_mug_bet_correction_removes_conflicting_lay_leg() -> None:
+    payload = {
+        "offer_type": "Qualifying Bet",
+        "match_strategy": "Standard",
+        "result": "Lay Won",
+        "lay_actual": "2.73",
+        "lay_matched_stake_1": "2.73",
+        "lay_odds_1": "2.10",
+        "lay_commission_1": "0.02",
+        "exchange_name": "*No Exchange*",
+        "manual_override_value": "",
+        "manual_override_reason": "",
+    }
+    row = {"realised_pnl": "-3.00"}
+    item = {
+        "decision": {
+            "action": "edit_mapping",
+            "override_fields": {
+                "offer_type": "Mug Bet",
+                "strategy": "No Lay",
+                "result": "Lose",
+            },
+        }
+    }
+    result = _apply_decision(payload, row, item)
+    assert result["offer_type"] == "Mug Bet"
+    assert result["match_strategy"] == "No Lay"
+    assert result["result"] == "Lose"
+    assert result["lay_actual"] == "0.00"
+    assert result["lay_matched_stake_1"] == "0.00"
+    assert result["lay_odds_1"] == ""
+    assert result["lay_commission_1"] == ""
+    assert result["exchange_name"] == ""
+    assert result["manual_override_value"] == "-3.00"
+
+
+def test_historical_sportsbook_missing_exchange_is_bounded_to_reviewed_settlement() -> None:
+    from openforge_api.sportsbook import SportsbookBetPayload
+
+    payload = dict(
+        event_name="Synthetic historical match",
+        bookmaker="Bookmaker A",
+        offer_type="Mug Bet",
+        status="Settled",
+        result="Lay Won",
+        back_stake="10.00",
+        back_odds="1.72",
+        match_strategy="Standard",
+        lay_actual="9.94",
+        lay_odds_1="1.73",
+        exchange_name="",
+        manual_override_value="-0.06",
+        manual_override_reason="Owner accepted historical source result",
+    )
+    with pytest.raises(ValueError, match="exchange"):
+        SportsbookBetPayload.model_validate(payload)
+    reviewed = SportsbookBetPayload.model_validate(
+        payload, context={"reviewed_historical_terminal": True}
+    )
+    assert reviewed.exchange_name == ""
+    with pytest.raises(ValueError, match="exchange"):
+        SportsbookBetPayload.model_validate(
+            {**payload, "status": "Placed", "result": "Pending"},
+            context={"reviewed_historical_terminal": True},
+        )
+
+
+def test_historical_missing_exchange_decision_records_structured_provenance() -> None:
+    from openforge_api.founder_import_review import ReviewDecisionPayload, _decision_overrides
+
+    result = _decision_overrides(
+        {
+            "category": "sportsbook_partial",
+            "source_sheet": "Sportsbook Bets",
+            "issue_type": "missing_exchange",
+        },
+        ReviewDecisionPayload(
+            item_id="review-synthetic-1234",
+            source_fingerprint="a" * 64,
+            action="historical_imported_calculation",
+            note="Owner accepted historical source result",
+        ),
+    )
+    assert result == {
+        "calculation_provenance": "imported_historical",
+        "legacy_compatibility_rule": "settled_missing_counterparty_v1",
+        "unresolved_identity_field": "exchange_name",
+        "unresolved_identity_state": "unavailable_in_source",
+    }
+
+
+def test_main_bank_setting_is_separated_until_after_account_creation() -> None:
+    settings_rows = [
+        {"target": "profile.display_name"},
+        {"target": "onboarding.main_bank_catalogue_id"},
+    ]
+    assert _profile_setting_phase(settings_rows, main_bank=False) == [settings_rows[0]]
+    assert _profile_setting_phase(settings_rows, main_bank=True) == [settings_rows[1]]
+
+
+def test_final_dry_run_rejects_changed_destination(tmp_path: Path) -> None:
+    configure_cutover_database(tmp_path)
+    run, workspace = run_and_workspace()
+    plan = synthetic_plan()
+    with connect() as connection:
+        run["summary"]["final_dry_run"] = final_dry_run_contract(
+            connection=connection, run=run, workspace=workspace, plan=plan
+        )
+        assert_final_dry_run_current(
+            connection=connection, run=run, workspace=workspace, plan=plan
+        )
+        connection.execute(
+            "UPDATE profiles SET display_name = ? WHERE profile_id = ?",
+            ("Changed after dry run", PROFILE_ID),
+        )
+        with pytest.raises(ImportCutoverError, match="changed after the final dry run"):
+            assert_final_dry_run_current(
+                connection=connection, run=run, workspace=workspace, plan=plan
+            )
 
 
 def test_historical_free_bet_context_does_not_relax_new_placements() -> None:
