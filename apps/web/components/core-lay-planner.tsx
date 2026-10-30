@@ -2,7 +2,10 @@
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { apiBaseUrl } from "@/lib/api";
-import type { AccountAuthorityRecord } from "@/lib/account-authorities";
+import {
+  accountAllowsNewSportsbookActivity,
+  type AccountAuthorityRecord,
+} from "@/lib/account-authorities";
 import { readLayPlan, type LayPlan } from "@/lib/lay-plan";
 import { toDateTimeLocalValue } from "@/lib/date-format";
 import { getMoneyInputErrors } from "@/lib/decimal-input";
@@ -80,7 +83,11 @@ export function CoreLayPlanner({ accounts, basis, defaultCommission, exchangeCom
   const hasActual = Boolean((form.lay_actual && Number(form.lay_actual) > 0) || (form.lay_matched_stake_1 && Number(form.lay_matched_stake_1) > 0));
   const hasRecordedBack = form.status === "Placed" || form.status === "Settled";
   const stake = basis === "SNR" ? form.free_bet_value ?? "" : form.back_stake ?? "";
-  const exchanges = accounts.filter(a => a.type === "Exchange" && a.status !== "Archived" && a.lifecycle_status !== "Archived");
+  const exchanges = accounts.filter(
+    (account) =>
+      account.type === "Exchange" &&
+      (accountAllowsNewSportsbookActivity(account) || account.account === form.exchange_name)
+  );
   const exchange = exchanges.find(a => a.account_id === exchangeId) ?? exchanges.find(a => a.account === form.exchange_name);
   const strategyRef = useRef<LayPlan["selected_strategy"]>(strategy);
   useEffect(() => { strategyRef.current = strategy; }, [strategy]);

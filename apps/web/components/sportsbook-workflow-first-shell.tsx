@@ -37,7 +37,11 @@ import {
   getSportsbookGuidedEntry,
   type GuidedEntryFieldKey,
 } from "@/lib/guided-entry-focus";
-import { getAccountNamesByType, type AccountAuthorityRecord } from "@/lib/account-authorities";
+import {
+  getAccountNamesByType,
+  getNewSportsbookActivityAccountNamesByType,
+  type AccountAuthorityRecord,
+} from "@/lib/account-authorities";
 import { StatusToast } from "@/components/status-toast";
 import { CalculatorOutcomes, CalculatorOutcomeValueDisplay, type CalculatorOutcomeScenario } from "@/components/calculator-outcomes";
 import { CalculatorSectionHeading } from "@/components/calculator-section-heading";
@@ -324,6 +328,7 @@ type LinkedFreeBetRecord = {
 
 type SportsbookFormState = {
   multi_lay_correction_reason?: string;
+  correction_reason?: string;
   lay_plan_json?: string | null;
   profit_boost_source_json?: string | null;
   conditional_benefit_json?: string | null;
@@ -1082,6 +1087,7 @@ function getSportsbookRangeAnchor(row: Pick<SportsbookRecord, "date_settled" | "
 
 function createBlankForm(defaultBonusRetentionRate = "70"): SportsbookFormState {
   return {
+    correction_reason: "",
     lay_plan_json: null,
     profit_boost_source_json: null,
     conditional_benefit_json: null,
@@ -1128,6 +1134,7 @@ function createBlankForm(defaultBonusRetentionRate = "70"): SportsbookFormState 
 
 function recordToForm(record: SportsbookRecord): SportsbookFormState {
   return {
+    correction_reason: "",
     lay_plan_json: record.lay_plan_json ?? null,
     profit_boost_source_json: record.profit_boost_source_json ?? null,
     conditional_benefit_json: record.conditional_benefit_json ?? null,
@@ -1779,6 +1786,37 @@ function getComparableDirtyState(
     multi_lay_outcome_1_name: "",
     multi_lay_outcomes_json: partialLayLegs.length > 0 ? serializePartialLayLegs(partialLayLegs) : "[]",
   };
+}
+
+const settledFinancialCorrectionFields: ReadonlyArray<keyof SportsbookFormState> = [
+  "status",
+  "result",
+  "back_stake",
+  "back_odds",
+  "actual_accepted_back_odds",
+  "match_strategy",
+  "lay_odds_1",
+  "lay_actual",
+  "lay_matched_stake_1",
+  "lay_commission_1",
+  "exchange_name",
+  "date_settled",
+  "manual_override_value",
+  "bonus_trigger",
+  "maximum_bonus",
+  "bonus_retention_rate",
+];
+
+function hasSettledFinancialCorrection(
+  current: SportsbookFormState,
+  original: SportsbookFormState
+): boolean {
+  if (!["Settled", "Void", "Cancelled", "Free Bet Awarded"].includes(original.status)) {
+    return false;
+  }
+  return settledFinancialCorrectionFields.some(
+    (field) => String(current[field] ?? "") !== String(original[field] ?? "")
+  );
 }
 
 async function copyToClipboard(value: string): Promise<boolean> {
@@ -3117,7 +3155,6 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   const [settledEditEnabled, setSettledEditEnabled] = useState(false);
   const [settledDeleteGuardRowId, setSettledDeleteGuardRowId] = useState<string | null>(null);
   const [settledDeleteReason, setSettledDeleteReason] = useState("");
-  const [revertSnapshot, setRevertSnapshot] = useState<SportsbookFormState | null>(null);
   const [outcomeModalState, setOutcomeModalState] = useState<OutcomeModalState | null>(null);
   const [partialLayReminderEditorState, setPartialLayReminderEditorState] =
     useState<PartialLayReminderEditorState | null>(null);
@@ -3314,7 +3351,6 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
           setActiveEditorTabId("setup");
           setGuidedEntryDismissed(false);
           setSettledEditEnabled(false);
-          setRevertSnapshot(null);
           setFootballSettlesAssistUsed(false);
           setFootballSettlesOriginalValue(null);
         }
@@ -3336,7 +3372,6 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
         setActiveEditorTabId("setup");
         setGuidedEntryDismissed(false);
         setSettledEditEnabled(false);
-        setRevertSnapshot(null);
         setFootballSettlesAssistUsed(false);
         setFootballSettlesOriginalValue(null);
         setWorkflowVisible(false);
@@ -3505,12 +3540,10 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   const bookmakerOptions = useMemo(
     () =>
       dedupeOptions([
-        ...getAccountNamesByType(accountAuthorities, "Bookie"),
-        ...getLookupValuesByType(lookupValues, "bookmaker"),
-        ...rows.map((row) => row.bookmaker),
-        formState.bookmaker,
+        ...getNewSportsbookActivityAccountNamesByType(accountAuthorities, "Bookie"),
+        ...(selectedId && formState.bookmaker ? [formState.bookmaker] : []),
       ]),
-    [accountAuthorities, formState.bookmaker, lookupValues, rows]
+    [accountAuthorities, formState.bookmaker, selectedId]
   );
 
   const offerTypeOptions = useMemo(
@@ -3714,11 +3747,8 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
 
   const exchangeOptions = useMemo(() => {
     const options = dedupeOptions([
-      ...exchangeSettings.map((row) => row.exchange_name),
-      ...getAccountNamesByType(accountAuthorities, "Exchange"),
-      ...getLookupValuesByType(lookupValues, "exchange"),
-      ...rows.map((row) => row.exchange_name),
-      formState.exchange_name,
+      ...getNewSportsbookActivityAccountNamesByType(accountAuthorities, "Exchange"),
+      ...(selectedId && formState.exchange_name ? [formState.exchange_name] : []),
     ]);
 
     if (formState.offer_type === "Mug Bet") {
@@ -3726,7 +3756,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     }
 
     return options.filter((option) => option.toLowerCase() !== "no exchange");
-  }, [accountAuthorities, exchangeSettings, formState.exchange_name, formState.offer_type, lookupValues, rows]);
+  }, [accountAuthorities, formState.exchange_name, formState.offer_type, selectedId]);
 
   const exchangeCommissionLookup = useMemo(
     () =>
@@ -3944,9 +3974,12 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       });
     return () => controller.abort();
   }, [profileId, rows, selectedSportsbookRow]);
-  const isSettledBet = selectedSportsbookRow?.status === "Settled";
+  const isSettledBet = Boolean(
+    selectedSportsbookRow &&
+      ["Settled", "Void", "Cancelled", "Free Bet Awarded"].includes(selectedSportsbookRow.status)
+  );
   const isSettledReadOnly = Boolean(
-    isSettledBet && !settledEditEnabled && !isDirty && !revertSnapshot
+    isSettledBet && !settledEditEnabled
   );
   const isPreviewReady = useMemo(
     () => hasPreviewInputsReady(formState, resolvedCommission),
@@ -5477,7 +5510,6 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     setActiveEditorTabId("setup");
     setGuidedEntryDismissed(false);
     setSettledEditEnabled(false);
-    setRevertSnapshot(null);
     setFootballSettlesAssistUsed(false);
     setFootballSettlesOriginalValue(null);
     setErrorMessage("");
@@ -5517,7 +5549,6 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     setActiveEditorTabId("setup");
     setGuidedEntryDismissed(false);
     setSettledEditEnabled(false);
-    setRevertSnapshot(null);
     setFootballSettlesAssistUsed(false);
     setFootballSettlesOriginalValue(null);
     setErrorMessage("");
@@ -5537,7 +5568,6 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     setGuidedEntryDismissed(false);
     ignoreInitialRecordIdRef.current = true;
     isCreatingDraftRef.current = false;
-    setRevertSnapshot(null);
     setTableCollapsed(false);
     setStatusMessage("");
   }
@@ -5561,7 +5591,9 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
         nextMultiLayOutcomes,
         nextMultiLayPrimaryPlacement,
         nextPartialLayLegs
-      ).length === 0
+      ).length === 0 &&
+      (!hasSettledFinancialCorrection(nextFormState, pristineFormState) ||
+        Boolean(nextFormState.correction_reason?.trim()))
     );
   }
 
@@ -5626,7 +5658,10 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
           ),
         ];
         setStatusMessage(
-          missingFields.length > 0
+          hasSettledFinancialCorrection(persistableFormState, pristineFormState) &&
+          !persistableFormState.correction_reason?.trim()
+            ? "Explain the settled financial correction before saving."
+            : missingFields.length > 0
             ? `Complete required sportsbook fields before saving: ${missingFields.join(", ")}.`
             : persistableFormState.offer_type === "Profit Boost" &&
                 payoutStakeStrictValidation &&
@@ -5730,9 +5765,6 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     );
     setShowBetSetupValidation(false);
     if (!newerEdits) setSettledEditEnabled(false);
-    if (!options?.autosaveLabel) {
-      setRevertSnapshot(null);
-    }
     if (!isEditing && returnToLedger) {
       setQuery("");
       setCurrentPage(1);
@@ -5863,7 +5895,6 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
 
   function handleCancelSettledEdit() {
     loadEditorFormState(pristineFormState, { markPristine: true });
-    setRevertSnapshot(null);
     setSettledEditEnabled(false);
     setSettledDeleteGuardRowId(null);
     setSettledDeleteReason("");
@@ -10408,6 +10439,28 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                       ))}
                     </div>
                   ) : null}
+                  {settledEditEnabled &&
+                  hasSettledFinancialCorrection(formState, pristineFormState) ? (
+                    <label className="field-control field-span-2">
+                      <span>Correction reason</span>
+                      <textarea
+                        aria-describedby="sportsbook-correction-reason-help"
+                        aria-required="true"
+                        data-pd-id="sportsbook.settlement.correction-reason"
+                        onChange={(event) =>
+                          setFormState((current) => ({
+                            ...current,
+                            correction_reason: event.target.value,
+                          }))
+                        }
+                        rows={2}
+                        value={formState.correction_reason ?? ""}
+                      />
+                      <small id="sportsbook-correction-reason-help">
+                        Recorded with the original and corrected financial values in History.
+                      </small>
+                    </label>
+                  ) : null}
                   {isPreviewReady && activePreviewCalculation ? (
                     <section
                       aria-label={
@@ -11064,6 +11117,8 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
 	                        isPersisting ||
 	                        (corePlanPending && coreIsDirty && !isNotesOnlyExistingEdit) ||
 	                        !isDirty ||
+	                        (hasSettledFinancialCorrection(formState, pristineFormState) &&
+	                          !formState.correction_reason?.trim()) ||
 	                        (hasInvalidOddsInput && coreIsDirty && !isNotesOnlyExistingEdit)
 	                      }
 	                      type="submit"

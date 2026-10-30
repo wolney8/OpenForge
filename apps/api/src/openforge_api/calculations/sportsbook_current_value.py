@@ -9,7 +9,9 @@ from typing import Literal
 MoneyOrNone = Decimal | None
 CalculationState = Literal["resolved", "incomplete", "review_required"]
 
-OPEN_STATUSES = {"Prospecting", "Not Placed", "Placed"}
+# CP-102: only financially committed placements are current open exposure.
+# Prospecting and Not Placed remain visible planning/history states.
+OPEN_STATUSES = {"Placed"}
 CURRENT_VALUE_STATUSES = {"Placed"}
 BACK_WIN_RESULTS = {"Back Won", "Win", "Outcome 1 Won"}
 BACK_WIN_CASHBACK_RESULTS = {"Back Won + Cashback"}

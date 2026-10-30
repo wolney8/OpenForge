@@ -9,6 +9,10 @@ from typing import Literal, cast
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field, ValidationInfo, field_validator, model_validator
 
+from openforge_api.account_catalogue_source import (
+    MasterAccountCatalogueRecord,
+    load_master_account_catalogue,
+)
 from openforge_api.account_channels import (
     access_channels_from_json,
     access_channels_from_legacy,
@@ -16,8 +20,6 @@ from openforge_api.account_channels import (
     legacy_channel_projection,
     normalize_access_channels,
 )
-
-from openforge_api.account_catalogue_source import load_master_account_catalogue
 from openforge_api.db import (
     DuplicateProfileAccountError,
     create_account,
@@ -202,6 +204,8 @@ class AccountResponse(AccountPayload):
     extra_places_access_reason: str
     extra_places_allows_planning: bool
     extra_places_allows_operational_use: bool
+    catalogue_lifecycle: str
+    catalogue_eligible_for_new_activity: bool
 
 
 class AccountWritePayload(AccountPayload):
@@ -324,7 +328,11 @@ def resolve_catalogue_fields(payload: AccountPayload) -> dict[str, object]:
     return values
 
 
-def build_account_response(record: object) -> AccountResponse:
+def build_account_response(
+    record: object,
+    *,
+    master_catalogue_records: Sequence[MasterAccountCatalogueRecord] | None = None,
+) -> AccountResponse:
     values = dict(record.__dict__)
     values["access_channels"] = access_channels_from_json(
         str(values.pop("access_channels_json", "[]"))
@@ -347,19 +355,47 @@ def build_account_response(record: object) -> AccountResponse:
         restrictions_json=json.dumps(values["restrictions"]),
         stake_access=str(values.get("stake_access", "Not Checked")),
     )
+    expected_master_type = "Bookmaker" if values.get("type") == "Bookie" else values.get("type")
+    master_entry = next(
+        (
+            item
+            for item in (
+                master_catalogue_records
+                if master_catalogue_records is not None
+                else load_master_account_catalogue().records
+            )
+            if item.account_type == expected_master_type
+            and (
+                (values.get("catalogue_id") and item.catalogue_id == values.get("catalogue_id"))
+                or (
+                    not values.get("catalogue_id")
+                    and item.brand_name.casefold() == str(values.get("account", "")).casefold()
+                )
+            )
+        ),
+        None,
+    )
     values.update(
         extra_places_access_state=extra_places_health.access_state,
         extra_places_capability_state=extra_places_health.capability_state,
         extra_places_access_reason=extra_places_health.reason,
         extra_places_allows_planning=extra_places_health.allows_planning,
         extra_places_allows_operational_use=extra_places_health.allows_operational_use,
+        catalogue_lifecycle=master_entry.lifecycle if master_entry is not None else "UNLISTED",
+        catalogue_eligible_for_new_activity=(
+            master_entry.eligible_for_new_activity if master_entry is not None else True
+        ),
     )
     return AccountResponse.model_validate(values)
 
 
 @router.get("", response_model=list[AccountResponse])
 def list_profile_accounts(profile_id: str) -> list[AccountResponse]:
-    return [build_account_response(row) for row in list_accounts(profile_id)]
+    master_catalogue_records = load_master_account_catalogue().records
+    return [
+        build_account_response(row, master_catalogue_records=master_catalogue_records)
+        for row in list_accounts(profile_id)
+    ]
 
 
 @router.put(

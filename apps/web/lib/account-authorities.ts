@@ -17,6 +17,8 @@ export type AccountAuthorityRecord = {
   extra_places_access_reason?: string;
   extra_places_allows_planning?: boolean;
   extra_places_allows_operational_use?: boolean;
+  catalogue_lifecycle?: string;
+  catalogue_eligible_for_new_activity?: boolean;
   current_balance: string;
   pending_withdrawal_amount: string;
   last_balance_update: string;
@@ -31,6 +33,42 @@ export function getAccountNamesByType(
   type: "Bookie" | "Exchange" | "Bank"
 ): string[] {
   return rows.filter((row) => row.type === type).map((row) => row.account);
+}
+
+const unavailableNewActivityStatuses = new Set([
+  "archived",
+  "blocked",
+  "closed",
+  "gubbed",
+  "inactive",
+  "not signed up",
+  "not using",
+  "suspended",
+]);
+
+export function accountAllowsNewSportsbookActivity(row: AccountAuthorityRecord): boolean {
+  const restrictions = new Set(
+    (row.restrictions ?? []).map((value) => value.trim().toLowerCase())
+  );
+  return (
+    !unavailableNewActivityStatuses.has(row.status.trim().toLowerCase()) &&
+    !unavailableNewActivityStatuses.has((row.lifecycle_status ?? "").trim().toLowerCase()) &&
+    row.stake_access !== "Blocked" &&
+    !restrictions.has("kyc blocked") &&
+    !restrictions.has("login restricted") &&
+    !restrictions.has("risk blocked") &&
+    !(row.type === "Bookie" && restrictions.has("casino only")) &&
+    row.catalogue_eligible_for_new_activity !== false
+  );
+}
+
+export function getNewSportsbookActivityAccountNamesByType(
+  rows: AccountAuthorityRecord[],
+  type: "Bookie" | "Exchange"
+): string[] {
+  return rows
+    .filter((row) => row.type === type && accountAllowsNewSportsbookActivity(row))
+    .map((row) => row.account);
 }
 
 export function getAllAccountNames(rows: AccountAuthorityRecord[]): string[] {

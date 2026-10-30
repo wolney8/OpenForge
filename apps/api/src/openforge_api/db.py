@@ -4514,11 +4514,15 @@ def update_sportsbook_bet(
     history_metadata = {
         key: value for key, value in payload.items() if key.startswith("_history_")
     }
-    account_fields_to_validate = {
+    account_fields_to_validate: set[str] | None = {
         key
         for key in ("bookmaker", "exchange_name", "multi_lay_outcomes_json")
         if key in payload and payload[key] != getattr(existing, key)
     }
+    if existing.status in {"Prospecting", "Not Placed"} and payload.get("status") in {
+        "Placed", "Settled", "Void", "Cancelled", "Free Bet Awarded"
+    }:
+        account_fields_to_validate = None
     payload = capture_first_placement_commission(existing, payload)
     payload = validate_write_payload(
         profile_id,
@@ -4592,6 +4596,31 @@ def update_sportsbook_bet(
             updated["conditional_benefit_json"],
             kind="conditional_benefit",
         )
+        settled_financial_fields = {
+            "status", "result", "back_stake", "back_odds", "actual_accepted_back_odds",
+            "match_strategy", "lay_odds_1", "lay_actual", "lay_matched_stake_1",
+            "lay_commission_1", "exchange_name", "date_settled", "manual_override_value",
+            "bonus_trigger", "maximum_bonus", "bonus_retention_rate",
+        }
+        is_terminal_correction = current["status"] in {
+            "Settled", "Void", "Cancelled", "Free Bet Awarded"
+        } and any(
+            str(updated.get(field, "")) != str(current[field] or "")
+            for field in settled_financial_fields
+        )
+        if is_terminal_correction:
+            correction_reason = str(payload.get("correction_reason", "")).strip()
+            if not correction_reason:
+                from fastapi import HTTPException
+                raise HTTPException(
+                    status_code=422,
+                    detail="correction_reason: Explain this settled financial correction.",
+                )
+            history_metadata.update(
+                _history_reason=correction_reason,
+                _history_operation="corrected",
+            )
+            payload.update(history_metadata)
         from openforge_api.multi_lay_actual import guard_update, execution_from
         updated["multi_lay_outcomes_json"] = guard_update(dict(current), updated, correction=bool(history_metadata.get("_history_reason")))
         linked = connection.execute("SELECT free_bet_id FROM free_bets WHERE profile_id=? AND origin_qual_bet_id=? LIMIT 1", (profile_id, sportsbook_bet_id)).fetchone()
@@ -4600,7 +4629,7 @@ def update_sportsbook_bet(
         if (linked or operation or qualifying_activity) and (payload["status"] == "Prospecting" or (current["result"] != "Pending" and payload["result"] == "Pending") or (qualifying_activity and payload["offer_type"] != current["offer_type"])):
             from fastapi import HTTPException
             raise HTTPException(status_code=409, detail="Linked awards protect the qualifying result. Review the award history before reversing its source.")
-        if execution_from(updated["multi_lay_outcomes_json"]) and all(
+        if all(
             (json.loads(current[key]) == json.loads(value) if key == "multi_lay_outcomes_json" else current[key] == value)
             for key, value in updated.items() if key != "updated_at"
         ):
@@ -4712,6 +4741,7 @@ def update_sportsbook_bet(
         assert stored is not None
         operation = str(payload.get("_history_operation") or (
             "settled" if current["status"] != "Settled" and updated["status"] == "Settled"
+            else "placement_recorded" if current["status"] in {"Prospecting", "Not Placed"} and updated["status"] == "Placed"
             else "placement_recorded" if not execution_from(current["multi_lay_outcomes_json"]) and execution_from(updated["multi_lay_outcomes_json"])
             else "placement_recorded" if not str(current["lay_actual"] or current["lay_matched_stake_1"]).strip() and str(updated["lay_actual"] or updated["lay_matched_stake_1"]).strip()
             else "edited"
