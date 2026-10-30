@@ -16,11 +16,13 @@ from openforge_api.profile_workbook_cutover import (
     _checkpoint_state_checksum,
     _decision_map,
     _ledger_write_entries,
+    _profile_setting_phase,
     _profile_snapshot,
     _profile_state_checksum,
     _profile_state_manifest,
-    final_import_summary,
+    assert_final_dry_run_current,
     destination_identity_preflight,
+    final_import_summary,
     generate_post_import_operational_health,
     generate_post_import_reconciliation,
     insert_ledger_batch,
@@ -349,6 +351,9 @@ def start_import_execution(
     execution_id = f"import-execution-{uuid4().hex}"
     now = _now()
     with connect() as connection:
+        assert_final_dry_run_current(
+            connection=connection, run=run, workspace=workspace, plan=plan
+        )
         existing = connection.execute(
             "SELECT * FROM profile_import_executions WHERE import_run_id = ?",
             (import_run_id,),
@@ -771,7 +776,7 @@ def advance_import_execution(
                     connection,
                     profile_id=profile_id,
                     import_run_id=import_run_id,
-                    settings=plan["profile_settings"],
+                    settings=_profile_setting_phase(plan["profile_settings"], main_bank=False),
                 )
                 completed_units += int(progress["planned_units"]["profile_settings"])
                 next_stage = "ACCOUNTS"
@@ -794,6 +799,14 @@ def advance_import_execution(
                 completed_units += len(batch)
                 next_cursor = cursor + len(batch)
                 if is_final_batch:
+                    counts["profile_settings"] += _apply_profile_settings(
+                        connection,
+                        profile_id=profile_id,
+                        import_run_id=import_run_id,
+                        settings=_profile_setting_phase(
+                            plan["profile_settings"], main_bank=True
+                        ),
+                    )
                     next_stage = "SPORTSBOOK"
                     next_cursor = 0
             elif stage in {name for name, _ledger in LEDGER_STAGES}:
