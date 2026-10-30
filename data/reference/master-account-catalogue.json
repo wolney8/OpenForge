@@ -1,7 +1,7 @@
 {
-  "schema_version": "1.0",
+  "schema_version": "1.1",
   "catalogue_name": "Plum Duff Master Account Catalogue",
-  "updated_at": "2026-07-17T13:56:11Z",
+  "updated_at": "2026-10-30T00:00:00+00:00",
   "default_operating_context": {
     "jurisdiction": "",
     "subdivision": "",
@@ -5274,7 +5274,7 @@
         },
         {
           "source_url": "https://skybet.com/",
-          "source_title": "Bet with Sky Bet \u00bb Sports Betting & Odds",
+          "source_title": "Bet with Sky Bet » Sports Betting & Odds",
           "publisher": "Sky Bet",
           "checked_at": "2026-07-16",
           "supports": [
@@ -6784,6 +6784,9 @@
           ],
           "notes": "Official page identifies Triplebet Limited and Gambling Commission account 39504."
         }
+      ],
+      "predecessor_provider_ids": [
+        "EXCHANGE-BETDAQ"
       ]
     },
     {
@@ -6880,14 +6883,20 @@
       "licence_reference": "",
       "licence_status": "",
       "canonical_domain": "",
-      "status": "Active",
+      "status": "Archived",
       "foreground_colour": "#FFFFFF",
       "background_colour": "#243447",
       "logo_asset_path": "",
       "source": "Workbook Accounts operational authority",
       "confidence": "Unverified",
       "last_verified_date": "2026-07-17",
-      "evidence": []
+      "evidence": [],
+      "lifecycle": "RETIRED",
+      "eligible_for_new_activity": false,
+      "successor_provider_ids": [
+        "EXCHANGE-MATCHBOOK"
+      ],
+      "transition_type": "CLOSURE"
     },
     {
       "catalogue_id": "EXCHANGE-EASYBET",
@@ -6939,6 +6948,216 @@
       "source": "Fund Manager entry",
       "confidence": "Unverified",
       "last_verified_date": "",
+      "evidence": []
+    },
+    {
+      "catalogue_id": "BOOKMAKER-PROPER-BET",
+      "account_type": "Bookmaker",
+      "operating_jurisdictions": [
+        "GB"
+      ],
+      "operating_subdivisions": [],
+      "operating_channels": [
+        "web"
+      ],
+      "brand_name": "Proper Bet",
+      "short_display_name": "Proper Bet",
+      "legal_operator": "Proper Bet Limited",
+      "operator_group": "Proper Bet Limited",
+      "platform": "Playbook Gaming Platform",
+      "risk_team": "Playbook Gaming Trading & Risk Team",
+      "licence_reference": "",
+      "licence_status": "Unverified",
+      "canonical_domain": "",
+      "status": "Active",
+      "lifecycle": "ACTIVE",
+      "historical_names": [],
+      "predecessor_provider_ids": [],
+      "successor_provider_ids": [],
+      "transition_type": "",
+      "eligible_for_new_activity": true,
+      "foreground_colour": "#FFFFFF",
+      "background_colour": "#324A5F",
+      "logo_asset_path": "",
+      "source": "WO_MB_Tracker_3Oct2026.xlsx Account import review",
+      "confidence": "Unverified",
+      "last_verified_date": "",
+      "introduced_at": "2026-10-30",
+      "evidence": []
+    },
+    {
+      "catalogue_id": "BOOKMAKER-BETNERO",
+      "account_type": "Bookmaker",
+      "operating_jurisdictions": [
+        "GB"
+      ],
+      "operating_subdivisions": [],
+      "operating_channels": [
+        "web"
+      ],
+      "brand_name": "Betnero",
+      "short_display_name": "Betnero",
+      "legal_operator": "Anakatech Interactive Limited",
+      "operator_group": "Anakatech Interactive Limited",
+      "platform": "Anakatech Proprietary Platform",
+      "risk_team": "Anakatech In-House Trading & Risk Team",
+      "licence_reference": "UKGC #327402",
+      "licence_status": "Unverified",
+      "canonical_domain": "",
+      "status": "Active",
+      "lifecycle": "ACTIVE",
+      "historical_names": [],
+      "predecessor_provider_ids": [],
+      "successor_provider_ids": [],
+      "transition_type": "",
+      "eligible_for_new_activity": true,
+      "foreground_colour": "#FFFFFF",
+      "background_colour": "#324A5F",
+      "logo_asset_path": "",
+      "source": "WO_MB_Tracker_3Oct2026.xlsx Account import review",
+      "confidence": "Unverified",
+      "last_verified_date": "",
+      "introduced_at": "2026-10-30",
+      "evidence": []
+    },
+    {
+      "catalogue_id": "BOOKMAKER-AK-BETS",
+      "account_type": "Bookmaker",
+      "operating_jurisdictions": [
+        "GB"
+      ],
+      "operating_subdivisions": [],
+      "operating_channels": [
+        "web"
+      ],
+      "brand_name": "AK Bets",
+      "short_display_name": "AK Bets",
+      "legal_operator": "AK Bets Limited",
+      "operator_group": "AK Bets Limited",
+      "platform": "Playbook Gaming Front-End (Hybrid)",
+      "risk_team": "Hybrid / Independent Desk Direction",
+      "licence_reference": "UKGC #63234",
+      "licence_status": "Unverified",
+      "canonical_domain": "",
+      "status": "Active",
+      "lifecycle": "ACTIVE",
+      "historical_names": [],
+      "predecessor_provider_ids": [],
+      "successor_provider_ids": [],
+      "transition_type": "",
+      "eligible_for_new_activity": true,
+      "foreground_colour": "#FFFFFF",
+      "background_colour": "#324A5F",
+      "logo_asset_path": "",
+      "source": "WO_MB_Tracker_3Oct2026.xlsx Account import review",
+      "confidence": "Unverified",
+      "last_verified_date": "",
+      "introduced_at": "2026-10-30",
+      "evidence": []
+    },
+    {
+      "catalogue_id": "BOOKMAKER-BETTABET",
+      "account_type": "Bookmaker",
+      "operating_jurisdictions": [
+        "GB"
+      ],
+      "operating_subdivisions": [],
+      "operating_channels": [
+        "web"
+      ],
+      "brand_name": "BettaBet",
+      "short_display_name": "BettaBet",
+      "legal_operator": "Grace Media (Gibraltar) Limited",
+      "operator_group": "Grace Media (Gibraltar) Limited",
+      "platform": "Grace Media / Delasport Engine",
+      "risk_team": "Delasport / Grace Media Central Risk Desk",
+      "licence_reference": "UKGC #57869",
+      "licence_status": "Unverified",
+      "canonical_domain": "",
+      "status": "Active",
+      "lifecycle": "ACTIVE",
+      "historical_names": [],
+      "predecessor_provider_ids": [],
+      "successor_provider_ids": [],
+      "transition_type": "",
+      "eligible_for_new_activity": true,
+      "foreground_colour": "#FFFFFF",
+      "background_colour": "#324A5F",
+      "logo_asset_path": "",
+      "source": "WO_MB_Tracker_3Oct2026.xlsx Account import review",
+      "confidence": "Unverified",
+      "last_verified_date": "",
+      "introduced_at": "2026-10-30",
+      "evidence": []
+    },
+    {
+      "catalogue_id": "BOOKMAKER-BETLEGEND",
+      "account_type": "Bookmaker",
+      "operating_jurisdictions": [
+        "GB"
+      ],
+      "operating_subdivisions": [],
+      "operating_channels": [
+        "web"
+      ],
+      "brand_name": "BetLegend",
+      "short_display_name": "BetLegend",
+      "legal_operator": "Anakatech Interactive Limited",
+      "operator_group": "Anakatech Interactive Limited",
+      "platform": "Anakatech Proprietary Platform",
+      "risk_team": "Anakatech In-House Trading & Risk Team",
+      "licence_reference": "UKGC #48789",
+      "licence_status": "Unverified",
+      "canonical_domain": "",
+      "status": "Active",
+      "lifecycle": "ACTIVE",
+      "historical_names": [],
+      "predecessor_provider_ids": [],
+      "successor_provider_ids": [],
+      "transition_type": "",
+      "eligible_for_new_activity": true,
+      "foreground_colour": "#FFFFFF",
+      "background_colour": "#324A5F",
+      "logo_asset_path": "",
+      "source": "WO_MB_Tracker_3Oct2026.xlsx Account import review",
+      "confidence": "Unverified",
+      "last_verified_date": "",
+      "introduced_at": "2026-10-30",
+      "evidence": []
+    },
+    {
+      "catalogue_id": "BOOKMAKER-BRILLBET",
+      "account_type": "Bookmaker",
+      "operating_jurisdictions": [
+        "GB"
+      ],
+      "operating_subdivisions": [],
+      "operating_channels": [
+        "web"
+      ],
+      "brand_name": "BrillBet",
+      "short_display_name": "BrillBet",
+      "legal_operator": "UK Digital Bookmakers Ltd",
+      "operator_group": "UK Digital Bookmakers Ltd",
+      "platform": "Swifty Global Platform",
+      "risk_team": "Swifty Global Central Risk & Trading Team",
+      "licence_reference": "UKGC #101570",
+      "licence_status": "Unverified",
+      "canonical_domain": "",
+      "status": "Active",
+      "lifecycle": "ACTIVE",
+      "historical_names": [],
+      "predecessor_provider_ids": [],
+      "successor_provider_ids": [],
+      "transition_type": "",
+      "eligible_for_new_activity": true,
+      "foreground_colour": "#FFFFFF",
+      "background_colour": "#324A5F",
+      "logo_asset_path": "",
+      "source": "WO_MB_Tracker_3Oct2026.xlsx Account import review",
+      "confidence": "Unverified",
+      "last_verified_date": "",
+      "introduced_at": "2026-10-30",
       "evidence": []
     }
   ]

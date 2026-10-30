@@ -111,6 +111,14 @@ class DefaultOperatingContext(BaseModel):
         return self
 
 
+class ProviderHistoricalName(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(min_length=1, max_length=120)
+    effective_from: str = Field(default="", max_length=20)
+    effective_to: str = Field(default="", max_length=20)
+
+
 class MasterAccountCatalogueRecord(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -131,6 +139,12 @@ class MasterAccountCatalogueRecord(BaseModel):
     licence_status: str = Field(default="", max_length=120)
     canonical_domain: str = Field(default="", max_length=200)
     status: Literal["Active", "Archived"] = "Active"
+    lifecycle: Literal["ACTIVE", "RETIRED", "SUSPENDED"] = "ACTIVE"
+    historical_names: list[ProviderHistoricalName] = Field(default_factory=list)
+    predecessor_provider_ids: list[str] = Field(default_factory=list)
+    successor_provider_ids: list[str] = Field(default_factory=list)
+    transition_type: Literal["", "RENAME", "ACQUISITION", "MERGER", "CLOSURE"] = ""
+    eligible_for_new_activity: bool = True
     foreground_colour: str
     background_colour: str
     logo_asset_path: str = Field(default="", max_length=300)
@@ -139,6 +153,20 @@ class MasterAccountCatalogueRecord(BaseModel):
     last_verified_date: str = Field(default="", max_length=20)
     introduced_at: str = Field(default="", max_length=40)
     evidence: list[CatalogueEvidence] = Field(default_factory=list)
+
+    @model_validator(mode="before")
+    @classmethod
+    def derive_legacy_lifecycle(cls, value: object) -> object:
+        if not isinstance(value, dict):
+            return value
+        normalized = dict(value)
+        if "lifecycle" not in normalized:
+            normalized["lifecycle"] = (
+                "ACTIVE" if normalized.get("status", "Active") == "Active" else "RETIRED"
+            )
+        if "eligible_for_new_activity" not in normalized:
+            normalized["eligible_for_new_activity"] = normalized["lifecycle"] == "ACTIVE"
+        return normalized
 
     @field_validator("catalogue_id")
     @classmethod
@@ -193,13 +221,15 @@ class MasterAccountCatalogueRecord(BaseModel):
             raise ValueError("account badge colours must meet WCAG AA contrast of 4.5:1")
         if self.confidence == "Verified" and not self.evidence:
             raise ValueError("Verified catalogue records require evidence")
+        if self.lifecycle != "ACTIVE" and self.eligible_for_new_activity:
+            raise ValueError("Retired or suspended providers cannot be eligible for new activity")
         return self
 
 
 class MasterAccountCatalogue(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: Literal["1.0"]
+    schema_version: Literal["1.0", "1.1"]
     catalogue_name: str = Field(min_length=1, max_length=120)
     updated_at: str = Field(min_length=10, max_length=40)
     default_operating_context: DefaultOperatingContext = Field(

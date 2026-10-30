@@ -432,6 +432,8 @@ def parse_profile_portable_export(content: bytes) -> ParsedPortableBackup:
         )
         if spec.name == "Profile":
             optional = {"profile_relationship"}
+        if spec.name == "Accounts":
+            optional = {"access_channels_json"}
         header = sheets[spec.name][0]
         missing_optional = {field for field in optional if field not in header}
         if missing_optional and header == [c for c in columns if c not in missing_optional]:
@@ -1082,6 +1084,15 @@ def _resolved_rows(
                 if resolutions.get(("account_catalogue", reference_id)) == "REMOVE_REFERENCE":
                     row["main_bank_catalogue_id"] = ""
             if spec.name == "Accounts":
+                if not row.get("access_channels_json"):
+                    from openforge_api.account_channels import (
+                        access_channels_from_legacy,
+                        access_channels_json,
+                    )
+
+                    row["access_channels_json"] = access_channels_json(
+                        access_channels_from_legacy(str(row.get("channel") or ""))
+                    )
                 catalogue_id = str(row.get("catalogue_id") or "")
                 if resolutions.get(("account_catalogue", catalogue_id)) == "REMOVE_REFERENCE":
                     row["catalogue_id"] = None

@@ -28,6 +28,12 @@ export type MasterAccountCatalogueRecord = {
   licence_status: string;
   canonical_domain: string;
   status: "Active" | "Archived";
+  lifecycle: "ACTIVE" | "RETIRED" | "SUSPENDED";
+  historical_names: Array<{ name: string; effective_from: string; effective_to: string }>;
+  predecessor_provider_ids: string[];
+  successor_provider_ids: string[];
+  transition_type: "" | "RENAME" | "ACQUISITION" | "MERGER" | "CLOSURE";
+  eligible_for_new_activity: boolean;
   foreground_colour: string;
   background_colour: string;
   logo_asset_path: string;
@@ -39,7 +45,7 @@ export type MasterAccountCatalogueRecord = {
 };
 
 export type MasterAccountCatalogue = {
-  schema_version: "1.0";
+  schema_version: "1.0" | "1.1";
   catalogue_name: string;
   updated_at: string;
   default_operating_context: MasterAccountOperatingContext;
@@ -133,7 +139,7 @@ export function getActiveMasterAccountNames(
   accountType: MasterAccountType
 ): string[] {
   return catalogue
-    .filter((entry) => entry.account_type === accountType && entry.status === "Active")
+    .filter((entry) => entry.account_type === accountType && entry.status === "Active" && entry.eligible_for_new_activity)
     .map((entry) => entry.brand_name);
 }
 
@@ -163,7 +169,7 @@ export function isMasterAccountAvailable(
   subdivision = ""
 ): boolean {
   if (
-    entry.status !== "Active" ||
+    entry.status !== "Active" || !entry.eligible_for_new_activity ||
     entry.operating_jurisdictions.length === 0 ||
     entry.operating_channels.length === 0 ||
     permittedChannels.length === 0

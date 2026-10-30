@@ -471,3 +471,11 @@ the explicit non-placement action that selects which reviewed plan will be saved
 |---|---|---|---|---|
 | PD-FIX-469 | Workbook Account review | Present Account exceptions with provider, type, lifecycle, cash and field-specific evidence so the owner can decide without interpreting generic bet-row copy | Owner CP-106F approval; Account import field-map contract; [#95](https://github.com/wolney8/OpenForge/issues/95) and [#104](https://github.com/wolney8/OpenForge/issues/104) | COMPLETE / CODE-VERIFIED — full focused review browser suite, 430px containment, themes, keyboard/focus, typecheck and build pass; owner Account decisions remain pending |
 | PD-AUDIT-106F-01 | Destination Account identity | Classify invalid values, missing catalogue providers and duplicate provider rows; trace dependent ledger impact and proposed main-bank authority without creating Accounts/providers or applying the workbook | Owner CP-106F no-write boundary; workbook checksum and import-run authority | DOCUMENTED PRIVATELY — exact 15 items and Starling authority reconciled; no review decision or import write made |
+
+## 2026-10-30 CP-106H Account authority and review decisions
+
+| ID | Area | Requested behaviour | Authority | Status |
+|---|---|---|---|---|
+| PD-FIX-470 | Account access channels | Store a canonical ordered multi-value channel list, retain one legacy projection, backfill deterministic historical values and preserve portable compatibility | CP-106H owner-approved additive migration; Account import contract; #95/#104 | IN PROGRESS |
+| PD-FIX-471 | Workbook Account review | Add six approved providers, preserve provider lifecycle/succession, persist approved Account decisions and Starling review state without workbook Apply | CP-106H owner decisions; provider catalogue and import review contracts; #95/#104 | IN PROGRESS |
+| PD-DOC-106H-01 | Result-provider boundary | Distinguish odds, result and governed settlement authorities; fail closed on identity/finality ambiguity | CP-106H documentation-only boundary | DOCUMENTED / DEFERRED |

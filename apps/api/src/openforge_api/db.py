@@ -1222,6 +1222,7 @@ def initialize_database(connection: sqlite3.Connection) -> None:
           type TEXT NOT NULL,
           counts_in_cash_total INTEGER NOT NULL DEFAULT 1,
           channel TEXT NOT NULL,
+          access_channels_json TEXT NOT NULL DEFAULT '[]',
           status TEXT NOT NULL,
           lifecycle_status TEXT NOT NULL DEFAULT 'Active',
           signup_offer_status TEXT NOT NULL DEFAULT 'Unknown',
@@ -2326,6 +2327,31 @@ def initialize_database(connection: sqlite3.Connection) -> None:
     )
     ensure_column(connection, "accounts", "bookmaker_id", "TEXT")
     ensure_column(connection, "accounts", "catalogue_id", "TEXT")
+    account_columns = {
+        row["name"] for row in connection.execute("PRAGMA table_info(accounts)").fetchall()
+    }
+    if "access_channels_json" not in account_columns:
+        from openforge_api.account_channels import access_channels_from_legacy, access_channels_json
+
+        legacy_values = {
+            str(row["channel"])
+            for row in connection.execute("SELECT DISTINCT channel FROM accounts").fetchall()
+        }
+        mapped_values = {
+            value: access_channels_json(access_channels_from_legacy(value))
+            for value in legacy_values
+        }
+        ensure_column(
+            connection,
+            "accounts",
+            "access_channels_json",
+            "TEXT NOT NULL DEFAULT '[]'",
+        )
+        for legacy_value, canonical_json in mapped_values.items():
+            connection.execute(
+                "UPDATE accounts SET access_channels_json = ? WHERE channel = ?",
+                (canonical_json, legacy_value),
+            )
     ensure_column(
         connection,
         "fund_manager_combo_presets",
@@ -3244,6 +3270,16 @@ def seed_database(connection: sqlite3.Connection) -> None:
                         parse_seed_bool(row.get("countsInCashTotal", True))
                     ),
                     "channel": normalize_seed_text(row.get("channel"), "Unknown"),
+                    "access_channels_json": __import__(
+                        "openforge_api.account_channels", fromlist=["access_channels_json"]
+                    ).access_channels_json(
+                        __import__(
+                            "openforge_api.account_channels",
+                            fromlist=["access_channels_from_legacy"],
+                        ).access_channels_from_legacy(
+                            normalize_seed_text(row.get("channel"), "Unknown")
+                        )
+                    ),
                     "status": normalize_seed_text(row.get("status"), "Active"),
                     "current_balance": normalize_seed_text(row.get("currentBalance")),
                     "pending_withdrawal_amount": normalize_seed_text(
@@ -3264,6 +3300,7 @@ def seed_database(connection: sqlite3.Connection) -> None:
                       type,
                       counts_in_cash_total,
                       channel,
+                      access_channels_json,
                       status,
                       current_balance,
                       pending_withdrawal_amount,
@@ -3272,7 +3309,7 @@ def seed_database(connection: sqlite3.Connection) -> None:
                       platform,
                       created_at,
                       updated_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     tuple(payload.values()),
                 )
@@ -7164,6 +7201,7 @@ class AccountRecord:
     type: str
     counts_in_cash_total: bool
     channel: str
+    access_channels_json: str
     status: str
     lifecycle_status: str
     signup_offer_status: str
@@ -8013,6 +8051,7 @@ def create_profile_with_onboarding(
                 "type": account["type"],
                 "counts_in_cash_total": int(bool(account["counts_in_cash_total"])),
                 "channel": account.get("channel", "Unknown"),
+                "access_channels_json": account.get("access_channels_json", "[]"),
                 "status": account["status"],
                 "lifecycle_status": account["lifecycle_status"],
                 "restrictions_json": account.get("restrictions_json", "[]"),
@@ -8030,11 +8069,11 @@ def create_profile_with_onboarding(
                 """
                 INSERT INTO accounts (
                   account_id, profile_id, catalogue_id, bookmaker_id, account, type,
-                  counts_in_cash_total, channel, status, lifecycle_status,
+                  counts_in_cash_total, channel, access_channels_json, status, lifecycle_status,
                   restrictions_json, current_balance, pending_withdrawal_amount,
                   last_balance_update, group_name, platform, sign_up_date, notes,
                   created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 tuple(account_record.values()),
             )
@@ -10557,6 +10596,7 @@ def confirm_account_import_batch(
                 "type": payload["type"],
                 "counts_in_cash_total": int(bool(payload["counts_in_cash_total"])),
                 "channel": payload["channel"],
+                "access_channels_json": payload.get("access_channels_json", "[]"),
                 "status": payload["status"],
                 "lifecycle_status": payload.get("lifecycle_status", "Active"),
                 "signup_offer_status": payload.get("signup_offer_status", "Unknown"),
@@ -10582,7 +10622,7 @@ def confirm_account_import_batch(
                     """
                     UPDATE accounts SET
                       bookmaker_id = ?, catalogue_id = ?, account = ?, type = ?, counts_in_cash_total = ?,
-                      channel = ?, status = ?, lifecycle_status = ?, signup_offer_status = ?,
+                      channel = ?, access_channels_json = ?, status = ?, lifecycle_status = ?, signup_offer_status = ?,
                       restrictions_json = ?, stake_access = ?, promo_access = ?,
                       restriction_details_json = ?, access_evidence_note = ?, access_source = ?,
                       access_observed_at = ?, current_balance = ?,
@@ -10597,6 +10637,7 @@ def confirm_account_import_batch(
                         record["type"],
                         record["counts_in_cash_total"],
                         record["channel"],
+                        record["access_channels_json"],
                         record["status"],
                         record["lifecycle_status"],
                         record["signup_offer_status"],
@@ -10624,13 +10665,13 @@ def confirm_account_import_batch(
                     """
                     INSERT INTO accounts (
                       account_id, profile_id, bookmaker_id, catalogue_id, account, type,
-                      counts_in_cash_total, channel, status, lifecycle_status,
+                      counts_in_cash_total, channel, access_channels_json, status, lifecycle_status,
                       signup_offer_status, restrictions_json, stake_access, promo_access,
                       restriction_details_json, access_evidence_note, access_source,
                       access_observed_at, current_balance,
                       pending_withdrawal_amount, last_balance_update, group_name,
                       platform, sign_up_date, notes, created_at, updated_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     tuple(record.values()),
                 )
@@ -10914,6 +10955,7 @@ def create_account_with_exchange_commission(
         "type": payload["type"],
         "counts_in_cash_total": int(bool(payload["counts_in_cash_total"])),
         "channel": payload["channel"],
+        "access_channels_json": payload.get("access_channels_json", "[]"),
         "status": payload["status"],
         "lifecycle_status": payload.get("lifecycle_status", "Active"),
         "signup_offer_status": payload.get("signup_offer_status", "Unknown"),
@@ -10948,6 +10990,7 @@ def create_account_with_exchange_commission(
               type,
               counts_in_cash_total,
               channel,
+              access_channels_json,
               status,
               lifecycle_status,
               signup_offer_status,
@@ -10967,7 +11010,7 @@ def create_account_with_exchange_commission(
               notes,
               created_at,
               updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             tuple(record.values()),
         )
@@ -11059,6 +11102,9 @@ def _update_account_fields(
         "type": payload["type"],
         "counts_in_cash_total": int(bool(payload["counts_in_cash_total"])),
         "channel": payload["channel"],
+        "access_channels_json": payload.get(
+            "access_channels_json", existing.access_channels_json
+        ),
         "status": payload["status"],
         "lifecycle_status": payload.get("lifecycle_status", "Active"),
         "signup_offer_status": payload.get("signup_offer_status", "Unknown"),
@@ -11091,6 +11137,7 @@ def _update_account_fields(
               type = ?,
               counts_in_cash_total = ?,
               channel = ?,
+              access_channels_json = ?,
               status = ?,
               lifecycle_status = ?,
               signup_offer_status = ?,
@@ -11118,6 +11165,7 @@ def _update_account_fields(
                 updated["type"],
                 updated["counts_in_cash_total"],
                 updated["channel"],
+                updated["access_channels_json"],
                 updated["status"],
                 updated["lifecycle_status"],
                 updated["signup_offer_status"],

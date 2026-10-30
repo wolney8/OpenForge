@@ -131,6 +131,23 @@ def test_accounts_workflow_create_update_and_isolation(tmp_path: Path) -> None:
     assert created["stake_access"] == "Not Checked"
     assert created["promo_access"] == "Not Checked"
     assert created["signup_offer_status"] == "Unknown"
+    assert created["access_channels"] == ["Online"]
+
+    multi_channel_payload = {
+        **payload,
+        "account_id": created["account_id"],
+        "catalogue_id": created["catalogue_id"],
+        "access_channels": ["Online", "Retail"],
+        "channel": "Unknown",
+        "expected_updated_at": created["updated_at"],
+    }
+    multi_channel_response = client.put(
+        f"/profiles/profile-demo-001/accounts/{created['account_id']}",
+        json=multi_channel_payload,
+    )
+    assert multi_channel_response.status_code == 200
+    assert multi_channel_response.json()["access_channels"] == ["Online", "Retail"]
+    assert multi_channel_response.json()["channel"] == "Online, Retail"
 
     list_profile_one = client.get("/profiles/profile-demo-001/accounts")
     assert list_profile_one.status_code == 200

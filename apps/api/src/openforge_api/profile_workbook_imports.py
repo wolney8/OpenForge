@@ -157,6 +157,13 @@ class ProfileNameStrategyPayload(BaseModel):
     strategy: str = Field(pattern="^(preserve_target|apply_workbook_username)$")
 
 
+class MainBankReviewPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    catalogue_id: str = Field(min_length=3, max_length=80)
+    note: str = Field(min_length=3, max_length=1000)
+
+
 def _now() -> str:
     return datetime.now(UTC).isoformat()
 
@@ -1447,6 +1454,75 @@ def put_profile_workbook_name_strategy(
             WHERE profile_id = ? AND import_run_id = ?
             """,
             (_json(run["summary"]), _now(), profile_id, import_run_id),
+        )
+    return _workspace(profile_id, import_run_id)
+
+
+@router.put("/{import_run_id}/main-bank-review")
+def put_profile_workbook_main_bank_review(
+    profile_id: str,
+    import_run_id: str,
+    payload: MainBankReviewPayload,
+    request: Request,
+) -> dict[str, Any]:
+    session = require_request_session(request)
+    run = _load_run(profile_id, import_run_id)
+    if run["approved_at"] or run["status"] in {"IMPORTING", "COMPLETE"}:
+        raise HTTPException(
+            status_code=409,
+            detail="Main-bank review cannot change after import approval",
+        )
+    catalogue = load_master_account_catalogue()
+    provider = next(
+        (
+            record
+            for record in catalogue.records
+            if record.catalogue_id == payload.catalogue_id
+            and record.account_type == "Bank"
+            and record.status == "Active"
+            and record.eligible_for_new_activity
+        ),
+        None,
+    )
+    if provider is None:
+        raise HTTPException(status_code=422, detail="Active Bank catalogue entry was not found")
+    plan = load_base_write_plan(profile_id, import_run_id)
+    if plan is None:
+        raise HTTPException(status_code=409, detail="Import write plan is not ready")
+    main_bank = next(
+        (
+            item
+            for item in plan["profile_settings"]
+            if item.get("setting") == "main_bank"
+            and item.get("target") == "onboarding.main_bank_catalogue_id"
+        ),
+        None,
+    )
+    if main_bank is None:
+        raise HTTPException(status_code=409, detail="Workbook main-bank mapping is unavailable")
+    main_bank["parsed_value"] = provider.catalogue_id
+    main_bank["classification"] = "IMPORT"
+    now = _now()
+    run["summary"]["main_bank_review_decision"] = {
+        "catalogue_id": provider.catalogue_id,
+        "source_value": main_bank.get("source_value") or "Starling",
+        "note": payload.note.strip(),
+        "actor": session.email,
+        "decided_at": now,
+        "creates_account": False,
+        "changes_current_cash": False,
+    }
+    with connect() as connection:
+        save_base_write_plan(
+            connection,
+            import_run_id=import_run_id,
+            profile_id=profile_id,
+            plan=plan,
+        )
+        connection.execute(
+            "UPDATE profile_import_runs SET summary_json = ?, updated_at = ? "
+            "WHERE profile_id = ? AND import_run_id = ?",
+            (_json(run["summary"]), now, profile_id, import_run_id),
         )
     return _workspace(profile_id, import_run_id)
 
