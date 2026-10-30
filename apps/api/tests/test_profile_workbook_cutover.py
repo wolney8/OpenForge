@@ -1865,6 +1865,63 @@ def test_reviewed_exchange_commission_accepts_explicit_zero(tmp_path: Path) -> N
         assert saved["commission_rate"] == "0.00"
 
 
+def test_import_rollback_removes_created_reviewed_exchange_commission(
+    tmp_path: Path,
+) -> None:
+    from openforge_api.profile_workbook_cutover import (
+        _apply_reviewed_account_commission,
+        _catalogue_records,
+        _restore_import_writes,
+        _reviewed_account_state,
+    )
+
+    configure_cutover_database(tmp_path)
+    row = synthetic_plan()["accounts"][0]
+    row["mapped_profile_state"]["commission_rate"] = None
+    catalogue = _catalogue_records()
+    provider_id = str(row["catalogue_id"])
+    catalogue[provider_id] = catalogue[provider_id].model_copy(
+        update={"account_type": "Exchange"}
+    )
+    decision = {
+        "import_id": row["import_key"],
+        "category": "accounts_partial",
+        "review_status": "REVIEWED_OVERRIDDEN",
+        "decision": {
+            "action": "edit_mapping",
+            "override_fields": {"commission_rate": "0.00"},
+        },
+    }
+    state = _reviewed_account_state(row, {"review": decision}, catalogue)
+    assert state is not None
+    run, _workspace = run_and_workspace()
+    persist_run_and_plan(run, synthetic_plan())
+
+    with connect() as connection:
+        _apply_reviewed_account_commission(
+            connection,
+            profile_id=PROFILE_ID,
+            import_run_id=RUN_ID,
+            source=row,
+            state=state,
+            decisions={"review": decision},
+        )
+        deleted, restored = _restore_import_writes(
+            connection,
+            profile_id=PROFILE_ID,
+            import_run_id=RUN_ID,
+        )
+        saved = connection.execute(
+            "SELECT 1 FROM profile_exchange_commissions "
+            "WHERE profile_id = ? AND exchange_name = ?",
+            (PROFILE_ID, state["account"]),
+        ).fetchone()
+
+    assert deleted == 1
+    assert restored == 0
+    assert saved is None
+
+
 def test_pending_signup_blank_balance_stays_unknown(tmp_path: Path) -> None:
     from openforge_api.profile_workbook_cutover import _catalogue_records
 
