@@ -1502,6 +1502,73 @@ def _reviewed_account_state(
     return state
 
 
+def _reviewed_account_commission(
+    source: dict[str, Any], decisions: dict[str, dict[str, Any]]
+) -> str | None:
+    for item in decisions.values():
+        if str(item.get("import_id")) != str(source["import_key"]):
+            continue
+        decision = item.get("decision") or {}
+        if item.get("category") != "accounts_partial" or decision.get("action") != "edit_mapping":
+            continue
+        commission = (decision.get("override_fields") or {}).get("commission_rate")
+        if commission is not None:
+            return str(commission)
+    return None
+
+
+def _apply_reviewed_account_commission(
+    connection: Any,
+    *,
+    profile_id: str,
+    import_run_id: str,
+    source: dict[str, Any],
+    state: dict[str, Any],
+    decisions: dict[str, dict[str, Any]],
+) -> None:
+    commission = _reviewed_account_commission(source, decisions)
+    if commission is None:
+        return
+    if state["type"] != "Exchange":
+        raise ImportCutoverError("Account commission review requires an Exchange Account")
+    exchange_name = str(state["account"])
+    before_row = connection.execute(
+        "SELECT * FROM profile_exchange_commissions WHERE profile_id = ? AND exchange_name = ?",
+        (profile_id, exchange_name),
+    ).fetchone()
+    before = dict(before_row) if before_row is not None else None
+    now = _now()
+    connection.execute(
+        """
+        INSERT INTO profile_exchange_commissions (
+          profile_id, exchange_name, commission_rate, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?)
+        ON CONFLICT(profile_id, exchange_name) DO UPDATE SET
+          commission_rate = excluded.commission_rate,
+          updated_at = excluded.updated_at
+        """,
+        (profile_id, exchange_name, commission, now, now),
+    )
+    after = {
+        "profile_id": profile_id,
+        "exchange_name": exchange_name,
+        "commission_rate": commission,
+        "created_at": before.get("created_at", now) if before else now,
+        "updated_at": now,
+    }
+    _audit_write(
+        connection,
+        import_run_id=import_run_id,
+        import_key=str(source["import_key"]),
+        profile_id=profile_id,
+        entity_type="profile_exchange_commissions",
+        entity_id=exchange_name,
+        operation="update" if before else "create",
+        before=before,
+        after=after,
+    )
+
+
 def _apply_accounts(
     connection: Any,
     *,
@@ -1530,6 +1597,14 @@ def _apply_accounts(
         state = _reviewed_account_state(source, decisions, catalogue)
         if state is None:
             continue
+        _apply_reviewed_account_commission(
+            connection,
+            profile_id=profile_id,
+            import_run_id=import_run_id,
+            source=source,
+            state=state,
+            decisions=decisions,
+        )
         reused = _reuse_import_destination(
             connection, profile_id=profile_id, import_run_id=import_run_id, source=source,
             ledger="accounts", entity_type="accounts", identities=identities,

@@ -47,6 +47,7 @@ ALLOWED_OVERRIDE_FIELDS = {
     "stake_access",
     "promo_access",
     "access_channels",
+    "commission_rate",
     "offer_type",
     "result",
 }
@@ -710,6 +711,7 @@ def _decision_overrides(item: dict[str, Any], payload: ReviewDecisionPayload) ->
                 ) from error
         if (
             item["category"] != "accounts_partial"
+            or str(item.get("source_fields", {}).get("Type") or "") != "Exchange"
             or payload.action != "edit_mapping"
             or not payload.note.strip()
             or ("stake_access" in overrides and overrides["stake_access"] not in allowed_stake)
@@ -719,6 +721,26 @@ def _decision_overrides(item: dict[str, Any], payload: ReviewDecisionPayload) ->
                 status_code=422,
                 detail="Account access requires a scoped, reasoned canonical mapping",
             )
+    if "commission_rate" in overrides:
+        from decimal import Decimal, InvalidOperation
+
+        try:
+            commission_rate = Decimal(str(overrides["commission_rate"]))
+        except (InvalidOperation, TypeError, ValueError) as error:
+            raise HTTPException(
+                status_code=422, detail="Choose an explicit Account commission from 0 to 1"
+            ) from error
+        if (
+            item["category"] != "accounts_partial"
+            or payload.action != "edit_mapping"
+            or not payload.note.strip()
+            or commission_rate < Decimal("0")
+            or commission_rate > Decimal("1")
+        ):
+            raise HTTPException(
+                status_code=422, detail="Choose an explicit Account commission from 0 to 1"
+            )
+        overrides["commission_rate"] = str(commission_rate)
     if classification_fields:
         if (
             item["source_sheet"] != "Sportsbook Bets"
