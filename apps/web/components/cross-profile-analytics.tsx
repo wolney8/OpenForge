@@ -3,6 +3,7 @@ import { FinancialReadValue } from "@/components/financial-read-value";
 import { FinancialAggregateReadValue } from "@/components/financial-aggregate-read-value";
 import { BettingPnlReadValue } from "@/components/betting-pnl-read-value";
 import { AccountMoneyStatus } from "@/components/account-money-status";
+import { FinancialIssueStatus } from "@/components/financial-issue-status";
 import { CurrentAccountCash } from "@/components/current-account-cash";
 
 import Link from "next/link";
@@ -1372,15 +1373,26 @@ export function CrossProfileAnalytics({
         </section>
       ) : null}
       {!isLoading ? <AccountMoneyStatus issues={trackerRangeActiveProfilesCombined.cashIssues} /> : null}
-      {!isLoading && trackerRangeActiveProfilesCombined.sportsbookFinancialIssues?.length ? (
-        <p className="error-text" role="status" data-pd-id="sportsbook-money.incomplete">
-          Sportsbook P&amp;L incomplete. {trackerRangeActiveProfilesCombined.sportsbookFinancialIssues.join(" · ")}
-        </p>
+      {!isLoading ? (
+        <FinancialIssueStatus
+          headline={`${trackerRangeActiveProfilesCombined.sportsbookCommittedFinancialIssues?.length ?? 0} open Sportsbook ${trackerRangeActiveProfilesCombined.sportsbookCommittedFinancialIssues?.length === 1 ? "position needs" : "positions need"} calculation details.`}
+          issues={trackerRangeActiveProfilesCombined.sportsbookCommittedFinancialIssues ?? []}
+          pdId="sportsbook-money.committed-incomplete"
+        />
       ) : null}
-      {!isLoading && trackerRangeActiveProfilesCombined.freeBetFinancialIssues?.length ? (
-        <p className="error-text" role="status" data-pd-id="free-bet-money.incomplete">
-          Free Bet P&amp;L incomplete. {trackerRangeActiveProfilesCombined.freeBetFinancialIssues.join(" · ")}
-        </p>
+      {!isLoading ? (
+        <FinancialIssueStatus
+          headline={`${trackerRangeActiveProfilesCombined.sportsbookHistoricalFinancialIssues?.length ?? 0} settled Sportsbook ${trackerRangeActiveProfilesCombined.sportsbookHistoricalFinancialIssues?.length === 1 ? "record has" : "records have"} no authoritative P&L.`}
+          issues={trackerRangeActiveProfilesCombined.sportsbookHistoricalFinancialIssues ?? []}
+          pdId="sportsbook-money.historical-incomplete"
+        />
+      ) : null}
+      {!isLoading ? (
+        <FinancialIssueStatus
+          headline={`${trackerRangeActiveProfilesCombined.freeBetFinancialIssues?.length ?? 0} Free Bet ${trackerRangeActiveProfilesCombined.freeBetFinancialIssues?.length === 1 ? "record needs" : "records need"} financial details.`}
+          issues={trackerRangeActiveProfilesCombined.freeBetFinancialIssues ?? []}
+          pdId="free-bet-money.incomplete"
+        />
       ) : null}
 
       {failures.filter((failure) => selectedProfileIds.includes(failure.profileId)).length > 0 ? (

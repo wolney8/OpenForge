@@ -17570,6 +17570,24 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
   font-size: 0.86rem;
 }
 
+.financial-issue-status-detail {
+  display: grid;
+  gap: 0.65rem;
+  border-top: 1px solid color-mix(in srgb, var(--account-money-tone) 34%, var(--outline));
+}
+
+.financial-issue-status-detail > .dashboard-card-action {
+  margin: 0.7rem 1rem 0;
+}
+
+.financial-issue-status-detail > ul {
+  border-top: 0;
+}
+
+.financial-issue-status li {
+  overflow-wrap: anywhere;
+}
+
 @media (max-width: 520px) {
   .account-money-status > summary { grid-template-columns: auto minmax(0, 1fr); }
   .account-money-status-action { grid-column: 2; white-space: normal; }
