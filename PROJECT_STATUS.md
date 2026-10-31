@@ -309,6 +309,17 @@ authoritative balance history; their warning remains and cleanup/deactivation re
 owner decision. No Account, Profile, Casino, lifecycle or financial row changed. Owner verification
 remains pending.
 
+## CP-108A imported Sportsbook readiness
+
+Recorded 2026-10-31 under [#105](https://github.com/wolney8/OpenForge/issues/105) and
+[#114](https://github.com/wolney8/OpenForge/issues/114). Realised imported Sportsbook P&L now
+remains authoritative when the reviewed final value exists, independently of whether missing
+historic commission prevents scenario reconstruction. Committed/current calculation gaps remain
+actionable; planned rows remain outside operational financial warnings. Dashboard diagnostics use
+one compact, paginated disclosure instead of concatenating raw row messages. The independent
+12-Account cash warning and all owner financial rows remain unchanged. Owner verification is
+pending; CP-108 remains paused.
+
 ## Reference index
 
 - [Feature status](FEATURE_STATUS.md)

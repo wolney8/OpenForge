@@ -1482,6 +1482,14 @@ target, expose `aria-busy`, disable/coalesce repeat activation and retain last-g
 background refresh error may mark that content stale; it must not replace valid rows with an
 unrelated empty/loading surface.
 
+## Recalculation readiness is not realised-value authority
+
+Historical imported rows can retain a reviewed authoritative final P&L while missing commission or
+other raw inputs prevents independent scenario reconstruction. Do not convert the known realised
+value to `Unavailable`, and do not promote historical reconstruction metadata to a page-level error.
+Operational warnings are for committed/current action. Diagnostic collections must use a counted,
+bounded disclosure; never join an unbounded array into prose.
+
 ## Native modal overlays can escape their visual top layer
 
 Portalling a tooltip to `document.body` from inside a native `<dialog>` can leave it behind the

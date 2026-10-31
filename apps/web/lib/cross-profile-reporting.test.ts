@@ -169,6 +169,23 @@ describe("aggregateCrossProfileReporting", () => {
     expect(result.yearlyReports).toEqual([]);
   });
 
+  it("keeps committed and historical Sportsbook readiness collections separate", () => {
+    const source = structuredClone(inputs[0]!);
+    source.summary.sportsbookCommittedFinancialIssues = ["SB-OPEN · missing commission"];
+    source.summary.sportsbookHistoricalFinancialIssues = ["SB-HISTORY · missing final P&L"];
+    source.summary.sportsbookFinancialIssues = [
+      ...source.summary.sportsbookCommittedFinancialIssues,
+      ...source.summary.sportsbookHistoricalFinancialIssues,
+    ];
+    const result = aggregateCrossProfileReporting([source]);
+    expect(result.sportsbookCommittedFinancialIssues).toEqual([
+      `${source.displayName} · SB-OPEN · missing commission`,
+    ]);
+    expect(result.sportsbookHistoricalFinancialIssues).toEqual([
+      `${source.displayName} · SB-HISTORY · missing final P&L`,
+    ]);
+  });
+
   it("combines known selected-range subtotals without converting unknown Profile records to zero", () => {
     const partial = structuredClone(inputs[0]!);
     partial.summary.reportingModel.selectedRange.grossBettingPnl = Number.NaN;

@@ -82,4 +82,18 @@ describe("period P&L uses formal report records, not a second profit policy", ()
     expect(buildFormalReportRecords(data)[0].value).toBeNaN();
     expect(summarizeTrackerData(data, range).weeklyReports[0].totalPnl).toBeNaN();
   });
+  it("reports an authoritative imported settled value when historical scenarios cannot be reconstructed", () => {
+    const data = { ...empty(), sportsbookBets: [{
+      ...sportsbook("imported-authority", "-4.25"),
+      calculation_state: "review_required",
+      calculation_notes: [
+        "Exchange commission is required before scenario values can be recalculated.",
+        "The imported workbook value remains authoritative meanwhile.",
+      ],
+    }] };
+    expect(buildFormalReportRecords(data)[0].value).toBe(-4.25);
+    const summary = summarizeTrackerData(data, range);
+    expect(summary.weeklyReports[0].totalPnl).toBe(-4.25);
+    expect(summary.sportsbookFinancialIssues).toEqual([]);
+  });
 });

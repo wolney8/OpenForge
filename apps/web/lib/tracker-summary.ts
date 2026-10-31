@@ -269,6 +269,8 @@ export type TrackerSummaryResult = {
   financialReadinessIssues?: FinancialReadinessIssue[];
   freeBetFinancialIssues?: string[];
   sportsbookFinancialIssues?: string[];
+  sportsbookCommittedFinancialIssues?: string[];
+  sportsbookHistoricalFinancialIssues?: string[];
   resolvedDateRange: ResolvedDateRange;
   accountQuickView: {
     bookieBalance: number;
@@ -430,11 +432,46 @@ export function readSummaryMoney(value: string | null | undefined): number {
   return Number.isFinite(parsed) ? parsed : NaN;
 }
 
-function sportsbookDisplayValue(row: SportsbookSummaryRecord): number {
-  if (row.calculation_state === "review_required") return NaN;
+export type SportsbookFinancialReadiness = {
+  realisedPnlKnown: boolean;
+  scenarioRecalculationReady: boolean;
+  currentFinancialReady: boolean | null;
+};
+
+function sportsbookAuthoritativeValue(row: SportsbookSummaryRecord): number {
   const value = [row.reporting_value, row.final_net_pnl, row.projected_current_pnl]
     .find((item) => item != null && item.trim() !== "");
   return readSummaryMoney(value);
+}
+
+/**
+ * Keep accepted historical results separate from the ability to reconstruct
+ * their Back/Lay scenarios. Imported history can have authoritative realised
+ * P&L while an unavailable historic commission prevents recalculation.
+ */
+export function sportsbookFinancialReadiness(
+  row: SportsbookSummaryRecord,
+): SportsbookFinancialReadiness {
+  const membership = financialMembership("sportsbook", row);
+  const authoritativeValue = sportsbookAuthoritativeValue(row);
+  const scenarioRecalculationReady = row.calculation_state === "resolved";
+  const currentFinancialReady = membership === "COMMITTED"
+    ? scenarioRecalculationReady && Number.isFinite(authoritativeValue)
+    : null;
+  return {
+    realisedPnlKnown: membership === "REALISED" && Number.isFinite(authoritativeValue),
+    scenarioRecalculationReady,
+    currentFinancialReady,
+  };
+}
+
+function sportsbookDisplayValue(row: SportsbookSummaryRecord): number {
+  const authority = sportsbookAuthoritativeValue(row);
+  if (financialMembership("sportsbook", row) === "REALISED") {
+    return authority;
+  }
+  if (row.calculation_state === "review_required") return NaN;
+  return authority;
 }
 
 export function freeBetDisplayValue(row: FreeBetSummaryRecord): number {
@@ -886,13 +923,25 @@ export function summarizeTrackerData(
     (sum, row) => sum + sportsbookDisplayValue(row),
     0
   );
-  const sportsbookFinancialIssues = recognisedSportsbook.filter((row) => !Number.isFinite(sportsbookDisplayValue(row)))
-    .map((row) => `${row.sportsbook_bet_id} · ${row.event_name || row.bookmaker}: ${row.calculation_notes?.join("; ") || "financial inputs require correction"}`);
+  const describeSportsbookIssue = (row: SportsbookSummaryRecord) =>
+    `${row.sportsbook_bet_id} · ${row.event_name || row.bookmaker}: ${row.calculation_notes?.join("; ") || "financial inputs require correction"}`;
+  const sportsbookCommittedFinancialIssues = recognisedSportsbook
+    .filter((row) => financialMembership("sportsbook", row) === "COMMITTED")
+    .filter((row) => !Number.isFinite(sportsbookDisplayValue(row)))
+    .map(describeSportsbookIssue);
+  const sportsbookHistoricalFinancialIssues = recognisedSportsbook
+    .filter((row) => financialMembership("sportsbook", row) === "REALISED")
+    .filter((row) => !Number.isFinite(sportsbookDisplayValue(row)))
+    .map(describeSportsbookIssue);
+  const sportsbookFinancialIssues = [
+    ...sportsbookCommittedFinancialIssues,
+    ...sportsbookHistoricalFinancialIssues,
+  ];
   const sportsbookOpenCurrentValue = openSportsbook
     .reduce((sum, row) => sum + (row.calculation_state === "review_required" ? NaN : readSummaryMoney(row.projected_current_pnl)), 0);
   const sportsbookSettledFinalValue = sportsbookInRange
     .filter((row) => financialMembership("sportsbook", row) === "REALISED")
-    .reduce((sum, row) => sum + (row.calculation_state === "review_required" ? NaN : readSummaryMoney(row.final_net_pnl)), 0);
+    .reduce((sum, row) => sum + sportsbookDisplayValue(row), 0);
   const freeBetReportingValue = recognisedFreeBets.reduce(
     (sum, row) => sum + freeBetDisplayValue(row),
     0
@@ -1285,6 +1334,8 @@ export function summarizeTrackerData(
     financialReadinessIssues,
     freeBetFinancialIssues,
     sportsbookFinancialIssues,
+    sportsbookCommittedFinancialIssues,
+    sportsbookHistoricalFinancialIssues,
     accountQuickView: {
       bookieBalance,
       exchangeBalance,

@@ -1,5 +1,6 @@
 "use client";
 import { AccountMoneyStatus } from "@/components/account-money-status";
+import { FinancialIssueStatus } from "@/components/financial-issue-status";
 
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -624,15 +625,29 @@ export function TrackerSummaryShell({ profileId, profileTitle, variant }: Tracke
   return (
     <section aria-busy={isCriticalLoading || isTrackerRangeSaving} className="stack tracker-summary-shell">
       {!isCriticalLoading ? <AccountMoneyStatus issues={summary?.accountQuickView.moneyIssues} /> : null}
-      {!isCriticalLoading && summary?.sportsbookFinancialIssues?.length ? (
-        <p className="error-text" role="status" data-pd-id="sportsbook-money.incomplete">
-          Sportsbook P&amp;L incomplete. {summary.sportsbookFinancialIssues.join(" · ")}
-        </p>
+      {!isCriticalLoading ? (
+        <FinancialIssueStatus
+          actionHref={`/profiles/${profileId}/tracker/sportsbook-bets?view=issues&issue=all-issues&source=financial-readiness`}
+          headline={`${summary?.sportsbookCommittedFinancialIssues?.length ?? 0} open Sportsbook ${summary?.sportsbookCommittedFinancialIssues?.length === 1 ? "position needs" : "positions need"} calculation details.`}
+          issues={summary?.sportsbookCommittedFinancialIssues ?? []}
+          pdId="sportsbook-money.committed-incomplete"
+        />
       ) : null}
-      {!isCriticalLoading && summary?.freeBetFinancialIssues?.length ? (
-        <p className="error-text" role="status" data-pd-id="free-bet-money.incomplete">
-          Free Bet P&amp;L incomplete. {summary.freeBetFinancialIssues.join(" · ")}
-        </p>
+      {!isCriticalLoading ? (
+        <FinancialIssueStatus
+          actionHref={`/profiles/${profileId}/tracker/sportsbook-bets?view=issues&issue=all-issues&source=financial-readiness`}
+          headline={`${summary?.sportsbookHistoricalFinancialIssues?.length ?? 0} settled Sportsbook ${summary?.sportsbookHistoricalFinancialIssues?.length === 1 ? "record has" : "records have"} no authoritative P&L.`}
+          issues={summary?.sportsbookHistoricalFinancialIssues ?? []}
+          pdId="sportsbook-money.historical-incomplete"
+        />
+      ) : null}
+      {!isCriticalLoading ? (
+        <FinancialIssueStatus
+          actionHref={`/profiles/${profileId}/tracker/free-bets?view=issues&issue=all-issues&source=financial-readiness`}
+          headline={`${summary?.freeBetFinancialIssues?.length ?? 0} Free Bet ${summary?.freeBetFinancialIssues?.length === 1 ? "record needs" : "records need"} financial details.`}
+          issues={summary?.freeBetFinancialIssues ?? []}
+          pdId="free-bet-money.incomplete"
+        />
       ) : null}
       <section className="content-panel stack" inert={isCriticalLoading ? true : undefined}>
         <div className="panel-header">
