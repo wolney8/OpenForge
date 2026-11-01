@@ -20,7 +20,8 @@ Use this runbook beside the local Plum Duff application and complete one checkbo
 
 - Application: [http://localhost:3010](http://localhost:3010)
 - API: [http://localhost:8010](http://localhost:8010)
-- Installed Alpha revision: `f0205340241e779d1e54d03d5b3c07c7a337139b`
+- Current installed revision verified 2026-11-01: `04f591dca7e961061256a954454da5ba2f4a2803`
+- Original Alpha guide baseline: `f0205340241e779d1e54d03d5b3c07c7a337139b`; journey rows retain their stated last-tested builds.
 - Default synthetic acceptance Profile: `ALPHA-001`, where synthetic data is permitted
 
 Record the build at the start of each test. Stop if it is not the build you intended to test.
@@ -53,6 +54,11 @@ Stop at the first failed material step. Record the exact route, range, Profile, 
 - **NOT STARTED** — no acceptance evidence has been collected.
 
 Only the owner may change a journey to **OWNER ACCEPTED**. Automated tests do not constitute owner acceptance.
+
+The CP-109 daily-use Profile/Accounts/Sportsbook corrections have focused implementation evidence,
+but their broader owner visual/interaction acceptance remains pending. The previously accepted
+CP-108 core Sportsbook lifecycle and Reports/P&L boundaries stay accepted only within their
+recorded scope.
 
 ## Recommended test order
 

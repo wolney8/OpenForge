@@ -1,5 +1,14 @@
 # Project Status — Plum Duff / OpenForge — Doc ID: PS-CODEX-001
 
+> **CP-110 Design Lab discovery — 2026-11-01:** canonical localhost:3010/8010 serves
+> `04f591dca7e961061256a954454da5ba2f4a2803` on `normal-owner` (fingerprint
+> `7246998d43722066`). The CP-109 remote preservation commit has identical source-tree content
+> but different ancestry; this documentation checkpoint retains the exact installed commit as an
+> ancestor. CP-109 focused corrections are implemented; broader owner visual acceptance remains
+> pending. The owner requests a coherent Fund Manager journey redesign, beginning with shell and
+> navigation discovery in an isolated synthetic Design Lab. No normal UI, financial authority or
+> acceptance status changes here. [Coverage, contract classification and design gate](docs/audits/platform-quality-audit.md#cp-110-design-lab-discovery-and-ux-direction--2026-11-01).
+
 > **CP-107 repeated workbook source versions — 2026-10-30:** the import architecture now records
 > one Profile-scoped workbook lineage and immutable checksum versions, with CP-106M as the existing
 > WILL-PERSONAL baseline. Synthetic coverage proves three-way comparison, delta-only review,

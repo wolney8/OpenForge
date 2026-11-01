@@ -1,5 +1,9 @@
 # Changelog — Plum Duff / OpenForge
 
+## CP-110 — 2026-11-01
+
+- Documentation/source-custody checkpoint only: classify Design Lab contracts, map Fund Manager scenarios and reference gaps, record CP-109 acceptance boundary and the observed API startup connection error. No application or database change.
+
 ## CP-055 — 2026-09-26 23:29:27 BST
 
 - Persist explicit Personal/Managed subscriber relationship and guarded fee setup/recovery, with unclassified legacy Profiles preserved.

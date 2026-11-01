@@ -5841,3 +5841,111 @@ narrow cards, desktop/narrow Bet Summary, responsive top bar, Account `Needs att
 and the point-level performance chart. Manual refresh, quota, exact matching, unknown liquidity,
 server Profile authorization, idempotent Prospecting and no-placement boundaries are unchanged.
 Owner acceptance remains pending and no acceptance status was inferred from these checks.
+
+# CP-110 Design Lab discovery and UX direction — 2026-11-01
+
+**Boundary.** Discovery and documentation only. No normal UI, financial data, schema, service,
+provider or acceptance change. The owner reports a clunky, inconsistent Fund Manager journey,
+especially header/menu/navigation, control density and responsive reflow. The lab is an isolated
+place to compare a coherent journey, not permission to remove fields or safety controls. The
+original Design Lab brief/decision record was not found in the current repository, checked Git
+history or issue search; these amendments are provisional here until its location is confirmed.
+
+**Source and runtime.** Installed web/API revision `04f591dca7e961061256a954454da5ba2f4a2803`;
+`localhost:3010` and `localhost:8010` health endpoints currently pass, API database `normal-owner`,
+fingerprint `7246998d43722066`, schema `invited-subscribers-v1`, auth required. The installed
+integration worktree is clean. The older primary checkout has unrelated dirty/untracked work and
+is untouched. Remote CP-109 branch `fix/cp109-daily-use-corrections` points to `d099eb190ed27f6f24622e50b984d49d8ef64f78`;
+its tree `985c9039932fc8699bb7d8b82bc40e166f436aff` equals the installed commit's tree, but its
+commit ancestry differs. This CP-110 branch starts from the exact installed commit. Latest verified
+CP-109 private recovery reference: `data/private/backups/cp109/normal-owner-pre-cp109-20261101-171712.sqlite3`,
+SHA-256 `69ed757f62b009fe60e9d3516338ec7b30dc8aca3550db41d3270104e74b1b61`, SQLite integrity
+`ok`, zero foreign-key violations. This is a pre-CP-109 backup, not a claim of a current post-CP-109
+snapshot. No owner data was written in this checkpoint.
+
+**Acceptance and debt.** CP-109's compact balance history, partial P&L, cash mini-table, warning
+deduplication, responsive Account rows/toolbar, identity/status, atomic Account/commission save,
+dirty-close dialog and pre-Event-Name Sportsbook Matching have focused implementation evidence.
+Their wider owner visual/interaction acceptance is pending. The CP-108 core Sportsbook lifecycle
+and the accepted Reports/P&L boundary remain owner accepted; neither accepts entire products.
+The reported broad API run (1,200 passed, 125 failed, 20 skipped) and broad Ruff run (264 findings)
+remain an unclassified baseline beyond cited prior fixture failures; they are not certified harmless.
+Existing financial unknowns and engineering debt remain. The owner-observed `connect ECONNREFUSED
+127.0.0.1:8010` is evidenced in CP-109 startup logs: the exact-revision API gate first rejected
+`04f591d…+dirty` while the web process was already serving, so its proxy could not reach API 8010;
+after generated-file cleanup and a matching API start, both health endpoints passed. This explains
+that logged occurrence, not every possible future recurrence. `PD-FIX-504` remains a runtime
+monitoring/verification item; no service was restarted for this design audit.
+
+## Contract classification and lab exception rule
+
+| Class | Examples / treatment |
+| --- | --- |
+| Essential business/data | Ledger inputs and displayed columns, cash-first/current vs settled meaning, calculations, workbook parity, historical identity, permissions and Profile isolation are protected. Any removal, hiding, combination or reinterpretation requires explicit owner approval. |
+| Interaction/accessibility safeguard | Draft protection, explicit saving/validation, recovery, focus/keyboard and WCAG 2.2 AA outcomes stay protected; the interaction pattern may be compared if the same outcome is proven. |
+| Presentation convention | Header arrangement, panel density, colour of a non-destructive Close control, spacing, responsive composition and disclosure presentation may be challenged in the lab with evidence. |
+| Historical workaround/uncertain decision | Repeated local fixes, fixed geometry and duplicate explanation text need provenance review; do not silently elevate them to product law or remove them without tracing the underlying need. |
+
+For each material rule change record current rule/purpose, demonstrated problem, replacement,
+working lab example, retained business/safety behaviour, affected workflows/contracts/checks and
+the exact owner decision. Mark `PROPOSED — LAB ONLY` **before** lab implementation. Update the
+authoritative application contract only after owner approval, retaining prior decision history.
+
+**Example — Close icon (`PROPOSED — LAB ONLY`).** The current UI contract requires a red Material
+`close` action; its purpose was consistent, visible closure, but red may imply destructive action
+beside an ordinary dismissal. Compare the signed-off red control with a neutral Close control in a
+synthetic dirty Account editor. Retain its accessible name, target/focus behaviour and the same
+unsaved-changes Save/Discard/Cancel decision. Affected: shared modal/action contract, ledger
+editors, Account editor and UI consistency checks. Owner decision: approve or reject neutral Close
+after the lab comparison; no current contract is changed here.
+
+## Linked scenario coverage
+
+Statuses describe evidence for the **current product**, not lab approval. `OWNER ACCEPTED` is used
+only where the runbook records owner acceptance. Proposed treatment is a lab research question,
+not an instruction to change financial authority. Existing request IDs and details stay in the
+canonical register and owner guide.
+
+| Requirement → scenario | Current evidence | Proposed treatment | Acceptance check | Status |
+| --- | --- | --- | --- | --- |
+| Identity → sign in, refresh, resume | `/login`, auth/session contracts; owner login pass reported | Preserve safe return and clear transient failure | Missing/invalid session denied; intended route restored | Owner evidence; broader restart unverified |
+| Fund Manager position → open app | `/`, summary and Profile header sources | One priority hierarchy: position, attention, next action | Owner locates position/task without repeated panels; figures reconcile | IMPLEMENTED; UX owner dissatisfaction |
+| Today’s work → triage tasks and notifications | `/tasks`, `/notifications`, queue/alert contracts | Contextual task action without duplicated warning | Each task leads to governed source; no lost warning | IMPLEMENTED; owner UX unverified |
+| Profile management → list, switch, onboard | `/profiles`, `/profiles/new`, switcher/route authority | Compare one clear global/Profile navigation transition | Identity and route preserved; no cross-Profile reads | IMPLEMENTED; range/switch owner partial fail |
+| Range → change once across Profiles | Fund Manager selected-range authority | Keep persistent global range visible where relevant | Same range after switch/refresh/login; no stale P&L | IMPLEMENTED; owner partial fail |
+| Accounts → inspect cash and correct readiness | Account cash authority, `/tracker/accounts`; CP-109 | Progressive known/unknown disclosure, direct correction | Unknown never zero; correction reaches exact Account | IMPLEMENTED; CP-109 visual pending |
+| Exchange offers → inspect/set commission | Account and offer authority; CP-109 atomic save | Keep current/effective rate near Account action | Save/history/precedence and unknown semantics preserved | IMPLEMENTED; CP-109 visual pending |
+| Opportunity → scan and qualify | `/oddsmatcher`, `/fund-manager/calculators` | Compare tool entry and contextual Profile handoff | Provider freshness/liquidity truth; no automatic placement | IMPLEMENTED; Oddsmatcher owner acceptance pending |
+| Sportsbook → draft, place, settle, correct | `/tracker/sportsbook-bets`; CP-108 owner run | Keep lifecycle actions contextual, protected fields intact | Exact money/history, no duplicate or silent write | OWNER ACCEPTED for core lifecycle only |
+| Free Bet → award, link, settle | `/tracker/free-bets`, lineage fixtures | Surface parent/child and next action | Link once; correct P&L and separate settlement | CODE-VERIFIED ONLY |
+| Casino/refund/reward → wager and release | Casino ledger/reward contracts | Reveal stage and progress on demand | No double counting; confirmed release | IMPLEMENTED; owner acceptance pending |
+| Extra Place → plan, place, resolve | `/tracker/each-way-extra-places`, ledger contract | Compare compact workflow without hiding fields | Current/final value and uncertainty retained | IMPLEMENTED; owner acceptance unverified |
+| Cash adjustments → record and audit | `/tracker/cash-adjustments`, cash-first contract | Contextual add/edit and readable history | Balance/P&L source distinction intact | IMPLEMENTED; owner acceptance unverified |
+| Open positions → inspect and act | Profile Operations, exposure membership authority | Separate planned pipeline from committed risk | Counts/liability only from committed, unknown explicit | CODE-VERIFIED; owner UX unverified |
+| Reports → reconcile period and sources | `/reports`, `/tracker/reports`; accepted boundary | Preserve drilldown; simplify route into source | Exact source/date rules and accepted figures unchanged | OWNER ACCEPTED for current boundary |
+| Import/history → review workbook changes | import review routes, source/identity contracts | Stage-gated review with explicit risk/Apply separation | No-write review; source workbook unchanged | IMPLEMENTED; owner acceptance pending |
+| Settings/permissions → manage access and defaults | `/settings`, `/account`, requests routes | Separate occasional administration from daily navigation | Role and Profile isolation enforced server-side | IMPLEMENTED; detailed UX unverified |
+| Backup/restore → recover safely | `/profiles/restore`, recovery docs and receipts | Clear recovery entry and target identity | Disposable restore/rollback only; no live overwrite | CODE-VERIFIED ONLY |
+| Exceptions → failures, partial data, dirty forms | Shared loading/validation/Save-Discard authorities | One concise status/action per condition | Failure not mistaken for zero/expiry; dirty state retained | IMPLEMENTED; cross-journey UX unverified |
+
+**Coverage gaps:** no complete current Fund Manager task-time/usability study, no verified Design
+Lab brief, no precise DJList page/capture, no current Coinbase UK authenticated capture, no fresh
+screen-reader spoken-output acceptance, and no owner approval of a replacement shell. Do not
+infer absent functionality from this summary or overwrite earlier request IDs.
+
+## References and journey direction
+
+- **Coinbase, official performance help** ([source](https://help.coinbase.com/en-ca/coinbase/trading-and-funding/sending-or-receiving-cryptocurrency/my-investment-performance)): Home → balance → date range → point detail, with realised and unrealised values distinguished. Lab relevance: show Fund Manager position first, then reveal source detail. Retain Plum Duff's cash-first, range and partial-data rules. This is documented workflow evidence, not a verified current UK screen or permission to copy styling.
+- **Coinbase, official Advanced dashboard help** ([source](https://help.coinbase.com/en-bm/coinbase/trading-and-funding/advanced-trade/dashboard-overview)): chart range controls and separate open-order/history views. Lab relevance: distinguish committed open positions from realised history with contextual actions. Betting lifecycle and exposure contracts remain protected.
+- **DJList:** exact product/page or capture was not identified from the supplied name; compact toolbar, table/action and reflow claims remain **UNVERIFIED**. A specific owner reference is needed before using it as an authority.
+- **Current Plum Duff:** `app-chrome.tsx` renders menu/brand, search, Profile summary/switcher, notification, appearance, identity and theme; `app-navigation-drawer.tsx` separately lists Daily tasks, Summary Dashboard, Requests, Catalogue, Reports, Calculators and Oddsmatcher, while Profile navigation adds another module list. These are code-proven layers, not proof of a preferred replacement. Compare routes/tasks, not isolated screenshots.
+
+**Recommended first lab journey:** open the Fund Manager overview → identify current position and
+today's highest-priority task → switch to the relevant Profile/Account or open position → return
+without losing context. This directly tests the owner's most repeated shell/navigation complaint
+and spans management, money summary and daily action without rewriting a ledger. One synthetic
+working journey should compare current and proposed task steps, information visibility, focus,
+responsive reflow (desktop/narrow/zoom), light/dark, partial/error states and safe return. No
+normal app route or shared CSS change. Use synthetic/mock data, zero owner writes or provider calls,
+no production entry, and a removable lab boundary. Owner approval of the journey and any
+`PROPOSED — LAB ONLY` exceptions is the next design gate.

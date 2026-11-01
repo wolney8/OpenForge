@@ -1,5 +1,16 @@
 # Plum Duff Next Issue Tracking Register
 
+## CP-110 Fund Manager Design Lab discovery — 2026-11-01
+
+These requests add to, and do not replace or close, earlier owner requests. [Current coverage and
+decision gate](../audits/platform-quality-audit.md#cp-110-design-lab-discovery-and-ux-direction--2026-11-01).
+
+| ID / issue | Owner request | State |
+| --- | --- | --- |
+| PD-PR-110-01 / [#114](https://github.com/wolney8/OpenForge/issues/114), [#92](https://github.com/wolney8/OpenForge/issues/92) | Reconsider the complete Fund Manager journey and coherent shell/navigation, density, responsive behaviour and information hierarchy in an isolated synthetic Design Lab; classify protected business/safety rules versus challengeable presentation rules before any normal redesign. | DOCUMENTED; original Design Lab brief and exact DJList reference UNVERIFIED; first lab tranche requires owner design approval. GitHub issue scope linked, no new issue or acceptance change. |
+| PD-FIX-504 / [#114](https://github.com/wolney8/OpenForge/issues/114) | Diagnose owner-observed `connect ECONNREFUSED 127.0.0.1:8010` without disturbing canonical services. | NEEDS VERIFICATION for recurrence; CP-109 logged occurrence traced to an exact-revision API startup rejection while web was serving. Current services healthy; no runtime repair in CP-110. GitHub issue scope linked, no new issue. |
+
+
 Current continuation: [CP-055 active batch](#cp-055-approved-sequential-delivery). Earlier checkpoint sections retain their historical state.
 
 ## Resume here — CP-050 import gate

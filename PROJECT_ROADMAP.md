@@ -1,6 +1,19 @@
 # Project Roadmap — Plum Duff / OpenForge — Doc ID: PR-CODEX-001
 
+## CP-110 Design Lab direction — 2026-11-01
+
+Next proposed tranche, **owner approval pending**: one isolated, synthetic Fund Manager
+"open → understand position → choose today's task → enter the relevant Profile workflow"
+journey, compared with the current shell at desktop, narrow width and zoom. Test a simpler
+navigation hierarchy and contextual actions while preserving every ledger field, financial
+meaning, Profile permission and recovery safeguard. Record any presentation-rule exception as
+`PROPOSED — LAB ONLY`; authoritative contracts change only after owner review. No normal route,
+shared styling, provider call or owner financial write is in this tranche. [Evidence and coverage](docs/audits/platform-quality-audit.md#cp-110-design-lab-discovery-and-ux-direction--2026-11-01).
+
 ## CP-079 Oddsmatcher programme decision — 2026-10-23
+
+The section below records its historical CP-079 decision; later Oddsmatcher delivery is tracked in
+the current status and acceptance records.
 
 Oddsmatcher remains audit/research only. The first releasable tranche is not a mock table: after an
 owner-approved provider/terms gate, deliver a read-only Football Match Odds Normal/single-lay finder
