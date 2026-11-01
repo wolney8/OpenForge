@@ -10,6 +10,10 @@ meaning, Profile permission and recovery safeguard. Record any presentation-rule
 `PROPOSED — LAB ONLY`; authoritative contracts change only after owner review. No normal route,
 shared styling, provider call or owner financial write is in this tranche. [Evidence and coverage](docs/audits/platform-quality-audit.md#cp-110-design-lab-discovery-and-ux-direction--2026-11-01).
 
+The [initial Design Lab brief](docs/planning/plum-duff-design-lab-brief.md) is sourced from the
+owner's CP-110 kickoff and clarification. Coinbase CDS leads the experience comparison; DJList
+source patterns are secondary. Approval of this first lab journey remains the next gate.
+
 ## CP-079 Oddsmatcher programme decision — 2026-10-23
 
 The section below records its historical CP-079 decision; later Oddsmatcher delivery is tracked in

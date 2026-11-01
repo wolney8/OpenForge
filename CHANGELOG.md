@@ -3,6 +3,7 @@
 ## CP-110 — 2026-11-01
 
 - Documentation/source-custody checkpoint only: classify Design Lab contracts, map Fund Manager scenarios and reference gaps, record CP-109 acceptance boundary and the observed API startup connection error. No application or database change.
+- Owner clarification: create the first canonical Design Lab brief from the two owner prompts; inspect Coinbase CDS and the owner's DJList source as primary/secondary references. No lab or normal-app UI was implemented.
 
 ## CP-055 — 2026-09-26 23:29:27 BST
 

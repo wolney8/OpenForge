@@ -7,7 +7,10 @@
 > ancestor. CP-109 focused corrections are implemented; broader owner visual acceptance remains
 > pending. The owner requests a coherent Fund Manager journey redesign, beginning with shell and
 > navigation discovery in an isolated synthetic Design Lab. No normal UI, financial authority or
-> acceptance status changes here. [Coverage, contract classification and design gate](docs/audits/platform-quality-audit.md#cp-110-design-lab-discovery-and-ux-direction--2026-11-01).
+> acceptance status changes here. The owner confirmed no prior repository brief existed; the
+> [initial Design Lab brief](docs/planning/plum-duff-design-lab-brief.md) records both owner prompts.
+> Coinbase CDS is the primary public UX reference; the owner's DJList source is secondary.
+> [Coverage and design gate](docs/audits/platform-quality-audit.md#cp-110-design-lab-discovery-and-ux-direction--2026-11-01).
 
 > **CP-107 repeated workbook source versions — 2026-10-30:** the import architecture now records
 > one Profile-scoped workbook lineage and immutable checksum versions, with CP-106M as the existing

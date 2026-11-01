@@ -2,7 +2,7 @@
 
 ## CP-110 current checkpoint — 2026-11-01
 
-- `PD-PR-110-01`: Fund Manager journey and isolated Design Lab direction are documented, not implemented or owner accepted. Original Design Lab brief and exact DJList reference have not been located; provenance and reference-dependent claims remain unverified.
+- `PD-PR-110-01`: Fund Manager journey and isolated Design Lab direction are documented, not implemented or owner accepted. The [initial brief](docs/planning/plum-duff-design-lab-brief.md) is explicitly sourced to the owner's two prompts; DJList source and public Coinbase CDS references are inspected. Their authenticated/runtime visual behaviour and owner lab acceptance remain unverified.
 - `PD-FIX-504`: owner-observed `ECONNREFUSED 127.0.0.1:8010` occurred during the CP-109 web/API startup gap after an exact-revision API gate rejected `04f591d…+dirty`. Both canonical services are healthy now; recurrence outside that logged event is unverified. No service was restarted for CP-110.
 - CP-109 broad API run (1,200 passed / 125 failed / 20 skipped) and broad Ruff lint (264 findings) are **reported baseline**, not a clean gate or proof that every failure is harmless. Focused CP-109 checks and owner acceptance remain distinct. [Detail](docs/audits/platform-quality-audit.md#cp-110-design-lab-discovery-and-ux-direction--2026-11-01).
 

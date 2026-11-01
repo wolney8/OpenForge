@@ -4,7 +4,7 @@
 
 | ID / issue | Area and requested outcome | Current signed-off equivalent | Status |
 | --- | --- | --- | --- |
-| PD-PR-110-01 / #114 / #92 | Fund Manager shell, navigation, density and responsive journey: compare one coherent synthetic Design Lab path before any normal redesign | Existing `AppChrome`, navigation drawer, Profile switcher, selected-range and shared modal/accessibility contracts | NEEDS VERIFICATION — coverage and proposed first tranche documented; owner approval and missing original brief/reference needed before a lab build |
+| PD-PR-110-01 / #114 / #92 | Fund Manager shell, navigation, density and responsive journey: compare one coherent synthetic Design Lab path before any normal redesign | Existing `AppChrome`, navigation drawer, Profile switcher, selected-range and shared modal/accessibility contracts | NEEDS VERIFICATION — initial owner-sourced brief and references documented; owner approval needed before a lab build |
 | PD-FIX-504 / #114 | API connection error during canonical startup: retain exact symptom and runtime impact | Exact-revision launcher and current `/healthz` probes | NEEDS VERIFICATION — logged CP-109 occurrence explained; current services healthy; future recurrence unverified |
 
 No normal UI or shared styling changed. Neutral Close is `PROPOSED — LAB ONLY`; the red Close and

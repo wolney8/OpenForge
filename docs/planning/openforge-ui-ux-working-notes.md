@@ -1,5 +1,16 @@
 # OpenForge UI/UX Working Notes
 
+## CP-110 Design Lab direction — 2026-11-01
+
+The owner's [initial Design Lab brief](plum-duff-design-lab-brief.md) now governs discovery of a
+coherent Fund Manager journey in an isolated synthetic lab. Earlier workbook parity, financial
+meaning, required ledger information and accessibility/saving safeguards remain protected.
+Presentation conventions below are historical working interpretations to assess, not automatic
+vetoes on a better interaction. The earlier per-Profile date-setting note is historical; the
+installed universal Fund Manager Selected Range remains the active authority. Coinbase CDS is
+the primary UX reference and owner DJList source a secondary example. No normal UI change is
+approved by this note.
+
 _Last updated: 2026-07-04_
 
 ## Purpose

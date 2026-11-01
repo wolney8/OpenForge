@@ -5848,8 +5848,8 @@ Owner acceptance remains pending and no acceptance status was inferred from thes
 provider or acceptance change. The owner reports a clunky, inconsistent Fund Manager journey,
 especially header/menu/navigation, control density and responsive reflow. The lab is an isolated
 place to compare a coherent journey, not permission to remove fields or safety controls. The
-original Design Lab brief/decision record was not found in the current repository, checked Git
-history or issue search; these amendments are provisional here until its location is confirmed.
+owner clarified that no earlier repository brief existed: the CP-110 kickoff and follow-up are
+the provenance for the [initial canonical brief](../planning/plum-duff-design-lab-brief.md).
 
 **Source and runtime.** Installed web/API revision `04f591dca7e961061256a954454da5ba2f4a2803`;
 `localhost:3010` and `localhost:8010` health endpoints currently pass, API database `normal-owner`,
@@ -5874,7 +5874,8 @@ Existing financial unknowns and engineering debt remain. The owner-observed `con
 127.0.0.1:8010` is evidenced in CP-109 startup logs: the exact-revision API gate first rejected
 `04f591d…+dirty` while the web process was already serving, so its proxy could not reach API 8010;
 after generated-file cleanup and a matching API start, both health endpoints passed. This explains
-that logged occurrence, not every possible future recurrence. `PD-FIX-504` remains a runtime
+that logged occurrence, not every possible future recurrence. A fresh read-only check still shows
+the same healthy web/API processes and database identity. `PD-FIX-504` remains a runtime
 monitoring/verification item; no service was restarted for this design audit.
 
 ## Contract classification and lab exception rule
@@ -5919,25 +5920,26 @@ canonical register and owner guide.
 | Sportsbook → draft, place, settle, correct | `/tracker/sportsbook-bets`; CP-108 owner run | Keep lifecycle actions contextual, protected fields intact | Exact money/history, no duplicate or silent write | OWNER ACCEPTED for core lifecycle only |
 | Free Bet → award, link, settle | `/tracker/free-bets`, lineage fixtures | Surface parent/child and next action | Link once; correct P&L and separate settlement | CODE-VERIFIED ONLY |
 | Casino/refund/reward → wager and release | Casino ledger/reward contracts | Reveal stage and progress on demand | No double counting; confirmed release | IMPLEMENTED; owner acceptance pending |
+| Offers → register, qualify, award, expire | Offer Groups, promotion and Free Bet lineage contracts | Show the next governed stage near related records | Source identity, expiry and award lineage remain intact | IMPLEMENTED in supported modes; broader offer UX unverified |
 | Extra Place → plan, place, resolve | `/tracker/each-way-extra-places`, ledger contract | Compare compact workflow without hiding fields | Current/final value and uncertainty retained | IMPLEMENTED; owner acceptance unverified |
 | Cash adjustments → record and audit | `/tracker/cash-adjustments`, cash-first contract | Contextual add/edit and readable history | Balance/P&L source distinction intact | IMPLEMENTED; owner acceptance unverified |
 | Open positions → inspect and act | Profile Operations, exposure membership authority | Separate planned pipeline from committed risk | Counts/liability only from committed, unknown explicit | CODE-VERIFIED; owner UX unverified |
 | Reports → reconcile period and sources | `/reports`, `/tracker/reports`; accepted boundary | Preserve drilldown; simplify route into source | Exact source/date rules and accepted figures unchanged | OWNER ACCEPTED for current boundary |
 | Import/history → review workbook changes | import review routes, source/identity contracts | Stage-gated review with explicit risk/Apply separation | No-write review; source workbook unchanged | IMPLEMENTED; owner acceptance pending |
 | Settings/permissions → manage access and defaults | `/settings`, `/account`, requests routes | Separate occasional administration from daily navigation | Role and Profile isolation enforced server-side | IMPLEMENTED; detailed UX unverified |
+| Onboarding/invitations → create or review access | `/profiles/new`, `/profiles/requests`, invitation contracts | Guided infrequent workflow outside daily task list | Approval and owner-only actions remain server checked | IMPLEMENTED in supported scope; owner acceptance unverified |
 | Backup/restore → recover safely | `/profiles/restore`, recovery docs and receipts | Clear recovery entry and target identity | Disposable restore/rollback only; no live overwrite | CODE-VERIFIED ONLY |
 | Exceptions → failures, partial data, dirty forms | Shared loading/validation/Save-Discard authorities | One concise status/action per condition | Failure not mistaken for zero/expiry; dirty state retained | IMPLEMENTED; cross-journey UX unverified |
 
-**Coverage gaps:** no complete current Fund Manager task-time/usability study, no verified Design
-Lab brief, no precise DJList page/capture, no current Coinbase UK authenticated capture, no fresh
+**Coverage gaps:** no complete current Fund Manager task-time/usability study, no executed Design
+Lab, no DJList browser/runtime observation, no current Coinbase UK authenticated capture, no fresh
 screen-reader spoken-output acceptance, and no owner approval of a replacement shell. Do not
 infer absent functionality from this summary or overwrite earlier request IDs.
 
 ## References and journey direction
 
-- **Coinbase, official performance help** ([source](https://help.coinbase.com/en-ca/coinbase/trading-and-funding/sending-or-receiving-cryptocurrency/my-investment-performance)): Home → balance → date range → point detail, with realised and unrealised values distinguished. Lab relevance: show Fund Manager position first, then reveal source detail. Retain Plum Duff's cash-first, range and partial-data rules. This is documented workflow evidence, not a verified current UK screen or permission to copy styling.
-- **Coinbase, official Advanced dashboard help** ([source](https://help.coinbase.com/en-bm/coinbase/trading-and-funding/advanced-trade/dashboard-overview)): chart range controls and separate open-order/history views. Lab relevance: distinguish committed open positions from realised history with contextual actions. Betting lifecycle and exposure contracts remain protected.
-- **DJList:** exact product/page or capture was not identified from the supplied name; compact toolbar, table/action and reflow claims remain **UNVERIFIED**. A specific owner reference is needed before using it as an authority.
+- **Coinbase, primary UX reference:** public CDS [NavigationBar](https://cds.coinbase.com/components/navigation/NavigationBar/) documents composed header regions and mobile search collapse; [Sidebar](https://cds.coinbase.com/components/navigation/Sidebar/) documents labelled/condensed navigation; [NavigationTitleSelect](https://cds.coinbase.com/components/navigation/NavigationTitleSelect/) documents header context switching; [Table](https://cds.coinbase.com/components/data-display/Table/) documents compact desktop data views and mobile list views; [Accordion](https://cds.coinbase.com/components/layout/Accordion/) documents auxiliary disclosure. [Performance help](https://help.coinbase.com/en-ca/coinbase/trading-and-funding/sending-or-receiving-cryptocurrency/my-investment-performance) and [order/history help](https://help.coinbase.com/en/exchange/managing-my-account/account-history-and-reports) describe balance-to-detail and open/history separation. These are public design/workflow sources, not authenticated UK UI observation.
+- **DJList, secondary implemented reference:** inspected owner repository `web/index.html`, `web/styles.css`, `web/library-workspace.css`, `web/library-tools.css`, `web/activity.css` at [`5376d0c`](https://github.com/wolney8/DJList/tree/5376d0cec713d2b993631553fed9557d104d17f1/web). Grouped sidebar and topbar, compact search/filter/table controls, icon-rail/narrow reflow, metrics grid and bounded activity panel are source-observed. Narrow DJList CSS hides some table columns/actions; that treatment cannot be carried into a financial ledger without proving all required information/action remains accessible. Runtime rendering is unverified. [Pattern-to-lab evidence](../planning/plum-duff-design-lab-brief.md#observable-reference-patterns--inspected-2026-11-01).
 - **Current Plum Duff:** `app-chrome.tsx` renders menu/brand, search, Profile summary/switcher, notification, appearance, identity and theme; `app-navigation-drawer.tsx` separately lists Daily tasks, Summary Dashboard, Requests, Catalogue, Reports, Calculators and Oddsmatcher, while Profile navigation adds another module list. These are code-proven layers, not proof of a preferred replacement. Compare routes/tasks, not isolated screenshots.
 
 **Recommended first lab journey:** open the Fund Manager overview → identify current position and
