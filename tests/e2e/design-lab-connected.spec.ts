@@ -12,7 +12,7 @@ test.beforeEach(async ({ page }) => {
     if (route.request().url().endsWith("/api/auth/activity")) { await route.fulfill({ json: { ok: true } }); return; }
     throw new Error(`Unexpected API request from synthetic Design Lab: ${route.request().url()}`);
   });
-  await page.goto("/design-lab");
+  await page.goto("/design-lab?baseline=cp113");
   await expect(page.locator('[data-pd-id="design-lab-connected.root"]')).toBeVisible();
 });
 

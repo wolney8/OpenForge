@@ -5842,6 +5842,21 @@ and the point-level performance chart. Manual refresh, quota, exact matching, un
 server Profile authorization, idempotent Prospecting and no-placement boundaries are unchanged.
 Owner acceptance remains pending and no acceptance status was inferred from these checks.
 
+# CP-114 owner-grounded Design Lab coverage — 2026-11-01
+
+The CP-110 scenario inventory and PD-PR-114-01..06 remain authoritative for scope. All CP-114 behaviour below is synthetic and lab-only; normal ledger, reporting and Profile contracts are unchanged.
+
+| Requirement / contract | Lab scenario | Proposed treatment | Acceptance check | Status |
+| --- | --- | --- | --- | --- |
+| Fund Manager shell, Profile isolation, cash/exposure/fees | Position → Today → source | Separate workspace, Profile and identity controls; labelled needs-action/offer/account notifications; known cash, realised result, committed exposure and source-linked Profile fee table | Navigate source; change Profile/range; inspect unknown and fee-less Personal Profile | CODE-VERIFIED synthetic; managed fee calculation UNVERIFIED |
+| Sportsbook lifecycle and CALC-001 | Offer-first Quick Capture → non-linear workbench → external Back/Lay confirmation → settlement/correction → Reports | Event Name optional for Prospecting and Matching; requested versus matched Lay retained; partial money unavailable; reasoned correction in synthetic history | Save without Event Name; jump to Matching; test partial and full fixture; follow source links | CODE-VERIFIED fixture; arbitrary inputs/partial maths UNVERIFIED |
+| Accounts cash authority | Accounts identity → balance observation | Explicit observation and timestamp; expected movement separate; unknown versus confirmed zero | Confirm £0.00; inspect known cash and history | CODE-VERIFIED synthetic; normal data unchanged |
+| Approved ledger field/column order | Accounts/Sportsbook table → detail | Desktop default order retained, sort/filter/reorder/resize and memory-only saved view; narrow summary opens full labelled details | Compare column map; keyboard/390px; inspect all fields | CODE-VERIFIED lab; narrow normal-app replacement and persistence UNAPPROVED |
+| Other ledger and report links | Free Bet/Casino/Extra Place/Cash previews → detail; Reports → source | Connected representative layout with preview-only Save; source chart and links | Navigate each; verify disabled deeper edits | REPRESENTATIVE PREVIEW; CP-116 depth deferred |
+| Offer reuse, recurring tasks, fees, AI advice | Today/Opportunities proposal → CP-115 | Source-linked task categories and advisory label; no external offer claims or automatic action | Owner reviews task taxonomy and bulk preview contract | DOCUMENTED; not simulated |
+
+Private renders: `data/private/evidence/cp114-design-lab/` (1440/900/768/430/390px, light/dark, narrow ledgers and entry). Exact measurement against conversation-only Coinbase original pixels, owner visual approval and spoken screen-reader output remain unverified. The CP-112 comparison route retains a pre-existing 3px icon overflow at actual Chromium 200% zoom; CP-114's own zoom path passes.
+
 # CP-113 connected Design Lab coverage — 2026-11-01
 
 CP-112 is sufficient for continued **lab exploration**, not accepted for normal integration. The protected scenario inventory and original request history remain in the CP-110 matrix and canonical register; this is its lab coverage update. All rows below are synthetic, authenticated, local-only and owner design acceptance pending.

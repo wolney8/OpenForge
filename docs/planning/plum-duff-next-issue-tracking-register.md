@@ -1,5 +1,18 @@
 # Plum Duff Next Issue Tracking Register
 
+## CP-114 owner-grounded Design Lab — 2026-11-01
+
+Each item remains lab-only and links to the existing [Design Lab issue #114](https://github.com/wolney8/OpenForge/issues/114); this local register preserves the owner request where live issue editing is not verified.
+
+| ID | Owner requirement | Status |
+| --- | --- | --- |
+| PD-PR-114-01 | Coinbase-informed workspace/sidebar/header, Profile versus login identity, notifications and source-linked Position/Today. | NEEDS VERIFICATION — synthetic lab browser paths pass; owner captures available in conversation, exact original-pixel comparison unverified. |
+| PD-PR-114-02 | Verbatim offer-first Quick Capture and non-linear Sportsbook workbench; Matching before Event Name, external Back/Lay confirmations and partial lay state. | NEEDS VERIFICATION — synthetic lifecycle paths pass; owner workflow judgement pending. |
+| PD-PR-114-03 | High-fidelity Sportsbook and Accounts ledgers retaining approved fields/order; sort/filter/reorder/resize, editable cells, audited correction gates and simulated saved views. | NEEDS VERIFICATION — lab interactions pass; saved view is memory-only and narrow normal-app column replacement unapproved. |
+| PD-PR-114-04 | Compact Account balance observation with timestamp, known/unknown distinction, expected movement separately. | NEEDS VERIFICATION — synthetic zero observation path passes; owner interaction judgement pending. |
+| PD-PR-114-05 | Contract-backed outcomes, commission and partial lay demonstration; no invented money calculation. | NEEDS VERIFICATION — CALC-001 full execution only; partial/changed-input money unavailable. |
+| PD-PR-114-06 | CP-115 shared offer/reload, reminders, AI advisory and fee proposals; CP-116 Free Bet/Casino/specialist lifecycle depth. | DOCUMENTED — deferred, not CP-114 implementation. |
+
 ## CP-113 connected Design Lab — 2026-11-01
 
 | ID / tracking | Owner request | State |

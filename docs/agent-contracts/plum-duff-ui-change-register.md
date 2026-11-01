@@ -912,3 +912,15 @@ fingerprint `7246998d43722066`, all 73 table hashes and all 6,738 rows remain un
 | PD-PR-113-02 / #114 | Accounts and six ledger previews | Required desktop fields, contained overflow, narrow labelled detail; CDS Table | Existing ledger table column authorities | NEEDS VERIFICATION — browser column/detail checks pass; narrow replacement needs owner decision |
 | PD-PR-113-03 / #114 | Sportsbook entry | Same draft in quick modal and page stepper; CDS Modal/Stepper | Signed-off Sportsbook editor and calculator fixture | NEEDS VERIFICATION — fixture-bounded lifecycle/profile isolation checks pass; owner choice pending |
 | PD-PR-113-04 / #114 | Reports and related records | Source drilldown and explicit partial-known values | Existing report/exposure authorities | NEEDS VERIFICATION — synthetic drilldown checks pass; owner review pending |
+## CP-114 owner-grounded Design Lab batch — 2026-11-01
+
+Recorded before lab UI edits. All exceptions are `PROPOSED — LAB ONLY`; owner review and normal-app integration remain separate. Signed-off normal equivalents are the current AppChrome, Accounts table/review, Sportsbook table/editor, account quick popup and ModalBoundary. Relevant local requests are PD-PR-114-01 through PD-PR-114-06 in the canonical register, tracked under GitHub #114. No protected column/calculation/lifecycle contract changes are approved.
+
+| ID | Surface | Requested treatment | Reference / safeguard | Status |
+| --- | --- | --- | --- | --- |
+| PD-PR-114-01 | Shell, Position, Today | Distinct workspace, destination, Profile and identity controls; anchored notifications and source links | CDS Sidebar/NavigationBar/Popover; Profile isolation and focus | NEEDS VERIFICATION — lab browser paths pass, owner review pending |
+| PD-PR-114-02 | Sportsbook entry | Offer-first capture plus non-linear workbench and partial placement | Existing Sportsbook lifecycle; explicit external confirmation | NEEDS VERIFICATION — synthetic browser paths pass |
+| PD-PR-114-03 | Ledgers | Exact default columns/order, lab-only manipulation and governed edit gates | Normal Sportsbook/Accounts tables; no silent settled mutation | NEEDS VERIFICATION — desktop/narrow paths pass; normal contract unchanged |
+| PD-PR-114-04 | Account balance | Timestamped synthetic observation popup | Existing Account quick popup; unknown ≠ zero | NEEDS VERIFICATION — synthetic observation path passes |
+| PD-PR-114-05 | Outcomes | Fixture-backed only; partial lay unavailable without authority | Existing calculation contracts and fixtures | NEEDS VERIFICATION — CALC-001 only; owner review pending |
+| PD-PR-114-06 | CP-115/116 | Trace proposals, no premature implementation | Owner CP-114 scope boundary | DOCUMENTED |

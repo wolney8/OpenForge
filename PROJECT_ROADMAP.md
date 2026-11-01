@@ -1,5 +1,9 @@
 # Project Roadmap — Plum Duff / OpenForge — Doc ID: PR-CODEX-001
 
+## CP-114 owner-grounded lab review — 2026-11-01
+
+Owner gate: compare the synthetic workspace shell, Position/Today source navigation, Accounts/Sportsbook table and offer-first Quick Capture versus non-linear workbench at `/design-lab`; CP-113 remains at `?baseline=cp113`. Decide entry pattern, workspace split, narrow required-column treatment and whether saved views merit a governed persistence contract. CP-115 offer reuse/task/fee depth and CP-116 Free Bet/Casino/specialist depth remain separate. No normal integration is approved. [Coverage](docs/audits/platform-quality-audit.md#cp-114-owner-grounded-design-lab-coverage--2026-11-01).
+
 ## CP-113 connected lab review — 2026-11-01
 
 The isolated lab connects Position/Today, Profile/range/search, six ledger previews, a fixture-bounded Sportsbook lifecycle and Reports drilldown. CP-112 is sufficient for exploration but no shell or workflow is approved for normal integration. Next gate: owner compares the connected journey, modal versus page entry, and the proposed narrow ledger list against protected column requirements. Deeper Free Bet/Casino/other lifecycle simulation remains deferred. [Coverage](docs/audits/platform-quality-audit.md#cp-113-connected-design-lab-coverage--2026-11-01).
