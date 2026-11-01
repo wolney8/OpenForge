@@ -48,6 +48,7 @@ from openforge_api.db import (
     list_profiles,
     list_sportsbook_bets,
     list_sportsbook_partial_lay_reminder_audit,
+    resolve_profile_exchange_commission,
     reuse_mutation_connection,
     update_multi_profile_entry_target,
     update_sportsbook_bet,
@@ -378,6 +379,8 @@ class SportsbookCalculationPreviewResponse(BaseModel):
     multi_lay_reference: dict[str, Any] | None = None
     multi_lay_actual: dict[str, Any] | None = None
     lay_commission_1: str | None
+    commission_source: str = ""
+    commission_source_label: str = ""
     calculation_state: str
     calculation_notes: list[str]
     match_rating: str | None
@@ -1201,7 +1204,13 @@ def get_profile_sportsbook_partial_lay_reminder_audit(
 def preview_profile_sportsbook_bet(
     profile_id: str, payload: SportsbookBetPayload
 ) -> SportsbookCalculationPreviewResponse:
-    resolved_commission = get_profile_exchange_commission(profile_id, payload.exchange_name)
+    commission_resolution = resolve_profile_exchange_commission(
+        profile_id,
+        payload.exchange_name,
+        effective_date=date.today().isoformat(),
+        explicit_override=payload.lay_commission_1,
+    )
+    resolved_commission = commission_resolution.commission_rate
     values = {**payload.model_dump(), "profile_id": profile_id}
     from openforge_api.lay_plan import parse_plan, validate_plan_write
     from openforge_api.sportsbook_offer_metadata import validate_offer_metadata
@@ -1246,6 +1255,8 @@ def preview_profile_sportsbook_bet(
     return SportsbookCalculationPreviewResponse.model_validate(
         {
             "lay_commission_1": resolved_commission or None,
+            "commission_source": commission_resolution.source,
+            "commission_source_label": commission_resolution.source_label,
             **serialize_calculation(calculation),
             **serialize_profit_boost(profit_boost),
             **multi_lay_planning_reference(values),

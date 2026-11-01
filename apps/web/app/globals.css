@@ -8126,7 +8126,38 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
   min-width: 0;
   min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding-inline: 1.35rem;
+}
+
+.accounts-editor-modal .workflow-editor-body > form,
+.accounts-editor-modal .account-editor-section {
+  overflow: visible;
+}
+
+.account-editor-section-nav {
+  position: sticky;
+  z-index: 3;
+  top: 0;
+  margin-inline: -1.35rem;
+  padding: 0.65rem 1.35rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--outline);
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.account-editor-section-nav .analytics-tab {
+  flex: 0 0 auto;
+  min-height: 2.75rem;
+}
+
+.account-editor-section,
+.account-editor-section-anchor,
+#account-access-title,
+#account-commission,
+#account-history-notes {
+  scroll-margin-top: 5rem;
 }
 
 .accounts-editor-modal > .workflow-panel-header,
@@ -12493,6 +12524,10 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
   background: transparent;
 }
 
+.modal-boundary:has(.accounts-editor-modal) {
+  overflow: hidden;
+}
+
 .modal-backdrop {
   position: fixed;
   inset: 0;
@@ -14689,6 +14724,11 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
 
 .modal-boundary .workflow-editor-modal {
   overflow-y: auto;
+}
+
+/* Account editor owns scrolling in its body; keep header/footer fixed in the modal shell. */
+.modal-boundary .workflow-editor-modal.accounts-editor-modal {
+  overflow: hidden;
 }
 
 .workflow-editor-header-actions {

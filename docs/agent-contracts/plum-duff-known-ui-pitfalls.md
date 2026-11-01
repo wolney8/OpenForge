@@ -1558,3 +1558,11 @@ summary can briefly replay that failure after login. Keep loading active until t
 no-store request resolves, key readiness to the exact request identity, and abort or ignore
 superseded responses. Operational partial aggregates preserve known values and count unknown
 rows; formal reports retain their stricter completeness contract.
+
+## Long editors must have one scroll owner and retain provider identity
+
+Do not place an independently scrolling form inside an already scrolling modal body. Lock the page,
+make the modal body the sole vertical scroll owner, and use the established sticky section
+navigation for long editors. Provider colours and type identity come from the master catalogue and
+must remain visible in the editor header as well as the table; never recreate provider colours in a
+feature-local component.

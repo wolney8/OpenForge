@@ -55,4 +55,15 @@ describe("Sportsbook new-activity Account options", () => {
     expect(accountAllowsNewSportsbookActivity(rows[2])).toBe(false);
     expect(accountAllowsNewSportsbookActivity(rows[4])).toBe(false);
   });
+
+  it("does not hide an eligible Exchange for unknown, zero, or cash-excluded balance state", () => {
+    const rows = [
+      account("Unknown Balance Exchange", "Exchange", { current_balance: "" }),
+      account("Zero Balance Exchange", "Exchange", { current_balance: "0.00" }),
+      account("Cash Excluded Exchange", "Exchange", { counts_in_cash_total: false }),
+    ];
+    expect(getNewSportsbookActivityAccountNamesByType(rows, "Exchange")).toEqual([
+      "Unknown Balance Exchange", "Zero Balance Exchange", "Cash Excluded Exchange",
+    ]);
+  });
 });

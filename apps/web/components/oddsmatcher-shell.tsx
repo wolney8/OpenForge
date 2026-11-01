@@ -1442,9 +1442,11 @@ function BetSummaryDialog({
   const previewRef = useRef<Preview | null>(null);
   const commissionSource = opportunity.commission_origin === "profile-account"
     ? "Profile Account"
+    : opportunity.commission_origin === "commission-offer"
+      ? "Commission offer"
     : opportunity.commission_origin === "oddsmatcher-default"
       ? "Oddsmatcher default"
-      : "0% default";
+      : "Commission unavailable";
   const backCommissionUnsupported = backCommission.trim() === "" || !Number.isFinite(Number(backCommission)) || Number(backCommission) !== 0;
   const oddsInvalid = Boolean(backOddsError || layOddsError);
   const effectivePreviewState = backCommissionUnsupported || oddsInvalid ? "error" : previewState;

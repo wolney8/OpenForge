@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 
 from apps.api.tests.synthetic_setup import seed_synthetic_betting_context
@@ -15,6 +15,7 @@ from openforge_api.db import (
     get_sportsbook_bet,
     list_accounts,
     update_oddsmatcher_preferences_json,
+    update_sportsbook_bet,
     upsert_profile_exchange_commission,
 )
 from openforge_api.main import app
@@ -141,15 +142,80 @@ def test_profile_response_ranks_and_uses_authoritative_commission(tmp_path: Path
     assert first["standard_lay_stake"]
 
 
+def test_smarkets_offer_is_snapshotted_in_prospecting_draft(tmp_path: Path) -> None:
+    client = configure_database(tmp_path)
+    smarkets = next(
+        row for row in list_accounts("profile-demo-001")
+        if row.type == "Exchange" and row.account == "Smarkets"
+    )
+    today = date.today()
+    offer_payload = {
+        "account_id": smarkets.account_id,
+        "commission_rate": "0.00",
+        "effective_start": (today - timedelta(days=1)).isoformat(),
+        "effective_end": (today + timedelta(days=1)).isoformat(),
+        "source_label": "Smarkets synthetic 0% offer",
+        "owner_note": "Synthetic acceptance fixture",
+        "status": "Active",
+    }
+    created_offer = client.post(
+        "/profiles/profile-demo-001/exchange-commissions/offers", json=offer_payload
+    )
+    assert created_offer.status_code == 201, created_offer.text
+    opportunity = client.get(
+        "/profiles/profile-demo-001/oddsmatcher"
+    ).json()["opportunities"][0]
+    assert opportunity["exchange_commission"] == "0.00"
+    assert opportunity["commission_origin"] == "commission-offer"
+    created = client.post(
+        "/profiles/profile-demo-001/oddsmatcher/prospecting-drafts",
+        json={
+            "opportunity_id": opportunity["opportunity_id"],
+            "retry_token": "smarkets-zero-snapshot",
+            "back_stake": "10",
+            "back_odds": opportunity["back"]["odds"],
+            "lay_odds": opportunity["lay"]["odds"],
+            "exchange_commission": opportunity["exchange_commission"],
+            "strategy": "Standard",
+        },
+    )
+    assert created.status_code == 201, created.text
+    row = created.json()["sportsbook_bet"]
+    assert row["lay_commission_1"] == "0.00"
+    offer_id = created_offer.json()["offer_id"]
+    ended = client.put(
+        f"/profiles/profile-demo-001/exchange-commissions/offers/{offer_id}",
+        json={**offer_payload, "status": "Ended"},
+    )
+    assert ended.status_code == 200, ended.text
+    stored = get_sportsbook_bet("profile-demo-001", row["sportsbook_bet_id"])
+    assert stored is not None
+    assert json.loads(stored.lay_plan_json)["commission"] == "0.00"
+    update_sportsbook_bet(
+        "profile-demo-001",
+        row["sportsbook_bet_id"],
+        {
+            **stored.__dict__,
+            "status": "Placed",
+            "lay_actual": "9.71",
+            "lay_matched_stake_1": "9.71",
+            "lay_commission_1": "0.00",
+        },
+    )
+    placed = get_sportsbook_bet("profile-demo-001", row["sportsbook_bet_id"])
+    assert placed is not None
+    assert placed.lay_commission_1 == "0.00"
+
+
 def test_global_response_exposes_all_quotes_without_profile_assumptions(tmp_path: Path) -> None:
     client = configure_database(tmp_path)
     response = client.get("/oddsmatcher")
     assert response.status_code == 200, response.text
     rows = response.json()["opportunities"]
     assert len(rows) == 3
-    assert all(row["exchange_commission"] == "0" for row in rows)
-    assert all(row["commission_origin"] == "zero" for row in rows)
-    assert all(row["standard_lay_stake"] for row in rows)
+    assert all(row["exchange_commission"] is None for row in rows)
+    assert all(row["commission_origin"] == "unavailable" for row in rows)
+    assert all(row["standard_lay_stake"] is None for row in rows)
     assert all(row["can_create_prospecting_draft"] is False for row in rows)
     assert all("Choose a Profile" in row["back_eligibility"]["reason"] for row in rows)
 

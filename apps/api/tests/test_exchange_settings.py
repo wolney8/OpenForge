@@ -7,7 +7,11 @@ from apps.api.tests.synthetic_setup import seed_synthetic_betting_context
 from fastapi.testclient import TestClient
 
 from openforge_api.config import settings
-from openforge_api.db import create_account
+from openforge_api.db import (
+    create_account,
+    list_accounts,
+    resolve_profile_exchange_commission,
+)
 from openforge_api.main import app
 from openforge_api.notifications import exchange_commission_notifications
 
@@ -129,3 +133,74 @@ def test_attached_exchange_without_commission_is_returned_as_profile_health_gap(
     assert notification.href.endswith(
         "/profiles/profile-demo-001/tracker/settings#defaults"
     )
+
+
+def test_zero_commission_offer_overrides_base_only_inside_period_and_rejects_overlap(
+    tmp_path: Path,
+) -> None:
+    configure_temp_database(tmp_path)
+    client = TestClient(app)
+    exchange = next(
+        row for row in list_accounts("profile-demo-001")
+        if row.type == "Exchange" and row.account == "Smarkets"
+    )
+    base = client.put(
+        "/profiles/profile-demo-001/exchange-commissions",
+        json={"exchange_name": exchange.account, "commission_rate": "0.02"},
+    )
+    assert base.status_code == 200
+    created = client.post(
+        "/profiles/profile-demo-001/exchange-commissions/offers",
+        json={
+            "account_id": exchange.account_id,
+            "commission_rate": "0.00",
+            "effective_start": "2026-11-01",
+            "effective_end": "2026-11-30",
+            "source_label": "Smarkets synthetic 0% offer",
+            "owner_note": "Synthetic fixture",
+            "status": "Active",
+        },
+    )
+    assert created.status_code == 201
+    inside = resolve_profile_exchange_commission(
+        "profile-demo-001", exchange.account, effective_date="2026-11-15"
+    )
+    outside = resolve_profile_exchange_commission(
+        "profile-demo-001", exchange.account, effective_date="2026-12-01"
+    )
+    assert (inside.commission_rate, inside.source, inside.source_label) == (
+        "0.00", "commission_offer", "Smarkets synthetic 0% offer"
+    )
+    assert (outside.commission_rate, outside.source) == ("0.02", "account_default")
+
+    overlap = client.post(
+        "/profiles/profile-demo-001/exchange-commissions/offers",
+        json={
+            "account_id": exchange.account_id,
+            "commission_rate": "0.01",
+            "effective_start": "2026-11-20",
+            "effective_end": "2026-12-20",
+            "source_label": "Overlapping fixture",
+            "status": "Active",
+        },
+    )
+    assert overlap.status_code == 422
+    assert "overlap" in overlap.text.lower()
+
+
+def test_commission_offer_rejects_non_exchange_account(tmp_path: Path) -> None:
+    configure_temp_database(tmp_path)
+    client = TestClient(app)
+    bookie = next(row for row in list_accounts("profile-demo-001") if row.type == "Bookie")
+    response = client.post(
+        "/profiles/profile-demo-001/exchange-commissions/offers",
+        json={
+            "account_id": bookie.account_id,
+            "commission_rate": "0",
+            "effective_start": "2026-11-01",
+            "effective_end": "2026-11-30",
+            "source_label": "Invalid fixture",
+            "status": "Active",
+        },
+    )
+    assert response.status_code == 422

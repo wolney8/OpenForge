@@ -199,3 +199,11 @@ Independent acceptance: restricted unknown-balance Account A→freshProfileB ret
 provider identity, evidence, Notes and native remapping; Exchange2% remains2%; retry no-op; explicit
 changed-row approval; malformed/wrongtype/unmatched blocked; two source identities for one provider
 blocked before writes; Catalogue unchanged; source Profile untouched; SQLite/PostgreSQL atomic guard.
+## Account identity completeness
+
+Every distinct bookmaker, Exchange and Bank identity represented by an authorised workbook source
+is retained even when its lifecycle is Pending Sign Up, Restricted, Not Using, Closed or Archived.
+Operational eligibility is separate from identity retention. On later incremental imports: a new
+identity is a proposed create, changed metadata is a reviewed update, unchanged data is a no-op,
+and absence from a later workbook never implies automatic deletion. Duplicate source aliases remain
+suppressed under the canonical identity decision.

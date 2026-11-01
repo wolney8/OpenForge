@@ -5,7 +5,7 @@ import hashlib
 import json
 import re
 from dataclasses import dataclass, replace
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from pathlib import Path
 from typing import Any, Literal, cast
@@ -23,6 +23,7 @@ from openforge_api.db import (
     get_profile_exchange_commission_map,
     get_sportsbook_bet,
     list_accounts,
+    resolve_profile_exchange_commission,
 )
 from openforge_api.fund_manager_preferences import OddsMatcherPreferences
 from openforge_api.lay_plan import LayPlan, OddsMatcherSourceSnapshot
@@ -97,7 +98,9 @@ class OpportunityResponse(BaseModel):
     display_rating: str
     commission_aware_rating: str | None
     exchange_commission: str | None
-    commission_origin: Literal["profile-account", "oddsmatcher-default", "zero"]
+    commission_origin: Literal[
+        "profile-account", "commission-offer", "oddsmatcher-default", "unavailable"
+    ]
     standard_lay_stake: str | None
     liability: str | None
     pnl_if_back_wins: str | None
@@ -636,7 +639,6 @@ def _resolved_opportunities(
     account_index = {
         (str(account.type), str(account.account).casefold()): account for account in accounts
     }
-    commissions = get_profile_exchange_commission_map(profile_id) if profile_id else {}
     try:
         preferences = OddsMatcherPreferences.model_validate_json(
             get_oddsmatcher_preferences_json()
@@ -686,25 +688,40 @@ def _resolved_opportunities(
         eligible_lays = [item for item in lay_candidates if item[1].state != "unavailable"]
         back, back_state = max(eligible_backs or back_candidates, key=lambda item: item[0].odds)
         lay, lay_state = min(eligible_lays or lay_candidates, key=lambda item: item[0].odds)
-        profile_commission = commissions.get(lay.account_name)
+        resolution = resolve_profile_exchange_commission(
+            profile_id,
+            lay.account_name,
+            effective_date=date.today().isoformat(),
+        ) if profile_id else None
+        profile_commission = (
+            resolution.commission_rate
+            if resolution and resolution.source != "unavailable"
+            else None
+        )
         default_commission = (
             preferences.exchange_commission_overrides.get(lay.provider_key)
-            if profile_id
-            else None
         )
         if profile_commission is not None:
             commission = profile_commission
             commission_origin: Literal[
-                "profile-account", "oddsmatcher-default", "zero"
-            ] = "profile-account"
+                "profile-account", "commission-offer", "oddsmatcher-default", "unavailable"
+            ] = (
+                "commission-offer"
+                if resolution and resolution.source == "commission_offer"
+                else "profile-account"
+            )
         elif default_commission is not None:
             commission = default_commission
             commission_origin = "oddsmatcher-default"
         else:
-            commission = "0"
-            commission_origin = "zero"
+            commission = None
+            commission_origin = "unavailable"
         calculation = None
-        if back_state.state != "unavailable" and lay_state.state != "unavailable":
+        if (
+            back_state.state != "unavailable"
+            and lay_state.state != "unavailable"
+            and commission is not None
+        ):
             try:
                 calculation = _calculate(
                     MatchedBettingPayload(
