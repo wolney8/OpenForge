@@ -5842,6 +5842,10 @@ and the point-level performance chart. Manual refresh, quota, exact matching, un
 server Profile authorization, idempotent Prospecting and no-placement boundaries are unchanged.
 Owner acceptance remains pending and no acceptance status was inferred from these checks.
 
+# CP-112 Design Lab visual revision — 2026-11-01
+
+CP-111's first synthetic journey remains functionally verified but **OWNER REJECTED / REVISION REQUIRED** visually. CP-112 revises that same journey's composed money-field focus, Profile/Range/scenario selection, type scale, financial-summary grouping and responsive shell. The [lab brief](../planning/plum-duff-design-lab-brief.md#cp-112-visual-revision--2026-11-01) records these as `PROPOSED — LAB ONLY`; original CP-111 source/evidence are retained. Eleven browser paths, four source tests, web typecheck, build and focused lint pass; actual Chromium 200% tab zoom is tested separately from the retained CSS approximation. Normal route, database, provider, financial and acceptance states are unchanged. Private before/after: `data/private/evidence/cp111-design-lab/` and `data/private/evidence/cp112-design-lab/`. Owner visual judgement and VoiceOver spoken output remain unverified.
+
 # CP-111 isolated Fund Manager Design Lab — 2026-11-01
 
 The owner approved one lab-only shell and daily journey. `/design-lab` is a local-development,
@@ -5925,6 +5929,7 @@ canonical register and owner guide.
 
 | Requirement → scenario | Current evidence | Proposed treatment | Acceptance check | Status |
 | --- | --- | --- | --- | --- |
+| Lab comparison → position → Account review → return | CP-111 synthetic route and browser tests; owner rejected visual result | CP-112 lab-only input, selection, shell/type and grouped summary revision | Same protected figures/save guard; owner judges revised light/dark, widths, real zoom and opened controls | LAB ONLY; CP-111 visually rejected; CP-112 owner review pending |
 | Identity → sign in, refresh, resume | `/login`, auth/session contracts; owner login pass reported | Preserve safe return and clear transient failure | Missing/invalid session denied; intended route restored | Owner evidence; broader restart unverified |
 | Fund Manager position → open app | `/`, summary and Profile header sources | One priority hierarchy: position, attention, next action | Owner locates position/task without repeated panels; figures reconcile | IMPLEMENTED; UX owner dissatisfaction |
 | Today’s work → triage tasks and notifications | `/tasks`, `/notifications`, queue/alert contracts | Contextual task action without duplicated warning | Each task leads to governed source; no lost warning | IMPLEMENTED; owner UX unverified |

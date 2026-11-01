@@ -1,5 +1,16 @@
 # Plum Duff UI Change Register
 
+## CP-112 isolated visual-revision batch — 2026-11-01
+
+| ID | Surface | Owner request / lab-only treatment | Signed-off equivalent | Status |
+| --- | --- | --- | --- | --- |
+| PD-PR-112-01 / #114 | Lab money input | One composed focus ring and relational label/amount/help alignment; keep editing and zero/unknown semantics | Existing PD composed money fields; CDS TextInput reference | NEEDS VERIFICATION — code/browser checked; owner visual review pending |
+| PD-PR-112-02 / #114 | Lab Profile and range | Explicit accessible anchored selection; no native opened-menu styling dependency | Existing PD single-select interaction and CDS Select Alpha/PopoverPanel | NEEDS VERIFICATION — keyboard/geometry checked; owner visual review pending |
+| PD-PR-112-03 / #114 | Lab shell and full journey | Shared type/spacing/surface system, intentional navigation/context reflow and less repeated copy | Existing PD tokens; CDS NavigationBar/Sidebar/Text | NEEDS VERIFICATION — responsive/themes checked; owner visual review pending |
+| PD-PR-112-04 / #114 | Lab visual evidence | Before/after at requested widths, themes, opened controls, focus and actual browser zoom | UI consistency-enforcer gate | NEEDS VERIFICATION — private captures checked; owner visual review pending |
+
+CP-111 remains functionally verified and **OWNER REJECTED / REVISION REQUIRED** visually; its source and evidence are retained. No normal application presentation rule changes in this batch.
+
 ## CP-111 isolated lab batch — 2026-11-01
 
 | ID | Lab surface and outcome | Signed-off equivalent / deliberate difference | Status |

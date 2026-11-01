@@ -1,5 +1,11 @@
 # Plum Duff Next Issue Tracking Register
 
+## CP-112 Design Lab visual revision — 2026-11-01
+
+| ID / tracking | Owner request | State |
+| --- | --- | --- |
+| PD-PR-112-01 through PD-PR-112-04 / [#114](https://github.com/wolney8/OpenForge/issues/114) | Revise the **same** first lab journey's money focus, Profile/range selection, complete shell/type hierarchy and visual evidence against current CDS. Retain CP-111 as functional comparison, visually rejected. | CODE-VERIFIED — LAB ONLY; owner visual review required before any normal integration. |
+
 ## CP-111 isolated first Design Lab journey — 2026-11-01
 
 Owner approved one synthetic lab journey only; normal integration and authoritative contract

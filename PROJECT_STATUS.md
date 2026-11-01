@@ -1,5 +1,7 @@
 # Project Status — Plum Duff / OpenForge — Doc ID: PS-CODEX-001
 
+> **CP-112 Design Lab visual revision — 2026-11-01:** CP-111 remains functionally verified but **OWNER REJECTED / REVISION REQUIRED** visually. The same isolated synthetic journey now has a grouped financial summary, revised shell/type rhythm, composed money focus and accessible anchored selects. Eleven browser paths, four source tests, web typecheck/build and focused lint pass; owner visual review remains pending. No normal UI integration or owner acceptance is implied; see the [Design Lab brief](docs/planning/plum-duff-design-lab-brief.md#cp-112-visual-revision--2026-11-01).
+>
 > **CP-111 Design Lab first journey — 2026-11-01:** an isolated synthetic Fund Manager
 > position → Account task → review → return journey is implemented on non-main
 > `feature/cp111-design-lab`; owner visual/workflow acceptance is pending. The lab requires

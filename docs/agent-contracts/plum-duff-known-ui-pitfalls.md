@@ -1,5 +1,9 @@
 # Plum Duff Known UI Pitfalls
 
+## CP-112 lab focus and selection — 2026-11-01
+
+Composed money inputs can show competing rings when a generic `input:focus-visible` rule and a wrapper `:focus-within` rule both apply. Give the composed field one focus perimeter and test the actual focused render. Native select menus cannot provide reliable anchored visual treatment; a replacement single-select must open only on activation, stay viewport-contained, close on outside/Tab/Escape and restore focus on Escape. Regression: `design-lab-journey.spec.ts` includes focus geometry, opened menus at 1440/390 and real Chromium 200% browser zoom. This remains a lab-only presentation experiment.
+
 ## Import-review reflow — CP-050
 
 A shrinking outer grid needs a `minmax(0, 1fr)` track as well as `min-width: 0`; an action row must wrap when enlarged labels no longer fit, regardless of the pixel breakpoint. Reuse the existing shared toolbar action primitive. Regression: `import-gate-consistency.spec.ts` checks real import review at desktop,390px and760px/200% text, both themes/reduced motion; do not count intentionally scrollable table/stepper contents as page overflow.
