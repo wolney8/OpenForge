@@ -18,13 +18,13 @@ test.beforeEach(async ({ page }) => {
 test("distinct workspace, Profile, notification and identity paths", async ({ page }) => {
   await page.getByRole("button", { name: "Switch workspace" }).click();
   await expect(page.locator('[data-pd-id="lab.header-menu"]')).toContainText("Fund Manager");
-  await page.getByRole("button", { name: /Profile Tracker/ }).click();
+  await page.getByRole("button", { name: /Tracker \/ Betting Tools/ }).click();
   await expect(page.locator('[data-pd-id="lab.ledger.sportsbook"]')).toBeVisible();
   await page.getByRole("button", { name: "Notifications" }).click();
   await page.getByRole("button", { name: /Account balance unknown/ }).click();
   await expect(page.getByRole("heading", { name: "Today", level: 1 })).toBeVisible();
   await page.getByRole("button", { name: "Account menu" }).click();
-  await expect(page.locator('[data-pd-id="lab.header-menu"]')).toContainText("Sign out · normal app only");
+  await expect(page.locator('[data-pd-id="lab.header-menu"]')).toContainText("Sign Out · lab unavailable");
   await page.keyboard.press("Escape");
   await expect(page.getByRole("button", { name: "Account menu" })).toBeFocused();
 });

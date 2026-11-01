@@ -1,5 +1,17 @@
 # Plum Duff Next Issue Tracking Register
 
+## CP-114C screenshot-fidelity shell correction — 2026-11-01
+
+Lab-only [Design Lab issue #114](https://github.com/wolney8/OpenForge/issues/114). Owner-provided 2048px screenshot pair is level A; prior CP-114B ledger remains pending owner visual acceptance.
+
+| ID | Owner request | Status |
+|---|---|---|
+| PD-PR-114C-01 | Right-aligned grouped header Search, Notifications, Help, workspace and avatar | NEEDS VERIFICATION — code/browser-verified lab; owner visual pending |
+| PD-PR-114C-02 | Shared trigger-anchored, viewport-clamped menus and search results | NEEDS VERIFICATION — code/browser-verified lab; owner visual pending |
+| PD-PR-114C-03 | Synthetic identity hierarchy, working Dark Mode switch, safe actions | NEEDS VERIFICATION — code/browser-verified lab; owner visual pending |
+| PD-PR-114C-04 | Neutral light/dark shell and 2048px reference comparison | NEEDS VERIFICATION — Coinbase source pixels unavailable; owner judgement pending |
+| PD-PR-114C-05 | Three-level reference-fidelity rule and complete scenario trace | DOCUMENTED — lab-only rule |
+
 ## CP-114B spreadsheet ledger/navigation correction — 2026-11-01
 
 Lab-only, linked to [Design Lab issue #114](https://github.com/wolney8/OpenForge/issues/114). The owner retains CP-114 Quick Capture/workbench; ledger/navigation is not accepted.

@@ -252,6 +252,12 @@ test("actual browser 200% zoom contains the connected shell and typed search", a
     const evidence = process.env.OPENFORGE_DESIGN_LAB_EVIDENCE_DIR;
     if (evidence) await page.screenshot({ path: join(evidence, "connected-actual-browser-zoom-200.png"), fullPage: true });
     await page.locator('[data-pd-id="lab.search"]').press("Escape");
+    await page.getByRole("button", { name: "Account menu" }).click();
+    const accountMenu = await page.locator('[data-pd-id="lab.header-menu"]').boundingBox();
+    expect(accountMenu!.x).toBeGreaterThanOrEqual(0);
+    expect(accountMenu!.x + accountMenu!.width).toBeLessThanOrEqual(720);
+    if (evidence) await page.screenshot({ path: join(evidence, "cp114c-account-actual-browser-zoom-200.png"), fullPage: true });
+    await page.keyboard.press("Escape");
     await page.getByRole("button", { name: "Open Sportsbook" }).click();
     await expect(page.locator('[data-pd-id="lab.ledger.sportsbook"]')).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);

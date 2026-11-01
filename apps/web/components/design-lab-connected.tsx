@@ -4,9 +4,10 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { BrandLogo } from "@/components/brand-logo";
 import { DesignLabSelect } from "@/components/design-lab-select";
+import { DesignLabHeaderOverlay } from "@/components/design-lab-header-overlay";
 import { DesignLabLedgerGrid, defaultLabLedgerView, type LabLedgerView, type LabLedgerRow } from "@/components/design-lab-ledger-grid";
 import { ModalBoundary } from "@/components/modal-boundary";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { useTheme } from "@/components/theme-provider";
 import { aggregateFinancialValues } from "@/lib/financial-aggregate";
 import { formatFinancialValue } from "@/lib/financial-display";
 import { getStandardQualifyingErrors } from "@/lib/standard-qualifying-calculator";
@@ -19,7 +20,7 @@ type Section = "home" | "tasks" | "opportunities" | "profiles" | "reports" | Lab
 type EntryMode = "modal" | "page";
 type BetState = "Draft" | "Prospecting" | "Placed" | "Settled";
 type Workspace = "manager" | "tracker";
-type Overlay = "workspace" | "notifications" | "identity" | null;
+type Overlay = "workspace" | "notifications" | "help" | "identity" | null;
 const nav: { id: Section; label: string; icon: string; group: string }[] = [
   { id: "home", label: "Position", icon: "space_dashboard", group: "Fund Manager" },
   { id: "tasks", label: "Today", icon: "task_alt", group: "Fund Manager" },
@@ -42,6 +43,7 @@ const initialBet: LabBetDraft = { event: "", offerText: "", offerName: "", offer
 
 export function DesignLabConnected() {
   const router = useRouter();
+  const { theme, toggleTheme } = useTheme();
   const [accounts, setAccounts] = useState<LabAccount[]>(initialLabAccounts);
   const [section, setSection] = useState<Section>("home");
   const [scope, setScope] = useState<LabScope>("all");
@@ -52,6 +54,7 @@ export function DesignLabConnected() {
   const [showMore, setShowMore] = useState(false);
   const [mobileNav, setMobileNav] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [searchResultsOpen, setSearchResultsOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [ledgerViews, setLedgerViews] = useState<Partial<Record<LabLedgerKey, LabLedgerView>>>({});
   const [savedView, setSavedView] = useState<{ section: LabLedgerKey; view: LabLedgerView } | null>(null);
@@ -81,6 +84,8 @@ export function DesignLabConnected() {
   const [failedSave, setFailedSave] = useState(false);
   const pendingAction = useRef<(() => void) | null>(null);
   const triggerRef = useRef<HTMLElement | null>(null);
+  const headerTriggerRef = useRef<HTMLElement | null>(null);
+  const searchBoxRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const navTriggerRef = useRef<HTMLButtonElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -124,13 +129,6 @@ export function DesignLabConnected() {
     return () => document.removeEventListener("keydown", closeOnEscape);
   }, [mobileNav]);
   useEffect(() => {
-    if (!overlay) return;
-    const close = (event: KeyboardEvent) => { if (event.key === "Escape") { setOverlay(null); triggerRef.current?.focus(); } };
-    const outside = (event: PointerEvent) => { if (event.target instanceof Element && !event.target.closest('[data-pd-id="lab.header-menu"]') && !event.target.closest('[data-pd-id^="lab.header-trigger"]')) setOverlay(null); };
-    document.addEventListener("keydown", close); document.addEventListener("pointerdown", outside);
-    return () => { document.removeEventListener("keydown", close); document.removeEventListener("pointerdown", outside); };
-  }, [overlay]);
-  useEffect(() => {
     if (!accountDirty && !betDirty) return;
     const guard = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
     window.addEventListener("beforeunload", guard);
@@ -146,8 +144,8 @@ export function DesignLabConnected() {
     }
     action();
   }
-  function go(next: Section) { guarded(() => { setSelected(null); setPreviewEditor(null); setEntryMode(null); setSection(next); if (next === "sportsbook") setWorkspace("tracker"); setMobileNav(false); setOverlay(null); setSearch(""); setSearchOpen(false); }); }
-  function toggleOverlay(next: Exclude<Overlay,null>) { triggerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; setOverlay(current => current === next ? null : next); }
+  function go(next: Section) { guarded(() => { setSelected(null); setPreviewEditor(null); setEntryMode(null); setSection(next); if (next === "sportsbook") setWorkspace("tracker"); setMobileNav(false); setOverlay(null); setSearch(""); setSearchOpen(false); setSearchResultsOpen(false); }); }
+  function toggleOverlay(next: Exclude<Overlay,null>, trigger: HTMLElement) { headerTriggerRef.current = trigger; setSearchResultsOpen(false); setOverlay(current => current === next ? null : next); }
   function changeWorkspace(next: Workspace) { setWorkspace(next); setOverlay(null); go(next === "manager" ? "home" : "sportsbook"); }
   function openRecord(record: LabRecord) { guarded(() => { setReturnSection(section); setSelected(record); setPreviewEditor(null); setPreviewStage(record.section === "freeBets" ? "Available" : "Offer Setup"); setSection(record.section); setSearch(""); setSearchOpen(false); }); }
   function openAccount(account: LabAccount) { openRecord({ id: account.id, profileId: account.profileId, section: "accounts", title: account.name, subtitle: account.type, status: account.status, cells: [account.id, account.name, account.type, account.status, "Yes", account.currentBalance ? money(Number(account.currentBalance)) : "Unknown", "—", "—", "—", "—", "—", "Open"] }); }
@@ -211,21 +209,27 @@ export function DesignLabConnected() {
       </aside>
       <div className={styles.workspace}>
         <header className={styles.header} data-pd-id="lab.header">
-          <button aria-label={mobileNav ? "Close navigation" : "Open navigation"} aria-expanded={mobileNav} className={styles.iconButton} onClick={() => setMobileNav(value => !value)} ref={navTriggerRef} type="button"><Icon>menu</Icon></button>
-          <button aria-label={collapsed ? "Expand navigation" : "Collapse navigation"} className={`${styles.iconButton} ${styles.collapseButton}`} onClick={() => setCollapsed(value => !value)} type="button"><Icon>{collapsed ? "keyboard_double_arrow_right" : "keyboard_double_arrow_left"}</Icon></button>
-          <strong className={styles.headerTitle}>{workspace === "manager" ? "Fund Manager" : "Tracker"}</strong>
-          <div className={styles.profileSelect}><DesignLabSelect compact dataPdId="lab.profile" label="Profile" onChange={value => guarded(() => { setScope(value as LabScope); setSelected(null); })} options={[{ value: "all", label: "All Profiles" }, ...labProfiles.map(item => ({ value: item.id, label: item.name }))]} value={scope} /></div>
-          <div className={`${styles.searchBox} ${searchOpen ? styles.searchExpanded : ""}`} role="search"><Icon>search</Icon><input aria-label="Search synthetic Plum Duff" data-pd-id="lab.search" onChange={event => setSearch(event.target.value)} onKeyDown={event => { if (event.key === "Escape") { setSearch(""); setSearchOpen(false); event.currentTarget.blur(); } }} placeholder="Search Accounts, bets, offers, reports" ref={searchRef} type="search" value={search} /></div>
-          <button aria-label="Open search" className={`${styles.iconButton} ${styles.mobileSearch}`} onClick={() => { setSearchOpen(true); requestAnimationFrame(() => searchRef.current?.focus()); }} type="button"><Icon>search</Icon></button>
-          <button aria-expanded={overlay === "notifications"} aria-label="Notifications" className={styles.iconButton} data-pd-id="lab.header-trigger.notifications" onClick={() => toggleOverlay("notifications")} type="button"><Icon>notifications</Icon></button>
-          <button aria-expanded={overlay === "workspace"} aria-label="Switch workspace" className={styles.iconButton} data-pd-id="lab.header-trigger.workspace" onClick={() => toggleOverlay("workspace")} type="button"><Icon>apps</Icon></button>
-          <button aria-expanded={overlay === "identity"} aria-label="Account menu" className={styles.iconButton} data-pd-id="lab.header-trigger.identity" onClick={() => toggleOverlay("identity")} type="button"><Icon>account_circle</Icon></button>
-          {overlay ? <div aria-label={overlay === "workspace" ? "Workspaces" : overlay === "identity" ? "Account menu" : "Notifications"} className={styles.headerMenu} data-pd-id="lab.header-menu" role="region">{overlay === "workspace" ? <><strong>Workspaces</strong><button onClick={() => changeWorkspace("manager")} type="button">Fund Manager <span>{workspace === "manager" ? "Selected" : "Position and Today"}</span></button><button onClick={() => changeWorkspace("tracker")} type="button">Profile Tracker <span>{workspace === "tracker" ? "Selected" : "Ledgers and records"}</span></button></> : overlay === "notifications" ? <><strong>Notifications</strong><p>Needs Action</p><button onClick={() => { setOverlay(null); go("tasks"); }} type="button">Account balance unknown <span>Open Today</span></button><p>Offers</p><button onClick={() => { setOverlay(null); go("opportunities"); }} type="button">Offer review · synthetic <span>Open Opportunities</span></button><p>Account</p><span className={styles.menuEmpty}>No other Account notifications.</span></> : <><strong>Lab identity · simulated</strong><button onClick={() => go("accounts")} type="button">Account management</button><button onClick={() => go("profiles")} type="button">Profiles</button><button onClick={() => { setOverlay(null); setRange("This Year"); }} type="button">Settings preview · use This Year</button><div className={styles.menuTheme}><span>Theme</span><ThemeToggle /></div><button disabled title="Production sign-out is unavailable inside this isolated lab" type="button">Sign out · normal app only</button></> }</div> : null}
+          <div className={styles.headerLeft}>
+            <div className={styles.headerIdentity}>
+              <button aria-label={mobileNav ? "Close navigation" : "Open navigation"} aria-expanded={mobileNav} className={`${styles.iconButton} ${styles.navToggle}`} onClick={() => setMobileNav(value => !value)} ref={navTriggerRef} type="button"><Icon>menu</Icon></button>
+              <button aria-label={collapsed ? "Expand navigation" : "Collapse navigation"} className={`${styles.iconButton} ${styles.collapseButton}`} onClick={() => setCollapsed(value => !value)} type="button"><Icon>{collapsed ? "keyboard_double_arrow_right" : "keyboard_double_arrow_left"}</Icon></button>
+              <strong className={styles.headerTitle}>{workspace === "manager" ? "Fund Manager" : "Tracker"}</strong>
+            </div>
+            <div className={styles.profileSelect}><DesignLabSelect compact dataPdId="lab.profile" label="Profile" onChange={value => guarded(() => { setScope(value as LabScope); setSelected(null); })} options={[{ value: "all", label: "All Profiles" }, ...labProfiles.map(item => ({ value: item.id, label: item.name }))]} value={scope} /></div>
+          </div>
+          <div className={styles.headerRight}>
+            <div className={`${styles.searchBox} ${searchOpen ? styles.searchExpanded : ""}`} ref={searchBoxRef} role="search"><Icon>search</Icon><input aria-label="Search synthetic Plum Duff" data-pd-id="lab.search" onChange={event => { setSearch(event.target.value); setSearchResultsOpen(Boolean(event.target.value.trim())); setOverlay(null); }} onKeyDown={event => { if (event.key === "Escape") { event.stopPropagation(); setSearchResultsOpen(false); if (searchOpen) { setSearchOpen(false); event.currentTarget.blur(); } } else if (event.key === "ArrowDown" && searchResultsOpen) { event.preventDefault(); document.querySelector<HTMLElement>('[data-pd-id="lab.search-results"] button')?.focus(); } }} placeholder="Search" ref={searchRef} type="search" value={search} /></div>
+            <button aria-label="Open search" className={`${styles.iconButton} ${styles.mobileSearch}`} onClick={() => { setSearchOpen(true); requestAnimationFrame(() => searchRef.current?.focus()); }} type="button"><Icon>search</Icon></button>
+            <button aria-expanded={overlay === "notifications"} aria-label="Notifications" className={styles.iconButton} data-pd-id="lab.header-trigger.notifications" onClick={event => toggleOverlay("notifications", event.currentTarget)} type="button"><Icon>notifications</Icon></button>
+            <button aria-expanded={overlay === "help"} aria-label="Design Lab help" className={`${styles.iconButton} ${styles.helpButton}`} data-pd-id="lab.header-trigger.help" onClick={event => toggleOverlay("help", event.currentTarget)} type="button"><Icon>help</Icon></button>
+            <button aria-expanded={overlay === "workspace"} aria-label="Switch workspace" className={styles.iconButton} data-pd-id="lab.header-trigger.workspace" onClick={event => toggleOverlay("workspace", event.currentTarget)} type="button"><Icon>apps</Icon></button>
+            <button aria-expanded={overlay === "identity"} aria-label="Account menu" className={`${styles.iconButton} ${styles.avatarButton}`} data-pd-id="lab.header-trigger.identity" onClick={event => toggleOverlay("identity", event.currentTarget)} type="button">L</button>
+          </div>
+          {overlay ? <DesignLabHeaderOverlay anchorRef={headerTriggerRef} key={overlay} label={overlay === "workspace" ? "Workspaces" : overlay === "identity" ? "Account menu" : overlay === "help" ? "Design Lab help" : "Notifications"} onClose={() => setOverlay(null)} preferredWidth={overlay === "identity" ? 460 : 380}>
+            {overlay === "workspace" ? <div className={styles.menuBody}><h2>Workspaces</h2><button className={styles.menuRow} onClick={() => changeWorkspace("manager")} type="button"><Icon>space_dashboard</Icon><span><strong>Fund Manager</strong><small>Position and Today</small></span>{workspace === "manager" ? <Icon>check</Icon> : null}</button><button className={styles.menuRow} onClick={() => changeWorkspace("tracker")} type="button"><Icon>table_chart</Icon><span><strong>Tracker / Betting Tools</strong><small>Ledgers and records</small></span>{workspace === "tracker" ? <Icon>check</Icon> : null}</button><button className={styles.menuRow} disabled title="Administration is a future lab preview" type="button"><Icon>admin_panel_settings</Icon><span><strong>Administration</strong><small>Preview only</small></span></button><button className={`${styles.menuRow} ${styles.mobileHelpRow}`} onClick={() => setOverlay("help")} type="button"><Icon>help</Icon><span>Design Lab help</span></button></div> : overlay === "notifications" ? <div className={styles.menuBody}><h2>Notifications</h2><h3>Needs Action</h3><button className={styles.menuRow} onClick={() => { setOverlay(null); go("tasks"); }} type="button"><Icon>account_balance_wallet</Icon><span><strong>Account balance unknown</strong><small>Open Today · synthetic</small></span></button><h3>Offers</h3><button className={styles.menuRow} onClick={() => { setOverlay(null); go("opportunities"); }} type="button"><Icon>local_offer</Icon><span><strong>Offer review</strong><small>Open Opportunities · synthetic</small></span></button><h3>Account</h3><p className={styles.menuEmpty}>No Account updates.</p></div> : overlay === "help" ? <div className={styles.menuBody}><h2>Design Lab help</h2><button className={styles.menuRow} onClick={() => { setOverlay(null); go("home"); }} type="button"><Icon>space_dashboard</Icon><span><strong>Position</strong><small>Return to the synthetic overview</small></span></button><button className={styles.menuRow} onClick={() => { setOverlay(null); go("sportsbook"); }} type="button"><Icon>table_chart</Icon><span><strong>Sportsbook Bets</strong><small>Explore the lab ledger</small></span></button><p className={styles.menuEmpty}>Synthetic data only. No owner financial writes.</p></div> : <div className={styles.menuBody}><div className={styles.menuIdentity}><span aria-hidden="true" className={styles.menuAvatar}>L</span><div><strong>Lab Manager</strong><small>demo@example.invalid</small><button disabled title="Identity management is not simulated" type="button">Manage Account · preview</button></div></div><div className={styles.menuGroup}><button className={styles.menuRow} disabled title="Profile creation is not simulated" type="button"><Icon>person_add</Icon><span>Add Profile · preview</span></button><button className={styles.menuRow} disabled title="Settings are not simulated" type="button"><Icon>settings</Icon><span>Settings · preview</span></button><button aria-checked={theme === "dark"} className={`${styles.menuSwitch} material-switch${theme === "dark" ? " is-selected" : ""}`} data-pd-id="lab.identity.dark-mode" onClick={toggleTheme} role="switch" type="button"><Icon>dark_mode</Icon><span>Dark Mode</span><span aria-hidden="true" className="material-switch-track"><span className="material-switch-thumb" /></span></button></div><div className={styles.menuGroup}><button className={`${styles.menuRow} ${styles.menuDanger}`} disabled title="Sign Out is unavailable in the synthetic lab" type="button"><Icon>logout</Icon><span>Sign Out · lab unavailable</span></button></div></div>}
+          </DesignLabHeaderOverlay> : null}
+          {search.trim() && searchResultsOpen && !overlay ? <DesignLabHeaderOverlay anchorRef={searchBoxRef} label="Search results" onClose={() => setSearchResultsOpen(false)} preferredWidth={480} returnFocusRef={searchRef} search><div className={styles.searchGroups} onKeyDown={event => { if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return; const buttons = [...event.currentTarget.querySelectorAll<HTMLButtonElement>("button")]; const current = buttons.indexOf(document.activeElement as HTMLButtonElement); const next = event.key === "ArrowDown" ? Math.min(buttons.length - 1, current + 1) : Math.max(0, current - 1); if (buttons[next]) { event.preventDefault(); buttons[next].focus(); } }}>{["Accounts", "Sportsbook", "Free Bets", "Casino Offers", "Extra Place", "Cash Adjustments", "Reports"].map(kind => { const group = searchResults.filter(item => item.kind === kind); return group.length ? <div key={kind}><h2>{kind}</h2>{group.map(item => <button key={item.id} onClick={() => { setSearchResultsOpen(false); selectSearchResult(item); }} type="button"><span><strong>{item.title}</strong><small>{item.context} · {labProfiles.find(profile => profile.id === item.profileId)?.name}</small></span><Icon>arrow_forward</Icon></button>)}</div> : null; })}{!searchResults.length ? <p>No synthetic results.</p> : null}</div></DesignLabHeaderOverlay> : null}
         </header>
-        {search.trim() ? <section aria-label="Search results" className={styles.searchResults} data-pd-id="lab.search-results">{["Accounts", "Sportsbook", "Free Bets", "Casino Offers", "Extra Place", "Cash Adjustments", "Reports"].map(kind => {
-          const group = searchResults.filter(item => item.kind === kind);
-          return group.length ? <div key={kind}><h2>{kind}</h2>{group.map(item => <button key={item.id} onClick={() => selectSearchResult(item)} type="button"><span><strong>{item.title}</strong><small>{item.context} · {labProfiles.find(profile => profile.id === item.profileId)?.name}</small></span><Icon>arrow_forward</Icon></button>)}</div> : null;
-        })}{!searchResults.length ? <p>No synthetic results.</p> : null}</section> : null}
         <nav aria-label="Breadcrumb" className={styles.breadcrumb}><button onClick={() => go("home")} type="button">Position</button>{section !== "home" || selected || entryMode ? <><Icon>chevron_right</Icon><button onClick={() => go("sportsbook")} type="button">Tracker</button></> : null}{section !== "home" || selected || entryMode ? <><Icon>chevron_right</Icon>{selected || entryMode ? <button onClick={() => go(section)} type="button">{entryMode ? "Sportsbook Bets" : sectionName(section)}</button> : <span aria-current="page">{sectionName(section)}</span>}</> : null}{selected || entryMode ? <><Icon>chevron_right</Icon><span aria-current="page">{selected ? "Record" : "Add Bet"}</span></> : null}<span className={styles.labBadge}>LAB · simulation</span></nav>
         <main className={styles.main} data-pd-id="lab.main" id="lab-main">
           <div className={styles.pageHead}><div><h1 ref={headingRef} tabIndex={-1}>{mainTitle}</h1><p>{entryMode ? "Offer first · prepare and confirm external placement later" : selected ? selected.subtitle : section === "home" ? "Position, tasks and the next decision." : "Synthetic workflow preview"}</p></div><div className={styles.headActions}><DesignLabSelect dataPdId="lab.range" label="Selected Range" onChange={value => guarded(() => setRange(value as LabRange))} options={[{ value: "Last Month", label: "Last Month" }, { value: "This Year", label: "This Year" }]} value={range} /><button className={styles.linkButton} onClick={() => router.push("/")} type="button">Exit Lab</button></div></div>

@@ -1,5 +1,17 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
+## CP-114C Design Lab shell coverage — 2026-11-01
+
+| Requirement | Required interaction | Lab demonstration | Decision / next slice |
+|---|---|---|---|
+| PD-PR-114C-01 | Right-aligned Search → Notifications → Help → workspace → avatar | Working, responsive header; 2048px geometry receipt | Screenshot-fidelity A; owner visual review pending |
+| PD-PR-114C-02 | Each overlay tracks its trigger, clamps and dismisses | Working shared lab anchor; browser resize, Escape, outside click and search keyboard paths | Normal app integration unapproved |
+| PD-PR-114C-03 | Identity hierarchy and Dark Mode switch | Working theme switch; identity/actions synthetic, Add Profile/Settings/Sign Out disabled preview | Owner menu/visual judgement pending |
+| PD-PR-114C-04 | Neutral light/dark composition and reference comparison | Private 2048/1440/900/768/430/390 renders and actual browser 200% zoom | Coinbase original bytes unavailable locally; exact pixel comparison UNVERIFIED |
+| PD-PR-114C-05 | Fidelity A/B/C classification and complete request trace | Lab brief and canonical register retained | Rule remains PROPOSED — LAB ONLY |
+
+CP-114B spreadsheet ledger and CP-114 Quick Capture/non-linear workbench retain their synthetic browser coverage; neither is normal-app approved. Recurring offers, multi-Profile tasks, commissions, fee/Position reporting, Free Bet/Casino, saved normal views, advanced filters and source-linked actions retain their earlier request IDs and remain partial/preview/deferred for CP-115/116 or later approval. Private evidence: `data/private/evidence/cp114c-design-lab/`.
+
 ## CP-114B Design Lab ledger coverage — 2026-11-01
 
 | Request | Lab scenario | Evidence | Treatment / acceptance check | Status |

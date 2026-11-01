@@ -1,5 +1,13 @@
 # Plum Duff Design Lab — initial baseline brief
 
+## CP-114C shell fidelity proposal — 2026-11-01
+
+The owner supplied comparable 2048px Plum Duff and Coinbase Account-menu screenshots in chat. These are a **SCREENSHOT-FIDELITY TARGET** for header placement, right action cluster, trigger-anchored overlays, menu hierarchy and neutral dark surfaces. Original image bytes are not available as repository files; measured Coinbase pixel parity remains UNVERIFIED. Branding, financial context and accessibility remain Plum Duff-specific. CP-114B ledger and CP-114 entry remain the comparison baseline.
+
+`PROPOSED — LAB ONLY`: split the header into left workspace/Profile context and right search/actions groups; use one viewport-clamped trigger anchor for search, Notifications, workspace and identity overlays; give the identity menu a synthetic identity header, Manage Account, Add Profile, Settings preview, full Dark Mode switch and disabled Sign Out. Neutral shell surfaces replace excessive blue tint. These are presentation exceptions to the current lab shell only; no normal-app route, theme or sign-out behaviour changes.
+
+Reference levels for future material proposals: **A SCREENSHOT-FIDELITY TARGET** requires measured position, size, spacing, hierarchy, anchoring, density and interaction comparison; **B PATTERN ADAPTATION** permits a workflow-justified arrangement; **C FUNCTIONAL REFERENCE** supplies behaviour without a visual target. Record the level before design work. Never downgrade A silently or claim fidelity without an actual comparison. This rule remains lab-only pending owner approval.
+
 ## CP-114B spreadsheet ledger proposals — 2026-11-01
 
 CP-114 Quick Capture and the non-linear Bet workbench remain the comparison baseline. The owner has not accepted the ledger/navigation design. The following are `PROPOSED — LAB ONLY` before implementation: clickable Position → Tracker → Sportsbook breadcrumbs; All Profiles as a separate context selector; conditional owner Profile column in combined views; direct header sort, drag resize and reorder with keyboard fallback; bounded Prospecting cell editors; lab-session saved views. Required ledger columns retain their default order, Actions stays last, and no required column is hidden. Narrow summaries remain a lab-only alternative pending owner approval of required-column treatment.

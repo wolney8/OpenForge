@@ -170,3 +170,6 @@ Subscriber invitation/request/access remains the existing minimal proposal, awai
 - [Platform quality audit](docs/audits/platform-quality-audit.md)
 - [GitHub Issues](https://github.com/wolney8/OpenForge/issues)
 - [GitHub Milestones](https://github.com/wolney8/OpenForge/milestones)
+## CP-114C shell fidelity owner gate — 2026-11-01
+
+Compare the 2048px owner screenshot pair with revised lab header, search and four trigger-anchored overlays, then judge light/dark and narrow behaviour. Preserve CP-114B ledger and CP-114 entry. CP-115/116 and normal integration remain separate owner decisions.

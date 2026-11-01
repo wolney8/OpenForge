@@ -937,3 +937,6 @@ Recorded before lab UI edits. All exceptions are `PROPOSED — LAB ONLY`; owner 
 | PD-PR-114-04 | Account balance | Timestamped synthetic observation popup | Existing Account quick popup; unknown ≠ zero | NEEDS VERIFICATION — synthetic observation path passes |
 | PD-PR-114-05 | Outcomes | Fixture-backed only; partial lay unavailable without authority | Existing calculation contracts and fixtures | NEEDS VERIFICATION — CALC-001 only; owner review pending |
 | PD-PR-114-06 | CP-115/116 | Trace proposals, no premature implementation | Owner CP-114 scope boundary | DOCUMENTED |
+## CP-114C shell screenshot-fidelity batch — 2026-11-01
+
+Recorded before UI edits. PD-PR-114C-01–05 map to the canonical request register and GitHub #114. Nearest equivalents: CP-114B lab shell, Oddsmatcher anchored surface, platform Material switch and theme provider. Level A owner screenshots govern lab header/menu geometry; normal AppChrome remains unchanged. CODE-VERIFIED in synthetic browser; owner visual acceptance pending. Exact Coinbase pixel measurement is UNVERIFIED because source image bytes are unavailable locally.

@@ -393,3 +393,4 @@ validation remains. Owner verification of these CP-109 daily-use corrections is 
 - [Fixture specifications](docs/fixture-specs/README.md) · [executable fixtures](tests/fixtures/README.md)
 - [Application walkthrough](README.md#how-it-works)
 - [GitHub Issues](https://github.com/wolney8/OpenForge/issues) · [GitHub Milestones](https://github.com/wolney8/OpenForge/milestones)
+> **CP-114C lab shell visual correction — 2026-11-01:** owner rejected the CP-114B shell's screenshot fidelity. Level A reference governs the lab header and overlays. Revised synthetic browser paths at 2048/1440/900/768/430/390px and actual Chromium 200% zoom pass; Coinbase original screenshot bytes are unavailable locally, so exact pixel parity and owner visual acceptance remain UNVERIFIED. CP-114B ledger and CP-114 entry retain focused regression coverage. Normal integration is unapproved.
