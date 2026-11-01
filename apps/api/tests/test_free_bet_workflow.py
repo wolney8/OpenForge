@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sqlite3
 from pathlib import Path
 
@@ -9,8 +10,8 @@ from apps.api.tests.synthetic_setup import (
 )
 from fastapi.testclient import TestClient
 
-from openforge_api.config import settings
-from openforge_api.db import count_free_bet_audit_rows
+from openforge_api.config import SOURCE_ROOT, settings
+from openforge_api.db import connect, count_free_bet_audit_rows
 from openforge_api.main import app
 
 
@@ -132,6 +133,41 @@ def test_free_bet_workflow_create_update_and_isolation(tmp_path: Path) -> None:
         f"/profiles/profile-demo-001/free-bets/{created['free_bet_id']}"
     )
     assert deleted_lookup.status_code == 200
+
+
+def test_retired_exchange_provider_cannot_be_selected_for_new_free_bet(
+    tmp_path: Path,
+) -> None:
+    configure_temp_database(tmp_path)
+    client = TestClient(app)
+    synthetic_catalogue = json.loads(
+        (SOURCE_ROOT / "tests/fixtures/openforge-api-master-catalogue.synthetic.json").read_text()
+    )
+    production_catalogue = json.loads(
+        (SOURCE_ROOT / "data/reference/master-account-catalogue.json").read_text()
+    )
+    synthetic_catalogue["records"].append(
+        next(
+            row
+            for row in production_catalogue["records"]
+            if row["catalogue_id"] == "EXCHANGE-BETDAQ"
+        )
+    )
+    catalogue_path = tmp_path / "free-bet-catalogue-with-retired-betdaq.json"
+    catalogue_path.write_text(json.dumps(synthetic_catalogue))
+    settings.account_catalogue_source = str(catalogue_path)
+    with connect() as connection:
+        connection.execute(
+            "UPDATE accounts SET account='BETDAQ', catalogue_id='EXCHANGE-BETDAQ' "
+            "WHERE profile_id='profile-demo-001' AND account='Smarkets' AND type='Exchange'"
+        )
+
+    response = client.post(
+        "/profiles/profile-demo-001/free-bets",
+        json=free_bet_reminder_payload(exchange_name="BETDAQ"),
+    )
+    assert response.status_code == 409
+    assert "Provider lifecycle is RETIRED" in response.text
 
 
 def test_free_bet_override_reason_is_required(tmp_path: Path) -> None:

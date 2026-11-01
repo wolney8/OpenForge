@@ -42,7 +42,10 @@ describe("Sportsbook new-activity Account options", () => {
       account("Blocked Bookmaker", "Bookie", { stake_access: "Blocked" }),
       account("Gubbed Bookmaker", "Bookie", { status: "Gubbed" }),
       account("Closed Bookmaker", "Bookie", { lifecycle_status: "Closed" }),
-      account("BETDAQ", "Exchange", { catalogue_eligible_for_new_activity: false }),
+      account("BETDAQ", "Exchange", {
+        catalogue_lifecycle: "RETIRED",
+        catalogue_eligible_for_new_activity: false,
+      }),
       account("Matchbook", "Exchange"),
     ];
 
@@ -54,6 +57,18 @@ describe("Sportsbook new-activity Account options", () => {
     ]);
     expect(accountAllowsNewSportsbookActivity(rows[2])).toBe(false);
     expect(accountAllowsNewSportsbookActivity(rows[4])).toBe(false);
+  });
+
+  it("requires an explicitly active provider authority as well as an eligible Account", () => {
+    expect(accountAllowsNewSportsbookActivity(account("Active Exchange", "Exchange"))).toBe(true);
+    expect(accountAllowsNewSportsbookActivity(account("Retired Exchange", "Exchange", {
+      catalogue_lifecycle: "RETIRED",
+      catalogue_eligible_for_new_activity: true,
+    }))).toBe(false);
+    expect(accountAllowsNewSportsbookActivity(account("Unlisted Exchange", "Exchange", {
+      catalogue_lifecycle: "UNLISTED",
+      catalogue_eligible_for_new_activity: undefined,
+    }))).toBe(false);
   });
 
   it("does not hide an eligible Exchange for unknown, zero, or cash-excluded balance state", () => {

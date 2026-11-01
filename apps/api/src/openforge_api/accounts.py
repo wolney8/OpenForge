@@ -383,7 +383,11 @@ def build_account_response(
         extra_places_allows_operational_use=extra_places_health.allows_operational_use,
         catalogue_lifecycle=master_entry.lifecycle if master_entry is not None else "UNLISTED",
         catalogue_eligible_for_new_activity=(
-            master_entry.eligible_for_new_activity if master_entry is not None else True
+            master_entry.status == "Active"
+            and master_entry.lifecycle == "ACTIVE"
+            and master_entry.eligible_for_new_activity
+            if master_entry is not None
+            else False
         ),
     )
     return AccountResponse.model_validate(values)

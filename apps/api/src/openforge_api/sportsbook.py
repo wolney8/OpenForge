@@ -16,7 +16,7 @@ from pydantic import (
 )
 from pydantic_core import InitErrorDetails, PydanticCustomError
 
-from openforge_api.account_catalogue_source import load_master_account_catalogue
+from openforge_api.account_activity_eligibility import resolve_new_activity_eligibility
 from openforge_api.calculations.payout_odds import (
     PAYOUT_ODDS_MINIMUM,
     calculate_payout_odds,
@@ -57,12 +57,8 @@ from openforge_api.db import (
 from openforge_api.free_bet_awards import AwardRequest
 from openforge_api.free_bet_input import validate_free_bet_commission
 from openforge_api.multi_profile_entry import (
-    BLOCKING_RESTRICTIONS,
-    UNAVAILABLE_ACCOUNT_STATUSES,
-    UNAVAILABLE_LIFECYCLES,
     MultiProfileTargetEligibility,
     evaluate_multi_profile_target,
-    get_account_restrictions,
     offer_requires_promotional_access,
     strategy_requires_exchange,
 )
@@ -906,9 +902,6 @@ def validate_write_payload(
     except ValidationError as error:
         raise HTTPException(status_code=422, detail=error.errors(include_context=False)) from error
     accounts = list_accounts(profile_id)
-    committed_write = parsed.status in {
-        "Placed", "Settled", "Void", "Cancelled", "Free Bet Awarded"
-    } or parsed.result != "Pending"
     references = [
         (parsed.bookmaker, "Bookie", "bookmaker", "bookmaker"),
         (parsed.exchange_name, "Exchange", "exchange_name", "exchange_name"),
@@ -937,51 +930,15 @@ def validate_write_payload(
             )
         if account.lifecycle_status == "Archived" or account.status == "Archived":
             raise HTTPException(status_code=409, detail=f"{field}: Account is archived")
-        if committed_write:
-            normalized_status = account.status.strip().casefold()
-            normalized_lifecycle = account.lifecycle_status.strip().casefold()
-            restrictions = get_account_restrictions(account)
-            blocked_reason = ""
-            if normalized_status in UNAVAILABLE_ACCOUNT_STATUSES:
-                blocked_reason = f"Account is {account.status}"
-            elif normalized_lifecycle in UNAVAILABLE_LIFECYCLES:
-                blocked_reason = f"Account lifecycle is {account.lifecycle_status}"
-            elif restrictions & BLOCKING_RESTRICTIONS:
-                blocked_reason = "Account is blocked: " + ", ".join(
-                    sorted(restrictions & BLOCKING_RESTRICTIONS)
-                )
-            elif account.stake_access.strip().casefold() == "blocked":
-                blocked_reason = "Stake access is Blocked"
-            elif kind == "Bookie" and "casino only" in restrictions:
-                blocked_reason = "Account is Casino Only"
-            elif (
-                kind == "Bookie"
-                and offer_requires_promotional_access(parsed.offer_type)
-                and (
-                    account.promo_access.strip().casefold() == "none"
-                    or "bonus restricted" in restrictions
-                )
-            ):
-                blocked_reason = "Account is not eligible for this promotion"
-            master_entry = next(
-                (
-                    item
-                    for item in load_master_account_catalogue().records
-                    if item.account_type == ("Bookmaker" if kind == "Bookie" else kind)
-                    and (
-                        (account.catalogue_id and item.catalogue_id == account.catalogue_id)
-                        or (
-                            not account.catalogue_id
-                            and item.brand_name.casefold() == account.account.casefold()
-                        )
-                    )
-                ),
-                None,
-            )
-            if master_entry is not None and not master_entry.eligible_for_new_activity:
-                blocked_reason = "Provider is not eligible for new activity"
-            if blocked_reason:
-                raise HTTPException(status_code=409, detail=f"{field}: {blocked_reason}")
+        eligibility = resolve_new_activity_eligibility(
+            account,
+            bookmaker=kind == "Bookie",
+            require_promotional_access=(
+                kind == "Bookie" and offer_requires_promotional_access(parsed.offer_type)
+            ),
+        )
+        if not eligibility.eligible:
+            raise HTTPException(status_code=409, detail=f"{field}: {eligibility.reason}")
     from openforge_api.multi_lay_actual import validate_account
     try:
         if account_fields_to_validate is None or "multi_lay_outcomes_json" in account_fields_to_validate:

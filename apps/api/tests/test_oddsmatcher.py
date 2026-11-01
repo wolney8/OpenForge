@@ -9,7 +9,7 @@ from apps.api.tests.synthetic_setup import seed_synthetic_betting_context
 from fastapi.testclient import TestClient
 
 from openforge_api import oddsmatcher
-from openforge_api.config import settings
+from openforge_api.config import SOURCE_ROOT, settings
 from openforge_api.db import (
     connect,
     get_sportsbook_bet,
@@ -263,6 +263,73 @@ def test_ineligible_profile_cannot_reuse_another_profiles_accounts(tmp_path: Pat
         },
     )
     assert draft.status_code == 409
+
+
+def test_retired_exchange_is_unavailable_while_matchbook_identity_stays_independent(
+    tmp_path: Path,
+) -> None:
+    client = configure_database(tmp_path)
+    synthetic_catalogue = json.loads(
+        (SOURCE_ROOT / "tests/fixtures/openforge-api-master-catalogue.synthetic.json").read_text()
+    )
+    production_catalogue = json.loads(
+        (SOURCE_ROOT / "data/reference/master-account-catalogue.json").read_text()
+    )
+    synthetic_catalogue["records"].append(
+        next(
+            row
+            for row in production_catalogue["records"]
+            if row["catalogue_id"] == "EXCHANGE-BETDAQ"
+        )
+    )
+    catalogue_path = tmp_path / "oddsmatcher-catalogue-with-retired-betdaq.json"
+    catalogue_path.write_text(json.dumps(synthetic_catalogue))
+    settings.account_catalogue_source = str(catalogue_path)
+
+    with connect() as connection:
+        connection.execute(
+            "UPDATE accounts SET account='BETDAQ', catalogue_id='EXCHANGE-BETDAQ' "
+            "WHERE profile_id='profile-demo-001' AND account='Smarkets' AND type='Exchange'"
+        )
+    event = provider_event(event_id="betdaq-retired-event")
+    event["bookmakers"][1]["key"] = "betdaq"
+    event["bookmakers"][1]["title"] = "BETDAQ"
+    values, excluded, count, bookmakers, exchanges = oddsmatcher.normalize_provider_events(
+        {
+            "soccer_epl": [event],
+            "soccer_efl_champ": [],
+            "soccer_uefa_champs_league": [],
+        }
+    )
+    oddsmatcher._cache = oddsmatcher.ProviderCache(
+        fetched_at=datetime.now(UTC),
+        opportunities=values,
+        excluded=excluded,
+        event_count=count,
+        bookmaker_keys=bookmakers,
+        exchange_keys=exchanges,
+        provider_credits_used=4,
+        provider_credits_remaining=496,
+        provider_last_refresh_cost=3,
+    )
+
+    rows = client.get("/profiles/profile-demo-001/oddsmatcher").json()["opportunities"]
+    assert rows
+    assert all(row["lay"]["account_name"] == "BETDAQ" for row in rows)
+    assert all(row["lay_eligibility"]["state"] == "unavailable" for row in rows)
+    assert all("RETIRED" in row["lay_eligibility"]["reason"] for row in rows)
+    assert all(row["can_create_prospecting_draft"] is False for row in rows)
+
+    accounts = client.get("/profiles/profile-demo-001/accounts").json()
+    assert any(
+        row["account"] == "BETDAQ" and row["catalogue_eligible_for_new_activity"] is False
+        for row in accounts
+    )
+    assert any(
+        row["account"] == "Matchbook"
+        and row["catalogue_eligible_for_new_activity"] is True
+        for row in accounts
+    )
 
 
 def test_prospecting_draft_is_idempotent_and_preserves_unknown_liquidity(tmp_path: Path) -> None:

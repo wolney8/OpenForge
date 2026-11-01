@@ -330,6 +330,15 @@ catalogue provider identity. Jettbet is the only authorised owner Account-comple
 ledger re-import remains prohibited. Automated and owner verification are pending; CP-108 remains
 paused.
 
+## CP-108C provider lifecycle new-activity gate
+
+Recorded 2026-11-01 under existing Accounts/Sportsbook tracking. New betting eligibility now
+requires both an eligible Profile Account and an active, new-activity-eligible provider catalogue
+record. BETDAQ and every other retired provider remain visible for Account management and historic
+ledgers but are excluded from new Sportsbook, Free Bet and Profile-context Oddsmatcher activity;
+successor metadata does not migrate identity. Automated verification passes; owner verification is
+pending and CP-108 remains paused.
+
 ## Reference index
 
 - [Feature status](FEATURE_STATUS.md)

@@ -14,6 +14,7 @@ from pydantic import (
     model_validator,
 )
 
+from openforge_api.account_activity_eligibility import resolve_new_activity_eligibility
 from openforge_api.calculations.free_bet_current_value import (
     FreeBetCalculationInput,
     FreeBetCalculationResult,
@@ -499,6 +500,13 @@ def validate_write_payload(
             )
         if account.lifecycle_status == "Archived" or account.status == "Archived":
             raise HTTPException(status_code=409, detail=f"{field}: Account is archived")
+        eligibility = resolve_new_activity_eligibility(
+            account,
+            bookmaker=kind == "Bookie",
+            require_promotional_access=kind == "Bookie",
+        )
+        if not eligibility.eligible:
+            raise HTTPException(status_code=409, detail=f"{field}: {eligibility.reason}")
     resolution_state = str(payload.get("origin_qual_bet_resolution_state") or "")
     native_parent_id = str(payload.get("origin_qual_bet_native_id") or "")
     relationship_id = native_parent_id or (
