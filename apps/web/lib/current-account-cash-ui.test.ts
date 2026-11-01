@@ -39,18 +39,18 @@ describe("Current Account Cash readiness", () => {
       knownCashSubtotal: "84.16",
       bookieKnownBalance: "84.16",
       moneyIssues: [
-        { accountId: "ACCOUNT-UNKNOWN-1", accountName: "Synthetic One", field: "current_balance", reason: "Unknown amount" },
-        { accountId: "ACCOUNT-UNKNOWN-2", accountName: "Synthetic Two", field: "current_balance", reason: "Unknown amount" },
+        { accountId: "ACCOUNT-UNKNOWN-1", accountName: "Synthetic One", accountType: "Bookie", field: "current_balance", reason: "Unknown amount" },
+        { accountId: "ACCOUNT-UNKNOWN-2", accountName: "Synthetic Two", accountType: "Bookie", field: "current_balance", reason: "Unknown amount" },
       ],
     });
 
     expect(markup).toContain("Known cash");
     expect(markup).toContain("£ 84.16");
-    expect(markup).toContain("Incomplete — 2 Account balances missing");
+    expect(markup).toContain("2 cash-counting Account balances unavailable");
     expect(markup).not.toContain("Known cash £ 99.16");
-    expect(markup).toContain('<dl class="current-account-cash-categories">');
-    expect(markup.match(/<dt>/g)).toHaveLength(3);
-    expect(markup.match(/<dd/g)).toHaveLength(3);
+    expect(markup).toContain('<table class="current-account-cash-table">');
+    expect(markup).toContain("<th scope=\"row\">Bookmakers</th>");
+    expect(markup).toContain("<td>2</td>");
   });
 
   it("renders each category as an aligned value row and keeps an unknown category incomplete", () => {
@@ -65,16 +65,17 @@ describe("Current Account Cash readiness", () => {
       bankBalance: 0,
       bankKnownBalance: "0.00",
       moneyIssues: [
-        { accountId: "ACCOUNT-UNKNOWN-1", accountName: "Exchange One", field: "current_balance", reason: "Unknown amount" },
-        { accountId: "ACCOUNT-UNKNOWN-2", accountName: "Exchange Two", field: "current_balance", reason: "Unknown amount" },
+        { accountId: "ACCOUNT-UNKNOWN-1", accountName: "Exchange One", accountType: "Exchange", field: "current_balance", reason: "Unknown amount" },
+        { accountId: "ACCOUNT-UNKNOWN-2", accountName: "Exchange Two", accountType: "Exchange", field: "current_balance", reason: "Unknown amount" },
       ],
     });
 
     expect(markup).toContain("Known cash");
     expect(markup).toContain("£ 62.34");
-    expect(markup).toContain("<dt>Bookie</dt><dd>");
-    expect(markup).toContain('<dt>Exchange</dt><dd class="current-account-cash-incomplete">Incomplete</dd>');
-    expect(markup).toContain("<dt>Bank</dt><dd>");
+    expect(markup).toContain('<th scope="row">Bookmakers</th><td>');
+    expect(markup).toContain('<th scope="row">Exchanges</th><td>');
+    expect(markup).toContain('<th scope="row">Bank</th><td>');
+    expect(markup).toContain("<td>2</td>");
     expect(markup).not.toContain("Exchange £ 0.00");
   });
 
@@ -82,6 +83,7 @@ describe("Current Account Cash readiness", () => {
     const issue = {
       accountId: "ACCOUNT-UNKNOWN-1",
       accountName: "Synthetic One",
+      accountType: "Bookie",
       field: "current_balance" as const,
       reason: "Unknown amount" as const,
     };
@@ -90,6 +92,6 @@ describe("Current Account Cash readiness", () => {
       cashSnapshot: Number.NaN,
       moneyIssues: [issue, issue],
     });
-    expect(markup).toContain("Incomplete — 1 Account balance missing");
+    expect(markup).toContain("1 cash-counting Account balance unavailable");
   });
 });

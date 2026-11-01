@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 
 from openforge_api.config import settings
 from openforge_api.db import (
+    connect,
     create_account,
     list_accounts,
     resolve_profile_exchange_commission,
@@ -186,6 +187,59 @@ def test_zero_commission_offer_overrides_base_only_inside_period_and_rejects_ove
     )
     assert overlap.status_code == 422
     assert "overlap" in overlap.text.lower()
+
+
+def test_account_editor_saves_blank_zero_and_positive_commission_with_audit(
+    tmp_path: Path,
+) -> None:
+    configure_temp_database(tmp_path)
+    client = TestClient(app)
+    account = next(
+        row for row in client.get("/profiles/profile-demo-001/accounts").json()
+        if row["type"] == "Exchange" and row["account"] == "Smarkets"
+    )
+
+    for commission_rate in ("", "0.00", "0.02"):
+        response = client.put(
+            f"/profiles/profile-demo-001/accounts/{account['account_id']}",
+            json={
+                **account,
+                "commission_rate": commission_rate,
+                "expected_updated_at": account["updated_at"],
+            },
+        )
+        assert response.status_code == 200, response.text
+        account = response.json()
+        saved = next(
+            row for row in client.get(
+                "/profiles/profile-demo-001/exchange-commissions"
+            ).json()
+            if row["exchange_name"] == "Smarkets"
+        )
+        assert saved["commission_rate"] == commission_rate
+        assert saved["configured"] is bool(commission_rate)
+
+    with connect() as connection:
+        audit_payloads = [
+            str(row["payload_json"])
+            for row in connection.execute(
+                "SELECT payload_json FROM account_audit WHERE account_id = ? ORDER BY changed_at",
+                (account["account_id"],),
+            ).fetchall()
+        ]
+    assert any('"commission_rate": ""' in payload for payload in audit_payloads)
+    assert any('"commission_rate": "0.00"' in payload for payload in audit_payloads)
+    assert any('"commission_rate": "0.02"' in payload for payload in audit_payloads)
+
+    history = client.get(
+        f"/profiles/profile-demo-001/accounts/{account['account_id']}/history"
+    )
+    assert history.status_code == 200
+    assert any(
+        entry["action"] == "updated"
+        and entry["payload"].get("commission_rate") == "0.02"
+        for entry in history.json()
+    )
 
 
 def test_commission_offer_rejects_non_exchange_account(tmp_path: Path) -> None:

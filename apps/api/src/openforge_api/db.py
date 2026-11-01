@@ -11229,6 +11229,8 @@ def _update_account_fields(
 
     payload = validate_account_money_payload(payload)
 
+    commission_was_supplied = "_commission_rate" in payload
+    commission_rate = str(payload.pop("_commission_rate", ""))
     updated = {
         "catalogue_id": payload.get("catalogue_id"),
         "bookmaker_id": payload.get("bookmaker_id"),
@@ -11322,12 +11324,36 @@ def _update_account_fields(
                 account_id,
             ),
         )
+        if commission_was_supplied and updated["type"] == "Exchange":
+            connection.execute(
+                """
+                INSERT INTO profile_exchange_commissions (
+                  profile_id, exchange_name, commission_rate, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT(profile_id, exchange_name)
+                DO UPDATE SET
+                  commission_rate = excluded.commission_rate,
+                  updated_at = excluded.updated_at
+                """,
+                (
+                    profile_id,
+                    updated["account"],
+                    commission_rate,
+                    updated["updated_at"],
+                    updated["updated_at"],
+                ),
+            )
         write_account_audit_entry(
             connection=connection,
             account_id=account_id,
             profile_id=profile_id,
             action="updated",
-            payload={"account_id": account_id, "profile_id": profile_id, **updated},
+            payload={
+                "account_id": account_id,
+                "profile_id": profile_id,
+                **updated,
+                **({"commission_rate": commission_rate} if commission_was_supplied else {}),
+            },
         )
     return get_account(profile_id, account_id)
 
@@ -11343,6 +11369,37 @@ def count_account_audit_rows(profile_id: str, account_id: str) -> int:
             (profile_id, account_id),
         ).fetchone()
     return int(row["count"])
+
+
+def list_account_audit_entries(
+    profile_id: str,
+    account_id: str,
+) -> list[dict[str, Any]]:
+    with connect() as connection:
+        rows = connection.execute(
+            """
+            SELECT audit_id, action, changed_at, payload_json
+            FROM account_audit
+            WHERE profile_id = ? AND account_id = ?
+            ORDER BY changed_at DESC, audit_id DESC
+            """,
+            (profile_id, account_id),
+        ).fetchall()
+    entries: list[dict[str, Any]] = []
+    for row in rows:
+        try:
+            payload = json.loads(str(row["payload_json"] or "{}"))
+        except json.JSONDecodeError:
+            payload = {}
+        entries.append(
+            {
+                "audit_id": str(row["audit_id"]),
+                "action": str(row["action"]),
+                "changed_at": str(row["changed_at"]),
+                "payload": payload if isinstance(payload, dict) else {},
+            }
+        )
+    return entries
 
 
 def upsert_profile_exchange_commission(

@@ -1010,8 +1010,8 @@ export function CrossProfileAnalytics({
   const detailFeePosition = detailProfileId
     ? feePositionByProfile.get(detailProfileId)
     : undefined;
-  const detailModuleValues = new Map(
-    detailSummary?.summary.moduleBreakdown.map((row) => [row.moduleKey, row.reportingValue]) ?? []
+  const detailModuleRows = new Map(
+    detailSummary?.summary.moduleBreakdown.map((row) => [row.moduleKey, row]) ?? []
   );
 
   const balanceSnapshots = useMemo(
@@ -1811,16 +1811,18 @@ export function CrossProfileAnalytics({
             <div><dt>Extra Place</dt><dd>{selectedReadState === "ready" ? combined.profileRows.reduce((total, row) => total + row.extraPlaceActionCount, 0) : selectedReadState === "loading" ? "Loading…" : "Unavailable"}</dd></div>
           </dl>
         </section>
-        <section className="content-subpanel stack" data-pd-id="profiles.balance-history">
-          <div className="section-heading-row formal-report-section-heading"><h3>Balance Snapshot History</h3><div className="compact-report-controls formal-report-section-controls">
+        <section className="content-subpanel stack profiles-balance-history" data-pd-id="profiles.balance-history">
+          <div className="section-heading-row formal-report-section-heading"><h3>Balance Snapshot History</h3>{balanceSnapshots.length ? <div className="compact-report-controls formal-report-section-controls">
             <label className="m3-picker-field"><span className="m3-picker-label">Snapshot Range</span><span className="m3-picker-control"><span aria-hidden="true" className="material-symbols-outlined">date_range</span><select aria-label="Balance snapshot period range" data-pd-id="profiles.balance-snapshots.period-range" onChange={(event)=>{setBalanceSnapshotRange(event.target.value);setBalancePage(1);}} value={balanceSnapshotRange}><option value="all">All Snapshots</option><option value="30">Last 30 Days</option><option value="90">Last 3 Months</option><option value="180">Last 6 Months</option></select></span></label>
             <label className="m3-picker-field"><span className="m3-picker-label">Snapshot Type</span><span className="m3-picker-control"><span aria-hidden="true" className="material-symbols-outlined">filter_alt</span><select aria-label="Balance snapshot type" data-pd-id="profiles.balance-snapshots.type" onChange={(event)=>{setBalanceSnapshotType(event.target.value);setBalancePage(1);}} value={balanceSnapshotType}><option value="all">All Types</option>{balanceSnapshotTypes.map((type)=><option key={type} value={type}>{type}</option>)}</select></span></label>
-          </div></div>
-          <LedgerPagination ariaLabel="Balance Snapshot History" currentPage={Math.min(balancePage,balancePageCount)} onPageChange={setBalancePage} onPageSizeChange={(size)=>{setBalancePageSize(size);setBalancePage(1);}} pageCount={balancePageCount} pageSize={balancePageSize} position="top" totalRows={balanceSnapshots.length}/>
-          <div className="table-shell"><table className="profile-action-table"><thead><tr><th scope="col">Profile</th><th scope="col">Captured</th><th scope="col">Type</th><th scope="col">Account</th><th scope="col">Balance</th></tr></thead><tbody>
-            {visibleBalanceSnapshots.length?visibleBalanceSnapshots.map((row)=><FinancialValueReplayRow key={`${row.profile_id}-${row.balance_snapshot_id}`}><td>{row.displayName}</td><td>{formatHumanDisplayDate(row.snapshot_at,true)}</td><td>{row.snapshot_type}</td><td>{row.account_id??"Profile total"}</td><td><FinancialValue value={Number(row.balance_amount)}/></td></FinancialValueReplayRow>):<tr><td colSpan={5}>No balance snapshots fall inside the selected range.</td></tr>}
-          </tbody></table></div>
-          <LedgerPagination ariaLabel="Balance Snapshot History" currentPage={Math.min(balancePage,balancePageCount)} onPageChange={setBalancePage} onPageSizeChange={(size)=>{setBalancePageSize(size);setBalancePage(1);}} pageCount={balancePageCount} pageSize={balancePageSize} position="bottom" totalRows={balanceSnapshots.length}/>
+          </div> : null}</div>
+          {!balanceSnapshots.length ? <div className="compact-empty-state" data-pd-id="profiles.balance-history.empty"><span aria-hidden="true" className="material-symbols-outlined">history</span><strong>No balance snapshots yet</strong></div> : visibleBalanceSnapshots.length ? <>
+            <LedgerPagination ariaLabel="Balance Snapshot History" currentPage={Math.min(balancePage,balancePageCount)} onPageChange={setBalancePage} onPageSizeChange={(size)=>{setBalancePageSize(size);setBalancePage(1);}} pageCount={balancePageCount} pageSize={balancePageSize} position="top" totalRows={balanceSnapshots.length}/>
+            <div className="table-shell"><table className="profile-action-table"><thead><tr><th scope="col">Profile</th><th scope="col">Captured</th><th scope="col">Type</th><th scope="col">Account</th><th scope="col">Balance</th></tr></thead><tbody>
+              {visibleBalanceSnapshots.map((row)=><FinancialValueReplayRow key={`${row.profile_id}-${row.balance_snapshot_id}`}><td>{row.displayName}</td><td>{formatHumanDisplayDate(row.snapshot_at,true)}</td><td>{row.snapshot_type}</td><td>{row.account_id??"Profile total"}</td><td><FinancialValue value={Number(row.balance_amount)}/></td></FinancialValueReplayRow>)}
+            </tbody></table></div>
+            <LedgerPagination ariaLabel="Balance Snapshot History" currentPage={Math.min(balancePage,balancePageCount)} onPageChange={setBalancePage} onPageSizeChange={(size)=>{setBalancePageSize(size);setBalancePage(1);}} pageCount={balancePageCount} pageSize={balancePageSize} position="bottom" totalRows={balanceSnapshots.length}/>
+          </> : <div className="compact-empty-state"><span aria-hidden="true" className="material-symbols-outlined">filter_alt_off</span><strong>No balance snapshots match these filters</strong></div>}
         </section>
         <div className="section-heading-row">
           <div>
@@ -2055,11 +2057,8 @@ export function CrossProfileAnalytics({
             <section className="profile-drawer-section stack-tight">
               <h3>Selected Range Performance</h3>
               <dl className="profile-detail-list">
-                <div><dt>Sportsbook</dt><dd>{detailSummary ? <FinancialValue value={detailModuleValues.get("sportsbook") ?? 0} /> : isLoading ? <ReportingCellLoading label="Loading Sportsbook reporting" /> : "Unavailable"}</dd></div>
-                <div><dt>Free Bets</dt><dd>{detailSummary ? <FinancialValue value={detailModuleValues.get("free-bets") ?? 0} /> : isLoading ? <ReportingCellLoading label="Loading Free Bet reporting" /> : "Unavailable"}</dd></div>
-                <div><dt>Casino</dt><dd>{detailSummary ? <FinancialValue value={detailModuleValues.get("casino") ?? 0} /> : isLoading ? <ReportingCellLoading label="Loading Casino reporting" /> : "Unavailable"}</dd></div>
-                <div><dt>Cash Adjustments</dt><dd>{detailSummary ? <FinancialValue value={detailModuleValues.get("cash-adjustments") ?? 0} /> : isLoading ? <ReportingCellLoading label="Loading Cash Adjustment reporting" /> : "Unavailable"}</dd></div>
-                <div><dt>Gross P&amp;L</dt><dd>{detailSummary ? <FinancialValue value={detailSummary.summary.reportingModel.selectedRange.grossBettingPnl} /> : isLoading ? <ReportingCellLoading label="Loading gross profit and loss" /> : "Unavailable"}</dd></div>
+                {([['sportsbook','Sportsbook'],['free-bets','Free Bets'],['casino','Casino'],['cash-adjustments','Cash Adjustments']] as const).map(([moduleKey,label]) => <div key={moduleKey}><dt>{label}</dt><dd>{detailSummary && detailModuleRows.get(moduleKey) ? <FinancialAggregateReadValue aggregate={detailModuleRows.get(moduleKey)!.reportingAggregate} label={`${label} profit and loss`} state="ready" subject={`${label} profit and loss`} /> : isLoading ? <ReportingCellLoading label={`Loading ${label} reporting`} /> : "Unavailable"}</dd></div>)}
+                <div><dt>Gross P&amp;L</dt><dd>{detailSummary ? <FinancialAggregateReadValue aggregate={detailSummary.summary.reportingModel.selectedRange.grossBettingPnlAggregate} label="gross profit and loss" state="ready" subject="gross profit and loss" /> : isLoading ? <ReportingCellLoading label="Loading gross profit and loss" /> : "Unavailable"}</dd></div>
               </dl>
             </section>
             </FinancialValueReplayGroup>

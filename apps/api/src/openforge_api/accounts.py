@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import logging
 from collections.abc import Sequence
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from typing import Literal, cast
 
 from fastapi import APIRouter, HTTPException
@@ -27,6 +27,7 @@ from openforge_api.db import (
     get_account,
     get_bookmaker_catalogue_entry,
     get_profile,
+    list_account_audit_entries,
     list_accounts,
     list_bookmaker_catalogue,
     update_account,
@@ -208,17 +209,41 @@ class AccountResponse(AccountPayload):
     catalogue_eligible_for_new_activity: bool
 
 
+class AccountAuditResponse(BaseModel):
+    audit_id: str
+    action: str
+    changed_at: str
+    payload: dict[str, object]
+
+
 class AccountWritePayload(AccountPayload):
     expected_updated_at: str | None = Field(default=None, max_length=60)
+    commission_rate: str | None = Field(default=None, max_length=40)
 
     @field_validator("current_balance", "pending_withdrawal_amount")
     @classmethod
     def validate_money(cls, value: str, info: ValidationInfo) -> str:
         return normalize_money_input(value, info.field_name or "money")
 
+    @field_validator("commission_rate")
+    @classmethod
+    def validate_optional_commission(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = value.strip()
+        if not normalized:
+            return ""
+        try:
+            parsed = Decimal(normalized)
+        except InvalidOperation as error:
+            raise ValueError("commission_rate must be a decimal fraction") from error
+        if parsed < Decimal("0") or parsed > Decimal("1"):
+            raise ValueError("commission_rate must be between 0 and 1")
+        return normalized
+
 
 class AccountCreatePayload(AccountWritePayload):
-    commission_rate: Decimal | None = Field(default=None, ge=0, le=1)
+    pass
 
 
 def resolve_account_lifecycle_and_restrictions(
@@ -540,9 +565,22 @@ def get_profile_account(profile_id: str, account_id: str) -> AccountResponse:
     return build_account_response(record)
 
 
+@router.get("/{account_id}/history", response_model=list[AccountAuditResponse])
+def get_profile_account_history(
+    profile_id: str,
+    account_id: str,
+) -> list[AccountAuditResponse]:
+    if get_account(profile_id, account_id) is None:
+        raise HTTPException(status_code=404, detail="Account not found for this profile")
+    return [
+        AccountAuditResponse.model_validate(entry)
+        for entry in list_account_audit_entries(profile_id, account_id)
+    ]
+
+
 @router.post("", response_model=AccountResponse, status_code=201)
 def create_profile_account(profile_id: str, payload: AccountCreatePayload) -> AccountResponse:
-    if payload.type == "Exchange" and payload.commission_rate is None:
+    if payload.type == "Exchange" and not (payload.commission_rate or "").strip():
         raise HTTPException(
             status_code=422,
             detail="An Exchange commission rate is required",
@@ -569,7 +607,7 @@ def create_profile_account(profile_id: str, payload: AccountCreatePayload) -> Ac
         created = create_account_with_exchange_commission(
             profile_id,
             resolved,
-            str(payload.commission_rate) if payload.type == "Exchange" else None,
+            payload.commission_rate if payload.type == "Exchange" else None,
         )
     except DuplicateProfileAccountError as error:
         raise HTTPException(status_code=409, detail=str(error)) from error
@@ -584,6 +622,8 @@ def update_profile_account(
 ) -> AccountResponse:
     try:
         resolved = resolve_catalogue_fields(payload)
+        if payload.type == "Exchange" and "commission_rate" in payload.model_fields_set:
+            resolved["_commission_rate"] = payload.commission_rate or ""
         for field in ("current_balance", "pending_withdrawal_amount", "last_balance_update"):
             if field not in payload.model_fields_set:
                 resolved.pop(field, None)

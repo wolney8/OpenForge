@@ -7,6 +7,10 @@ const defaultMessage =
 
 type UnsavedGuard = {
   message: string;
+  title?: string;
+  accessibleName?: string;
+  cancelLabel?: string;
+  confirmLabel?: string;
   onDiscard?: () => void;
   onSaveAndClose?: () => Promise<boolean>;
 };
@@ -38,12 +42,12 @@ function requestUnsavedChangesConfirmation(
   onConfirmed?: () => void,
 ): Promise<boolean> {
   return requestAppConfirmation({
-    accessibleName: "Unsaved tracker changes",
-    cancelLabel: "Keep Editing",
-    confirmLabel: "Discard Changes",
+    accessibleName: guard.accessibleName ?? guard.title ?? "Unsaved tracker changes",
+    cancelLabel: guard.cancelLabel ?? "Keep editing",
+    confirmLabel: guard.confirmLabel ?? "Discard changes",
     eyebrow: "",
     message: guard.message,
-    title: "You have unsaved changes.",
+    title: guard.title ?? "You have unsaved changes.",
     variant: "discard",
     onConfirmed: () => {
       guard.onDiscard?.();
@@ -108,9 +112,9 @@ export function confirmUnsavedTrackerNavigation(
     return;
   }
   void requestAppConfirmation({
-    accessibleName: "Unsaved tracker changes",
-    cancelLabel: "Keep Editing",
-    confirmLabel: "Discard Changes",
+    accessibleName: guard.accessibleName ?? guard.title ?? "Unsaved tracker changes",
+    cancelLabel: guard.cancelLabel ?? "Keep editing",
+    confirmLabel: guard.confirmLabel ?? "Discard changes",
     eyebrow: "",
     message: guard.message,
     navigationHref,
@@ -119,7 +123,7 @@ export function confirmUnsavedTrackerNavigation(
       onConfirmed?.();
     },
     onSaveAndClose: guard.onSaveAndClose,
-    title: "You have unsaved changes.",
+    title: guard.title ?? "You have unsaved changes.",
     variant: "discard",
   });
 }

@@ -90,6 +90,12 @@ function fixtureSummary(
     moduleBreakdown: profile.moduleBreakdown.map((row) => ({
       ...row,
       moduleKey: row.moduleKey as ModuleBreakdownRow["moduleKey"],
+      reportingAggregate: {
+        knownValue: row.reportingValue,
+        knownCount: row.rowCount,
+        unknownCount: 0,
+        isComplete: true,
+      },
     })),
     bookmakerBreakdown: profile.bookmakerBreakdown.map((row) => ({
       ...row,

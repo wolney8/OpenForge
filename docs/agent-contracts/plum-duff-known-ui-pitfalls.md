@@ -1573,3 +1573,15 @@ Do not infer new-activity eligibility from a Profile Account row alone. New bett
 writes must also require provider-catalogue status `Active`, lifecycle `ACTIVE`, and explicit
 new-activity eligibility. Retired and unlisted providers remain available only for historical
 display/editing; successor metadata never rewrites or auto-selects a replacement provider.
+
+## Daily-use state and hierarchy rules
+
+- A control's visibility depends only on information genuinely required to use that control, not
+  unrelated form completion. Validate missing lifecycle requirements at the governed transition.
+- Status belongs in the dedicated status presentation rather than being duplicated under entity
+  identity.
+- Large diagnostic collections are aggregated and progressively disclosed, never repeated inline.
+- Empty data surfaces collapse to useful empty states rather than retaining large chart or table
+  geometry.
+- Save actions produce success, explicit validation or an actionable failure; they never appear to
+  do nothing, and failed saves preserve the owner's edits.

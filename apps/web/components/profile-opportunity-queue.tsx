@@ -140,7 +140,7 @@ export function ProfileOpportunityQueue({ profileId }: { profileId: string }) {
             <tbody>{rows.map((row) => (
               <tr key={row.opportunity_key}>
                 <td><BookmakerIdentity bookmaker={row.bookmaker} catalogueId={catalogueIdForBookmaker(providerIdsByName, row.bookmaker)} catalogue={catalogue} mode="Brand badge" /></td>
-                <td><div className="opportunity-copy"><strong title={row.label}>{row.label}</strong>{row.defaults.opportunityExpiry ? <small>Expires {row.defaults.opportunityExpiry}</small> : null}{row.risk_warnings.map((warning) => <small className="opportunity-risk-copy" key={warning}><span aria-hidden="true" className="material-symbols-outlined">warning</span>{warning}</small>)}</div></td>
+                <td><div className="opportunity-copy"><strong title={row.label}>{row.label}</strong>{row.defaults.opportunityExpiry ? <small>Expires {row.defaults.opportunityExpiry}</small> : null}{row.risk_warnings.length ? <details className="opportunity-risk-disclosure"><summary><span aria-hidden="true" className="material-symbols-outlined">warning</span>{row.risk_warnings.length} related {row.risk_warnings.length === 1 ? "restriction" : "restrictions"}</summary><ul>{row.risk_warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul></details> : null}</div></td>
                 <td><span className="table-chip table-chip-info">{row.kind}</span></td>
                 <td>{row.recurrence === "Weekly" ? row.period_key : "One off"}</td>
                 <td><span className={`table-chip ${row.already_created ? "table-chip-success" : "table-chip-warning"}`}>{row.already_created ? "Created" : "Available"}</span></td>

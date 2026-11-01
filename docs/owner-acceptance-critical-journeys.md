@@ -74,7 +74,7 @@ Only the owner may change a journey to **OWNER ACCEPTED**. Automated tests do no
 | 1 | Login, refresh and restart | OWNER ACCEPTANCE PENDING | `f0205340…` | Pending | Genuine Google owner flow required. |
 | 2 | Universal Selected Range and Profile switching | OWNER ACCEPTANCE PENDING | `f0205340…` | Pending | Universal Fund Manager range is installed. |
 | 3 | Accounts and partial-known cash | OWNER ACCEPTANCE PENDING | `f0205340…` | Pending | Known/incomplete cash states are implemented. |
-| 4 | Sportsbook create → place → settle → correct | CODE-VERIFIED ONLY | `f0205340…` | Not run | Synthetic data only. |
+| 4 | Sportsbook create → place → settle → correct | OWNER ACCEPTED | `038ee08c…` | PASS | Owner accepted the CP-108 core lifecycle; surrounding Account and daily-use corrections remain separate. |
 | 5 | Qualifying loss → linked Free Bet | CODE-VERIFIED ONLY | `f0205340…` | Not run | Award and settlement stay separate. |
 | 6 | Refund/reward → wagering → release | OWNER ACCEPTANCE PENDING | `f0205340…` | Pending | Use the CB503-equivalent case. |
 | 7 | Reports and P&L | OWNER ACCEPTED | `f0205340…` | PASS | Accepted for the current source/calculation boundary. |
@@ -225,7 +225,9 @@ Profile **Profile Operations**, then **Accounts**.
 ### Journey 4 — Sportsbook create → place → settle → correct
 
 **Status:**
-CODE-VERIFIED ONLY
+OWNER ACCEPTED
+
+Owner accepted the CP-108 core Prospecting → placement → committed exposure → settlement → correction/history journey. Re-run only if that lifecycle, calculation or audit boundary changes; CP-109 surrounding daily-use corrections do not broaden this acceptance.
 
 **What this proves:**
 One Sportsbook bet retains identity, placement boundary, execution, settlement economics and correction history.

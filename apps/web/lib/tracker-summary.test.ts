@@ -786,11 +786,37 @@ describe("Reports required output readiness", () => {
     expect(result.reportingModel.selectedRange.grossBettingPnlAggregate).toEqual({
       knownValue:5,knownCount:1,unknownCount:3,isComplete:false,
     });
+    expect(result.moduleBreakdown.find((row)=>row.moduleKey==="casino")?.reportingAggregate).toEqual({
+      knownValue:5,knownCount:1,unknownCount:3,isComplete:false,
+    });
+    expect(result.moduleBreakdown.find((row)=>row.moduleKey==="sportsbook")?.reportingAggregate).toEqual({
+      knownValue:0,knownCount:0,unknownCount:0,isComplete:true,
+    });
     expect(result.reportingModel.selectedRange.retainedProfit).toBeNaN();
     expect(result.reportingModel.selectedRange.retainedProfitAggregate).toEqual({
       knownValue:-4,knownCount:3,unknownCount:3,isComplete:false,
     });
     expect(result.weeklyReports[0]!.retainedProfit).toBeNaN();
+  });
+  it("keeps the known Sportsbook subtotal when one realised record is unavailable", () => {
+    const known = { ...dataset.sportsbookBets[0]!, date_settled: "2026-07-01T12:00:00" };
+    const unknown = {
+      ...known,
+      sportsbook_bet_id: "SB-UNKNOWN",
+      reporting_value: null,
+      final_net_pnl: null,
+      projected_current_pnl: null,
+    };
+    const source = fixture();
+    source.sportsbookBets = [known, unknown];
+    source.casinoOffers = [];
+    const result = summarizeTrackerData(source, range);
+    expect(result.moduleBreakdown.find((row)=>row.moduleKey==="sportsbook")?.reportingAggregate).toEqual({
+      knownValue:-2.5,knownCount:1,unknownCount:1,isComplete:false,
+    });
+    expect(result.reportingModel.selectedRange.grossBettingPnlAggregate).toEqual({
+      knownValue:-2.5,knownCount:1,unknownCount:1,isComplete:false,
+    });
   });
   it("preserves Extra Place historical current/final and explicit Void outputs with independent exposure readiness", () => {
     const source=fixture();source.eachWayExtraPlaces=[{each_way_extra_place_id:"EP-READ",placed_at:"2026-07-01T12:00:00",runner:"Synthetic",race:"Synthetic",bookmaker:"Bookie A",mode:"Extra Place",status:"Placed",result:"Pending",current_value:null,final_value:null,win_liability:null,place_liability:null}];

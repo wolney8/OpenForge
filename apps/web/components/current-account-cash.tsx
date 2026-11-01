@@ -23,27 +23,31 @@ function uniqueBalanceIssues(issues: AccountMoneyIssue[]): AccountMoneyIssue[] {
   });
 }
 
-function CategoryCash({ label, known, value }: { label: string; known?: string; value: number }) {
-  if (Number.isFinite(value)) return <div><dt>{label}</dt><dd><FinancialValue value={value} /></dd></div>;
-  const subtotal = knownMoney(known);
-  return <div>
-    <dt>{label}</dt>
-    <dd className="current-account-cash-incomplete">
-      {subtotal !== null && subtotal !== 0 ? <>Known <FinancialValue value={subtotal} /> · incomplete</> : "Incomplete"}
-    </dd>
-  </div>;
+function CashCategoryRow({
+  label,
+  missingCount,
+  known,
+  value,
+}: {
+  label: string;
+  missingCount: number;
+  known?: string;
+  value: number;
+}) {
+  const subtotal = Number.isFinite(value) ? value : knownMoney(known);
+  return <tr>
+    <th scope="row">{label}</th>
+    <td>{subtotal === null ? "Unavailable" : <FinancialValue value={subtotal} />}</td>
+    <td>{missingCount > 0 ? missingCount : "—"}</td>
+  </tr>;
 }
 
 export function CurrentAccountCash({ cash }: { cash: AccountCash }) {
   const balanceIssues = uniqueBalanceIssues(cash.moneyIssues ?? []);
   const incomplete = !Number.isFinite(cash.cashSnapshot) && balanceIssues.length > 0;
   const known = knownMoney(cash.knownCashSubtotal);
-  const unknownCount = balanceIssues.filter((issue) => issue.reason === "Unknown amount").length;
-  const invalidCount = balanceIssues.length - unknownCount;
-  const incompleteLabel = [
-    unknownCount ? `${unknownCount} Account ${unknownCount === 1 ? "balance" : "balances"} missing` : "",
-    invalidCount ? `${invalidCount} invalid` : "",
-  ].filter(Boolean).join(" · ");
+  const invalidCount = balanceIssues.filter((issue) => issue.reason !== "Unknown amount").length;
+  const missingByType = (type: string) => balanceIssues.filter((issue) => issue.accountType === type).length;
 
   return <div className="current-account-cash">
     <div className="current-account-cash-total">
@@ -53,12 +57,18 @@ export function CurrentAccountCash({ cash }: { cash: AccountCash }) {
           : <FinancialValue value={cash.cashSnapshot} />}
       </strong>
     </div>
-    {incomplete ? <span className="warning-text">Incomplete — {incompleteLabel}</span> : null}
-    <dl className="current-account-cash-categories">
-      <CategoryCash label="Bookie" value={cash.bookieBalance} known={cash.bookieKnownBalance} />
-      <CategoryCash label="Exchange" value={cash.exchangeBalance} known={cash.exchangeKnownBalance} />
-      <CategoryCash label="Bank" value={cash.bankBalance} known={cash.bankKnownBalance} />
-    </dl>
+    <div className="current-account-cash-table-wrap">
+      <table className="current-account-cash-table">
+        <thead><tr><th scope="col">Type</th><th scope="col">Known balance</th><th scope="col">Missing</th></tr></thead>
+        <tbody>
+          <CashCategoryRow label="Bookmakers" missingCount={missingByType("Bookie")} value={cash.bookieBalance} known={cash.bookieKnownBalance} />
+          <CashCategoryRow label="Exchanges" missingCount={missingByType("Exchange")} value={cash.exchangeBalance} known={cash.exchangeKnownBalance} />
+          <CashCategoryRow label="Bank" missingCount={missingByType("Bank")} value={cash.bankBalance} known={cash.bankKnownBalance} />
+          {Number.isFinite(cash.pendingWithdrawals) && cash.pendingWithdrawals !== 0 ? <tr><th scope="row">Pending withdrawals</th><td><FinancialValue value={cash.pendingWithdrawals} /></td><td>—</td></tr> : null}
+        </tbody>
+      </table>
+    </div>
+    {incomplete ? <span className="warning-text">{balanceIssues.length} cash-counting Account {balanceIssues.length === 1 ? "balance" : "balances"} unavailable{invalidCount ? ` · ${invalidCount} invalid` : ""}</span> : null}
   </div>;
 }
 
