@@ -21,6 +21,7 @@ export function DesignLabSelect<T extends string>({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
+  const [portalHost, setPortalHost] = useState<HTMLElement | null>(null);
   const [active, setActive] = useState(0);
   const [placement, setPlacement] = useState({ top: 0, left: 0, width: 0, maxHeight: 280 });
   const selectedIndex = Math.max(0, options.findIndex((option) => option.value === value));
@@ -28,6 +29,7 @@ export function DesignLabSelect<T extends string>({
   const position = useCallback(() => {
     const rect = triggerRef.current?.getBoundingClientRect();
     if (!rect) return;
+    setPortalHost(triggerRef.current?.closest("dialog") ?? document.body);
     const viewport = window.visualViewport;
     const leftEdge = viewport?.offsetLeft ?? 0;
     const topEdge = viewport?.offsetTop ?? 0;
@@ -106,10 +108,10 @@ export function DesignLabSelect<T extends string>({
       role="combobox"
       type="button"
     ><span id={`${id}-selected`}>{options[selectedIndex]?.label}</span><span aria-hidden="true" className="material-symbols-outlined">expand_more</span></button>
-    {open ? createPortal(<div className={styles.labSelectPanel} id={`${id}-options`} ref={panelRef} role="listbox" aria-label={`${label} options`} style={placement}>
+    {open && portalHost ? createPortal(<div className={styles.labSelectPanel} id={`${id}-options`} ref={panelRef} role="listbox" aria-label={`${label} options`} style={placement}>
       {options.map((option, index) => <div aria-selected={index === selectedIndex} className={`${styles.labSelectOption} ${index === active ? styles.labSelectOptionActive : ""}`} id={`${id}-option-${index}`} key={option.value} onClick={() => choose(index)} role="option" tabIndex={-1}>
         <span>{option.label}</span>{index === selectedIndex ? <span aria-hidden="true" className="material-symbols-outlined">check</span> : null}
       </div>)}
-    </div>, document.body) : null}
+    </div>, portalHost) : null}
   </div>;
 }

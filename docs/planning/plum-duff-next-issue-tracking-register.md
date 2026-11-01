@@ -1,5 +1,14 @@
 # Plum Duff Next Issue Tracking Register
 
+## CP-113 connected Design Lab — 2026-11-01
+
+| ID / tracking | Owner request | State |
+| --- | --- | --- |
+| PD-PR-113-01 / [#114](https://github.com/wolney8/OpenForge/issues/114) | Connected shell, grouped navigation, Profile/range context, site search and daily tasks. | CODE-VERIFIED — LAB ONLY; owner design review pending. |
+| PD-PR-113-02 / [#114](https://github.com/wolney8/OpenForge/issues/114) | Accounts and six ledger table/detail/Add/Edit treatments with required information preserved. | CODE-VERIFIED representative previews; narrow list as normal column replacement requires owner approval. |
+| PD-PR-113-03 / [#114](https://github.com/wolney8/OpenForge/issues/114) | Compare working compact modal and page stepper on the same Sportsbook draft through simulated placement, settlement, correction and report. | CODE-VERIFIED for one validated synthetic fixture; arbitrary-input money calculation deferred. |
+| PD-PR-113-04 / [#114](https://github.com/wolney8/OpenForge/issues/114) | Linked Free Bet/Casino/other previews and synthetic Reports with source drilldown. | CODE-VERIFIED connected presentation; deeper lifecycle simulation deferred. |
+
 ## CP-112 Design Lab visual revision — 2026-11-01
 
 | ID / tracking | Owner request | State |

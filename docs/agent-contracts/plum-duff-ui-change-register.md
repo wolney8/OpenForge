@@ -904,3 +904,11 @@ fingerprint `7246998d43722066`, all 73 table hashes and all 6,738 rows remain un
 | PD-FIX-461 / #111 | Summary request ownership | A fresh authenticated load stays pending until the current no-store source request resolves; cached or superseded responses cannot appear as current | Existing latest-request-wins and section loading contract | COMPLETE — delayed-response browser receipt |
 | PD-FIX-462 / #116 | Missing Account cash audit | Classify the four Matchbook/Smarkets rows from authoritative Account, audit and snapshot data without changing balances or lifecycle | Existing Account cash completeness authority | COMPLETE — read-only normal-owner audit; cleanup decision pending |
 | PD-FIX-463 / #111 | Formal Reports boundary | Preserve formal-report completeness semantics while limiting known-subtotal presentation to operational selected-range consumers | Cross-profile reporting contract | COMPLETE — strict numeric outputs unchanged |
+## CP-113 connected Design Lab batch — 2026-11-01
+
+| ID | Lab surface | Requested behaviour / reference | Nearest equivalent | Status |
+| --- | --- | --- | --- | --- |
+| PD-PR-113-01 / #114 | Shell, search, navigation | Connected synthetic Fund Manager route; CDS NavigationBar/Sidebar/SearchInput | CP-112 lab shell, shared Plum Duff nav/search controls | NEEDS VERIFICATION — browser route/keyboard/responsive checks pass; owner review pending |
+| PD-PR-113-02 / #114 | Accounts and six ledger previews | Required desktop fields, contained overflow, narrow labelled detail; CDS Table | Existing ledger table column authorities | NEEDS VERIFICATION — browser column/detail checks pass; narrow replacement needs owner decision |
+| PD-PR-113-03 / #114 | Sportsbook entry | Same draft in quick modal and page stepper; CDS Modal/Stepper | Signed-off Sportsbook editor and calculator fixture | NEEDS VERIFICATION — fixture-bounded lifecycle/profile isolation checks pass; owner choice pending |
+| PD-PR-113-04 / #114 | Reports and related records | Source drilldown and explicit partial-known values | Existing report/exposure authorities | NEEDS VERIFICATION — synthetic drilldown checks pass; owner review pending |

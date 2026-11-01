@@ -2,6 +2,32 @@
 
 **Status:** initial owner-sourced brief; the first lab journey was approved and built in CP-111, then **OWNER REJECTED / REVISION REQUIRED** visually. CP-112 revises that same isolated journey for owner review. No earlier repository brief or approval history is claimed. Provenance: the owner's CP-110 kickoff and subsequent clarification, reconciled with existing Plum Duff contracts and requests. [CP-110 scenario matrix](../audits/platform-quality-audit.md#linked-scenario-coverage) · [canonical request register](plum-duff-next-issue-tracking-register.md#cp-110-fund-manager-design-lab-discovery--2026-11-01).
 
+## CP-113 connected experience proposals — 2026-11-01
+
+CP-112 is sufficient to continue lab exploration, **not** approved for normal integration. The following are `PROPOSED — LAB ONLY` before implementation. They preserve the same localhost-only, authenticated, synthetic Design Lab boundary.
+
+| Proposal | Existing rule/purpose | Lab treatment and retained safeguard | Owner review |
+| --- | --- | --- | --- |
+| Connected shell and site search | CP-112 has Account-only search and one task route. | Group synthetic Accounts, bets, Free Bets, offers and Reports; maintain Profile context and back-to-source navigation. Search opens on typing, not focus. No owner data/API writes. | Judge navigation and information hierarchy. |
+| Ledger table and narrow list | Normal ledgers have required table columns and row actions. | Desktop preview retains each domain's required columns in contained table overflow; narrow lab lists expose key summary plus full labelled detail. This **does not amend** required displayed-column contracts. | Decide separately whether narrow lists may replace columns in normal UI. |
+| Bet-entry alternatives | Normal Sportsbook editor is governed by field, calculation and lifecycle contracts. | Compare compact modal and page stepper on one synthetic draft. Both share input/validation/state; fixture-backed money output is shown only for its validated input tuple. No live calculation engine is copied or inferred. | Judge entry design; any arbitrary-input simulation needs a separately approved calculation reuse path. |
+| Other ledger previews and Reports | Existing ledgers and reports require source identity and known/unknown money distinctions. | Interactive synthetic row/detail previews, linked parent/child navigation and a fixture-backed report drilldown; preview-only actions explicitly labelled. | Judge connected presentation, not financial acceptance. |
+
+Reference adaptations: [CDS NavigationBar](https://cds.coinbase.com/components/navigation/NavigationBar/), [Sidebar](https://cds.coinbase.com/components/navigation/Sidebar/) and [NavigationTitleSelect](https://cds.coinbase.com/components/navigation/NavigationTitleSelect/) inform shell/context; [SearchInput](https://cds.coinbase.com/components/inputs/SearchInput/) informs typed grouped search; [Table](https://cds.coinbase.com/components/data-display/Table/) informs desktop scan/sort and explicit mobile list distinction; [Stepper](https://cds.coinbase.com/components/navigation/Stepper/) informs page entry progress; [Modal](https://cds.coinbase.com/components/overlay/Modal/) informs bounded quick entry. DJList's compact toolbars are secondary; no reference styling or assets are copied.
+
+**Required-column preservation map (lab desktop):** `design-lab-connected-data.ts` mirrors current default column labels from the named normal ledger shells. The table has a contained horizontal viewport and pinned Actions; narrow summaries link to a fully labelled record. Narrow replacement of the normal ledger's required columns remains an owner decision.
+
+| Domain | Current authority | Lab treatment |
+| --- | --- | --- |
+| Accounts | `accounts-workflow-shell.tsx` table columns | Account ID, identity/type/status, cash membership/balance/withdrawal, update/channel/group/platform, Actions. |
+| Sportsbook | `sportsbook-workflow-first-shell.tsx` default columns | Settles, bookmaker, event, campaign/offer, strategy, lay/back state, value, status, Actions. |
+| Free Bets | `free-bet-workflow-shell.tsx` default columns | Settles/expiry, bookmaker, campaign/event/offer, strategy, lay/back state, value, status, Actions. |
+| Casino Offers | `casino-offer-workflow-shell.tsx` default columns | Settles/expiry, bookmaker, offer/game/type, status/result/value, Actions. |
+| Extra Place | `each-way-extra-place-workflow-shell.tsx` column authority | Date, runner/race, bookmaker, E/W stake, back/place odds and terms, both lay legs and liabilities, rating/implied odds, qualifying loss, extra-place potential and Actions. Status appears in row/detail treatment, not a duplicate table column. |
+| Cash Adjustments | `cash-adjustment-workflow-shell.tsx` default columns | ID/date/direction/type, amount/signed amount, investment/cash scope, linked Account, description/week/calculation state, Actions. |
+
+**Fidelity boundary:** Account balance and one CALC-001 Sportsbook bet have working synthetic state. The Sportsbook modal and page share a draft, matching precedes Event Name, and Prospecting → Placed → Settled → correction/history → report is simulated. The new bet retains its creation Profile across context switches. Only the CALC-001 input tuple has validated financial output; changed inputs show unavailable and block financial Save. Free Bet, Casino, Extra Place and Cash Adjustment Add/Edit are interactive representative previews; their Save is disabled. The report chart uses exact synthetic settled-point values, filters source drilldown by range/Profile and links each visible point to a source record. It does not imply owner reporting acceptance.
+
 ## Purpose and problem
 
 The owner finds the Fund Manager experience clunky, inconsistent and overloaded. Header, menu,

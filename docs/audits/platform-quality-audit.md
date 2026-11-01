@@ -5842,6 +5842,24 @@ and the point-level performance chart. Manual refresh, quota, exact matching, un
 server Profile authorization, idempotent Prospecting and no-placement boundaries are unchanged.
 Owner acceptance remains pending and no acceptance status was inferred from these checks.
 
+# CP-113 connected Design Lab coverage — 2026-11-01
+
+CP-112 is sufficient for continued **lab exploration**, not accepted for normal integration. The protected scenario inventory and original request history remain in the CP-110 matrix and canonical register; this is its lab coverage update. All rows below are synthetic, authenticated, local-only and owner design acceptance pending.
+
+| Requirement / contract | Lab surface | Proposed treatment | Acceptance check | Status |
+| --- | --- | --- | --- | --- |
+| Fund Manager position, Profile isolation and universal range (`design-lab-fixture.ts`, exposure/cash authorities) | `/design-lab` Position/Today/Profiles | Connected tasks, known cash, realised result, committed exposure and context switching | Profile A/B isolation, range retention, task navigation | CODE-VERIFIED synthetic; owner unverified |
+| Accounts readiness (`accounts-workflow-shell.tsx`, Account money authority) | Accounts → record → Review balance | Known vs unknown, explicit zero, dirty and failed Save | Save 0.00 without conflating blank; return with context | CODE-VERIFIED synthetic |
+| Sportsbook lifecycle/calculation (`sportsbook-bet-workflow-contract.md`, CALC-001 fixture) | Sportsbook → modal/page → Prospecting/Placed → settlement/history → Reports | One shared draft; validated fixture output only; altered money inputs block Save | Matching before Event, same draft, final validation, report source | CODE-VERIFIED fixed fixture; arbitrary-input calculation UNVERIFIED/deferred |
+| Free Bet lineage (`free-bet-workflow-contract.md`) | Free Bets and linked qualifying row | Awarded/Available/Placed/Settled stage preview; parent link | Parent/child navigation and no duplicate | REPRESENTATIVE PREVIEW; lifecycle simulation not done |
+| Casino workflow (`casino-offer-workflow-contract.md`) | Casino row/detail and conditional stage preview | Offer Setup/Wagering/Reward/Settlement only where relevant | Layout and source fields visible | REPRESENTATIVE PREVIEW; financial lifecycle not done |
+| Extra Place (`each-way-extra-place-ledger-contract.md`) | Extra Place row/detail/Add/Edit preview | Contract columns and separate status cue | Required inputs/outputs inspectable | REPRESENTATIVE PREVIEW; calculation not done |
+| Cash Adjustments (`cash-adjustment-aggregation-contract.md`) | Cash row/detail/Add/Edit preview | Contract columns and explicit signed/cash scope | Required fields inspectable | REPRESENTATIVE PREVIEW; Save not simulated |
+| Reporting (`report-explorer.tsx`, shared financial aggregate) | Reports → domain breakdown/source chart/source record | Exact synthetic settled points; known/unknown and planning/committed distinct | Every point opens its source; drilldown follows range/Profile | CODE-VERIFIED synthetic; normal reporting unchanged |
+| Offers, settings, permissions, import/workbook, backup/restore | Existing CP-110 matrix | No added lab screens in CP-113 | Separate scoped demonstration/decision | NOT DEMONSTRATED / DEFERRED |
+
+No normal application styles, calculations, schema, provider or owner financial records changed. Private browser captures: `data/private/evidence/cp113-design-lab/`. Owner visual/accessibility judgement and mobile required-column contract change remain unverified.
+
 # CP-112 Design Lab visual revision — 2026-11-01
 
 CP-111's first synthetic journey remains functionally verified but **OWNER REJECTED / REVISION REQUIRED** visually. CP-112 revises that same journey's composed money-field focus, Profile/Range/scenario selection, type scale, financial-summary grouping and responsive shell. The [lab brief](../planning/plum-duff-design-lab-brief.md#cp-112-visual-revision--2026-11-01) records these as `PROPOSED — LAB ONLY`; original CP-111 source/evidence are retained. Eleven browser paths, four source tests, web typecheck, build and focused lint pass; actual Chromium 200% tab zoom is tested separately from the retained CSS approximation. Normal route, database, provider, financial and acceptance states are unchanged. Private before/after: `data/private/evidence/cp111-design-lab/` and `data/private/evidence/cp112-design-lab/`. Owner visual judgement and VoiceOver spoken output remain unverified.

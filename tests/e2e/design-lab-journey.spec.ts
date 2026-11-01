@@ -42,7 +42,7 @@ test.beforeEach(async ({ page }) => {
     }
     throw new Error(`Design Lab made an unexpected API request: ${route.request().url()}`);
   });
-  await page.goto("/design-lab");
+  await page.goto("/design-lab?baseline=cp112");
   await expect(page.locator('[data-pd-id="design-lab.root"]')).toBeVisible();
   const cookieNotice = page.getByRole("button", { name: "Understood" });
   if (await cookieNotice.isVisible()) await cookieNotice.click();
@@ -200,7 +200,7 @@ test("actual Chromium 200% browser zoom retains the journey and anchored menu", 
     });
     const worker = context.serviceWorkers()[0] ?? await context.waitForEvent("serviceworker");
     const page = await context.newPage();
-    await page.goto("http://localhost:3911/design-lab");
+    await page.goto("http://localhost:3911/design-lab?baseline=cp112");
     await expect(page.locator('[data-pd-id="design-lab.root"]')).toBeVisible();
     const cookieNotice = page.getByRole("button", { name: "Understood" });
     if (await cookieNotice.isVisible()) await cookieNotice.click();

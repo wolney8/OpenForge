@@ -1,11 +1,12 @@
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { DesignLabJourney } from "@/components/design-lab-journey";
+import { DesignLabConnected } from "@/components/design-lab-connected";
 import { designLabAllowed } from "@/lib/design-lab-access";
 
 export const dynamic = "force-dynamic";
 
-export default async function DesignLabPage() {
+export default async function DesignLabPage({ searchParams }: { searchParams: Promise<{ baseline?: string }> }) {
   const requestHeaders = await headers();
   if (!designLabAllowed({
     host: requestHeaders.get("host"),
@@ -13,5 +14,5 @@ export default async function DesignLabPage() {
     nodeEnv: process.env.NODE_ENV,
     vercel: process.env.VERCEL,
   })) notFound();
-  return <DesignLabJourney />;
+  return (await searchParams).baseline === "cp112" ? <DesignLabJourney /> : <DesignLabConnected />;
 }

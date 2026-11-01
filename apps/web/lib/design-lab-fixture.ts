@@ -36,10 +36,10 @@ const labPositions = [
 ] as const;
 
 const labSettledResults = [
-  { profileId: "LAB-PROFILE-A", id: "LAB-RESULT-1", date: "2026-10-15", finalNetPnl: 18.4 },
-  { profileId: "LAB-PROFILE-A", id: "LAB-RESULT-2", date: "2026-09-20", finalNetPnl: 24.7 },
-  { profileId: "LAB-PROFILE-B", id: "LAB-RESULT-3", date: "2026-10-08", finalNetPnl: -4 },
-  { profileId: "LAB-PROFILE-B", id: "LAB-RESULT-4", date: "2026-09-12", finalNetPnl: 16 },
+  { profileId: "LAB-PROFILE-A", id: "LAB-SB-001", date: "2026-10-15", finalNetPnl: 18.4 },
+  { profileId: "LAB-PROFILE-A", id: "LAB-SB-SEP-A", date: "2026-09-20", finalNetPnl: 24.7 },
+  { profileId: "LAB-PROFILE-B", id: "LAB-SB-B", date: "2026-10-08", finalNetPnl: -4 },
+  { profileId: "LAB-PROFILE-B", id: "LAB-SB-SEP-B", date: "2026-09-12", finalNetPnl: 16 },
 ] as const;
 
 export function labAccountBalanceError(value: string): string | null {

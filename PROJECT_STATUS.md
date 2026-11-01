@@ -1,5 +1,7 @@
 # Project Status — Plum Duff / OpenForge — Doc ID: PS-CODEX-001
 
+> **CP-113 connected Design Lab — 2026-11-01:** CP-112 is sufficient for continued lab exploration; its shell is not approved for normal integration. The protected `/design-lab` now connects synthetic Position/Today, Profile/range/search, six ledger previews, one fixture-bounded Sportsbook lifecycle with modal/page entry, and Reports source drilldown. Desktop ledger columns are retained; narrow lists and both entry layouts remain owner design decisions. No owner data, provider, schema or normal-route changes. [Brief](docs/planning/plum-duff-design-lab-brief.md#cp-113-connected-experience-proposals--2026-11-01) · [coverage](docs/audits/platform-quality-audit.md#cp-113-connected-design-lab-coverage--2026-11-01).
+
 > **CP-112 Design Lab visual revision — 2026-11-01:** CP-111 remains functionally verified but **OWNER REJECTED / REVISION REQUIRED** visually. The same isolated synthetic journey now has a grouped financial summary, revised shell/type rhythm, composed money focus and accessible anchored selects. Eleven browser paths, four source tests, web typecheck/build and focused lint pass; owner visual review remains pending. No normal UI integration or owner acceptance is implied; see the [Design Lab brief](docs/planning/plum-duff-design-lab-brief.md#cp-112-visual-revision--2026-11-01).
 >
 > **CP-111 Design Lab first journey — 2026-11-01:** an isolated synthetic Fund Manager

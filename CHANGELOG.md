@@ -1,5 +1,9 @@
 # Changelog — Plum Duff / OpenForge
 
+## CP-113 — 2026-11-01
+
+- Isolated synthetic Design Lab connects navigation, search, Profile context, ledgers, one validated-fixture Sportsbook lifecycle and Reports drilldown. Normal product/data/provider unchanged; owner design decisions pending.
+
 ## CP-110 — 2026-11-01
 
 - Documentation/source-custody checkpoint only: classify Design Lab contracts, map Fund Manager scenarios and reference gaps, record CP-109 acceptance boundary and the observed API startup connection error. No application or database change.
