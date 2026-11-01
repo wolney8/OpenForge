@@ -1,6 +1,26 @@
 import { expect, test } from "@playwright/test";
 import { mkdir } from "node:fs/promises";
 
+function textContrast(foreground: string, background: string): number {
+  const luminance = (color: string) => {
+    const channels = (color.match(/[\d.]+/g) ?? []).slice(0, 3).map(Number).map((value) => {
+      const channel = value / 255;
+      return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+    });
+    return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+  };
+  const values = [luminance(foreground), luminance(background)].sort((a, b) => b - a);
+  return (values[0] + 0.05) / (values[1] + 0.05);
+}
+
+async function buttonContrast(locator: import("@playwright/test").Locator): Promise<number> {
+  const colors = await locator.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return { foreground: style.color, background: style.backgroundColor };
+  });
+  return textContrast(colors.foreground, colors.background);
+}
+
 test.beforeEach(async ({ page }) => {
   await page.route("**/api/**", async (route) => {
     if (route.request().url().endsWith("/api/auth/session")) {
@@ -120,7 +140,12 @@ for (const width of [1440, 900, 768, 430, 390]) {
       await expect(page.locator('[data-pd-id="design-lab.balance"]')).toBeVisible();
       expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
       if (evidenceDir && (width === 1440 || width === 390)) await page.screenshot({ path: `${evidenceDir}/account-${width}-${theme}.png`, fullPage: true });
+      expect(await buttonContrast(page.locator('[data-pd-id="design-lab.save"]'))).toBeGreaterThanOrEqual(4.5);
+      await page.locator('[data-pd-id="design-lab.balance"]').fill("1.00");
       await page.locator('[data-pd-id="design-lab.return"]').click();
+      const discard = page.getByRole("button", { name: "Discard changes" });
+      expect(await buttonContrast(discard)).toBeGreaterThanOrEqual(4.5);
+      await discard.click();
     }
     expect(pageErrors).toEqual([]);
   });
