@@ -58,7 +58,8 @@ export function accountAllowsNewSportsbookActivity(row: AccountAuthorityRecord):
     !restrictions.has("login restricted") &&
     !restrictions.has("risk blocked") &&
     !(row.type === "Bookie" && restrictions.has("casino only")) &&
-    row.catalogue_eligible_for_new_activity !== false
+    row.catalogue_lifecycle === "ACTIVE" &&
+    row.catalogue_eligible_for_new_activity === true
   );
 }
 

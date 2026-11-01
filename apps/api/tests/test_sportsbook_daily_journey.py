@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from apps.api.tests.synthetic_setup import seed_synthetic_betting_context
@@ -235,23 +236,46 @@ def test_committed_transition_rechecks_profile_account_eligibility(tmp_path: Pat
 
 def test_retired_exchange_provider_cannot_be_used_for_new_lay_activity(tmp_path: Path) -> None:
     client = configure_temp_database(tmp_path)
-    settings.account_catalogue_source = str(
-        SOURCE_ROOT / "data/reference/master-account-catalogue.json"
+    synthetic_catalogue = json.loads(
+        (SOURCE_ROOT / "tests/fixtures/openforge-api-master-catalogue.synthetic.json").read_text()
     )
+    production_catalogue = json.loads(
+        (SOURCE_ROOT / "data/reference/master-account-catalogue.json").read_text()
+    )
+    synthetic_catalogue["records"].append(
+        next(
+            row
+            for row in production_catalogue["records"]
+            if row["catalogue_id"] == "EXCHANGE-BETDAQ"
+        )
+    )
+    catalogue_path = tmp_path / "catalogue-with-retired-betdaq.json"
+    catalogue_path.write_text(json.dumps(synthetic_catalogue))
+    settings.account_catalogue_source = str(catalogue_path)
     with connect() as connection:
         connection.execute(
             "UPDATE accounts SET account='BETDAQ', catalogue_id='EXCHANGE-BETDAQ' "
             "WHERE profile_id=? AND account='Exchange A' AND type='Exchange'",
             ("profile-demo-001",),
         )
-    response = client.post(
-        "/profiles/profile-demo-001/sportsbook-bets",
-        json=payload(
-            status="Placed",
-            exchange_name="BETDAQ",
-            lay_actual="9.63",
-            lay_matched_stake_1="9.63",
-        ),
-    )
-    assert response.status_code == 409
-    assert "Provider is not eligible for new activity" in response.text
+    visible_accounts = client.get("/profiles/profile-demo-001/accounts")
+    assert visible_accounts.status_code == 200
+    betdaq = next(row for row in visible_accounts.json() if row["account"] == "BETDAQ")
+    matchbook = next(row for row in visible_accounts.json() if row["account"] == "Matchbook")
+    assert betdaq["catalogue_lifecycle"] == "RETIRED"
+    assert betdaq["catalogue_eligible_for_new_activity"] is False
+    assert matchbook["catalogue_lifecycle"] == "ACTIVE"
+    assert matchbook["catalogue_eligible_for_new_activity"] is True
+
+    for status in ("Prospecting", "Placed"):
+        response = client.post(
+            "/profiles/profile-demo-001/sportsbook-bets",
+            json=payload(
+                status=status,
+                exchange_name="BETDAQ",
+                lay_actual="9.63" if status == "Placed" else "",
+                lay_matched_stake_1="9.63" if status == "Placed" else "",
+            ),
+        )
+        assert response.status_code == 409
+        assert "Provider lifecycle is RETIRED" in response.text

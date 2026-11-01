@@ -18,7 +18,10 @@ import {
   TRACKER_STALE_WHILE_REFRESH_MS,
 } from "@/lib/client-json-cache";
 import { dispatchTrackerDataUpdated } from "@/lib/tracker-data-events";
-import { getAccountNamesByType, type AccountAuthorityRecord } from "@/lib/account-authorities";
+import {
+  getNewSportsbookActivityAccountNamesByType,
+  type AccountAuthorityRecord,
+} from "@/lib/account-authorities";
 import { StatusToast } from "@/components/status-toast";
 import { CalculatorOutcomes, CalculatorOutcomeValueDisplay } from "@/components/calculator-outcomes";
 import { CopyableFinancialValue } from "@/components/copyable-financial-value";
@@ -1666,12 +1669,10 @@ export function FreeBetWorkflowShell({
   const bookmakerOptions = useMemo(
     () =>
       dedupeOptions([
-        ...getAccountNamesByType(accountAuthorities, "Bookie"),
-        ...getLookupValuesByType(lookupValues, "bookmaker"),
-        ...rows.map((row) => row.bookmaker),
-        formState.bookmaker,
+        ...getNewSportsbookActivityAccountNamesByType(accountAuthorities, "Bookie"),
+        ...(selectedId && formState.bookmaker ? [formState.bookmaker] : []),
       ]),
-    [accountAuthorities, formState.bookmaker, lookupValues, rows]
+    [accountAuthorities, formState.bookmaker, selectedId]
   );
 
   const offerTypeOptions = useMemo(
@@ -1700,13 +1701,13 @@ export function FreeBetWorkflowShell({
   const exchangeOptions = useMemo(
     () =>
       dedupeOptions([
-        ...exchangeSettings.map((row) => row.exchange_name),
-        ...getAccountNamesByType(accountAuthorities, "Exchange"),
-        ...getLookupValuesByType(lookupValues, "exchange"),
-        ...rows.map((row) => row.exchange_name),
-        formState.exchange_name,
+        ...getNewSportsbookActivityAccountNamesByType(accountAuthorities, "Exchange"),
+        ...getLookupValuesByType(lookupValues, "exchange").filter(
+          (value) => value.toLocaleLowerCase("en-GB") === "no exchange"
+        ),
+        ...(selectedId && formState.exchange_name ? [formState.exchange_name] : []),
       ]),
-    [accountAuthorities, exchangeSettings, formState.exchange_name, lookupValues, rows]
+    [accountAuthorities, formState.exchange_name, lookupValues, selectedId]
   );
   const resolvedCommission = useMemo(
     () => getResolvedExchangeCommission(exchangeSettings, formState.exchange_name),

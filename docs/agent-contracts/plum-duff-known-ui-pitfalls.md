@@ -1566,3 +1566,10 @@ make the modal body the sole vertical scroll owner, and use the established stic
 navigation for long editors. Provider colours and type identity come from the master catalogue and
 must remain visible in the editor header as well as the table; never recreate provider colours in a
 feature-local component.
+
+## New-betting selectors must combine Account and provider authority
+
+Do not infer new-activity eligibility from a Profile Account row alone. New betting selectors and
+writes must also require provider-catalogue status `Active`, lifecycle `ACTIVE`, and explicit
+new-activity eligibility. Retired and unlisted providers remain available only for historical
+display/editing; successor metadata never rewrites or auto-selects a replacement provider.

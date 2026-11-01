@@ -540,3 +540,9 @@ the explicit non-placement action that selects which reviewed plan will be saved
 | PD-FIX-491 | Exchange commission authority | Add audited base and time-bounded offer management with explicit > offer > base > governed default > unavailable precedence and immutable committed snapshots | Profile Exchange commission calculation contract; CP-108B | NEEDS VERIFICATION — Smarkets 0% fixture and snapshot regression pass; owner acceptance pending |
 | PD-FIX-492 | Account editor consistency | Use one modal scroll owner, established section navigation and catalogue provider identity colours at desktop and 430px | UI/accessibility and consistency contracts; CP-108B | NEEDS VERIFICATION — desktop, 390px dark and 200% text geometry pass; owner acceptance pending |
 | PD-AUDIT-108B-01 | WILL-PERSONAL safety | Prove six imported Exchanges, Jettbet provenance and no imported-ledger mutation | Data safety and Account import contracts; CP-108B | PROVEN / CODE-VERIFIED — private backup, screenshots and unchanged ledger hashes retained |
+
+## 2026-11-01 CP-108C provider lifecycle new-activity gate
+
+| ID | Area | Requested behaviour | Authority | Status |
+|---|---|---|---|---|
+| PD-FIX-493 | Account/provider new-bet eligibility | Require both Profile Account authority and active provider-catalogue authority for every new betting selection/write; retain retired providers and successor metadata for history without rewriting records | Global Account Catalogue and Profile State contract; CP-108C; [#114](https://github.com/wolney8/OpenForge/issues/114) | NEEDS VERIFICATION — focused API/web tests and production build pass; owner smoke pending |

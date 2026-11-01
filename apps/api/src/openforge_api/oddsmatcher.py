@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
-import json
 import re
 from dataclasses import dataclass, replace
 from datetime import UTC, date, datetime
@@ -14,6 +13,7 @@ import httpx
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field, field_validator
 
+from openforge_api.account_activity_eligibility import resolve_new_activity_eligibility
 from openforge_api.calculators import MatchedBettingPayload, _calculate
 from openforge_api.config import settings
 from openforge_api.db import (
@@ -40,13 +40,6 @@ COMPETITIONS = {
     "soccer_uefa_champs_league": "UEFA Champions League",
 }
 EXCHANGE_PROVIDER_KEYS = frozenset({"betfair_ex_uk", "matchbook", "smarkets"})
-BLOCKED_LIFECYCLES = frozenset(
-    {"not signed up", "pending sign up", "suspended", "closed", "archived"}
-)
-BLOCKED_STATUSES = frozenset(
-    {"not signed up", "blocked", "not using", "closed", "inactive", "suspended", "archived"}
-)
-BLOCKED_RESTRICTIONS = frozenset({"kyc blocked", "login restricted", "risk blocked", "casino only"})
 STALE_AFTER_SECONDS = 300
 
 
@@ -574,60 +567,19 @@ async def refresh_provider_cache() -> tuple[ProviderCache, str | None]:
     return result, None
 
 
-def _restrictions(account: object) -> set[str]:
-    try:
-        values = json.loads(str(getattr(account, "restrictions_json", "[]")))
-    except json.JSONDecodeError:
-        values = []
-    return {str(value).strip().casefold() for value in values if str(value).strip()}
-
-
 def _eligibility(account: object | None, *, provider: str, bookmaker: bool) -> EligibilityResponse:
     if account is None:
         return EligibilityResponse(
             state="unavailable", reason=f"No {provider} Account belongs to this Profile."
         )
-    lifecycle = str(getattr(account, "lifecycle_status", "")).casefold()
-    status = str(getattr(account, "status", "")).casefold()
-    restrictions = _restrictions(account)
-    if lifecycle in BLOCKED_LIFECYCLES or status in BLOCKED_STATUSES:
-        return EligibilityResponse(
-            state="unavailable",
-            reason=f"{provider} is unavailable under this Profile's Account lifecycle.",
-            account_id=str(getattr(account, "account_id")),
-        )
-    if (
-        str(getattr(account, "stake_access", "Not Checked")) == "Blocked"
-        or restrictions & BLOCKED_RESTRICTIONS
-    ):
-        return EligibilityResponse(
-            state="unavailable",
-            reason=f"{provider} is blocked by this Profile's recorded Account restrictions.",
-            account_id=str(getattr(account, "account_id")),
-        )
-    if bookmaker and (
-        str(getattr(account, "promo_access", "Not Checked")) in {"None", "Restricted"}
-        or "bonus restricted" in restrictions
-        or status in {"gubbed", "bonus restricted", "promo restricted"}
-    ):
-        return EligibilityResponse(
-            state="unavailable",
-            reason=f"{provider} is recorded as promotion-ineligible for this Profile.",
-            account_id=str(getattr(account, "account_id")),
-        )
-    if str(getattr(account, "stake_access", "Not Checked")) in {
-        "Limited",
-        "Severely Limited",
-        "Not Checked",
-    }:
-        return EligibilityResponse(
-            state="warning",
-            reason=f"Confirm {provider} stake access before using this price.",
-            account_id=str(getattr(account, "account_id")),
-        )
+    eligibility = resolve_new_activity_eligibility(
+        account,
+        bookmaker=bookmaker,
+        require_promotional_access=bookmaker,
+    )
     return EligibilityResponse(
-        state="eligible",
-        reason=f"{provider} has no recorded blocker for this Profile.",
+        state=eligibility.state,
+        reason=eligibility.reason,
         account_id=str(getattr(account, "account_id")),
     )
 

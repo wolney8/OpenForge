@@ -35,6 +35,16 @@ Catalogue records must have unique stable IDs and unique `(account_type, brand_n
 Archiving preserves existing profile references and only prevents new selection where the
 workflow requires an active provider.
 
+New betting activity uses the intersection of both authorities:
+
+`new_bet_eligible = Profile Account eligible AND provider new-activity eligible`
+
+Provider eligibility requires catalogue status `Active`, lifecycle `ACTIVE`, and
+`eligible_for_new_activity = true`. A retired, suspended, archived, explicitly ineligible, or
+unlisted provider remains visible for Account management and historical ledger identity but cannot
+be selected or submitted for a new transaction. Successor metadata is informational only: it never
+reassigns a Profile Account or rewrites historical ledger provider identity.
+
 ## Profile-owned account state
 
 Each account record remains profile scoped and owns:
