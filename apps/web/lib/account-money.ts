@@ -1,7 +1,7 @@
 import { normalizeMoneyInput } from "./decimal-input";
 
-export type AccountMoneyIssue = { accountId: string; accountName: string; field: string; reason: string; profileId?: string };
-type AccountMoneySource = { account_id: string; account: string; current_balance: string; pending_withdrawal_amount: string };
+export type AccountMoneyIssue = { accountId: string; accountName: string; accountType?: string; field: string; reason: string; profileId?: string };
+type AccountMoneySource = { account_id: string; account: string; type?: string; current_balance: string; pending_withdrawal_amount: string };
 export function accountMoneyError(raw: string): string | undefined {
   const canonical=normalizeMoneyInput(raw.trim(), {allowNegative:true});
   return canonical === null || canonical.length > 40 || raw.length > 40
@@ -26,7 +26,7 @@ export function sumAccountMoney(rows: AccountMoneySource[], field: "current_bala
     // balance remains an unknown observation.
     if(field === "pending_withdrawal_amount" && (typeof raw !== "string" || !raw.trim())) continue;
     if(typeof raw !== "string" || !text || accountMoneyError(raw)) {
-      issues.push({accountId:row.account_id,accountName:row.account,field,reason:typeof raw !== "string" || !raw.trim() ? "Unknown amount" : "Invalid amount"});continue;
+      issues.push({accountId:row.account_id,accountName:row.account,accountType:row.type,field,reason:typeof raw !== "string" || !raw.trim() ? "Unknown amount" : "Invalid amount"});continue;
     }
     const negative=text.startsWith("-");const [whole,fraction]=text.replace(/^-/u,"").split(".");
     cents+=(negative ? BigInt(-1) : BigInt(1))*BigInt(whole+fraction);

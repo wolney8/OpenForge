@@ -206,9 +206,14 @@ export function aggregateCrossProfileReporting(
         label: row.label,
         rowCount: 0,
         reportingValue: 0,
+        reportingAggregate: { knownValue: 0, knownCount: 0, unknownCount: 0, isComplete: true },
       };
       aggregate.rowCount += row.rowCount;
       aggregate.reportingValue += row.reportingValue;
+      aggregate.reportingAggregate = combineFinancialAggregates([
+        aggregate.reportingAggregate,
+        row.reportingAggregate,
+      ]);
       moduleMap.set(row.moduleKey, aggregate);
     }
 

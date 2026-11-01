@@ -125,6 +125,13 @@ type ExchangeCommissionRecord = {
   commission_rate: string;
 };
 
+type AccountAuditRecord = {
+  audit_id: string;
+  action: string;
+  changed_at: string;
+  payload: Record<string, unknown>;
+};
+
 type ProfileOfferAction = {
   preset_id: string;
   label: string;
@@ -158,6 +165,71 @@ function createBlankSignupOfferDraft(): SignupOfferDraft {
     notes: "",
     active: true,
   };
+}
+
+function accountAuditSummary(entry: AccountAuditRecord) {
+  if (Object.prototype.hasOwnProperty.call(entry.payload, "commission_rate")) {
+    const raw = String(entry.payload.commission_rate ?? "").trim();
+    if (!raw) return "Base commission recorded as unavailable.";
+    const value = Number(raw);
+    if (Number.isFinite(value)) return `Base commission set to ${(value * 100).toFixed(2)}%.`;
+  }
+  if (entry.action === "created" || entry.action === "onboarded") return "Account added to this Profile.";
+  if (entry.action === "seeded") return "Synthetic Account fixture created.";
+  return "Account details updated.";
+}
+
+function AccountHistory({ accountId, profileId }: { accountId: string; profileId: string }) {
+  const [entries, setEntries] = useState<AccountAuditRecord[] | null>(null);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function load() {
+    if (loading || entries) return;
+    setLoading(true);
+    setError("");
+    try {
+      const response = await fetch(
+        `${apiBaseUrl}/profiles/${profileId}/accounts/${accountId}/history`,
+        { cache: "no-store" },
+      );
+      if (!response.ok) throw new Error("Account history could not be loaded.");
+      setEntries((await response.json()) as AccountAuditRecord[]);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Account history could not be loaded.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <details
+      className="content-subpanel stack-tight financial-history-panel"
+      data-pd-id="accounts.editor.history"
+      onToggle={(event) => { if (event.currentTarget.open) void load(); }}
+    >
+      <summary>
+        <span>History</span>
+        {entries ? <span className="table-chip">{entries.length}</span> : null}
+      </summary>
+      {loading ? <LedgerLoadingIndicator label="Loading Account history" /> : null}
+      {error ? <p className="field-validation-text" role="alert">{error}</p> : null}
+      {entries?.length === 0 ? <p className="compact-empty-state">No Account changes have been recorded yet.</p> : null}
+      {entries?.length ? (
+        <ol className="financial-history-list">
+          {entries.map((entry) => (
+            <li className="financial-history-event" key={entry.audit_id}>
+              <div className="financial-history-event-heading">
+                <strong>{entry.action === "updated" ? "Updated" : entry.action}</strong>
+                <time dateTime={entry.changed_at}>{formatDisplayDate(entry.changed_at)}</time>
+              </div>
+              <p>{accountAuditSummary(entry)}</p>
+            </li>
+          ))}
+        </ol>
+      ) : null}
+    </details>
+  );
 }
 
 type AccountTableMode =
@@ -373,6 +445,15 @@ function parseChannels(value: string) {
     .filter(Boolean);
 }
 
+function exchangeCommissionError(value: string): string | undefined {
+  const normalized = value.trim();
+  if (!normalized) return undefined;
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) && parsed >= 0 && parsed <= 1
+    ? undefined
+    : "Enter the Exchange commission as a decimal fraction from 0 to 1, or leave it blank when unknown.";
+}
+
 async function readApiError(response: Response, fallback: string) {
   const body = await response.json().catch(() => null) as { detail?: string } | null;
   return typeof body?.detail === "string" ? body.detail : fallback;
@@ -464,7 +545,10 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialIssue
     () => JSON.stringify(formState) !== JSON.stringify(pristineFormState),
     [formState, pristineFormState]
   );
-  const confirmDiscardChanges = useUnsavedChangesGuard(workflowVisible && isDirty);
+  const confirmDiscardChanges = useUnsavedChangesGuard(workflowVisible && isDirty, {
+    message: "Your unsaved changes will be lost.",
+    title: "Discard changes?",
+  });
   useBodyScrollLock(workflowVisible || isFilterModalOpen);
   useDialogFocusLifecycle(workflowVisible, editorRef);
   useDialogFocusLifecycle(isFilterModalOpen, filterDialogRef);
@@ -997,14 +1081,15 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialIssue
       setErrorMessage("Select an account from the Fund Manager Account Catalogue.");
       return;
     }
-    if (
-      formState.type === "Exchange" &&
-      (!formState.commission_rate.trim() ||
-        !Number.isFinite(Number(formState.commission_rate)) ||
-        Number(formState.commission_rate) < 0 ||
-        Number(formState.commission_rate) > 1)
-    ) {
-      setErrorMessage("Enter the Exchange commission as a decimal fraction from 0 to 1.");
+    const commissionError = formState.type === "Exchange"
+      ? exchangeCommissionError(formState.commission_rate)
+      : undefined;
+    if (commissionError) {
+      setErrorMessage(commissionError);
+      requestAnimationFrame(() => {
+        document.getElementById("account-commission-input")?.scrollIntoView({ block: "center" });
+        document.getElementById("account-commission-input")?.focus();
+      });
       return;
     }
     const needsSignupDefinition = formState.type === "Bookie"
@@ -1032,7 +1117,7 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialIssue
           ...formState,
           restrictions: isBankAccount ? [] : formState.restrictions,
           commission_rate:
-            !isEditing && formState.type === "Exchange"
+            formState.type === "Exchange"
               ? formState.commission_rate
               : undefined,
           status: formState.lifecycle_status,
@@ -1047,16 +1132,19 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialIssue
       }
 
       const saved = (await response.json()) as AccountRecord;
-      if (isEditing && formState.type === "Exchange") {
-        const commissionResponse = await fetch(`${apiBaseUrl}/profiles/${profileId}/exchange-commissions`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ exchange_name: saved.account, commission_rate: formState.commission_rate }),
-        });
-        if (!commissionResponse.ok) {
-          setErrorMessage(await readApiError(commissionResponse, "Account saved, but base commission could not be saved."));
-          return;
-        }
+      if (formState.type === "Exchange") {
+        const commission = {
+          exchange_name: saved.account,
+          commission_rate: formState.commission_rate,
+        };
+        const nextCommissions = [
+          ...exchangeCommissionsRef.current.filter(
+            (entry) => entry.exchange_name !== saved.account,
+          ),
+          commission,
+        ];
+        exchangeCommissionsRef.current = nextCommissions;
+        setExchangeCommissions(nextCommissions);
       }
       if (needsSignupDefinition) {
         const linkedDefaults = linkedSignupOffer?.defaults ?? {};
@@ -1202,7 +1290,7 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialIssue
         <>
             <div
               aria-label="Accounts controls"
-              className="sportsbook-review-bar"
+              className="sportsbook-review-bar accounts-table-toolbar"
               data-pd-id="accounts.table-toolbar"
               role="toolbar"
             >
@@ -1358,7 +1446,7 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialIssue
                               key={column.key}
                             >
                               {column.key === "account" ? (
-                                <span className="table-cell-stack"><AccountProviderIdentity fallbackName={String(row.account ?? "")} provider={provider} />{accountRecord && hasAccountIssue(accountRecord) ? <small className="field-warning-text">{accountAttentionReasons(accountRecord).join(" · ")}</small> : null}</span>
+                                <span className="table-cell-stack accounts-provider-cell"><AccountProviderIdentity fallbackName={String(row.account ?? "")} provider={provider} /></span>
                               ) : column.key === "account_id" ? (
                                 <span className="accounts-id-value" title={rowId}>{rowId}</span>
                               ) : column.key === "type" ? (
@@ -1398,6 +1486,27 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialIssue
                 </tbody>
               </table>
             </LedgerTableScroll>
+            <div className="accounts-card-list" data-pd-id="accounts.card-list">
+              {pagedRows.length === 0 ? <div className="compact-empty-state"><strong>No account rows match the current filter.</strong></div> : pagedRows.map((row) => {
+                const rowId = String(row.account_id);
+                const accountRecord = resolvedRows.find((entry) => entry.account_id === rowId);
+                const provider = findMasterAccountCatalogueEntry(masterAccountCatalogue, {
+                  catalogueId: accountRecord?.catalogue_id,
+                  accountName: String(row.account ?? ""),
+                });
+                return <article className="account-responsive-card" data-pd-id={`accounts.card.${rowId}`} key={rowId}>
+                  <div className="account-responsive-card-header">
+                    <AccountProviderIdentity fallbackName={String(row.account ?? "")} provider={provider} />
+                    <button aria-label={`Edit ${String(row.account ?? "account")}`} className="table-action-button" onClick={() => void selectRow(rowId)} title="Edit account" type="button"><span aria-hidden="true" className="material-symbols-outlined">edit</span></button>
+                  </div>
+                  <dl className="account-responsive-card-details">
+                    <div><dt>Status</dt><dd><span className={`table-chip ${accountStatusChipClass(String(row.status))}`}>{String(row.status || "—")}</span></dd></div>
+                    <div><dt>Type</dt><dd><span className={`table-chip ${accountTypeChipClass(provider ? masterAccountProfileType(provider) : String(row.type))}`}>{provider ? masterAccountProfileType(provider) : String(row.type || "—")}</span></dd></div>
+                    <div><dt>Balance</dt><dd><FinancialValue value={accountMoneyDisplayValue(String(row.current_balance ?? ""))} /></dd></div>
+                  </dl>
+                </article>;
+              })}
+            </div>
             <LedgerPagination
               ariaLabel="Accounts"
               currentPage={effectivePage}
@@ -1665,7 +1774,10 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialIssue
             <label className="field-control" id="account-commission">
               <span>Base commission</span>
               <input
+                aria-describedby={exchangeCommissionError(formState.commission_rate) ? "account-commission-error" : undefined}
+                aria-invalid={Boolean(exchangeCommissionError(formState.commission_rate))}
                 aria-label="Base Exchange commission"
+                id="account-commission-input"
                 inputMode="decimal"
                 max="1"
                 min="0"
@@ -1676,11 +1788,11 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialIssue
                   }))
                 }
                 placeholder="0.02"
-                required
                 step="0.001"
                 type="number"
                 value={formState.commission_rate}
               />
+              {exchangeCommissionError(formState.commission_rate) ? <span className="field-validation-text" id="account-commission-error" role="alert">{exchangeCommissionError(formState.commission_rate)}</span> : <span className="field-support-text">Leave blank when the base commission is not yet authoritative.</span>}
             </label>
           ) : null}
           {!isBankAccount ? <section className="field-span-2 account-editor-choice-section" aria-labelledby="account-restrictions-title">
@@ -1811,16 +1923,19 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialIssue
             <span>Platform</span>
             <input aria-readonly="true" readOnly value={selectedProvider?.platform || formState.platform || "Inherited from account catalogue"} />
           </label>
-          <label className="field-control field-span-2" id="account-history-notes">
-            <span>Notes</span>
-            <textarea
-              onChange={(event) =>
-                setFormState((current) => ({ ...current, notes: event.target.value }))
-              }
-              rows={3}
-              value={formState.notes}
-            />
-          </label>
+          <section className="field-span-2 stack-tight account-editor-section" id="account-history-notes" aria-label="History and notes">
+            {selectedId ? <AccountHistory accountId={selectedId} profileId={profileId} /> : null}
+            <label className="field-control">
+              <span>Notes</span>
+              <textarea
+                onChange={(event) =>
+                  setFormState((current) => ({ ...current, notes: event.target.value }))
+                }
+                rows={3}
+                value={formState.notes}
+              />
+            </label>
+          </section>
               {errorMessage ? <p className="field-span-2 error-text" role="alert">{errorMessage}</p> : null}
             </form>
           </div>

@@ -973,6 +973,7 @@ def _related_restriction_warnings(profile_id: str, catalogue_id: str | None) -> 
             ("Operator Group", candidate.operator_group, existing.operator_group),
             ("Platform", candidate.platform, existing.platform),
         ]
+        shared_relationships: list[str] = []
         for relationship, candidate_value, existing_value in relationships:
             normalized_value = candidate_value.strip().casefold()
             generic_relationship = normalized_value in {
@@ -986,11 +987,13 @@ def _related_restriction_warnings(profile_id: str, catalogue_id: str | None) -> 
                 and not generic_relationship
                 and normalized_value == existing_value.strip().casefold()
             ):
-                warnings.append(
-                    f"Potential related restriction: this provider shares {relationship} "
-                    f"{candidate_value} with {account.account}, which is restricted on this "
-                    "Profile."
-                )
+                shared_relationships.append(relationship)
+        if shared_relationships:
+            relationship_copy = ", ".join(dict.fromkeys(shared_relationships))
+            warnings.append(
+                f"{account.account} is restricted on this Profile and shares "
+                f"{relationship_copy} with this provider."
+            )
     return list(dict.fromkeys(warnings))
 
 

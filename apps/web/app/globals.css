@@ -3101,40 +3101,54 @@ html[data-theme="dark"] .notification-count-badge {
   line-height: 1.35;
 }
 
-.current-account-cash-categories {
-  display: grid;
+.current-account-cash-table-wrap {
   min-width: 0;
-  gap: 0.35rem;
-  margin: 0;
+  max-width: 100%;
+  overflow-x: auto;
 }
 
-.current-account-cash-categories > div {
-  display: grid;
-  min-width: 0;
-  grid-template-columns: minmax(0, 1fr) minmax(0, auto);
-  align-items: baseline;
-  gap: 0.75rem;
+.current-account-cash-table {
+  border-collapse: collapse;
+  width: 100%;
 }
 
-.current-account-cash-categories dt,
-.current-account-cash-categories dd {
-  min-width: 0;
-  margin: 0;
+.current-account-cash-table th,
+.current-account-cash-table td {
+  border-block-end: 1px solid var(--outline);
+  padding: 0.45rem 0.35rem;
+  text-align: end;
 }
 
-.current-account-cash-categories dt {
+.current-account-cash-table th:first-child {
+  text-align: start;
+}
+
+.current-account-cash-table thead th {
   color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 750;
+}
+
+.current-account-cash-table tbody th,
+.current-account-cash-table tbody td {
   font-weight: 700;
 }
 
-.current-account-cash-categories dd {
-  justify-self: end;
-  text-align: end;
-  font-weight: 800;
+.compact-empty-state {
+  align-items: center;
+  align-self: start;
+  display: flex;
+  gap: var(--space-2, 0.5rem);
+  min-height: 0;
+  padding: var(--space-3, 0.75rem);
+  border: 1px dashed var(--outline);
+  border-radius: var(--shape-medium);
+  color: var(--muted);
+  background: var(--surface-container);
 }
 
-.current-account-cash-incomplete {
-  color: color-mix(in srgb, var(--warning) 82%, var(--text));
+.compact-empty-state .material-symbols-outlined {
+  font-size: 1.25rem;
 }
 
 .dashboard-mini-card {
@@ -8372,12 +8386,118 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
   min-width: 0;
 }
 
-.accounts-page-shell .sportsbook-review-bar {
-  justify-content: flex-start;
+.accounts-page-shell .accounts-table-toolbar {
+  align-items: end;
+  display: grid;
+  grid-template-columns: minmax(13.75rem, 1fr) auto auto;
+  justify-content: stretch;
+  min-width: 0;
 }
 
-.accounts-page-shell .sportsbook-review-bar > .extra-place-toolbar-actions {
-  margin-left: auto;
+.accounts-page-shell .accounts-table-toolbar > .table-search-field {
+  max-width: 30rem;
+  min-width: 0;
+  width: 100%;
+}
+
+.accounts-page-shell .accounts-table-toolbar > .extra-place-toolbar-actions {
+  justify-self: end;
+  margin-left: 0;
+}
+
+.accounts-provider-cell {
+  align-items: flex-start;
+}
+
+.accounts-provider-cell .bookmaker-identity-badge {
+  width: fit-content;
+}
+
+.accounts-card-list {
+  display: none;
+}
+
+.account-responsive-card {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+  padding: 0.85rem;
+  border: 1px solid var(--outline);
+  border-radius: var(--shape-large);
+  background: var(--surface-container);
+}
+
+.account-responsive-card-header {
+  align-items: center;
+  display: flex;
+  gap: 0.75rem;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.account-responsive-card-details {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+.account-responsive-card-details > div {
+  align-items: center;
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: minmax(5rem, 1fr) minmax(0, auto);
+}
+
+.account-responsive-card-details dt,
+.account-responsive-card-details dd {
+  margin: 0;
+}
+
+.account-responsive-card-details dt {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.account-responsive-card-details dd {
+  justify-self: end;
+  text-align: end;
+}
+
+@media (max-width: 900px) {
+  .accounts-page-shell .accounts-table-toolbar {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .accounts-page-shell .accounts-table-toolbar > .table-search-field {
+    grid-column: 1 / -1;
+    max-width: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .accounts-page-shell [data-pd-id="accounts.table-scroll"] {
+    display: none;
+  }
+
+  .accounts-card-list {
+    display: grid;
+    gap: 0.75rem;
+  }
+}
+
+@media (max-width: 430px) {
+  .accounts-page-shell .accounts-table-toolbar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .accounts-page-shell .accounts-table-toolbar > .table-filter-button-wrap,
+  .accounts-page-shell .accounts-table-toolbar > .extra-place-toolbar-actions {
+    justify-self: stretch;
+  }
+
+  .accounts-page-shell .accounts-table-toolbar > .extra-place-toolbar-actions > * {
+    width: 100%;
+  }
 }
 
 .ledger-table-scroll-arrow {
@@ -17966,17 +18086,31 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
   line-height: 1.35;
 }
 
-.opportunity-risk-copy {
-  align-items: flex-start;
-  display: flex;
-  gap: 0.25rem;
+.opportunity-risk-disclosure {
+  color: var(--muted);
+  font-size: 0.78rem;
 }
 
-.opportunity-risk-copy .material-symbols-outlined {
+.opportunity-risk-disclosure summary {
+  align-items: center;
+  color: color-mix(in srgb, var(--warning) 82%, var(--text));
+  cursor: pointer;
+  display: inline-flex;
+  gap: 0.25rem;
+  font-weight: 750;
+}
+
+.opportunity-risk-disclosure .material-symbols-outlined {
   color: var(--warning);
   flex: 0 0 auto;
   font-size: 1rem;
-  margin-top: 0.05rem;
+}
+
+.opportunity-risk-disclosure ul {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0.4rem 0 0;
+  padding-inline-start: 1.1rem;
 }
 
 .account-related-risk-warning,

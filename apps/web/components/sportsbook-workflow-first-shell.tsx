@@ -866,6 +866,15 @@ function getBetSetupComplete(formState: SportsbookFormState): boolean {
   );
 }
 
+function getMatchingSetupComplete(formState: SportsbookFormState): boolean {
+  return Boolean(
+    formState.bookmaker.trim() &&
+      formState.bet_type.trim() &&
+      formState.offer_type.trim() &&
+      formState.fixture_type.trim()
+  );
+}
+
 function getMissingBetSetupFields(formState: SportsbookFormState): string[] {
   const requiredFields: Array<{ label: string; value: string }> = [
     { label: "Bookmaker", value: formState.bookmaker },
@@ -3929,7 +3938,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     formState.status === "Free Bet Awarded" ||
     linkedFreeBetRows.length > 0 ||
     freeBetBridgeCreatedCount > 0;
-  const calculatorUnlocked = betSetupComplete;
+  const calculatorUnlocked = useMemo(() => getMatchingSetupComplete(formState), [formState]);
   const betSetupValidationActive = showBetSetupValidation;
 
   const layStakePreview = useMemo(

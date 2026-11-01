@@ -339,6 +339,17 @@ ledgers but are excluded from new Sportsbook, Free Bet and Profile-context Oddsm
 successor metadata does not migrate identity. Automated verification passes; owner verification is
 pending and CP-108 remains paused.
 
+## CP-109 daily-use Profile, Accounts and Sportsbook corrections
+
+Recorded 2026-11-01 under existing Profile/Accounts/Sportsbook tracking. The owner accepted the
+bounded CP-108 core Sportsbook lifecycle through correction/history; this does not accept the
+whole Sportsbook or Accounts product. Profile drawer financial reads now preserve known subtotals
+with explicit unknown-record counts, Current Cash uses one governed mini-table, empty balance
+history collapses, and related restriction warnings are aggregated. Accounts use responsive
+toolbar/card hierarchy and atomic Account-plus-commission saving with audited history and a shared
+dirty-close confirmation. Sportsbook Matching is usable before Event Name while governed final
+validation remains. Owner verification of these CP-109 daily-use corrections is pending.
+
 ## Reference index
 
 - [Feature status](FEATURE_STATUS.md)

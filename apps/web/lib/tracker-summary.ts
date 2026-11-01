@@ -249,6 +249,7 @@ export type ModuleBreakdownRow = {
   label: string;
   rowCount: number;
   reportingValue: number;
+  reportingAggregate: FinancialAggregateResult;
 };
 
 export type BookmakerBreakdownRow = {
@@ -1206,36 +1207,56 @@ export function summarizeTrackerData(
   const weeklyReports = sortReportRows([...weeklyMap.values()]);
   const monthlyReports = sortReportRows([...monthlyMap.values()]);
   const yearlyReports = sortReportRows([...yearlyMap.values()]);
+  const sportsbookReportingAggregate = aggregateFinancialValues(
+    recognisedSportsbook.map(sportsbookDisplayValue),
+  );
+  const freeBetReportingAggregate = aggregateFinancialValues(
+    recognisedFreeBets.map(freeBetDisplayValue),
+  );
+  const casinoReportingAggregate = aggregateFinancialValues(
+    recognisedCasino.map((row) => readSummaryMoney(row.resolved_net_pnl)),
+  );
+  const extraPlaceReportingAggregate = aggregateFinancialValues(
+    recognisedEachWayExtraPlaces.map(eachWayExtraPlaceDisplayValue),
+  );
+  const cashAdjustmentReportingAggregate = aggregateFinancialValues(
+    cashAdjustmentsInRange.map((row) => readSummaryMoney(row.signed_amount)),
+  );
   const moduleBreakdown: ModuleBreakdownRow[] = [
     {
       moduleKey: "sportsbook",
       label: "Sportsbook",
       rowCount: sportsbookInRange.length,
       reportingValue: sportsbookReportingValue,
+      reportingAggregate: sportsbookReportingAggregate,
     },
     {
       moduleKey: "free-bets",
       label: "Free Bets",
       rowCount: freeBetsInRange.length,
       reportingValue: freeBetReportingValue,
+      reportingAggregate: freeBetReportingAggregate,
     },
     {
       moduleKey: "casino",
       label: "Casino",
       rowCount: casinoInRange.length,
       reportingValue: casinoReportingValue,
+      reportingAggregate: casinoReportingAggregate,
     },
     {
       moduleKey: "cash-adjustments",
       label: "Cash Adjustments",
       rowCount: cashAdjustmentsInRange.length,
       reportingValue: selectedRangeCashAdjustments,
+      reportingAggregate: cashAdjustmentReportingAggregate,
     },
     {
       moduleKey: "each-way-extra-places",
       label: "Extra Place",
       rowCount: eachWayExtraPlacesInRange.length,
       reportingValue: eachWayExtraPlaceReportingValue,
+      reportingAggregate: extraPlaceReportingAggregate,
     },
   ];
   const bookmakerMap = new Map<string, BookmakerBreakdownRow>();
@@ -1314,11 +1335,11 @@ export function summarizeTrackerData(
     eachWayExtraPlaceReportingValue +
     withdrawals +
     deductionsAndSubscriptions;
-  const grossBettingPnlAggregate = aggregateFinancialValues([
-    ...recognisedSportsbook.map(sportsbookDisplayValue),
-    ...recognisedFreeBets.map(freeBetDisplayValue),
-    ...recognisedCasino.map((row) => readSummaryMoney(row.resolved_net_pnl)),
-    ...recognisedEachWayExtraPlaces.map(eachWayExtraPlaceDisplayValue),
+  const grossBettingPnlAggregate = combineFinancialAggregates([
+    sportsbookReportingAggregate,
+    freeBetReportingAggregate,
+    casinoReportingAggregate,
+    extraPlaceReportingAggregate,
   ]);
   const retainedProfitAggregate = combineFinancialAggregates([
     grossBettingPnlAggregate,

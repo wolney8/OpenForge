@@ -86,7 +86,7 @@ def test_weekly_sportsbook_opportunity_is_prospecting_and_idempotent(
     assert sportsbook["result"] == "Pending"
     assert sportsbook["match_strategy"] == "No Lay"
     assert sportsbook["reporting_value"] is None
-    assert sportsbook["counts_as_open"] is True
+    assert sportsbook["counts_as_open"] is False
 
     duplicate = client.post(
         "/fund-manager/common-bet-combos/profile-opportunities/profile-demo-001/"
@@ -137,14 +137,14 @@ def test_signup_opportunity_warns_about_related_restricted_account(
                 SimpleNamespace(
                     catalogue_id="CAT-CANDIDATE",
                     risk_team="Shared Risk",
-                    operator_group="",
-                    platform="",
+                    operator_group="Shared Operator",
+                    platform="Shared Platform",
                 ),
                 SimpleNamespace(
                     catalogue_id="CAT-RESTRICTED",
                     risk_team="Shared Risk",
-                    operator_group="",
-                    platform="",
+                    operator_group="Shared Operator",
+                    platform="Shared Platform",
                 ),
             ]
         ),
@@ -197,8 +197,8 @@ def test_signup_opportunity_warns_about_related_restricted_account(
         if row["opportunity_key"] == "signup:AC-SIGNUP-CANDIDATE"
     )
     assert opportunity["risk_warnings"] == [
-        "Potential related restriction: this provider shares Risk Team Shared Risk "
-        "with Restricted Bookmaker, which is restricted on this Profile."
+        "Restricted Bookmaker is restricted on this Profile and shares Risk Team, "
+        "Operator Group, Platform with this provider."
     ]
 
 
