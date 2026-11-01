@@ -94,8 +94,38 @@ rewriting a ledger. Compare the current and lab routes using task completion, vi
 meaning, step count, focus/keyboard, responsive/zoom and partial/error states. One coherent
 working journey and comparison is the next tranche; no disconnected prototype series.
 
-**Owner review required:** approve or revise that first journey before its lab build. A proposed
+**Historical CP-110 gate (approved for CP-111 lab only):** approve or revise that first journey before its lab build. A proposed
 presentation exception is marked lab-only before experimentation and needs a separate integration
 decision after comparison. The brief records direction; it is not approval to build or integrate
 the lab. Current authenticated Coinbase UI, actual DJList runtime behaviour,
 owner task-time observations and VoiceOver spoken output remain unverified.
+
+## CP-111 first journey decision — 2026-11-01
+
+The owner approved building the first **isolated lab** journey described above, from Fund Manager
+position and task to a Profile Account review and back. This does not approve normal integration,
+contract changes, owner-data use or a replacement app. The following exceptions are recorded
+before lab implementation; each remains `PROPOSED — LAB ONLY`:
+
+| Proposal | Existing rule/purpose and demonstrated problem | Lab replacement and retained behaviour | Affected checks / later owner decision |
+| --- | --- | --- | --- |
+| Alternative shell and navigation | Current `AppChrome` top bar, drawer and Profile menu give access to global and Profile routes, but place several hierarchies in one journey; owner reports clutter and difficult movement. | One global sidebar/header and one explicit Profile context area, with task action leading to Account detail; all important destinations stay discoverable. Authentication, route identity and Profile isolation remain protected. | Compare task steps, return context, keyboard, 390–desktop and zoom. Owner decides whether any part merits normal integration. |
+| Compact financial/action hierarchy | Current dashboard panels preserve source meaning but owner reports excessive panels and explanation. | Put known cash/incompleteness, realised P&L, committed exposure and one actionable task first; reveal source detail on demand. No unknown-to-zero, planned-as-exposure or current-as-realised conversion. | Contract-backed synthetic values and source links; owner evaluates clarity before integration. |
+| Neutral Close in Account review | Current UI contract makes `close` red for consistent visibility; owner asked that convention be assessed. | Compare a neutral Close inside this lab Account editor while retaining accessible label, target/focus geometry and the identical unsaved Save/Discard/Keep editing protection. | Dirty navigation, Escape, focus return, mobile containment; owner later decides visual semantics. |
+| In-memory simulated review | Normal Account editor saves governed values/audit to the owner database. | Lab Save updates only synthetic in-memory state and is visibly marked simulated; validation, failure recovery and dirty protection remain. No normal API mutation. | Verify no network writes, no persistence after refresh and correct known/unknown distinction. This is an isolation choice, not a proposed normal saving contract. |
+
+**Working lab comparison, owner review pending.** Current source route sequence:
+`/` summary → Profile selector → Profile Operations/Accounts → affected Account → return.
+Lab sequence: `/design-lab` position → named Account task → synthetic Account source/review →
+return with prior Profile and range. These are route steps, not measured owner task time or proof
+of superior usability. The lab's header/sidebar adapts Coinbase CDS NavigationBar, Sidebar and
+NavigationTitleSelect; compact search and responsive workspace draw on the DJList files cited
+above. Unknown cash, committed-only exposure, settled P&L, validation and dirty protection stay
+governed.
+
+**Lab verification:** synthetic financial tests, proxy/local-production gate tests and headless
+journey checks cover partial cash, explicit zero, Profile/range return, validation, failed save,
+dirty Escape/focus, loading/error/empty states, responsive containment at
+1440/900/768/430/390, light/dark and a 200% CSS-zoom approximation. Private captures:
+`data/private/evidence/cp111-design-lab/`. Actual owner task time, authenticated Coinbase UI,
+VoiceOver spoken output, native browser zoom and owner visual acceptance remain unverified.

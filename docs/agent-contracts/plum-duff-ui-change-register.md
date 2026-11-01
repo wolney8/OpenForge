@@ -1,5 +1,16 @@
 # Plum Duff UI Change Register
 
+## CP-111 isolated lab batch — 2026-11-01
+
+| ID | Lab surface and outcome | Signed-off equivalent / deliberate difference | Status |
+| --- | --- | --- | --- |
+| PD-PR-111-01 | Global/Profile shell, task navigation and return context | Current AppChrome, drawer and Profile switcher for route/auth behaviour; alternative hierarchy is `PROPOSED — LAB ONLY` | NEEDS VERIFICATION — owner design review |
+| PD-PR-111-02 | Cash/P&L/exposure/task hierarchy | Account-money, exposure-membership and financial aggregate authorities; only synthetic inputs | NEEDS VERIFICATION — source tests pass |
+| PD-PR-111-03 | Account review, Save/Discard/Keep editing and neutral Close | Account editor, ModalBoundary, ConfirmationDialog, Account money validation; neutral colour is `PROPOSED — LAB ONLY` | NEEDS VERIFICATION — browser path passes |
+| PD-PR-111-04 | Responsive/theme/keyboard/focus/reduced-motion | Existing shared UI/accessibility contract, Material tokens and browser geometry gates | NEEDS VERIFICATION — native zoom/VoiceOver pending |
+| PD-PR-111-05 | Local-only route and comparison | Existing session/proxy authority; separate CSS module and synthetic state | NEEDS VERIFICATION — owner comparison pending |
+
+
 ## CP-110 discovery batch — 2026-11-01
 
 | ID / issue | Area and requested outcome | Current signed-off equivalent | Status |

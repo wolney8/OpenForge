@@ -1,5 +1,13 @@
 # Project Status — Plum Duff / OpenForge — Doc ID: PS-CODEX-001
 
+> **CP-111 Design Lab first journey — 2026-11-01:** an isolated synthetic Fund Manager
+> position → Account task → review → return journey is implemented on non-main
+> `feature/cp111-design-lab`; owner visual/workflow acceptance is pending. The lab requires
+> local development plus `OPENFORGE_DESIGN_LAB_ENABLED=true`, uses the existing owner session
+> gate, makes no financial API writes or provider calls, and is absent from normal navigation and
+> production. Normal CP-109 behaviour and `normal-owner` data remain the comparison baseline.
+> [Lab brief](docs/planning/plum-duff-design-lab-brief.md#cp-111-first-journey-decision--2026-11-01).
+
 > **CP-110 Design Lab discovery — 2026-11-01:** canonical localhost:3010/8010 serves
 > `04f591dca7e961061256a954454da5ba2f4a2803` on `normal-owner` (fingerprint
 > `7246998d43722066`). The CP-109 remote preservation commit has identical source-tree content

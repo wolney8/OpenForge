@@ -69,6 +69,19 @@ describe("application route proxy", () => {
     expect(config.matcher).toContain("/oddsmatcher");
   });
 
+  it("protects the local Design Lab with the existing Fund Manager session boundary", async () => {
+    process.env.OPENFORGE_AUTH_REQUIRED = "true";
+    process.env.OPENFORGE_AUTH_SESSION_SECRET = secret;
+    process.env.OPENFORGE_AUTH_OWNER_EMAILS = "founder@example.invalid";
+    expect(config.matcher).toContain("/design-lab/:path*");
+    const missing = await proxy(new NextRequest("http://localhost:3010/design-lab"));
+    expect(missing.headers.get("location")).toBe("http://localhost:3010/login?next=%2Fdesign-lab");
+    const owner = await proxy(new NextRequest("http://localhost:3010/design-lab", {
+      headers: { Cookie: `pd_session=${ownerToken()}` },
+    }));
+    expect(owner.status).toBe(200);
+  });
+
   it("allows an allowlisted current Fund Manager session", async () => {
     process.env.OPENFORGE_AUTH_REQUIRED = "true";
     process.env.OPENFORGE_AUTH_SESSION_SECRET = secret;

@@ -1,5 +1,19 @@
 # Plum Duff Next Issue Tracking Register
 
+## CP-111 isolated first Design Lab journey — 2026-11-01
+
+Owner approved one synthetic lab journey only; normal integration and authoritative contract
+changes remain unapproved. [Brief and prior requests](plum-duff-design-lab-brief.md#cp-111-first-journey-decision--2026-11-01).
+
+| ID / issue | Distinct requested outcome | State |
+| --- | --- | --- |
+| PD-PR-111-01 / #114 / #92 | Alternative global header, main navigation, Fund Manager/Profile switcher, search/tasks and coherent return path. | NEEDS VERIFICATION — isolated lab browser path passes; owner design review pending. |
+| PD-PR-111-02 / #105 / #114 | Contract-backed synthetic hierarchy for known/unknown cash, realised P&L, committed exposure and Account task. | NEEDS VERIFICATION — source tests pass; no owner financial reads/writes or formula change. |
+| PD-PR-111-03 / #85 / #92 | Simulated Account detail/review with validation, failed-save recovery, dirty protection and neutral-Close comparison. | NEEDS VERIFICATION — browser path passes; neutral Close remains lab-only. |
+| PD-PR-111-04 / #92 / #114 | Responsive, theme, keyboard, focus, contrast, reduced-motion and screen-reader semantics evidence for the complete journey. | NEEDS VERIFICATION — headless geometry/themes/focus pass; VoiceOver and native zoom unverified. |
+| PD-PR-111-05 / #114 | Authenticated local-only lab route, synthetic-only isolation and current-versus-lab comparison without normal integration. | NEEDS VERIFICATION — local route gate/proxy tested; owner comparison pending. |
+
+
 ## CP-110 Fund Manager Design Lab discovery — 2026-11-01
 
 These requests add to, and do not replace or close, earlier owner requests. [Current coverage and

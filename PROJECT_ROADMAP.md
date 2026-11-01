@@ -1,8 +1,15 @@
 # Project Roadmap — Plum Duff / OpenForge — Doc ID: PR-CODEX-001
 
+## CP-111 first lab journey — 2026-11-01
+
+The owner approved one isolated synthetic Fund Manager position → Account task → review →
+return comparison. Its working lab is on `feature/cp111-design-lab`; no normal integration or
+contract change is approved. Next gate: owner visual/workflow review of shell, navigation and
+source access. A second lab journey or normal integration requires a separate decision.
+
 ## CP-110 Design Lab direction — 2026-11-01
 
-Next proposed tranche, **owner approval pending**: one isolated, synthetic Fund Manager
+Historical CP-110 proposal, **approved for CP-111 lab only**: one isolated, synthetic Fund Manager
 "open → understand position → choose today's task → enter the relevant Profile workflow"
 journey, compared with the current shell at desktop, narrow width and zoom. Test a simpler
 navigation hierarchy and contextual actions while preserving every ledger field, financial
@@ -12,7 +19,7 @@ shared styling, provider call or owner financial write is in this tranche. [Evid
 
 The [initial Design Lab brief](docs/planning/plum-duff-design-lab-brief.md) is sourced from the
 owner's CP-110 kickoff and clarification. Coinbase CDS leads the experience comparison; DJList
-source patterns are secondary. Approval of this first lab journey remains the next gate.
+source patterns are secondary. Normal-app integration remains a separate gate.
 
 ## CP-079 Oddsmatcher programme decision — 2026-10-23
 

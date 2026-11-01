@@ -5842,6 +5842,22 @@ and the point-level performance chart. Manual refresh, quota, exact matching, un
 server Profile authorization, idempotent Prospecting and no-placement boundaries are unchanged.
 Owner acceptance remains pending and no acceptance status was inferred from these checks.
 
+# CP-111 isolated Fund Manager Design Lab — 2026-11-01
+
+The owner approved one lab-only shell and daily journey. `/design-lab` is a local-development,
+explicitly enabled, authenticated route absent from normal navigation and production. It uses
+synthetic Profiles/Accounts, existing cash, exposure, range and money-input authorities, and an
+in-memory Account review; no owner financial API or provider request is made by the lab journey.
+The CP-109 normal application and `normal-owner` remain the comparison baseline. Current route
+sequence and lab sequence are recorded in the [brief](../planning/plum-duff-design-lab-brief.md#cp-111-first-journey-decision--2026-11-01).
+
+Focused source tests and headless browser journey/geometry cover Profile/range return, unknown
+versus authoritative zero, failed save, dirty Escape/focus, loading/empty/error, 1440/900/768/430/390,
+light/dark and a CSS-zoom approximation. Private screenshots are under
+`data/private/evidence/cp111-design-lab/`. Owner task-time/visual acceptance, native browser
+zoom, VoiceOver spoken output and authenticated Coinbase UI remain unverified. All CP-110 current
+product journey/acceptance states remain unchanged; no lab result grants normal integration.
+
 # CP-110 Design Lab discovery and UX direction — 2026-11-01
 
 **Boundary.** Discovery and documentation only. No normal UI, financial data, schema, service,

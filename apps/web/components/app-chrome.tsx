@@ -90,7 +90,7 @@ function resolveProfileId(pathname: string): string | null {
 
 function isAuthenticatedApplicationPath(pathname: string): boolean {
   return pathname === "/" ||
-    ["/profiles", "/reports", "/performance", "/notifications", "/tasks", "/settings", "/account", "/fund-manager", "/imports", "/calculator", "/oddsmatcher"].some(
+    ["/profiles", "/reports", "/performance", "/notifications", "/tasks", "/settings", "/account", "/fund-manager", "/imports", "/calculator", "/oddsmatcher", "/design-lab"].some(
       (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
     );
 }
@@ -99,6 +99,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   if (pathname === "/invite" || pathname.startsWith("/subscriber")) return <><a className="skip-link" href="#main-content">Skip to content</a><header className="calculator-popout-toolbar"><Link href="/subscriber">Plum Duff · Subscriber</Link><ThemeToggle /><button className="button-link" onClick={async () => { await fetch("/api/auth/logout", { method: "POST" }); window.location.replace("/login"); }}>Sign out</button></header>{children}</>;
   const isCalculatorPopout = pathname === "/calculator";
+  const isDesignLab = pathname === "/design-lab";
   const isPublicAuthRoute =
     pathname === "/login" ||
     pathname === "/register" ||
@@ -108,9 +109,10 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
   return (
     <SessionBootstrapGate>
       {(session) => (
-        <FinancialMotionPreferenceProvider>
-          {isCalculatorPopout ? <CalculatorPopoutChrome initialSession={session}>{children}</CalculatorPopoutChrome> : <AppChromeContent initialSession={session}>{children}</AppChromeContent>}
-        </FinancialMotionPreferenceProvider>
+        isDesignLab ? <><a className="skip-link" href="#main-content">Skip to content</a><SessionInactivityGuard initialSession={session} />{children}</> :
+          <FinancialMotionPreferenceProvider>
+            {isCalculatorPopout ? <CalculatorPopoutChrome initialSession={session}>{children}</CalculatorPopoutChrome> : <AppChromeContent initialSession={session}>{children}</AppChromeContent>}
+          </FinancialMotionPreferenceProvider>
       )}
     </SessionBootstrapGate>
   );
