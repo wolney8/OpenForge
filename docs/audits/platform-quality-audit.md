@@ -1,5 +1,17 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
+## CP-114B Design Lab ledger coverage — 2026-11-01
+
+| Request | Lab scenario | Evidence | Treatment / acceptance check | Status |
+|---|---|---|---|---|
+| PD-PR-114B-01 | Position → Sportsbook → record → return | Browser path; ledger scroll/filter retained | Functional breadcrumbs, All Profiles remains selected | CODE-VERIFIED; owner review pending |
+| PD-PR-114B-02 | Combined Sportsbook and Accounts | Synthetic Profile A/B rows; owner in table/detail/search | Filter/sort Profile, exact-owner edits | CODE-VERIFIED; normal integration unapproved |
+| PD-PR-114B-03/04 | Direct grid manipulation | Pointer drag resize/reorder; keyboard toolbar; typed sort | Reset canonical order, Actions last, unknown values last | CODE-VERIFIED; visual judgement pending |
+| PD-PR-114B-05 | Prospecting cell edit → placement | Text/date/Account/numeric/status browser paths | Invalid edits rejected; placed/settled corrections audited | CODE-VERIFIED for synthetic paths only |
+| PD-PR-114B-06 | Save/load lab view; narrow detail | Browser regression, light/dark/zoom renders | Filters/sort/order/widths restored; every narrow field accessible | CODE-VERIFIED; narrow replacement unapproved |
+
+CP-114 Quick Capture and non-linear workbench remain unchanged in purpose and pass retained browser paths. Normal-app saved-view persistence, real owner records, all financial tuples beyond CALC-001, and owner visual acceptance are UNVERIFIED/deferred. Private synthetic renders: `data/private/evidence/cp114b-design-lab/`.
+
 ## CP-051 approved import decisions and full private rehearsal — 2026-09-26 11:11 BST
 
 **State:** tested local application `76fcb51`; complete private acceptance BLOCKED on one new source choice. Normal3010/8010 and protected Preview remain `7da4d44`; no deployment/push in this checkpoint. Original CP-050 evidence and pending-at-that-time history remain intact.

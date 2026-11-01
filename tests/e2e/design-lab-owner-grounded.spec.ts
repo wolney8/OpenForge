@@ -31,13 +31,15 @@ test("distinct workspace, Profile, notification and identity paths", async ({ pa
 
 test("offer-first capture, Matching before Event Name, partial lay and Profile isolation", async ({ page }) => {
   await page.locator('[data-pd-id="lab.nav.sportsbook"]').click();
+  await page.locator('[data-pd-id="lab.profile"]').click();
+  await page.getByRole("option", { name: "Profile A" }).click();
   await page.locator('[data-pd-id="lab.add.modal"]').click();
   await page.locator('[data-pd-id="lab.bet.offer-text"]').fill("Demo offer: stake £10 externally; qualifying terms to review.");
   await page.locator('[data-pd-id="lab.bet.bookmaker"]').click();
   await page.getByRole("option", { name: "Bookmaker A" }).click();
   await page.getByRole("button", { name: "Save Prospecting" }).click();
   await expect(page.locator('[data-pd-id="lab.ledger.sportsbook"]')).toContainText("Offer captured · event pending");
-  await page.getByRole("button", { name: "View Offer captured · event pending" }).click();
+  await page.getByRole("button", { name: "Open Offer captured · event pending" }).click();
   await page.getByRole("button", { name: "Review for placement" }).click();
   await page.getByRole("button", { name: /Matching/ }).click();
   await page.locator('[data-pd-id="lab.bet.load-fixture"]').click();
@@ -61,6 +63,8 @@ test("offer-first capture, Matching before Event Name, partial lay and Profile i
 
 test("Account observation, ledger order controls and simulated saved view", async ({ page }) => {
   await page.locator('[data-pd-id="lab.nav.accounts"]').click();
+  await page.locator('[data-pd-id="lab.profile"]').click();
+  await page.getByRole("option", { name: "Profile A" }).click();
   const ledger = page.locator('[data-pd-id="lab.ledger.accounts"]');
   await expect(ledger.locator("thead")).toContainText("Account ID");
   await ledger.getByText("Bookmaker C").first().click();
@@ -68,7 +72,7 @@ test("Account observation, ledger order controls and simulated saved view", asyn
   await page.getByLabel("Observed Current Balance").fill("0.00");
   await page.getByRole("button", { name: /Confirm balance observation/ }).click();
   await expect(ledger).toContainText("£0.00");
-  await page.getByRole("button", { name: "Columns" }).click();
+  await page.getByRole("button", { name: "Columns", exact: true }).click();
   await page.getByRole("button", { name: "Move Account ID right" }).click();
   await expect(ledger.locator("thead th").first()).toContainText("Account");
   await page.getByRole("button", { name: "Save lab view" }).click();
@@ -77,6 +81,8 @@ test("Account observation, ledger order controls and simulated saved view", asyn
 
 test("full fixture placement, settlement and reasoned correction stay source-linked", async ({ page }) => {
   await page.locator('[data-pd-id="lab.nav.sportsbook"]').click();
+  await page.locator('[data-pd-id="lab.profile"]').click();
+  await page.getByRole("option", { name: "Profile A" }).click();
   await page.locator('[data-pd-id="lab.add.page"]').click();
   await page.locator('[data-pd-id="lab.bet.offer-text"]').fill("Synthetic qualifying terms for owner workflow review.");
   await page.getByRole("button", { name: /Matching/ }).click();
@@ -91,7 +97,13 @@ test("full fixture placement, settlement and reasoned correction stay source-lin
   await expect(page.locator('[data-pd-id="lab.ledger.sportsbook"]')).toContainText("Current £ (0.62)");
   await page.locator('[data-pd-id="lab.range"]').click();
   await page.getByRole("option", { name: "This Year" }).click();
-  await page.getByRole("button", { name: "View Demo Albion v Sample City" }).click();
+  await page.getByRole("button", { name: "Open Demo Albion v Sample City" }).click();
+  await page.getByRole("button", { name: "Correct placed execution" }).click();
+  await page.getByRole("button", { name: /Finish \/ Review/ }).click();
+  await page.getByLabel("Correction reason").fill("Verified synthetic placement detail");
+  await page.getByRole("button", { name: "Save audited correction" }).click();
+  await page.getByRole("button", { name: "Open Demo Albion v Sample City" }).click();
+  await expect(page.locator('[data-pd-id="lab.record-detail"]')).toContainText("Placed correction: Verified synthetic placement detail");
   await page.getByRole("button", { name: "Settle · back wins" }).click();
   await expect(page.locator('[data-pd-id="lab.reports"]')).toContainText("Demo Albion v Sample City");
   await page.getByRole("button", { name: /Demo Albion v Sample City/ }).last().click();
@@ -106,6 +118,8 @@ test("full fixture placement, settlement and reasoned correction stay source-lin
 
 test("sportsbook filter, resize and inline Prospecting edit use one lab state", async ({ page }) => {
   await page.locator('[data-pd-id="lab.nav.sportsbook"]').click();
+  await page.locator('[data-pd-id="lab.profile"]').click();
+  await page.getByRole("option", { name: "Profile A" }).click();
   await page.locator('[data-pd-id="lab.add.modal"]').click();
   await page.locator('[data-pd-id="lab.bet.offer-text"]').fill("Synthetic offer terms");
   await page.locator('[data-pd-id="lab.bet.bookmaker"]').click();
@@ -116,11 +130,11 @@ test("sportsbook filter, resize and inline Prospecting edit use one lab state", 
   await page.locator('[data-pd-id="lab.ledger.filter.bookmaker"]').click();
   await page.getByRole("option", { name: "Bookmaker A" }).click();
   await expect(ledger).not.toContainText("Profile B example");
-  await page.getByRole("button", { name: "Columns" }).click();
+  await page.getByRole("button", { name: "Columns", exact: true }).click();
   await page.getByRole("button", { name: "Widen Event" }).click();
   await page.getByRole("button", { name: "Save lab view" }).click();
-  await ledger.locator("tbody tr").filter({ hasText: "Event pending" }).getByText("Event pending").click();
-  await page.getByRole("textbox", { name: "Edit Event" }).fill("Synthetic event after capture");
+  await ledger.locator("tbody tr").filter({ hasText: "Event pending" }).getByText("Event pending").dblclick();
+  await page.getByRole("textbox", { name: "event" }).fill("Synthetic event after capture");
   await page.getByRole("button", { name: "Save cell" }).click();
   await expect(ledger).toContainText("Synthetic event after capture");
 });
@@ -132,8 +146,8 @@ test("responsive lab shell and ledger are contained in both themes", async ({ pa
     await page.setViewportSize({ width, height: 900 });
     for (const theme of ["light", "dark"]) {
       await page.evaluate(value => document.documentElement.setAttribute("data-theme", value), theme);
-      const geometry = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, viewport: innerWidth }));
-      expect(geometry.scroll, `${width}/${theme}`).toBeLessThanOrEqual(geometry.viewport + 1);
+      const geometry = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, viewport: innerWidth, offenders: [...document.querySelectorAll("body *")].filter(node => node.getBoundingClientRect().right > innerWidth + 1 && getComputedStyle(node).position !== "fixed").slice(0, 8).map(node => `${node.tagName}.${node.className}(${node.textContent?.trim().slice(0, 25)})[${node.parentElement?.className}]: ${Math.round(node.getBoundingClientRect().right)}`) }));
+      await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - innerWidth), { message: `${width}/${theme}: ${geometry.offenders.join("; ")}` }).toBeLessThanOrEqual(1);
       if (evidence) await page.screenshot({ path: join(evidence, `cp114-position-${width}-${theme}.png`), fullPage: true });
     }
   }

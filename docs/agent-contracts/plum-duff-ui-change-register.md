@@ -912,6 +912,19 @@ fingerprint `7246998d43722066`, all 73 table hashes and all 6,738 rows remain un
 | PD-PR-113-02 / #114 | Accounts and six ledger previews | Required desktop fields, contained overflow, narrow labelled detail; CDS Table | Existing ledger table column authorities | NEEDS VERIFICATION — browser column/detail checks pass; narrow replacement needs owner decision |
 | PD-PR-113-03 / #114 | Sportsbook entry | Same draft in quick modal and page stepper; CDS Modal/Stepper | Signed-off Sportsbook editor and calculator fixture | NEEDS VERIFICATION — fixture-bounded lifecycle/profile isolation checks pass; owner choice pending |
 | PD-PR-113-04 / #114 | Reports and related records | Source drilldown and explicit partial-known values | Existing report/exposure authorities | NEEDS VERIFICATION — synthetic drilldown checks pass; owner review pending |
+## CP-114B spreadsheet ledger/navigation batch — 2026-11-01
+
+Recorded before UI edits. All variants are `PROPOSED — LAB ONLY`; signed-off equivalents remain normal AppChrome, ledger table/filters, Sportsbook editor, searchable Account selector and ModalBoundary. Required columns/order and financial/lifecycle controls are protected.
+
+| ID | Surface | Requested behaviour | Status |
+|---|---|---|---|
+| PD-PR-114B-01 | Navigation | Functional breadcrumbs, reliable Sportsbook entry, preserved return context | NEEDS VERIFICATION — browser path passes |
+| PD-PR-114B-02 | Combined ledger | Conditional Profile column and exact-owner operations | NEEDS VERIFICATION — synthetic isolation passes |
+| PD-PR-114B-03 | Columns | Header drag resize/reorder, keyboard fallback, reset | NEEDS VERIFICATION — pointer/keyboard checks pass |
+| PD-PR-114B-04 | Sorting | Typed three-state header sort | NEEDS VERIFICATION — focused browser checks pass |
+| PD-PR-114B-05 | Cells | Bounded Prospecting editing and governed transitions | NEEDS VERIFICATION — focused browser checks pass |
+| PD-PR-114B-06 | Views | Session saved view and responsive detail | NEEDS VERIFICATION — owner narrow-column judgement pending |
+
 ## CP-114 owner-grounded Design Lab batch — 2026-11-01
 
 Recorded before lab UI edits. All exceptions are `PROPOSED — LAB ONLY`; owner review and normal-app integration remain separate. Signed-off normal equivalents are the current AppChrome, Accounts table/review, Sportsbook table/editor, account quick popup and ModalBoundary. Relevant local requests are PD-PR-114-01 through PD-PR-114-06 in the canonical register, tracked under GitHub #114. No protected column/calculation/lifecycle contract changes are approved.

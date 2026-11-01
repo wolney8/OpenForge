@@ -1,5 +1,18 @@
 # Plum Duff Next Issue Tracking Register
 
+## CP-114B spreadsheet ledger/navigation correction — 2026-11-01
+
+Lab-only, linked to [Design Lab issue #114](https://github.com/wolney8/OpenForge/issues/114). The owner retains CP-114 Quick Capture/workbench; ledger/navigation is not accepted.
+
+| ID | Owner request | Status |
+|---|---|---|
+| PD-PR-114B-01 | Reliable Position/Tracker/Sportsbook navigation, functional breadcrumbs and return context | NEEDS VERIFICATION — browser path passes; owner judgement pending |
+| PD-PR-114B-02 | Combined-ledger Profile identity, filtering, sorting and exact-owner edits | NEEDS VERIFICATION — synthetic isolation/browser path passes |
+| PD-PR-114B-03 | Direct column resize/reorder, canonical reset and accessible fallback | NEEDS VERIFICATION — pointer and keyboard paths exercised |
+| PD-PR-114B-04 | Header sort with typed/stable values and unknown-last handling | NEEDS VERIFICATION — date/status/money and Profile browser paths pass |
+| PD-PR-114B-05 | Prospecting spreadsheet editors and governed lifecycle/financial gates | NEEDS VERIFICATION — text/date/Account/numeric/status and placement gates tested |
+| PD-PR-114B-06 | Session-only saved view, responsive detail and CP-114 regression | NEEDS VERIFICATION — lab memory only; owner narrow-column decision pending |
+
 ## CP-114 owner-grounded Design Lab — 2026-11-01
 
 Each item remains lab-only and links to the existing [Design Lab issue #114](https://github.com/wolney8/OpenForge/issues/114); this local register preserves the owner request where live issue editing is not verified.

@@ -218,6 +218,7 @@ test("representative screenshot set shows dashboard, entry variants, Reports and
 });
 
 test("actual browser 200% zoom contains the connected shell and typed search", async () => {
+  const labBaseURL = process.env.OPENFORGE_E2E_BASE_URL ?? "http://127.0.0.1:3010";
   const scratch = await mkdtemp(join(tmpdir(), "pd-cp113-zoom-"));
   const extension = join(scratch, "extension");
   await mkdir(extension);
@@ -232,13 +233,13 @@ test("actual browser 200% zoom contains the connected shell and typed search", a
     });
     const worker = context.serviceWorkers()[0] ?? await context.waitForEvent("serviceworker");
     const page = await context.newPage();
-    await page.goto("http://localhost:3911/design-lab");
+    await page.goto(`${labBaseURL}/design-lab`);
     await expect(page.locator('[data-pd-id="design-lab-connected.root"]')).toBeVisible();
-    await worker.evaluate(async () => {
+    await worker.evaluate(async (baseURL) => {
       const tabs = (globalThis as unknown as { chrome: { tabs: { query: (filter: { url: string }) => Promise<Array<{ id: number }>>; setZoom: (id: number, zoom: number) => Promise<void> } } }).chrome.tabs;
-      const target = await tabs.query({ url: "http://localhost:3911/*" });
+      const target = await tabs.query({ url: `${baseURL}/*` });
       await tabs.setZoom(target[0].id, 2);
-    });
+    }, labBaseURL);
     await expect.poll(() => page.evaluate(() => innerWidth)).toBe(720);
     expect(await page.evaluate(() => devicePixelRatio)).toBe(2);
     expect(await page.evaluate(() => getComputedStyle(document.documentElement).zoom)).toBe("1");
@@ -250,5 +251,10 @@ test("actual browser 200% zoom contains the connected shell and typed search", a
     expect(box!.x + box!.width).toBeLessThanOrEqual(720);
     const evidence = process.env.OPENFORGE_DESIGN_LAB_EVIDENCE_DIR;
     if (evidence) await page.screenshot({ path: join(evidence, "connected-actual-browser-zoom-200.png"), fullPage: true });
+    await page.locator('[data-pd-id="lab.search"]').press("Escape");
+    await page.getByRole("button", { name: "Open Sportsbook" }).click();
+    await expect(page.locator('[data-pd-id="lab.ledger.sportsbook"]')).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
+    if (evidence) await page.screenshot({ path: join(evidence, "cp114b-ledger-actual-browser-zoom-200.png"), fullPage: true });
   } finally { await context.close(); await rm(scratch, { recursive: true, force: true }); }
 });
