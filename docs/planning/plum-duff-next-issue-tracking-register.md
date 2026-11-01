@@ -2290,3 +2290,14 @@ Updated 2026-10-28. The owner approved only the exact CP-100/101/102 candidate m
 | PD-FIX-326 / #105 / #114 | Manifest-bound maintenance removal of 35 synthetic Placed Sportsbook lifecycle-test rows without weakening ordinary deletion | COMPLETE LOCALLY — exact count removed; immutable history retained; normal deletion still fails closed |
 | PD-FIX-327 / #114 | Existing governed removal of 11 synthetic Prospecting Extra Place residues | COMPLETE LOCALLY — exact count removed; no other planned row changed |
 | PD-AUDIT-103-01 / #114 | Fresh backup, dependency/provenance revalidation, atomic rollback, post-delete exposure/readiness and private receipt | COMPLETE LOCALLY — integrity/FK and non-candidate comparisons pass; owner review pending |
+## CP-115 Today and multi-Profile operations — 2026-11-01
+
+Local checklist under [Design Lab issue #114](https://github.com/wolney8/OpenForge/issues/114); live issue update unverified. All scope is `PROPOSED — LAB ONLY` before implementation.
+
+| ID | Owner request | Status |
+| --- | --- | --- |
+| PD-PR-115-01 | Today queue: source-derived work, configured recurring checks, advisory suggestions and source/return context. | NEEDS VERIFICATION — synthetic browser path passes; owner review pending |
+| PD-PR-115-02 | One shared weekly reload definition; target eligibility, explicit Prospecting copy preview, partial result, idempotent retry and per-Profile ownership. | NEEDS VERIFICATION — synthetic A/B/C path passes; real persistence deferred |
+| PD-PR-115-03 | Recurring offer definition versus Profile task/execution, with expected checks never presented as current promotion proof. | NEEDS VERIFICATION — lab-only preview; scheduler/AI deferred |
+| PD-PR-115-04 | Position Profile financial/readiness and fee distinction; Personal 0% and managed estimated/earned/withdrawable governed separately. | NEEDS VERIFICATION — canonical period summary over synthetic records; fee-base maths unverified |
+| PD-PR-115-05 | Responsive, accessible synthetic walkthrough; CP-114B/C and workbench regression; no normal-app effect. | NEEDS VERIFICATION — browser/typecheck/build/lint evidence; owner visual pending |

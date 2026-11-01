@@ -940,3 +940,6 @@ Recorded before lab UI edits. All exceptions are `PROPOSED — LAB ONLY`; owner 
 ## CP-114C shell screenshot-fidelity batch — 2026-11-01
 
 Recorded before UI edits. PD-PR-114C-01–05 map to the canonical request register and GitHub #114. Nearest equivalents: CP-114B lab shell, Oddsmatcher anchored surface, platform Material switch and theme provider. Level A owner screenshots govern lab header/menu geometry; normal AppChrome remains unchanged. CODE-VERIFIED in synthetic browser; owner visual acceptance pending. Exact Coinbase pixel measurement is UNVERIFIED because source image bytes are unavailable locally.
+## CP-115 lab-only batch — 2026-11-01
+
+Recorded before UI edits. PD-PR-115-01 through PD-PR-115-05 are `PROPOSED — LAB ONLY`. Reuse CP-114C anchored shell/menus, CP-114B ledger, normal Notification Centre read/clear versus source-completion semantics, governed offer eligibility and monthly fee vocabulary. Today grouping and the shared-offer copy preview are lab-specific presentation experiments; they do not alter the signed-off normal controls, protected financial values or Profile ownership. Owner approval for normal integration remains separate.

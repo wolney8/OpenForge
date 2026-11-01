@@ -17,15 +17,18 @@ export type LabAccount = {
   profileId: LabProfileId;
   name: string;
   type: "Bookie" | "Exchange" | "Bank";
-  status: "Active";
+  status: "Active" | "Limited";
   currentBalance: string;
+  commission?: string;
 };
 
 export const initialLabAccounts: LabAccount[] = [
   { id: "LAB-ACCOUNT-A", profileId: "LAB-PROFILE-A", name: "Bookmaker A", type: "Bookie", status: "Active", currentBalance: "80.00" },
-  { id: "LAB-ACCOUNT-B", profileId: "LAB-PROFILE-A", name: "Exchange A", type: "Exchange", status: "Active", currentBalance: "45.00" },
+  { id: "LAB-ACCOUNT-B", profileId: "LAB-PROFILE-A", name: "Exchange A", type: "Exchange", status: "Active", currentBalance: "45.00", commission: "2%" },
   { id: "LAB-ACCOUNT-C", profileId: "LAB-PROFILE-A", name: "Bookmaker C", type: "Bookie", status: "Active", currentBalance: "" },
   { id: "LAB-ACCOUNT-D", profileId: "LAB-PROFILE-B", name: "Bank B", type: "Bank", status: "Active", currentBalance: "60.00" },
+  { id: "LAB-ACCOUNT-E", profileId: "LAB-PROFILE-B", name: "Bookmaker A", type: "Bookie", status: "Limited", currentBalance: "0.00" },
+  { id: "LAB-ACCOUNT-F", profileId: "LAB-PROFILE-B", name: "Exchange B", type: "Exchange", status: "Active", currentBalance: "0.00", commission: "0%" },
 ];
 
 const labPositions = [

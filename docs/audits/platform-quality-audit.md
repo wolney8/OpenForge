@@ -6030,3 +6030,14 @@ responsive reflow (desktop/narrow/zoom), light/dark, partial/error states and sa
 normal app route or shared CSS change. Use synthetic/mock data, zero owner writes or provider calls,
 no production entry, and a removable lab boundary. Owner approval of the journey and any
 `PROPOSED — LAB ONLY` exceptions is the next design gate.
+## CP-115 Today and multi-Profile Design Lab coverage — 2026-11-01
+
+All examples are fixed-clock synthetic lab state. GitHub #114 is the existing Design Lab issue; live issue mutation is unverified. The normal notification, Account, copy and fee contracts retain authority.
+
+| Request / authority | Lab scenario and current evidence | Treatment / acceptance check | Status |
+| --- | --- | --- | --- |
+| PD-PR-115-01 · Notification Centre | Today reads Placed, overdue, partial Lay, Free Bet expiry and unknown-balance synthetic source rows; Profile-specific reminders keep separate done state. | Derived work opens source; only manual checks may be marked done/deferred; return retains Profile/range. | CODE-VERIFIED — lab only; owner UX pending |
+| PD-PR-115-02 · multi-Profile entry and Account eligibility | Shared reload targets A Active, B Limited/review, C Gubbed/blocked; preview, partial failure and retry produce A/B separate Prospecting IDs. | No blocked row, duplicate, execution copy, settlement or Account crossover. | CODE-VERIFIED — lab only; real persistence unverified |
+| PD-PR-115-03 · offer decision support | Recurring definition, last review and next expected check shown; signup/price boost are labelled preview-only; one advisory links to synthetic review history. | Current external promotion availability is never claimed. | PARTIAL PREVIEW — scheduler and AI deferred |
+| PD-PR-115-04 · fee contract | Position shows Personal 0% and B monthly ready/confirmed period summary via existing `summarizeFeePeriods`; current/projected bet value unavailable without fixture. | Estimate, earned and withdrawable remain distinct; no gross-profit shortcut or fee revenue presented as net business profit. | CODE-VERIFIED summary display; full fee-base maths unverified |
+| PD-PR-115-05 · CP-114B/C | Spreadsheet ledger, anchored shell, Quick Capture, workbench and source/return paths exercised in browser. | Desktop/narrow/theme/actual browser zoom contained; owner visual judgement separate. | CODE-VERIFIED — lab only; owner review pending |

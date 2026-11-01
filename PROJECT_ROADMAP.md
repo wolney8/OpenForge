@@ -1,5 +1,9 @@
 # Project Roadmap — Plum Duff / OpenForge — Doc ID: PR-CODEX-001
 
+## CP-115 Today/offer owner review — 2026-11-01
+
+Walk through Today → shared weekly reload → per-Profile eligibility → Prospecting preview → copy result/retry → source ledger → Today. Compare source-derived work, configured checks and advisory uncertainty; inspect the Profile fee/readiness table at desktop and narrow widths. Decide whether this task grouping and copy-preview sequence merit a separately governed normal-app design. CP-116, persistent scheduling/copy and normal integration remain separate. [Coverage](docs/audits/platform-quality-audit.md#cp-115-today-and-multi-profile-design-lab-coverage--2026-11-01).
+
 ## CP-114B ledger owner review — 2026-11-01
 
 Review the connected Position → Sportsbook ledger → record → return path, combined Profile ownership, pointer/keyboard column controls, Prospecting cell edits and narrow detail. Keep CP-114 entry/workbench flow. Decide narrow required-column presentation and whether a governed saved-view persistence contract should be planned. No normal-app integration or CP-115/116 expansion is approved.
