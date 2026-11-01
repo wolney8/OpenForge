@@ -754,7 +754,7 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialIssue
 
   const accountFilterOptions = useMemo(
     () => ({
-      statuses: dedupeOptions(resolvedRows.map((row) => row.status)),
+      statuses: dedupeOptions(resolvedRows.flatMap((row) => [row.status, row.lifecycle_status])),
       restrictions: dedupeOptions(resolvedRows.flatMap((row) => row.restrictions)),
       channels: dedupeOptions(resolvedRows.map((row) => row.channel)),
     }),
@@ -765,7 +765,7 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialIssue
     (sourceRows: AccountRecord[]) =>
       sourceRows.filter((row) => {
         if (tableFilters.type && row.type !== tableFilters.type) return false;
-        if (tableFilters.status && row.status !== tableFilters.status) return false;
+        if (tableFilters.status && row.status !== tableFilters.status && row.lifecycle_status !== tableFilters.status) return false;
         if (
           tableFilters.restriction &&
           !row.restrictions.includes(tableFilters.restriction)
@@ -998,7 +998,6 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialIssue
       return;
     }
     if (
-      !isEditing &&
       formState.type === "Exchange" &&
       (!formState.commission_rate.trim() ||
         !Number.isFinite(Number(formState.commission_rate)) ||
@@ -1048,6 +1047,17 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialIssue
       }
 
       const saved = (await response.json()) as AccountRecord;
+      if (isEditing && formState.type === "Exchange") {
+        const commissionResponse = await fetch(`${apiBaseUrl}/profiles/${profileId}/exchange-commissions`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ exchange_name: saved.account, commission_rate: formState.commission_rate }),
+        });
+        if (!commissionResponse.ok) {
+          setErrorMessage(await readApiError(commissionResponse, "Account saved, but base commission could not be saved."));
+          return;
+        }
+      }
       if (needsSignupDefinition) {
         const linkedDefaults = linkedSignupOffer?.defaults ?? {};
         const offerName = linkedSignupOffer?.label || signupOfferDraft.offerName.trim();
@@ -1425,7 +1435,7 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialIssue
                     {accountTableModes.map((mode) => <option key={mode.value} value={mode.value}>{mode.label}</option>)}
                   </select></label>
                   <label className="field-control"><span>Account type</span><select value={tableFilters.type} onChange={(event) => setTableFilters((current) => ({ ...current, type: event.target.value as AccountTableFilters["type"] }))}><option value="">All</option><option value="Bookie">Bookie</option><option value="Exchange">Exchange</option><option value="Bank">Bank</option></select></label>
-                  <label className="field-control"><span>Status</span><select value={tableFilters.status} onChange={(event) => setTableFilters((current) => ({ ...current, status: event.target.value }))}><option value="">All</option>{accountFilterOptions.statuses.map((option) => <option key={option}>{option}</option>)}</select></label>
+                  <label className="field-control"><span>Lifecycle / status</span><select value={tableFilters.status} onChange={(event) => setTableFilters((current) => ({ ...current, status: event.target.value }))}><option value="">All</option>{accountFilterOptions.statuses.map((option) => <option key={option}>{option}</option>)}</select></label>
                   <label className="field-control"><span>Restriction</span><select value={tableFilters.restriction} onChange={(event) => setTableFilters((current) => ({ ...current, restriction: event.target.value }))}><option value="">All</option>{accountFilterOptions.restrictions.map((option) => <option key={option}>{option}</option>)}</select></label>
                   <label className="field-control"><span>Access</span><select value={tableFilters.channel} onChange={(event) => setTableFilters((current) => ({ ...current, channel: event.target.value }))}><option value="">All</option>{accountFilterOptions.channels.map((option) => <option key={option}>{option}</option>)}</select></label>
                   <label className="field-control"><span>Issues</span><select value={tableFilters.issue} onChange={(event) => setTableFilters((current) => ({ ...current, issue: event.target.value as AccountTableFilters["issue"] }))}><option value="">All rows</option><option value="needs-attention">Needs attention</option><option value="not-signed-up">Not signed up</option><option value="restricted">Restricted</option></select></label>
@@ -1477,7 +1487,7 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialIssue
         <div className="workflow-panel-header">
           <div className="stack">
             <span className="eyebrow">{selectedId ? "Edit account" : "Create account"}</span>
-            <strong>{selectedId ?? "New account row"}</strong>
+            {selectedId ? <AccountProviderIdentity fallbackName={formState.account} provider={selectedProvider} /> : <strong>New account row</strong>}
           </div>
           <button
             aria-label="Close account editor"
@@ -1491,10 +1501,14 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialIssue
           </button>
         </div>
           <div className="workflow-editor-body">
+            <nav aria-label="Account editor sections" className="analytics-tab-list account-editor-section-nav" data-pd-id="accounts.editor.sections">
+              {[['account-overview','Overview'],['account-access-title','Access'],['account-balances','Balances'],['account-commission','Commission'],['account-history-notes','History / Notes']].filter(([id]) => id !== 'account-commission' || resolvedAccountType === 'Exchange').map(([id,label]) => <button className="analytics-tab" key={id} onClick={() => document.getElementById(id)?.scrollIntoView({ block:'start', behavior:'smooth' })} type="button">{label}</button>)}
+            </nav>
             {selectedRow ? (
               <><AccountFinancialSummary account={selectedRow} /><AccountReviewButton profileId={profileId} accounts={[selectedRow]} accountId={selectedRow.account_id} accountName={selectedRow.account} /></>
             ) : null}
             <form className="form-grid" id="profile-account-editor-form" onSubmit={(event) => void handleSubmit(event)}>
+          <span aria-hidden="true" className="account-editor-section-anchor" id="account-overview" />
           <label className="field-control">
             <span>Account</span>
             {selectedId ? (
@@ -1647,11 +1661,11 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialIssue
               ) : <p className="field-support-text">The selected definition will be linked to this Profile and added to the Opportunity Queue.</p>}
             </fieldset> : null}
           </section> : null}
-          {!selectedId && formState.type === "Exchange" ? (
-            <label className="field-control">
-              <span>Exchange Commission</span>
+          {formState.type === "Exchange" ? (
+            <label className="field-control" id="account-commission">
+              <span>Base commission</span>
               <input
-                aria-label="Exchange commission"
+                aria-label="Base Exchange commission"
                 inputMode="decimal"
                 max="1"
                 min="0"
@@ -1733,6 +1747,7 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialIssue
               <p className="field-support-text">No configured offer actions currently target this account.</p>
             )}
           </section> : null}
+          <section className="field-span-2 form-grid account-editor-section" id="account-balances" aria-label="Balances">
           <label className="field-control">
             <span>Current balance</span>
             <FinancialTextInput
@@ -1787,6 +1802,7 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialIssue
               <option value="false">No</option>
             </select>
           </label>
+          </section>
           <label className="field-control">
             <span>Group</span>
             <input aria-readonly="true" readOnly value={selectedProvider?.operator_group || formState.group_name || "Inherited from account catalogue"} />
@@ -1795,7 +1811,7 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialIssue
             <span>Platform</span>
             <input aria-readonly="true" readOnly value={selectedProvider?.platform || formState.platform || "Inherited from account catalogue"} />
           </label>
-          <label className="field-control field-span-2">
+          <label className="field-control field-span-2" id="account-history-notes">
             <span>Notes</span>
             <textarea
               onChange={(event) =>

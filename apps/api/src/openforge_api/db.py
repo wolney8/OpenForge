@@ -1080,6 +1080,39 @@ def initialize_database(connection: sqlite3.Connection) -> None:
           FOREIGN KEY (profile_id) REFERENCES profiles(profile_id) ON DELETE CASCADE
         );
 
+        CREATE TABLE IF NOT EXISTS profile_exchange_commission_offers (
+          offer_id TEXT PRIMARY KEY,
+          profile_id TEXT NOT NULL,
+          account_id TEXT NOT NULL,
+          commission_rate TEXT NOT NULL,
+          effective_start TEXT NOT NULL,
+          effective_end TEXT NOT NULL,
+          status TEXT NOT NULL DEFAULT 'Active',
+          source_label TEXT NOT NULL,
+          owner_note TEXT NOT NULL DEFAULT '',
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          FOREIGN KEY (profile_id) REFERENCES profiles(profile_id) ON DELETE CASCADE,
+          FOREIGN KEY (account_id) REFERENCES accounts(account_id) ON DELETE CASCADE
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_exchange_commission_offers_account_dates
+          ON profile_exchange_commission_offers(
+            profile_id, account_id, effective_start, effective_end
+          );
+
+        CREATE TABLE IF NOT EXISTS profile_exchange_commission_offer_audit (
+          audit_id TEXT PRIMARY KEY,
+          offer_id TEXT NOT NULL,
+          profile_id TEXT NOT NULL,
+          account_id TEXT NOT NULL,
+          action TEXT NOT NULL,
+          payload_json TEXT NOT NULL,
+          changed_at TEXT NOT NULL,
+          FOREIGN KEY (profile_id) REFERENCES profiles(profile_id) ON DELETE CASCADE,
+          FOREIGN KEY (account_id) REFERENCES accounts(account_id) ON DELETE CASCADE
+        );
+
         CREATE TABLE IF NOT EXISTS profile_tracker_settings (
           profile_id TEXT PRIMARY KEY,
           active_date_preset TEXT NOT NULL,
@@ -7092,6 +7125,14 @@ class ProfileExchangeCommissionRecord:
 
 
 @dataclass(frozen=True)
+class ResolvedExchangeCommission:
+    commission_rate: str
+    source: str
+    source_label: str
+    offer_id: str = ""
+
+
+@dataclass(frozen=True)
 class ProfileTrackerSettingsRecord:
     profile_id: str
     active_date_preset: str
@@ -8285,6 +8326,69 @@ def get_profile_exchange_commission(profile_id: str, exchange_name: str) -> str:
     if row is None:
         return ""
     return str(row["commission_rate"])
+
+
+def resolve_profile_exchange_commission(
+    profile_id: str,
+    exchange_name: str,
+    *,
+    effective_date: str,
+    explicit_override: str = "",
+) -> ResolvedExchangeCommission:
+    """Resolve prospective commission without rewriting historical row snapshots."""
+    if explicit_override.strip():
+        return ResolvedExchangeCommission(
+            commission_rate=explicit_override.strip(),
+            source="explicit_override",
+            source_label="Bet commission override",
+        )
+    with connect_read_only() as connection:
+        account = connection.execute(
+            """
+            SELECT account_id FROM accounts
+            WHERE profile_id = ? AND type = 'Exchange' AND LOWER(account) = LOWER(?)
+            ORDER BY CASE WHEN lifecycle_status = 'Active' THEN 0 ELSE 1 END, created_at
+            LIMIT 1
+            """,
+            (profile_id, exchange_name),
+        ).fetchone()
+        if account is not None:
+            offer = connection.execute(
+                """
+                SELECT offer_id, commission_rate, source_label
+                FROM profile_exchange_commission_offers
+                WHERE profile_id = ? AND account_id = ? AND status = 'Active'
+                  AND effective_start <= ? AND effective_end >= ?
+                ORDER BY effective_start DESC, created_at DESC
+                LIMIT 1
+                """,
+                (profile_id, str(account["account_id"]), effective_date, effective_date),
+            ).fetchone()
+            if offer is not None:
+                return ResolvedExchangeCommission(
+                    commission_rate=str(offer["commission_rate"]),
+                    source="commission_offer",
+                    source_label=str(offer["source_label"]),
+                    offer_id=str(offer["offer_id"]),
+                )
+        base = connection.execute(
+            """
+            SELECT commission_rate FROM profile_exchange_commissions
+            WHERE profile_id = ? AND LOWER(exchange_name) = LOWER(?)
+            """,
+            (profile_id, exchange_name),
+        ).fetchone()
+    if base is not None and str(base["commission_rate"]).strip():
+        return ResolvedExchangeCommission(
+            commission_rate=str(base["commission_rate"]),
+            source="account_default",
+            source_label="Account default",
+        )
+    return ResolvedExchangeCommission(
+        commission_rate="",
+        source="unavailable",
+        source_label="Commission unavailable",
+    )
 
 
 def get_profile_exchange_commission_map(profile_id: str) -> dict[str, str]:

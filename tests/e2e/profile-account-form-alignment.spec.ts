@@ -16,6 +16,7 @@ test("Profile Accounts Create/Edit retains validation, draft actions, ownership 
   const created = await page.request.post("/api/profiles/onboarding", { data: {
     accounts: [], display_name: `Synthetic CP046 Accounts ${Date.now()}`, profile_code: `C46A-${Date.now()}`,
     enabled_modules: ["sportsbook-bets", "free-bets", "cash-adjustments"], quick_actions: [], setup_path: "import", tracking_start_date: "2026-09-01",
+    profile_relationship: "Personal", management_fee_percent: "0", investment_fee_percent: "0",
   } });
   expect(created.status(), await created.text()).toBe(201);
   const id = (await created.json()).profile.profile_id, path = `/api/profiles/${id}/accounts`;
@@ -41,7 +42,7 @@ test("Profile Accounts Create/Edit retains validation, draft actions, ownership 
     await expect(dialog).toBeHidden();
     const rows = await (await page.request.get(path)).json();
     expect(rows).toHaveLength(1); expect(rows[0].current_balance).toBe("125.50"); expect(rows[0].profile_id).toBe(id);
-    const edit = page.locator(".accounts-data-table tbody tr").filter({ hasText: "Bet365" }).getByRole("button", { name: /Edit / });
+    const edit = page.locator(".accounts-data-table tbody tr").filter({ hasText: "Bet365" }).getByTitle("Edit account");
     await edit.click(); dialog = page.getByRole("dialog", { name: "Edit account", exact: true });
     await expect(dialog.getByLabel("Account", { exact: true })).toHaveAttribute("readonly", "");
     for (const label of ["Type", "Group", "Platform"]) {
@@ -109,7 +110,7 @@ test("Profile Accounts Create/Edit retains validation, draft actions, ownership 
         const failures: { label: string; ancestor: string; outside: number[] }[] = [];
         for (const control of footer.querySelectorAll("button")) {
           const bounds = control.getBoundingClientRect();
-          for (let parent = control.parentElement; parent; parent = parent.parentElement) {
+          for (let parent = control.parentElement; parent && parent !== document.body && parent !== document.documentElement; parent = parent.parentElement) {
             const style = getComputedStyle(parent), outer = parent.getBoundingClientRect();
             const clippedX = /(auto|scroll|hidden|clip)/.test(style.overflowX);
             const clippedY = /(auto|scroll|hidden|clip)/.test(style.overflowY);

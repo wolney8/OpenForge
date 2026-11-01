@@ -320,6 +320,16 @@ one compact, paginated disclosure instead of concatenating raw row messages. The
 12-Account cash warning and all owner financial rows remain unchanged. Owner verification is
 pending; CP-108 remains paused.
 
+## CP-108B Exchange Accounts and commissions
+
+Recorded 2026-11-01 under existing Accounts/Sportsbook tracking. All Profile Accounts remain
+discoverable independently of betting eligibility. A shared Profile Exchange commission authority
+supports audited base rates and non-overlapping dated offers; committed rows retain their stored
+commission snapshot. The Account editor uses one modal scroll surface, section navigation and the
+catalogue provider identity. Jettbet is the only authorised owner Account-completeness correction;
+ledger re-import remains prohibited. Automated and owner verification are pending; CP-108 remains
+paused.
+
 ## Reference index
 
 - [Feature status](FEATURE_STATUS.md)

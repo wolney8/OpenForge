@@ -30,7 +30,7 @@ export type OddsMatcherOpportunity = {
   display_rating: string;
   commission_aware_rating: string | null;
   exchange_commission: string | null;
-  commission_origin: "profile-account" | "oddsmatcher-default" | "zero";
+  commission_origin: "profile-account" | "commission-offer" | "oddsmatcher-default" | "unavailable";
   standard_lay_stake: string | null;
   liability: string | null;
   pnl_if_back_wins: string | null;

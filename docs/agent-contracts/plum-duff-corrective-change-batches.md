@@ -530,3 +530,13 @@ the explicit non-placement action that selects which reviewed plan will be saved
 | PD-FIX-487 | Financial readiness membership | Keep realised P&L, scenario-recalculation readiness and committed-current readiness independent; exclude planned rows from actual financial warnings | CP-102 exposure membership authority; CP-108A | NEEDS VERIFICATION — 591 affected rows classified read-only; owner verification pending |
 | PD-FIX-488 | Dashboard diagnostics | Replace unbounded repeated row copy with a compact grouped summary and bounded actionable detail while retaining the independent Account-cash warning | UI/accessibility contracts; CP-108A | NEEDS VERIFICATION — shared bounded disclosure, pagination and independent cash-warning tests pass |
 | PD-AUDIT-108A-01 | WILL-PERSONAL and Formal Reports | Reconcile lifecycle/P&L authority and preserve week/month/year totals without mutating owner financial rows | Reporting and data-governance contracts; CP-108A | CODE-VERIFIED / DOCUMENTED PRIVATELY — exact row evidence and pre-install hashes retained; owner acceptance pending |
+
+## 2026-11-01 CP-108B Exchange Accounts and commissions
+
+| ID | Area | Requested behaviour | Authority | Status |
+|---|---|---|---|---|
+| PD-FIX-489 | Exchange Account discoverability | Keep every Profile Account visible in management, provide Type and lifecycle/status filtering, and keep new-bet eligibility independently fail-closed | Account catalogue, lifecycle and eligibility authorities; CP-108B | NEEDS VERIFICATION — implementation and focused tests pending final runtime smoke |
+| PD-FIX-490 | Workbook Account completeness | Retain all distinct workbook Account identities without re-importing ledgers; add the proven Jettbet review-needed identity and keep BetDragon suppressed as a duplicate | Accounts import field map and CP-106M evidence; CP-108B | IN PROGRESS — owner mutation gated by fresh backup |
+| PD-FIX-491 | Exchange commission authority | Add audited base and time-bounded offer management with explicit > offer > base > governed default > unavailable precedence and immutable committed snapshots | Profile Exchange commission calculation contract; CP-108B | NEEDS VERIFICATION — focused API/Oddsmatcher tests pending final gate |
+| PD-FIX-492 | Account editor consistency | Use one modal scroll owner, established section navigation and catalogue provider identity colours at desktop and 430px | UI/accessibility and consistency contracts; CP-108B | NEEDS VERIFICATION — browser geometry evidence pending |
+| PD-AUDIT-108B-01 | WILL-PERSONAL safety | Prove six imported Exchanges, Jettbet provenance and no imported-ledger mutation | Data safety and Account import contracts; CP-108B | CODE-VERIFIED / PRIVATE EVIDENCE PENDING |

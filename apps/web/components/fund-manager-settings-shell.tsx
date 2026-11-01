@@ -7,6 +7,7 @@ import { DatabaseBackupSettings } from "@/components/database-backup-settings";
 import { FundManagerAuthoritySettings } from "@/components/fund-manager-authority-settings";
 import { FundManagerNotificationSettings } from "@/components/fund-manager-notification-settings";
 import { FundManagerOddsmatcherSettings } from "@/components/fund-manager-oddsmatcher-settings";
+import { FundManagerExchangeCommissions } from "@/components/fund-manager-exchange-commissions";
 import { FundManagerSiteSettings } from "@/components/fund-manager-site-settings";
 import { MasterAccountCatalogueSettings } from "@/components/master-account-catalogue-settings";
 
@@ -17,6 +18,7 @@ const sections = [
   { id: "database", label: "Database", component: <DatabaseBackupSettings /> },
   { id: "site-settings", label: "Site Settings", component: <FundManagerSiteSettings /> },
   { id: "oddsmatcher", label: "Oddsmatcher", component: <FundManagerOddsmatcherSettings /> },
+  { id: "exchange-commissions", label: "Exchange Commissions", component: <FundManagerExchangeCommissions /> },
   { id: "quick-actions", label: "Quick Actions", component: <CommonBetComboSettings /> },
 ] as const;
 
