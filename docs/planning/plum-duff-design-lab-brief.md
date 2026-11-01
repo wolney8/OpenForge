@@ -28,6 +28,8 @@ Reference adaptations: [CDS NavigationBar](https://cds.coinbase.com/components/n
 
 **Fidelity boundary:** Account balance and one CALC-001 Sportsbook bet have working synthetic state. The Sportsbook modal and page share a draft, matching precedes Event Name, and Prospecting → Placed → Settled → correction/history → report is simulated. The new bet retains its creation Profile across context switches. Only the CALC-001 input tuple has validated financial output; changed inputs show unavailable and block financial Save. Free Bet, Casino, Extra Place and Cash Adjustment Add/Edit are interactive representative previews; their Save is disabled. The report chart uses exact synthetic settled-point values, filters source drilldown by range/Profile and links each visible point to a source record. It does not imply owner reporting acceptance.
 
+The original CP-112 private capture directory was not found in this worktree during CP-113. Its source baseline remains at `/design-lab?baseline=cp112`; baseline light/dark browser captures were regenerated under `data/private/evidence/cp113-design-lab/`. The original capture files are not claimed as recovered.
+
 ## Purpose and problem
 
 The owner finds the Fund Manager experience clunky, inconsistent and overloaded. Header, menu,

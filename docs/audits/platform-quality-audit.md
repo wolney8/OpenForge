@@ -5859,6 +5859,7 @@ CP-112 is sufficient for continued **lab exploration**, not accepted for normal 
 | Offers, settings, permissions, import/workbook, backup/restore | Existing CP-110 matrix | No added lab screens in CP-113 | Separate scoped demonstration/decision | NOT DEMONSTRATED / DEFERRED |
 
 No normal application styles, calculations, schema, provider or owner financial records changed. Private browser captures: `data/private/evidence/cp113-design-lab/`. Owner visual/accessibility judgement and mobile required-column contract change remain unverified.
+The original CP-112 private capture directory was absent in this worktree; its source route and regenerated baseline captures under the CP-113 private path remain available for comparison.
 
 # CP-112 Design Lab visual revision — 2026-11-01
 
