@@ -30,7 +30,7 @@ test("header tracked panel, three banner states, X removal and source urgency", 
   for (const id of ["task:LAB-SB-OVERDUE", "reload", "casino-daily-a"]) await track(page,id);
   const trigger = page.locator('[data-pd-id="lab.header-trigger.tracked"]');
   const banner = page.locator('[data-pd-id="lab.active-task"]');
-  await expect(trigger).toHaveAttribute("aria-label", "Tracked Tasks, 3 tracked");
+  await expect(trigger).toHaveAttribute("aria-label", "Tracked Tasks, 3 active");
   await expect(banner.locator('[data-pd-id="lab.tracked-task.task:LAB-SB-OVERDUE"]')).toHaveClass(/trackedUrgent/);
   await banner.getByRole("button",{name:"Collapse Tracked Tasks"}).click();
   await expect(banner.locator('[data-pd-id^="lab.tracked-task."]')).toHaveCount(0);
@@ -41,11 +41,11 @@ test("header tracked panel, three banner states, X removal and source urgency", 
   const panel = page.locator('[data-pd-id="lab.header-tracked-panel"]');
   await expect(panel.locator('[data-pd-id^="lab.header-tracked-task."]')).toHaveCount(3);
   await panel.locator('[data-pd-id="lab.header-tracked-task.reload"]').getByRole("button",{name:/Untrack/}).click();
-  await expect(trigger).toHaveAttribute("aria-label", "Tracked Tasks, 2 tracked");
+  await expect(trigger).toHaveAttribute("aria-label", "Tracked Tasks, 2 active");
   await panel.getByRole("button",{name:"Show Full Banner"}).click();
   await expect(banner.locator('[data-pd-id^="lab.tracked-task."]')).toHaveCount(2);
   await page.locator('[data-pd-id="lab.nav.sportsbook"]').click();
-  await expect(trigger).toHaveAttribute("aria-label", "Tracked Tasks, 2 tracked");
+  await expect(trigger).toHaveAttribute("aria-label", "Tracked Tasks, 2 active");
   await capture(page,"tracked-banner-desktop-dark.png");
 });
 
@@ -80,12 +80,14 @@ test("resolved tracked Account remains visible without recreating source task", 
   await page.getByRole("button",{name:/Confirm balance observation/}).click();
   await expect(page.locator('[data-pd-id="lab.today"]')).not.toContainText("Confirm Account Balance");
   const row = page.locator('[data-pd-id="lab.tracked-task.task:LAB-ACCOUNT-C"]');
-  await expect(row).toContainText("Source Resolved");
-  await row.getByRole("button",{name:"View Source"}).click();
-  await expect(page.locator('[data-pd-id="lab.record-detail"]')).toContainText("LAB-ACCOUNT-C");
-  await row.getByRole("button",{name:/Untrack Confirm Account Balance/}).click();
   await expect(row).toHaveCount(0);
-  await expect(page.locator('[data-pd-id="lab.header-trigger.tracked"]')).toHaveAttribute("aria-label","Tracked Tasks, 0 tracked");
+  await expect(page.locator('[data-pd-id="lab.header-trigger.tracked"]')).toHaveAttribute("aria-label","Tracked Tasks, 0 active");
+  await page.locator('[data-pd-id="lab.header-trigger.tracked"]').click();
+  await page.getByText("Completed History (1)").click();
+  const history = page.locator('[data-pd-id="lab.header-tracked-task.task:LAB-ACCOUNT-C"]');
+  await expect(history).toContainText("Source Resolved");
+  await history.getByRole("button",{name:"View Source"}).click();
+  await expect(page.locator('[data-pd-id="lab.record-detail"]')).toContainText("LAB-ACCOUNT-C");
 });
 
 test("dirty Account form ignores outside click", async ({ page }) => {

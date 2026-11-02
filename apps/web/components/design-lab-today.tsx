@@ -20,10 +20,10 @@ const sevenDaysAfterLabClock = new Date(Date.parse(`${labClock}T12:00:00Z`) + 7 
 const profileName = (id?: LabProfileId) => id ? labProfiles.find(profile => profile.id === id)?.name ?? id : "All Profiles";
 const iconFor = (task: LabTodayTask) => ({ Sportsbook: "sports_soccer", "Free Bet": "redeem", Account: "account_balance_wallet", Routine: "event_repeat", Suggestion: "lightbulb" })[labTaskSourceType(task)];
 
-export function DesignLabToday({ scope, records, accounts, taskStates, blockedReasons, reviewDates, trackedTaskIds, onTaskState, onBlockedReason, onReviewDate, onToggleTrackTask, onOpenSource, onOpenOffer, onInspectHistory, view, onViewChange, onSourceLeave, boardScrollLeft, onBoardScroll }: {
+export function DesignLabToday({ scope, records, accounts, taskStates, blockedReasons, reviewDates, trackedTaskIds, onTaskState, onBlockedReason, onReviewDate, onToggleTrackTask, onBulkTrackTasks, onOpenSource, onOpenOffer, onInspectHistory, view, onViewChange, onSourceLeave, boardScrollLeft, onBoardScroll }: {
   scope: LabScope; records: LabRecord[]; accounts: LabAccount[];
   taskStates: Record<string,LabTaskWorkState>; blockedReasons: Record<string,string>; reviewDates: Record<string,string>; trackedTaskIds: string[];
-  onTaskState: (id:string,state:LabTaskWorkState) => void; onBlockedReason: (id:string,reason:string) => void; onReviewDate: (id:string,date:string) => void; onToggleTrackTask: (id:string) => void;
+  onTaskState: (id:string,state:LabTaskWorkState) => void; onBlockedReason: (id:string,reason:string) => void; onReviewDate: (id:string,date:string) => void; onToggleTrackTask: (id:string) => void; onBulkTrackTasks: (ids:string[], action:"track"|"untrack") => void;
   onOpenSource: (id:string) => void; onOpenOffer: () => void; onInspectHistory: () => void;
   view: LabTodayViewState; onViewChange: (view: LabTodayViewState) => void; onSourceLeave: () => void; boardScrollLeft: number; onBoardScroll: (left:number) => void;
 }) {
@@ -87,13 +87,20 @@ export function DesignLabToday({ scope, records, accounts, taskStates, blockedRe
     onSourceLeave(); onInspectHistory();
   }
   function changeTaskState(task: LabTodayTask, state: LabTaskWorkState) {
-    if (state === "Done" && !task.manual) return;
+    if (state === "Done" && !task.manual && task.authority !== "Advisory suggestion") return;
     if (state === "Do Later" && !reviewDates[task.id]) onReviewDate(task.id, sevenDaysAfterLabClock);
     onTaskState(task.id, state);
     if (view.layout === "Board" && boardRef.current) {
       const destination = workStates.indexOf(state);
       boardRef.current.scrollTo({ left: destination * 290, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
     }
+  }
+  function bulkTrackButton(label: string, rows: LabTodayTask[]) {
+    const eligible = rows.filter(task => (taskStates[task.id] ?? "To Do") !== "Done");
+    if (!eligible.length) return null;
+    const allTracked = eligible.every(task => trackedTaskIds.includes(task.id));
+    const count = allTracked ? eligible.length : eligible.filter(task => !trackedTaskIds.includes(task.id)).length;
+    return <button aria-label={`${allTracked ? "Untrack" : "Track"} All ${label}, ${count} task${count === 1 ? "" : "s"}`} className={styles.bulkTrack} data-pd-id={`lab.today.bulk.${label.toLowerCase().replace(/[^a-z0-9]+/g,"-")}`} onClick={() => onBulkTrackTasks(eligible.map(task => task.id), allTracked ? "untrack" : "track")} type="button">{allTracked ? "Untrack All" : "Track All"} <span>{count}</span></button>;
   }
   function taskRow(task: LabTodayTask, board = false) {
     const state = taskStates[task.id] ?? "To Do";
@@ -112,7 +119,7 @@ export function DesignLabToday({ scope, records, accounts, taskStates, blockedRe
       <dl className={styles.properties}><div><dt>Profile</dt><dd>{profileName(task.profileId)}</dd></div><div><dt>Bookmaker / Provider</dt><dd>{task.provider}</dd></div><div><dt>Date Context</dt><dd>{labTaskDateLabel(task)}{task.dateKind === "Event Date" ? <small>Recorded event date; no settlement deadline is inferred.</small> : task.dateKind === "Expected Check" ? <small>Schedule only; promotion availability is unverified.</small> : null}</dd></div><div><dt>Work State</dt><dd><DesignLabTaskState state={state}/></dd></div>{reviewDates[task.id] ? <div><dt>Review Date</dt><dd>{reviewDates[task.id]}</dd></div> : null}{blockedReasons[task.id] ? <div><dt>Blocked Reason</dt><dd>{blockedReasons[task.id]}</dd></div> : null}<div><dt>Task Type</dt><dd>{task.authority}</dd></div><div><dt>Source</dt><dd>{task.sourceId ?? (task.group === "Recurring Work" ? "Configured routine" : "Synthetic history or preview")}</dd></div></dl>
       <p className={styles.detailText}>{task.detail}</p>
       {task.group === "Opportunities / Suggestions" ? <p className={styles.uncertainty}>Advisory only. Current offer availability is unverified.</p> : null}
-      <div className={styles.stateEditor}><DesignLabSelect dataPdId={`lab.task-state.${task.id}`} label="Work State" onChange={next => changeTaskState(task,next)} options={workStates.filter(next => next !== "Done" || task.manual).map(next => ({value:next,label:next}))} value={state}/>
+      <div className={styles.stateEditor}><DesignLabSelect dataPdId={`lab.task-state.${task.id}`} label="Work State" onChange={next => changeTaskState(task,next)} options={workStates.filter(next => next !== "Done" || task.manual || task.authority === "Advisory suggestion").map(next => ({value:next,label:next}))} value={state}/>
         {state === "Blocked" ? <label>Blocked Reason<input aria-label={`${task.title} blocked reason`} onChange={event => onBlockedReason(task.id,event.target.value)} placeholder="Reason for blocked work" value={blockedReasons[task.id] ?? ""}/></label> : null}
         {state === "Do Later" ? <label>Review / Resume Date<input aria-label={`${task.title} resume date`} min={labClock} onChange={event => { if (!event.target.value || !Number.isNaN(Date.parse(`${event.target.value}T12:00:00Z`)) && event.target.value >= labClock) onReviewDate(task.id,event.target.value); }} type="date" value={reviewDates[task.id] ?? ""}/></label> : null}
       </div>
@@ -135,20 +142,20 @@ export function DesignLabToday({ scope, records, accounts, taskStates, blockedRe
     <div className={`${styles.content} ${selected && !narrow && view.layout === "List" ? styles.withDetail : ""} ${selected && !narrow && view.layout === "Board" ? styles.boardWithDetail : ""}`}>
       <div className={styles.queue}>
         {view.layout === "List" ? <>
-          <section aria-label="Needs Action" className={styles.collection}><h2>Needs Action <span>{filtered.filter(task => task.group === "Needs Action").length}</span></h2>{view.sort !== "Priority" ? filtered.filter(task => task.group === "Needs Action").map(task => taskRow(task)) : urgencyGroups.map(group => {
+          <section aria-label="Needs Action" className={styles.collection}><div className={styles.collectionHeading}><h2>Needs Action <span>{filtered.filter(task => task.group === "Needs Action").length}</span></h2>{bulkTrackButton("Needs Action",filtered.filter(task => task.group === "Needs Action"))}</div>{view.sort !== "Priority" ? filtered.filter(task => task.group === "Needs Action").map(task => taskRow(task)) : urgencyGroups.map(group => {
             const rows = filtered.filter(task => task.group === "Needs Action" && labTaskUrgency(task) === group);
-            return rows.length ? <div className={styles.priorityGroup} key={group}><h3>{group}</h3>{rows.map(task => taskRow(task))}</div> : null;
+            return rows.length ? <div className={styles.priorityGroup} key={group}><div className={styles.collectionHeading}><h3>{group}</h3>{bulkTrackButton(group,rows)}</div>{rows.map(task => taskRow(task))}</div> : null;
           })}</section>
-          <section aria-label="Recurring Work" className={styles.collection}><h2>Recurring Work <span>{filtered.filter(task => task.group === "Recurring Work").length}</span></h2>{(() => {
+          <section aria-label="Recurring Work" className={styles.collection}><div className={styles.collectionHeading}><h2>Recurring Work <span>{filtered.filter(task => task.group === "Recurring Work").length}</span></h2>{bulkTrackButton("Recurring Work",filtered.filter(task => task.group === "Recurring Work"))}</div>{(() => {
             const rows = filtered.filter(task => task.group === "Recurring Work");
             const daily = rows.filter(task => task.title === "Check Daily Free Spins" && task.provider === "Bookmaker C");
             const other = rows.filter(task => !daily.includes(task));
             return <>{daily.length > 1 ? <div className={styles.recurringGroup}><button aria-expanded={view.recurringOpen} className={styles.recurringTrigger} data-pd-id="lab.today.recurring-free-spins" onClick={() => setView({recurringOpen:!view.recurringOpen})} type="button"><span aria-hidden="true" className="material-symbols-outlined">{view.recurringOpen ? "expand_less" : "expand_more"}</span><strong>Check Daily Free Spins — Bookmaker C</strong><small>{daily.length} Profiles</small></button>{view.recurringOpen ? <div className={styles.recurringChildren}>{daily.map(task => taskRow(task))}</div> : null}</div> : daily.map(task => taskRow(task))}{other.map(task => taskRow(task))}</>;
           })()}</section>
-          <section aria-label="Opportunities / Suggestions" className={styles.collection}><button aria-expanded={view.suggestionsOpen} className={styles.suggestionTrigger} onClick={() => setView({suggestionsOpen:!view.suggestionsOpen})} type="button"><span aria-hidden="true" className="material-symbols-outlined">{view.suggestionsOpen ? "expand_less" : "expand_more"}</span>Opportunities / Suggestions <small>{filtered.filter(task => task.group === "Opportunities / Suggestions").length}</small></button>{view.suggestionsOpen ? filtered.filter(task => task.group === "Opportunities / Suggestions").map(task => taskRow(task)) : null}</section>
+          <section aria-label="Opportunities / Suggestions" className={styles.collection}><div className={styles.collectionHeading}><button aria-expanded={view.suggestionsOpen} className={styles.suggestionTrigger} onClick={() => setView({suggestionsOpen:!view.suggestionsOpen})} type="button"><span aria-hidden="true" className="material-symbols-outlined">{view.suggestionsOpen ? "expand_less" : "expand_more"}</span>Opportunities / Suggestions <small>{filtered.filter(task => task.group === "Opportunities / Suggestions").length}</small></button>{bulkTrackButton("Opportunities and Suggestions",filtered.filter(task => task.group === "Opportunities / Suggestions"))}</div>{view.suggestionsOpen ? filtered.filter(task => task.group === "Opportunities / Suggestions").map(task => taskRow(task)) : null}</section>
         </> : <><div className={styles.boardControls}><span>Scroll Board to view all states</span><div><button aria-label="Scroll Board Left" onClick={() => boardRef.current?.scrollBy({left:-290,behavior:"smooth"})} type="button"><span aria-hidden="true" className="material-symbols-outlined">chevron_left</span></button><button aria-label="Scroll Board Right" onClick={() => boardRef.current?.scrollBy({left:290,behavior:"smooth"})} type="button"><span aria-hidden="true" className="material-symbols-outlined">chevron_right</span></button></div></div><div aria-label="Task Board" className={styles.board} data-pd-id="lab.today.board" onPointerDown={event => { if (selectedId && event.target instanceof Element && !event.target.closest('[data-pd-id^="lab.task."]')) setSelectedId(null); }} onScroll={event => onBoardScroll(event.currentTarget.scrollLeft)} ref={boardRef} role="region" tabIndex={0}>{workStates.map(state => {
           const rows = filtered.filter(task => (taskStates[task.id] ?? "To Do") === state);
-          return <section className={styles.boardColumn} data-lab-board-state={state} key={state}><h2>{state} <span>{rows.length}</span></h2>{rows.map(task => taskRow(task,true))}</section>;
+          return <section className={styles.boardColumn} data-lab-board-state={state} key={state}><div className={styles.collectionHeading}><h2>{state} <span>{rows.length}</span></h2>{state !== "Done" ? bulkTrackButton(state,rows) : null}</div>{rows.map(task => taskRow(task,true))}</section>;
         })}</div></>}
         {!filtered.length ? <p className={styles.empty}>No tasks match these filters. <button onClick={() => setView({profile:"All",sourceType:"All",urgency:"All",workState:"All",provider:"All",duePeriod:"All"})} type="button">Clear Filters</button></p> : null}
       </div>

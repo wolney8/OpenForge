@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { labRecords, labRecordInputs } from "./design-lab-connected-data";
-import { evaluateLabFieldEdit, labCellChoices, nextLabReviewTracking } from "./design-lab-field-edit";
+import { displayLabLocalDate, evaluateLabFieldEdit, labCellChoices, labCellControl, nextLabReviewTracking, validLabDateInput } from "./design-lab-field-edit";
 
 const record = (id: string) => {
   const found = labRecords.find(item => item.id === id);
@@ -42,5 +42,28 @@ describe("Design Lab shared field-edit authority", () => {
   it("keeps actual matched stake distinct from requested and unknown historical evidence", () => {
     expect(record("LAB-SB-PARTIAL").execution).toMatchObject({requestedLayStake:"10.00",actualMatchedLayStake:"4.00",backConfirmed:true,layConfirmed:true});
     expect(record("LAB-SB-001").execution).toBeUndefined();
+  });
+  it("maps visible ledger fields to the right control without treating derived values as selectors", () => {
+    expect(labCellControl("sportsbook","bookmaker")).toBe("account");
+    expect(labCellControl("sportsbook","status")).toBe("lifecycle");
+    expect(labCellControl("freeBets","match_strategy")).toBe("select");
+    expect(labCellControl("casino","offer_type")).toBe("select");
+    expect(labCellControl("extraPlace","terms")).toBe("select");
+    expect(labCellControl("extraPlace","stake")).toBe("money");
+    expect(labCellControl("cash","direction")).toBe("select");
+    expect(labCellControl("cash","signed_amount")).toBe("read-only");
+  });
+  it("retains date precision and validates actual local dates without inventing a time", () => {
+    expect(labCellControl("freeBets","expiry_datetime","2026-11-10")).toBe("date");
+    expect(labCellControl("extraPlace","date","2026-11-07T14:30")).toBe("datetime-local");
+    expect(displayLabLocalDate("2026-11-10")).toBe("10 Nov 2026");
+    expect(displayLabLocalDate("2026-11-07T14:30")).toBe("7 Nov 2026 · 14:30");
+    expect(validLabDateInput("2026-11-31")).toBe(false);
+  });
+  it("uses workbook option authorities and preserves recorded historical choices", () => {
+    expect(labCellChoices("freeBets","status")).toContain("Not Yet Awarded");
+    expect(labCellChoices("casino","offer_type")).toContain("Deposit And Bonus Wagering");
+    expect(labCellChoices("cash","adjustment_type",[],"Capital movement")[0]).toBe("Capital movement");
+    expect(labCellChoices("extraPlace","terms")).toEqual(["1/4","1/5","1/6"]);
   });
 });

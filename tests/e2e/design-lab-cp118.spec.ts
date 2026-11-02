@@ -54,6 +54,8 @@ test("workbench cards align on every step and range returns after editor",async 
     await capture(page,`workbench-aligned-${width}.png`);
   }
   if(evidence)await writeFile(join(evidence,"workbench-card-geometry.json"),JSON.stringify(geometry,null,2));
+  const cookieNotice=page.locator('[data-pd-id="cookie-notice"]');
+  if(await cookieNotice.isVisible()) await cookieNotice.getByRole("button",{name:"Understood"}).click();
   await page.getByRole("button",{name:"Cancel"}).click();
   await expect(page.locator('[data-pd-id="lab.range"]')).toBeVisible();
 });
@@ -176,15 +178,17 @@ test("specialist concept fields stay contained at narrow width in both themes",a
 test("wide table pans by pointer on cell surface and remains keyboard scrollable",async ({page}) => {
   await page.setViewportSize({width:1000,height:800});
   await page.locator('[data-pd-id="lab.nav.sportsbook"]').click();
+  const cookieNotice=page.locator('[data-pd-id="cookie-notice"]');
+  if(await cookieNotice.isVisible()) await cookieNotice.getByRole("button",{name:"Understood"}).click();
   const scroller=page.locator('[data-pd-id="lab.ledger-pan.sportsbook"]');
   const cell=scroller.locator("tbody tr").first().locator("td").nth(4);
   await scroller.evaluate(node => {node.scrollLeft=180;});
   const before=await scroller.evaluate(node => node.scrollLeft);
   const box=await cell.boundingBox();
   expect(box).not.toBeNull();
-  await page.mouse.move(box!.x+box!.width-4,box!.y+box!.height-3);
+  await page.mouse.move(box!.x+1,box!.y+box!.height-3);
   await page.mouse.down();
-  await page.mouse.move(box!.x+box!.width-84,box!.y+box!.height-3,{steps:8});
+  await page.mouse.move(box!.x-79,box!.y+box!.height-3,{steps:8});
   await page.mouse.up();
   const after=await scroller.evaluate(node => node.scrollLeft);
   expect(after).toBeGreaterThan(before+25);

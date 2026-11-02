@@ -21,10 +21,10 @@ describe("CP-115 synthetic operations", () => {
     const tasks = buildLabTodayTasks(labRecords, initialLabAccounts, "all").filter(task => task.group === "Needs Action");
     expect(sortLabTodayTasks(tasks)[0].sourceId).toBe("LAB-SB-OVERDUE");
     const overdue = tasks.find(task => task.sourceId === "LAB-SB-OVERDUE")!;
-    expect(labTaskUrgency(overdue)).toBe("Event Passed / Overdue Review");
+    expect(labTaskUrgency(overdue)).toBe("Past Recorded Date");
     expect(labTaskDateLabel(overdue)).toBe("Event passed 30 Oct");
     expect(labTaskDateLabel(tasks.find(task => task.sourceId === "LAB-FB-EXPIRING")!)).toBe("Expires 2 Nov");
-    expect(labTaskUrgency(tasks.find(task => task.sourceId === "LAB-ACCOUNT-C")!)).toBe("No Authoritative Due Date");
+    expect(labTaskUrgency(tasks.find(task => task.sourceId === "LAB-ACCOUNT-C")!)).toBe("No Recorded Date");
   });
 
   it("uses existing Account/provider eligibility and keeps blocked target visible", () => {

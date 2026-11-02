@@ -28,7 +28,7 @@ test("Today separates derived source tasks, reminders and uncertain advice", asy
   await expect(today).toContainText("Review Expiring Free Bet");
   await expect(today).not.toContainText("LAB-FB-001");
   await expect(today.getByRole("region", { name: "Recurring Work" })).toContainText("Check Daily Free Spins");
-  await today.getByRole("region", { name: "Opportunities / Suggestions" }).getByRole("button").click();
+  await today.getByRole("region", { name: "Opportunities / Suggestions" }).getByRole("button",{name:/^Opportunities \/ Suggestions/}).click();
   await today.locator('[data-pd-id="lab.task.signup"]').click();
   await expect(today.locator('[data-pd-id="lab.today.detail"]')).toContainText("Current offer availability is unverified");
   await today.locator('[data-pd-id="lab.today.detail"]').getByRole("button", { name: "Close Task Details" }).click();

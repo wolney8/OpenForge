@@ -120,9 +120,9 @@ test("date and eligible Account editors keep the synthetic owner, saved view res
   await page.getByRole("button", {name:"Save Prospecting"}).click();
   const row = ledger.locator("tbody tr").filter({hasText:"Event pending"});
   await row.locator("td").nth(1).dblclick();
-  await page.getByRole("textbox",{name:/Settles/}).fill("2026-11-05T14:30");
+  await page.getByRole("textbox",{name:/Settles/}).fill("2026-11-05");
   await page.keyboard.press("Enter");
-  await expect(ledger).toContainText("2026-11-05");
+  await expect(ledger).toContainText("5 Nov 2026");
   await row.locator("td").nth(2).dblclick({position:{x:8,y:20}});
   await page.locator('[data-pd-id="lab.floating-cell-editor"]').getByRole("option", {name:"Bookmaker C"}).click();
   await expect(ledger).toContainText("Bookmaker C");

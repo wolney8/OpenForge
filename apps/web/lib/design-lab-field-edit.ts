@@ -1,5 +1,5 @@
 import { labLedgerColumnIds, labLedgerColumnSpecs, type LabLedgerKey, type LabRecord } from "./design-lab-connected-data";
-import { fixtureTypeOptions, freeBetRetentionModeOptions, getAllowedBetTypesForOfferType, getOfferTypeOptions, sportsbookStatusOptions } from "./workbook-options";
+import { accountChannelOptions, accountStatusOptions, cashAdjustmentDirectionOptions, cashAdjustmentTypeOptions, casinoOfferResultOptions, casinoOfferStatusOptions, casinoOfferTypeOptions, fixtureTypeOptions, freeBetRetentionModeOptions, freeBetStatusOptions, getAllowedBetTypesForOfferType, getOfferTypeOptions, sportsbookStatusOptions, sportsbookStrategyOptions } from "./workbook-options";
 
 export type LabFieldChange = { field: string; value: string };
 export type LabEditOutcome = "UNCHANGED" | "APPLIED" | "VALIDATION_FAILED" | "REVIEW_REQUIRED" | "GOVERNED_CORRECTION_REQUIRED" | "UNAVAILABLE";
@@ -10,17 +10,35 @@ export type LabFieldEditCommand = {
   originals: Record<string, string>;
   intent: "inline" | "workbench";
   eligibleAccounts?: string[];
+  eligibleAccountsByField?: Partial<Record<"bookmaker" | "exchange" | "linked_account", string[]>>;
   correctionReason?: string;
 };
 
 const decimal = /^\d+(?:\.\d{1,2})?$/;
 const odds = /^\d+(?:\.\d{1,3})?$/;
 const controlled: Partial<Record<LabLedgerKey, Record<string, readonly string[]>>> = {
-  sportsbook: { match_strategy: ["Standard", "Underlay", "Overlay", "Bonus Lock-In", "Custom"], status: sportsbookStatusOptions },
-  freeBets: { match_strategy: freeBetRetentionModeOptions, status: ["Prospecting", "Available", "Placed", "Settled"] },
-  casino: { offer_type: ["Free Spins", "Wager to earn", "Fixed Spins", "Deposit and Bonus Wagering"], status: ["Prospecting", "Wagering", "Settled"], result: ["Pending", "Won", "Lost"] },
-  cash: { direction: ["In", "Out"], adjustment_type: ["Capital movement", "Withdrawal", "Deposit", "Other"], affects_investment: ["Yes", "No"], affects_cash_snapshot: ["Yes", "No"] },
+  accounts: { status: accountStatusOptions, channel: accountChannelOptions },
+  sportsbook: { match_strategy: sportsbookStrategyOptions, status: sportsbookStatusOptions },
+  freeBets: { match_strategy: freeBetRetentionModeOptions, status: freeBetStatusOptions },
+  casino: { offer_type: casinoOfferTypeOptions, status: casinoOfferStatusOptions, result: casinoOfferResultOptions },
+  extraPlace: { terms: ["1/4", "1/5", "1/6"] },
+  cash: { direction: cashAdjustmentDirectionOptions, adjustment_type: cashAdjustmentTypeOptions, affects_investment: ["Yes", "No"], affects_cash_snapshot: ["Yes", "No"] },
 };
+
+export type LabCellControl = "text" | "date" | "datetime-local" | "money" | "odds" | "boolean" | "select" | "account" | "lifecycle" | "read-only";
+const gridControls: Record<LabLedgerKey, Record<string, LabCellControl>> = {
+  accounts: {account_id:"read-only",account:"read-only",type:"read-only",status:"lifecycle",counts_in_cash_total:"read-only",current_balance:"read-only",pending_withdrawal_amount:"read-only",last_balance_update:"read-only",channel:"select",group_name:"text",platform:"text",actions:"read-only"},
+  sportsbook: {date_settled:"date",bookmaker:"account",event_name:"text",offer_name:"text",offer_details:"text",match_strategy:"select",lay_status:"read-only",back_bet_status:"read-only",displayed_value:"read-only",status:"lifecycle",actions:"read-only"},
+  freeBets: {date_settled:"date",expiry_datetime:"date",bookmaker:"account",offer_name:"text",event_name:"text",offer_details:"text",match_strategy:"select",lay_status:"read-only",back_bet_status:"read-only",displayed_value:"read-only",status:"lifecycle",actions:"read-only"},
+  casino: {date_settling:"date",expiry_datetime:"date",bookmaker:"account",offer_name:"text",game:"text",offer_type:"select",status:"lifecycle",result:"lifecycle",displayed_value:"read-only",actions:"read-only"},
+  extraPlace: {date:"date",runner:"text",bookmaker:"account",stake:"money",backOdds:"odds",terms:"select",placeOdds:"read-only",winLayOdds:"odds",winLayStake:"money",winLiability:"read-only",placeLayOdds:"odds",placeLayStake:"money",placeLiability:"read-only",rating:"read-only",impliedOdds:"read-only",qualLoss:"read-only",epProfit:"read-only",actions:"read-only"},
+  cash: {cash_adjustment_id:"read-only",adjustment_date:"date",direction:"select",adjustment_type:"select",amount:"money",signed_amount:"read-only",affects_investment:"select",affects_cash_snapshot:"select",linked_account:"account",description:"text",week_label:"read-only",calculation_state:"read-only",actions:"read-only"},
+};
+export function labCellControl(ledger: LabLedgerKey, field: string, sourceValue = ""): LabCellControl {
+  const control = gridControls[ledger][field];
+  if (!control) return "read-only";
+  return control === "date" && sourceValue.includes("T") ? "datetime-local" : control;
+}
 
 // This describes presentation dependencies only. No new financial calculation is performed.
 const dependencies: Partial<Record<LabLedgerKey, Record<string, readonly string[]>>> = {
@@ -74,6 +92,14 @@ export function validLabDateInput(value: string, requireTime = false): boolean {
     && (match[4] === undefined || (Number(match[4]) < 24 && Number(match[5]) < 60));
 }
 
+export function displayLabLocalDate(value: string): string {
+  if (!validLabDateInput(value)) return value;
+  const [date,time] = value.split("T");
+  const [year,month,day] = date.split("-").map(Number);
+  const monthName = new Intl.DateTimeFormat("en-GB", {month:"short",timeZone:"UTC"}).format(new Date(Date.UTC(year,month-1,day)));
+  return `${day} ${monthName} ${year}${time ? ` · ${time}` : ""}`;
+}
+
 export function evaluateLabFieldEdit(command: LabFieldEditCommand): LabEditResult {
   const { record, originals } = command;
   const specs = labLedgerColumnSpecs(record.section);
@@ -102,13 +128,14 @@ export function evaluateLabFieldEdit(command: LabFieldEditCommand): LabEditResul
       if (change.value && (!requested || Number(change.value) > Number(requested))) return { outcome: "VALIDATION_FAILED", message: "Matched Lay Stake cannot exceed requested Lay Stake." };
     }
     const offerType = command.changes.find(item=>item.field==="offer_type")?.value ?? originals.offer_type;
-    const choices = labCellChoices(record.section, change.field, command.eligibleAccounts, originals[change.field], offerType);
+    const eligibleForField = change.field === "bookmaker" || change.field === "exchange" || change.field === "linked_account" ? command.eligibleAccountsByField?.[change.field] ?? command.eligibleAccounts : command.eligibleAccounts;
+    const choices = labCellChoices(record.section, change.field, eligibleForField, originals[change.field], offerType);
     if (choices.length && !choices.includes(change.value)) return { outcome: "VALIDATION_FAILED", message: "Choose a permitted value." };
     if (authority !== "descriptive" && !planning) {
       if (command.intent === "workbench" && !command.correctionReason?.trim()) return { outcome: "VALIDATION_FAILED", message: "Enter a reason for this financial correction." };
       return { outcome: "GOVERNED_CORRECTION_REQUIRED", message: "Review the recorded execution or financial correction in the prefilled workbench. This lab has no validated correction fixture." };
     }
-    if (change.field === "bookmaker" && !command.eligibleAccounts?.includes(change.value) && change.value !== originals.bookmaker) return { outcome: "VALIDATION_FAILED", message: "Choose an eligible Account for this Profile." };
+    if (["bookmaker", "exchange", "linked_account"].includes(change.field) && !eligibleForField?.includes(change.value) && change.value !== originals[change.field]) return { outcome: "VALIDATION_FAILED", message: "Choose an eligible Account for this Profile." };
     for (const field of labDependentReviewFields(record.section, change.field)) review.add(field);
   }
   return { outcome: "APPLIED", changes: changed, reviewFields: [...review] };

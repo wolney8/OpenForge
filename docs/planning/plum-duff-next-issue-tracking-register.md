@@ -1,5 +1,9 @@
 # Plum Duff Next Issue Tracking Register
 
+## CP-119D Today and ledger input corrections — 2026-11-02
+
+`PD-PR-119D-01–08` preserve the owner's Track All, completion/history, zero-badge, controlled-dropdown, picker, GBP-display and regression requirements in the [UI change register](../agent-contracts/plum-duff-ui-change-register.md#cp-119d-today-and-ledger-inputs--2026-11-02). These are lab-only acceptance defects under open [issue #114](https://github.com/wolney8/OpenForge/issues/114); individual live issue sync remains unverified. Normal-app migration remains separately gated.
+
 ## CP-119C floating ledger editing — 2026-11-02
 
 `PD-PR-119C-01–07` retain the owner screenshot comparison, floating cell geometry and keyboard contract, compact governed selectors, shared inline/workbench authority, dependent review, typed placement evidence, regression/custody requirements, and a discovered 200% zoom lab-icon overflow in the [UI change register](../agent-contracts/plum-duff-ui-change-register.md#cp-119c-floating-ledger-editor--2026-11-02). CP-119B editing remains owner rejected; this is a lab-only replacement under verified-open [Design Lab issue #114](https://github.com/wolney8/OpenForge/issues/114). Live CP-119C subitem sync is unverified. Production correction persistence and any normal ledger migration require separate authority and owner approval.

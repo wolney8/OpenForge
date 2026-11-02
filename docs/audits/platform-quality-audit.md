@@ -1,5 +1,17 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
+## CP-119D Today and ledger input coverage — 2026-11-02
+
+| Requirement | Lab treatment / authority | Outstanding |
+| --- | --- | --- |
+| Bulk tracking | One atomic collection update over filtered List/Board task IDs; collapsed group scope includes its children. | Owner workflow review; no real persistence. |
+| Done and resolution | Manual occurrence Done is Profile-specific; advisory Done is an annotation only; unresolved source tasks require source action. Resolved source transitions once to active Done/tick/fade, then retained history. | No production task-history authority. |
+| Six-ledger input map | Accounts: Account observation; status lifecycle; channel select; descriptive text; protected ID/derived money. Sportsbook: date, Bookmaker Account, strategy/status select, text, composite Back/Lay review, derived value. Free Bets: expiry date/date-time, Bookmaker, SNR/SR, lifecycle, text, protected financial outcomes. Casino: expiry, Bookmaker, Offer Type/result/lifecycle selects, text, protected value. Extra Place: date/date-time, Bookmaker, terms select, stake/odds, protected outcomes. Cash: date, direction/type/Boolean selects, Account, amount, text, protected signed amount. | Only visible approved columns have grid controls; specialist financial Save remains unavailable without fixtures. |
+| Currency and dependency | Canonical `formatFinancialValue` for non-zero valid money, explicit £0.00 for authoritative zero, raw decimal input retained; changed dependent values stay Needs Review/Unavailable. | No new calculation authority. |
+| Scope | Protected synthetic Design Lab; CP-117 flag and normal routes unchanged. | Owner visual and manual screen-reader review pending. |
+
+**Verification:** final-source full browser run 108/109; the only failure was a tracked-header actual 200% zoom timeout, and that same case passed twice when rerun alone. The 15 focused field/task units, web typecheck, isolated webpack build, changed-file lint and visual capture checks passed. Private synthetic screenshots at `/tmp/openforge-cp119d-evidence/` cover 1440/900/768/430/390px, light/dark and actual browser 200% zoom. Broad web lint retains the unrelated normal Free Bet ref-during-render error and 12 warnings. Manual screen-reader testing and owner acceptance are **UNVERIFIED**.
+
 ## CP-119C floating ledger editing coverage — 2026-11-02
 
 | Requirement | Lab evidence / treatment | Remaining acceptance |

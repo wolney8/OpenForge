@@ -1,5 +1,9 @@
 # Project Roadmap — Plum Duff / OpenForge — Doc ID: PR-CODEX-001
 
+## CP-119D Today and ledger input owner review — 2026-11-02
+
+Review filtered Track All, governed Done/history, zero badge, six-ledger choice/date controls and GBP money display in protected `/design-lab`. Production Today/ledger migration, specialist financial Save and real task persistence remain separate gates. [Coverage](docs/audits/platform-quality-audit.md#cp-119d-today-and-ledger-input-coverage--2026-11-02).
+
 ## CP-119C floating ledger editor owner review — 2026-11-02
 
 Review the owner-screenshot-matched floating editor, compact single-choice list, common field command, dependent review cues and explicit placement evidence at protected `/design-lab`. The CP-119B inline interaction was rejected; normal ledger migration and financial correction persistence remain separate approvals. [Coverage](docs/audits/platform-quality-audit.md#cp-119c-floating-ledger-editing-coverage--2026-11-02).

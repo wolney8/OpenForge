@@ -121,7 +121,7 @@ test("inline and workbench descriptive edits share a record and audit; dependent
   const prospect=page.locator('tr[data-lab-row-id="LAB-SB-PROSPECT-B"]');
   await prospect.locator('td[data-lab-column="5"]').dblclick();
   const editor=page.locator('[data-pd-id="lab.floating-cell-editor"]');
-  await editor.getByRole("option",{name:"Underlay"}).click();
+  await editor.getByRole("option",{name:"Underlay",exact:true}).click();
   await expect(prospect).toContainText("Underlay");
   await expect(prospect.getByRole("button",{name:/Review Value dependencies/})).toBeVisible();
   await expect(prospect).toContainText("Unavailable · Needs Review");

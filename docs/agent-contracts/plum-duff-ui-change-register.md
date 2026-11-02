@@ -1150,3 +1150,18 @@ The owner rejected CP-119B's expanding in-cell editor. These are `PROPOSED — L
 | PD-PR-119C-05 | Dependency review cues and unavailable financial results where fixtures cannot validate | NEEDS VERIFICATION — synthetic browser/unit pass; owner review pending |
 | PD-PR-119C-06 | Browser geometry, regression, accessibility, isolation and non-main custody | NEEDS VERIFICATION — 104/104 final browser pass, 18 focused units, typecheck, changed-file lint and isolated webpack build pass; remote receipt at handoff; manual screen reader pending |
 | PD-PR-119C-07 | Contain a CP-112 lab icon's 3px overflow at actual Chromium 200% zoom, without changing normal UI | NEEDS VERIFICATION — full browser 200% case pass; owner visual review pending |
+
+## CP-119D Today and ledger inputs — 2026-11-02
+
+`PROPOSED — LAB ONLY`. Owner observations remain open acceptance defects. Nearest equivalents: CP-118D tracked tray and task-state authority, CP-119C shared floating grid editor, workbook lookup options, normal Material picker fields and `financial-display.ts`. [Issue #114](https://github.com/wolney8/OpenForge/issues/114) is the open area link; individual items are tracked here pending live issue sync.
+
+| ID | Requested outcome | Status |
+| --- | --- | --- |
+| PD-PR-119D-01 | Atomic Track All/Untrack All within filtered List and Board groups | NEEDS VERIFICATION — pointer browser cases pass; owner review pending |
+| PD-PR-119D-02 | Governed Done action in banner/header for manual, advisory and source-backed work | NEEDS VERIFICATION — browser cases pass; owner review pending |
+| PD-PR-119D-03 | One-time resolved-source tick, active fade and retained Profile-scoped history | NEEDS VERIFICATION — browser transition passes; manual screen reader pending |
+| PD-PR-119D-04 | No numeric zero badge for empty active tracked tasks | NEEDS VERIFICATION — browser case passes; owner review pending |
+| PD-PR-119D-05 | Six-ledger field/control map, visible controlled-choice affordances and authoritative options | NEEDS VERIFICATION — source/unit/browser checks pass; owner review pending |
+| PD-PR-119D-06 | Date-only and datetime picker precision without inferred timestamps | NEEDS VERIFICATION — source/unit/browser checks pass; owner review pending |
+| PD-PR-119D-07 | Canonical GBP display for edited money while preserving raw inputs and unknown/zero | NEEDS VERIFICATION — stake `2` browser case passes; owner review pending |
+| PD-PR-119D-08 | Full final-source regression, isolated custody and owner review | NEEDS VERIFICATION — full browser run 108/109; one zoom launch timeout passed twice in isolation; owner review pending |

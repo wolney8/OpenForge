@@ -4,7 +4,7 @@ import { createPortal } from "react-dom";
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import styles from "./design-lab-connected.module.css";
 
-export function DesignLabFloatingCellEditor({ anchor, label, value, originalValue, onChange, onCommit, onCancel, error, choices, multiline, children, onAdvance }: {
+export function DesignLabFloatingCellEditor({ anchor, label, value, originalValue, onChange, onCommit, onCancel, error, choices, inputType = "text", multiline, children, onAdvance }: {
   anchor: HTMLElement | null;
   label: string;
   value: string;
@@ -14,6 +14,7 @@ export function DesignLabFloatingCellEditor({ anchor, label, value, originalValu
   onCancel: (reason: "keyboard" | "outside") => void;
   error: string;
   choices?: string[];
+  inputType?: "text" | "date" | "datetime-local";
   multiline?: boolean;
   children?: ReactNode;
   onAdvance?: (direction: -1 | 1) => void;
@@ -43,7 +44,7 @@ export function DesignLabFloatingCellEditor({ anchor, label, value, originalValu
     window.addEventListener("scroll", update, true);
     return () => { window.removeEventListener("resize", update); window.removeEventListener("scroll", update, true); };
   }, [anchor, choices, multiline]);
-  useEffect(() => { if (choices) { if (choices.length > 8) searchInput.current?.focus(); else choiceList.current?.focus(); } else { input.current?.focus(); input.current?.select(); } }, [choices]);
+  useEffect(() => { if (choices) { if (choices.length > 8) searchInput.current?.focus(); else choiceList.current?.focus(); } else { input.current?.focus(); if(inputType === "text") input.current?.select(); } }, [choices,inputType]);
   useLayoutEffect(() => {
     if (!(input.current instanceof HTMLTextAreaElement)) return;
     input.current.style.height = "auto";
@@ -89,7 +90,7 @@ export function DesignLabFloatingCellEditor({ anchor, label, value, originalValu
     {children ?? (choices ? <>{choices.length > 8 ? <input aria-activedescendant={visibleChoices[activeChoice] ? `lab-cell-option-${activeChoice}` : undefined} aria-controls="lab-cell-options" aria-expanded="true" aria-label="Search Options" className={styles.floatingCellInput} onChange={event => {setChoiceQuery(event.target.value);setActiveChoice(0);}} placeholder="Search Options" ref={searchInput} role="combobox" type="search" value={choiceQuery}/> : null}<div aria-activedescendant={visibleChoices[activeChoice] ? `lab-cell-option-${activeChoice}` : undefined} aria-label={`${label} options`} className={styles.floatingChoiceList} id="lab-cell-options" ref={choiceList} role="listbox" tabIndex={0}>
       {visibleChoices.map((choice, index) => <button aria-selected={choice === value} className={`${styles.floatingChoice} ${index === activeChoice ? styles.floatingChoiceActive : ""}`} data-pd-id={`lab.cell-option.${choice}`} id={`lab-cell-option-${index}`} key={choice} onClick={() => select(choice)} role="option" tabIndex={-1} type="button"><span>{choice}</span>{choice === value ? <span aria-hidden="true" className="material-symbols-outlined">check</span> : null}</button>)}
       {!visibleChoices.length ? <span className={styles.floatingChoice}>No matching options</span> : null}
-    </div></> : multiline ? <textarea aria-label={label} className={styles.floatingCellInput} onChange={event => onChange(event.target.value)} ref={input as React.RefObject<HTMLTextAreaElement>} rows={Math.min(8, Math.max(2, value.split("\n").length))} value={value}/> : <input aria-label={label} className={styles.floatingCellInput} onChange={event => onChange(event.target.value)} ref={input as React.RefObject<HTMLInputElement>} type="text" value={value}/>) }
+    </div></> : multiline ? <textarea aria-label={label} className={styles.floatingCellInput} onChange={event => onChange(event.target.value)} ref={input as React.RefObject<HTMLTextAreaElement>} rows={Math.min(8, Math.max(2, value.split("\n").length))} value={value}/> : <input aria-label={label} className={styles.floatingCellInput} onChange={event => onChange(event.target.value)} ref={input as React.RefObject<HTMLInputElement>} type={inputType} value={value}/>) }
     {error ? <p className={styles.floatingCellError} role="alert">{error}</p> : null}
   </div>, document.body);
 }
