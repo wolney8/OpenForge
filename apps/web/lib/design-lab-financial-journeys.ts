@@ -7,7 +7,7 @@ import type { LabRecord } from "./design-lab-connected-data";
 
 export type LabFreeBetChild = { id:string; faceValue:string; status:"Available"|"Placed"|"Settled"; result:"Pending"|"Back Won"|"Lay Won"|"Void"; retentionMode:"SNR"|"SR"; actualLayStake:string; matchedLayStake:string; backConfirmed:boolean; layConfirmed:boolean; finalPnl:string|null };
 export type LabFreeBetJourney = { profileId:LabProfileId; sourceId:string; awardGroupId:string; sourceStatus:"Placed"|"Free Bet Awarded"; prospectSaved:boolean; awardIssued:boolean; awardSplits:string[]; children:LabFreeBetChild[]; history:string[]; failedSave:boolean };
-export type LabCasinoJourney = { id:string; profileId:LabProfileId; offerType:string; status:"Prospecting"|"Started"|"In Progress"|"Settled"; ownCashCommitted:string; bonusCredit:string; wagerMultiplier:string; spinStake:string; cashReturned:string; rewardConverted:string; otherCosts:string; confirmedNetResult:string; completedAt:string; history:string[]; failedSave:boolean };
+export type LabCasinoJourney = { id:string; profileId:LabProfileId; offerType:string; status:"Prospecting"|"Started"|"In Progress"|"Settled"; ownCashCommitted:string; cashStake:string; bonusCredit:string; wagerMultiplier:string; spinStake:string; cashReturned:string; rewardConverted:string; otherCosts:string; confirmedNetResult:string; completedAt:string; history:string[]; failedSave:boolean };
 export const cp116FreeFixture=financialFixture.free_bet;
 export const cp116CasinoFixture=financialFixture.casino;
 const sourceBridge=bridgeFixture.cases.find(item=>item.case_id===cp116FreeFixture.source_case);
@@ -15,13 +15,13 @@ if(!sourceBridge || sourceBridge.expected.created_free_bet_status!=="Available" 
 const splitBridge=bridgeFixture.cases.find(item=>item.case_id===cp116FreeFixture.split_source_case);
 if(!splitBridge || splitBridge.expected.created_free_bet_count!==2 || splitBridge.expected_award_value!==cp116FreeFixture.expected_award) throw new Error("CP-116 split award fixture mismatch");
 export const initialFreeBetJourney:LabFreeBetJourney={profileId:"LAB-PROFILE-A",sourceId:cp116FreeFixture.source_id,awardGroupId:cp116FreeFixture.award_group_id,sourceStatus:"Placed",prospectSaved:false,awardIssued:false,awardSplits:[cp116FreeFixture.face_value],children:[],history:[],failedSave:false};
-export const initialCasinoJourney:LabCasinoJourney={id:cp116CasinoFixture.record_id,profileId:"LAB-PROFILE-A",offerType:"Free Spins",status:"Prospecting",ownCashCommitted:"",bonusCredit:"",wagerMultiplier:"",spinStake:"",cashReturned:"",rewardConverted:"",otherCosts:"",confirmedNetResult:"",completedAt:"",history:[],failedSave:false};
+export const initialCasinoJourney:LabCasinoJourney={id:cp116CasinoFixture.record_id,profileId:"LAB-PROFILE-A",offerType:"Free Spins",status:"Prospecting",ownCashCommitted:"",cashStake:"",bonusCredit:"",wagerMultiplier:"",spinStake:"",cashReturned:"",rewardConverted:"",otherCosts:"",confirmedNetResult:"",completedAt:"",history:[],failedSave:false};
 export function exactCents(raw:string):number|null {if(!hasCompleteDecimalInputSyntax(raw)||!/^[0-9]+(?:\.[0-9]{1,2})?$/.test(raw))return null;const value=Number(raw);return Number.isSafeInteger(Math.round(value*100))?Math.round(value*100):null;}
 function validIsoDate(value:string):boolean {if(!/^\d{4}-\d{2}-\d{2}$/.test(value))return false;const date=new Date(`${value}T12:00:00Z`);return !Number.isNaN(date.valueOf())&&date.toISOString().slice(0,10)===value;}
 export function previewFreeBetAward(journey:LabFreeBetJourney,splits:string[]):{allowed:boolean;reason:string;total:string|null} {
-  if(journey.awardIssued)return {allowed:false,reason:"This award group was already issued. Retry cannot duplicate its children.",total:null};
   const cents=splits.map(exactCents);if(!splits.length||cents.some(item=>item===null||item<=0))return {allowed:false,reason:"Enter a positive exact-cents value for every split.",total:null};
   const total=cents.reduce<number>((sum,value)=>sum+(value??0),0);const expected=exactCents(cp116FreeFixture.expected_award)!;
+  if(journey.awardIssued)return {allowed:false,reason:"This award group was already issued. Retry cannot duplicate its children.",total:(total/100).toFixed(2)};
   const splitRows=splitBridge?.split_rows??[];
   const fixtureShape=splits.length===1&&journey.sourceId===cp116FreeFixture.source_id&&cents[0]===expected || splits.length===2&&journey.sourceId===cp116FreeFixture.split_source_id&&splits.every((value,index)=>Number(value).toFixed(2)===splitRows[index]?.free_bet_value);
   return {allowed:total===expected&&fixtureShape,reason:total!==expected?"The split total differs from the expected award; this fixture has no reviewed variance reason.":fixtureShape?"Reviewed award matches the source fixture.":"This source/split combination has no validated award fixture.",total:(total/100).toFixed(2)};

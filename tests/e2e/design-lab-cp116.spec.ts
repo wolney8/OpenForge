@@ -153,6 +153,11 @@ test("split award is source-specific, retry is idempotent, and unsupported settl
   await expect(workbench.getByRole("alert")).toContainText("Save Failed");
   await workbench.getByRole("button",{name:"Confirm Reviewed Award"}).click();
   await expect(workbench).toContainText("Issued 2 Profile A Free Bets");
+  await expect(workbench).toContainText("actual split total £ 5.00");
+  await expect(page.locator('[data-pd-id="lab.cp116.award.split.0"]')).toBeDisabled();
+  await expect(workbench.getByRole("button",{name:"Add Split"})).toBeDisabled();
+  await expect(workbench.getByRole("button",{name:"Remove Last Split"})).toBeDisabled();
+  await capture(page,"cp116-issued-award-locked-1440.png");
   await workbench.getByRole("button",{name:"Planning"}).click();
   await expect(workbench).toContainText("no fixture for this split");
   await workbench.getByRole("button",{name:"Placement"}).click();
@@ -160,4 +165,27 @@ test("split award is source-specific, retry is idempotent, and unsupported settl
   await workbench.getByLabel("Lay bet confirmed externally").check();
   await workbench.getByRole("button",{name:"Record Placement"}).click();
   await expect(workbench.getByRole("alert")).toContainText("no validated placement fixture");
+});
+
+test("Casino wagering base follows existing cash and bonus authority",async({page})=>{
+  await page.locator('[data-pd-id="lab.nav.casino"]').click();
+  await page.locator('[data-pd-id="lab.concept-add.casino"]').click();
+  const workbench=page.locator('[data-pd-id="lab.cp116.casino-workbench"]');
+  await page.locator('[data-pd-id="lab.cp116.casino-type"]').click();
+  await page.getByRole("option",{name:"Wager To Earn Reward"}).click();
+  await workbench.getByRole("button",{name:"Wagering"}).click();
+  await page.locator('[data-pd-id="lab.cp116.casino-cash-stake"]').fill("10.00");
+  await workbench.getByLabel("Wager Multiplier").fill("2");
+  await expect(workbench.locator("dd").getByText("Cash Stake",{exact:true})).toBeVisible();
+  await expect(workbench.getByText("£ 20.00",{exact:true})).toBeVisible();
+  await workbench.getByRole("button",{name:"Setup"}).click();
+  await page.locator('[data-pd-id="lab.cp116.casino-type"]').click();
+  await page.getByRole("option",{name:"Deposit And Bonus Wagering"}).click();
+  await workbench.getByRole("button",{name:"Wagering"}).click();
+  await page.locator('[data-pd-id="lab.cp116.casino-cash-stake"]').fill("5.00");
+  await workbench.getByLabel("Bonus Credit").fill("10.00");
+  await expect(workbench.locator("dd").getByText("Deposit + Bonus",{exact:true})).toBeVisible();
+  await expect(workbench.getByText("£ 30.00",{exact:true})).toBeVisible();
+  await expect(workbench.getByLabel("Own Cash Committed")).toBeEmpty();
+  await capture(page,"cp116-deposit-bonus-wagering-1440.png");
 });

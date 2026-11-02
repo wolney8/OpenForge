@@ -2361,3 +2361,7 @@ Local checklist under [Design Lab issue #114](https://github.com/wolney8/OpenFor
 ## CP-116 connected financial lab journeys — 2026-11-02
 
 `PD-PR-116-01–05` retain the owner's separate Free Bet/Casino Add/Edit, lifecycle, report, fixture and isolation requirements in the [UI change register](../agent-contracts/plum-duff-ui-change-register.md#cp-116-connected-synthetic-free-bet-and-casino-journeys--2026-11-02). Implementation is LAB ONLY; no normal financial authority is amended. Existing issue #114 provides local checklist coverage; live subitem sync is unverified.
+
+## CP-116 focused workflow review — 2026-11-02
+
+`PD-PR-116-06–09` track the owner's four assessment candidates in the [UI change register](../agent-contracts/plum-duff-ui-change-register.md#cp-116-focused-workflow-review--2026-11-02). Issued award controls and the Casino wagering base need bounded lab corrections; lifecycle labels and SNR/SR outputs are retained after contract/fixture inspection. No new financial authority is requested. Issue [#114](https://github.com/wolney8/OpenForge/issues/114) covers the lab; live subitem sync is unverified.

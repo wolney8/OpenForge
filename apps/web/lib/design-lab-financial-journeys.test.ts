@@ -8,6 +8,7 @@ describe("CP-116 synthetic financial fixture boundary",()=>{
     const issued=issueFreeBetAward(split,["3.00","2.00"]);
     expect(issued.children.map(child=>child.faceValue)).toEqual(["3.00","2.00"]);
     expect(issued.sourceStatus).toBe("Free Bet Awarded");
+    expect(previewFreeBetAward(issued,["3.00","2.00"])).toMatchObject({allowed:false,total:"5.00"});
     expect(issueFreeBetAward(issued,["3.00","2.00"])).toEqual(issued);
     expect(previewFreeBetAward(initialFreeBetJourney,["3.00","1.00"]).allowed).toBe(false);
   });

@@ -1199,3 +1199,14 @@ Owner-authorised lab-only follow-on to verified CP-119F. Existing calculation an
 | PD-PR-116-03 | Conditional Casino setup, wagering, reward, confirmed net settlement and reporting | Casino offer types, wagering/EV and resolved-value contracts · NEEDS VERIFICATION (owner) · PROPOSED — LAB ONLY |
 | PD-PR-116-04 | Strict input, draft/failure recovery, audit, Profile isolation, no invented financial outputs | Existing lab guards and financial safety rules · NEEDS VERIFICATION (owner) · PROPOSED — LAB ONLY |
 | PD-PR-116-05 | Complete Design Lab regression, financial fixture parity, separate non-main checkpoint | 121/121 browser, 3/3 web unit, 1/1 pure-engine fixture, typecheck/build/changed-file lint pass · NEEDS VERIFICATION (owner) · PROPOSED — LAB ONLY |
+
+## CP-116 focused workflow review — 2026-11-02
+
+`PROPOSED — LAB ONLY`. Issue [#114](https://github.com/wolney8/OpenForge/issues/114) covers the Design Lab; live subitem sync is unverified. The existing award bridge and casino calculation helper remain the authorities. These are assessed candidates, not a new financial feature tranche.
+
+| ID | Candidate / nearest equivalent | Assessment and action |
+| --- | --- | --- |
+| PD-PR-116-06 | Issued Free Bet award controls / reviewed award bridge | A — workflow representation defect. Issued split inputs and controls are disabled; issued £5.00 total remains visible; duplicate command guard retained. NEEDS VERIFICATION — browser/unit pass; owner review pending. |
+| PD-PR-116-07 | Casino wagering base / normal Casino workflow and `calculateWagerTarget` | A — calculation presentation defect. Relevant Cash Stake/Deposit input and derived base are visible; existing helper yields Cash Stake £20.00 and Deposit + Bonus £30.00 for tested inputs. NEEDS VERIFICATION — browser pass; owner review pending. |
+| PD-PR-116-08 | Casino lifecycle labels / casino workflow contract | CODE-VERIFIED: Prospecting, Started, In Progress and Settled match contract; workflow sections are separate. No implementation change. NEEDS VERIFICATION (owner). |
+| PD-PR-116-09 | SNR/SR lay values / Free Bet pure engine fixtures | PROVEN by rerun pure-engine fixture; distinct SNR/SR outputs retained. No implementation change. NEEDS VERIFICATION (owner). |
