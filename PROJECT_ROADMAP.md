@@ -1,5 +1,9 @@
 # Project Roadmap — Plum Duff / OpenForge — Doc ID: PR-CODEX-001
 
+## CP-118B Today owner visual review — 2026-11-02
+
+Compare the rejected CP-118 expanded task columns with the compact priority List, contextual detail, recurring Profile children, Board and narrow view at `/design-lab`. Decide whether this task interaction direction should continue as a lab baseline. Normal `/tasks` migration, persistent task annotations and Wave 2 remain separately gated. [Coverage](docs/audits/platform-quality-audit.md#cp-118b-today-design-lab-coverage--2026-11-02).
+
 ## CP-118 lab owner review — 2026-11-02
 
 Review copy failure/retry, workbench alignment, spreadsheet selection/pan, Today task annotations/tray, truthful Reports chart modes and four specialist Add/Edit previews at protected `/design-lab`. `PD-UX-0.2` remains lab-only; CP-116 specialist financial lifecycles and Waves 2–4 require separate approval. [Coverage](docs/audits/platform-quality-audit.md#cp-118-design-lab-interaction-coverage--2026-11-02).

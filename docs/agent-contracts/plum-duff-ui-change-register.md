@@ -1,5 +1,20 @@
 # Plum Duff UI Change Register
 
+## CP-118B Today revision — 2026-11-02
+
+`CP-118 TODAY — OWNER REJECTED`: the expanded, two-column CP-118 task presentation is retained as private comparison evidence, not an accepted visual baseline. All entries below are `PROPOSED — LAB ONLY`; source task, Profile, notification and financial authorities remain protected. The existing Design Lab Today queue, `DesignLabSelect`, anchored overlays and normal `/tasks` list are the nearest equivalents. [Design Lab issue #114](https://github.com/wolney8/OpenForge/issues/114) is the local tracking link; live issue mutation is unverified.
+
+| ID | Requested outcome | Status |
+| --- | --- | --- |
+| PD-PR-118B-01 | Compact urgency-first List, correct source-date meaning, secondary suggestions | NEEDS VERIFICATION — lab tests pass; owner visual review pending |
+| PD-PR-118B-02 | Details pane and responsive return/focus, with source navigation context | NEEDS VERIFICATION — lab tests pass; manual screen reader pending |
+| PD-PR-118B-03 | Per-Profile recurring grouping; List/Board over one task collection | NEEDS VERIFICATION — lab tests pass; owner review pending |
+| PD-PR-118B-04 | Profile/type/urgency/state/provider/period filters and deterministic sort | NEEDS VERIFICATION — lab tests pass; owner review pending |
+| PD-PR-118B-05 | Separate source resolution, workflow annotation and notification read/clear | NEEDS VERIFICATION — lab tests pass; normal authority unchanged |
+| PD-PR-118B-06 | Reference comparison, responsive/keyboard/zoom/theme evidence and prior regression | NEEDS VERIFICATION — private comparison and browser suite pass; owner visual/screen-reader review pending |
+
+Lab-only presentation exception: replace the CP-118 peer-column task cards and always-visible selectors/actions with a priority list and contextual task details. Retain the existing source action, manual-only completion rule, synthetic task identity and active-task tray. Board changes workflow annotations only; no drag-only interaction or new persistence authority.
+
 ## CP-118 Design Lab interaction batch — 2026-11-02
 
 Owner-approved lab exploration only; normal CP-117 shell, business authorities and Wave 2–4 remain unchanged. Existing lab select, StatusToast, spreadsheet grid, workbench, Today and Reports are the nearest equivalents. `PD-UX-0.2` is proposed, not a normal-app contract.
@@ -10,7 +25,7 @@ Owner-approved lab exploration only; normal CP-117 shell, business authorities a
 | PD-PR-118-02 | Shared two-column peer-card top alignment on every workbench step | CP-114 workbench grid/fieldsets | NEEDS VERIFICATION — automated lab evidence passed; owner visual/screen-reader review pending |
 | PD-PR-118-03 | Hide Selected Range during Add/Edit while retaining range state | Lab context selector; real range authority unchanged | NEEDS VERIFICATION — automated lab evidence passed; owner visual/screen-reader review pending |
 | PD-PR-118-04 | Governed direct cell editors and horizontal drag-to-pan with keyboard fallback | CP-114B spreadsheet grid | NEEDS VERIFICATION — automated lab evidence passed; owner visual/screen-reader review pending |
-| PD-PR-118-05 | Today two-column layout, task states and compact persistent active-task panel | CP-115 Today queue | NEEDS VERIFICATION — automated lab evidence passed; owner visual/screen-reader review pending |
+| PD-PR-118-05 | Today two-column layout, task states and compact persistent active-task panel | CP-115 Today queue | OWNER REJECTED for expanded two-column Today presentation; CP-118B lab revision under review. Annotation/source safeguards retained. |
 | PD-PR-118-06 | Shared Reports Chart Type with truthful data compatibility | CP-113 report chart; financial fixtures | NEEDS VERIFICATION — automated lab evidence passed; owner visual/screen-reader review pending |
 | PD-PR-118-07 | Free Bet, Casino, Extra Place and Cash Adjustment interactive concepts | Existing lab previews; protected ledger contracts | NEEDS VERIFICATION — automated lab evidence passed; owner visual/screen-reader review pending |
 | PD-PR-118-08 | `PD-UX-0.2` Title Case, concise copy, action hierarchy and no decorative glow/pulse | PD-UX-0.1 tokens; Material status/focus | NEEDS VERIFICATION — automated lab evidence passed; owner visual/screen-reader review pending |

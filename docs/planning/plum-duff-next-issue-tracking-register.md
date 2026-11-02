@@ -1,5 +1,9 @@
 # Plum Duff Next Issue Tracking Register
 
+## CP-118B Today revision — 2026-11-02
+
+`PD-PR-118B-01` through `PD-PR-118B-06` retain the owner's distinct list, detail, recurring/Board, filtering, authority and visual-evidence requirements in the [UI change register](../agent-contracts/plum-duff-ui-change-register.md#cp-118b-today-revision--2026-11-02). CP-118 Today is **OWNER REJECTED**; other CP-118 work is not rejected by implication. [Design Lab issue #114](https://github.com/wolney8/OpenForge/issues/114) is the existing coverage link; live issue mutation remains unverified. The CP-118B lab proposal awaits owner visual review, with normal `/tasks` unchanged.
+
 ## CP-118 Design Lab interactions — 2026-11-02
 
 Owner requests PD-PR-118-01 through 09 are retained individually in the [UI change register](../agent-contracts/plum-duff-ui-change-register.md#cp-118-design-lab-interaction-batch--2026-11-02), linked locally to [Design Lab issue #114](https://github.com/wolney8/OpenForge/issues/114). Scope: copy failure/retry; paired-card alignment; Add/Edit range visibility; spreadsheet editing/pan; Today tasks/tray; truthful chart modes; four specialist concepts; `PD-UX-0.2`; regression/isolation. All are lab-only. Live GitHub issue mutation is unverified; no prior request is closed.

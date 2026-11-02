@@ -1,12 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { buildLabTodayTasks, copyLabReload, labManagedFeeSummary, labOfferTargets, labReloadDefinition, type LabCopyResult, type LabOfferProfile } from "@/lib/design-lab-operations";
+import { useState } from "react";
+import { copyLabReload, labManagedFeeSummary, labOfferTargets, labReloadDefinition, type LabCopyResult, type LabOfferProfile } from "@/lib/design-lab-operations";
 import { labProfiles, summarizeDesignLab, type LabAccount, type LabRange, type LabScope, type LabProfileId } from "@/lib/design-lab-fixture";
 import type { LabRecord } from "@/lib/design-lab-connected-data";
 import { formatFinancialValue } from "@/lib/financial-display";
 import { StatusToast } from "@/components/status-toast";
-import { DesignLabSelect } from "@/components/design-lab-select";
 import styles from "./design-lab-connected.module.css";
 import local from "./design-lab-operations.module.css";
 
@@ -25,33 +24,6 @@ export function DesignLabPositionTable({ accounts, scope, range, onOpenReport }:
 }
 
 export type LabTaskWorkState = "To Do" | "In Progress" | "Blocked" | "Do Later" | "Done";
-export function DesignLabToday({ scope, records, accounts, done, deferred, onDoneChange, onDeferredChange, onOpenSource, onOpenOffer, onInspectHistory, taskStates, taskNotes, onTaskState, onTaskNote, onActivateTask }: {
-  scope: LabScope; records: LabRecord[]; accounts: LabAccount[];
-  done: string[]; deferred: string[]; onDoneChange: (next: string[]) => void; onDeferredChange: (next: string[]) => void;
-  onOpenSource: (id: string) => void; onOpenOffer: () => void; onInspectHistory: () => void;
-  taskStates: Record<string,LabTaskWorkState>; taskNotes: Record<string,string>; onTaskState: (id:string,state:LabTaskWorkState) => void; onTaskNote: (id:string,note:string) => void; onActivateTask: (id:string) => void;
-}) {
-  const tasks = useMemo(() => buildLabTodayTasks(records, accounts, scope), [records, accounts, scope]);
-  return <div className={local.today} data-pd-id="lab.today">
-    {(["Needs Action", "Recurring Work", "Opportunities / Suggestions"] as const).map(group => <section aria-label={group} className={styles.surface} key={group}>
-      <div className={styles.sectionHead}><h2>{group}</h2><span className={local.groupCount}>{tasks.filter(task => task.group === group).length} items</span></div>
-      <div className={local.taskList}>{tasks.filter(task => task.group === group).map(task => {
-        const isDone = done.includes(task.id);
-        const isDeferred = deferred.includes(task.id);
-        return <article className={local.taskCard} data-pd-id={`lab.task.${task.id}`} key={task.id}>
-          <div className={local.taskCopy}><div className={local.taskMeta}><span className={local.authority}>{task.authority === "Confirmed task" ? "Confirmed Task" : task.authority === "Configured reminder" ? "Configured Reminder" : "Advisory Suggestion"}</span><span>{task.profileId ? profileName(task.profileId) : task.id === "reload" ? "Profiles A, B and C" : "All Profiles"}</span><span>{task.provider}</span>{task.due ? <time dateTime={task.due}>Due {task.due}</time> : null}</div>
-            <h3>{task.title}</h3><p>{task.detail}</p><small>{task.sourceId ? `Source ${task.sourceId}` : task.authority === "Advisory suggestion" ? "Synthetic history · current availability unverified" : "Lab routine · no external check performed"}</small>
-          </div>
-          <div className={local.taskActions}><button className={styles.linkButton} onClick={() => onActivateTask(task.id)} type="button">Track Task</button><div className={local.taskState}><DesignLabSelect dataPdId={`lab.task-state.${task.id}`} label="Work State" onChange={state => onTaskState(task.id,state)} options={(["To Do","In Progress","Blocked","Do Later",...(task.manual ? ["Done"] : [])] as LabTaskWorkState[]).map(state => ({value:state,label:state}))} value={isDone ? "Done" : taskStates[task.id] ?? "To Do"}/></div>{taskStates[task.id] === "Blocked" ? <label className={local.reviewDate}>Blocked Reason<input aria-label={`${task.title} blocked reason`} onChange={event => onTaskNote(task.id,event.target.value)} placeholder="Why is work blocked?" value={taskNotes[task.id] ?? ""}/></label> : null}{taskStates[task.id] === "Do Later" ? <label className={local.reviewDate}>Resume Date<input aria-label={`${task.title} resume date`} onChange={event => onTaskNote(task.id,event.target.value)} type="date" value={taskNotes[task.id] ?? ""}/></label> : null}{isDone || isDeferred ? <span className={styles.status}>{isDone ? "Check recorded · lab only" : "Deferred · lab only"}</span> : <>
-            <button className={styles.secondaryButton} disabled={task.previewOnly} onClick={() => task.sourceId ? onOpenSource(task.sourceId) : task.id === "reload" ? onOpenOffer() : task.manual ? onTaskState(task.id,"Done") : onInspectHistory()} type="button">{task.action}</button>
-            {task.manual && task.id !== "reload" ? <button className={styles.linkButton} onClick={() => onDeferredChange([...deferred, task.id])} type="button">Defer</button> : null}
-          </>}{isDone || isDeferred ? <button className={styles.linkButton} onClick={() => { onDoneChange(done.filter(id => id !== task.id)); onDeferredChange(deferred.filter(id => id !== task.id)); onTaskState(task.id,"To Do"); }} type="button">Undo</button> : null}</div>
-        </article>;
-      })}</div>
-    </section>)}
-  </div>;
-}
-
 export function DesignLabOfferWorkflow({ records, onCreated, onOpenRecord, onReturn }: {
   records: LabRecord[]; onCreated: (rows: LabRecord[]) => void; onOpenRecord: (id: string) => void; onReturn: () => void;
 }) {

@@ -27,23 +27,30 @@ test("Today separates derived source tasks, reminders and uncertain advice", asy
   await expect(today).toContainText("Review Partial Lay");
   await expect(today).toContainText("Review Expiring Free Bet");
   await expect(today).not.toContainText("LAB-FB-001");
-  await expect(today.getByRole("region", { name: "Recurring Work" })).toContainText("current promotion availability unverified");
-  await expect(today.getByRole("region", { name: "Opportunities / Suggestions" })).toContainText("current availability unverified");
-  await today.locator('[data-pd-id="lab.task.casino-daily-a"]').getByRole("button", { name: "Mark Check Done" }).click();
-  await expect(today.locator('[data-pd-id="lab.task.casino-daily-a"]')).toContainText("Check recorded · lab only");
-  await expect(today.locator('[data-pd-id="lab.task.casino-daily-b"]')).toContainText("Mark Check Done");
-  await expect(today.locator('[data-pd-id="lab.task.task:LAB-SB-OVERDUE"]')).not.toContainText("Mark Check Done");
-  await today.locator('[data-pd-id="lab.task.task:LAB-SB-OVERDUE"]').getByRole("button", { name: "Open Bet" }).click();
+  await expect(today.getByRole("region", { name: "Recurring Work" })).toContainText("Check Daily Free Spins");
+  await today.getByRole("region", { name: "Opportunities / Suggestions" }).getByRole("button").click();
+  await today.locator('[data-pd-id="lab.task.signup"]').click();
+  await expect(today.locator('[data-pd-id="lab.today.detail"]')).toContainText("Current offer availability is unverified");
+  await today.locator('[data-pd-id="lab.today.detail"]').getByRole("button", { name: "Close Task Details" }).click();
+  await today.locator('[data-pd-id="lab.today.recurring-free-spins"]').click();
+  await today.locator('[data-pd-id="lab.task.casino-daily-a"]').click();
+  await today.locator('[data-pd-id="lab.today.detail"]').getByRole("button", { name: "Mark Check Done" }).click();
+  await expect(today.locator('[data-pd-id="lab.task.casino-daily-a"]')).toContainText("Done");
+  await expect(today.locator('[data-pd-id="lab.task.casino-daily-b"]')).toContainText("To Do");
+  await today.locator('[data-pd-id="lab.task.task:LAB-SB-OVERDUE"]').click();
+  await expect(today.locator('[data-pd-id="lab.today.detail"]')).not.toContainText("Mark Check Done");
+  await today.locator('[data-pd-id="lab.today.detail"]').getByRole("button", { name: "Open Bet" }).click();
   await expect(page.locator('[data-pd-id="lab.record-detail"]')).toContainText("LAB-SB-OVERDUE");
   await page.getByRole("button", { name: "Back to Today" }).click();
   await expect(page.locator('[data-pd-id="lab.profile"]')).toContainText("All Profiles");
-  await expect(today.locator('[data-pd-id="lab.task.casino-daily-a"]')).toContainText("Check recorded · lab only");
+  await expect(today.locator('[data-pd-id="lab.task.casino-daily-a"]')).toContainText("Done");
 });
 
 test("shared reload creates separate Prospecting rows, blocks C and recovers a partial result", async ({ page }) => {
   await enter(page);
   await page.getByRole("button", { name: "Today", exact: true }).click();
-  await page.locator('[data-pd-id="lab.task.reload"]').getByRole("button", { name: "Review Offer" }).click();
+  await page.locator('[data-pd-id="lab.task.reload"]').click();
+  await page.locator('[data-pd-id="lab.today.detail"]').getByRole("button", { name: "Review Offer" }).click();
   const workflow = page.locator('[data-pd-id="lab.offer-workflow"]');
   await expect(workflow).toContainText("Current Availability");
   await expect(workflow).toContainText("Unverified · human check required");
@@ -86,7 +93,8 @@ test("shared reload creates separate Prospecting rows, blocks C and recovers a p
 test("Account source completion resolves its derived task and returns to Today", async ({ page }) => {
   await enter(page);
   await page.locator('[data-pd-id="lab.nav.tasks"]').click();
-  await page.locator('[data-pd-id="lab.task.task:LAB-ACCOUNT-C"]').getByRole("button", { name: "Review Account" }).click();
+  await page.locator('[data-pd-id="lab.task.task:LAB-ACCOUNT-C"]').click();
+  await page.locator('[data-pd-id="lab.today.detail"]').getByRole("button", { name: "Review Account" }).click();
   await expect(page.locator('[data-pd-id="lab.record-detail"]')).toContainText("LAB-ACCOUNT-C");
   await page.locator('[data-pd-id="lab.record-detail"]').getByRole("button", { name: "Review balance" }).click();
   await page.getByLabel("Observed Current Balance").fill("0.00");
@@ -117,7 +125,9 @@ test("Today and Position remain contained at desktop and narrow widths in both t
     if (evidence) await page.screenshot({ path: join(evidence, `cp115-position-${width}-${theme}.png`), fullPage: true });
     if (width <= 900) await page.getByRole("button", { name: "Open navigation" }).click();
     await page.locator('[data-pd-id="lab.nav.tasks"]').click();
-    await page.locator('[data-pd-id="lab.task.task:LAB-SB-OVERDUE"]').getByRole("button", { name: "Track Task" }).click();
+    await page.locator('[data-pd-id="lab.task.task:LAB-SB-OVERDUE"]').click();
+    await page.locator('[data-pd-id="lab.today.detail"]').getByRole("button", { name: "Track Task" }).click();
+    if (width <= 430) await page.getByRole("dialog", { name: "Task Details" }).getByRole("button", { name: "Close Task Details" }).click();
     await expect(page.locator('[data-pd-id="lab.active-task"]')).toBeVisible();
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
     if (evidence) await page.screenshot({ path: join(evidence, `cp115-today-${width}-${theme}.png`), fullPage: true });
@@ -144,7 +154,8 @@ test("actual Chromium 200% zoom contains Today and the offer preview", async () 
     await page.locator('[data-pd-id="lab.nav.tasks"]').click();
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
     if (evidence) await page.screenshot({ path: join(evidence, "cp115-today-actual-zoom-200.png"), fullPage: true });
-    await page.locator('[data-pd-id="lab.task.reload"]').getByRole("button", { name: "Review Offer" }).click();
+    await page.locator('[data-pd-id="lab.task.reload"]').click();
+    await page.locator('[data-pd-id="lab.today.detail"]').getByRole("button", { name: "Review Offer" }).click();
     await page.getByRole("button", { name: "Preview Per-Profile Drafts" }).click();
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
     if (evidence) await page.screenshot({ path: join(evidence, "cp115-offer-actual-zoom-200.png"), fullPage: true });

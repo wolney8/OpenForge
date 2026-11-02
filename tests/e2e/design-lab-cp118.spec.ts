@@ -16,7 +16,8 @@ test.beforeEach(async ({page}) => {
 
 test("copy failure is distinct and retry targets only failed Profile",async ({page}) => {
   await page.locator('[data-pd-id="lab.nav.tasks"]').click();
-  await page.locator('[data-pd-id="lab.task.reload"]').getByRole("button",{name:"Review Offer"}).click();
+  await page.locator('[data-pd-id="lab.task.reload"]').click();
+  await page.locator('[data-pd-id="lab.today.detail"]').getByRole("button",{name:"Review Offer"}).click();
   const flow=page.locator('[data-pd-id="lab.offer-workflow"]');
   await flow.getByLabel("I reviewed Profile B's Limited Account warning").check();
   await flow.getByRole("button",{name:/Preview per-Profile drafts/i}).click();
@@ -60,9 +61,11 @@ test("workbench cards align on every step and range returns after editor",async 
 test("Today task annotation does not settle source; active tray follows navigation",async ({page}) => {
   await page.locator('[data-pd-id="lab.nav.tasks"]').click();
   const task=page.locator('[data-pd-id="lab.task.task:LAB-SB-OVERDUE"]');
-  await task.getByRole("combobox",{name:/work state/i}).click();
+  await task.click();
+  const detail=page.locator('[data-pd-id="lab.today.detail"]');
+  await detail.getByRole("combobox",{name:/work state/i}).click();
   await page.getByRole("option",{name:"In Progress"}).click();
-  await task.getByRole("button",{name:"Track Task"}).click();
+  await detail.getByRole("button",{name:"Track Task"}).click();
   await expect(page.locator('[data-pd-id="lab.active-task"]')).toContainText("In Progress");
   await capture(page,"today-task-tray-1440.png");
   await page.locator('[data-pd-id="lab.nav.sportsbook"]').click();
@@ -72,7 +75,8 @@ test("Today task annotation does not settle source; active tray follows navigati
 
 test("Today cards and active task remain contained at narrow widths",async ({page}) => {
   await page.locator('[data-pd-id="lab.nav.tasks"]').click();
-  await page.locator('[data-pd-id="lab.task.task:LAB-SB-OVERDUE"]').getByRole("button",{name:"Track Task"}).click();
+  await page.locator('[data-pd-id="lab.task.task:LAB-SB-OVERDUE"]').click();
+  await page.locator('[data-pd-id="lab.today.detail"]').getByRole("button",{name:"Track Task"}).click();
   for (const width of [430,390]) {
     await page.setViewportSize({width,height:844});
     await expect(page.locator('[data-pd-id="lab.active-task"]')).toBeVisible();
@@ -84,19 +88,22 @@ test("Today cards and active task remain contained at narrow widths",async ({pag
 test("derived task work states annotate but cannot claim completion",async ({page}) => {
   await page.locator('[data-pd-id="lab.nav.tasks"]').click();
   const derived=page.locator('[data-pd-id="lab.task.task:LAB-SB-OVERDUE"]');
-  const state=derived.getByRole("combobox",{name:/work state/i});
+  await derived.click();
+  const detail=page.locator('[data-pd-id="lab.today.detail"]');
+  const state=detail.getByRole("combobox",{name:/work state/i});
   await state.click();
   await expect(page.getByRole("option",{name:"Done",exact:true})).toHaveCount(0);
   await page.getByRole("option",{name:"Blocked"}).click();
-  await derived.getByRole("textbox",{name:/blocked reason/i}).fill("Awaiting external result");
-  await expect(derived.getByRole("textbox",{name:/blocked reason/i})).toHaveValue("Awaiting external result");
+  await detail.getByRole("textbox",{name:/blocked reason/i}).fill("Awaiting external result");
+  await expect(detail.getByRole("textbox",{name:/blocked reason/i})).toHaveValue("Awaiting external result");
   await state.click();
   await page.getByRole("option",{name:"Do Later"}).click();
-  await derived.getByLabel(/resume date/i).fill("2026-11-04");
-  await expect(derived.getByLabel(/resume date/i)).toHaveValue("2026-11-04");
-  await derived.getByRole("button",{name:"Track Task"}).click();
+  await detail.getByLabel(/resume date/i).fill("2026-11-04");
+  await expect(detail.getByLabel(/resume date/i)).toHaveValue("2026-11-04");
+  await detail.getByRole("button",{name:"Track Task"}).click();
   await expect(page.locator('[data-pd-id="lab.active-task"]')).toContainText("Do Later");
-  await page.locator('[data-pd-id="lab.task.reload"]').getByRole("combobox",{name:/work state/i}).click();
+  await page.locator('[data-pd-id="lab.task.reload"]').click();
+  await page.locator('[data-pd-id="lab.today.detail"]').getByRole("combobox",{name:/work state/i}).click();
   await expect(page.getByRole("option",{name:"Done",exact:true})).toHaveCount(1);
 });
 

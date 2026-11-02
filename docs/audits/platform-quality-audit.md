@@ -1,5 +1,18 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
+## CP-118B Today Design Lab coverage — 2026-11-02
+
+| Requirement | Lab scenario / proposed treatment | Acceptance check | Status |
+| --- | --- | --- | --- |
+| PD-PR-118B-01 | Priority List; separate event/expiry/expected-check dates; collapsed suggestions | Passed 30 Oct event precedes 5 Nov; 56–72px rows; no invented deadline | CODE-VERIFIED synthetic; owner visual review pending |
+| PD-PR-118B-02 | Queue-preserving desktop details, contained narrow detail, source Back | Focus return; Profile/range/filter context retained | CODE-VERIFIED synthetic; manual screen reader pending |
+| PD-PR-118B-03 | One collection in List/Board, per-Profile recurring child identity | A Done does not complete B; Board/List annotation continuity | CODE-VERIFIED synthetic; owner review pending |
+| PD-PR-118B-04 | Profile/type/urgency/state/bookmaker/period filters; stable deterministic sort | Filter and clear; unknown date never zero | CODE-VERIFIED synthetic; no persistent preference |
+| PD-PR-118B-05 | Source lifecycle, workflow annotation and notification state separate | Derived cannot Done; Do Later/read does not resolve source; manual reminder can Done | CODE-VERIFIED synthetic; normal authorities unchanged |
+| PD-PR-118B-06 | Private before/after and responsive comparison | 1440/900/768/430/390px, actual zoom, theme, keyboard, no overflow | 73/73 full lab suite, focused 6/6 and final Board adjustment 1/1; private `data/private/evidence/cp118b-today/comparison.html`; owner visual and manual screen-reader acceptance pending |
+
+The rejected CP-118 Today presentation remains private evidence. Other CP-118 controls and specialist previews retain their earlier verification status.
+
 ## CP-118 Design Lab interaction coverage — 2026-11-02
 
 | Request | Current lab demonstration | Limit / next check |

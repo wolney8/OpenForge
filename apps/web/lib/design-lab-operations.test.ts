@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildLabTodayTasks, copyLabReload, labManagedFeeSummary, labOfferTargets } from "./design-lab-operations";
+import { buildLabTodayTasks, copyLabReload, labManagedFeeSummary, labOfferTargets, labTaskDateLabel, labTaskUrgency, sortLabTodayTasks } from "./design-lab-operations";
 import { initialLabAccounts } from "./design-lab-fixture";
 import { labRecords } from "./design-lab-connected-data";
 
@@ -15,6 +15,16 @@ describe("CP-115 synthetic operations", () => {
     expect(tasks.find(task => task.id === "advisory")?.authority).toBe("Advisory suggestion");
     expect(buildLabTodayTasks(labRecords, initialLabAccounts, "LAB-PROFILE-B").some(task => task.sourceId === "LAB-SB-OVERDUE")).toBe(false);
     expect(buildLabTodayTasks(labRecords, initialLabAccounts, "LAB-PROFILE-B").some(task => task.id === "casino-daily-a")).toBe(false);
+  });
+
+  it("sorts the passed event before later events without inventing a settlement deadline", () => {
+    const tasks = buildLabTodayTasks(labRecords, initialLabAccounts, "all").filter(task => task.group === "Needs Action");
+    expect(sortLabTodayTasks(tasks)[0].sourceId).toBe("LAB-SB-OVERDUE");
+    const overdue = tasks.find(task => task.sourceId === "LAB-SB-OVERDUE")!;
+    expect(labTaskUrgency(overdue)).toBe("Event Passed / Overdue Review");
+    expect(labTaskDateLabel(overdue)).toBe("Event passed 30 Oct");
+    expect(labTaskDateLabel(tasks.find(task => task.sourceId === "LAB-FB-EXPIRING")!)).toBe("Expires 2 Nov");
+    expect(labTaskUrgency(tasks.find(task => task.sourceId === "LAB-ACCOUNT-C")!)).toBe("No Authoritative Due Date");
   });
 
   it("uses existing Account/provider eligibility and keeps blocked target visible", () => {
