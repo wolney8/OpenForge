@@ -137,6 +137,7 @@ test("dirty dialog Escape restores focus and 200% zoom keeps the journey contain
 test("lab selection panels anchor, dismiss and restore focus without moving content", async ({ page }) => {
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 850 });
+    await page.evaluate(() => document.fonts.ready);
     const profile = page.locator('[data-pd-id="design-lab.profile"]');
     const mainBefore = await page.locator('[data-pd-id="design-lab.main"]').boundingBox();
     await profile.click();

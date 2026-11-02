@@ -42,7 +42,7 @@ export function DesignLabHeaderOverlay({ anchorRef, children, label, onClose, pr
     };
     const dismiss = (event: PointerEvent) => {
       const target = event.target as Element;
-      if (surface.contains(target) || anchor.contains(target)) return;
+      if (surface.contains(target) || anchor.contains(target) || target.closest("[data-pd-overlay-child]")) return;
       closeRef.current();
       if (!target.closest("button, a, input, select, textarea, [tabindex]")) {
         requestAnimationFrame(() => (returnFocusRef?.current ?? anchor).focus({ preventScroll: true }));

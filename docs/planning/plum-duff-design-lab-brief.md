@@ -1,5 +1,10 @@
 # Plum Duff Design Lab — initial baseline brief
 
+## CP-118D Today final refinement — 2026-11-02
+
+Owner is positive about CP-118C's direction, with visual review still open. `PROPOSED — LAB ONLY`: a dedicated header Tracked Tasks trigger shares the existing anchored overlay family; the indigo banner has expanded, compact and hidden presentation states, independent of tracked identity. Explicitly tracked synthetic source snapshots remain visible as Source Resolved after the underlying condition clears. Work state and notification read/clear remain separate. The Board inspector dismisses on uncovered Board click; dirty and consequential dialogs keep their governed close paths. Today separates source attention, routine checks due and upcoming items; Event Date, Expiry, Expected Check and Do Later Review retain distinct meaning. This is no production task-history or scheduler authority. CP-119 Spreadsheet Ledger Design and Interaction Parity is the next queued design checkpoint, not started.
+
+
 ## CP-118C Today tracked work and Board refinement — 2026-11-02
 
 The owner likes CP-118B's List/Board direction and requests a bounded lab revision; Today is **not owner accepted**. `PROPOSED — LAB ONLY`: multiple tracked task IDs in synthetic memory; a bounded indigo tray; semantic urgent source surfaces; a shared five-state work chip; five fixed-width, horizontally reachable Board columns containing advisory items; a desktop non-modal Board inspector; and separate blocked reason, review date and source date. Tracking, work annotation and notification read/clear never resolve the financial source. Only manual reminders can be Done. The Board drawer may overlay its columns because the uncovered Board remains operable; narrow detail retains the contained dialog. Existing List, shell, financial and CP-117 flag rules remain.

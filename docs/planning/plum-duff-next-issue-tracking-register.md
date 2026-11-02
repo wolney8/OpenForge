@@ -1,5 +1,10 @@
 # Plum Duff Next Issue Tracking Register
 
+## CP-118D Today refinements — 2026-11-02
+
+`PD-PR-118D-01` through `PD-PR-118D-08` retain the owner's distinct header tracking, three banner states, X removal, urgency, dismissal, date/count authority, resolved-source history, verification and custody requests in the [UI change register](../agent-contracts/plum-duff-ui-change-register.md#cp-118d-today-tracking-and-dismissal--2026-11-02). Lab-only source snapshots are synthetic; real task persistence and permission-aware history are deferred. [Design Lab issue #114](https://github.com/wolney8/OpenForge/issues/114) is the local coverage link; issue #114 is verified open; CP-118D subitem sync is unverified. CP-119 Spreadsheet Ledger Design and Interaction Parity is queued next; no CP-119 implementation is authorised here.
+
+
 ## CP-118C Today tracked tasks and routines — 2026-11-02
 
 The owner's distinct CP-118C requests `PD-PR-118C-01` through `PD-PR-118C-07` are retained in the [UI change register](../agent-contracts/plum-duff-ui-change-register.md#cp-118c-today-tracked-tasks-and-board--2026-11-02). Multiple tracking, urgent/status surfaces, five-column Board, overlay inspector and separate work metadata are lab-only. Manage Routines is a **future proposal** under existing Daily Tasks/Notification Centre authority, not implemented scheduling or persistence. [Design Lab issue #114](https://github.com/wolney8/OpenForge/issues/114) is the existing local coverage link; live issue sync is unverified. CP-118B owner visual acceptance remains open.

@@ -1,5 +1,10 @@
 # OpenForge UI/UX Working Notes
 
+## CP-118D dismissal and tracking proposal — LAB ONLY
+
+Header popovers share trigger anchoring, outside/Escape dismissal and focus return. Nested select portals count as inside their parent overlay. Desktop Board Task Details is non-modal and closes on uncovered Board click; clicking another card selects it. Modal outside clicks never silently discard dirty financial drafts or confirm consequential actions. Tracked source resolution changes the tray presentation to Source Resolved without altering source, annotation or notification state. Real persistence, permission-aware history and task scheduling need separate approval.
+
+
 ## CP-110 Design Lab direction — 2026-11-01
 
 The owner's [initial Design Lab brief](plum-duff-design-lab-brief.md) now governs discovery of a

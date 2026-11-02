@@ -98,15 +98,31 @@ export const labManagedFeePeriods: FeePeriodApiRecord[] = [
 ];
 export const labManagedFeeSummary = summarizeFeePeriods(labManagedFeePeriods, new Date("2026-01-01T00:00:00"), new Date("2026-12-31T23:59:59"));
 
-export type LabTodayTask = { id: string; group: "Needs Action" | "Recurring Work" | "Opportunities / Suggestions"; authority: "Confirmed task" | "Configured reminder" | "Advisory suggestion"; title: string; profileId?: LabProfileId; provider: string; due?: string; dateKind?: "Event Date" | "Expiry" | "Expected Check"; sourceId?: string; detail: string; action: string; manual?: boolean; previewOnly?: boolean };
+export type LabTodayTask = { id: string; group: "Needs Action" | "Recurring Work" | "Opportunities / Suggestions"; authority: "Confirmed task" | "Configured reminder" | "Advisory suggestion"; title: string; profileId?: LabProfileId; provider: string; due?: string; dateKind?: "Event Date" | "Expiry" | "Expected Check"; sourceId?: string; detail: string; action: string; manual?: boolean; previewOnly?: boolean; requiresImmediateReview?: boolean };
 
-export type LabTaskUrgency = "Event Passed / Overdue Review" | "Due Today" | "Upcoming" | "No Authoritative Due Date";
-const urgencyOrder: LabTaskUrgency[] = ["Event Passed / Overdue Review", "Due Today", "Upcoming", "No Authoritative Due Date"];
+export type LabTaskUrgency = "Past Recorded Date" | "Immediate Review" | "Date Today" | "Upcoming" | "No Recorded Date";
+const urgencyOrder: LabTaskUrgency[] = ["Past Recorded Date", "Immediate Review", "Date Today", "Upcoming", "No Recorded Date"];
 export function labTaskUrgency(task: LabTodayTask): LabTaskUrgency {
-  if (!task.due || !/^\d{4}-\d{2}-\d{2}$/.test(task.due)) return "No Authoritative Due Date";
-  if (task.due < labClock) return "Event Passed / Overdue Review";
-  if (task.due === labClock) return "Due Today";
+  if (task.requiresImmediateReview) return "Immediate Review";
+  if (!task.due || !/^\d{4}-\d{2}-\d{2}$/.test(task.due)) return "No Recorded Date";
+  if (task.due < labClock) return "Past Recorded Date";
+  if (task.due === labClock) return "Date Today";
   return "Upcoming";
+}
+/** Urgency belongs to the recorded source, not a user's work annotation. */
+export function labTaskNeedsUrgentReview(task: LabTodayTask): boolean {
+  return task.group === "Needs Action" && (task.requiresImmediateReview === true || Boolean(task.due) &&
+    (task.dateKind === "Event Date" ? task.due! < labClock : task.dateKind === "Expiry" && task.due! <= labClock));
+}
+export function summarizeLabToday(tasks: LabTodayTask[], states: Record<string,string>) {
+  const active = tasks.filter(task => states[task.id] !== "Done");
+  const sourceNeedsAttention = (task: LabTodayTask) => task.group === "Needs Action" &&
+    (!task.due || task.due <= labClock || task.requiresImmediateReview === true);
+  return {
+    needsAttention: active.filter(sourceNeedsAttention).length,
+    routineChecksDue: active.filter(task => task.group === "Recurring Work" && Boolean(task.due) && task.due! <= labClock).length,
+    upcoming: active.filter(task => (task.group === "Recurring Work" && Boolean(task.due) && task.due! > labClock) || (task.group === "Needs Action" && Boolean(task.due) && task.due! > labClock && !sourceNeedsAttention(task))).length,
+  };
 }
 export function labTaskDateLabel(task: LabTodayTask): string {
   if (!task.due) return "No recorded date";
@@ -142,7 +158,7 @@ export function buildLabTodayTasks(records: LabRecord[], accounts: LabAccount[],
       const overdue = Boolean(record.dueDate && record.dueDate < labClock);
       tasks.push({ id: `task:${record.id}`, group: "Needs Action", authority: "Confirmed task",
         title: partial ? "Review Partial Lay" : overdue ? "Review Overdue Unsettled Bet" : "Review Placed Bet for Settlement",
-        profileId: record.profileId, provider: record.cells[1], due: record.dueDate, dateKind: "Event Date",
+        profileId: record.profileId, provider: record.cells[1], due: record.dueDate, dateKind: "Event Date", requiresImmediateReview: partial,
         sourceId: record.id, detail: partial ? "Matched stake differs from requested stake; exposure remains unresolved." : overdue ? "Recorded event date has passed; result remains open." : "Placed source record remains open.", action: "Open Bet" });
     }
     if (record.section === "freeBets" && record.status === "Available" && record.expiresAt) {

@@ -1,5 +1,16 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
+## CP-118D Today lab coverage — 2026-11-02
+
+| Request | Evidence / acceptance check | Status |
+| --- | --- | --- |
+| PD-PR-118D-01–03 | Header count and anchored panel; three banner states; per-task X; source urgency independent of work chip | CODE-VERIFIED synthetic; owner visual review pending |
+| PD-PR-118D-04 | Existing header click-away/Escape; nested select portal retained; Board uncovered click closes inspector; dirty Account dialog ignores outside click | CODE-VERIFIED synthetic; manual screen reader pending |
+| PD-PR-118D-05 | Attention, due routine and upcoming counts use fixed lab clock; date labels retain recorded-event, expiry and expected-check meaning | CODE-VERIFIED synthetic |
+| PD-PR-118D-06 | Resolved Account task leaves an explicit tracked snapshot, with source/history access and individual Untrack | CODE-VERIFIED synthetic; real permission/revocation contract deferred |
+| PD-PR-118D-07–08 | Full browser regression, responsive/theme/zoom, isolated build and source custody | 84/84 browser; changed-file lint, typecheck and isolated build pass; broad lint retains 1 pre-existing error + 12 warnings; private `data/private/evidence/cp118d-today/`; remote receipt at handoff |
+
+
 ## CP-118C Today lab coverage — 2026-11-02
 
 | Request | Lab demonstration / acceptance check | Status |

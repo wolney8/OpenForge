@@ -1,5 +1,10 @@
 # Project Roadmap — Plum Duff / OpenForge — Doc ID: PR-CODEX-001
 
+## CP-118D Today owner visual review — 2026-11-02
+
+Review the dedicated header Tracked Tasks panel, expanded/compact/hidden banner, X removal, urgent/source-resolved states, Board click-away and typed Today counts at protected `/design-lab`. Owner visual acceptance and manual screen-reader review remain open. Next queued design checkpoint: **CP-119 — Spreadsheet Ledger Design and Interaction Parity**; do not begin it or migrate Today into normal routes without separate authorisation. [Coverage](docs/audits/platform-quality-audit.md#cp-118d-today-lab-coverage--2026-11-02).
+
+
 ## CP-118C Today lab visual review — 2026-11-02
 
 Review multiple tracked tasks, urgent/source-date meaning, five-state colours, fixed Board columns and suggestion cards, non-modal Board detail, and separated Do Later/Blocked metadata at protected `/design-lab`. Decide whether this revision should become the next lab baseline. Manage Routines needs a separate task/notification/recurrence contract before implementation; real `/tasks`, Wave 2 and CP-116 remain gated. [Coverage](docs/audits/platform-quality-audit.md#cp-118c-today-lab-coverage--2026-11-02).

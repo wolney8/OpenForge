@@ -1092,3 +1092,17 @@ Recorded before UI edits. PD-PR-114C-01–05 map to the canonical request regist
 ## CP-115 lab-only batch — 2026-11-01
 
 Recorded before UI edits. PD-PR-115-01 through PD-PR-115-05 are `PROPOSED — LAB ONLY`. Reuse CP-114C anchored shell/menus, CP-114B ledger, normal Notification Centre read/clear versus source-completion semantics, governed offer eligibility and monthly fee vocabulary. Today grouping and the shared-offer copy preview are lab-specific presentation experiments; they do not alter the signed-off normal controls, protected financial values or Profile ownership. Owner approval for normal integration remains separate.
+## CP-118D Today tracking and dismissal — 2026-11-02
+
+Owner is positive about CP-118C's direction; visual acceptance remains pending. `PROPOSED — LAB ONLY`. Reuse `DesignLabHeaderOverlay`, `DesignLabSelect`, `ModalBoundary`, Today urgency/work-state tokens and the existing tracked-task tray. The desktop Board inspector may dismiss on an uncovered Board click; dirty or consequential dialogs retain their governed close path. Issue scope: [Design Lab #114](https://github.com/wolney8/OpenForge/issues/114); issue #114 verified open; CP-118D subitems are retained locally, with live subitem sync unverified.
+
+| ID | Surface and requested outcome | Status |
+| --- | --- | --- |
+| PD-PR-118D-01 | Dedicated header tracked-task trigger, count and anchored panel | NEEDS VERIFICATION — browser pass; owner visual review pending |
+| PD-PR-118D-02 | Expanded, compact and hidden banner with full-header toggle | NEEDS VERIFICATION — browser pass; owner visual review pending |
+| PD-PR-118D-03 | Per-task X removal and independent urgency treatment | NEEDS VERIFICATION — browser pass; owner visual review pending |
+| PD-PR-118D-04 | Shared non-modal click-away and safe modal exceptions | NEEDS VERIFICATION — browser pass; owner visual review pending |
+| PD-PR-118D-05 | Today counts and typed date/filter meaning | NEEDS VERIFICATION — browser pass; owner visual review pending |
+| PD-PR-118D-06 | Retain tracked source snapshot after resolution | NEEDS VERIFICATION — browser pass; owner visual review pending |
+| PD-PR-118D-07 | Focused/full browser, responsive and accessibility evidence | 84/84 browser, actual 200% zoom and theme/width checks pass; manual screen reader pending |
+| PD-PR-118D-08 | Non-main custody, isolation and CP-119 queue | CODE-VERIFIED isolation; remote receipt at handoff; CP-119 documented only |

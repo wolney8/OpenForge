@@ -108,7 +108,7 @@ export function DesignLabSelect<T extends string>({
       role="combobox"
       type="button"
     ><span id={`${id}-selected`}>{options[selectedIndex]?.label}</span><span aria-hidden="true" className="material-symbols-outlined">expand_more</span></button>
-    {open && portalHost ? createPortal(<div className={styles.labSelectPanel} id={`${id}-options`} ref={panelRef} role="listbox" aria-label={`${label} options`} style={placement}>
+    {open && portalHost ? createPortal(<div className={styles.labSelectPanel} data-pd-overlay-child id={`${id}-options`} ref={panelRef} role="listbox" aria-label={`${label} options`} style={placement}>
       {options.map((option, index) => <div aria-selected={index === selectedIndex} className={`${styles.labSelectOption} ${index === active ? styles.labSelectOptionActive : ""}`} id={`${id}-option-${index}`} key={option.value} onClick={() => choose(index)} role="option" tabIndex={-1}>
         <span>{option.label}</span>{index === selectedIndex ? <span aria-hidden="true" className="material-symbols-outlined">check</span> : null}
       </div>)}
