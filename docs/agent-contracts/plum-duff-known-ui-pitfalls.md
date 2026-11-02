@@ -1,5 +1,9 @@
 # Plum Duff Known UI Pitfalls
 
+## CP-119E lab selection and bell ownership — 2026-11-02
+
+A selected ledger cell can keep a blue selection ring after a user moves to a toolbar or blank page area. Clear selection from one document pointer listener only when no floating editor owns the interaction; the portal editor must validate changed drafts first and retain invalid drafts. Regression: `design-lab-cp119e.spec.ts` selects/transfers/clears cells and tests valid/invalid outside commits. A notification source event is not the Today task or a personal tracked-task state: CP-049 settlement/Account sources remain in full history even if a proposed priority bell suppresses them. Do not infer settlement urgency from an event date or create an event from tracking a task. Regression: `design-lab-notification-policy.test.ts` and the CP-119E browser source/history cases. Both corrections are Design Lab only.
+
 ## CP-112 lab focus and selection — 2026-11-01
 
 Composed money inputs can show competing rings when a generic `input:focus-visible` rule and a wrapper `:focus-within` rule both apply. Give the composed field one focus perimeter and test the actual focused render. Native select menus cannot provide reliable anchored visual treatment; a replacement single-select must open only on activation, stay viewport-contained, close on outside/Tab/Escape and restore focus on Escape. Regression: `design-lab-journey.spec.ts` includes focus geometry, opened menus at 1440/390 and real Chromium 200% browser zoom. This remains a lab-only presentation experiment.

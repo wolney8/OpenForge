@@ -1,12 +1,13 @@
 import type { LabLedgerKey } from "@/lib/design-lab-connected-data";
 
-export type LabSection = "home" | "tasks" | "opportunities" | "accounts" | "tracker" | "reports" | "profiles" | "offers" | LabLedgerKey | "oddsmatcher" | "calculators" | "subscribers" | "catalogue" | "administration" | "recovery";
+export type LabSection = "home" | "tasks" | "notifications" | "opportunities" | "accounts" | "tracker" | "reports" | "profiles" | "offers" | LabLedgerKey | "oddsmatcher" | "calculators" | "subscribers" | "catalogue" | "administration" | "recovery";
 export type LabNavigationGroup = "primary" | "tracker" | "more" | "launcher";
 export type LabDestination = { id: LabSection; label: string; icon: string; group: LabNavigationGroup; owner: "Fund Manager" | "Betting Tools" | "Administration"; parent?: LabSection; access: "fund_manager"; status: "simulated" | "preview"; breadcrumb: readonly LabSection[] };
 
 export const labDestinations: readonly LabDestination[] = [
   { id:"home", label:"Position", icon:"space_dashboard", group:"primary", owner:"Fund Manager", access:"fund_manager", status:"simulated", breadcrumb:["home"] },
   { id:"tasks", label:"Today", icon:"task_alt", group:"primary", owner:"Fund Manager", access:"fund_manager", status:"simulated", breadcrumb:["home","tasks"] },
+  { id:"notifications", label:"Notifications", icon:"notifications", group:"more", owner:"Fund Manager", access:"fund_manager", status:"simulated", breadcrumb:["home","notifications"] },
   { id:"opportunities", label:"Opportunities", icon:"travel_explore", group:"primary", owner:"Fund Manager", access:"fund_manager", status:"preview", breadcrumb:["home","opportunities"] },
   { id:"accounts", label:"Accounts", icon:"account_balance_wallet", group:"primary", owner:"Fund Manager", access:"fund_manager", status:"simulated", breadcrumb:["home","accounts"] },
   { id:"tracker", label:"Tracker", icon:"table_chart", group:"primary", owner:"Fund Manager", access:"fund_manager", status:"simulated", breadcrumb:["home","tracker"] },

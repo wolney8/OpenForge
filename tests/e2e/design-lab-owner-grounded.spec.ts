@@ -23,7 +23,7 @@ test("distinct launcher, Profile, notification and identity paths", async ({ pag
   await page.locator('[data-pd-id="lab.nav.sportsbook"]').click();
   await expect(page.locator('[data-pd-id="lab.ledger.sportsbook"]')).toBeVisible();
   await page.getByRole("button", { name: "Notifications" }).click();
-  await page.locator('[data-pd-id="lab.notifications"]').getByRole("button", { name: "View all in Today" }).click();
+  await page.locator('[data-pd-id="lab.notifications"]').getByRole("button", { name: "View Today" }).click();
   await expect(page.getByRole("heading", { name: "Today", level: 1 })).toBeVisible();
   await page.getByRole("button", { name: "Account menu" }).click();
   await expect(page.locator('[data-pd-id="lab.header-menu"]')).toContainText("Simulate Sign Out");

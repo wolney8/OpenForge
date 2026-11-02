@@ -1,5 +1,9 @@
 # Plum Duff Next Issue Tracking Register
 
+## CP-119E cell selection and notification triage — 2026-11-02
+
+`PD-PR-119E-01–04` retain the owner's deselection, three-authority separation, bell classification, existing-source preservation and verification requirements in the [UI change register](../agent-contracts/plum-duff-ui-change-register.md#cp-119e-cell-selection-and-notification-triage--2026-11-02). Lab-only under [Design Lab issue #114](https://github.com/wolney8/OpenForge/issues/114); live subitem sync unverified. No real CP-049 feed or API amendment is approved.
+
 ## CP-119D Today and ledger input corrections — 2026-11-02
 
 `PD-PR-119D-01–08` preserve the owner's Track All, completion/history, zero-badge, controlled-dropdown, picker, GBP-display and regression requirements in the [UI change register](../agent-contracts/plum-duff-ui-change-register.md#cp-119d-today-and-ledger-inputs--2026-11-02). These are lab-only acceptance defects under open [issue #114](https://github.com/wolney8/OpenForge/issues/114); individual live issue sync remains unverified. Normal-app migration remains separately gated.

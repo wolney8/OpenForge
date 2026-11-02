@@ -45,21 +45,22 @@ test("notification read and clear do not resolve source work; history and recove
   await page.getByRole("button", { name: /Notifications, \d+ unread/ }).click();
   const bell = page.locator('[data-pd-id="lab.notifications"]');
   if (evidence) { await mkdir(evidence, { recursive: true }); await page.screenshot({ path: join(evidence, "cp115b-notifications-1440.png"), fullPage: true }); }
+  await bell.getByRole("button", { name: "View All Notifications" }).click();
   const overdue = bell.locator('[data-pd-id="lab.notification.task:LAB-SB-OVERDUE"]');
   await expect(overdue).toContainText("Unread");
-  await overdue.getByRole("button", { name: "Mark read" }).click();
+  await overdue.getByRole("button", { name: "Mark Read" }).click();
   await expect(overdue).toContainText("Read");
   await overdue.getByRole("button", { name: "Clear", exact: true }).click();
   await expect(overdue).toContainText("The source task remains open");
-  await overdue.getByRole("button", { name: "Clear notification" }).click();
+  await overdue.getByRole("button", { name: "Clear Notification" }).click();
   await expect(overdue).toHaveCount(0);
   await bell.getByRole("button", { name: "History" }).click();
   await expect(overdue).toBeVisible();
-  await bell.getByText("Test states").click();
+  await bell.getByText("Test States").click();
   await bell.getByRole("button", { name: "Error" }).click();
   await expect(bell).toContainText("Notifications could not be loaded");
   await bell.getByRole("button", { name: "Retry" }).click();
-  await bell.getByRole("button", { name: "View all in Today" }).click();
+  await bell.getByRole("button", { name: "View Today" }).click();
   await expect(page.locator('[data-pd-id="lab.task.task:LAB-SB-OVERDUE"]')).toBeVisible();
 });
 

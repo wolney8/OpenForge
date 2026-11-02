@@ -1,5 +1,9 @@
 # Project Roadmap — Plum Duff / OpenForge — Doc ID: PR-CODEX-001
 
+## CP-119E Design Lab review — 2026-11-02
+
+Review outside-click cell deselection and the selective priority bell at authenticated `/design-lab`. CP-049 production notification sources, unread semantics, preferences and retention remain unchanged; a versioned owner-approved amendment is required before any normal-app migration. CP-116 and further Design Lab expansion stay on hold. [Request IDs](docs/agent-contracts/plum-duff-ui-change-register.md#cp-119e-cell-selection-and-notification-triage--2026-11-02).
+
 ## CP-119D Today and ledger input owner review — 2026-11-02
 
 Review filtered Track All, governed Done/history, zero badge, six-ledger choice/date controls and GBP money display in protected `/design-lab`. Production Today/ledger migration, specialist financial Save and real task persistence remain separate gates. [Coverage](docs/audits/platform-quality-audit.md#cp-119d-today-and-ledger-input-coverage--2026-11-02).

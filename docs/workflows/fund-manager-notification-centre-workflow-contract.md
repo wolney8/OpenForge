@@ -2,6 +2,12 @@
 
 _Last updated: 2026-09-25 16:55 BST_
 
+## CP-119E attention-inbox proposal — 2026-11-02 — PROPOSED, LAB ONLY
+
+The synthetic Design Lab bell places recorded, in-window Free Bet expiry and explicitly partial Lay follow-up in **Action Required**. Ordinary Placed settlement review and Account evidence review remain available in **All Notifications** and retained history, but do not inflate the priority badge. Routine checks and advisory patterns remain in Today/Tracked Tasks unless a separately authorised notification event exists. **System & Results** is empty in this fixture; backup failures, material operation results and future decision-support analyses need real source evidence, not fabricated lab events. Event dates are never settlement deadlines.
+
+This conflicts with the currently approved CP-049 feed and unread-badge rules: `settlement_review` and `account_review` are enabled notification sources, unknown types are visible by default, and each source has its own preference, stable identity, audience and security tag. **No production rule changes here.** Before adoption, the owner must approve a versioned contract specifying (1) a priority/severity mapping per existing source and attention stage, including backup/reminder/result sources; (2) whether the bell badge counts priority unread or all unread, with All Notifications preserving the full authorised feed; (3) source preferences, viewer-specific read/clear persistence and event retention; (4) server-side audience/Profile permission filtering and stable event identities through escalation/resolution; and (5) fixtures and browser tests for expiry, partial Lay, ordinary settlement, Account review, failures, resolved history and unknown future types. The lab's Profile-scoped synthetic snapshots are not a production event or permission model.
+
 ## CP-049 approved first Daily tasks slice — 2026-09-25 15:52 BST
 
 The owner approves `/tasks`, a current view of the existing feed, using Notification History controls and durable viewer state. It never reads immutable History as current work. Current tasks are filtered by authorised Active Profile membership before return/event recording; owned archived history may remain visible, revoked access may not. Server route/API authority is rechecked when opening a source.

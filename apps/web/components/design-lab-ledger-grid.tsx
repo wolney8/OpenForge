@@ -123,6 +123,18 @@ export function DesignLabLedgerGrid({ ledgerKey, rows, scope, accounts, view, on
   const suppressPanClick = useRef(false);
   const cellRef = useRef<HTMLElement | null>(null);
   useEffect(() => {
+    // The floating editor owns outside interaction while editing so invalid
+    // drafts can block dismissal. Otherwise selection belongs only to a cell.
+    if (!selectedCell || editing) return;
+    const clearOutsideCell = (event: PointerEvent) => {
+      const target = event.target;
+      if (target instanceof Element && target.closest("td") && scroller.current?.contains(target)) return;
+      setSelectedCell(null);
+    };
+    document.addEventListener("pointerdown", clearOutsideCell, true);
+    return () => document.removeEventListener("pointerdown", clearOutsideCell, true);
+  }, [selectedCell, editing]);
+  useEffect(() => {
     const clearOutsidePan = () => { pan.current = null; };
     document.addEventListener("pointerup", clearOutsidePan);
     document.addEventListener("pointercancel", clearOutsidePan);
@@ -242,11 +254,11 @@ export function DesignLabLedgerGrid({ ledgerKey, rows, scope, accounts, view, on
     const changes:LabFieldChange[]=editing.draft
       ? Object.entries(editing.draft).map(([field,value])=>({field:fieldMap[field]??field,value:value??""}))
       : [{field:spec.id,value:nextValue??editing.value}];
-    if (row.id === "LAB-SB-NEW" && spec.id === "status" && changes[0].value === "Placed") { onRequestPlacement(); setEditing(null); return true; }
+    if (row.id === "LAB-SB-NEW" && spec.id === "status" && changes[0].value === "Placed") { onRequestPlacement(); setEditing(null); if(reason==="outside")setSelectedCell(null); return true; }
     const result=onFieldEdit(row,changes,originals);
     if(result.outcome === "VALIDATION_FAILED" || result.outcome === "UNAVAILABLE") {setCellError(result.message??"This edit is unavailable.");return false;}
-    if(result.outcome === "REVIEW_REQUIRED" || result.outcome === "GOVERNED_CORRECTION_REQUIRED") {setEditing(null);setCellError("");onOpenReview(row,editing.column);return true;}
-    setEditing(null);setCellError("");if(reason==="keyboard"||reason==="choice")requestAnimationFrame(()=>cellRef.current?.focus());return true;
+    if(result.outcome === "REVIEW_REQUIRED" || result.outcome === "GOVERNED_CORRECTION_REQUIRED") {setEditing(null);setCellError("");setSelectedCell(null);onOpenReview(row,editing.column);return true;}
+    setEditing(null);setCellError("");if(reason==="outside")setSelectedCell(null);if(reason==="keyboard"||reason==="choice")requestAnimationFrame(()=>cellRef.current?.focus());return true;
   };
   const accountOptions = (type: "Bookie" | "Exchange", profileId: string) => accounts.filter(account => account.profileId === profileId && account.type === type && account.status === "Active").map(account => account.name);
   const filterIndices = relevantFilters[ledgerKey].map(id => specs.findIndex(item => item.id === id)).filter(index => index >= 0 && specs[index].id !== "status");
@@ -278,6 +290,7 @@ export function DesignLabLedgerGrid({ ledgerKey, rows, scope, accounts, view, on
   const cancelCellEdit = (reason: "keyboard" | "outside") => {
     setEditing(null);
     setCellError("");
+    if (reason === "outside") setSelectedCell(null);
     if (reason === "keyboard") requestAnimationFrame(() => cellRef.current?.focus());
   };
   const advanceCellEdit = (direction: -1 | 1) => {

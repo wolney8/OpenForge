@@ -1151,6 +1151,17 @@ The owner rejected CP-119B's expanding in-cell editor. These are `PROPOSED — L
 | PD-PR-119C-06 | Browser geometry, regression, accessibility, isolation and non-main custody | NEEDS VERIFICATION — 104/104 final browser pass, 18 focused units, typecheck, changed-file lint and isolated webpack build pass; remote receipt at handoff; manual screen reader pending |
 | PD-PR-119C-07 | Contain a CP-112 lab icon's 3px overflow at actual Chromium 200% zoom, without changing normal UI | NEEDS VERIFICATION — full browser 200% case pass; owner visual review pending |
 
+## CP-119E cell selection and notification triage — 2026-11-02
+
+`PROPOSED — LAB ONLY`. CP-119D interaction direction is accepted for continued lab work; these two refinements remain open. Reuse the shared floating grid editor, CP-118D Today/tracking source identities, CP-114C anchored bell and existing Notification Centre read/clear semantics. The real CP-049 notification feed remains authoritative. [Issue #114](https://github.com/wolney8/OpenForge/issues/114) covers the Design Lab; live CP-119E subitem sync is unverified.
+
+| ID | Requested outcome | Status |
+| --- | --- | --- |
+| PD-PR-119E-01 | Clear selected-cell outline on outside/header/toolbar/blank click while preserving valid floating-editor commit and invalid draft | NEEDS VERIFICATION — pointer browser pass; owner review pending |
+| PD-PR-119E-02 | Distinguish Today operational work, personal tracking and a selective attention/event bell without merging their state | NEEDS VERIFICATION — source/behavior tests pass; production policy approval pending |
+| PD-PR-119E-03 | Compact Action Required/System & Results bell with unread, clear/history and direct source navigation; retain approved source events in All Notifications | NEEDS VERIFICATION — browser pass; owner review pending |
+| PD-PR-119E-04 | Browser, accessibility and full regression; non-main custody and normal-app isolation | NEEDS VERIFICATION — 113/113 final browser pass including actual 200% zoom; 8 focused units, typecheck, isolated build and changed-file lint pass; broad lint has unchanged Free Bet error; manual screen reader and owner review pending |
+
 ## CP-119D Today and ledger inputs — 2026-11-02
 
 `PROPOSED — LAB ONLY`. Owner observations remain open acceptance defects. Nearest equivalents: CP-118D tracked tray and task-state authority, CP-119C shared floating grid editor, workbook lookup options, normal Material picker fields and `financial-display.ts`. [Issue #114](https://github.com/wolney8/OpenForge/issues/114) is the open area link; individual items are tracked here pending live issue sync.

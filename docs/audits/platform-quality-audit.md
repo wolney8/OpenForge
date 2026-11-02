@@ -1,5 +1,14 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
+## CP-119E selection and attention-inbox coverage — 2026-11-02
+
+| Requirement | Lab route/treatment | Acceptance and remaining authority |
+| --- | --- | --- |
+| Cell deselection `PD-PR-119E-01` | Shared six-ledger grid clears selection on a document pointer interaction outside a cell. The portal editor retains sole ownership while editing; invalid outside commits retain the draft. | Pointer/keyboard browser regression; owner interaction review. |
+| Operational work and tracking `PD-PR-119E-02` | Today retains routine/advisory and source work; personal tracking uses the same task IDs without generating notification events. | No production task/tracking authority changed. |
+| Priority bell and history `PD-PR-119E-03` | Recorded expiry and partial Lay source events enter Action Required. `Position > Notifications` is a distinct full-inbox route; ordinary CP-049 source reviews remain there, and resolved/cleared baseline fixture snapshots remain History. No synthetic system/AI result is invented. | Production CP-049 source/badge/preference conflict documented; owner amendment required. Newly generated source events beyond the fixed lab fixture have no durable history authority. |
+| Isolation and regression `PD-PR-119E-04` | Authenticated synthetic Design Lab; no normal API/schema/ledger/task changes. | Final source: 113/113 browser tests, including actual Chromium 200% zoom; 8 focused units, web typecheck, isolated webpack build and changed-file lint pass. Broad web lint: unchanged Free Bet `react-hooks/refs` error and 12 warnings. Manual screen reader and owner visual review unverified. |
+
 ## CP-119D Today and ledger input coverage — 2026-11-02
 
 | Requirement | Lab treatment / authority | Outstanding |

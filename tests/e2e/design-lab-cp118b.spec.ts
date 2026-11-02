@@ -88,10 +88,12 @@ test("Board and List share annotations; Do Later does not clear a source notific
   await today.getByRole("button", { name: "List" }).click();
   await expect(today.locator('[data-pd-id="lab.task.task:LAB-SB-OVERDUE"]')).toContainText("Do Later");
   await page.locator('[data-pd-id="lab.header-trigger.notifications"]').click();
+  await page.getByRole("button", { name: "View All Notifications" }).click();
   const notification = page.locator('[data-pd-id="lab.notification.task:LAB-SB-OVERDUE"]');
   await expect(notification).toBeVisible();
-  await notification.getByRole("button", { name: "Mark read" }).click();
+  await notification.getByRole("button", { name: "Mark Read" }).click();
   await expect(notification).toContainText("Read");
+  await page.getByRole("button", { name: "View Today" }).click();
   await expect(today.locator('[data-pd-id="lab.task.task:LAB-SB-OVERDUE"]')).toBeVisible();
 });
 
