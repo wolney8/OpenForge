@@ -1,5 +1,17 @@
 # Plum Duff UI Change Register
 
+## CP-115B connected lab batch — 2026-11-02
+
+| ID | Surface / proposed lab treatment | Established equivalent | Status |
+| --- | --- | --- | --- |
+| PD-PR-115B-01 | Synthetic sign-in, expiry, temporary failure, denied and safe sign-out within the protected lab | Founder auth shell/session-state contract; no real auth calls | NEEDS VERIFICATION — 40 lab browser paths pass; owner review pending |
+| PD-PR-115B-02 | Full-page fresh/import Profile onboarding, explicit money/fee/commission inputs, validation, dirty exit and retry | Founder Profile onboarding and shared confirmation | NEEDS VERIFICATION — fresh/import paths and zoom checked; owner review pending |
+| PD-PR-115B-03 | CP-056 invited-subscriber review preview with no grant or funding action | Existing invited workflow contract | NEEDS VERIFICATION — preview boundary checked; production grant untested |
+| PD-PR-115B-04 | Trigger-anchored bell feed tied to Today task IDs; read/clear separate from source resolution | CP-114C anchored overlay and Notification Centre contract | NEEDS VERIFICATION — read/clear/history/source path checked; owner review pending |
+| PD-PR-115B-05 | Shared inline/status/dialog patterns and responsive, keyboard, theme verification | Existing Material/ModalBoundary/ConfirmationDialog primitives | NEEDS VERIFICATION — browser geometry/zoom and prior-theme regressions pass; manual screen reader review pending |
+
+Presentation exception: the lab identity menu's former disabled Sign Out and Add Profile previews become simulation controls. They never invoke normal auth or creation endpoints. Real route guarding stays unchanged.
+
 ## CP-112 isolated visual-revision batch — 2026-11-01
 
 | ID | Surface | Owner request / lab-only treatment | Signed-off equivalent | Status |

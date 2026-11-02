@@ -50,7 +50,7 @@ test("desktop header cluster and account menu track the avatar", async ({ page }
   await expect(menu).toBeVisible();
   await expect(menu).toContainText("Lab Manager");
   await expect(menu.getByRole("switch", { name: "Dark Mode" })).toHaveAttribute("aria-checked", "true");
-  await expect(menu.getByRole("button", { name: /Sign Out/ })).toBeDisabled();
+  await expect(menu.getByRole("button", { name: "Simulate Sign Out" })).toBeEnabled();
   const g = await geometry(page);
   expect(g.viewport.scrollWidth).toBeLessThanOrEqual(g.viewport.width);
   expect(g.avatar!.right).toBeGreaterThan(1999);

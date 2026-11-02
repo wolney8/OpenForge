@@ -1,5 +1,17 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
+## CP-115B Design Lab auth/onboarding/notification coverage — 2026-11-02
+
+All states are synthetic inside protected `/design-lab`; GitHub #114 remains the Design Lab issue and live issue mutation is unverified. Earlier coverage remains in force.
+
+| Request / authority | Required interaction | Lab surface / state | Acceptance check / status | Next slice |
+| --- | --- | --- | --- | --- |
+| PD-PR-115B-01 / founder auth shell | Return destination; distinguish denied, expired and transient validation; safe sign-out | Identity menu → simulated sign-out → presentation-only sign-in and session states | Browser path and no business API calls CODE-VERIFIED; owner review pending | Real auth unchanged |
+| PD-PR-115B-02 / founder onboarding | Fresh/import identity, fees, bankroll, modules, Accounts, Quick Actions, review, recovery | Add Profile → full-page synthetic stepper → first use | Fresh/import, zero versus unknown, explicit Exchange commission, dirty exit and retry CODE-VERIFIED; owner review pending | Normal onboarding unchanged |
+| PD-PR-115B-03 / CP-056 invited subscriber | Invitation, application, manager review, restricted access | Profiles → labelled representative preview | Preview boundary CODE-VERIFIED; real grant/role transition UNVERIFIED | Separate production approval |
+| PD-PR-115B-04 / notification centre | Read/clear/history without task completion; Today/source links | Bell → anchored feed → source/Today | Stable task ID, read/clear/history/loading/error/retry browser checked; owner review pending | No persistent notification state |
+| PD-PR-115B-05 / UI safeguards | Inline errors, status, material confirmation, responsive focus/overlays | Onboarding and bell journeys | 40 focused browser tests; 1440/900/768/430/390px and actual 200% zoom; manual screen reader review UNVERIFIED | Owner visual review |
+
 ## CP-114C Design Lab shell coverage — 2026-11-01
 
 | Requirement | Required interaction | Lab demonstration | Decision / next slice |

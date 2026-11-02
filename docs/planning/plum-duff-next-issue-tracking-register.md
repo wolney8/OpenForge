@@ -1,5 +1,9 @@
 # Plum Duff Next Issue Tracking Register
 
+## CP-115B connected auth/onboarding/notifications — 2026-11-02
+
+Local checklist under [Design Lab issue #114](https://github.com/wolney8/OpenForge/issues/114); live issue update unverified. Distinct requests PD-PR-115B-01 through 05 are recorded in the [UI change register](../agent-contracts/plum-duff-ui-change-register.md#cp-115b-connected-lab-batch--2026-11-02). All remain LAB ONLY; CP-116 and normal integration remain separate.
+
 ## CP-114C screenshot-fidelity shell correction — 2026-11-01
 
 Lab-only [Design Lab issue #114](https://github.com/wolney8/OpenForge/issues/114). Owner-provided 2048px screenshot pair is level A; prior CP-114B ledger remains pending owner visual acceptance.

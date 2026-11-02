@@ -1,5 +1,9 @@
 # Project Roadmap — Plum Duff / OpenForge — Doc ID: PR-CODEX-001
 
+## CP-115B owner design review — 2026-11-02
+
+At protected `/design-lab`, walk through simulated sign-out/sign-in and recovery, bell → source → Today, fresh/import Add Profile with failure/retry, and the labelled invited-subscriber preview. Decide whether auth-state wording, onboarding sequence and notification density should inform a separately governed normal-app proposal. Actual auth, Profile/permission writes, persistent notifications and CP-116 remain outside this lab slice. [Coverage](docs/audits/platform-quality-audit.md#cp-115b-design-lab-authonboardingnotification-coverage--2026-11-02).
+
 ## CP-115 Today/offer owner review — 2026-11-01
 
 Walk through Today → shared weekly reload → per-Profile eligibility → Prospecting preview → copy result/retry → source ledger → Today. Compare source-derived work, configured checks and advisory uncertainty; inspect the Profile fee/readiness table at desktop and narrow widths. Decide whether this task grouping and copy-preview sequence merit a separately governed normal-app design. CP-116, persistent scheduling/copy and normal integration remain separate. [Coverage](docs/audits/platform-quality-audit.md#cp-115-today-and-multi-profile-design-lab-coverage--2026-11-01).

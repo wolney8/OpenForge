@@ -21,10 +21,10 @@ test("distinct workspace, Profile, notification and identity paths", async ({ pa
   await page.getByRole("button", { name: /Tracker \/ Betting Tools/ }).click();
   await expect(page.locator('[data-pd-id="lab.ledger.sportsbook"]')).toBeVisible();
   await page.getByRole("button", { name: "Notifications" }).click();
-  await page.getByRole("button", { name: /Account balance unknown/ }).click();
+  await page.locator('[data-pd-id="lab.notifications"]').getByRole("button", { name: "View all in Today" }).click();
   await expect(page.getByRole("heading", { name: "Today", level: 1 })).toBeVisible();
   await page.getByRole("button", { name: "Account menu" }).click();
-  await expect(page.locator('[data-pd-id="lab.header-menu"]')).toContainText("Sign Out · lab unavailable");
+  await expect(page.locator('[data-pd-id="lab.header-menu"]')).toContainText("Simulate Sign Out");
   await page.keyboard.press("Escape");
   await expect(page.getByRole("button", { name: "Account menu" })).toBeFocused();
 });
