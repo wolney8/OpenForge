@@ -1,5 +1,9 @@
 # Plum Duff Design Lab — initial baseline brief
 
+## CP-117 local Wave 1 decision — 2026-11-02
+
+Owner approved the CP-115C sidebar/Tracker hierarchy, separate launcher, CP-114C right header/anchored overlays, hierarchical breadcrumbs and source Back, existing Profile/range and authorised search scope, and `PD-UX-0.1` as a **local shared-shell target**. CP-116, Waves 2–4, main, Vercel and production adoption remain gated. The real shell uses a server-only `OPENFORGE_FUND_MANAGER_UX_V2=true` process flag, default OFF. No lab fixtures, money logic, role authority or ledger editors migrate in Wave 1. Existing normal-app menu/field primitives and semantic tokens remain the source; the old shell stays the rollback path. Request-time flag evaluation makes shell routes dynamic; assess performance before any hosted rollout.
+
 ## CP-115D proposed shared UX contract and migration gate — 2026-11-02
 
 **Status:** design governance only; no normal-app integration or final sign-off. CP-115C remote `b645e38620bc88c11b2c59462d7904fc1eb1b1fc` and installed `6d651385b72b02333759d7452bd289b383f900de` have the same source tree `5523c8071c610fb732a185bac5c13947d41da47e`. The owner's positive assessment permits a migration proposal, not production adoption. The [decision register](../agent-contracts/plum-duff-ui-change-register.md#cp-115d-proposed-design-decisions--2026-11-02), [route matrix](../audits/platform-quality-audit.md#cp-115d-normal-app-migration-inventory--2026-11-02) and [roadmap](../../PROJECT_ROADMAP.md#cp-115d-proposed-migration-waves--2026-11-02) are the linked controls. CP-110–115C history below remains in force.

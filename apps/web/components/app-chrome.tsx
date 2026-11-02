@@ -5,6 +5,7 @@ import { ModalBoundary } from "@/components/modal-boundary";
 import { usePathname, useRouter } from "next/navigation";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { AppNavigationDrawer } from "@/components/app-navigation-drawer";
+import { FundManagerUxV2Breadcrumbs, FundManagerUxV2Launcher, FundManagerUxV2Sidebar } from "@/components/fund-manager-ux-v2-navigation";
 import { BackLayThemeToggle } from "@/components/back-lay-theme-toggle";
 import { BrandLogo } from "@/components/brand-logo";
 import { FinancialValue, FinancialValueReplayGroup } from "@/components/financial-value";
@@ -95,7 +96,7 @@ function isAuthenticatedApplicationPath(pathname: string): boolean {
     );
 }
 
-export function AppChrome({ children }: { children: React.ReactNode }) {
+export function AppChrome({ children, uxV2 = false }: { children: React.ReactNode; uxV2?: boolean }) {
   const pathname = usePathname();
   if (pathname === "/invite" || pathname.startsWith("/subscriber")) return <><a className="skip-link" href="#main-content">Skip to content</a><header className="calculator-popout-toolbar"><Link href="/subscriber">Plum Duff · Subscriber</Link><ThemeToggle /><button className="button-link" onClick={async () => { await fetch("/api/auth/logout", { method: "POST" }); window.location.replace("/login"); }}>Sign out</button></header>{children}</>;
   const isCalculatorPopout = pathname === "/calculator";
@@ -111,7 +112,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
       {(session) => (
         isDesignLab ? <><a className="skip-link" href="#main-content">Skip to content</a><SessionInactivityGuard initialSession={session} />{children}</> :
           <FinancialMotionPreferenceProvider>
-            {isCalculatorPopout ? <CalculatorPopoutChrome initialSession={session}>{children}</CalculatorPopoutChrome> : <AppChromeContent initialSession={session}>{children}</AppChromeContent>}
+            {isCalculatorPopout ? <CalculatorPopoutChrome initialSession={session}>{children}</CalculatorPopoutChrome> : <AppChromeContent initialSession={session} uxV2={uxV2}>{children}</AppChromeContent>}
           </FinancialMotionPreferenceProvider>
       )}
     </SessionBootstrapGate>
@@ -135,9 +136,11 @@ function CalculatorPopoutChrome({ children, initialSession }: { children: React.
 function AppChromeContent({
   children,
   initialSession = null,
+  uxV2 = false,
 }: {
   children: React.ReactNode;
   initialSession?: FundManagerSession | null;
+  uxV2?: boolean;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -152,6 +155,7 @@ function AppChromeContent({
   const [headerSummary, setHeaderSummary] = useState<HeaderSummaryState | null>(null);
   const [trackerMenuOpen, setTrackerMenuOpen] = useState(false);
   const [appMenuOpen, setAppMenuOpen] = useState(false);
+  const [uxV2MobileOpen, setUxV2MobileOpen] = useState(false);
   const [profileSearch, setProfileSearch] = useState("");
   const [selectedCommandProfileId, setSelectedCommandProfileId] = useState<string | null>(null);
   const [activeProfiles, setActiveProfiles] = useState<ProfileHeaderRecord[]>([]);
@@ -584,13 +588,13 @@ function AppChromeContent({
       <a className="skip-link" href="#main-content">
         Skip to content
       </a>
-      <div className="app-frame">
-        {!isPublicAuthRoute ? <header className="top-app-bar" data-openforge-top-bar="" data-pd-id="app-shell.top-bar">
+      <div className={`app-frame${uxV2 && !isPublicAuthRoute ? " ux-v2-frame" : ""}`} data-ux-shell={uxV2 && !isPublicAuthRoute ? "v2" : "legacy"}>
+        {!isPublicAuthRoute ? <header className={`top-app-bar${uxV2 ? " ux-v2-top-bar" : ""}`} data-openforge-top-bar="" data-pd-id="app-shell.top-bar">
           <div className="brand-lockup">
             {!isPublicAuthRoute ? <div className="app-menu-shell">
               <button
-                aria-expanded={appMenuOpen}
-                aria-controls="app-navigation-drawer"
+                aria-expanded={uxV2 ? uxV2MobileOpen : appMenuOpen}
+                aria-controls={uxV2 ? "ux-v2-sidebar" : "app-navigation-drawer"}
                 aria-haspopup="dialog"
                 aria-label="Open navigation drawer"
                 className="icon-button app-navigation-drawer-trigger"
@@ -598,7 +602,8 @@ function AppChromeContent({
                 onClick={() => {
                   setTrackerMenuOpen(false);
                   setProfileSearch("");
-                  setAppMenuOpen(true);
+                  if (uxV2) setUxV2MobileOpen(true);
+                  else setAppMenuOpen(true);
                 }}
                 ref={appMenuTriggerRef}
                 type="button"
@@ -613,7 +618,7 @@ function AppChromeContent({
               <div className="brand-title">{platformBrand.name}</div>
             </div>
           </div>
-          {!isPublicAuthRoute ? <GlobalSearch /> : <div aria-hidden="true" />}
+          {!uxV2 ? <GlobalSearch /> : null}
           <div className="top-bar-profile-context">
             {!isPublicAuthRoute && isInsideProfile ? (
               <div className="app-menu-shell profile-summary-menu-shell" ref={trackerMenuRef}>
@@ -790,17 +795,12 @@ function AppChromeContent({
                   </div>
                 </div>
               </div>
-            ) : null}
+            ) : uxV2 ? <Link className="ux-v2-all-profiles" href="/profiles">All Profiles<span aria-hidden="true" className="material-symbols-outlined">unfold_more</span></Link> : null}
           </div>
-          <div className="top-bar-actions">
-            {!isPublicAuthRoute ? <NotificationCentre /> : null}
-            {!isPublicAuthRoute ? <BackLayThemeToggle /> : null}
-            {!isPublicAuthRoute ? <FundManagerIdentityMenu /> : null}
-            <ThemeToggle />
-          </div>
+          {uxV2 ? <div className="ux-v2-header-right"><GlobalSearch /><div className="top-bar-actions"><NotificationCentre /><BackLayThemeToggle /><FundManagerUxV2Launcher key={pathname} /><FundManagerIdentityMenu uxV2 /></div></div> : <div className="top-bar-actions"><NotificationCentre /><BackLayThemeToggle /><FundManagerIdentityMenu /><ThemeToggle /></div>}
           <Suspense fallback={null}><ShellLoadingProgress /></Suspense>
         </header> : null}
-        {!isPublicAuthRoute ? <Suspense fallback={null}>
+        {!isPublicAuthRoute && !uxV2 ? <Suspense fallback={null}>
           <AppNavigationDrawer
             activeProfileId={activeProfileId}
             availableProfiles={activeProfiles}
@@ -812,9 +812,11 @@ function AppChromeContent({
             triggerRef={appMenuTriggerRef}
           />
         </Suspense> : null}
+        {!isPublicAuthRoute && uxV2 ? <FundManagerUxV2Sidebar profileId={resolvedProfileId} mobileOpen={uxV2MobileOpen} onMobileClose={() => setUxV2MobileOpen(false)} triggerRef={appMenuTriggerRef} /> : null}
         {!isPublicAuthRoute ? <SessionInactivityGuard initialSession={initialSession} /> : null}
         {!isPublicAuthRoute ? <ImportExecutionMonitor /> : null}
-        <div className="main-shell" id="main-content">
+        <div className={`main-shell${uxV2 && !isPublicAuthRoute ? " ux-v2-main" : ""}`} id="main-content">
+          {uxV2 && !isPublicAuthRoute ? <FundManagerUxV2Breadcrumbs profileId={resolvedProfileId} profileName={profileName} /> : null}
           {children}
         </div>
       </div>

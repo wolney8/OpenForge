@@ -18304,3 +18304,100 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
 .oddsmatcher-table .oddsmatcher-lay-quote-stack { justify-items: center; }
 .oddsmatcher-table .oddsmatcher-lay-quote-stack .oddsmatcher-quote-status-slot { max-width: 8rem; justify-self: center; }
 .oddsmatcher-card-quote .oddsmatcher-quote-status-slot { max-width: none; }
+
+/* CP-117: server-flagged shared shell. Existing shell styles remain the OFF path. */
+.ux-v2-frame { --ux-v2-nav-width: 15.5rem; }
+.ux-v2-top-bar {
+  grid-template-areas: "brand profile right";
+  grid-template-columns: auto minmax(11rem, 18rem) minmax(0, 1fr);
+  gap: 1rem;
+  min-height: 4.75rem;
+  padding: .6rem 1rem;
+  background: var(--surface);
+  backdrop-filter: none;
+}
+.ux-v2-top-bar > .brand-lockup { min-width: 0; }
+.ux-v2-top-bar .app-navigation-drawer-trigger { display: none; }
+.ux-v2-top-bar .top-bar-profile-context { grid-area: profile; min-width: 0; }
+.ux-v2-header-right { grid-area: right; display: flex; justify-content: flex-end; align-items: center; gap: .5rem; min-width: 0; }
+.ux-v2-header-right .global-search { flex: 0 1 30rem; width: min(30rem, 100%); min-width: 0; }
+.ux-v2-header-right .top-bar-actions { flex: 0 0 auto; display: flex; flex-wrap: nowrap; justify-content: flex-end; gap: .35rem; width: auto; }
+.ux-v2-all-profiles { display: flex; align-items: center; justify-content: space-between; min-height: 44px; padding: 0 .75rem; border: 1px solid var(--outline); border-radius: .75rem; color: var(--text); text-decoration: none; }
+.ux-v2-all-profiles:hover { background: var(--surface-strong); }
+.ux-v2-main { box-sizing: border-box; margin-left: var(--ux-v2-nav-width); min-width: 0; }
+.ux-v2-sidebar { position: fixed; z-index: 31; top: 4.75rem; bottom: 0; left: 0; box-sizing: border-box; width: var(--ux-v2-nav-width); padding: 1rem .65rem; overflow-y: auto; background: var(--surface); border-right: 1px solid var(--outline); }
+.ux-v2-sidebar-mobile-heading { display: none; }
+.ux-v2-nav-stack, .ux-v2-nav-children { display: grid; align-content: start; gap: .2rem; }
+.ux-v2-nav-children { padding-left: .65rem; }
+.ux-v2-nav-link { display: grid; grid-template-columns: 1.5rem minmax(0,1fr) auto; align-items: center; gap: .7rem; width: 100%; min-height: 44px; box-sizing: border-box; padding: .45rem .7rem; border: 0; border-radius: 999px; background: transparent; color: var(--text); text-align: left; text-decoration: none; font: inherit; cursor: pointer; }
+.ux-v2-nav-link:hover, .ux-v2-launcher-link:hover { background: var(--surface-strong); }
+.ux-v2-nav-link.is-active { color: var(--primary); background: color-mix(in srgb, var(--primary) 15%, var(--surface)); font-weight: 700; }
+.ux-v2-nav-link.is-group-active { font-weight: 700; }
+.ux-v2-nav-link.is-unavailable { opacity: .55; cursor: not-allowed; }
+.ux-v2-nav-link .material-symbols-outlined { font-size: 1.35rem; }
+.ux-v2-nav-chevron { justify-self: end; }
+.ux-v2-sidebar-scrim { display: none; }
+.ux-v2-launcher-root { display: flex; align-items: center; }
+.ux-v2-launcher-panel { position: absolute; z-index: 60; top: calc(100% + .65rem); right: 0; width: min(21rem, calc(100vw - 1.5rem)); box-sizing: border-box; padding: .8rem; border: 1px solid var(--outline); border-radius: 1rem; background: var(--surface); box-shadow: 0 1rem 2.5rem #0005; }
+.ux-v2-launcher-panel > strong { display: block; padding: .35rem .6rem .65rem; }
+.ux-v2-launcher-panel nav { display: grid; gap: .15rem; }
+.ux-v2-launcher-link { display: flex; align-items: center; gap: .7rem; min-height: 44px; padding: .45rem .6rem; border-radius: .65rem; color: var(--text); text-decoration: none; }
+.ux-v2-identity-trigger { width: 44px; height: 44px; min-height: 44px; padding: .2rem; border: 0; background: transparent; }
+.ux-v2-identity-trigger .fund-manager-role-chip,
+.ux-v2-identity-trigger > .material-symbols-outlined { display: none; }
+.ux-v2-identity-panel { gap: .1rem; padding: .65rem; background: var(--surface); }
+.ux-v2-identity-panel .fund-manager-identity-summary { padding: .65rem; border-bottom: 0; }
+.ux-v2-identity-panel .profile-command-add-action { display: grid; grid-template-columns: 1.5rem minmax(0,1fr) auto; align-items: center; min-height: 44px; width: 100%; padding: .5rem .65rem; border: 0; border-radius: .6rem; background: transparent; color: var(--text); text-align: left; text-decoration: none; font: inherit; cursor: pointer; }
+.ux-v2-identity-panel .profile-command-add-action:hover { background: var(--surface-strong); }
+.ux-v2-menu-divider { height: 1px; margin: .4rem -.65rem; background: var(--outline); }
+.ux-v2-switch-track { display: inline-flex; align-items: center; width: 2.4rem; height: 1.45rem; padding: .16rem; border-radius: 999px; background: var(--outline-strong); }
+.ux-v2-switch-track > span { width: 1.12rem; height: 1.12rem; border-radius: 50%; background: var(--surface); transition: transform .16s ease; }
+.ux-v2-switch-track.is-on { background: var(--primary); }
+.ux-v2-switch-track.is-on > span { transform: translateX(.94rem); }
+.ux-v2-crumb-row { display: flex; align-items: center; justify-content: space-between; gap: .75rem; width: min(1560px, calc(100% - 2rem)); margin: 0 auto 1rem; font-size: .9rem; }
+.ux-v2-crumb-row ol { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; margin: 0; padding: 0; list-style: none; }
+.ux-v2-crumb-row li + li::before { content: "›"; margin-right: .4rem; color: var(--muted-text); }
+.ux-v2-crumb-row a { color: var(--primary); }
+.ux-v2-origin-group { display: flex; align-items: center; justify-content: flex-end; gap: .7rem; flex-wrap: wrap; }
+.ux-v2-origin-context { color: var(--muted); white-space: nowrap; }
+.ux-v2-origin-back { display: inline-flex; align-items: center; gap: .3rem; white-space: nowrap; }
+.ux-v2-crumb-row, .ux-v2-origin-back { scroll-margin-top: 7rem; }
+.ux-v2-origin-back .material-symbols-outlined { font-size: 1.1rem; }
+
+@media (max-width: 1280px) {
+  .ux-v2-top-bar { grid-template-areas: "brand profile right"; grid-template-columns: auto minmax(10rem, 1fr) auto; }
+  .ux-v2-header-right .global-search { flex: 0 0 44px; width: 44px; }
+  .ux-v2-header-right .global-search .global-search-compact-trigger { display: inline-flex; width: 44px; height: 44px; }
+  .ux-v2-header-right .global-search .global-search-field { display: none; }
+  .ux-v2-header-right .global-search.is-compact-open { position: absolute; z-index: 55; top: calc(100% + .25rem); right: 1rem; width: min(34rem, calc(100vw - 2rem)); display: grid; grid-template-columns: 44px minmax(0,1fr); padding: .3rem; border: 1px solid var(--outline); border-radius: .85rem; background: var(--surface); }
+  .ux-v2-header-right .global-search.is-compact-open .global-search-field { display: block; }
+}
+@media (max-width: 900px) {
+  .ux-v2-frame { --ux-v2-nav-width: 14rem; }
+  .ux-v2-top-bar { gap: .55rem; }
+  .ux-v2-top-bar .brand-title { display: none; }
+}
+@media (max-width: 760px) {
+  .ux-v2-top-bar { grid-template-areas: "brand right" "profile profile"; grid-template-columns: minmax(0,1fr) auto; }
+  .ux-v2-top-bar .app-navigation-drawer-trigger { display: inline-flex; }
+  .ux-v2-top-bar .top-bar-profile-context { width: 100%; }
+  .ux-v2-main { margin-left: 0; }
+  .ux-v2-sidebar { top: 0; z-index: 75; width: min(18rem, calc(100vw - 3rem)); transform: translateX(-105%); transition: transform .18s ease; }
+  .ux-v2-sidebar.is-mobile-open { transform: translateX(0); }
+  .ux-v2-sidebar-mobile-heading { display: flex; align-items: center; justify-content: space-between; min-height: 44px; padding: .25rem .55rem .75rem; }
+  .ux-v2-sidebar-scrim.is-open { position: fixed; z-index: 74; inset: 0; display: block; background: #0009; }
+}
+@media (max-width: 430px) {
+  .ux-v2-top-bar { gap: .35rem; padding: .55rem; }
+  .ux-v2-header-right { gap: .15rem; }
+  .ux-v2-header-right .top-bar-actions { gap: .1rem; }
+  .ux-v2-header-right .fund-manager-role-chip,
+  .ux-v2-header-right .fund-manager-identity-trigger > .material-symbols-outlined,
+  .ux-v2-header-right .top-bar-actions .icon-button,
+  .ux-v2-header-right .top-bar-actions button { min-width: 44px; min-height: 44px; }
+  .ux-v2-crumb-row { align-items: flex-start; flex-direction: column; }
+  .ux-v2-launcher-panel { position: fixed; top: 4rem; right: .5rem; left: .5rem; width: auto; }
+  .ux-v2-header-right .notification-panel,
+  .ux-v2-header-right .back-lay-theme-shell .app-menu-panel { position: fixed; top: 4rem; right: .5rem; left: .5rem; width: auto; max-width: none; min-width: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .ux-v2-sidebar { transition: none; } }

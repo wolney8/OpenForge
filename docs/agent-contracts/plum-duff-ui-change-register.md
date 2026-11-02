@@ -1,5 +1,19 @@
 # Plum Duff UI Change Register
 
+## CP-117 Wave 0/1 approved local shell batch — 2026-11-02
+
+Owner authorises local-only shell migration from the CP-115D checkpoint. `PROPOSED — LAB ONLY` exceptions from CP-110–115C remain historical evidence; this batch approves only the listed real shell direction. Signed-off normal AppChrome, drawer, search, Profile/range and notification controls are the reuse references. Red Close and specialist editor exceptions remain deferred. No ledger or financial authority changes.
+
+| ID | Area / requested result | Signed-off equivalent | Status |
+| --- | --- | --- | --- |
+| PD-PR-117-01 | Server-configured default-off UI flag; old shell and real deep links survive ON/OFF and rollback | AppChrome, existing real auth/route gate | NEEDS VERIFICATION — OFF/ON browser paths pass; owner-authenticated rollback and performance review pending |
+| PD-PR-117-02 | Persistent Position/Today/Opportunities/Accounts/Tracker/Reports navigation with genuine route context | AppNavigationDrawer, CP-115C registry | NEEDS VERIFICATION — synthetic-session route/width checks pass; All Profiles ledger requires Profile selection |
+| PD-PR-117-03 | Separate role-safe anchored launcher for real tools/management routes | Existing app menu, CP-114C overlay | NEEDS VERIFICATION — real routes enumerated; access remains server-gated; owner role walkthrough pending |
+| PD-PR-117-04 | Right-aligned header, current authorised GlobalSearch, anchored notification/identity/Profile controls | TopAppBar, GlobalSearch, NotificationCentre, FundManagerIdentityMenu | NEEDS VERIFICATION — geometry, light/dark, keyboard and 200% browser checks pass; screen reader pending |
+| PD-PR-117-05 | Hierarchical breadcrumbs and source-origin Back without changing Profile/range/ledger state | Profile route helper and current deep links | NEEDS VERIFICATION — report query/source Back browser path passes; route-level filter/scroll persistence pending |
+
+**CP-117 checklist receipt:** Reused existing AppChrome, search, notification, Profile/range, identity, Material icon and theme primitives. The new registry and flag-scoped shell CSS replace only normal navigation composition. Browser checks cover mobile containment, no page overflow, overlay anchoring/dismissal, focus return, light/dark and actual 200% zoom; focused role/auth and financial read-value fixtures run separately. No ledger modal, financial input or normal data contract changed. Manual screen-reader and owner visual judgement remain unverified.
+
 ## CP-115D proposed design decisions — 2026-11-02
 
 All entries are **DOCUMENTED proposals**, not normal-app approval. Owner evidence is CP-114 workflow description, CP-114C screenshot comparison, CP-115B/C feedback and the current CP-115D request. Lab examples and current rule references are in the [brief](../planning/plum-duff-design-lab-brief.md#cp-115d-proposed-shared-ux-contract-and-migration-gate--2026-11-02). Keep earlier IDs below open at their recorded acceptance level.

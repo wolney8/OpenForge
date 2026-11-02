@@ -1286,7 +1286,7 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialIssue
           </article></MotionReplayGroup>
         </section>
         {summaryReadState === "ready" ? <AccountMoneyStatus issues={accountQuickView.moneyIssues} /> : null}
-        <ProfileOpportunityQueue profileId={profileId} />
+        <div id="profile-opportunities"><ProfileOpportunityQueue profileId={profileId} /></div>
         <>
             <div
               aria-label="Accounts controls"

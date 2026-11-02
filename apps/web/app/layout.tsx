@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { AppChrome } from "@/components/app-chrome";
 import { CookieNotice } from "@/components/cookie-notice";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -10,11 +11,14 @@ export const metadata: Metadata = {
   description: platformBrand.description,
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Keep the server-owned UX flag reversible at process restart without rebuilding.
+  await headers();
+  const uxV2 = process.env.OPENFORGE_FUND_MANAGER_UX_V2 === "true";
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -27,7 +31,7 @@ export default function RootLayout({
       </head>
       <body>
         <ThemeProvider>
-          <AppChrome>{children}</AppChrome>
+          <AppChrome uxV2={uxV2}>{children}</AppChrome>
           <CookieNotice />
         </ThemeProvider>
       </body>

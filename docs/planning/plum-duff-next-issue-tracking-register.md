@@ -1,5 +1,9 @@
 # Plum Duff Next Issue Tracking Register
 
+## CP-117 local shell migration — 2026-11-02
+
+Owner approved local-only Wave 0/1 under PD-PR-117-01 through 05 in the [UI change register](../agent-contracts/plum-duff-ui-change-register.md#cp-117-wave-01-approved-local-shell-batch--2026-11-02), linked to [Design Lab issue #114](https://github.com/wolney8/OpenForge/issues/114); live issue mutation unverified. Search stays Navigation, Profiles and active Account Catalogue. CP-116, Waves 2–4 and hosted adoption remain separate requests, not closed by this shell change.
+
 ## CP-115D Design Lab sign-off and migration proposal — 2026-11-02
 
 Owner requests PD-PR-115D-01 through 09 are preserved individually in the [decision register](../agent-contracts/plum-duff-ui-change-register.md#cp-115d-proposed-design-decisions--2026-11-02) and linked to the existing [Design Lab issue #114](https://github.com/wolney8/OpenForge/issues/114). They cover stable shell/context, positive lab directions, protected business authority, CP-116 specialists, real edit/correction and Account observation, saved-view persistence, tool/onboarding exceptions, and two small onboarding candidates. Status: **DOCUMENTED proposal**, with CP-116 and normal waves unapproved. Live issue mutation is unverified; this local register remains the durable request record. No earlier request is closed or replaced.

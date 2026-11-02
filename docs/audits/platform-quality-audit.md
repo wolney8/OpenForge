@@ -1,5 +1,9 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
+## CP-117 Wave 1 route status — 2026-11-02
+
+Flagged shell changes only. Position `/`, Today `/tasks`, Reports `/reports`, Profiles `/profiles`, existing Profile-owned Accounts/Tracker routes, and launcher destinations `/oddsmatcher`, `/fund-manager/calculators`, `/profiles/requests`, `/settings`, `/profiles/restore` retain their real route/data/role authorities. Profile Opportunity Queue is reached at the existing Accounts surface via `#profile-opportunities`; no aggregate Opportunities route exists. All Profiles cannot directly open a Profile-owned ledger without selecting a Profile. Source Back uses the actual same-origin origin URL when opened through a link, with a safe fixed-route fallback for existing report/dashboard source parameters. Ledger-local filters/sort restoration and full record-detail origins still require route-level acceptance; no new record-search index exists. Default shell remains the old route presentation.
+
 ## CP-115D normal-app migration inventory — 2026-11-02
 
 Read-only source inventory. **Real** means a route/component exists, not that the lab interaction or owner visual design is accepted. **Lab** means synthetic working (W) or preview (P). Complexity L/M/H is migration risk, not implementation effort alone. All waves require separate owner approval. [Shared contract proposal](../planning/plum-duff-design-lab-brief.md#cp-115d-proposed-shared-ux-contract-and-migration-gate--2026-11-02); earlier scenario coverage remains below.
