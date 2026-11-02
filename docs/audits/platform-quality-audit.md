@@ -1,5 +1,28 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
+## CP-115D normal-app migration inventory — 2026-11-02
+
+Read-only source inventory. **Real** means a route/component exists, not that the lab interaction or owner visual design is accepted. **Lab** means synthetic working (W) or preview (P). Complexity L/M/H is migration risk, not implementation effort alone. All waves require separate owner approval. [Shared contract proposal](../planning/plum-duff-design-lab-brief.md#cp-115d-proposed-shared-ux-contract-and-migration-gate--2026-11-02); earlier scenario coverage remains below.
+
+| Real route / component | Lab counterpart; shared primitive needed | Protected authority; current gap / risk | Wave, complexity; acceptance gate |
+| --- | --- | --- | --- |
+| `/login`, `AppChrome`/session gate | Simulated sign-in W; shell, error and return state | Real OAuth, role, route/API guard; lab cannot prove SSO/expiry. | 1 H; valid/missing/expired session, safe return, logout and no access leak. |
+| `/`, `/profiles`, Profile context, `/performance` | Position W, Profiles P; sidebar/header/selector/breadcrumb | Real cross-Profile aggregation, universal range; lab values synthetic. | 1 shell, 2 reads H; All Profiles/range/deep-link and financial fixture parity. |
+| `/tasks`, `/notifications` | Today/bell W; shared task rows, anchored feed | Real notification source/read state; lab recurring schedule synthetic. | 2 H; read ≠ resolve, source navigation and role isolation. |
+| `/reports`, `/profiles/:id/tracker/reports` | Reports W on limited fixtures; financial cells/chart/drilldown | Real selected-range/current-versus-final and partial-known contracts; lab coverage narrow. | 2 H; source-linked report and exact governed values. |
+| `/profiles/:id/tracker/accounts`, `/account` | Accounts W, balance shortcut W; ledger grid/observation editor | Real cash readiness, Account eligibility/audit; shortcut only synthetic. | 2 overview, 3 edit H; unknown/zero, observation history, no silent balance write. |
+| `/profiles/:id/tracker/sportsbook-bets` | Spreadsheet W, Quick Capture/workbench W; typed grid/editor | Placement confirmation, partial lay, lifecycle and audit; lab only one CALC-001 tuple. | 3 H; required columns/order, formulas, correction and failure recovery. |
+| `/profiles/:id/tracker/free-bets` | Linked preview P; specialist conditional editor | SNR/SR, award bridge, expiry, settlement not fully simulated. | 4 H after CP-116; source/child audit and financial fixture parity. |
+| `/profiles/:id/tracker/casino-offers` | Offer preview P; conditional editor | Offer-type-specific lifecycle, current/final value; lab depth missing. | 4 H after CP-116; Setup/Wagering/Reward/Settlement only where applicable. |
+| `/profiles/:id/tracker/each-way-extra-places` | Labelled preview P; domain-specific grid/editor | Signed-off EP fields, weekly loss budget, exceptional settlement gap. | 4 H after CP-116; no required field loss or altered money meaning. |
+| `/profiles/:id/tracker/cash-adjustments` | Labelled preview P; money/audit editor | Cash movement and report membership; lab correction not validated. | 4 M; source-to-report and reasoned edit checks. |
+| `/oddsmatcher`, `/fund-manager/calculators` | Launcher destinations P; tool shell, context return | Real provider quota/replay safety and calculation authorities; lab engines absent. | 4 H; no provider call from navigation, Profile/global and calculator regressions. |
+| `/profiles/new`, `/profiles/:id/manage` | Full-page onboarding W; stepper/input/dirty guard | Real Account setup, fee/commission, import path; blank-bankroll candidate. | 4 H; £0/unknown, required fee/commission, save/retry, no duplicate Profile. |
+| `/settings`, `/profiles/requests`, `/invite`, `/subscriber` | Settings/Subscriber P; tool/role-specific shell | Real role/CP-056 invitation states; lab grant is synthetic only. | 4 H; role denial, Profile isolation and no public signup assumption. |
+| `/profiles/restore`, import recovery | Recovery launcher P; protected review/confirmation | Real backup/import/restore integrity; no lab operation. | 4 H; explicit separate recovery contract and rollback rehearsal. |
+
+Normal duplication to resolve in Wave 1: `AppChrome` holds Profile command/navigation and header state, `AppNavigationDrawer` has its own route list, `GlobalSearch` has a separate result taxonomy, `FundManagerIdentityMenu` and `NotificationCentre` own separate overlays, while the lab has a unified destination registry and synthetic search/overlay state. `globals.css` already has light/dark semantic tokens and `ModalBoundary`, table-scroll and financial-value primitives; the lab CSS module is evidence, not a second production system. No normal component was modified in CP-115D.
+
 ## CP-115C Design Lab navigation coverage — 2026-11-02
 
 The owner accepted CP-115B for continued exploration; navigation was rejected. All new destinations remain synthetic/preview inside the protected lab. Existing CP-110–115B request and decision entries remain below.

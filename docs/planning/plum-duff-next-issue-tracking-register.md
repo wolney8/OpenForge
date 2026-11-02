@@ -1,5 +1,9 @@
 # Plum Duff Next Issue Tracking Register
 
+## CP-115D Design Lab sign-off and migration proposal — 2026-11-02
+
+Owner requests PD-PR-115D-01 through 09 are preserved individually in the [decision register](../agent-contracts/plum-duff-ui-change-register.md#cp-115d-proposed-design-decisions--2026-11-02) and linked to the existing [Design Lab issue #114](https://github.com/wolney8/OpenForge/issues/114). They cover stable shell/context, positive lab directions, protected business authority, CP-116 specialists, real edit/correction and Account observation, saved-view persistence, tool/onboarding exceptions, and two small onboarding candidates. Status: **DOCUMENTED proposal**, with CP-116 and normal waves unapproved. Live issue mutation is unverified; this local register remains the durable request record. No earlier request is closed or replaced.
+
 ## CP-115C stable navigation and launcher — 2026-11-02
 
 Local checklist under [Design Lab issue #114](https://github.com/wolney8/OpenForge/issues/114); live issue mutation unverified. Distinct owner requests PD-PR-115C-01 through 05 are retained in the [UI change register](../agent-contracts/plum-duff-ui-change-register.md#cp-115c-stable-navigation-batch--2026-11-02). Navigation is LAB ONLY and not owner-accepted; CP-116 and normal integration remain separate.

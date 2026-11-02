@@ -1,5 +1,64 @@
 # Plum Duff UI Change Register
 
+## CP-115D proposed design decisions — 2026-11-02
+
+All entries are **DOCUMENTED proposals**, not normal-app approval. Owner evidence is CP-114 workflow description, CP-114C screenshot comparison, CP-115B/C feedback and the current CP-115D request. Lab examples and current rule references are in the [brief](../planning/plum-duff-design-lab-brief.md#cp-115d-proposed-shared-ux-contract-and-migration-gate--2026-11-02). Keep earlier IDs below open at their recorded acceptance level.
+
+| ID / class | Current rule or source and purpose | Proposed treatment; acceptance check | Status / owner decision |
+| --- | --- | --- | --- |
+| PD-PR-115D-01 · LOCK CANDIDATE — OWNER POSITIVE | `AppChrome`/drawer and lab shell each arrange destinations; prior split intended to separate manager from tracker. | One persistent sidebar, expandable Tracker, separate launcher, right header cluster and anchored overlays; verify real deep links, roles, responsive/zoom and route return. | Proposed; approve hierarchy and launcher purpose for Wave 1. |
+| PD-PR-115D-02 · LOCK CANDIDATE — OWNER POSITIVE | Current Profile navigation and route menus preserve Profile ownership but can change page context. | Hierarchical breadcrumbs plus source-origin Back; All Profiles and range remain independent. Verify cross-Profile source → Back restores filters, sort and scroll without cross-Profile data. | Proposed; approve context/return contract for Wave 1. |
+| PD-PR-115D-03 · LOCK CANDIDATE — OWNER POSITIVE | Existing tokens, ledger tables and modal parity standardise presentation and save safety. | Neutral Material light/dark surfaces; spreadsheet controls, Quick Capture, non-linear entry, Today categories/source links, shared notifications/dialogs and full-page onboarding remain design directions. Verify each against real fields, lifecycle and WCAG before its wave. | Proposed direction only; no blanket layout or production approval. |
+| PD-PR-115D-04 · PROTECTED BUSINESS AUTHORITY | Workbook, calculation, Profile/Account, lifecycle/audit, auth/role, import/recovery and fee contracts protect meaning and access. | Preserve required ledger fields/default columns, unknown/zero, rounding, current/final, fee crystallisation and audited writes. Run contract fixtures, API isolation/auth checks and data hashes per wave. | Protected; separate owner approval for any material change. |
+| PD-PR-115D-05 · OPEN DESIGN | Free Bet/Casino are preview-level in lab; Extra Place/Cash have signed-off domain requirements. | CP-116 specialist slice decides conditional steps, SNR/SR/expiry, linked reporting and distinct editor shapes without a generic stepper. | Proposed CP-116; owner approval required before build/migration. |
+| PD-PR-115D-06 · OPEN DESIGN | Normal edit/correction and Account observation authorities already guard money; lab grid is synthetic. | Decide which cells may edit in place, how placed/settled correction opens review/audit, and whether Account balance shortcut exposes observation history. Test server rejection and save failure. | Unverified for real data; no inline financial migration approval. |
+| PD-PR-115D-07 · OPEN DESIGN | Lab saved views are memory-only; normal filters/columns have separate state. | Define versioned server-validated user view with ledger ID, optional Profile scope, filters/sort/order/widths, immutable required defaults and role checks before persistence. | No storage/schema approval; migration deferred. |
+| PD-PR-115D-08 · OPEN DESIGN | Current tools and onboarding have distinct layouts; lab launcher tools are previews. | Decide tool-specific shell exceptions, final outcome comparison and onboarding corrections after route-by-route evidence. | No tool redesign or onboarding acceptance inferred. |
+| PD-PR-115D-09 · SMALL CORRECTION CANDIDATES | Normal onboarding initial `starting_bankroll` is `"0.00"`; commission uses `PercentageTextInput`, with the exact displayed conversion still to verify. | Propose blank initial bankroll with required explicit entry, accepting £0.00; verify commission display in percentage points against stored rate before a separate normal change. | Starting default CODE-VERIFIED; rendered commission issue UNVERIFIED; neither implemented. |
+
+**Lock-candidate detail.** Every row is *OWNER POSITIVE / NOT PRODUCTION APPROVED*. The current normal pattern is cited to expose migration conflict; lab evidence is synthetic.
+
+| Candidate | Owner evidence; current normal rule | Proposal / acceptance check |
+| --- | --- | --- |
+| Persistent sidebar | CP-115C improvement; `AppNavigationDrawer` is conditional/opened from the header. | Stable destinations across all routes; role-safe deep links and no duplicate active item. |
+| Expandable Tracker | CP-115C; current drawer has a separate Profile route list. | Parent group persists; exact child active; keyboard/collapsed/narrow checks. |
+| Separate launcher | CP-115C; normal AppChrome menu/drawer overlaps tool navigation. | Distinct tools only; no enabled dead end or role leak; return to Position. |
+| Right-aligned header | CP-114C screenshot direction; normal `top-app-bar` has its own layout. | Search then actions as one bounded cluster at 2048–390px/200% zoom. |
+| Trigger-anchored overlays | CP-114C; identity, Profile command, search and notification overlays are separate. | Each panel tracks its trigger, clamps, dismisses and restores focus. |
+| Breadcrumbs/source Back | CP-114B/C and CP-115C; normal route hierarchy and source query are separate. | Ancestors navigate; Back restores report/ledger origin, filters and scroll. |
+| All Profiles/context | CP-114B/C; normal `resolveEquivalentProfileRoute` and selected range govern context. | Source inspection never silently changes aggregate scope; server ownership checked. |
+| Neutral light/dark | CP-114C; `globals.css` has separate current semantic surfaces. | Map tokens rather than copy lab CSS; contrast and financial status in both themes. |
+| Spreadsheet ledger | CP-114B; normal tables retain approved columns and `table-scroll`. | Direct sort/resize/reorder with keyboard fallback; default order and all fields accessible. |
+| Quick Capture/workbench | CP-114 owner-grounded sequence; normal ledger modal parity provides single modal safety. | Offer-first and non-linear preparation; explicit placement/audit and Save/Discard preserved. |
+| Today/source tasks | CP-115; normal `/tasks` and Notification Centre have real source authority. | Derived work resolves only at source; advisory/reminder uncertainty visible. |
+| Shared notifications/dialogs | CP-115B; normal `NotificationCentre`, `ModalBoundary` and confirmation exist. | Read ≠ resolve; failure/retry, dirty guard, keyboard/focus/one scroll owner. |
+| Full-page onboarding | CP-115B; normal `ProfileOnboarding` already uses full-page stages. | Retain fresh/import rules, fee/commission, unknown/£0 and audited creation. |
+
+**Open decisions.** CP-114–115D owner requests establish the need, not a chosen normal-app solution. Each remains UNVERIFIED for production.
+
+| Decision / current purpose and conflict | Proposed lab or contract check; owner decision |
+| --- | --- |
+| Free Bet complex entry: normal Free Bet workflow protects award/placement/settlement; lab is preview-only. | CP-116 tests SNR/SR, award linkage and expiry; choose conditional entry shape. |
+| Casino complex entry: normal lifecycle varies by offer type; a universal stepper could add irrelevant stages. | CP-116 tests offer-specific Setup/Wagering/Reward/Settlement; approve conditions. |
+| Extra Place/Cash presentation: signed-off EP fields and Cash Adjustment audit are protected; lab previews lack depth. | CP-116 tests distinct edit/correction layouts and every required field; approve narrow treatment. |
+| Edit versus correction: real placed/settled writes require audit; lab inline editor is synthetic. | Define allowed cells by lifecycle and server validation; approve correction route and reason gate. |
+| Saved-view persistence: lab memory has no real user/role authority. | Approve versioned, server-validated user/ledger/Profile scope contract and schema separately. |
+| Account balance shortcut: Account observation differs from expected movement. | Test confirmed observation, timestamp, history and unknown/zero; approve shortcut placement. |
+| Tool-specific layouts: Oddsmatcher/calculators have independent safety contracts. | Test shell escape/context without forcing ledger geometry; approve exception per tool. |
+| Onboarding presentation: normal form has protected fresh/import validation; initial bankroll defaults to zero. | Review blank-required input and commission percentage-point display with £0 still valid; approve bounded change later. |
+| Specialist outcome comparison: current financial calculators/ledger cells have separate meanings. | CP-116 compares contract-backed outcome values; approve disclosure and responsive presentation only after fixture parity. |
+
+### Rule reconciliation before normal integration
+
+| Existing exact rule / original purpose | Decision proposal and lab evidence | Risk / affected checks | Approval |
+| --- | --- | --- | --- |
+| [UI accessibility contract](plum-duff-ui-accessibility-contract.md#shared-action-semantics): Close uses **red Material `close`** to distinguish it from create/delete. | Neutral Close may better reserve red for danger; CP-111/112 lab retains dirty Save/Discard/Cancel, Escape and focus. Keep icon/name and safeguards. | Wrongly muted discard warning; modal parity, unsaved-dialog, colour/contrast tests. | Owner visual-semantics approval required. |
+| [Ledger modal parity](plum-duff-ledger-modal-parity-contract.md): add/edit ledgers share one modal, stepper geometry and footer to prevent drift and lost saves. | Quick Capture can remain modal; complex Sportsbook workbench may be full page. Retain identical validation, draft protection, explicit save and lifecycle gates; do not impose one geometry on all domains. | Route recovery, modal focus/scroll, save/failure and ledger parity tests. | Approve domain-specific page exception before Wave 3. |
+| [UI accessibility contract](plum-duff-ui-accessibility-contract.md#shared-action-semantics): positive/create uses green `Add Row`; destructive uses red `delete`. | Keep semantic positive/destructive states; label/context may become Quick Capture or New Bet where the action genuinely differs. Do not recolour financial results as action semantics. | Discoverability and mistaken destructive action; action/icon and WCAG checks. | Label/placement approval per affected workflow. |
+| [UI accessibility contract](plum-duff-ui-accessibility-contract.md): reuse signed-off search/table/field patterns; protects consistency. | Adapt existing primitives to one `PD-UX-0.1` treatment instead of cloning lab controls. Required columns remain available; narrow list substitution is LAB ONLY until exact field access is approved. | Hidden fields, keyboard/touch parity, 200% overflow, table/edit regression. | Approve each required-column responsive treatment. |
+
+No proposal relaxes authentication, ownership, financial calculations, audit, explicit Save/Discard, keyboard access or WCAG. Legacy presentation rules remain binding in the normal app until their replacement is approved and tested.
+
 ## CP-115C stable navigation batch — 2026-11-02
 
 | ID | Surface / requested lab treatment | Established equivalent | Status |

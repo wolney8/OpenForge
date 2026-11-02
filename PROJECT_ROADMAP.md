@@ -1,5 +1,23 @@
 # Project Roadmap — Plum Duff / OpenForge — Doc ID: PR-CODEX-001
 
+## CP-115D proposed migration waves — 2026-11-02
+
+Planning only; the owner's positive CP-115C assessment is not normal-app approval. [Decision register](docs/agent-contracts/plum-duff-ui-change-register.md#cp-115d-proposed-design-decisions--2026-11-02) and [route inventory](docs/audits/platform-quality-audit.md#cp-115d-normal-app-migration-inventory--2026-11-02) govern scope. Do not begin CP-116 or Wave 1 until their separate owner gates.
+
+| Wave | Bounded proposal | Gate before next wave |
+| --- | --- | --- |
+| 0 · preparation | Confirm remote/installed trees and backup; capture current authenticated route screenshots and behaviour; baseline role/deep-link, financial fixture, keyboard and responsive tests; decide flag/rollback. Fix the hardcoded-port Design Lab browser test and require the **complete** suite to pass. | Owner approves exact Wave 1 scope, `PD-UX-0.1` rules and rollback. |
+| 1 · shared shell | Adapt real `AppChrome`, drawer, search, identity/notification menus and existing tokens to the persistent sidebar, launcher, breadcrumbs and context return. Use real session, role, Profile and range authorities. | Real routes/API deny unauthorised access; context, menu, focus, 390px/200% zoom and old-shell rollback pass. |
+| 2 · reads/operations | Position, Today/notifications, Profiles, Reports, recurring offers and Account overview, separately gated by actual source authority. | Existing report/P&L/fee fixtures, unknown cash, Profile isolation, alerts and deep links match before/after. |
+| 3 · core financial work | Accounts and Sportsbook on shared grid/editor primitives, preserving default columns, placement, correction and audit rules. | Contract-backed money, lifecycle, save/failure, column and narrow-width tests; owner workflow review. |
+| 4 · specialists/tools | Free Bet, Casino, Extra Place, Cash Adjustment, Oddsmatcher, Calculators, Settings, onboarding, subscriber and recovery surfaces in bounded subtranches. | CP-116 specialist decisions first; each domain passes its own contracts, access, financial and owner acceptance checks. |
+
+**Reversibility proposal:** Wave 0 defines a server-configured, authenticated UI flag (working name `fund_manager_ux_v2`) defaulting to the current shell. It selects presentation/routes only; APIs, calculations, persisted financial data and permissions remain authoritative and unchanged. No `localStorage` role or Profile authority. Keep the old shell available until affected workflows pass. On rollback, switch the flag off and redeploy/restart the prior web source while retaining legitimate transactions and current database state; never restore an old financial database merely to undo UI. Deep links must resolve under both shells during migration. No schema change or broad CSS replacement by default.
+
+**Exact Wave 1 owner decisions:** approve or revise the persistent sidebar/Tracker/launcher hierarchy; approve `PD-UX-0.1` shell, overlay and context rules as a *target* (not the whole lab); approve the flag and UI-only rollback boundary; define whether Wave 1 search retains current real Navigation/Profile/Catalogue coverage or separately authorises server-scoped record search. Neutral Close and domain-specific editor exceptions may remain open until their affected waves. CP-116 needs a separate lab-build approval.
+
+**Per-wave release evidence:** clean non-main checkpoint, installed/remote source receipt, verified backup where writes could occur, focused financial/role fixtures, Playwright route and form journeys, light/dark/zoom/keyboard/overflow checks, matched screenshots, owner review. No main push or Vercel deployment without separate authorisation. Prototype-only state must never substitute for failed real data.
+
 ## CP-115C navigation owner review — 2026-11-02
 
 Walk Position → Today → Sportsbook → Reports → source record → Back, then inspect All Profiles ownership and the app launcher’s synthetic tool previews. Compare CP-115B sidebar with the persistent Tracker group. Decide whether this hierarchy and launcher separation should continue as the lab direction; no normal integration or CP-116 work is approved. [Coverage](docs/audits/platform-quality-audit.md#cp-115c-design-lab-navigation-coverage--2026-11-02).

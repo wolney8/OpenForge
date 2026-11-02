@@ -182,6 +182,7 @@ test("lab selection panels anchor, dismiss and restore focus without moving cont
 });
 
 test("actual Chromium 200% browser zoom retains the journey and anchored menu", async () => {
+  const labOrigin = new URL(process.env.OPENFORGE_E2E_BASE_URL ?? "http://127.0.0.1:3010").origin;
   const scratch = await mkdtemp(join(tmpdir(), "pd-cp112-zoom-"));
   const extension = join(scratch, "extension");
   await mkdir(extension);
@@ -200,15 +201,15 @@ test("actual Chromium 200% browser zoom retains the journey and anchored menu", 
     });
     const worker = context.serviceWorkers()[0] ?? await context.waitForEvent("serviceworker");
     const page = await context.newPage();
-    await page.goto("http://localhost:3911/design-lab?baseline=cp112");
+    await page.goto(`${labOrigin}/design-lab?baseline=cp112`);
     await expect(page.locator('[data-pd-id="design-lab.root"]')).toBeVisible();
     const cookieNotice = page.getByRole("button", { name: "Understood" });
     if (await cookieNotice.isVisible()) await cookieNotice.click();
-    await worker.evaluate(async () => {
+    await worker.evaluate(async (origin) => {
       const tabsApi = (globalThis as unknown as { chrome: { tabs: { query: (filter: { url: string }) => Promise<Array<{ id: number }>>; setZoom: (id: number, zoom: number) => Promise<void> } } }).chrome.tabs;
-      const tabs = await tabsApi.query({ url: "http://localhost:3911/*" });
+      const tabs = await tabsApi.query({ url: `${origin}/*` });
       await tabsApi.setZoom(tabs[0].id, 2);
-    });
+    }, labOrigin);
     await expect.poll(() => page.evaluate(() => window.innerWidth)).toBe(720);
     expect(await page.evaluate(() => window.devicePixelRatio)).toBe(2);
     expect(await page.evaluate(() => getComputedStyle(document.documentElement).zoom)).toBe("1");
