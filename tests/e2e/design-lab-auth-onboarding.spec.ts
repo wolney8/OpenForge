@@ -181,3 +181,30 @@ test("actual Chromium 200% zoom contains onboarding", async () => {
     if (evidence) { await mkdir(evidence, { recursive: true }); await page.screenshot({ path: join(evidence, "cp115b-onboarding-actual-zoom-200.png"), fullPage: true }); }
   } finally { await context.close(); await rm(scratch, { recursive: true, force: true }); }
 });
+
+test("new notification, onboarding and session surfaces retain light theme and keyboard dismissal", async ({ page }) => {
+  await enter(page);
+  await page.getByRole("button", { name: "Account menu" }).click();
+  await page.getByRole("switch", { name: "Dark Mode" }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("button", { name: "Account menu" })).toBeFocused();
+  await page.setViewportSize({ width: 430, height: 850 });
+  await page.getByRole("button", { name: /Notifications, \d+ unread/ }).click();
+  await expect(page.locator('[data-pd-id="lab.notifications"]')).toBeVisible();
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
+  if (evidence) await page.screenshot({ path: join(evidence, "cp115b-notifications-light-430.png"), fullPage: true });
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Account menu" }).click();
+  await page.getByRole("button", { name: "Add Profile · simulation" }).click();
+  await expect(page.locator('[data-pd-id="lab.onboarding"]')).toBeVisible();
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
+  if (evidence) await page.screenshot({ path: join(evidence, "cp115b-onboarding-light-430.png"), fullPage: true });
+  await page.getByRole("button", { name: "Exit onboarding" }).click();
+  await page.getByRole("button", { name: "Account menu" }).click();
+  await page.getByRole("button", { name: "Simulate Sign Out" }).click();
+  await expect(page.locator('[data-pd-id="lab.auth-screen"]')).toBeVisible();
+  await expect.poll(() => page.locator('[data-pd-id="lab.auth-screen"] .brand-logo').evaluate(element => (element as HTMLImageElement).complete && (element as HTMLImageElement).naturalWidth > 0)).toBe(true);
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
+  if (evidence) await page.screenshot({ path: join(evidence, "cp115b-signed-out-light-430.png"), fullPage: true });
+});
