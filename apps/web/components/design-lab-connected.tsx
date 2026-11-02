@@ -54,7 +54,7 @@ export function DesignLabConnected() {
   const [searchResultsOpen, setSearchResultsOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [ledgerViews, setLedgerViews] = useState<Partial<Record<LabLedgerKey, LabLedgerView>>>({});
-  const [savedView, setSavedView] = useState<{ section: LabLedgerKey; view: LabLedgerView } | null>(null);
+  const [savedViews, setSavedViews] = useState<Partial<Record<LabLedgerKey, LabLedgerView>>>({});
   const ledgerScroll = useRef<Partial<Record<LabLedgerKey, { left: number; top: number }>>>({});
   const [selected, setSelected] = useState<LabRecord | null>(null);
   const [previewEditor, setPreviewEditor] = useState<{ section: LabLedgerKey; mode: "Add" | "Edit" } | null>(null);
@@ -119,7 +119,16 @@ export function DesignLabConnected() {
   const betDirty = JSON.stringify(bet) !== JSON.stringify(initialBet) && (betState === "Draft" || correctionMode);
   const accountDirty = editingAccount !== null && balanceDraft !== editingAccount.currentBalance;
   const records = useMemo(() => {
-    const listed = [...copiedRows, ...labRecords].filter(item => scope === "all" || item.profileId === scope).map(item => labLedgerOverrides[item.id] ? {...item,cells:item.cells.map((cell,index) => labLedgerOverrides[item.id][index] ?? cell)} : item);
+    const listed = [...copiedRows, ...labRecords].filter(item => scope === "all" || item.profileId === scope).map(item => {
+      const patch = labLedgerOverrides[item.id];
+      if (!patch) return item;
+      const titleColumn = ({ sportsbook:2, casino:3, extraPlace:1 } as Partial<Record<LabLedgerKey,number>>)[item.section];
+      return {
+        ...item,
+        cells: item.cells.map((cell,index) => patch[index] ?? cell),
+        title: titleColumn !== undefined && patch[titleColumn] ? patch[titleColumn] : item.title,
+      };
+    });
     if (betState === "Draft") return listed;
     const added: LabRecord = { id: "LAB-SB-NEW", profileId: recordedBetProfile, section: "sportsbook", title: bet.event || bet.offerName || "Offer captured · event pending", subtitle: `${bet.bookmaker} · ${bet.strategy}`, status: betState, cells: [bet.eventDate || "Not entered", bet.bookmaker, bet.event || "Event pending", bet.offerName || "—", bet.offerText || "—", bet.strategy, layConfirmed ? layIsPartial ? "Partially laid" : "Matched" : "Not confirmed", backConfirmed ? "Confirmed" : "Not confirmed", betState === "Settled" && fixtureMatches && !layIsPartial ? "£ (0.62)" : betState === "Prospecting" ? "Planning · unavailable" : fixtureMatches && !layIsPartial ? "Current £ (0.62)" : "Current · unavailable", betState, "Open"] };
     return scope === "all" || scope === recordedBetProfile ? [added, ...listed] : listed;
@@ -179,7 +188,7 @@ export function DesignLabConnected() {
   function go(next: Section) { guarded(() => { setSelected(null); setPreviewEditor(null); setEntryMode(null); setSection(next); if (labDestination(next).parent === "tracker") setTrackerExpanded(true); if (labDestination(next).group === "more") setShowMore(true); setMobileNav(false); setOverlay(null); setSearch(""); setSearchOpen(false); setSearchResultsOpen(false); }); }
   function toggleOverlay(next: Exclude<Overlay,null>, trigger: HTMLElement) { headerTriggerRef.current = trigger; setSearchResultsOpen(false); setOverlay(current => current === next ? null : next); }
   function openRecord(record: LabRecord) { guarded(() => { if (!selected) { setReturnSection(section); setReturnScope(scope); } setSelected(record); setPreviewEditor(null); setPreviewStage(record.section === "freeBets" ? "Available" : "Offer Setup"); setSection(record.section); setTrackerExpanded(true); setSearch(""); setSearchOpen(false); }); }
-  function openAccount(account: LabAccount) { openRecord({ id: account.id, profileId: account.profileId, section: "accounts", title: account.name, subtitle: account.type, status: account.status, cells: [account.id, account.name, account.type, account.status, "Yes", account.currentBalance ? money(Number(account.currentBalance)) : "Unknown", "—", "—", "—", "—", "—", "Open"] }); }
+  function openAccount(account: LabAccount) { openRecord({ id: account.id, profileId: account.profileId, section: "accounts", title: account.name, subtitle: account.type, status: account.status, cells: [account.id, account.name, account.type, account.status, "Yes", account.currentBalance ? money(Number(account.currentBalance)) : "Unknown", "—", accountObservedAt[account.id] ?? "—", "—", "—", "—", "Open"] }); }
   function openEntry(mode: EntryMode) { setCorrectionMode(false); setEntryError(""); setEntryMode(mode); setStep(0); setSelected(null); setMobileNav(false); }
   function closeEntry() { guarded(() => { setEntryMode(null); setEntryError(""); }); }
   function saveAccount() {
@@ -336,15 +345,16 @@ export function DesignLabConnected() {
     const ledgerRows: LabLedgerRow[] = key === "accounts"
       ? accounts.filter(item => scope === "all" || item.profileId === scope).map(item => ({
         id: item.id, profileId: item.profileId, section: "accounts", title: item.name, subtitle: item.type,
-        status: item.currentBalance ? "Known" : "Needs attention",
-        cells: [item.id,item.name,item.type,item.status,"Yes",item.currentBalance ? money(Number(item.currentBalance)) : "Unknown","—","—","—","—","—","Open"],
+        status: item.status,
+        cells: [item.id,item.name,item.type,item.status,"Yes",item.currentBalance ? money(Number(item.currentBalance)) : "Unknown","—",accountObservedAt[item.id] ?? "—","—","—","—","Open"],
         onOpen: () => openAccount(item),
       }))
       : records.filter(item => item.section === key).map(item => ({ ...item, onOpen: () => openRecord(item) }));
     return <DesignLabLedgerGrid ledgerKey={key} rows={ledgerRows} scope={scope} accounts={accounts}
       view={ledgerViews[key] ?? defaultLabLedgerView(key)}
       onViewChange={view => setLedgerViews(current => ({ ...current, [key]: view }))}
-      savedView={savedView} onSaveView={setSavedView} onOpenEntry={openEntry}
+      savedView={savedViews[key] ? {section:key,view:savedViews[key]} : null}
+      onSaveView={({section,view}) => setSavedViews(current => ({...current,[section]:view}))} onOpenEntry={openEntry}
       onOpenConcept={() => setPreviewEditor({section:key,mode:"Add"})}
       onOpenBalance={id => { const account = accounts.find(item => item.id === id); if (account) { setEditingAccount(account); setBalanceDraft(account.currentBalance); setAccountError(""); } }}
       bet={bet} onRowPatch={(id,column,value) => setLabLedgerOverrides(current => ({...current,[id]:{...current[id],[column]:value}}))} onBetChange={patch => { setBet(current => ({...current,...patch})); setAudit(current => [...current, `Prospecting fields updated in ledger · ${Object.keys(patch).join(", ")} · simulated`]); }} betState={betState}

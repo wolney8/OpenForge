@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { DesignLabSelect } from "@/components/design-lab-select";
 import { SearchableCombobox, type OptionListMode } from "@/components/selection-controls";
-import { labLedgerColumns, type LabLedgerKey, type LabRecord } from "@/lib/design-lab-connected-data";
+import { labLedgerColumns, labLedgerColumnSpecs, type LabLedgerKey, type LabRecord } from "@/lib/design-lab-connected-data";
 import { labProfiles, type LabAccount, type LabScope } from "@/lib/design-lab-fixture";
 import styles from "./design-lab-connected.module.css";
 
@@ -13,6 +13,10 @@ export type LabLedgerView = {
   status: string;
   profile: string;
   advanced: { bookmaker: string; strategy: string; lay: string; back: string };
+  columnFilters: Record<string,string>;
+  missing: "All readiness" | "Missing fields" | "Financial unavailable";
+  dateFrom: string;
+  dateTo: string;
   sort: Sort;
   order: number[];
   widths: Record<number, number>;
@@ -25,29 +29,51 @@ export type LabEditableBet = {
 export type LabLedgerRow = LabRecord & { onOpen: () => void };
 
 const defaults = [106, 122, 190, 134, 158, 102, 125, 125, 132, 104, 76];
+const relevantFilters: Record<LabLedgerKey, readonly string[]> = {
+  accounts: ["type","status","counts_in_cash_total"],
+  sportsbook: ["bookmaker","match_strategy","lay_status","back_bet_status"],
+  freeBets: ["bookmaker","match_strategy","lay_status","status"],
+  casino: ["bookmaker","offer_type","status","result"],
+  extraPlace: ["bookmaker","terms"],
+  cash: ["direction","adjustment_type","linked_account","calculation_state"],
+};
 export function defaultLabLedgerView(key: LabLedgerKey): LabLedgerView {
   return {
     filter: "", status: "All statuses", profile: "All Profiles",
     advanced: { bookmaker: "Any bookmaker", strategy: "Any strategy", lay: "Any lay state", back: "Any back state" },
+    columnFilters: {}, missing: "All readiness", dateFrom: "", dateTo: "",
     sort: { column: null, direction: "asc" },
     order: labLedgerColumns[key].map((_, index) => index), widths: {},
   };
 }
 
 function numericValue(value: string): number | null {
-  if (!value || /unknown|unavailable|current|planning|^—$/i.test(value)) return null;
-  const parsed = Number(value.replace(/[£,%\s]/g, "").replace(/[()]/g, ""));
-  return Number.isFinite(parsed) ? (value.includes("(") ? -parsed : parsed) : null;
+  if (!value || /unknown|unavailable|planning|^—$|£—/i.test(value)) return null;
+  const cleaned = value.replace(/current|final|settled/gi, "").replace(/[£,%\s]/g, "").replace(/[()]/g, "");
+  if (!/^-?\d+(?:\.\d+)?$/.test(cleaned)) return null;
+  const parsed = Number(cleaned);
+  return Number.isFinite(parsed) ? (value.includes("(") ? -Math.abs(parsed) : parsed) : null;
 }
-function sortableValue(value: string, label: string): string | number | null {
+function financeTone(value: string): string {
+  const amount = numericValue(value);
+  return amount === null || amount === 0 ? "" : amount < 0 ? styles.negative : styles.positive;
+}
+function sortableValue(value: string, label: string, kind?: string): string | number | null {
   if (value === "—" || /unknown|unavailable|not entered/i.test(value)) return null;
-  if (/date|settles|expiry/i.test(label)) { const date = Date.parse(value); return Number.isFinite(date) ? date : null; }
-  if (/value|balance|amount|odds|stake|liability|rating/i.test(label)) return numericValue(value);
+  if (kind === "date" || /date|settles|expiry/i.test(label)) { const date = Date.parse(value.split("·")[0].trim()); return Number.isFinite(date) ? date : null; }
+  if (kind === "money" || kind === "odds" || /value|balance|amount|odds|stake|liability|rating/i.test(label)) return numericValue(value);
   if (/^status$/i.test(label)) return ({ Prospecting: 0, Placed: 1, Pending: 2, Settled: 3 } as Record<string, number>)[value] ?? value;
   return value.toLocaleLowerCase();
 }
 function validMoney(value: string, allowZero = false) {
   return /^\d+(?:\.\d{1,2})?$/.test(value) && Number(value) >= (allowZero ? 0 : 0.01);
+}
+function urgencyCue(row: LabRecord): string | null {
+  const today = Date.parse("2026-11-02");
+  if (row.section === "freeBets" && row.status === "Available" && row.expiresAt && Date.parse(row.expiresAt) <= today) return "Expiry Today";
+  if (row.section === "sportsbook" && /partial/i.test(row.cells[6] ?? "")) return "Partial Lay Review";
+  if (row.section === "sportsbook" && row.status === "Placed" && row.dueDate && Date.parse(row.dueDate) < today) return "Event Passed";
+  return null;
 }
 
 export function DesignLabLedgerGrid({ ledgerKey, rows, scope, accounts, view, onViewChange, savedView, onSaveView, onOpenEntry, onOpenConcept, onOpenBalance, bet, onBetChange, onRowPatch, betState, onRequestPlacement, scrollPosition, onScrollPosition }: {
@@ -71,11 +97,13 @@ export function DesignLabLedgerGrid({ ledgerKey, rows, scope, accounts, view, on
   onScrollPosition: (position: { left: number; top: number }) => void;
 }) {
   const columns = labLedgerColumns[ledgerKey];
+  const specs = labLedgerColumnSpecs(ledgerKey);
   const actionIndex = columns.length - 1;
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [columnsOpen, setColumnsOpen] = useState(false);
+  const [mobileDetail, setMobileDetail] = useState(false);
   const [selectedCell, setSelectedCell] = useState<{ id: string; column: number } | null>(null);
-  const [editing, setEditing] = useState<{ id: string; column: number; draft: Partial<LabEditableBet> } | null>(null);
+  const [editing, setEditing] = useState<{ id: string; column: number; draft: Partial<LabEditableBet>; previewText?: string } | null>(null);
   const [cellError, setCellError] = useState("");
   const [editGate, setEditGate] = useState<{ id:string; message:string } | null>(null);
   const [accountOptionMode, setAccountOptionMode] = useState<OptionListMode>("CLOSED");
@@ -92,8 +120,8 @@ export function DesignLabLedgerGrid({ ledgerKey, rows, scope, accounts, view, on
     return () => { document.removeEventListener("pointerup", clearOutsidePan); document.removeEventListener("pointercancel", clearOutsidePan); };
   }, []);
   const update = (patch: Partial<LabLedgerView>) => onViewChange({ ...view, ...patch });
-  const width = (index: number) => view.widths[index] ?? (ledgerKey === "sportsbook" ? defaults[index] : 145);
-  const active = [view.filter.trim(), view.status !== "All statuses", view.profile !== "All Profiles", ...Object.values(view.advanced).map(value => !value.startsWith("Any "))].filter(Boolean).length;
+  const width = (index: number) => index === actionIndex ? 76 : view.widths[index] ?? (ledgerKey === "sportsbook" ? defaults[index] : 145);
+  const active = [view.filter.trim(), view.status !== "All statuses", view.profile !== "All Profiles", ...Object.values(view.advanced).map(value => !value.startsWith("Any ")), ...Object.values(view.columnFilters).map(Boolean), view.missing !== "All readiness", view.dateFrom, view.dateTo].filter(Boolean).length;
   const clearFilters = () => update({ ...defaultLabLedgerView(ledgerKey), sort:view.sort, order:view.order, widths:view.widths });
 
   useEffect(() => { if (scroller.current) { scroller.current.scrollLeft = scrollPosition.left; scroller.current.scrollTop = scrollPosition.top; } }, [ledgerKey, scrollPosition.left, scrollPosition.top]);
@@ -126,6 +154,15 @@ export function DesignLabLedgerGrid({ ledgerKey, rows, scope, accounts, view, on
     if (scope === "all" && view.profile !== "All Profiles" && row.profileId !== view.profile) return false;
     if (view.status !== "All statuses" && row.status !== view.status) return false;
     if (view.filter.trim() && ![row.title, row.subtitle, row.status, row.profileId, ...row.cells].join(" ").toLocaleLowerCase().includes(view.filter.trim().toLocaleLowerCase())) return false;
+    if (Object.entries(view.columnFilters).some(([column,value]) => value && row.cells[Number(column)] !== value)) return false;
+    if (view.missing === "Missing fields" && !row.cells.some(value => /^(?:—|Unknown|Not entered|Event pending)$/i.test(value))) return false;
+    if (view.missing === "Financial unavailable" && !row.cells.some((value,index) => specs[index]?.kind === "money" && /unknown|unavailable|£—|^—$/i.test(value))) return false;
+    const dateColumn = ledgerKey === "freeBets" || ledgerKey === "casino" ? "expiry_datetime" : ledgerKey === "sportsbook" ? "date_settled" : ledgerKey === "extraPlace" ? "date" : ledgerKey === "cash" ? "date" : "last_balance_update";
+    const dateIndex = specs.findIndex(item => item.id === dateColumn);
+    if (dateIndex >= 0 && (view.dateFrom || view.dateTo)) {
+      const timestamp = Date.parse(row.cells[dateIndex].split("·")[0].trim());
+      if (!Number.isFinite(timestamp) || (view.dateFrom && timestamp < Date.parse(view.dateFrom)) || (view.dateTo && timestamp >= Date.parse(view.dateTo) + 86400000)) return false;
+    }
     if (ledgerKey === "sportsbook") {
       const fields = [["bookmaker", 1], ["strategy", 5], ["lay", 6], ["back", 7]] as const;
       if (fields.some(([name, index]) => !view.advanced[name].startsWith("Any ") && row.cells[index] !== view.advanced[name])) return false;
@@ -137,13 +174,23 @@ export function DesignLabLedgerGrid({ ledgerKey, rows, scope, accounts, view, on
     const label = view.sort.column === -1 ? "Profile" : columns[view.sort.column];
     const valueA = view.sort.column === -1 ? labProfiles.find(profile => profile.id === a.row.profileId)?.name ?? "" : a.row.cells[view.sort.column] ?? "";
     const valueB = view.sort.column === -1 ? labProfiles.find(profile => profile.id === b.row.profileId)?.name ?? "" : b.row.cells[view.sort.column] ?? "";
-    const parsedA = sortableValue(valueA, label), parsedB = sortableValue(valueB, label);
+    const kind = view.sort.column === -1 ? "text" : specs[view.sort.column]?.kind;
+    const parsedA = sortableValue(valueA, label, kind), parsedB = sortableValue(valueB, label, kind);
     if (parsedA === null) return parsedB === null ? a.index - b.index : 1;
     if (parsedB === null) return -1;
     const comparison = typeof parsedA === "number" && typeof parsedB === "number" ? parsedA - parsedB : String(parsedA).localeCompare(String(parsedB));
     return comparison === 0 ? a.index - b.index : comparison * (view.sort.direction === "asc" ? 1 : -1);
   }).map(item => item.row);
   const cycleSort = (column: number) => update({ sort: view.sort.column !== column ? { column, direction: "asc" } : view.sort.direction === "asc" ? { column, direction: "desc" } : { column: null, direction: "asc" } });
+  const autoFit = (index: number) => {
+    const table = scroller.current?.querySelector("table");
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d");
+    if (!table || !context) return;
+    context.font = getComputedStyle(table).font;
+    const longest = Math.max(context.measureText(columns[index]).width + 65, ...rows.map(row => context.measureText(row.cells[index] ?? "").width + 30));
+    update({widths:{...view.widths,[index]:Math.max(90,Math.min(360,Math.ceil(longest)))}});
+  };
   const moveColumn = (index: number, direction: -1 | 1) => {
     const order = [...view.order], from = order.indexOf(index), to = from + direction;
     if (to < 0 || to >= order.length - 1 || index === actionIndex) return;
@@ -155,8 +202,21 @@ export function DesignLabLedgerGrid({ ledgerKey, rows, scope, accounts, view, on
     5: ["strategy"], 6: ["exchange", "layOdds", "requestedLayStake", "matchedLayStake", "commission"], 7: ["backStake", "backOdds"], 9: [],
   } as Record<number, (keyof LabEditableBet)[]>)[column] ?? [];
   const startEdit = (row: LabLedgerRow, column: number) => {
-    if (ledgerKey !== "sportsbook") return;
     setEditGate(null);
+    const spec = specs[column];
+    if (!spec || spec.edit === "actions") return;
+    if (ledgerKey === "accounts") {
+      if (spec.edit === "balance-observation") onOpenBalance(row.id);
+      else setEditGate({id:row.id,message:`${spec.label} is governed Account data. Open the Account to review it.`});
+      return;
+    }
+    if (ledgerKey !== "sportsbook") {
+      if (spec.edit === "preview-text" && row.previewOnly && ["Prospecting","Draft"].includes(row.status)) {
+        setEditing({id:row.id,column,draft:{},previewText:row.cells[column] === "—" ? "" : row.cells[column]});
+        setCellError("");
+      } else setEditGate({id:row.id,message:`${spec.label} requires the governed ${ledgerKey} workflow or correction path. This lab has a presentation preview only.`});
+      return;
+    }
     if (row.status !== "Prospecting" || (row.id === "LAB-SB-NEW" && betState !== "Prospecting")) { setEditGate({id:row.id,message:`${row.status} financial changes require the governed full-record correction and audit path.`}); return; }
     if (row.id !== "LAB-SB-NEW" && (column === 6 || column === 7 || column === 8)) { setEditGate({id:row.id,message:"Composite Back/Lay execution needs the full record and validated calculation inputs."}); return; }
     if (column === 9) { setEditing({id:row.id,column,draft:{}}); setCellError(""); return; }
@@ -167,6 +227,14 @@ export function DesignLabLedgerGrid({ ledgerKey, rows, scope, accounts, view, on
   };
   const commitEdit = () => {
     if (!editing) return;
+    if (editing.previewText !== undefined) {
+      const value = editing.previewText.trim();
+      if (!value || value.length > 180) { setCellError("Enter 1–180 characters for this synthetic descriptive field."); return; }
+      onRowPatch(editing.id,editing.column,value);
+      setEditing(null); setCellError("");
+      requestAnimationFrame(() => cellRef.current?.focus());
+      return;
+    }
     const draft = editing.draft;
     for (const field of ["backStake", "requestedLayStake", "matchedLayStake", "commission"] as const) {
       if (field in draft && draft[field] && !validMoney(draft[field], field === "commission")) { setCellError(`${field} must be a valid non-negative amount with at most two decimals.`); return; }
@@ -175,13 +243,14 @@ export function DesignLabLedgerGrid({ ledgerKey, rows, scope, accounts, view, on
       if (field in draft && draft[field] && (!/^\d+(?:\.\d{1,3})?$/.test(draft[field]) || Number(draft[field]) <= 1)) { setCellError(`${field} must be decimal odds above 1.`); return; }
     }
     if (draft.matchedLayStake && Number(draft.matchedLayStake) > Number(draft.requestedLayStake ?? bet.requestedLayStake)) { setCellError("Matched Lay Stake cannot exceed requested Lay Stake."); return; }
-    if (draft.eventDate && Number.isNaN(Date.parse(draft.eventDate))) { setCellError("Enter a valid event date and time."); return; }
+    if (draft.eventDate && (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(draft.eventDate) || Number.isNaN(Date.parse(draft.eventDate)))) { setCellError("Enter a valid event date and time."); return; }
     if (editing.id === "LAB-SB-NEW") onBetChange(draft);
     else { const column = editing.column; const field = editFields(column)[0]; if (field) onRowPatch(editing.id,column,draft[field] || (column === 0 ? "Not entered" : "—")); }
     setEditing(null); setCellError("");
     requestAnimationFrame(() => cellRef.current?.focus());
   };
   const accountOptions = (type: "Bookie" | "Exchange", profileId: string) => accounts.filter(account => account.profileId === profileId && account.type === type && account.status === "Active").map(account => account.name);
+  const filterIndices = relevantFilters[ledgerKey].map(id => specs.findIndex(item => item.id === id)).filter(index => index >= 0 && specs[index].id !== "status");
   const inputFor = (field: keyof LabEditableBet, row: LabLedgerRow) => {
     if (!editing) return null;
     const value = editing.draft[field] ?? "";
@@ -197,21 +266,38 @@ export function DesignLabLedgerGrid({ ledgerKey, rows, scope, accounts, view, on
     const sort = view.sort.column === index ? view.sort.direction : null;
     return <th aria-sort={sort ? sort === "asc" ? "ascending" : "descending" : undefined} className={dropBefore === index ? styles.gridDropTarget : undefined} data-lab-column={index} key={index} scope="col">
       <span className={styles.gridHeader}>{isAction ? label : <button aria-label={`Sort ${label}${sort ? ` ${sort}` : ""}`} className={styles.gridSort} onClick={() => cycleSort(index)} type="button">{label}<span aria-hidden="true">{sort === "asc" ? "↑" : sort === "desc" ? "↓" : ""}</span></button>}
-        {index >= 0 && !isAction ? <><button aria-label={`Move ${label}`} className={styles.gridGrip} onPointerDown={event => { if (event.pointerType === "touch") return; event.preventDefault(); pointer.current = { mode: "reorder", index, startX: event.clientX, width: width(index) }; }} title={`Drag to reorder ${label}`} type="button"><span aria-hidden="true" className="material-symbols-outlined">drag_indicator</span></button><button aria-label={`Resize ${label}`} className={styles.gridResize} onPointerDown={event => { if (event.pointerType === "touch") return; event.preventDefault(); pointer.current = { mode: "resize", index, startX: event.clientX, width: width(index) }; }} title={`Drag to resize ${label}`} type="button" /></> : null}
+        {index >= 0 && !isAction ? <><button aria-label={`Move ${label}`} className={styles.gridGrip} onPointerDown={event => { if (event.pointerType === "touch") return; event.preventDefault(); pointer.current = { mode: "reorder", index, startX: event.clientX, width: width(index) }; }} title={`Drag to reorder ${label}`} type="button"><span aria-hidden="true" className="material-symbols-outlined">drag_indicator</span></button><button aria-label={`Resize ${label}`} className={styles.gridResize} onDoubleClick={event => {event.preventDefault();event.stopPropagation();autoFit(index);}} onPointerDown={event => { if (event.pointerType === "touch") return; event.preventDefault(); pointer.current = { mode: "resize", index, startX: event.clientX, width: width(index) }; }} title={`Drag to resize ${label}; double-click to auto-fit`} type="button" /></> : null}
       </span>
     </th>;
   };
   const ordered = scope === "all" ? [-1, ...view.order] : view.order;
-  const tableWidth = view.order.reduce((sum, index) => sum + width(index), scope === "all" ? 134 : 0);
+  const onCellKey = (event: ReactKeyboardEvent<HTMLTableCellElement>, row: LabLedgerRow, index: number) => {
+    if (event.target !== event.currentTarget) return;
+    if (event.key === "Enter" || event.key === "F2") { event.preventDefault(); event.stopPropagation(); startEdit(row,index); return; }
+    if (event.key === "Escape") { setEditing(null); setCellError(""); return; }
+    if (!["ArrowLeft","ArrowRight","ArrowUp","ArrowDown"].includes(event.key)) return;
+    const rowIndex = sorted.findIndex(item => item.id === row.id);
+    const columnIndex = ordered.indexOf(index);
+    const targetRow = rowIndex + (event.key === "ArrowDown" ? 1 : event.key === "ArrowUp" ? -1 : 0);
+    const targetColumn = columnIndex + (event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0);
+    const target = scroller.current?.querySelectorAll("tbody tr")[targetRow]?.querySelectorAll("td")[targetColumn];
+    if (target instanceof HTMLElement) { event.preventDefault(); target.focus(); target.scrollIntoView({block:"nearest",inline:"nearest"}); }
+  };
+  const tableWidth = view.order.reduce((sum, index) => sum + width(index), scope === "all" ? 96 : 0);
   const viewLabel = savedView?.section === ledgerKey && JSON.stringify(savedView.view) === JSON.stringify(view) ? "Saved lab view active" : JSON.stringify(view) === JSON.stringify(defaultLabLedgerView(ledgerKey)) ? "Default view" : "Custom view";
-  return <section className={styles.surface} data-pd-id={`lab.ledger.${ledgerKey}`}><div className={styles.sectionHead}><div><h2>{ledgerKey === "sportsbook" ? "Sportsbook Bets" : ledgerKey === "accounts" ? "Accounts" : ledgerKey} ledger</h2><p>{sorted.length} of {rows.length} rows · {active ? `${active} active filter${active === 1 ? "" : "s"}` : "No filters"} · {scope === "all" ? "All Profiles" : labProfiles.find(profile => profile.id === scope)?.name} · {viewLabel}</p></div>{ledgerKey === "sportsbook" ? <div className={styles.actionRow}><button className={styles.secondaryButton} data-pd-id="lab.add.modal" onClick={() => onOpenEntry("modal")} type="button">Quick Capture</button><button className={styles.primaryButton} data-pd-id="lab.add.page" onClick={() => onOpenEntry("page")} type="button">Open Bet Workbench</button></div> : ledgerKey !== "accounts" ? <button className={styles.secondaryButton} data-pd-id={`lab.concept-add.${ledgerKey}`} onClick={onOpenConcept} type="button">Add {ledgerKey === "freeBets" ? "Free Bet" : ledgerKey === "casino" ? "Casino Offer" : ledgerKey === "extraPlace" ? "Extra Place" : "Cash Adjustment"} · Preview</button> : null}</div>
-    <div className={styles.toolbar}><label><span aria-hidden="true" className="material-symbols-outlined">search</span><input aria-label={`Filter ${ledgerKey} rows`} onChange={event => update({ filter: event.target.value })} placeholder="Search this ledger" type="search" value={view.filter}/></label><DesignLabSelect compact dataPdId="lab.ledger.status-filter" label="Status filter" onChange={status => update({ status })} options={["All statuses", ...new Set(rows.map(row => row.status))].map(value => ({ value, label: value }))} value={view.status}/>{scope === "all" ? <DesignLabSelect compact dataPdId="lab.ledger.profile-filter" label="Profile filter" onChange={profile => update({ profile })} options={[{value:"All Profiles",label:"All Profiles"},...labProfiles.map(profile => ({value:profile.id,label:profile.name}))]} value={view.profile}/> : null}{ledgerKey === "sportsbook" ? <button aria-expanded={advancedOpen} className={styles.secondaryButton} onClick={() => setAdvancedOpen(value => !value)} type="button">Filters</button> : null}{active ? <button className={styles.secondaryButton} onClick={clearFilters} type="button">Clear Filters</button> : null}<button aria-expanded={columnsOpen} className={styles.secondaryButton} onClick={() => setColumnsOpen(value => !value)} type="button">Columns</button><button className={styles.secondaryButton} onClick={() => update({ order: defaultLabLedgerView(ledgerKey).order, widths: {} })} type="button">Reset Columns</button><button className={styles.secondaryButton} onClick={() => onSaveView({ section: ledgerKey, view: structuredClone(view) })} type="button">Save Lab View</button>{savedView?.section === ledgerKey ? <button className={styles.linkButton} onClick={() => onViewChange(structuredClone(savedView.view))} type="button">Load Saved View</button> : null}</div>
-    {advancedOpen && ledgerKey === "sportsbook" ? <div className={styles.advancedFilterGrid}>{([ ["bookmaker","Bookmaker",1,"Any bookmaker"], ["strategy","Strategy",5,"Any strategy"], ["lay","Lay state",6,"Any lay state"], ["back","Back state",7,"Any back state"] ] as const).map(([field,label,index,any]) => <DesignLabSelect dataPdId={`lab.ledger.filter.${field}`} key={field} label={label} onChange={value => update({ advanced: { ...view.advanced, [field]: value } })} options={[any,...new Set(rows.map(row => row.cells[index]).filter(value => value !== "—"))].map(value => ({value,label:value}))} value={view.advanced[field]}/>)}</div> : null}
+  return <section className={styles.surface} data-pd-id={`lab.ledger.${ledgerKey}`}><div className={styles.sectionHead}><div><h2>{{accounts:"Accounts",sportsbook:"Sportsbook Bets",freeBets:"Free Bets",casino:"Casino Offers",extraPlace:"Extra Place",cash:"Cash Adjustments"}[ledgerKey]}</h2><p>{sorted.length} of {rows.length} rows · {active ? `${active} active filter${active === 1 ? "" : "s"}` : "No filters"} · {scope === "all" ? "All Profiles" : labProfiles.find(profile => profile.id === scope)?.name} · {viewLabel}</p></div>{ledgerKey === "sportsbook" ? <div className={styles.actionRow}><button className={styles.secondaryButton} data-pd-id="lab.add.modal" onClick={() => onOpenEntry("modal")} type="button">Quick Capture</button><button className={styles.primaryButton} data-pd-id="lab.add.page" onClick={() => onOpenEntry("page")} type="button">Open Bet Workbench</button></div> : ledgerKey !== "accounts" ? <button className={styles.secondaryButton} data-pd-id={`lab.concept-add.${ledgerKey}`} onClick={onOpenConcept} type="button">Add {ledgerKey === "freeBets" ? "Free Bet" : ledgerKey === "casino" ? "Casino Offer" : ledgerKey === "extraPlace" ? "Extra Place" : "Cash Adjustment"} · Preview</button> : null}</div>
+    <div className={styles.toolbar}><label><span aria-hidden="true" className="material-symbols-outlined">search</span><input aria-label={`Filter ${ledgerKey} rows`} onChange={event => update({ filter: event.target.value })} placeholder="Search This Ledger" type="search" value={view.filter}/></label><DesignLabSelect compact dataPdId="lab.ledger.status-filter" label="Status Filter" onChange={status => update({ status })} options={["All statuses", ...new Set(rows.map(row => row.status))].map(value => ({ value, label: value }))} value={view.status}/>{scope === "all" ? <DesignLabSelect compact dataPdId="lab.ledger.profile-filter" label="Profile Filter" onChange={profile => update({ profile })} options={[{value:"All Profiles",label:"All Profiles"},...labProfiles.map(profile => ({value:profile.id,label:profile.name}))]} value={view.profile}/> : null}<button aria-expanded={advancedOpen} className={styles.secondaryButton} onClick={() => setAdvancedOpen(value => !value)} type="button">Filters</button>{active ? <button className={styles.secondaryButton} onClick={clearFilters} type="button">Clear Filters</button> : null}<button aria-expanded={columnsOpen} className={styles.secondaryButton} onClick={() => setColumnsOpen(value => !value)} type="button">Columns</button><button className={styles.secondaryButton} onClick={() => update({ order: defaultLabLedgerView(ledgerKey).order, widths: {} })} type="button">Reset Columns</button><button className={styles.secondaryButton} onClick={() => onSaveView({ section: ledgerKey, view: structuredClone(view) })} type="button">Save Lab View</button>{savedView?.section === ledgerKey ? <button className={styles.linkButton} onClick={() => onViewChange(structuredClone(savedView.view))} type="button">Load Saved View</button> : null}<button className={styles.secondaryButton} onClick={() => scroller.current?.scrollBy({left: -320,behavior:"smooth"})} type="button" aria-label="Scroll table left">←</button><button className={styles.secondaryButton} onClick={() => scroller.current?.scrollBy({left: 320,behavior:"smooth"})} type="button" aria-label="Scroll table right">→</button></div>
+    {advancedOpen ? <div className={styles.advancedFilterGrid} data-pd-id={`lab.ledger.filters.${ledgerKey}`}>
+      {filterIndices.map(index => <DesignLabSelect dataPdId={`lab.ledger.filter.${specs[index].id}`} key={specs[index].id} label={specs[index].label} onChange={value => update({ columnFilters: { ...view.columnFilters, [index]: value } })} options={[{value:"",label:`Any ${specs[index].label}`},...new Set(rows.map(row => row.cells[index]).filter(value => value && value !== "—"))].map(item => typeof item === "string" ? {value:item,label:item} : item)} value={view.columnFilters[index] ?? ""}/>)}
+      <DesignLabSelect dataPdId="lab.ledger.filter.readiness" label="Readiness" onChange={missing => update({missing:missing as LabLedgerView["missing"]})} options={["All readiness","Missing fields","Financial unavailable"].map(value => ({value,label:value}))} value={view.missing}/>
+      {specs.some(item => item.kind === "date") ? <><label className={styles.gridFilterDate}>{ledgerKey === "freeBets" || ledgerKey === "casino" ? "Expiry From" : "From Date"}<input aria-label={ledgerKey === "freeBets" || ledgerKey === "casino" ? "Expiry From" : "From Date"} onChange={event => update({dateFrom:event.target.value})} type="date" value={view.dateFrom}/></label><label className={styles.gridFilterDate}>{ledgerKey === "freeBets" || ledgerKey === "casino" ? "Expiry To" : "To Date"}<input aria-label={ledgerKey === "freeBets" || ledgerKey === "casino" ? "Expiry To" : "To Date"} onChange={event => update({dateTo:event.target.value})} type="date" value={view.dateTo}/></label></> : null}
+    </div> : null}
     {columnsOpen ? <div aria-label="Keyboard column controls" className={styles.columnTools}>{view.order.filter(index => index !== actionIndex).map(index => <div key={index}><span>{columns[index]}</span><button aria-label={`Move ${columns[index]} left`} onClick={() => moveColumn(index,-1)} type="button">←</button><button aria-label={`Move ${columns[index]} right`} onClick={() => moveColumn(index,1)} type="button">→</button><button aria-label={`Widen ${columns[index]}`} onClick={() => update({widths:{...view.widths,[index]:Math.min(360,width(index)+20)}})} type="button">+</button><button aria-label={`Narrow ${columns[index]}`} onClick={() => update({widths:{...view.widths,[index]:Math.max(90,width(index)-20)}})} type="button">−</button></div>)}</div> : null}
-    <div aria-label={`${ledgerKey} table, scroll horizontally for all columns`} className={styles.tableScroll} data-pd-id={`lab.ledger-pan.${ledgerKey}`} onClickCapture={event => { if (suppressPanClick.current) { event.preventDefault(); event.stopPropagation(); suppressPanClick.current=false; } }} onPointerDown={event => { if (event.button !== 0 || event.pointerType === "touch" || !(event.target instanceof HTMLElement) || event.target.tagName !== "TD" || editing || pointer.current) return; pan.current={x:event.clientX,left:event.currentTarget.scrollLeft,active:false}; }} onPointerMove={event => { if (!pan.current) return; const delta=event.clientX-pan.current.x; if (!pan.current.active && Math.abs(delta)<6) return; pan.current.active=true; event.currentTarget.scrollLeft=pan.current.left-delta; event.preventDefault(); }} onPointerUp={() => { if (pan.current?.active) {suppressPanClick.current=true;window.setTimeout(() => {suppressPanClick.current=false;},0);} pan.current=null; }} onPointerCancel={() => {pan.current=null;}} onKeyDown={event => { if (event.target !== event.currentTarget) return; if (event.key === "ArrowRight" || event.key === "ArrowLeft") {event.preventDefault();event.currentTarget.scrollLeft += event.key === "ArrowRight" ? 80 : -80;} }} onScroll={event => onScrollPosition({ left: event.currentTarget.scrollLeft, top: event.currentTarget.scrollTop })} ref={scroller} tabIndex={0}><table style={{width:tableWidth,minWidth:tableWidth,tableLayout:"fixed"}}><colgroup>{ordered.map(index => <col key={index} style={{width:index === -1 ? 134 : width(index)}}/>)}</colgroup><thead><tr>{ordered.map(renderHeader)}</tr></thead><tbody>{sorted.map(row => <tr aria-label={`Open ${row.title}, ${labProfiles.find(profile => profile.id === row.profileId)?.name}`} data-status={row.status} key={row.id} onClick={event => { if (event.target === event.currentTarget) row.onOpen(); }} onKeyDown={event => { if (event.target === event.currentTarget && event.key === "Enter") row.onOpen(); }} tabIndex={0}>{ordered.map(index => <td className={selectedCell?.id === row.id && selectedCell.column === index ? styles.gridSelectedCell : undefined} key={`${row.id}-${index}`} onClick={event => { event.stopPropagation(); if (index === actionIndex) return; if (ledgerKey === "accounts" && [1,5].includes(index)) { onOpenBalance(row.id); return; } setSelectedCell({id:row.id,column:index}); }} onDoubleClick={event => { event.stopPropagation(); startEdit(row,index); }} onKeyDown={event => { if (event.key === "Enter" || event.key === "F2") { event.stopPropagation(); startEdit(row,index); } if (event.key === "Escape") { setEditing(null); setCellError(""); } }} ref={selectedCell?.id === row.id && selectedCell.column === index ? node => { cellRef.current = node; } : undefined} tabIndex={index === actionIndex ? -1 : 0}>
-      {index === -1 ? <span className={styles.providerCell}>{labProfiles.find(profile => profile.id === row.profileId)?.name ?? row.profileId}</span> : index === actionIndex ? <button aria-label={`Open ${row.title}`} className={styles.tableAction} onClick={event => { event.stopPropagation(); row.onOpen(); }} type="button"><span aria-hidden="true" className="material-symbols-outlined">open_in_new</span></button> : editing?.id === row.id && editing.column === index ? <div className={styles.gridEditor} onClick={event => event.stopPropagation()} onKeyDown={event => { if (event.key === "Escape") { event.stopPropagation(); setEditing(null); setCellError(""); requestAnimationFrame(() => cellRef.current?.focus()); } else if (event.key === "Enter" && index !== 9 && !(event.target instanceof Element && event.target.closest(".pd-combobox-field, [role=combobox]"))) { event.preventDefault(); event.stopPropagation(); commitEdit(); } }}>{index === 9 ? <DesignLabSelect compact dataPdId="lab.cell.status" label="Status" onChange={next => { if (next === "Placed") { if (row.id === "LAB-SB-NEW") onRequestPlacement(); else setEditGate({id:row.id,message:"Placement requires full-record external confirmation and required fields."}); } setEditing(null); }} options={[{value:"Prospecting",label:"Prospecting"},{value:"Placed",label:"Placed · full confirmation required"}]} value="Prospecting"/> : editFields(index).map(field => inputFor(field,row))}{cellError ? <small role="alert">{cellError}</small> : null}{index !== 9 ? <div><button aria-label="Save cell" onClick={commitEdit} type="button">Save</button><button aria-label="Cancel cell edit" onClick={() => {setEditing(null);setCellError("");}} type="button">Cancel</button></div> : null}</div> : <span className={`${index === 8 && ledgerKey === "sportsbook" ? styles.financeCell : ""} ${index === 9 && ledgerKey === "sportsbook" ? styles.statusCell : ""}`}>{row.cells[index]}{index === 2 && ledgerKey === "sportsbook" ? <small className={styles.cellMeta}>{row.id}</small> : null}</span>}</td>)}</tr>)}</tbody></table></div>
+    <button aria-pressed={mobileDetail} className={`${styles.secondaryButton} ${styles.gridNarrowToggle}`} onClick={() => setMobileDetail(current => !current)} type="button">{mobileDetail ? "Show Full Table" : "Show Labelled Details"}</button>
+    <div aria-label={`${ledgerKey} table, scroll horizontally for all columns`} className={`${styles.tableScroll} ${mobileDetail ? styles.tableHiddenForDetail : ""}`} data-pd-id={`lab.ledger-pan.${ledgerKey}`} onClickCapture={event => { if (suppressPanClick.current) { event.preventDefault(); event.stopPropagation(); suppressPanClick.current=false; } }} onPointerDown={event => { if (event.button !== 0 || event.pointerType === "touch" || !(event.target instanceof HTMLElement) || event.target.tagName !== "TD" || editing || pointer.current) return; pan.current={x:event.clientX,left:event.currentTarget.scrollLeft,active:false}; }} onPointerMove={event => { if (!pan.current) return; const delta=event.clientX-pan.current.x; if (!pan.current.active && Math.abs(delta)<6) return; pan.current.active=true; event.currentTarget.scrollLeft=pan.current.left-delta; event.preventDefault(); }} onPointerUp={() => { if (pan.current?.active) {suppressPanClick.current=true;window.setTimeout(() => {suppressPanClick.current=false;},0);} pan.current=null; }} onPointerCancel={() => {pan.current=null;}} onKeyDown={event => { if (event.target !== event.currentTarget) return; if (event.key === "ArrowRight" || event.key === "ArrowLeft") {event.preventDefault();event.currentTarget.scrollLeft += event.key === "ArrowRight" ? 80 : -80;} }} onScroll={event => onScrollPosition({ left: event.currentTarget.scrollLeft, top: event.currentTarget.scrollTop })} ref={scroller} tabIndex={0}><table style={{width:tableWidth,minWidth:tableWidth,tableLayout:"fixed"}}><colgroup>{ordered.map(index => <col key={index} style={{width:index === -1 ? 96 : width(index)}}/>)}</colgroup><thead><tr>{ordered.map(renderHeader)}</tr></thead><tbody>{sorted.map(row => <tr aria-label={`Open ${row.title}, ${labProfiles.find(profile => profile.id === row.profileId)?.name}${urgencyCue(row) ? `, ${urgencyCue(row)}` : ""}`} data-status={row.status} data-urgent={Boolean(urgencyCue(row))} key={row.id} onClick={event => { if (event.target === event.currentTarget) row.onOpen(); }} onKeyDown={event => { if (event.target === event.currentTarget && event.key === "Enter") row.onOpen(); }} tabIndex={0}>{ordered.map(index => <td className={selectedCell?.id === row.id && selectedCell.column === index ? styles.gridSelectedCell : undefined} key={`${row.id}-${index}`} onClick={event => { event.stopPropagation(); if (index === actionIndex) return; setSelectedCell({id:row.id,column:index}); }} onDoubleClick={event => { event.stopPropagation(); startEdit(row,index); }} onKeyDown={event => onCellKey(event,row,index)} ref={selectedCell?.id === row.id && selectedCell.column === index ? node => { cellRef.current = node; } : undefined} tabIndex={index === actionIndex ? -1 : 0}>
+      {index === -1 ? <span className={styles.providerCell}>{labProfiles.find(profile => profile.id === row.profileId)?.name ?? row.profileId}</span> : index === actionIndex ? <button aria-label={`Open ${row.title}`} className={styles.tableAction} onClick={event => { event.stopPropagation(); row.onOpen(); }} type="button"><span aria-hidden="true" className="material-symbols-outlined">open_in_new</span></button> : editing?.id === row.id && editing.column === index ? <div className={styles.gridEditor} onClick={event => event.stopPropagation()} onKeyDown={event => { if (event.key === "Escape") { event.stopPropagation(); setEditing(null); setCellError(""); requestAnimationFrame(() => cellRef.current?.focus()); } else if (event.key === "Enter" && index !== 9 && !(event.target instanceof Element && event.target.closest(".pd-combobox-field, [role=combobox]"))) { event.preventDefault(); event.stopPropagation(); commitEdit(); } }}>{editing.previewText !== undefined ? <label className={styles.gridEditorField}>{specs[index].label}<input aria-label={specs[index].label} autoFocus onChange={event => setEditing(current => current ? {...current,previewText:event.target.value} : null)} value={editing.previewText}/></label> : index === 9 ? <DesignLabSelect compact dataPdId="lab.cell.status" label="Status" onChange={next => { if (next === "Placed") { if (row.id === "LAB-SB-NEW") onRequestPlacement(); else setEditGate({id:row.id,message:"Placement requires full-record external confirmation and required fields."}); } setEditing(null); }} options={[{value:"Prospecting",label:"Prospecting"},{value:"Placed",label:"Placed · full confirmation required"}]} value="Prospecting"/> : editFields(index).map(field => inputFor(field,row))}{cellError ? <small role="alert">{cellError}</small> : null}{index !== 9 || editing.previewText !== undefined ? <div><button aria-label="Save cell" onClick={commitEdit} type="button">Save</button><button aria-label="Cancel cell edit" onClick={() => {setEditing(null);setCellError("");}} type="button">Cancel</button></div> : null}</div> : <span className={`${specs[index]?.kind === "money" ? styles.financeCell : ""} ${specs[index]?.kind === "status" || specs[index]?.kind === "result" ? styles.statusCell : ""} ${specs[index]?.kind === "money" ? financeTone(row.cells[index]) : ""}`} data-cell-value={specs[index]?.kind === "status" || specs[index]?.kind === "result" ? row.cells[index] : undefined}>{row.cells[index]}{index === 0 && urgencyCue(row) ? <small className={styles.gridUrgencyCue}>{urgencyCue(row)}</small> : null}{index === 2 && ledgerKey === "sportsbook" ? <small className={styles.cellMeta}>{row.id}</small> : null}{(ledgerKey === "accounts" && index === 1 || ledgerKey === "sportsbook" && index === 1) ? <button aria-label={`Observe balance for ${row.cells[index]}, ${labProfiles.find(profile => profile.id === row.profileId)?.name}`} className={styles.gridAccountAction} onClick={event => { event.stopPropagation(); const account = ledgerKey === "accounts" ? accounts.find(item => item.id === row.id) : accounts.find(item => item.profileId === row.profileId && item.name === row.cells[index]); if (account) onOpenBalance(account.id); else setEditGate({id:row.id,message:"No eligible synthetic Account balance observation is linked to this provider."}); }} type="button"><span aria-hidden="true" className="material-symbols-outlined">account_balance_wallet</span></button> : null}</span>}</td>)}</tr>)}</tbody></table></div>
     {editGate ? <div className={styles.gridEditGate} role="status"><span aria-hidden="true" className="material-symbols-outlined">lock</span><span>{editGate.message}</span><button className={styles.secondaryButton} onClick={() => { const row=rows.find(item => item.id === editGate.id); row?.onOpen(); }} type="button">Open Full Record</button></div> : null}
-    <div className={styles.mobileRows}>{sorted.map(row => <article key={row.id}><div><strong>{row.title}</strong><span className={styles.status}>{row.status}</span></div><p>{labProfiles.find(profile => profile.id === row.profileId)?.name} · {row.subtitle}</p><button className={styles.secondaryButton} onClick={row.onOpen} type="button">View all fields</button>{ledgerKey === "accounts" ? <button className={styles.secondaryButton} onClick={() => onOpenBalance(row.id)} type="button">Observe balance</button> : null}</article>)}</div>
-    {!sorted.length ? <div className={styles.gridEmpty}><p>No rows match this view.</p>{active ? <button className={styles.secondaryButton} onClick={clearFilters} type="button">Clear Filters</button> : null}</div> : null}<p className={styles.tableNote}>Default column order preserves the ledger contract. Narrow summary opens all labelled fields; normal-app replacement is unapproved.</p>
+    <div className={`${styles.mobileRows} ${mobileDetail ? styles.mobileDetailVisible : ""}`}>{sorted.map(row => <article key={row.id}><div><strong>{row.title}</strong><span className={styles.status}>{row.status}</span></div><p>{labProfiles.find(profile => profile.id === row.profileId)?.name} · {row.subtitle}</p><dl className={styles.detailGrid}>{specs.filter(item => item.id !== "actions").map(item => <div key={item.id}><dt>{item.label}</dt><dd>{row.cells[item.position] ?? "—"}</dd></div>)}</dl><button className={styles.secondaryButton} onClick={row.onOpen} type="button">Open Full Record</button>{ledgerKey === "accounts" ? <button className={styles.secondaryButton} onClick={() => onOpenBalance(row.id)} type="button">Observe Balance</button> : null}</article>)}</div>
+    {!sorted.length ? <div className={styles.gridEmpty}><p>No rows match this view.</p>{active ? <button className={styles.secondaryButton} onClick={clearFilters} type="button">Clear Filters</button> : null}</div> : null}<p className={styles.tableNote}>Full table and labelled narrow detail retain every approved display field. Narrow presentation remains lab-only.</p>
   </section>;
 }

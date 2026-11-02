@@ -69,7 +69,7 @@ test("Account observation, ledger order controls and simulated saved view", asyn
   await page.getByRole("option", { name: "Profile A" }).click();
   const ledger = page.locator('[data-pd-id="lab.ledger.accounts"]');
   await expect(ledger.locator("thead")).toContainText("Account ID");
-  await ledger.getByText("Bookmaker C").first().click();
+  await ledger.getByRole("button", { name: "Observe balance for Bookmaker C, Profile A" }).click();
   await expect(page.getByText("Last observed balance")).toBeVisible();
   await page.getByLabel("Observed Current Balance").fill("0.00");
   await page.getByRole("button", { name: /Confirm balance observation/ }).click();
@@ -77,7 +77,7 @@ test("Account observation, ledger order controls and simulated saved view", asyn
   await page.getByRole("button", { name: "Columns", exact: true }).click();
   await page.getByRole("button", { name: "Move Account ID right" }).click();
   await expect(ledger.locator("thead th").first()).toContainText("Account");
-  await page.getByRole("button", { name: "Save lab view" }).click();
+  await page.getByRole("button", { name: "Save Lab View" }).click();
   await expect(ledger).toContainText("Saved lab view active");
 });
 
@@ -134,7 +134,7 @@ test("sportsbook filter, resize and inline Prospecting edit use one lab state", 
   await expect(ledger).not.toContainText("Profile B example");
   await page.getByRole("button", { name: "Columns", exact: true }).click();
   await page.getByRole("button", { name: "Widen Event" }).click();
-  await page.getByRole("button", { name: "Save lab view" }).click();
+  await page.getByRole("button", { name: "Save Lab View" }).click();
   await ledger.locator("tbody tr").filter({ hasText: "Event pending" }).getByText("Event pending").dblclick();
   await page.getByRole("textbox", { name: "event" }).fill("Synthetic event after capture");
   await page.getByRole("button", { name: "Save cell" }).click();
@@ -164,10 +164,11 @@ test("narrow ledgers retain source access and required details without page over
   await page.getByRole("button", { name: "Open navigation" }).click();
   await page.locator('[data-pd-id="lab.nav.accounts"]').click();
   await expect(page.locator('[data-pd-id="lab.ledger.accounts"]')).toBeVisible();
-  await expect(page.getByRole("button", { name: "View all fields" }).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "Show Labelled Details" }).first()).toBeVisible();
   if (evidence) await page.screenshot({ path: join(evidence, "cp114-accounts-390.png"), fullPage: true });
-  await page.getByRole("button", { name: "View all fields" }).first().click();
+  await page.getByRole("button", { name: "Show Labelled Details" }).first().click();
   await expect(page.getByText("Account ID", { exact: true }).last()).toBeVisible();
+  await page.getByRole("button", { name: "Open Full Record" }).first().click();
   await page.getByRole("button", { name: "Back to Accounts" }).click();
   await page.getByRole("button", { name: "Open navigation" }).click();
   await page.locator('[data-pd-id="lab.nav.sportsbook"]').click();

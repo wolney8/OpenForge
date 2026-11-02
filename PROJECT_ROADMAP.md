@@ -1,5 +1,9 @@
 # Project Roadmap — Plum Duff / OpenForge — Doc ID: PR-CODEX-001
 
+## CP-119 ledger Design Lab owner review — 2026-11-02
+
+Review the six-ledger display-column map, direct grid interaction, complete narrow table/labelled detail, synthetic Account observation and protected specialist previews at authenticated `/design-lab`. Decide the Extra Place normal-shell duplicate Status conflict, narrow representation, saved-view persistence authority and specialist inline-edit boundaries before any Wave 3/4 migration. The CP-117 normal shell flag remains unchanged; CP-116 and normal financial ledgers are separate gates. [Coverage](docs/audits/platform-quality-audit.md#cp-119-six-ledger-display-column-coverage--2026-11-02).
+
 ## CP-118D Today owner visual review — 2026-11-02
 
 Review the dedicated header Tracked Tasks panel, expanded/compact/hidden banner, X removal, urgent/source-resolved states, Board click-away and typed Today counts at protected `/design-lab`. Owner visual acceptance and manual screen-reader review remain open. Next queued design checkpoint: **CP-119 — Spreadsheet Ledger Design and Interaction Parity**; do not begin it or migrate Today into normal routes without separate authorisation. [Coverage](docs/audits/platform-quality-audit.md#cp-118d-today-lab-coverage--2026-11-02).

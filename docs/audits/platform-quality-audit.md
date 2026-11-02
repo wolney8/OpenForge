@@ -1,5 +1,20 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
+## CP-119 six-ledger display-column coverage — 2026-11-02
+
+The per-column authority is `labLedgerColumnSpecs` in `apps/web/lib/design-lab-connected-data.ts`: stable ID, exact label and default position, visibility lock, type/sort/filter, editing authority, related source fields and narrow presentation. All default columns remain visible; optional flags describe existing normal-table hideability, not permission to remove protected information. Workbook import fields are separate from operational display columns. All Profiles adds a conditional, sortable Profile column before each listed sequence.
+
+| Ledger | Default display order, excluding conditional Profile | Source and current lab treatment |
+| --- | --- | --- |
+| Accounts | Account ID; Account; Type; Status; Counts in cash; Current balance; Pending withdrawal; Last balance update; Channel; Group; Platform; Actions | Normal Accounts shell; balance observation through the separate synthetic Account editor; other Account mutations governed. |
+| Sportsbook Bets | Settles; Bookmaker; Event; Campaign Tag; Offer Details; Strategy; Lay Bet; Back Bet; Value; Status; Actions | Normal Sportsbook shell; bounded Prospecting editors and full placement/correction gate. |
+| Free Bets | Settles; Expiry; Bookmaker; Campaign Tag; Event; Offer details; Strategy; Lay Bet; Back Bet; Value; Status; Actions | Normal Free Bet shell; expiry filter; descriptive preview only; financial lifecycle remains CP-116. |
+| Casino Offers | Settles; Expiry; Bookmaker; Offer Name; Game; Offer type; Status; Result; Value; Actions | Normal Casino shell; conditional concept preview; financial saves unavailable. |
+| Extra Place | Date / time; Runner / Race; Bookmaker; E/W Stake; Back Odds; E/W Terms; Place Odds; Win Lay Odds; Win Lay Stake; Win Lay Liab; Place Lay Odds; Place Lay Stake; Place Lay Liab; Rating %; Implied Odds; Qual Loss; EP Profit; Actions | Signed-off Extra Place no-Status contract controls lab. Current normal shell source adds a duplicate Status column: CODE-VERIFIED conflict, rendered normal state UNVERIFIED, no normal change authorised. |
+| Cash Adjustments | Adjustment ID; Date; Direction; Type; Amount; Signed amount; Investment; Cash snapshot; Linked account; Description; Week label; Calc state; Actions | Normal Cash Adjustment shell; signed/derived values protected; financial saves unavailable. |
+
+Shared lab table supports selection, typed sorting, pointer/keyboard column control, pan, relevant filters, saved views in memory and complete narrow labelled detail. Final-source browser regression 90/90; actual Chromium 200% zoom, 9 focused units, typecheck and isolated build passed. Private responsive/theme renders are under `data/private/evidence/cp119-ledger/`; manual screen-reader review is unverified. Specialist previews retain protected financial boundaries; their full lifecycles are not simulated. Owner acceptance, normal-app persistence and narrow alternative remain open.
+
 ## CP-118D Today lab coverage — 2026-11-02
 
 | Request | Evidence / acceptance check | Status |

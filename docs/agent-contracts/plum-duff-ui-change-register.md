@@ -1106,3 +1106,18 @@ Owner is positive about CP-118C's direction; visual acceptance remains pending. 
 | PD-PR-118D-06 | Retain tracked source snapshot after resolution | NEEDS VERIFICATION — browser pass; owner visual review pending |
 | PD-PR-118D-07 | Focused/full browser, responsive and accessibility evidence | 84/84 browser, actual 200% zoom and theme/width checks pass; manual screen reader pending |
 | PD-PR-118D-08 | Non-main custody, isolation and CP-119 queue | CODE-VERIFIED isolation; remote receipt at handoff; CP-119 documented only |
+
+## CP-119 spreadsheet ledger lab batch — 2026-11-02
+
+Recorded before UI edits. `PROPOSED — LAB ONLY`; nearest equivalents are the six normal ledger tables, CP-114B shared lab grid, shared Account balance observation, Selection controls and CP-118 urgency tokens. The signed-off Extra Place no-Status rule controls the lab; its normal table's Status column is a documented conflict, not an approved change. Design Lab issue #114 is the existing umbrella link; live CP-119 subitem sync is unverified.
+
+| ID | Surface and requested outcome | Status |
+| --- | --- | --- |
+| PD-PR-119-01 | Six source-derived display-column and editing-authority maps | CODE-VERIFIED synthetic; Extra Place normal-shell conflict open |
+| PD-PR-119-02 | Shared selectable/editable grid and protected lifecycle gates | CODE-VERIFIED synthetic; specialist financial saves deferred |
+| PD-PR-119-03 | Pointer/keyboard columns, typed sort and horizontal pan | CODE-VERIFIED synthetic; touch uses native scroll |
+| PD-PR-119-04 | Relevant filters, memory-only saved views and return context | CODE-VERIFIED synthetic; production persistence and richer metadata filters deferred |
+| PD-PR-119-05 | Financial/status/urgency presentation and fixture-backed outcomes | CODE-VERIFIED synthetic; only CALC-001 Sportsbook outcome and fixture-backed Cash signed amount |
+| PD-PR-119-06 | Account balance shortcut and synthetic observation history | CODE-VERIFIED synthetic; no settlement-to-balance inference |
+| PD-PR-119-07 | Specialist previews and narrow complete-field access | CODE-VERIFIED synthetic; narrow alternative and specialist workflows need owner review |
+| PD-PR-119-08 | Browser regression, evidence, isolation and non-main custody | CODE-VERIFIED synthetic: 90/90 browser, 9 units, typecheck, changed-file lint, isolated build; private evidence; remote receipt at handoff; owner visual/screen-reader review open |

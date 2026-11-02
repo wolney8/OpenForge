@@ -125,7 +125,7 @@ test("date and eligible Account editors keep the synthetic owner, saved view res
   await page.getByLabel("Event date/time").fill("2026-11-05T14:30");
   await page.getByRole("button", {name:"Save cell"}).click();
   await expect(ledger).toContainText("2026-11-05");
-  await row.locator("td").nth(2).dblclick();
+  await row.locator("td").nth(2).dblclick({position:{x:8,y:20}});
   await page.locator('[data-pd-id="lab.cell.bookmaker"] input').fill("C");
   await page.getByRole("option", {name:"Bookmaker C"}).click();
   await page.getByRole("button", {name:"Save cell"}).click();
@@ -134,7 +134,7 @@ test("date and eligible Account editors keep the synthetic owner, saved view res
   await page.locator('[data-pd-id="lab.ledger.profile-filter"]').click();
   await page.getByRole("option", {name:"Profile A"}).click();
   await page.getByRole("button", {name:"Sort Event"}).click();
-  await page.getByRole("button", {name:"Save lab view"}).click();
+  await page.getByRole("button", {name:"Save Lab View"}).click();
   await expect(ledger).toContainText("Saved lab view active");
   await page.getByRole("button", {name:"Clear Filters"}).click();
   await expect(ledger).toContainText("Custom view");
@@ -154,7 +154,7 @@ test("ledger reflows in light/dark and preserves narrow source access", async ({
     for (const theme of ["light","dark"]) {
       await page.evaluate(value => document.documentElement.setAttribute("data-theme",value),theme);
       await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
-      if (width <= 430) await expect(page.getByRole("button", {name:"View all fields"}).first()).toBeVisible();
+      if (width <= 430) await expect(page.getByRole("button", {name:"Show Labelled Details"}).first()).toBeVisible();
       else await expect(page.locator('[data-pd-id="lab.ledger.sportsbook"] thead')).toBeVisible();
       if (evidence) await page.screenshot({path:join(evidence,`cp114b-sportsbook-${width}-${theme}.png`),fullPage:true});
     }

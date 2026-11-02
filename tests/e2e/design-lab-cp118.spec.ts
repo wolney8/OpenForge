@@ -196,15 +196,16 @@ test("wide table pans by pointer on cell surface and remains keyboard scrollable
 test("Prospecting edit survives detail return while Placed financial cell requires correction",async ({page}) => {
   await page.locator('[data-pd-id="lab.nav.sportsbook"]').click();
   const ledger=page.locator('[data-pd-id="lab.ledger.sportsbook"]');
-  const prospect=ledger.locator('tbody tr[aria-label*="Sample reload"]');
-  await prospect.locator("td").nth(3).dblclick();
-  await prospect.getByRole("textbox",{name:"event"}).fill("Edited synthetic selection");
-  await prospect.getByRole("button",{name:"Save cell"}).click();
-  await expect(prospect).toContainText("Edited synthetic selection");
-  await prospect.getByRole("button",{name:/Open Sample reload/}).click();
+  const prospectBefore=ledger.locator('tbody tr[aria-label*="Sample reload"]');
+  await prospectBefore.locator("td").nth(3).dblclick();
+  await prospectBefore.getByRole("textbox",{name:"event"}).fill("Edited synthetic selection");
+  await prospectBefore.getByRole("button",{name:"Save cell"}).click();
+  const prospectAfter=ledger.locator('tbody tr[aria-label*="Edited synthetic selection"]');
+  await expect(prospectAfter).toContainText("Edited synthetic selection");
+  await prospectAfter.getByRole("button",{name:/Open Edited synthetic selection/}).click();
   await expect(page.locator('[data-pd-id="lab.record-detail"]')).toContainText("Edited synthetic selection");
   await page.getByRole("button",{name:"Back to Sportsbook Bets"}).click();
-  await expect(prospect).toContainText("Edited synthetic selection");
+  await expect(prospectAfter).toContainText("Edited synthetic selection");
   await ledger.locator("tbody tr").filter({hasText:"LAB-SB-002"}).locator("td").nth(8).dblclick();
   await expect(ledger.getByRole("status")).toContainText("correction and audit path");
 });

@@ -94,7 +94,7 @@ test("ledger previews retain full labelled detail and linked Free Bet", async ({
   await page.locator('[data-pd-id="lab.nav.casino"]').click();
   await expect(page.locator('[data-pd-id="lab.ledger.casino"]')).toContainText("Wagering");
   await page.locator('[data-pd-id="lab.nav.extraPlace"]').click();
-  await expect(page.locator('[data-pd-id="lab.ledger.extraPlace"]')).toContainText("Qualifying loss");
+  await expect(page.locator('[data-pd-id="lab.ledger.extraPlace"]')).toContainText("Qual Loss");
   await page.locator('[data-pd-id="lab.nav.cash"]').click();
   await expect(page.locator('[data-pd-id="lab.ledger.cash"]')).toContainText("Cash snapshot");
 });
