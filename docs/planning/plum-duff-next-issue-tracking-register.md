@@ -2365,3 +2365,7 @@ Local checklist under [Design Lab issue #114](https://github.com/wolney8/OpenFor
 ## CP-116 focused workflow review — 2026-11-02
 
 `PD-PR-116-06–09` track the owner's four assessment candidates in the [UI change register](../agent-contracts/plum-duff-ui-change-register.md#cp-116-focused-workflow-review--2026-11-02). Issued award controls and the Casino wagering base need bounded lab corrections; lifecycle labels and SNR/SR outputs are retained after contract/fixture inspection. No new financial authority is requested. Issue [#114](https://github.com/wolney8/OpenForge/issues/114) covers the lab; live subitem sync is unverified.
+
+## CP-116 pinned Actions column — 2026-11-02
+
+`PD-FIX-505` tracks the owner's shared Design Lab ledger pinning defect in the [UI change register](../agent-contracts/plum-duff-ui-change-register.md#cp-116-pinned-ledger-actions-refinement--2026-11-02). Scope is CSS and browser geometry only; the existing financial and ledger authorities remain unchanged. Issue [#114](https://github.com/wolney8/OpenForge/issues/114) covers the lab; live subitem sync is unverified.

@@ -324,6 +324,8 @@ For dialogs and drawers, assert:
 For tables and rows, assert:
 
 - header and body columns align;
+- pinned columns remain pinned in both header and body after horizontal scroll; their action
+  targets stay inside the cell/viewport with an opaque row-aware surface in both themes;
 - dense calculator columns reflect semantic content need: provider/text columns must not force
   compact odds/rate columns to the same width, and controls plus focus rings remain contained;
 - action slots have matching centres and dimensions;

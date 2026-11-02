@@ -1593,3 +1593,10 @@ display/editing; successor metadata never rewrites or auto-selects a replacement
   geometry.
 - Save actions produce success, explicit validation or an actionable failure; they never appear to
   do nothing, and failed saves preserve the owner's edits.
+
+## Pinned table cells must retain their positioning rule
+
+A later generic `td[tabindex]{position:relative}` rule can override a sticky Actions cell while its
+header stays pinned. Keep relative positioning on editable data cells only; compare the pinned
+header/body right edges and action target bounds after horizontal scroll. The shared Design Lab
+regression is `tests/e2e/design-lab-sticky-actions.spec.ts`.

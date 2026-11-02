@@ -1210,3 +1210,13 @@ Owner-authorised lab-only follow-on to verified CP-119F. Existing calculation an
 | PD-PR-116-07 | Casino wagering base / normal Casino workflow and `calculateWagerTarget` | A — calculation presentation defect. Relevant Cash Stake/Deposit input and derived base are visible; existing helper yields Cash Stake £20.00 and Deposit + Bonus £30.00 for tested inputs. NEEDS VERIFICATION — browser pass; owner review pending. |
 | PD-PR-116-08 | Casino lifecycle labels / casino workflow contract | CODE-VERIFIED: Prospecting, Started, In Progress and Settled match contract; workflow sections are separate. No implementation change. NEEDS VERIFICATION (owner). |
 | PD-PR-116-09 | SNR/SR lay values / Free Bet pure engine fixtures | PROVEN by rerun pure-engine fixture; distinct SNR/SR outputs retained. No implementation change. NEEDS VERIFICATION (owner). |
+
+## CP-116 pinned ledger Actions refinement — 2026-11-02
+
+`PROPOSED — LAB ONLY`; Design Lab [issue #114](https://github.com/wolney8/OpenForge/issues/114), live subitem sync unverified. Nearest equivalent: the same shared ledger grid's sticky Actions header and existing pinned-column divider. No financial or normal-app authority changes.
+
+| ID | Surface and request | Status |
+| --- | --- | --- |
+| PD-FIX-505 | `DesignLabLedgerGrid` body Actions cells must stay pinned with the header during horizontal scroll across all six lab ledgers, with aligned width, opaque row-aware background, divider, action access and zoom/theme support. | NEEDS VERIFICATION — browser geometry and before/after scrolled captures show the correction; owner visual review remains open. |
+
+Evidence: at 900px and `scrollLeft=180`, the Sportsbook header/body Actions right edges both measured 853.5px after the fix; before, the row cell ended at 1336.5px. The 76px cell widths match and the 44px action target ends inside the 854.5px table viewport. Private local captures: `data/private/evidence/cp116-sticky-actions/`; no owner screenshot or financial data was committed. Final-source Design Lab browser suite 125/125, web typecheck and build passed. Broad web lint retains the unchanged Free Bet render-ref error and 12 warnings. Manual screen-reader review and owner visual approval remain open.
