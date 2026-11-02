@@ -1,5 +1,9 @@
 # Plum Duff Next Issue Tracking Register
 
+## CP-119F review cells and inbox navigation — 2026-11-02
+
+`PD-PR-119F-01–05` preserve the owner's compact review-cell, source-linked Today task, approved status-chip, full Notifications filter and verification requirements in the [UI change register](../agent-contracts/plum-duff-ui-change-register.md#cp-119f-review-cells-task-linkage-status-colours-and-inbox-filters--2026-11-02). Lab-only under existing [issue #114](https://github.com/wolney8/OpenForge/issues/114); live subitem sync unverified. CP-116 requires a separate tested source checkpoint and fixture-backed financial scope.
+
 ## CP-119E cell selection and notification triage — 2026-11-02
 
 `PD-PR-119E-01–04` retain the owner's deselection, three-authority separation, bell classification, existing-source preservation and verification requirements in the [UI change register](../agent-contracts/plum-duff-ui-change-register.md#cp-119e-cell-selection-and-notification-triage--2026-11-02). Lab-only under [Design Lab issue #114](https://github.com/wolney8/OpenForge/issues/114); live subitem sync unverified. No real CP-049 feed or API amendment is approved.

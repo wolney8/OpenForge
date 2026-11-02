@@ -124,11 +124,12 @@ test("inline and workbench descriptive edits share a record and audit; dependent
   await editor.getByRole("option",{name:"Underlay",exact:true}).click();
   await expect(prospect).toContainText("Underlay");
   await expect(prospect.getByRole("button",{name:/Review Value dependencies/})).toBeVisible();
-  await expect(prospect).toContainText("Unavailable · Needs Review");
+  await expect(prospect.locator('td[data-lab-column="8"]')).toContainText("Unavailable");
+  await expect(prospect.locator('td[data-lab-column="8"]')).toHaveClass(/gridNeedsReview/);
   await prospect.locator('td[data-lab-column="5"]').dblclick();
   await editor.getByRole("option",{name:"Standard"}).click();
   await expect(prospect.getByRole("button",{name:/Review Value dependencies/})).toHaveCount(0);
-  await expect(prospect).not.toContainText("Unavailable · Needs Review");
+  await expect(prospect.locator('td[data-lab-column="8"]')).not.toHaveClass(/gridNeedsReview/);
 });
 
 test("compact Bookmaker choices support keyboard selection and narrow viewport containment",async ({page})=>{

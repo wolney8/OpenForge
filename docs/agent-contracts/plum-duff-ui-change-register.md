@@ -1151,6 +1151,18 @@ The owner rejected CP-119B's expanding in-cell editor. These are `PROPOSED — L
 | PD-PR-119C-06 | Browser geometry, regression, accessibility, isolation and non-main custody | NEEDS VERIFICATION — 104/104 final browser pass, 18 focused units, typecheck, changed-file lint and isolated webpack build pass; remote receipt at handoff; manual screen reader pending |
 | PD-PR-119C-07 | Contain a CP-112 lab icon's 3px overflow at actual Chromium 200% zoom, without changing normal UI | NEEDS VERIFICATION — full browser 200% case pass; owner visual review pending |
 
+## CP-119F review cells, task linkage, status colours and inbox filters — 2026-11-02
+
+`PROPOSED — LAB ONLY`. Owner accepted the CP-119E interaction direction; these corrections remain open. Reuse the CP-119C field command/review tracking, CP-118D Today task identity, normal ledger status chip semantics and CP-119E event collection. No production notification or financial authority changes. [Design Lab issue #114](https://github.com/wolney8/OpenForge/issues/114); live subitem sync unverified.
+
+| ID | Requested outcome | Equivalent / status |
+| --- | --- | --- |
+| PD-PR-119F-01 | Compact red review-cell cue, populated step-focused review action, stable table geometry | Existing lab floating editor and governed Sportsbook workbench · NEEDS VERIFICATION — browser geometry passed; owner visual review pending |
+| PD-PR-119F-02 | One Profile-owned Today task per unresolved dependency; revert/resolution clears it without notification | CP-118D Today source tasks and CP-119C review tracking · NEEDS VERIFICATION — browser and unit checks passed; owner review pending |
+| PD-PR-119F-03 | Restore lifecycle-specific status chip colours without changing execution evidence | Normal ledger `table-chip-status-*`, `table-chip-lay-*`, `table-chip-back-placed` · NEEDS VERIFICATION — browser class/colour check passed; owner visual review pending |
+| PD-PR-119F-04 | Full Notifications tabs/type filter and clickable compact heading over one event collection | CP-119E full inbox and anchored bell · NEEDS VERIFICATION — browser interaction passed; owner review pending |
+| PD-PR-119F-05 | Focused geometry, state, accessibility, full browser regression and separate non-main checkpoint | CP-119E test baseline · NEEDS VERIFICATION — 116/116 complete browser and 9/9 units passed; manual screen reader and owner review pending |
+
 ## CP-119E cell selection and notification triage — 2026-11-02
 
 `PROPOSED — LAB ONLY`. CP-119D interaction direction is accepted for continued lab work; these two refinements remain open. Reuse the shared floating grid editor, CP-118D Today/tracking source identities, CP-114C anchored bell and existing Notification Centre read/clear semantics. The real CP-049 notification feed remains authoritative. [Issue #114](https://github.com/wolney8/OpenForge/issues/114) covers the Design Lab; live CP-119E subitem sync is unverified.

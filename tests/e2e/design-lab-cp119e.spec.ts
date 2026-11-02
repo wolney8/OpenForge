@@ -66,7 +66,7 @@ test("priority bell excludes ordinary work but All Notifications retains approve
   await ordinary.getByRole("button", { name: "Clear", exact: true }).click();
   await ordinary.getByRole("button", { name: "Clear Notification" }).click();
   await expect(ordinary).toHaveCount(0);
-  await bell.getByRole("button", { name: "History" }).click();
+  await bell.getByRole("tab", { name: "History" }).click();
   await expect(ordinary).toBeVisible();
   await bell.getByRole("button", { name: "View Today" }).click();
   await expect(page.locator('[data-pd-id="lab.task.task:LAB-SB-OVERDUE"]')).toBeVisible();
@@ -84,7 +84,7 @@ test("resolved Account source leaves the current notification view and remains i
   await page.locator('[data-pd-id="lab.header-trigger.notifications"]').click();
   await bell.getByRole("button", { name: "View All Notifications" }).click();
   await expect(account).toHaveCount(0);
-  await bell.getByRole("button", { name: "History" }).click();
+  await bell.getByRole("tab", { name: "History" }).click();
   await expect(account).toContainText("Source Resolved");
 });
 

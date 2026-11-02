@@ -1,9 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { buildLabTodayTasks, copyLabReload, labManagedFeeSummary, labOfferTargets, labTaskDateLabel, labTaskUrgency, sortLabTodayTasks } from "./design-lab-operations";
+import { buildLabReviewTasks, buildLabTodayTasks, copyLabReload, labManagedFeeSummary, labOfferTargets, labTaskDateLabel, labTaskUrgency, sortLabTodayTasks } from "./design-lab-operations";
 import { initialLabAccounts } from "./design-lab-fixture";
 import { labRecords } from "./design-lab-connected-data";
 
 describe("CP-115 synthetic operations", () => {
+  it("creates one Profile-owned review task per unresolved record without a due date", () => {
+    const tracking = { "LAB-SB-PROSPECT-B": { base: { match_strategy: "Standard" }, causes: { match_strategy: ["lay_status", "displayed_value"] } } };
+    const all = buildLabReviewTasks(labRecords, tracking, "all");
+    expect(all).toMatchObject([{ id: "review:LAB-SB-PROSPECT-B:dependencies", profileId: "LAB-PROFILE-B", sourceId: "LAB-SB-PROSPECT-B", reviewCondition: true }]);
+    expect(all[0].due).toBeUndefined();
+    expect(buildLabReviewTasks(labRecords, tracking, "LAB-PROFILE-A")).toEqual([]);
+    expect(buildLabReviewTasks(labRecords, { "LAB-SB-PROSPECT-B": { base: tracking["LAB-SB-PROSPECT-B"].base, causes: {} } }, "all")).toEqual([]);
+  });
   it("derives work from recorded source conditions and keeps routine/advice separate", () => {
     const tasks = buildLabTodayTasks(labRecords, initialLabAccounts, "all");
     expect(tasks.find(task => task.sourceId === "LAB-SB-OVERDUE")?.title).toBe("Review Overdue Unsettled Bet");

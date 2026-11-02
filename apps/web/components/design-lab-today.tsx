@@ -18,16 +18,17 @@ const workStates: LabTaskWorkState[] = ["To Do", "In Progress", "Blocked", "Do L
 const urgencyGroups: LabTaskUrgency[] = ["Past Recorded Date", "Immediate Review", "Date Today", "Upcoming", "No Recorded Date"];
 const sevenDaysAfterLabClock = new Date(Date.parse(`${labClock}T12:00:00Z`) + 7 * 86400000).toISOString().slice(0,10);
 const profileName = (id?: LabProfileId) => id ? labProfiles.find(profile => profile.id === id)?.name ?? id : "All Profiles";
-const iconFor = (task: LabTodayTask) => ({ Sportsbook: "sports_soccer", "Free Bet": "redeem", Account: "account_balance_wallet", Routine: "event_repeat", Suggestion: "lightbulb" })[labTaskSourceType(task)];
+const iconFor = (task: LabTodayTask) => ({ Sportsbook: "sports_soccer", "Free Bet": "redeem", Casino: "casino", Account: "account_balance_wallet", Routine: "event_repeat", Suggestion: "lightbulb" })[labTaskSourceType(task)];
 
-export function DesignLabToday({ scope, records, accounts, taskStates, blockedReasons, reviewDates, trackedTaskIds, onTaskState, onBlockedReason, onReviewDate, onToggleTrackTask, onBulkTrackTasks, onOpenSource, onOpenOffer, onInspectHistory, view, onViewChange, onSourceLeave, boardScrollLeft, onBoardScroll }: {
+export function DesignLabToday({ scope, records, accounts, extraTasks = [], taskStates, blockedReasons, reviewDates, trackedTaskIds, onTaskState, onBlockedReason, onReviewDate, onToggleTrackTask, onBulkTrackTasks, onOpenSource, onOpenOffer, onInspectHistory, view, onViewChange, onSourceLeave, boardScrollLeft, onBoardScroll }: {
   scope: LabScope; records: LabRecord[]; accounts: LabAccount[];
+  extraTasks?: LabTodayTask[];
   taskStates: Record<string,LabTaskWorkState>; blockedReasons: Record<string,string>; reviewDates: Record<string,string>; trackedTaskIds: string[];
   onTaskState: (id:string,state:LabTaskWorkState) => void; onBlockedReason: (id:string,reason:string) => void; onReviewDate: (id:string,date:string) => void; onToggleTrackTask: (id:string) => void; onBulkTrackTasks: (ids:string[], action:"track"|"untrack") => void;
   onOpenSource: (id:string) => void; onOpenOffer: () => void; onInspectHistory: () => void;
   view: LabTodayViewState; onViewChange: (view: LabTodayViewState) => void; onSourceLeave: () => void; boardScrollLeft: number; onBoardScroll: (left:number) => void;
 }) {
-  const tasks = useMemo(() => buildLabTodayTasks(records, accounts, scope), [records, accounts, scope]);
+  const tasks = useMemo(() => [...buildLabTodayTasks(records, accounts, scope), ...extraTasks.filter(task => scope === "all" || task.profileId === scope)], [records, accounts, scope, extraTasks]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [narrow, setNarrow] = useState(false);
   const rowRefs = useRef<Record<string,HTMLButtonElement | null>>({});

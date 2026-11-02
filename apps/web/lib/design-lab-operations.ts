@@ -2,7 +2,8 @@ import { accountAllowsNewSportsbookActivity, type AccountAuthorityRecord } from 
 import { resolveKnownBookmakerCoverage } from "./sportsbook-offer-knowledge";
 import { summarizeFeePeriods, type FeePeriodApiRecord } from "./fee-period-summary";
 import { initialLabAccounts, type LabAccount, type LabProfileId, type LabScope } from "./design-lab-fixture";
-import type { LabRecord } from "./design-lab-connected-data";
+import { labLedgerColumnSpecs, type LabRecord } from "./design-lab-connected-data";
+import type { LabReviewTracking } from "./design-lab-field-edit";
 
 // Synthetic, fixed-clock lab fixtures. These do not describe a current external promotion.
 export const labClock = "2026-11-01";
@@ -98,7 +99,24 @@ export const labManagedFeePeriods: FeePeriodApiRecord[] = [
 ];
 export const labManagedFeeSummary = summarizeFeePeriods(labManagedFeePeriods, new Date("2026-01-01T00:00:00"), new Date("2026-12-31T23:59:59"));
 
-export type LabTodayTask = { id: string; group: "Needs Action" | "Recurring Work" | "Opportunities / Suggestions"; authority: "Confirmed task" | "Configured reminder" | "Advisory suggestion"; title: string; profileId?: LabProfileId; provider: string; due?: string; dateKind?: "Event Date" | "Expiry" | "Expected Check"; sourceId?: string; detail: string; action: string; manual?: boolean; previewOnly?: boolean; requiresImmediateReview?: boolean };
+export type LabTodayTask = { id: string; group: "Needs Action" | "Recurring Work" | "Opportunities / Suggestions"; authority: "Confirmed task" | "Configured reminder" | "Advisory suggestion"; title: string; profileId?: LabProfileId; provider: string; due?: string; dateKind?: "Event Date" | "Expiry" | "Expected Check"; sourceId?: string; detail: string; action: string; manual?: boolean; previewOnly?: boolean; requiresImmediateReview?: boolean; reviewCondition?: boolean; sourceType?: "Sportsbook" | "Free Bet" | "Casino" };
+
+/** One source-owned work item per unresolved review condition; no deadline is inferred. */
+export function buildLabReviewTasks(records: LabRecord[], tracking: Record<string, LabReviewTracking>, scope: LabScope): LabTodayTask[] {
+  return records.flatMap((record): LabTodayTask[] => {
+    if (scope !== "all" && record.profileId !== scope) return [];
+    const causes = tracking[record.id]?.causes ?? {};
+    const fields = Object.keys(causes);
+    if (!fields.length) return [];
+    const specs = labLedgerColumnSpecs(record.section);
+    const label = (field: string) => specs.find(spec => spec.id === field)?.label ?? field.replaceAll("_", " ");
+    const sourceType = record.section === "sportsbook" ? "Sportsbook" : record.section === "freeBets" ? "Free Bet" : record.section === "casino" ? "Casino" : undefined;
+    return [{id:`review:${record.id}:dependencies`, group:"Needs Action", authority:"Confirmed task", title:`Review ${sourceType ?? record.section} Calculation — ${record.id}`,
+      profileId:record.profileId, provider:record.cells[record.section === "freeBets" || record.section === "casino" ? 2 : 1] ?? record.title,
+      sourceId:record.id, sourceType, reviewCondition:true, action:"Open Review",
+      detail:`Changed: ${fields.map(label).join(", ")}. Review: ${[...new Set(Object.values(causes).flat())].map(label).join(", ")}. No financial result is inferred.`}];
+  });
+}
 
 export type LabTaskUrgency = "Past Recorded Date" | "Immediate Review" | "Date Today" | "Upcoming" | "No Recorded Date";
 const urgencyOrder: LabTaskUrgency[] = ["Past Recorded Date", "Immediate Review", "Date Today", "Upcoming", "No Recorded Date"];
@@ -133,7 +151,8 @@ export function labTaskDateLabel(task: LabTodayTask): string {
   if (task.dateKind === "Expiry") return `Expires ${day}`;
   return `Expected check ${day}`;
 }
-export function labTaskSourceType(task: LabTodayTask): "Sportsbook" | "Free Bet" | "Account" | "Routine" | "Suggestion" {
+export function labTaskSourceType(task: LabTodayTask): "Sportsbook" | "Free Bet" | "Casino" | "Account" | "Routine" | "Suggestion" {
+  if (task.sourceType) return task.sourceType;
   if (task.group === "Recurring Work") return "Routine";
   if (task.group === "Opportunities / Suggestions") return "Suggestion";
   if (task.sourceId?.startsWith("LAB-SB")) return "Sportsbook";

@@ -1,5 +1,9 @@
 # Project Roadmap — Plum Duff / OpenForge — Doc ID: PR-CODEX-001
 
+## CP-119F then CP-116 — 2026-11-02
+
+Verify and preserve the lab-only CP-119F review cues, Today dependency tasks, status chip semantics and full Notifications filters first. If the complete lab regression passes without a safety defect, checkpoint CP-119F, then build a separate CP-116 fixture-backed Free Bet/Casino slice. Normal ledger, task, notification and financial authorities stay unchanged; no migration wave begins. [Requirements](docs/agent-contracts/plum-duff-ui-change-register.md#cp-119f-review-cells-task-linkage-status-colours-and-inbox-filters--2026-11-02).
+
 ## CP-119E Design Lab review — 2026-11-02
 
 Review outside-click cell deselection and the selective priority bell at authenticated `/design-lab`. CP-049 production notification sources, unread semantics, preferences and retention remain unchanged; a versioned owner-approved amendment is required before any normal-app migration. CP-116 and further Design Lab expansion stay on hold. [Request IDs](docs/agent-contracts/plum-duff-ui-change-register.md#cp-119e-cell-selection-and-notification-triage--2026-11-02).

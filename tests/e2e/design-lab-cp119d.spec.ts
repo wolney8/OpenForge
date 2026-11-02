@@ -101,7 +101,7 @@ test("ledger choices, native dates and canonical GBP survive inline editing", as
   await page.locator('[data-pd-id="lab.floating-cell-editor"] input').fill("2");
   await page.keyboard.press("Enter");
   await expect(row.locator('td[data-lab-column="3"]')).toContainText("£ 2.00");
-  await expect(row).toContainText("Needs Review");
+  await expect(row.getByRole("button",{name:/Review Qual Loss dependencies/})).toBeVisible();
   await page.locator('[data-pd-id="lab.nav.cash"]').click();
   await page.locator('tr[data-lab-row-id="LAB-CA-001"] td[data-lab-column="1"]').dblclick();
   await expect(page.locator('[data-pd-id="lab.concept.cash"] input[type="date"]')).toHaveValue("2026-10-12");

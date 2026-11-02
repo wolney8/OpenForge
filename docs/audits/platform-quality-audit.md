@@ -1,5 +1,14 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
+## CP-119F review and notification coverage — 2026-11-02
+
+| Requirement | Lab evidence | Remaining authority |
+| --- | --- | --- |
+| `PD-PR-119F-01–02` | Shared grid warning cue occupies no row space; source review tracking yields one Profile-owned Today task per unresolved record and no notification. Browser test measures row height, opens Matching and confirms task removal on reversion. | Unsupported edited calculation tuples remain unavailable; opening review alone does not resolve work. |
+| `PD-PR-119F-03` | Table/detail use normal placed, settled and awarded chip classes; Lay partial/full and Back placement remain separate field labels. | Owner visual judgement and manual screen reader review pending. |
+| `PD-PR-119F-04` | Compact heading opens the full route. All, Action Required, System & Results and History tabs plus recorded-type filter use the same read/clear event state; empty system group contains no fabricated event. | CP-049 production categorisation amendment still requires owner approval. |
+| `PD-PR-119F-05` | Complete Design Lab browser regression 116/116 passed; focused units 9/9, web typecheck and build passed. | Remote checkpoint and owner visual review pending; manual screen reader unverified. |
+
 ## CP-119E selection and attention-inbox coverage — 2026-11-02
 
 | Requirement | Lab route/treatment | Acceptance and remaining authority |

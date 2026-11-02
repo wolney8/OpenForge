@@ -54,7 +54,7 @@ test("notification read and clear do not resolve source work; history and recove
   await expect(overdue).toContainText("The source task remains open");
   await overdue.getByRole("button", { name: "Clear Notification" }).click();
   await expect(overdue).toHaveCount(0);
-  await bell.getByRole("button", { name: "History" }).click();
+  await bell.getByRole("tab", { name: "History" }).click();
   await expect(overdue).toBeVisible();
   await bell.getByText("Test States").click();
   await bell.getByRole("button", { name: "Error" }).click();

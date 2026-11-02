@@ -12,7 +12,7 @@ export type LabNotificationEvent = {
 // in the normal Notification Centre; they remain in All Notifications here.
 export function buildLabNotificationEvents(tasks: LabTodayTask[]): LabNotificationEvent[] {
   const events = tasks.flatMap((task): LabNotificationEvent[] => {
-    if (!task.sourceId || task.group !== "Needs Action") return [];
+    if (!task.sourceId || task.group !== "Needs Action" || task.reviewCondition) return [];
     const source = labTaskSourceType(task);
     const kind = source === "Free Bet" ? "free_bet_expiry"
       : source === "Account" ? "account_review"
