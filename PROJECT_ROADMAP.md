@@ -249,3 +249,7 @@ Subscriber invitation/request/access remains the existing minimal proposal, awai
 ## CP-114C shell fidelity owner gate — 2026-11-01
 
 Compare the 2048px owner screenshot pair with revised lab header, search and four trigger-anchored overlays, then judge light/dark and narrow behaviour. Preserve CP-114B ledger and CP-114 entry. CP-115/116 and normal integration remain separate owner decisions.
+
+## CP-116 Design Lab owner gate — 2026-11-02
+
+Review the CP-119F correction checkpoint and the connected historical Free Bet/Casino fixture journeys. Decide whether the source→award→placement→settlement→report structure, conditional Casino sections and unsupported-state handling warrant further lab refinement. Split-child financial placement, arbitrary tuples, corrections, production persistence and real ledger migration require separate authorities and approval. CP-117 old-shell rollback and normal-owner records remain untouched.

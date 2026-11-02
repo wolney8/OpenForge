@@ -409,6 +409,12 @@ toolbar/card hierarchy and atomic Account-plus-commission saving with audited hi
 dirty-close confirmation. Sportsbook Matching is usable before Event Name while governed final
 validation remains. Owner verification of these CP-109 daily-use corrections is pending.
 
+## CP-119F and CP-116 Design Lab checkpoints — 2026-11-02
+
+CP-119F is remotely preserved at `feature/cp119f-design-lab-review-notifications` / `20da4a77202146d041e83775061b896614b90ee7`. Its compact Needs Review cue, source-linked Today review task, approved Placed/Settled colours and full Notifications triage passed the complete 116-test Design Lab browser suite. Owner review remains pending. The normal notification authority was not changed.
+
+CP-116 adds a synthetic historical qualifying-source → reviewed Free Bet award → SNR/SR planning → explicit external placement → fixture-backed settlement → report journey, plus conditional Casino Setup/Wagering/Reward/Settlement and one confirmed fixture result. Single and split award identities, retries, partial Lay evidence, draft retention and Profile A ownership are bounded in the lab. Split-award placement, arbitrary financial tuples, live settlement, specialist corrections and normal integration remain unavailable. The source qualifying P&L is not invented or added to the new Free Bet result. Final-source evidence: 121/121 Design Lab browser tests, 3/3 web unit, 1/1 pure-engine fixture, web typecheck/build and changed-file lint pass. Owner visual review and manual screen-reader output remain UNVERIFIED. See the [Design Lab brief](docs/planning/plum-duff-design-lab-brief.md) and [change register](docs/agent-contracts/plum-duff-ui-change-register.md) for fixture and decision boundaries.
+
 ## Reference index
 
 - [Feature status](FEATURE_STATUS.md)

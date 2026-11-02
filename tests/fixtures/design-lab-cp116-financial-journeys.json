@@ -1,0 +1,37 @@
+{
+  "schema_version": "1.0",
+  "free_bet": {
+    "source_case": "SFB-BRIDGE-002",
+    "calculation_case": "FB-003",
+    "profile_id": "LAB-PROFILE-A",
+    "source_id": "LAB-SB-AWARD-002",
+    "award_group_id": "LAB-AWARD-CP116-001",
+    "split_source_case": "SFB-BRIDGE-003",
+    "split_source_id": "LAB-SB-AWARD-003",
+    "split_award_group_id": "LAB-AWARD-CP116-003",
+    "expected_award": "5.00",
+    "face_value": "5.00",
+    "retention_mode": "SNR",
+    "back_odds": "6.00",
+    "lay_odds": "6.20",
+    "commission": "0.02",
+    "planned_lay_stake": "4.05",
+    "placed_projected_current_pnl": "3.94",
+    "settled_back_won_final_pnl": "3.94",
+    "settled_lay_won_final_pnl": "3.97",
+    "settled_void_final_pnl": "0.00",
+    "sr_planned_lay_stake": "4.85",
+    "sr_placed_projected_current_pnl": "4.75",
+    "sr_settled_back_won_final_pnl": "4.78",
+    "sr_settled_lay_won_final_pnl": "4.75",
+    "expiry": "2026-07-27T20:00:00"
+  },
+  "casino": {
+    "source_case": "CASINO-WORKFLOW-001",
+    "profile_id": "LAB-PROFILE-A",
+    "record_id": "LAB-CO-CP116",
+    "own_cash_committed": "5.00",
+    "cash_returned": "4.90",
+    "confirmed_net_result": "-0.10"
+  }
+}

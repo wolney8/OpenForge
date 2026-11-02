@@ -1188,3 +1188,14 @@ The owner rejected CP-119B's expanding in-cell editor. These are `PROPOSED — L
 | PD-PR-119D-06 | Date-only and datetime picker precision without inferred timestamps | NEEDS VERIFICATION — source/unit/browser checks pass; owner review pending |
 | PD-PR-119D-07 | Canonical GBP display for edited money while preserving raw inputs and unknown/zero | NEEDS VERIFICATION — stake `2` browser case passes; owner review pending |
 | PD-PR-119D-08 | Full final-source regression, isolated custody and owner review | NEEDS VERIFICATION — full browser run 108/109; one zoom launch timeout passed twice in isolation; owner review pending |
+## CP-116 connected synthetic Free Bet and Casino journeys — 2026-11-02
+
+Owner-authorised lab-only follow-on to verified CP-119F. Existing calculation and award/settlement contracts govern all financial values; unsupported tuples remain unavailable. Source checkpoint: `feature/cp119f-design-lab-review-notifications` at `20da4a77202146d041e83775061b896614b90ee7`. Issue #114 covers the lab; live issue subitem sync unverified.
+
+| ID | Owner requirement | Authority / state |
+| --- | --- | --- |
+| PD-PR-116-01 | Connected qualifying source, reviewed single/split Free Bet award, stable identities and safe retry | Sportsbook–Free Bet award bridge · NEEDS VERIFICATION (owner) · PROPOSED — LAB ONLY |
+| PD-PR-116-02 | Same Add/Edit Free Bet flow with SNR/SR, planning versus actual execution, supported settlement and report link | Free Bet workflow/current value and validated fixtures · NEEDS VERIFICATION (owner) · PROPOSED — LAB ONLY |
+| PD-PR-116-03 | Conditional Casino setup, wagering, reward, confirmed net settlement and reporting | Casino offer types, wagering/EV and resolved-value contracts · NEEDS VERIFICATION (owner) · PROPOSED — LAB ONLY |
+| PD-PR-116-04 | Strict input, draft/failure recovery, audit, Profile isolation, no invented financial outputs | Existing lab guards and financial safety rules · NEEDS VERIFICATION (owner) · PROPOSED — LAB ONLY |
+| PD-PR-116-05 | Complete Design Lab regression, financial fixture parity, separate non-main checkpoint | 121/121 browser, 3/3 web unit, 1/1 pure-engine fixture, typecheck/build/changed-file lint pass · NEEDS VERIFICATION (owner) · PROPOSED — LAB ONLY |

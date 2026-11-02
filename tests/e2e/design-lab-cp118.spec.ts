@@ -124,8 +124,8 @@ test("chart modes preserve source values and unsupported modes remain unavailabl
   await expect(chart.getByRole("radio",{name:"Candlestick"})).toBeDisabled();
 });
 
-test("specialist concepts retain fields and never claim a financial save",async ({page}) => {
-  for (const section of ["freeBets","casino","extraPlace","cash"] as const) {
+test("remaining specialist concepts retain fields and never claim a financial save",async ({page}) => {
+  for (const section of ["extraPlace","cash"] as const) {
     await page.locator(`[data-pd-id="lab.nav.${section}"]`).click();
     await page.locator(`[data-pd-id="lab.concept-add.${section}"]`).click();
     const concept=page.locator(`[data-pd-id="lab.concept.${section}"]`);
@@ -135,17 +135,6 @@ test("specialist concepts retain fields and never claim a financial save",async 
     expect(cardTops).toHaveLength(2);
     expect(Math.abs(cardTops[0]-cardTops[1]),section).toBeLessThanOrEqual(2);
     await expect(concept.getByRole("button",{name:/Save Unavailable/})).toBeDisabled();
-    if (section === "freeBets") {
-      await expect(concept.getByLabel("Free Bet Type")).toBeVisible();
-      await expect(concept.getByRole("button",{name:"Back / Lay Preparation"})).toBeVisible();
-    }
-    if (section === "casino") {
-      await expect(concept.getByRole("button",{name:"Wagering"})).toHaveCount(0);
-      await concept.getByRole("combobox",{name:"Offer Type"}).click();
-      await page.getByRole("option",{name:"Deposit and Bonus Wagering"}).click();
-      await expect(concept.getByRole("button",{name:"Wagering"})).toBeVisible();
-      await expect(concept.getByRole("button",{name:"Reward"})).toBeVisible();
-    }
     if (section === "extraPlace") {
       await expect(concept.getByLabel("Win Lay Odds")).toBeVisible();
       await expect(concept.getByLabel("Place Lay Odds")).toBeVisible();
@@ -159,8 +148,8 @@ test("specialist concepts retain fields and never claim a financial save",async 
   }
 });
 
-test("specialist concept fields stay contained at narrow width in both themes",async ({page}) => {
-  for (const section of ["freeBets","casino","extraPlace","cash"] as const) {
+test("remaining specialist concept fields stay contained at narrow width in both themes",async ({page}) => {
+  for (const section of ["extraPlace","cash"] as const) {
     await page.setViewportSize({width:1440,height:900});
     await page.locator(`[data-pd-id="lab.nav.${section}"]`).click();
     await page.locator(`[data-pd-id="lab.concept-add.${section}"]`).click();
