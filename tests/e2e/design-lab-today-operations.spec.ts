@@ -126,7 +126,9 @@ test("Today and Position remain contained at desktop and narrow widths in both t
     if (width <= 900) await page.getByRole("button", { name: "Open navigation" }).click();
     await page.locator('[data-pd-id="lab.nav.tasks"]').click();
     await page.locator('[data-pd-id="lab.task.task:LAB-SB-OVERDUE"]').click();
-    await page.locator('[data-pd-id="lab.today.detail"]').getByRole("button", { name: "Track Task" }).click();
+    const track = page.locator('[data-pd-id="lab.today.detail"] [data-pd-id="lab.task-track.task:LAB-SB-OVERDUE"]');
+    if (await track.getAttribute("aria-pressed") === "false") await track.click();
+    await expect(track).toHaveText("Untrack");
     if (width <= 430) await page.getByRole("dialog", { name: "Task Details" }).getByRole("button", { name: "Close Task Details" }).click();
     await expect(page.locator('[data-pd-id="lab.active-task"]')).toBeVisible();
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);

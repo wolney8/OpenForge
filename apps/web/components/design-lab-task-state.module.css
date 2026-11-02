@@ -1,0 +1,10 @@
+.chip{--work-fg:var(--muted);--work-bg:var(--bg-muted);display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:26px;width:max-content;max-width:100%;padding:3px 9px;border:1px solid color-mix(in srgb,var(--work-fg) 42%,transparent);border-radius:999px;background:var(--work-bg);color:var(--work-fg);font-size:.75rem;font-weight:700;line-height:1.2;white-space:nowrap}
+.dot{width:7px;height:7px;flex:none;border-radius:50%;background:currentColor}
+.chip[data-lab-work-state="progress"]{--work-fg:#174c9b;--work-bg:#e7f0ff}
+.chip[data-lab-work-state="blocked"]{--work-fg:#795000;--work-bg:#fff2d2}
+.chip[data-lab-work-state="later"]{--work-fg:#6937a1;--work-bg:#f1e9fb}
+.chip[data-lab-work-state="done"]{--work-fg:#296c4b;--work-bg:#e4f3e9}
+:global(html[data-theme="dark"]) .chip[data-lab-work-state="progress"]{--work-fg:#a9c9ff;--work-bg:#213454}
+:global(html[data-theme="dark"]) .chip[data-lab-work-state="blocked"]{--work-fg:#f4d287;--work-bg:#493a1f}
+:global(html[data-theme="dark"]) .chip[data-lab-work-state="later"]{--work-fg:#d7baff;--work-bg:#3d2a55}
+:global(html[data-theme="dark"]) .chip[data-lab-work-state="done"]{--work-fg:#a5dfbf;--work-bg:#264435}

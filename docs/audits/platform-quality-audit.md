@@ -1,5 +1,18 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
+## CP-118C Today lab coverage — 2026-11-02
+
+| Request | Lab demonstration / acceptance check | Status |
+| --- | --- | --- |
+| PD-PR-118C-01 | Three unique tracked IDs; individual Untrack; Profile/source retained across routes; bounded tray | CODE-VERIFIED synthetic; owner review pending |
+| PD-PR-118C-02 | Red urgent surface persists through annotations; shared five-state chips in List/Board/detail/tray | CODE-VERIFIED synthetic; text contrast 5.48:1 minimum across light/dark pairs |
+| PD-PR-118C-03 | Five 280px Board columns, horizontal controls/scroll, suggestions included and labelled | CODE-VERIFIED synthetic; owner visual review pending |
+| PD-PR-118C-04 | Board drawer overlays without resizing; uncovered Board scrolls; Escape/focus return | CODE-VERIFIED synthetic; manual screen reader pending |
+| PD-PR-118C-05 | Blocked reason, review date and source date remain independent | CODE-VERIFIED synthetic; owner review pending |
+| PD-PR-118C-06 | Manage Routines contract proposal linked to Daily Tasks and notifications | DOCUMENTED, not implemented |
+| PD-PR-118C-07 | Full lab suite, responsive/zoom/theme and source custody | 78/78 browser, typecheck and isolated build pass; private `data/private/evidence/cp118c-today/`; remote branch receipt reported at handoff |
+
+
 ## CP-118B Today Design Lab coverage — 2026-11-02
 
 | Requirement | Lab scenario / proposed treatment | Acceptance check | Status |

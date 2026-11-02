@@ -1,5 +1,9 @@
 # Plum Duff Next Issue Tracking Register
 
+## CP-118C Today tracked tasks and routines — 2026-11-02
+
+The owner's distinct CP-118C requests `PD-PR-118C-01` through `PD-PR-118C-07` are retained in the [UI change register](../agent-contracts/plum-duff-ui-change-register.md#cp-118c-today-tracked-tasks-and-board--2026-11-02). Multiple tracking, urgent/status surfaces, five-column Board, overlay inspector and separate work metadata are lab-only. Manage Routines is a **future proposal** under existing Daily Tasks/Notification Centre authority, not implemented scheduling or persistence. [Design Lab issue #114](https://github.com/wolney8/OpenForge/issues/114) is the existing local coverage link; live issue sync is unverified. CP-118B owner visual acceptance remains open.
+
 ## CP-118B Today revision — 2026-11-02
 
 `PD-PR-118B-01` through `PD-PR-118B-06` retain the owner's distinct list, detail, recurring/Board, filtering, authority and visual-evidence requirements in the [UI change register](../agent-contracts/plum-duff-ui-change-register.md#cp-118b-today-revision--2026-11-02). CP-118 Today is **OWNER REJECTED**; other CP-118 work is not rejected by implication. [Design Lab issue #114](https://github.com/wolney8/OpenForge/issues/114) is the existing coverage link; live issue mutation remains unverified. The CP-118B lab proposal awaits owner visual review, with normal `/tasks` unchanged.

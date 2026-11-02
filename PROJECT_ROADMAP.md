@@ -1,5 +1,9 @@
 # Project Roadmap — Plum Duff / OpenForge — Doc ID: PR-CODEX-001
 
+## CP-118C Today lab visual review — 2026-11-02
+
+Review multiple tracked tasks, urgent/source-date meaning, five-state colours, fixed Board columns and suggestion cards, non-modal Board detail, and separated Do Later/Blocked metadata at protected `/design-lab`. Decide whether this revision should become the next lab baseline. Manage Routines needs a separate task/notification/recurrence contract before implementation; real `/tasks`, Wave 2 and CP-116 remain gated. [Coverage](docs/audits/platform-quality-audit.md#cp-118c-today-lab-coverage--2026-11-02).
+
 ## CP-118B Today owner visual review — 2026-11-02
 
 Compare the rejected CP-118 expanded task columns with the compact priority List, contextual detail, recurring Profile children, Board and narrow view at `/design-lab`. Decide whether this task interaction direction should continue as a lab baseline. Normal `/tasks` migration, persistent task annotations and Wave 2 remain separately gated. [Coverage](docs/audits/platform-quality-audit.md#cp-118b-today-design-lab-coverage--2026-11-02).

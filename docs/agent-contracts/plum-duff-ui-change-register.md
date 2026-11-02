@@ -1,5 +1,22 @@
 # Plum Duff UI Change Register
 
+## CP-118C Today tracked tasks and Board — 2026-11-02
+
+Owner likes the CP-118B List/Board direction; visual acceptance remains pending. All changes below are `PROPOSED — LAB ONLY`. Existing Today rows/details, `DesignLabSelect`, Material status/focus tokens, notification authority and synthetic task IDs are the nearest equivalents. [Design Lab issue #114](https://github.com/wolney8/OpenForge/issues/114) is the existing scope link; live issue sync is unverified. The Board-only non-modal overlay drawer and indigo tracked tray are presentation exceptions; neither changes source resolution, Profile ownership or real task persistence.
+
+| ID | Request | Status |
+| --- | --- | --- |
+| PD-PR-118C-01 | Track/untrack multiple unique tasks across lab navigation; bounded indigo tray | NEEDS VERIFICATION — browser pass; owner visual review pending |
+| PD-PR-118C-02 | Semantic urgent row surfaces and shared five-state colour map in List, Board, detail and tray | NEEDS VERIFICATION — theme/browser pass; owner visual review pending |
+| PD-PR-118C-03 | Five fixed-width Board columns with horizontal access; include advisory suggestions | NEEDS VERIFICATION — geometry/browser pass; owner visual review pending |
+| PD-PR-118C-04 | Board detail overlays without resizing or locking the uncovered Board; focus return | NEEDS VERIFICATION — browser pass; manual screen reader pending |
+| PD-PR-118C-05 | Keep Blocked reason and Do Later review date separate from source dates | NEEDS VERIFICATION — browser pass; owner review pending |
+| PD-PR-118C-06 | Document future Manage Routines using existing Daily Tasks and notification authority | DOCUMENTED — persistence/scheduler/notification authority deferred |
+| PD-PR-118C-07 | Complete lab regression, responsive/theme/zoom/keyboard evidence and source custody | NEEDS VERIFICATION — 78/78 browser pass; owner review pending; remote receipt in delivery checkpoint |
+
+**UI handoff receipt:** Reused the existing Today row/detail, Material select, responsive dialog, Lab shell and shared task identities. A single lab work-chip component is used in List, Board, detail and tray. Browser geometry checks assert all five Board columns are 280 CSS px, drawer opening does not resize the Board, uncovered scroll and focus return work, and 390px/actual Chromium 200% zoom has no page overflow. Light/dark status text pairs calculate at 5.48:1 or higher. Full lab suite 78/78 passes; manual screen reader and owner visual judgement remain unverified. No ledger editor or financial authority changed.
+
+
 ## CP-118B Today revision — 2026-11-02
 
 `CP-118 TODAY — OWNER REJECTED`: the expanded, two-column CP-118 task presentation is retained as private comparison evidence, not an accepted visual baseline. All entries below are `PROPOSED — LAB ONLY`; source task, Profile, notification and financial authorities remain protected. The existing Design Lab Today queue, `DesignLabSelect`, anchored overlays and normal `/tasks` list are the nearest equivalents. [Design Lab issue #114](https://github.com/wolney8/OpenForge/issues/114) is the local tracking link; live issue mutation is unverified.

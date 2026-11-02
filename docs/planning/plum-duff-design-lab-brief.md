@@ -1,5 +1,13 @@
 # Plum Duff Design Lab — initial baseline brief
 
+## CP-118C Today tracked work and Board refinement — 2026-11-02
+
+The owner likes CP-118B's List/Board direction and requests a bounded lab revision; Today is **not owner accepted**. `PROPOSED — LAB ONLY`: multiple tracked task IDs in synthetic memory; a bounded indigo tray; semantic urgent source surfaces; a shared five-state work chip; five fixed-width, horizontally reachable Board columns containing advisory items; a desktop non-modal Board inspector; and separate blocked reason, review date and source date. Tracking, work annotation and notification read/clear never resolve the financial source. Only manual reminders can be Done. The Board drawer may overlay its columns because the uncovered Board remains operable; narrow detail retains the contained dialog. Existing List, shell, financial and CP-117 flag rules remain.
+
+**Manage Routines — future product concept:** build on the existing manual-reminder/Daily Tasks and Notification Centre authorities, with Create/Edit/Pause/Resume, name/type, provider, Profile targets, daily/weekly/custom recurrence, local day/time and timezone, start/end, last completed/next expected check, per-Profile completion, notification preference and review history. An expected check is not proof of an available offer. Scheduling, persistence, source identity and notification delivery need a separate contract and owner approval; this checkpoint adds no routine engine or real data.
+
+**Owner review gate:** inspect tracked-task density, the red urgent surface in both themes, Board column reachability, advisory labels, overlay drawer, source/review date distinction and narrow layout. Browser assertions and screenshots do not confer visual acceptance.
+
 ## CP-118B Today task interaction revision — 2026-11-02
 
 **Owner status:** `CP-118 TODAY — OWNER REJECTED`. The CP-118 two-column, expanded-card Today remains private comparison evidence; unrelated CP-118 improvements retain their prior status. `PROPOSED — LAB ONLY`: one compact, urgency-first List by default, a contextual detail pane, a small recurring collection with separate Profile children, secondary collapsed suggestions, optional Board over the same task identities, and synthetic-memory filters/annotations. Source event date, actual expiry and expected routine check have distinct labels; no settlement deadline or live promotion availability is inferred. Source lifecycle, workflow annotation and notification read/clear remain separate. Derived tasks resolve through source conditions; only configured manual reminders can be marked Done. No normal `/tasks`, persistence or financial authority changes.
