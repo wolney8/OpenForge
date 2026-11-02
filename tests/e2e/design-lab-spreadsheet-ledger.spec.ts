@@ -70,7 +70,7 @@ test("pointer resize/reorder, header sort cycle and reset columns", async ({ pag
   await expect(ledger.locator("tbody tr").first()).toContainText("Profile B September example");
   await page.getByRole("button", { name: "Sort Status" }).click();
   await expect(ledger.locator("tbody tr").first()).toContainText("Sample reload");
-  await page.getByRole("button", { name: "Reset Columns" }).click();
+  await page.getByRole("button", { name: "Restore Default Columns" }).click();
   const reset = await ledger.locator("thead th").evaluateAll(nodes => nodes.map(node => node.getAttribute("data-lab-column")));
   expect(reset.indexOf("1")).toBeLessThan(reset.indexOf("2"));
   expect(Math.abs((await eventHeader.boundingBox())!.width - initial!.width)).toBeLessThan(4);
@@ -104,7 +104,7 @@ test("Prospecting inline edit validates and cannot place without workbench", asy
   await page.keyboard.press("Escape");
   await editedRow.locator('td').nth(10).dblclick();
   await page.locator('[data-pd-id="lab.cell.status"]').click();
-  await page.getByRole("option", { name: /Placed · full confirmation required/ }).click();
+  await page.getByRole("option", { name: /Placed · confirmation required/ }).click();
   await expect(page.getByText("Placement requires the full external confirmation and required fields.")).toBeVisible();
   await page.getByRole("button", { name: /Placement/ }).click();
   await expect(page.getByRole("button", { name: /Confirm external Back/ })).toBeVisible();

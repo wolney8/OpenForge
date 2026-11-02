@@ -1,5 +1,10 @@
 # Project Roadmap — Plum Duff / OpenForge — Doc ID: PR-CODEX-001
 
+## CP-119B ledger correction owner review — 2026-11-02
+
+Review field-level editing, populated Add/Edit, correction gating, middle-button pan, default-column restoration and responsive workspace at protected `/design-lab`. CP-119 spreadsheet editing was owner rejected; CP-119B is a lab-only revision, not a production ledger migration. Specialist financial Save needs governed fixtures/authority; production saved views, signed-off Extra Place Status conflict and CP-116 remain separate. [Coverage](docs/audits/platform-quality-audit.md#cp-119b-field-level-editing-coverage--2026-11-02).
+
+
 ## CP-119 ledger Design Lab owner review — 2026-11-02
 
 Review the six-ledger display-column map, direct grid interaction, complete narrow table/labelled detail, synthetic Account observation and protected specialist previews at authenticated `/design-lab`. Decide the Extra Place normal-shell duplicate Status conflict, narrow representation, saved-view persistence authority and specialist inline-edit boundaries before any Wave 3/4 migration. The CP-117 normal shell flag remains unchanged; CP-116 and normal financial ledgers are separate gates. [Coverage](docs/audits/platform-quality-audit.md#cp-119-six-ledger-display-column-coverage--2026-11-02).

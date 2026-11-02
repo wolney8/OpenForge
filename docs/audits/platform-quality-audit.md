@@ -1,5 +1,19 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
+## CP-119B field-level editing coverage — 2026-11-02
+
+| Ledger | Working synthetic interaction | Protected path / gap |
+| --- | --- | --- |
+| Sportsbook | Prospecting description/planning fields; Placed/Settled description; existing row opens populated shared workbench and audit history | Placed/Settled financial cells enter correction review; no validated financial correction fixture, so Save is blocked. Derived Value and Profile/ID stay protected. |
+| Free Bets | Offer and expiry inputs; source-linked prefilled shared Add/Edit concept | Award, placement and financial Save remain CP-116/governed. |
+| Casino | Offer and Game inputs; conditional prefilled concept | Wagering/reward/settlement Save remains preview-only. |
+| Extra Place | Runner/Race, planned stake/odds and prefilled signed-off no-Status concept | Calculated lay liabilities/outcomes protected; normal shell duplicate Status conflict remains. |
+| Cash Adjustments | Reason and prefilled source fields | Recorded monetary changes require governed correction; signed amount protected. |
+| Accounts | Descriptive fields and separate timestamped observed-balance action | Account identity/Profile protected; balance is not changed by settlement. |
+
+`PD-PR-119B-01–08` track the correction in the [UI change register](../agent-contracts/plum-duff-ui-change-register.md#cp-119b-ledger-editing-correction--2026-11-02). One shared grid and existing specialist/workbench components remain the nearest equivalents. Full narrow table is default; labelled detail is optional. Middle-button pan is bounded to the table; restoring default columns does not reset filters, sort or Profile. Final-source browser regression 97/97, 11 focused units, typecheck, changed-file lint and isolated webpack build pass. Actual Chromium 200% zoom and 390–1440px light/dark containment are browser-checked; private renders: `data/private/evidence/cp119b-ledger/`. Manual screen-reader and owner visual review remain unverified. No normal data or routes changed.
+
+
 ## CP-119 six-ledger display-column coverage — 2026-11-02
 
 The per-column authority is `labLedgerColumnSpecs` in `apps/web/lib/design-lab-connected-data.ts`: stable ID, exact label and default position, visibility lock, type/sort/filter, editing authority, related source fields and narrow presentation. All default columns remain visible; optional flags describe existing normal-table hideability, not permission to remove protected information. Workbook import fields are separate from operational display columns. All Profiles adds a conditional, sortable Profile column before each listed sequence.

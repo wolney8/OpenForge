@@ -24,7 +24,7 @@ export const labLedgerColumnIds: Record<LabLedgerKey, readonly string[]> = {
   cash: ["cash_adjustment_id","adjustment_date","direction","adjustment_type","amount","signed_amount","affects_investment","affects_cash_snapshot","linked_account","description","week_label","calculation_state","actions"],
 };
 export type LabColumnKind = "date" | "money" | "odds" | "status" | "result" | "account" | "text" | "boolean" | "actions";
-export type LabEditAuthority = "planning-text" | "planning-date" | "planning-account" | "planning-choice" | "planning-composite" | "balance-observation" | "preview-text" | "governed" | "derived" | "actions";
+export type LabEditAuthority = "descriptive" | "planning-date" | "planning-account" | "planning-choice" | "financial-input" | "balance-observation" | "governed" | "derived" | "immutable" | "actions";
 export type LabColumnSpec = {
   id: string; label: string; position: number; defaultVisible: boolean; required: boolean;
   kind: LabColumnKind; sortable: boolean; filterable: boolean; edit: LabEditAuthority;
@@ -37,7 +37,16 @@ const status = /status|state/i;
 const account = /bookmaker|exchange|linked_account|^account$/i;
 const result = /result/i;
 const boolean = /counts_in_cash|investment|cash_snapshot/i;
-const derived = /displayed_value|signed_amount|week_label|calculation_state|placeOdds|winLiability|placeLiability|rating|impliedOdds|qualLoss|epProfit|current_balance|pending_withdrawal_amount|last_balance_update/i;
+// Explicit domain-field authority. This is a lab interaction policy, not a financial
+// calculation contract. Lifecycle determines the review path after a field is selected.
+const editAuthority: Record<LabLedgerKey, Record<string, LabEditAuthority>> = {
+  accounts: {account_id:"immutable",account:"balance-observation",type:"immutable",status:"governed",counts_in_cash_total:"governed",current_balance:"balance-observation",pending_withdrawal_amount:"derived",last_balance_update:"derived",channel:"descriptive",group_name:"descriptive",platform:"descriptive",actions:"actions"},
+  sportsbook: {date_settled:"planning-date",bookmaker:"planning-account",event_name:"descriptive",offer_name:"descriptive",offer_details:"descriptive",match_strategy:"financial-input",lay_status:"financial-input",back_bet_status:"financial-input",displayed_value:"derived",status:"planning-choice",actions:"actions"},
+  freeBets: {date_settled:"governed",expiry_datetime:"planning-date",bookmaker:"planning-account",offer_name:"descriptive",event_name:"descriptive",offer_details:"descriptive",match_strategy:"financial-input",lay_status:"financial-input",back_bet_status:"financial-input",displayed_value:"derived",status:"governed",actions:"actions"},
+  casino: {date_settling:"governed",expiry_datetime:"planning-date",bookmaker:"planning-account",offer_name:"descriptive",game:"descriptive",offer_type:"planning-choice",status:"governed",result:"governed",displayed_value:"derived",actions:"actions"},
+  extraPlace: {date:"planning-date",runner:"descriptive",bookmaker:"planning-account",stake:"financial-input",backOdds:"financial-input",terms:"financial-input",placeOdds:"derived",winLayOdds:"financial-input",winLayStake:"financial-input",winLiability:"derived",placeLayOdds:"financial-input",placeLayStake:"financial-input",placeLiability:"derived",rating:"derived",impliedOdds:"derived",qualLoss:"derived",epProfit:"derived",actions:"actions"},
+  cash: {cash_adjustment_id:"immutable",adjustment_date:"planning-date",direction:"financial-input",adjustment_type:"financial-input",amount:"financial-input",signed_amount:"derived",affects_investment:"governed",affects_cash_snapshot:"governed",linked_account:"planning-account",description:"descriptive",week_label:"derived",calculation_state:"derived",actions:"actions"},
+};
 const sourceShell: Record<LabLedgerKey, string> = {
   accounts: "accounts-workflow-shell.tsx", sportsbook: "sportsbook-workflow-first-shell.tsx",
   freeBets: "free-bet-workflow-shell.tsx", casino: "casino-offer-workflow-shell.tsx",
@@ -73,17 +82,7 @@ export function labLedgerColumnSpecs(key: LabLedgerKey): LabColumnSpec[] {
   return labLedgerColumnIds[key].map((id, position) => {
     const label = labLedgerColumns[key][position];
     const kind: LabColumnKind = id === "actions" ? "actions" : odds.test(id) ? "odds" : date.test(id) ? "date" : status.test(id) ? "status" : result.test(id) ? "result" : account.test(id) ? "account" : boolean.test(id) ? "boolean" : financial.test(id) ? "money" : "text";
-    const edit: LabEditAuthority = id === "actions" ? "actions"
-      : key === "accounts" && (id === "account" || id === "current_balance") ? "balance-observation"
-      : derived.test(id) ? "derived"
-      : key === "sportsbook" && ["lay_status","back_bet_status"].includes(id) ? "planning-composite"
-      : key === "sportsbook" && id === "status" ? "planning-choice"
-      : key === "sportsbook" && kind === "date" ? "planning-date"
-      : key === "sportsbook" && kind === "account" ? "planning-account"
-      : key === "sportsbook" && ["event_name","offer_name","offer_details","match_strategy"].includes(id) ? "planning-text"
-      : key === "sportsbook" ? "governed"
-      : ["offer_name","offer_details","event_name","description","game","runner"].includes(id) ? "preview-text"
-      : "governed";
+    const edit = editAuthority[key][id];
     return {
       id, label, position, defaultVisible: true,
       required: !optionalColumns[key].includes(id),
@@ -93,7 +92,7 @@ export function labLedgerColumnSpecs(key: LabLedgerKey): LabColumnSpec[] {
     };
   });
 }
-export type LabRecord = { id: string; profileId: LabProfileId; section: LabLedgerKey; title: string; subtitle: string; status: string; cells: readonly string[]; relatedId?: string; previewOnly?: boolean; dueDate?: string; expiresAt?: string };
+export type LabRecord = { id: string; profileId: LabProfileId; section: LabLedgerKey; title: string; subtitle: string; status: string; cells: readonly string[]; sourceInputs?:Record<string,string>; relatedId?: string; previewOnly?: boolean; dueDate?: string; expiresAt?: string };
 
 export const labRecords: LabRecord[] = [
   { id: "LAB-SB-001", profileId: "LAB-PROFILE-A", section: "sportsbook", title: "Demo FC v Sample United", subtitle: "Bookmaker A · qualifying", status: "Settled", cells: ["15 Oct 2026", "Bookmaker A", "Demo FC v Sample United", "Demo Offer", "Qualifying bet", "Standard", "Settled", "Settled", "£ 18.40", "Settled", "Open"], relatedId: "LAB-FB-001" },
@@ -115,6 +114,27 @@ export const labRecords: LabRecord[] = [
   { id: "LAB-SB-B", profileId: "LAB-PROFILE-B", section: "sportsbook", title: "Profile B example", subtitle: "Exchange B · synthetic", status: "Settled", cells: ["8 Oct 2026", "Bookmaker B", "Profile B example", "—", "Standard", "Standard", "Settled", "Settled", "£ (4.00)", "Settled", "Open"], previewOnly: true },
   { id: "LAB-SB-SEP-B", profileId: "LAB-PROFILE-B", section: "sportsbook", title: "Profile B September example", subtitle: "Bookmaker B · settled", status: "Settled", cells: ["12 Sep 2026", "Bookmaker B", "Profile B September example", "—", "Standard bet", "Standard", "Settled", "Settled", "£ 16.00", "Settled", "Open"], previewOnly: true },
 ];
+
+// Typed synthetic source inputs for editing. Display strings and calculated cells
+// are never reverse-parsed into authoritative financial inputs.
+export const labRecordInputs: Record<string, Record<string, string>> = {
+  "LAB-SB-001": {event_name:"Demo FC v Sample United",offer_name:"Demo Offer",offer_details:"Qualifying bet",bookmaker:"Bookmaker A",match_strategy:"Standard"},
+  "LAB-SB-002": {event_name:"Example City v Sample Town",offer_details:"Standard bet",bookmaker:"Bookmaker A",match_strategy:"Standard"},
+  "LAB-SB-PROSPECT-B": {event_name:"Selection pending",offer_name:"Sample reload",offer_details:"Synthetic offer text",bookmaker:"Bookmaker B",match_strategy:"Standard"},
+  "LAB-SB-OVERDUE": {event_name:"Demo Rovers v Sample Albion",offer_details:"Synthetic placed bet",bookmaker:"Bookmaker A",match_strategy:"Standard"},
+  "LAB-SB-PARTIAL": {event_name:"Sample Athletic v Demo City",offer_details:"Synthetic partial hedge",bookmaker:"Bookmaker B",match_strategy:"Standard"},
+  "LAB-SB-SEP-A": {event_name:"Sample Rangers v Demo County",offer_details:"Standard bet",bookmaker:"Bookmaker A",match_strategy:"Standard"},
+  "LAB-SB-B": {event_name:"Profile B example",offer_details:"Standard",bookmaker:"Bookmaker B",match_strategy:"Standard"},
+  "LAB-SB-SEP-B": {event_name:"Profile B September example",offer_details:"Standard bet",bookmaker:"Bookmaker B",match_strategy:"Standard"},
+  "LAB-FB-001": {expiry_datetime:"2026-11-10",bookmaker:"Bookmaker A",offer_name:"Demo Offer",offer_details:"Linked award",match_strategy:"SNR"},
+  "LAB-FB-EXPIRING": {expiry_datetime:"2026-11-02",bookmaker:"Bookmaker B",offer_name:"Sample reward",offer_details:"Synthetic award",match_strategy:"SNR"},
+  "LAB-CO-001": {expiry_datetime:"2026-11-15",bookmaker:"Bookmaker C",offer_name:"Demo Casino Offer",game:"Demo Game",offer_type:"Wager to earn"},
+  "LAB-CO-002": {expiry_datetime:"2026-11-08",bookmaker:"Bookmaker A",offer_name:"Sample Free Spins",offer_type:"Free Spins"},
+  "LAB-EP-001": {date:"2026-11-07",runner:"Demo Runner / Sample Race",bookmaker:"Bookmaker A",stake:"5.00",terms:"1/5"},
+  "LAB-EP-002": {date:"2026-11-08",runner:"Sample Runner / Demo Cup",bookmaker:"Bookmaker A",terms:"1/5"},
+  "LAB-CA-001": {adjustment_date:"2026-10-12",direction:"In",adjustment_type:"Capital movement",amount:"20.00",affects_investment:"No",affects_cash_snapshot:"Yes",linked_account:"Bank B",description:"Synthetic example"},
+  "LAB-CA-002": {adjustment_date:"2026-07-16",direction:"Out",adjustment_type:"Withdrawal",amount:"50.00",linked_account:"Bank B",description:"Synthetic withdrawal"},
+};
 
 // Exact CALC-001 inputs/outputs from tests/fixtures/calculator-workspace-ledger-bridge-fixtures.json.
 // This is a fixed validated demonstration, not a new calculator implementation.

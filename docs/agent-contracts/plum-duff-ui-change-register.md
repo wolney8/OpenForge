@@ -1121,3 +1121,18 @@ Recorded before UI edits. `PROPOSED — LAB ONLY`; nearest equivalents are the s
 | PD-PR-119-06 | Account balance shortcut and synthetic observation history | CODE-VERIFIED synthetic; no settlement-to-balance inference |
 | PD-PR-119-07 | Specialist previews and narrow complete-field access | CODE-VERIFIED synthetic; narrow alternative and specialist workflows need owner review |
 | PD-PR-119-08 | Browser regression, evidence, isolation and non-main custody | CODE-VERIFIED synthetic: 90/90 browser, 9 units, typecheck, changed-file lint, isolated build; private evidence; remote receipt at handoff; owner visual/screen-reader review open |
+
+## CP-119B ledger editing correction — 2026-11-02
+
+Owner rejects CP-119 editing. `PROPOSED — LAB ONLY`. Reuse the shared lab grid, Sportsbook workbench, specialist concept field layouts, Account observation dialog and approved default ledger columns. Field authority replaces lifecycle-wide locks; material financial changes still require reviewed correction and validated calculations. The full table remains the narrow default. Linked Design Lab scope: GitHub #114; live subitem sync unverified.
+
+| ID | Requested correction | Status |
+| --- | --- | --- |
+| PD-PR-119B-01 | Explicit six-ledger field authority; descriptive edits on placed/settled rows | NEEDS VERIFICATION — focused browser pass; owner review pending |
+| PD-PR-119B-02 | Working inline text, choice, date, numeric and composite entry with history | NEEDS VERIFICATION — focused browser pass; owner review pending |
+| PD-PR-119B-03 | Populated Add/Edit reuse for Sportsbook and specialist concepts | NEEDS VERIFICATION — focused browser pass; owner review pending |
+| PD-PR-119B-04 | Reviewed financial corrections; immutable and derived field protection | NEEDS VERIFICATION — focused browser pass; owner review pending |
+| PD-PR-119B-05 | Middle-button horizontal table pan | NEEDS VERIFICATION — focused browser pass; owner review pending |
+| PD-PR-119B-06 | Restore approved column order, widths and visibility independently of filters | NEEDS VERIFICATION — focused browser pass; owner review pending |
+| PD-PR-119B-07 | Collapsed sidebar releases table width; full narrow table by default | NEEDS VERIFICATION — focused browser pass; owner review pending |
+| PD-PR-119B-08 | Browser regression, isolation, source custody and owner review | NEEDS VERIFICATION — 97/97 browser, 11 units, typecheck and focused lint pass; isolated webpack build passes; remote receipt at handoff; owner visual and manual screen-reader review pending |

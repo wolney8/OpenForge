@@ -125,3 +125,5 @@
 .surface[data-pd-id^="lab.ledger."] .tableScroll .statusCell[data-cell-value="Available"],.surface[data-pd-id^="lab.ledger."] .tableScroll .statusCell[data-cell-value="Settled"]{background:var(--positive-soft,var(--primary-soft));color:var(--positive,var(--primary-strong))}
 .surface[data-pd-id^="lab.ledger."] .tableScroll .statusCell[data-cell-value="Partially laid"]{background:var(--warning-soft,var(--bg-muted));color:var(--warning,var(--text))}
 .surface[data-pd-id^="lab.ledger."] .tableScroll .statusCell{max-width:100%;justify-content:center;border-radius:14px;line-height:1.2;text-align:center;white-space:normal;overflow-wrap:break-word}
+.ledgerWorkspace{width:100%;max-width:none;margin:0}
+.ledgerWorkspace>.surface[data-pd-id^="lab.ledger."]{width:100%}

@@ -1,5 +1,10 @@
 # Plum Duff Next Issue Tracking Register
 
+## CP-119B ledger editing correction — 2026-11-02
+
+`PD-PR-119B-01–08` preserve the distinct owner reports and outcomes in the [UI change register](../agent-contracts/plum-duff-ui-change-register.md#cp-119b-ledger-editing-correction--2026-11-02). CP-119 spreadsheet editing was owner rejected; this is a synthetic Design Lab correction, not normal ledger approval. Existing [Design Lab issue #114](https://github.com/wolney8/OpenForge/issues/114) is the area link; CP-119B subitem live issue sync is unverified. Specialist financial writes, production saved-view persistence and Extra Place normal Status discrepancy remain open.
+
+
 ## CP-118D Today refinements — 2026-11-02
 
 `PD-PR-118D-01` through `PD-PR-118D-08` retain the owner's distinct header tracking, three banner states, X removal, urgency, dismissal, date/count authority, resolved-source history, verification and custody requests in the [UI change register](../agent-contracts/plum-duff-ui-change-register.md#cp-118d-today-tracking-and-dismissal--2026-11-02). Lab-only source snapshots are synthetic; real task persistence and permission-aware history are deferred. [Design Lab issue #114](https://github.com/wolney8/OpenForge/issues/114) is the local coverage link; issue #114 is verified open; CP-118D subitem sync is unverified. CP-119 Spreadsheet Ledger Design and Interaction Parity is queued next; no CP-119 implementation is authorised here.

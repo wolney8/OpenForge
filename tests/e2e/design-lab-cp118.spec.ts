@@ -207,5 +207,6 @@ test("Prospecting edit survives detail return while Placed financial cell requir
   await page.getByRole("button",{name:"Back to Sportsbook Bets"}).click();
   await expect(prospectAfter).toContainText("Edited synthetic selection");
   await ledger.locator("tbody tr").filter({hasText:"LAB-SB-002"}).locator("td").nth(8).dblclick();
-  await expect(ledger.getByRole("status")).toContainText("correction and audit path");
+  await expect(page.getByRole("heading",{name:/Edit Sportsbook Bet · LAB-SB-002/})).toBeVisible();
+  await expect(page.getByRole("button",{name:"Review Correction"})).toBeVisible();
 });

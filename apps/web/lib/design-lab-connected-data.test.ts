@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import cashFixtures from "../../../tests/fixtures/cash-adjustment-fixtures.json";
-import { labLedgerColumnIds, labLedgerColumnSpecs, labLedgerColumns, labRecords, type LabLedgerKey } from "./design-lab-connected-data";
+import { labLedgerColumnIds, labLedgerColumnSpecs, labLedgerColumns, labRecordInputs, labRecords, type LabLedgerKey } from "./design-lab-connected-data";
 
 describe("Design Lab display-column authority", () => {
   const ledgers = Object.keys(labLedgerColumns) as LabLedgerKey[];
@@ -23,6 +23,26 @@ describe("Design Lab display-column authority", () => {
       .toEqual(["projected_current_pnl","final_net_pnl","reporting_value"]);
     expect(labLedgerColumnSpecs("accounts").find(item => item.id === "current_balance")?.edit)
       .toBe("balance-observation");
+  });
+  it("uses field authority rather than a lifecycle-wide edit lock", () => {
+    const pick=(ledger:LabLedgerKey,id:string)=>labLedgerColumnSpecs(ledger).find(item=>item.id===id)?.edit;
+    expect(pick("sportsbook","event_name")).toBe("descriptive");
+    expect(pick("sportsbook","lay_status")).toBe("financial-input");
+    expect(pick("sportsbook","displayed_value")).toBe("derived");
+    expect(pick("accounts","account_id")).toBe("immutable");
+    expect(pick("accounts","current_balance")).toBe("balance-observation");
+    expect(pick("freeBets","offer_details")).toBe("descriptive");
+    expect(pick("casino","offer_type")).toBe("planning-choice");
+    expect(pick("extraPlace","stake")).toBe("financial-input");
+    expect(pick("extraPlace","winLiability")).toBe("derived");
+    expect(pick("cash","description")).toBe("descriptive");
+    expect(pick("cash","signed_amount")).toBe("derived");
+  });
+  it("prefills only explicit synthetic source inputs", () => {
+    expect(labRecordInputs["LAB-SB-001"].event_name).toBe("Demo FC v Sample United");
+    expect(labRecordInputs["LAB-SB-001"].back_stake).toBeUndefined();
+    expect(labRecordInputs["LAB-EP-001"].stake).toBe("5.00");
+    expect(labRecordInputs["LAB-EP-001"].winLiability).toBeUndefined();
   });
   it("uses the governed cash withdrawal fixture for the second synthetic row", () => {
     const fixture = cashFixtures.find(item => item.name === "outgoing_withdrawal");

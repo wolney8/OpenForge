@@ -83,11 +83,11 @@ test("specialist descriptive preview edits are bounded; financial cells stay pro
   await expect(page.locator('[data-pd-id="lab.record-detail"]')).toContainText("Demo Runner / Revised Race");
   await page.getByRole("button",{name:"Back to Extra Place"}).click();
   await extra.locator('tbody tr td').filter({hasText:"Unavailable"}).first().dblclick();
-  await expect(extra.getByRole("status")).toContainText("governed");
+  await expect(extra.getByRole("status")).toContainText("calculated");
   await page.locator('[data-pd-id="lab.nav.cash"]').click();
   const cash = page.locator('[data-pd-id="lab.ledger.cash"]');
   await cash.locator("tbody tr td").filter({hasText:"£20.00"}).last().dblclick();
-  await expect(cash.getByRole("status")).toContainText("governed");
+  await expect(cash.getByRole("status")).toContainText("calculated");
 });
 
 test("narrow table retains every field and offers labelled detail without page overflow", async ({ page }) => {

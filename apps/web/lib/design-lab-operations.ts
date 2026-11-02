@@ -78,7 +78,7 @@ export function copyLabReload(options: { selected: LabOfferProfile[]; reviewedWa
       title: labReloadDefinition.name, subtitle: `${target.account} · ${target.profileName} · copied from ${labReloadDefinition.id}`,
       status: "Prospecting", cells: ["Not entered", target.account, "Event pending", labReloadDefinition.name,
       labReloadDefinition.offerText, "Not selected", "Not confirmed", "Not confirmed", "Planning · unavailable", "Prospecting", "Open"],
-      previewOnly: true });
+      sourceInputs:{bookmaker:target.account,offer_name:labReloadDefinition.name,offer_details:labReloadDefinition.offerText},previewOnly: true });
     return { profileId: target.profileId, state: "Created", detail: "Separate Profile-owned Prospecting row", recordId };
   });
   return { created, results };
