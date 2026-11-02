@@ -1,5 +1,9 @@
 # Project Roadmap — Plum Duff / OpenForge — Doc ID: PR-CODEX-001
 
+## CP-119C floating ledger editor owner review — 2026-11-02
+
+Review the owner-screenshot-matched floating editor, compact single-choice list, common field command, dependent review cues and explicit placement evidence at protected `/design-lab`. The CP-119B inline interaction was rejected; normal ledger migration and financial correction persistence remain separate approvals. [Coverage](docs/audits/platform-quality-audit.md#cp-119c-floating-ledger-editing-coverage--2026-11-02).
+
 ## CP-119B ledger correction owner review — 2026-11-02
 
 Review field-level editing, populated Add/Edit, correction gating, middle-button pan, default-column restoration and responsive workspace at protected `/design-lab`. CP-119 spreadsheet editing was owner rejected; CP-119B is a lab-only revision, not a production ledger migration. Specialist financial Save needs governed fixtures/authority; production saved views, signed-off Extra Place Status conflict and CP-116 remain separate. [Coverage](docs/audits/platform-quality-audit.md#cp-119b-field-level-editing-coverage--2026-11-02).

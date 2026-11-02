@@ -198,8 +198,8 @@ test("Prospecting edit survives detail return while Placed financial cell requir
   const ledger=page.locator('[data-pd-id="lab.ledger.sportsbook"]');
   const prospectBefore=ledger.locator('tbody tr[aria-label*="Sample reload"]');
   await prospectBefore.locator("td").nth(3).dblclick();
-  await prospectBefore.getByRole("textbox",{name:"event"}).fill("Edited synthetic selection");
-  await prospectBefore.getByRole("button",{name:"Save cell"}).click();
+  await page.getByRole("textbox",{name:"event"}).fill("Edited synthetic selection");
+  await page.keyboard.press("Enter");
   const prospectAfter=ledger.locator('tbody tr[aria-label*="Edited synthetic selection"]');
   await expect(prospectAfter).toContainText("Edited synthetic selection");
   await prospectAfter.getByRole("button",{name:/Open Edited synthetic selection/}).click();

@@ -1,5 +1,17 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
+## CP-119C floating ledger editing coverage — 2026-11-02
+
+| Requirement | Lab evidence / treatment | Remaining acceptance |
+| --- | --- | --- |
+| CP-119C editor geometry and keys | Shared portal editor anchored to selected cell; source screenshots compared privately; browser measures row/cell bounds and exercises Enter, Escape, outside commit and invalid retention. | Owner visual judgement and manual screen reader review. |
+| Controlled fields and lifecycle | Compact single-value choices from workbook/status and Profile Account options; status selection enters prefilled review instead of mutating the chip. | Production choice and transition authority remains unchanged. |
+| Shared mutation and dependencies | `evaluateLabFieldEdit` is called by grid, Sportsbook workbench and specialist preview; synthetic audit and `Needs Review` mark dependents without new financial arithmetic. | Authoritative correction fixtures/persistence remain unavailable. |
+| Placement evidence | Typed synthetic requested/matched amounts and explicit confirmation flags; historical display labels do not imply confirmations. | Real-app persistence mapping requires a separate integration review. |
+| Scope | Authenticated synthetic `/design-lab` only; no normal ledger/API/schema/owner-data change. | Owner review before any normal migration. |
+
+Final-source Design Lab browser regression passed 104/104, including measured unchanged row/cell geometry, light/dark, narrow layouts, keyboard, pointer, reduced motion and actual Chromium 200% zoom. Eighteen focused units, web typecheck and changed-file lint passed. Private synthetic captures: `data/private/evidence/cp119c-ledger/`; owner screenshot bytes were not committed. Manual screen-reader and owner visual acceptance remain unverified. Broad web lint retains an unchanged Free Bet ref-during-render error and 12 warnings. The unchanged `design-lab-operations.test.ts` expects `Event Passed / Overdue Review` while its CP-119B implementation returns `Past Recorded Date`; the separately run file has 1 failure and 4 passes. A CP-112 lab icon that intermittently exceeded the viewport by 3 CSS px at actual 200% zoom is now clipped within its existing 44px control; the final full browser case passed.
+
 ## CP-119B field-level editing coverage — 2026-11-02
 
 | Ledger | Working synthetic interaction | Protected path / gap |

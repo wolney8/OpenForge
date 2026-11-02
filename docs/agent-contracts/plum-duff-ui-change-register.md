@@ -1136,3 +1136,17 @@ Owner rejects CP-119 editing. `PROPOSED — LAB ONLY`. Reuse the shared lab grid
 | PD-PR-119B-06 | Restore approved column order, widths and visibility independently of filters | NEEDS VERIFICATION — focused browser pass; owner review pending |
 | PD-PR-119B-07 | Collapsed sidebar releases table width; full narrow table by default | NEEDS VERIFICATION — focused browser pass; owner review pending |
 | PD-PR-119B-08 | Browser regression, isolation, source custody and owner review | NEEDS VERIFICATION — 97/97 browser, 11 units, typecheck and focused lint pass; isolated webpack build passes; remote receipt at handoff; owner visual and manual screen-reader review pending |
+
+## CP-119C floating ledger editor — 2026-11-02
+
+The owner rejected CP-119B's expanding in-cell editor. These are `PROPOSED — LAB ONLY` exceptions to the prior lab rendering; required ledger fields, normal routes, financial and audit authority remain protected. Nearest equivalents: the CP-119B shared grid, anchored header overlay, Sportsbook workbench, and governed normal Sportsbook lifecycle. Existing [Design Lab issue #114](https://github.com/wolney8/OpenForge/issues/114) is verified open; CP-119C subitem sync remains unverified.
+
+| ID | Requested outcome | Status |
+| --- | --- | --- |
+| PD-PR-119C-01 | Floating single-cell editor with stable table geometry and spreadsheet keyboard/click-away semantics | NEEDS VERIFICATION — browser geometry/keys pass; owner visual review pending |
+| PD-PR-119C-02 | Compact governed single-value dropdowns with eligible Accounts and keyboard selection | NEEDS VERIFICATION — pointer/keyboard browser pass; manual screen reader pending |
+| PD-PR-119C-03 | Shared inline/workbench field validation, mutation, audit and explicit review outcomes | NEEDS VERIFICATION — synthetic browser/unit pass; production integration deferred |
+| PD-PR-119C-04 | Typed synthetic Back/Lay execution evidence; no display-text inference or invented history | NEEDS VERIFICATION — typed fixture browser pass; real persistence mapping deferred |
+| PD-PR-119C-05 | Dependency review cues and unavailable financial results where fixtures cannot validate | NEEDS VERIFICATION — synthetic browser/unit pass; owner review pending |
+| PD-PR-119C-06 | Browser geometry, regression, accessibility, isolation and non-main custody | NEEDS VERIFICATION — 104/104 final browser pass, 18 focused units, typecheck, changed-file lint and isolated webpack build pass; remote receipt at handoff; manual screen reader pending |
+| PD-PR-119C-07 | Contain a CP-112 lab icon's 3px overflow at actual Chromium 200% zoom, without changing normal UI | NEEDS VERIFICATION — full browser 200% case pass; owner visual review pending |

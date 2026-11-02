@@ -28,7 +28,7 @@ test("settled description edits in place, records history, and existing Edit use
   await row.locator("td").nth(3).dblclick();
   await capture(page,"cp119b-inline-settled-dark.png");
   await page.getByRole("textbox",{name:"Event"}).fill("Demo FC v Sample United · revised");
-  await page.getByRole("button",{name:"Save cell"}).click();
+  await page.keyboard.press("Enter");
   await expect(row).toContainText("revised");
   await row.getByRole("button",{name:/Open Demo FC/}).click();
   await expect(page.getByRole("region",{name:"Synthetic Edit History"})).toContainText("Event");
@@ -58,7 +58,7 @@ test("Account descriptive detail and Cash Adjustment date filter use the edited 
   const account=page.locator('[data-pd-id="lab.ledger.accounts"] tbody tr[data-lab-row-id="LAB-ACCOUNT-A"]');
   await account.locator("td").nth(10).dblclick();
   await page.getByRole("textbox",{name:"Group"}).fill("Reviewed Group");
-  await page.getByRole("button",{name:"Save cell"}).click();
+  await page.keyboard.press("Enter");
   await account.getByRole("button",{name:/Open/}).click();
   await expect(page.locator('[data-pd-id="lab.record-detail"]')).toContainText("Reviewed Group");
   await page.getByRole("button",{name:"Back to Accounts"}).click();
@@ -97,7 +97,7 @@ test("specialist source fields prefill shared Add/Edit concepts and descriptive 
     const row=page.locator(`[data-pd-id="lab.ledger.${item.nav}"] tbody tr[data-lab-row-id="${item.id}"]`);
     await row.locator("td").nth(item.cell).dblclick();
     await page.getByRole("textbox",{name:item.label}).fill(item.value);
-    await page.getByRole("button",{name:"Save cell"}).click();
+    await page.keyboard.press("Enter");
     await expect(row).toContainText(item.value);
     await row.getByRole("button",{name:/Open/}).click();
     await page.getByRole("button",{name:"Edit Record · Preview"}).click();

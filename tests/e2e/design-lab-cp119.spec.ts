@@ -77,7 +77,7 @@ test("specialist descriptive preview edits are bounded; financial cells stay pro
   const extra = page.locator('[data-pd-id="lab.ledger.extraPlace"]');
   await extra.locator("tbody tr td").filter({hasText:"Demo Runner / Sample Race"}).first().dblclick();
   await page.getByRole("textbox", {name:"Runner / Race"}).fill("Demo Runner / Revised Race");
-  await page.getByRole("button", {name:"Save cell"}).click();
+  await page.keyboard.press("Enter");
   await expect(extra).toContainText("Demo Runner / Revised Race");
   await extra.getByRole("button",{name:"Open Demo Runner / Revised Race"}).click();
   await expect(page.locator('[data-pd-id="lab.record-detail"]')).toContainText("Demo Runner / Revised Race");

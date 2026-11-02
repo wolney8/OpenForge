@@ -1,5 +1,9 @@
 # Plum Duff Next Issue Tracking Register
 
+## CP-119C floating ledger editing — 2026-11-02
+
+`PD-PR-119C-01–07` retain the owner screenshot comparison, floating cell geometry and keyboard contract, compact governed selectors, shared inline/workbench authority, dependent review, typed placement evidence, regression/custody requirements, and a discovered 200% zoom lab-icon overflow in the [UI change register](../agent-contracts/plum-duff-ui-change-register.md#cp-119c-floating-ledger-editor--2026-11-02). CP-119B editing remains owner rejected; this is a lab-only replacement under verified-open [Design Lab issue #114](https://github.com/wolney8/OpenForge/issues/114). Live CP-119C subitem sync is unverified. Production correction persistence and any normal ledger migration require separate authority and owner approval.
+
 ## CP-119B ledger editing correction — 2026-11-02
 
 `PD-PR-119B-01–08` preserve the distinct owner reports and outcomes in the [UI change register](../agent-contracts/plum-duff-ui-change-register.md#cp-119b-ledger-editing-correction--2026-11-02). CP-119 spreadsheet editing was owner rejected; this is a synthetic Design Lab correction, not normal ledger approval. Existing [Design Lab issue #114](https://github.com/wolney8/OpenForge/issues/114) is the area link; CP-119B subitem live issue sync is unverified. Specialist financial writes, production saved-view persistence and Extra Place normal Status discrepancy remain open.

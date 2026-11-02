@@ -92,14 +92,15 @@ export function labLedgerColumnSpecs(key: LabLedgerKey): LabColumnSpec[] {
     };
   });
 }
-export type LabRecord = { id: string; profileId: LabProfileId; section: LabLedgerKey; title: string; subtitle: string; status: string; cells: readonly string[]; sourceInputs?:Record<string,string>; relatedId?: string; previewOnly?: boolean; dueDate?: string; expiresAt?: string };
+export type LabExecutionEvidence = { backConfirmed: boolean | null; layConfirmed: boolean | null; requestedLayStake?: string; actualMatchedLayStake?: string; source: "synthetic-recorded" | "historical-unknown" };
+export type LabRecord = { id: string; profileId: LabProfileId; section: LabLedgerKey; title: string; subtitle: string; status: string; cells: readonly string[]; sourceInputs?:Record<string,string>; execution?: LabExecutionEvidence; relatedId?: string; previewOnly?: boolean; dueDate?: string; expiresAt?: string };
 
 export const labRecords: LabRecord[] = [
   { id: "LAB-SB-001", profileId: "LAB-PROFILE-A", section: "sportsbook", title: "Demo FC v Sample United", subtitle: "Bookmaker A · qualifying", status: "Settled", cells: ["15 Oct 2026", "Bookmaker A", "Demo FC v Sample United", "Demo Offer", "Qualifying bet", "Standard", "Settled", "Settled", "£ 18.40", "Settled", "Open"], relatedId: "LAB-FB-001" },
   { id: "LAB-SB-002", profileId: "LAB-PROFILE-A", section: "sportsbook", title: "Example City v Sample Town", subtitle: "Bookmaker A · open", status: "Placed", dueDate: "2026-11-05", cells: ["5 Nov 2026", "Bookmaker A", "Example City v Sample Town", "—", "Standard bet", "Standard", "Placed", "Placed", "Current £—", "Placed", "Open"] },
   { id: "LAB-SB-PROSPECT-B", profileId: "LAB-PROFILE-B", section: "sportsbook", title: "Sample reload · selection pending", subtitle: "Bookmaker B · planning", status: "Prospecting", cells: ["Not entered", "Bookmaker B", "Selection pending", "Sample reload", "Synthetic offer text", "Standard", "Not confirmed", "Not confirmed", "Planning · unavailable", "Prospecting", "Open"], previewOnly: true },
   { id: "LAB-SB-OVERDUE", profileId: "LAB-PROFILE-A", section: "sportsbook", title: "Demo Rovers v Sample Albion", subtitle: "Bookmaker A · settlement review", status: "Placed", dueDate: "2026-10-30", cells: ["30 Oct 2026", "Bookmaker A", "Demo Rovers v Sample Albion", "—", "Synthetic placed bet", "Standard", "Placed", "Placed", "Current · unavailable", "Placed", "Open"], previewOnly: true },
-  { id: "LAB-SB-PARTIAL", profileId: "LAB-PROFILE-B", section: "sportsbook", title: "Sample Athletic v Demo City", subtitle: "Bookmaker B · partial lay follow-up", status: "Placed", dueDate: "2026-11-02", cells: ["2 Nov 2026", "Bookmaker B", "Sample Athletic v Demo City", "—", "Synthetic partial hedge", "Standard", "Partially matched", "Placed", "Current · unavailable", "Placed", "Open"], previewOnly: true },
+  { id: "LAB-SB-PARTIAL", profileId: "LAB-PROFILE-B", section: "sportsbook", title: "Sample Athletic v Demo City", subtitle: "Bookmaker B · partial lay follow-up", status: "Placed", dueDate: "2026-11-02", cells: ["2 Nov 2026", "Bookmaker B", "Sample Athletic v Demo City", "—", "Synthetic partial hedge", "Standard", "Partially matched", "Placed", "Current · unavailable", "Placed", "Open"], execution: { backConfirmed: true, layConfirmed: true, requestedLayStake: "10.00", actualMatchedLayStake: "4.00", source: "synthetic-recorded" }, previewOnly: true },
   { id: "LAB-SB-SEP-A", profileId: "LAB-PROFILE-A", section: "sportsbook", title: "Sample Rangers v Demo County", subtitle: "Bookmaker A · settled", status: "Settled", cells: ["20 Sep 2026", "Bookmaker A", "Sample Rangers v Demo County", "—", "Standard bet", "Standard", "Settled", "Settled", "£ 24.70", "Settled", "Open"], previewOnly: true },
   { id: "LAB-FB-001", profileId: "LAB-PROFILE-A", section: "freeBets", title: "Demo Offer reward", subtitle: "Linked to LAB-SB-001", status: "Available", cells: ["—", "10 Nov 2026", "Bookmaker A", "Demo Offer", "—", "Linked award", "SNR", "Not placed", "Not placed", "Current £—", "Available", "Open"], relatedId: "LAB-SB-001", previewOnly: true },
   { id: "LAB-FB-EXPIRING", profileId: "LAB-PROFILE-B", section: "freeBets", title: "Sample Free Bet reward", subtitle: "Bookmaker B · expiry review", status: "Available", expiresAt: "2026-11-02", cells: ["—", "2 Nov 2026", "Bookmaker B", "Sample reward", "—", "Synthetic award", "SNR", "Not placed", "Not placed", "Current · unavailable", "Available", "Open"], previewOnly: true },
@@ -118,14 +119,14 @@ export const labRecords: LabRecord[] = [
 // Typed synthetic source inputs for editing. Display strings and calculated cells
 // are never reverse-parsed into authoritative financial inputs.
 export const labRecordInputs: Record<string, Record<string, string>> = {
-  "LAB-SB-001": {event_name:"Demo FC v Sample United",offer_name:"Demo Offer",offer_details:"Qualifying bet",bookmaker:"Bookmaker A",match_strategy:"Standard"},
-  "LAB-SB-002": {event_name:"Example City v Sample Town",offer_details:"Standard bet",bookmaker:"Bookmaker A",match_strategy:"Standard"},
+  "LAB-SB-001": {date_settled:"2026-10-15",event_name:"Demo FC v Sample United",offer_name:"Demo Offer",offer_details:"Qualifying bet",bookmaker:"Bookmaker A",match_strategy:"Standard"},
+  "LAB-SB-002": {date_settled:"2026-11-05",event_name:"Example City v Sample Town",offer_details:"Standard bet",bookmaker:"Bookmaker A",match_strategy:"Standard"},
   "LAB-SB-PROSPECT-B": {event_name:"Selection pending",offer_name:"Sample reload",offer_details:"Synthetic offer text",bookmaker:"Bookmaker B",match_strategy:"Standard"},
-  "LAB-SB-OVERDUE": {event_name:"Demo Rovers v Sample Albion",offer_details:"Synthetic placed bet",bookmaker:"Bookmaker A",match_strategy:"Standard"},
-  "LAB-SB-PARTIAL": {event_name:"Sample Athletic v Demo City",offer_details:"Synthetic partial hedge",bookmaker:"Bookmaker B",match_strategy:"Standard"},
-  "LAB-SB-SEP-A": {event_name:"Sample Rangers v Demo County",offer_details:"Standard bet",bookmaker:"Bookmaker A",match_strategy:"Standard"},
-  "LAB-SB-B": {event_name:"Profile B example",offer_details:"Standard",bookmaker:"Bookmaker B",match_strategy:"Standard"},
-  "LAB-SB-SEP-B": {event_name:"Profile B September example",offer_details:"Standard bet",bookmaker:"Bookmaker B",match_strategy:"Standard"},
+  "LAB-SB-OVERDUE": {date_settled:"2026-10-30",event_name:"Demo Rovers v Sample Albion",offer_details:"Synthetic placed bet",bookmaker:"Bookmaker A",match_strategy:"Standard"},
+  "LAB-SB-PARTIAL": {date_settled:"2026-11-02",event_name:"Sample Athletic v Demo City",offer_details:"Synthetic partial hedge",bookmaker:"Bookmaker B",match_strategy:"Standard",requested_lay_stake:"10.00",matched_lay_stake:"4.00"},
+  "LAB-SB-SEP-A": {date_settled:"2026-09-20",event_name:"Sample Rangers v Demo County",offer_details:"Standard bet",bookmaker:"Bookmaker A",match_strategy:"Standard"},
+  "LAB-SB-B": {date_settled:"2026-10-08",event_name:"Profile B example",offer_details:"Standard",bookmaker:"Bookmaker B",match_strategy:"Standard"},
+  "LAB-SB-SEP-B": {date_settled:"2026-09-12",event_name:"Profile B September example",offer_details:"Standard bet",bookmaker:"Bookmaker B",match_strategy:"Standard"},
   "LAB-FB-001": {expiry_datetime:"2026-11-10",bookmaker:"Bookmaker A",offer_name:"Demo Offer",offer_details:"Linked award",match_strategy:"SNR"},
   "LAB-FB-EXPIRING": {expiry_datetime:"2026-11-02",bookmaker:"Bookmaker B",offer_name:"Sample reward",offer_details:"Synthetic award",match_strategy:"SNR"},
   "LAB-CO-001": {expiry_datetime:"2026-11-15",bookmaker:"Bookmaker C",offer_name:"Demo Casino Offer",game:"Demo Game",offer_type:"Wager to earn"},

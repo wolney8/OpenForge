@@ -137,7 +137,7 @@ test("sportsbook filter, resize and inline Prospecting edit use one lab state", 
   await page.getByRole("button", { name: "Save Lab View" }).click();
   await ledger.locator("tbody tr").filter({ hasText: "Event pending" }).getByText("Event pending").dblclick();
   await page.getByRole("textbox", { name: "event" }).fill("Synthetic event after capture");
-  await page.getByRole("button", { name: "Save cell" }).click();
+  await page.keyboard.press("Enter");
   await expect(ledger).toContainText("Synthetic event after capture");
 });
 
