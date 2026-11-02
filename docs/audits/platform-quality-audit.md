@@ -1,5 +1,25 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
+## CP-118 Design Lab interaction coverage — 2026-11-02
+
+| Request | Current lab demonstration | Limit / next check |
+| --- | --- | --- |
+| PD-PR-118-01–03 | Copy result error/retry, aligned workbench cards, range hidden in editors | Synthetic only; owner visual review pending. |
+| PD-PR-118-04 | Prospecting cell edit, lifecycle gate, pointer/keyboard horizontal pan | Composite execution and placed/settled correction use the full-record gate; normal ledger unchanged. |
+| PD-PR-118-05 | Today two-column queue, annotation states and active-task tray | No persistent task engine; derived completion remains source-governed. |
+| PD-PR-118-06 | Bar/Line use the same settled fixture and source table | Stacked Bar and Candlestick disabled without component/OHLC authority. |
+| PD-PR-118-07 | Four conditional Add/Edit presentation concepts | Preview only; no financial Save, calculation or complete specialist lifecycle. |
+| PD-PR-118-08–09 | Proposed `PD-UX-0.2`; focused and prior lab regression | Owner acceptance and manual screen-reader review pending. |
+
+Required specialist meaning retained in previews: Free Bet qualifying source, reviewed award, SNR/SR, expiry and Back/Lay; Casino conditional Setup/Wagering/Reward/Settlement and cash versus bonus; Extra Place runner/race, each-way terms, separate win/place lays and places; Cash Adjustment direction, Account, date, reason and cash-not-profit distinction. The canonical column sets remain shown in each preview; this is not approval of a narrow-column replacement or normal persistence.
+
+| Specialist | Concept stages | Protected field/meaning check | State |
+| --- | --- | --- | --- |
+| Free Bet | Award Review → Back / Lay Preparation → Placement → Settlement | Qualifying source, reviewed award, SNR/SR, expiry, distinct back/lay confirmation | Interactive preview; no award or Save |
+| Casino | Conditional Setup, Wagering, Reward, Settlement | Offer type selects relevant stages; own cash, bonus credit, converted reward and realised P&L stay separate | Interactive preview; no calculation or Save |
+| Extra Place | Calculate & Place → Settlement | Runner/race, E/W terms, bookmaker/exchange places, separate win/place lays and outcomes | Interactive preview; no calculated outcome or Save |
+| Cash Adjustment | Adjustment | Direction/type, amount, Profile/Account, date, reason and cash-not-profit source meaning | Interactive preview; source/audit labels shown, governed history fixture unavailable; no balance write or Save |
+
 ## CP-117 Wave 1 route status — 2026-11-02
 
 Flagged shell changes only. Position `/`, Today `/tasks`, Reports `/reports`, Profiles `/profiles`, existing Profile-owned Accounts/Tracker routes, and launcher destinations `/oddsmatcher`, `/fund-manager/calculators`, `/profiles/requests`, `/settings`, `/profiles/restore` retain their real route/data/role authorities. Profile Opportunity Queue is reached at the existing Accounts surface via `#profile-opportunities`; no aggregate Opportunities route exists. All Profiles cannot directly open a Profile-owned ledger without selecting a Profile. Source Back uses the actual same-origin origin URL when opened through a link, with a safe fixed-route fallback for existing report/dashboard source parameters. Ledger-local filters/sort restoration and full record-detail origins still require route-level acceptance; no new record-search index exists. Default shell remains the old route presentation.

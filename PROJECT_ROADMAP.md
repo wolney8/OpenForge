@@ -1,5 +1,9 @@
 # Project Roadmap — Plum Duff / OpenForge — Doc ID: PR-CODEX-001
 
+## CP-118 lab owner review — 2026-11-02
+
+Review copy failure/retry, workbench alignment, spreadsheet selection/pan, Today task annotations/tray, truthful Reports chart modes and four specialist Add/Edit previews at protected `/design-lab`. `PD-UX-0.2` remains lab-only; CP-116 specialist financial lifecycles and Waves 2–4 require separate approval. [Coverage](docs/audits/platform-quality-audit.md#cp-118-design-lab-interaction-coverage--2026-11-02).
+
 ## CP-117 local Wave 0/1 — 2026-11-02
 
 Owner authorised the existing Wave 0/1 shell scope only. Server flag `OPENFORGE_FUND_MANAGER_UX_V2` defaults OFF; old shell is the rollback path. Verify old/new real routes, role boundary, Profile/range, source Back, responsive geometry, light/dark, keyboard and owner review before a Wave 1 acceptance claim. Waves 2–4 and CP-116 stay gated. See [PD-UX-0.1 decision](docs/planning/plum-duff-design-lab-brief.md#cp-117-local-wave-1-decision--2026-11-02) and [route status](docs/audits/platform-quality-audit.md#cp-117-wave-1-route-status--2026-11-02).

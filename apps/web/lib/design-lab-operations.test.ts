@@ -6,10 +6,10 @@ import { labRecords } from "./design-lab-connected-data";
 describe("CP-115 synthetic operations", () => {
   it("derives work from recorded source conditions and keeps routine/advice separate", () => {
     const tasks = buildLabTodayTasks(labRecords, initialLabAccounts, "all");
-    expect(tasks.find(task => task.sourceId === "LAB-SB-OVERDUE")?.title).toBe("Review overdue unsettled bet");
+    expect(tasks.find(task => task.sourceId === "LAB-SB-OVERDUE")?.title).toBe("Review Overdue Unsettled Bet");
     expect(tasks.find(task => task.sourceId === "LAB-FB-EXPIRING")?.due).toBe("2026-11-02");
-    expect(tasks.find(task => task.sourceId === "LAB-SB-PARTIAL")?.title).toBe("Review partial Lay");
-    expect(tasks.find(task => task.sourceId === "LAB-SB-002")?.title).toBe("Review placed bet for settlement");
+    expect(tasks.find(task => task.sourceId === "LAB-SB-PARTIAL")?.title).toBe("Review Partial Lay");
+    expect(tasks.find(task => task.sourceId === "LAB-SB-002")?.title).toBe("Review Placed Bet for Settlement");
     expect(tasks.find(task => task.sourceId === "LAB-FB-001")).toBeUndefined();
     expect(tasks.find(task => task.id === "reload")?.authority).toBe("Configured reminder");
     expect(tasks.find(task => task.id === "advisory")?.authority).toBe("Advisory suggestion");

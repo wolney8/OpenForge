@@ -23,17 +23,17 @@ test("Today separates derived source tasks, reminders and uncertain advice", asy
   await enter(page);
   await page.getByRole("button", { name: "Today", exact: true }).click();
   const today = page.locator('[data-pd-id="lab.today"]');
-  await expect(today.getByRole("region", { name: "Needs Action" })).toContainText("Review overdue unsettled bet");
-  await expect(today).toContainText("Review partial Lay");
-  await expect(today).toContainText("Review expiring Free Bet");
+  await expect(today.getByRole("region", { name: "Needs Action" })).toContainText("Review Overdue Unsettled Bet");
+  await expect(today).toContainText("Review Partial Lay");
+  await expect(today).toContainText("Review Expiring Free Bet");
   await expect(today).not.toContainText("LAB-FB-001");
   await expect(today.getByRole("region", { name: "Recurring Work" })).toContainText("current promotion availability unverified");
   await expect(today.getByRole("region", { name: "Opportunities / Suggestions" })).toContainText("current availability unverified");
-  await today.locator('[data-pd-id="lab.task.casino-daily-a"]').getByRole("button", { name: "Mark check done" }).click();
+  await today.locator('[data-pd-id="lab.task.casino-daily-a"]').getByRole("button", { name: "Mark Check Done" }).click();
   await expect(today.locator('[data-pd-id="lab.task.casino-daily-a"]')).toContainText("Check recorded · lab only");
-  await expect(today.locator('[data-pd-id="lab.task.casino-daily-b"]')).toContainText("Mark check done");
-  await expect(today.locator('[data-pd-id="lab.task.task:LAB-SB-OVERDUE"]')).not.toContainText("Mark check done");
-  await today.locator('[data-pd-id="lab.task.task:LAB-SB-OVERDUE"]').getByRole("button", { name: "Open bet" }).click();
+  await expect(today.locator('[data-pd-id="lab.task.casino-daily-b"]')).toContainText("Mark Check Done");
+  await expect(today.locator('[data-pd-id="lab.task.task:LAB-SB-OVERDUE"]')).not.toContainText("Mark Check Done");
+  await today.locator('[data-pd-id="lab.task.task:LAB-SB-OVERDUE"]').getByRole("button", { name: "Open Bet" }).click();
   await expect(page.locator('[data-pd-id="lab.record-detail"]')).toContainText("LAB-SB-OVERDUE");
   await page.getByRole("button", { name: "Back to Today" }).click();
   await expect(page.locator('[data-pd-id="lab.profile"]')).toContainText("All Profiles");
@@ -43,21 +43,21 @@ test("Today separates derived source tasks, reminders and uncertain advice", asy
 test("shared reload creates separate Prospecting rows, blocks C and recovers a partial result", async ({ page }) => {
   await enter(page);
   await page.getByRole("button", { name: "Today", exact: true }).click();
-  await page.locator('[data-pd-id="lab.task.reload"]').getByRole("button", { name: "Review offer" }).click();
+  await page.locator('[data-pd-id="lab.task.reload"]').getByRole("button", { name: "Review Offer" }).click();
   const workflow = page.locator('[data-pd-id="lab.offer-workflow"]');
-  await expect(workflow).toContainText("Current availability");
+  await expect(workflow).toContainText("Current Availability");
   await expect(workflow).toContainText("Unverified · human check required");
   await expect(workflow.getByLabel("Select Profile C · offer review only")).toBeDisabled();
   await workflow.getByLabel("I reviewed Profile B's Limited Account warning").check();
-  await workflow.getByRole("button", { name: "Preview per-Profile drafts" }).click();
+  await workflow.getByRole("button", { name: "Preview Per-Profile Drafts" }).click();
   await expect(workflow.locator('[data-pd-id="lab.offer-preview"]')).toContainText("New separate Prospecting row; execution fields unset");
   if (evidence) { await mkdir(evidence, { recursive: true }); await page.screenshot({ path: join(evidence, "cp115-offer-preview-1440-dark.png"), fullPage: true, style: "nextjs-portal { display: none !important; }" }); }
   await workflow.getByLabel("Simulate Profile B save failure on this attempt").check();
-  await workflow.getByRole("button", { name: "Confirm simulated copy" }).click();
+  await workflow.getByRole("button", { name: "Confirm Simulated Copy" }).click();
   await expect(workflow).toContainText("Failed");
   await expect(workflow).toContainText("Blocked");
-  await workflow.getByRole("button", { name: "Retry failed target" }).click();
-  await expect(workflow).toContainText("Already created; duplicate prevented");
+  await workflow.getByRole("button", { name: "Retry Failed Target" }).click();
+  await expect(workflow.locator('[data-result="Created"]')).toHaveCount(2);
   if (evidence) { await page.screenshot({ path: join(evidence, "cp115-offer-results-1440-dark.png"), fullPage: true, style: "nextjs-portal { display: none !important; }" }); }
   await page.setViewportSize({ width: 430, height: 900 });
   const targetGeometry = await workflow.getByText("Profile B", { exact: true }).first().locator("xpath=ancestor::label").evaluate(label => {
@@ -77,7 +77,7 @@ test("shared reload creates separate Prospecting rows, blocks C and recovers a p
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.locator('[data-pd-id="lab.nav.sportsbook"]').click();
   const ledger = page.locator('[data-pd-id="lab.ledger.sportsbook"]');
-  const copied = ledger.locator("tbody tr").filter({ hasText: "Weekly Bookmaker A reload" });
+  const copied = ledger.locator("tbody tr").filter({ hasText: "Weekly Bookmaker A Reload" });
   await expect(copied).toHaveCount(2);
   await expect(copied.nth(0)).toContainText("Profile A");
   await expect(copied.nth(1)).toContainText("Profile B");
@@ -92,7 +92,7 @@ test("Account source completion resolves its derived task and returns to Today",
   await page.getByLabel("Observed Current Balance").fill("0.00");
   await page.getByRole("button", { name: /Confirm balance observation/ }).click();
   await expect(page.locator('[data-pd-id="lab.today"]')).toBeVisible();
-  await expect(page.locator('[data-pd-id="lab.today"]')).not.toContainText("Confirm Account balance");
+  await expect(page.locator('[data-pd-id="lab.today"]')).not.toContainText("Confirm Account Balance");
   await expect(page.locator('[data-pd-id="lab.profile"]')).toContainText("All Profiles");
 });
 
@@ -117,6 +117,8 @@ test("Today and Position remain contained at desktop and narrow widths in both t
     if (evidence) await page.screenshot({ path: join(evidence, `cp115-position-${width}-${theme}.png`), fullPage: true });
     if (width <= 900) await page.getByRole("button", { name: "Open navigation" }).click();
     await page.locator('[data-pd-id="lab.nav.tasks"]').click();
+    await page.locator('[data-pd-id="lab.task.task:LAB-SB-OVERDUE"]').getByRole("button", { name: "Track Task" }).click();
+    await expect(page.locator('[data-pd-id="lab.active-task"]')).toBeVisible();
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
     if (evidence) await page.screenshot({ path: join(evidence, `cp115-today-${width}-${theme}.png`), fullPage: true });
     await page.getByRole("navigation", { name: "Breadcrumb" }).getByRole("button", { name: "Position" }).click();
@@ -142,8 +144,8 @@ test("actual Chromium 200% zoom contains Today and the offer preview", async () 
     await page.locator('[data-pd-id="lab.nav.tasks"]').click();
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
     if (evidence) await page.screenshot({ path: join(evidence, "cp115-today-actual-zoom-200.png"), fullPage: true });
-    await page.locator('[data-pd-id="lab.task.reload"]').getByRole("button", { name: "Review offer" }).click();
-    await page.getByRole("button", { name: "Preview per-Profile drafts" }).click();
+    await page.locator('[data-pd-id="lab.task.reload"]').getByRole("button", { name: "Review Offer" }).click();
+    await page.getByRole("button", { name: "Preview Per-Profile Drafts" }).click();
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
     if (evidence) await page.screenshot({ path: join(evidence, "cp115-offer-actual-zoom-200.png"), fullPage: true });
   } finally { await context.close(); await rm(scratch, { recursive: true, force: true }); }

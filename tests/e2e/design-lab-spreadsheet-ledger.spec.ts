@@ -19,7 +19,7 @@ test.beforeEach(async ({ page }) => {
 
 test("combined rows retain ownership and breadcrumb/record return preserves view", async ({ page }) => {
   const ledger = page.locator('[data-pd-id="lab.ledger.sportsbook"]');
-  await expect(ledger).toContainText("7 of 7 rows");
+  await expect(ledger).toContainText("8 of 8 rows");
   await expect(ledger.locator("thead")).toContainText("Profile");
   await expect(ledger.locator("tbody")).toContainText("Profile A");
   await expect(ledger.locator("tbody")).toContainText("Profile B");
@@ -27,13 +27,13 @@ test("combined rows retain ownership and breadcrumb/record return preserves view
   await expect(ledger.locator('th[aria-sort="ascending"]')).toContainText("Profile");
   await page.locator('[data-pd-id="lab.ledger.profile-filter"]').click();
   await page.getByRole("option", { name: "Profile B" }).click();
-  await expect(ledger).toContainText("3 of 7 rows");
+  await expect(ledger).toContainText("4 of 8 rows");
   await ledger.locator('[aria-label*="table, scroll horizontally"]').evaluate(node => { node.scrollLeft = 300; });
   await page.getByRole("button", { name: "Open Profile B example" }).click();
   await expect(page.locator('[data-pd-id="lab.record-detail"]')).toContainText("Owner: Profile B");
   await expect(page.locator('[data-pd-id="lab.profile"]')).toContainText("All Profiles");
   await page.getByRole("button", { name: "Back to Sportsbook Bets" }).click();
-  await expect(ledger).toContainText("3 of 7 rows");
+  await expect(ledger).toContainText("4 of 8 rows");
   expect(await ledger.locator('[aria-label*="table, scroll horizontally"]').evaluate(node => node.scrollLeft)).toBeGreaterThan(100);
   await expect(page.locator('[data-pd-id="lab.ledger.profile-filter"]')).toContainText("Profile B");
   await page.getByRole("navigation", { name: "Breadcrumb" }).getByRole("button", { name: "Position" }).click();
@@ -69,7 +69,7 @@ test("pointer resize/reorder, header sort cycle and reset columns", async ({ pag
   await page.getByRole("button", { name: "Sort Settles" }).click();
   await expect(ledger.locator("tbody tr").first()).toContainText("Profile B September example");
   await page.getByRole("button", { name: "Sort Status" }).click();
-  await expect(ledger.locator("tbody tr").first()).toContainText("Example City");
+  await expect(ledger.locator("tbody tr").first()).toContainText("Sample reload");
   await page.getByRole("button", { name: "Reset Columns" }).click();
   const reset = await ledger.locator("thead th").evaluateAll(nodes => nodes.map(node => node.getAttribute("data-lab-column")));
   expect(reset.indexOf("1")).toBeLessThan(reset.indexOf("2"));
@@ -104,7 +104,7 @@ test("Prospecting inline edit validates and cannot place without workbench", asy
   await page.keyboard.press("Escape");
   await editedRow.locator('td').nth(10).dblclick();
   await page.locator('[data-pd-id="lab.cell.status"]').click();
-  await page.getByRole("option", { name: /Placed · confirm externally/ }).click();
+  await page.getByRole("option", { name: /Placed · full confirmation required/ }).click();
   await expect(page.getByText("Placement requires the full external confirmation and required fields.")).toBeVisible();
   await page.getByRole("button", { name: /Placement/ }).click();
   await expect(page.getByRole("button", { name: /Confirm external Back/ })).toBeVisible();

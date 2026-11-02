@@ -1,5 +1,25 @@
 # Plum Duff UI Change Register
 
+## CP-118 Design Lab interaction batch — 2026-11-02
+
+Owner-approved lab exploration only; normal CP-117 shell, business authorities and Wave 2–4 remain unchanged. Existing lab select, StatusToast, spreadsheet grid, workbench, Today and Reports are the nearest equivalents. `PD-UX-0.2` is proposed, not a normal-app contract.
+
+| ID | Lab area / requested result | Existing equivalent | Status |
+| --- | --- | --- | --- |
+| PD-PR-118-01 | Copy failure toast, inline Failed state and target-only recovery | StatusToast; CP-115 copy results | NEEDS VERIFICATION — automated lab evidence passed; owner visual/screen-reader review pending |
+| PD-PR-118-02 | Shared two-column peer-card top alignment on every workbench step | CP-114 workbench grid/fieldsets | NEEDS VERIFICATION — automated lab evidence passed; owner visual/screen-reader review pending |
+| PD-PR-118-03 | Hide Selected Range during Add/Edit while retaining range state | Lab context selector; real range authority unchanged | NEEDS VERIFICATION — automated lab evidence passed; owner visual/screen-reader review pending |
+| PD-PR-118-04 | Governed direct cell editors and horizontal drag-to-pan with keyboard fallback | CP-114B spreadsheet grid | NEEDS VERIFICATION — automated lab evidence passed; owner visual/screen-reader review pending |
+| PD-PR-118-05 | Today two-column layout, task states and compact persistent active-task panel | CP-115 Today queue | NEEDS VERIFICATION — automated lab evidence passed; owner visual/screen-reader review pending |
+| PD-PR-118-06 | Shared Reports Chart Type with truthful data compatibility | CP-113 report chart; financial fixtures | NEEDS VERIFICATION — automated lab evidence passed; owner visual/screen-reader review pending |
+| PD-PR-118-07 | Free Bet, Casino, Extra Place and Cash Adjustment interactive concepts | Existing lab previews; protected ledger contracts | NEEDS VERIFICATION — automated lab evidence passed; owner visual/screen-reader review pending |
+| PD-PR-118-08 | `PD-UX-0.2` Title Case, concise copy, action hierarchy and no decorative glow/pulse | PD-UX-0.1 tokens; Material status/focus | NEEDS VERIFICATION — automated lab evidence passed; owner visual/screen-reader review pending |
+| PD-PR-118-09 | Connected regression, responsive/zoom/theme/keyboard evidence and isolation | CP-115C browser suite; UI checklist | NEEDS VERIFICATION — automated lab evidence passed; owner visual/screen-reader review pending |
+
+Lab-only presentation exceptions proposed before implementation: hide reporting range on Add/Edit; use a task tray that persists in synthetic navigation; permit drag-to-pan only on non-interactive table surfaces; allow domain-specific specialist editor stages. No required fields, money meaning, save/role gates or normal-app presentation rules are changed.
+
+UI handoff receipt: changed patterns reuse lab select, StatusToast, ledger grid and workbench; peer card top edges are asserted within 2 CSS px at 1440/900; browser checks cover narrow overflow, light/dark, actual 200% zoom, keyboard and pointer. Manual screen-reader review and owner visual assessment remain unverified. Normal-app equivalents and CP-117 flag are unchanged.
+
 ## CP-117 Wave 0/1 approved local shell batch — 2026-11-02
 
 Owner authorises local-only shell migration from the CP-115D checkpoint. `PROPOSED — LAB ONLY` exceptions from CP-110–115C remain historical evidence; this batch approves only the listed real shell direction. Signed-off normal AppChrome, drawer, search, Profile/range and notification controls are the reuse references. Red Close and specialist editor exceptions remain deferred. No ledger or financial authority changes.

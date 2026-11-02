@@ -8,7 +8,7 @@ import type { LabRecord } from "./design-lab-connected-data";
 export const labClock = "2026-11-01";
 export const labReloadDefinition = {
   id: "LAB-OFFER-RELOAD-001",
-  name: "Weekly Bookmaker A reload",
+  name: "Weekly Bookmaker A Reload",
   bookmaker: "Bookmaker A",
   offerType: "Reload",
   offerText: "Synthetic weekly reload: opt in, review terms, then record any qualifying bet separately.",
@@ -72,7 +72,7 @@ export function copyLabReload(options: { selected: LabOfferProfile[]; reviewedWa
     if (!options.selected.includes(target.profileId)) return { profileId: target.profileId, state: "Skipped", detail: "Not selected" };
     if (target.eligibility === "review" && !options.reviewedWarnings) return { profileId: target.profileId, state: "Blocked", detail: "Confirm the Profile-specific review condition first" };
     if (options.existing.some(row => row.id === recordId)) return { profileId: target.profileId, state: "Skipped", detail: "Already created; duplicate prevented", recordId };
-    if (options.failProfile === target.profileId) return { profileId: target.profileId, state: "Failed", detail: "Simulated target save failure; retry only this target" };
+    if (options.failProfile === target.profileId) return { profileId: target.profileId, state: "Failed", detail: "Simulated save failed; this Profile's Prospecting row was not created." };
     // Only approved shared descriptive fields are copied. Execution and calculation inputs remain unset.
     created.push({ id: recordId, profileId: target.profileId as LabProfileId, section: "sportsbook",
       title: labReloadDefinition.name, subtitle: `${target.account} · ${target.profileName} · copied from ${labReloadDefinition.id}`,
@@ -108,30 +108,30 @@ export function buildLabTodayTasks(records: LabRecord[], accounts: LabAccount[],
       const partial = record.cells[6] === "Partially matched";
       const overdue = Boolean(record.dueDate && record.dueDate < labClock);
       tasks.push({ id: `task:${record.id}`, group: "Needs Action", authority: "Confirmed task",
-        title: partial ? "Review partial Lay" : overdue ? "Review overdue unsettled bet" : "Review placed bet for settlement",
+        title: partial ? "Review Partial Lay" : overdue ? "Review Overdue Unsettled Bet" : "Review Placed Bet for Settlement",
         profileId: record.profileId, provider: record.cells[1], due: record.dueDate,
-        sourceId: record.id, detail: partial ? "Matched stake differs from requested stake; exposure remains unresolved." : overdue ? "Recorded event date has passed; result remains open." : "Placed source record remains open.", action: "Open bet" });
+        sourceId: record.id, detail: partial ? "Matched stake differs from requested stake; exposure remains unresolved." : overdue ? "Recorded event date has passed; result remains open." : "Placed source record remains open.", action: "Open Bet" });
     }
     if (record.section === "freeBets" && record.status === "Available" && record.expiresAt) {
       const days = (Date.parse(`${record.expiresAt}T00:00:00Z`) - Date.parse(`${labClock}T00:00:00Z`)) / 86400000;
       if (days >= 0 && days <= 3) tasks.push({ id: `task:${record.id}`, group: "Needs Action", authority: "Confirmed task",
-        title: "Review expiring Free Bet", profileId: record.profileId, provider: record.cells[2], due: record.expiresAt,
+        title: "Review Expiring Free Bet", profileId: record.profileId, provider: record.cells[2], due: record.expiresAt,
         sourceId: record.id, detail: "Recorded expiry is within the configured three-day review window.", action: "Open Free Bet" });
     }
   }
   for (const account of accounts.filter(row => visible(row.profileId) && !row.currentBalance.trim())) {
-    tasks.push({ id: `task:${account.id}`, group: "Needs Action", authority: "Confirmed task", title: "Confirm Account balance",
+    tasks.push({ id: `task:${account.id}`, group: "Needs Action", authority: "Confirmed task", title: "Confirm Account Balance",
       profileId: account.profileId, provider: account.name, sourceId: account.id, detail: "Current balance is unknown; no zero is inferred.", action: "Review Account" });
   }
   const recurring: LabTodayTask[] = [
-    { id: "reload", group: "Recurring Work", authority: "Configured reminder", title: "Review weekly reload", provider: "Bookmaker A", due: labReloadDefinition.nextExpectedCheck, detail: "Expected Friday check; current promotion availability unverified.", action: "Review offer", manual: true },
-    { id: "casino-daily-a", group: "Recurring Work", authority: "Configured reminder", title: "Check daily Free Spins", profileId: "LAB-PROFILE-A", provider: "Bookmaker C", due: labClock, detail: "Routine check only; no current offer claimed.", action: "Mark check done", manual: true },
-    { id: "casino-daily-b", group: "Recurring Work", authority: "Configured reminder", title: "Check daily Free Spins", profileId: "LAB-PROFILE-B", provider: "Bookmaker C", due: labClock, detail: "Separate Profile check; no current offer claimed.", action: "Mark check done", manual: true },
-    { id: "scratch-friday", group: "Recurring Work", authority: "Configured reminder", title: "Friday scratch-card check", profileId: "LAB-PROFILE-B", provider: "Bookmaker C", due: "2026-11-06", detail: "Expected check; availability unverified.", action: "Mark check done", manual: true },
-    { id: "account-maintenance", group: "Recurring Work", authority: "Configured reminder", title: "Review Account access", provider: "All Profiles", detail: "Scheduled maintenance review; does not change Account status.", action: "Mark check done", manual: true },
-    { id: "signup", group: "Opportunities / Suggestions", authority: "Advisory suggestion", title: "Inspect new bookmaker signup", provider: "Unverified provider", detail: "Candidate only; no recorded source or current offer proof in this lab.", action: "Preview only", previewOnly: true },
-    { id: "price-boost", group: "Opportunities / Suggestions", authority: "Advisory suggestion", title: "Check recurring price boost", provider: "Bookmaker A", detail: "Representative suggestion; no recorded price-boost history or current offer proof.", action: "Preview only", previewOnly: true },
-    { id: "advisory", group: "Opportunities / Suggestions", authority: "Advisory suggestion", title: "Check historical reload pattern", provider: "Bookmaker A", detail: "Synthetic history: Profiles A and B reviewed previous reloads. Confirm this week's terms yourself.", action: "Inspect history" },
+    { id: "reload", group: "Recurring Work", authority: "Configured reminder", title: "Review Weekly Reload", provider: "Bookmaker A", due: labReloadDefinition.nextExpectedCheck, detail: "Expected Friday check; current promotion availability unverified.", action: "Review Offer", manual: true },
+    { id: "casino-daily-a", group: "Recurring Work", authority: "Configured reminder", title: "Check Daily Free Spins", profileId: "LAB-PROFILE-A", provider: "Bookmaker C", due: labClock, detail: "Routine check only; no current offer claimed.", action: "Mark Check Done", manual: true },
+    { id: "casino-daily-b", group: "Recurring Work", authority: "Configured reminder", title: "Check Daily Free Spins", profileId: "LAB-PROFILE-B", provider: "Bookmaker C", due: labClock, detail: "Separate Profile check; no current offer claimed.", action: "Mark Check Done", manual: true },
+    { id: "scratch-friday", group: "Recurring Work", authority: "Configured reminder", title: "Friday Scratch-Card Check", profileId: "LAB-PROFILE-B", provider: "Bookmaker C", due: "2026-11-06", detail: "Expected check; availability unverified.", action: "Mark Check Done", manual: true },
+    { id: "account-maintenance", group: "Recurring Work", authority: "Configured reminder", title: "Review Account Access", provider: "All Profiles", detail: "Scheduled maintenance review; does not change Account status.", action: "Mark Check Done", manual: true },
+    { id: "signup", group: "Opportunities / Suggestions", authority: "Advisory suggestion", title: "Inspect New Bookmaker Signup", provider: "Unverified provider", detail: "Candidate only; no recorded source or current offer proof in this lab.", action: "Preview Only", previewOnly: true },
+    { id: "price-boost", group: "Opportunities / Suggestions", authority: "Advisory suggestion", title: "Check Recurring Price Boost", provider: "Bookmaker A", detail: "Representative suggestion; no recorded price-boost history or current offer proof.", action: "Preview Only", previewOnly: true },
+    { id: "advisory", group: "Opportunities / Suggestions", authority: "Advisory suggestion", title: "Check Historical Reload Pattern", provider: "Bookmaker A", detail: "Synthetic history: Profiles A and B reviewed previous reloads. Confirm this week's terms yourself.", action: "Inspect History" },
   ];
   return [...tasks, ...recurring.filter(task => !task.profileId || visible(task.profileId))];
 }

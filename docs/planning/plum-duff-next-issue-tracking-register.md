@@ -1,5 +1,9 @@
 # Plum Duff Next Issue Tracking Register
 
+## CP-118 Design Lab interactions — 2026-11-02
+
+Owner requests PD-PR-118-01 through 09 are retained individually in the [UI change register](../agent-contracts/plum-duff-ui-change-register.md#cp-118-design-lab-interaction-batch--2026-11-02), linked locally to [Design Lab issue #114](https://github.com/wolney8/OpenForge/issues/114). Scope: copy failure/retry; paired-card alignment; Add/Edit range visibility; spreadsheet editing/pan; Today tasks/tray; truthful chart modes; four specialist concepts; `PD-UX-0.2`; regression/isolation. All are lab-only. Live GitHub issue mutation is unverified; no prior request is closed.
+
 ## CP-117 local shell migration — 2026-11-02
 
 Owner approved local-only Wave 0/1 under PD-PR-117-01 through 05 in the [UI change register](../agent-contracts/plum-duff-ui-change-register.md#cp-117-wave-01-approved-local-shell-batch--2026-11-02), linked to [Design Lab issue #114](https://github.com/wolney8/OpenForge/issues/114); live issue mutation unverified. Search stays Navigation, Profiles and active Account Catalogue. CP-116, Waves 2–4 and hosted adoption remain separate requests, not closed by this shell change.
