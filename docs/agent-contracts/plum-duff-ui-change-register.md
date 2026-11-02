@@ -1,5 +1,17 @@
 # Plum Duff UI Change Register
 
+## CP-115C stable navigation batch — 2026-11-02
+
+| ID | Surface / requested lab treatment | Established equivalent | Status |
+| --- | --- | --- | --- |
+| PD-PR-115C-01 | Persistent Position/Today/Opportunities/Accounts/Tracker/Reports sidebar and expandable Tracker | CP-114C rounded navigation, mobile drawer | NEEDS VERIFICATION — lab browser checks pass; owner navigation review pending |
+| PD-PR-115C-02 | App grid becomes a trigger-anchored tool launcher with explicit preview/working status | CP-114C anchored overlay and Material action rows | NEEDS VERIFICATION — lab browser checks pass; owner navigation review pending |
+| PD-PR-115C-03 | One destination registry drives sidebar, launcher, breadcrumbs, active state and search destinations | Existing lab route/section state | NEEDS VERIFICATION — lab browser checks pass; owner navigation review pending |
+| PD-PR-115C-04 | Canonical breadcrumbs and separate Back-to-source origin preserve Profile/range/ledger context | CP-114B source and ledger return | NEEDS VERIFICATION — lab browser checks pass; owner navigation review pending |
+| PD-PR-115C-05 | Desktop/narrow/zoom/theme/keyboard geometry and CP-114B–115B regressions | Existing lab browser gates | NEEDS VERIFICATION — lab browser checks pass; owner navigation review pending |
+
+Presentation exception: the formerly conditional manager/tracker menu and workspace switcher are replaced in this synthetic lab. This does not amend normal application navigation or grant access to the launcher destinations.
+
 ## CP-115B connected lab batch — 2026-11-02
 
 | ID | Surface / proposed lab treatment | Established equivalent | Status |

@@ -1,5 +1,9 @@
 # Project Roadmap — Plum Duff / OpenForge — Doc ID: PR-CODEX-001
 
+## CP-115C navigation owner review — 2026-11-02
+
+Walk Position → Today → Sportsbook → Reports → source record → Back, then inspect All Profiles ownership and the app launcher’s synthetic tool previews. Compare CP-115B sidebar with the persistent Tracker group. Decide whether this hierarchy and launcher separation should continue as the lab direction; no normal integration or CP-116 work is approved. [Coverage](docs/audits/platform-quality-audit.md#cp-115c-design-lab-navigation-coverage--2026-11-02).
+
 ## CP-115B owner design review — 2026-11-02
 
 At protected `/design-lab`, walk through simulated sign-out/sign-in and recovery, bell → source → Today, fresh/import Add Profile with failure/retry, and the labelled invited-subscriber preview. Decide whether auth-state wording, onboarding sequence and notification density should inform a separately governed normal-app proposal. Actual auth, Profile/permission writes, persistent notifications and CP-116 remain outside this lab slice. [Coverage](docs/audits/platform-quality-audit.md#cp-115b-design-lab-authonboardingnotification-coverage--2026-11-02).

@@ -1,5 +1,17 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
+## CP-115C Design Lab navigation coverage — 2026-11-02
+
+The owner accepted CP-115B for continued exploration; navigation was rejected. All new destinations remain synthetic/preview inside the protected lab. Existing CP-110–115B request and decision entries remain below.
+
+| Request / authority | Required interaction | Lab surface / state | Acceptance check / status | Next slice |
+| --- | --- | --- | --- | --- |
+| PD-PR-115C-01 / stable shell | Position, Today, Opportunities, Accounts, expandable Tracker children and Reports persist across sections | One sidebar; Tracker overview and child active state | Connected browser path and screenshot comparison; owner design review pending | No normal shell integration |
+| PD-PR-115C-02 / distinct launcher | Grid opens tools, not another sidebar mode | Anchored Oddsmatcher, Calculators, Subscribers, Catalogue, Administration and Recovery previews | Escape, focus return, viewport clamp and working return path checked; previews do not invoke live operations | Deep tool simulation deferred |
+| PD-PR-115C-03 / registry | Shared labels, parent, owner, role, status and breadcrumb path | `design-lab-navigation.ts` drives sidebar, launcher, breadcrumbs and search labels | Typecheck and navigation browser checks; role is descriptive inside real-auth-gated lab | Production role routing unapproved |
+| PD-PR-115C-04 / context | Logical breadcrumb and source-origin Back; All Profiles remains global | Reports → source → Reports; search → record → source; ledger view state retained | Scope/range and prior CP-114B filter/sort/scroll checks; owner review pending | Normal routes unchanged |
+| PD-PR-115C-05 / visual/accessibility | Stable desktop/mobile structure, one active child, keyboard overlay | Private `data/private/evidence/cp115c-design-lab/` versus CP-115B/CP-115 evidence | Automated widths/themes/zoom and screenshots; manual screen reader judgement unverified | Owner walkthrough |
+
 ## CP-115B Design Lab auth/onboarding/notification coverage — 2026-11-02
 
 All states are synthetic inside protected `/design-lab`; GitHub #114 remains the Design Lab issue and live issue mutation is unverified. Earlier coverage remains in force.

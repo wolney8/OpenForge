@@ -1,5 +1,9 @@
 # Plum Duff Next Issue Tracking Register
 
+## CP-115C stable navigation and launcher — 2026-11-02
+
+Local checklist under [Design Lab issue #114](https://github.com/wolney8/OpenForge/issues/114); live issue mutation unverified. Distinct owner requests PD-PR-115C-01 through 05 are retained in the [UI change register](../agent-contracts/plum-duff-ui-change-register.md#cp-115c-stable-navigation-batch--2026-11-02). Navigation is LAB ONLY and not owner-accepted; CP-116 and normal integration remain separate.
+
 ## CP-115B connected auth/onboarding/notifications — 2026-11-02
 
 Local checklist under [Design Lab issue #114](https://github.com/wolney8/OpenForge/issues/114); live issue update unverified. Distinct requests PD-PR-115B-01 through 05 are recorded in the [UI change register](../agent-contracts/plum-duff-ui-change-register.md#cp-115b-connected-lab-batch--2026-11-02). All remain LAB ONLY; CP-116 and normal integration remain separate.

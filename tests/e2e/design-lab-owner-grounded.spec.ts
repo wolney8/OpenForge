@@ -15,10 +15,12 @@ test.beforeEach(async ({ page }) => {
   await expect(page.locator('[data-pd-id="design-lab-connected.root"]')).toBeVisible();
 });
 
-test("distinct workspace, Profile, notification and identity paths", async ({ page }) => {
-  await page.getByRole("button", { name: "Switch workspace" }).click();
-  await expect(page.locator('[data-pd-id="lab.header-menu"]')).toContainText("Fund Manager");
-  await page.getByRole("button", { name: /Tracker \/ Betting Tools/ }).click();
+test("distinct launcher, Profile, notification and identity paths", async ({ page }) => {
+  await page.getByRole("button", { name: "Open app launcher" }).click();
+  await expect(page.locator('[data-pd-id="lab.launcher"]')).toContainText("Betting Tools");
+  await page.locator('[data-pd-id="lab.launcher.calculators"]').click();
+  await expect(page.locator('[data-pd-id="lab.tool.calculators"]')).toBeVisible();
+  await page.locator('[data-pd-id="lab.nav.sportsbook"]').click();
   await expect(page.locator('[data-pd-id="lab.ledger.sportsbook"]')).toBeVisible();
   await page.getByRole("button", { name: "Notifications" }).click();
   await page.locator('[data-pd-id="lab.notifications"]').getByRole("button", { name: "View all in Today" }).click();

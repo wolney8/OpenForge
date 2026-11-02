@@ -33,7 +33,7 @@ async function geometry(page: Page) {
       search: rect('[data-pd-id="lab.search"]'),
       notifications: rect('[data-pd-id="lab.header-trigger.notifications"]'),
       help: rect('[data-pd-id="lab.header-trigger.help"]'),
-      workspace: rect('[data-pd-id="lab.header-trigger.workspace"]'),
+      workspace: rect('[data-pd-id="lab.header-trigger.launcher"]'),
       avatar: rect('[data-pd-id="lab.header-trigger.identity"]'),
       menu: rect('[data-pd-id="lab.header-menu"]'),
       switch: rect('[data-pd-id="lab.identity.dark-mode"] .material-switch-track'),
@@ -76,7 +76,7 @@ test("desktop header cluster and account menu track the avatar", async ({ page }
 test("each header overlay follows its trigger, search stays beneath the field", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await enterLab(page);
-  for (const id of ["notifications", "help", "workspace", "identity"]) {
+  for (const id of ["notifications", "help", "launcher", "identity"]) {
     const trigger = page.locator(`[data-pd-id="lab.header-trigger.${id}"]`);
     await trigger.click();
     const g = await geometry(page);
