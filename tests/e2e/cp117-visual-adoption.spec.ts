@@ -61,7 +61,7 @@ for (const route of routes) {
             labelSize: getComputedStyle(label).fontSize,
           };
         }) : null;
-        const labTodayRowStyle = route.name === "today" ? await page.locator('[data-pd-id^="lab.task."]').first().evaluate((element) => ({
+        const labTodayRowStyle = route.name === "today" ? await page.locator('[data-pd-id^="lab.task."]:not([class*="urgent"])').first().evaluate((element) => ({
           className: element.className.split(" ")[0],
           fontFamily: getComputedStyle(element).fontFamily,
           fontSize: getComputedStyle(element).fontSize,
@@ -98,6 +98,13 @@ for (const route of routes) {
             };
           });
           expect(realPositionStyle).toEqual(labPositionStyle);
+          const cashPresentation = await page.locator('[data-pd-id="position.metrics.cash"]').evaluate((element) => {
+            const label = element.querySelector("span")!;
+            const value = element.querySelector(".financial-value-canonical-text")!;
+            return { labelColor: getComputedStyle(label).color, valueColor: getComputedStyle(value).color, valueSize: parseFloat(getComputedStyle(value).fontSize) };
+          });
+          expect(cashPresentation.valueSize).toBeGreaterThanOrEqual(28);
+          expect(cashPresentation.valueColor).not.toBe(cashPresentation.labelColor);
           await expect(page.locator(".v2-position-table tbody tr")).toHaveCount(2);
           await page.locator(".v2-position-detail > summary").click();
           await expect(page.locator('[data-pd-id="reports.profile-performance"]')).toBeVisible();
@@ -109,7 +116,7 @@ for (const route of routes) {
           if (await source.count()) await expect(source).toHaveCSS("position", "static");
         }
         if (route.name === "today") {
-          const realTodayRowStyle = await page.locator('[data-pd-id^="tasks.v2.row."]').first().evaluate((element) => ({
+          const realTodayRowStyle = await page.locator('[data-pd-id^="tasks.v2.row."]:not([class*="urgent"])').first().evaluate((element) => ({
             className: element.className.split(" ")[0],
             fontFamily: getComputedStyle(element).fontFamily,
             fontSize: getComputedStyle(element).fontSize,
