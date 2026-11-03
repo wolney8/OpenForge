@@ -1741,6 +1741,15 @@ html[data-theme="dark"] .notification-count-badge {
   grid-template-rows: auto auto minmax(0, 1fr);
 }
 
+.notification-panel-v2.is-open {
+  display: block;
+  width: min(380px, calc(100vw - 24px));
+  max-width: calc(100vw - 24px);
+  max-height: calc(100dvh - 5rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
 .notification-panel-header {
   display: flex;
   align-items: center;
@@ -18659,6 +18668,7 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
   .ux-v2-launcher-panel { position: fixed; top: 4rem; right: .5rem; left: .5rem; width: auto; }
   .ux-v2-header-right .notification-panel,
   .ux-v2-header-right .back-lay-theme-shell .app-menu-panel { position: fixed; top: 4rem; right: .5rem; left: .5rem; width: auto; max-width: none; min-width: 0; }
+  .ux-v2-header-right .notification-panel-v2 { right: auto; left: 12px; width: calc(100vw - 24px); max-width: none; }
 }
 @media (prefers-reduced-motion: reduce) { .ux-v2-sidebar { transition: none; } }
 

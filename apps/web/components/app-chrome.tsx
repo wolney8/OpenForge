@@ -809,7 +809,7 @@ function AppChromeContent({
               </div>
             ) : uxV2 ? <Link className="ux-v2-all-profiles" href="/profiles">All Profiles<span aria-hidden="true" className="material-symbols-outlined">unfold_more</span></Link> : null}
           </div>
-          {uxV2 ? <div className="ux-v2-header-right"><GlobalSearch /><div className="top-bar-actions"><NotificationCentre /><BackLayThemeToggle /><FundManagerUxV2Launcher key={pathname} /><FundManagerIdentityMenu uxV2 /></div></div> : <div className="top-bar-actions"><NotificationCentre /><BackLayThemeToggle /><FundManagerIdentityMenu /><ThemeToggle /></div>}
+          {uxV2 ? <div className="ux-v2-header-right"><GlobalSearch /><div className="top-bar-actions"><NotificationCentre uxV2 /><BackLayThemeToggle /><FundManagerUxV2Launcher key={pathname} /><FundManagerIdentityMenu uxV2 /></div></div> : <div className="top-bar-actions"><NotificationCentre /><BackLayThemeToggle /><FundManagerIdentityMenu /><ThemeToggle /></div>}
           <Suspense fallback={null}><ShellLoadingProgress /></Suspense>
         </header> : null}
         {!isPublicAuthRoute && !uxV2 ? <Suspense fallback={null}>

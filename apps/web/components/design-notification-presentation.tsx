@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { FocusEventHandler, MouseEventHandler, ReactNode } from "react";
 import styles from "@/components/design-lab-notifications.module.css";
 
 export const designNotificationClasses = {
@@ -54,17 +54,20 @@ export function DesignNotificationSection({ children, title }: { children: React
   return <section aria-label={title}><h3>{title}</h3>{children}</section>;
 }
 
-export function DesignNotificationRow({ actions, confirmation, context, dataPdId, detail, severity, status, title }: {
+export function DesignNotificationRow({ actions, confirmation, context, dataPdId, detail, onFocusCapture, onMouseEnter, onMouseLeave, severity, status, title }: {
   actions: ReactNode;
   confirmation?: ReactNode;
   context: ReactNode;
   dataPdId: string;
   detail: ReactNode;
+  onFocusCapture?: FocusEventHandler<HTMLDivElement>;
+  onMouseEnter?: MouseEventHandler<HTMLDivElement>;
+  onMouseLeave?: MouseEventHandler<HTMLDivElement>;
   severity: "urgent" | "review";
   status: ReactNode;
   title: ReactNode;
 }) {
-  return <div className={styles.row} data-pd-id={dataPdId} data-severity={severity}>
+  return <div className={styles.row} data-pd-id={dataPdId} data-severity={severity} onFocusCapture={onFocusCapture} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}>
     <div className={styles.rowHead}><strong>{title}</strong><span>{status}</span></div>
     <small>{context}</small>
     <p>{detail}</p>

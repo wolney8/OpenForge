@@ -272,4 +272,7 @@ test("flag OFF: all six ledgers preserve native editor activation and no floatin
   await expect(page.locator('[data-pd-id="notifications.history"]')).toBeVisible();
   await expect(page.locator('[data-pd-id^="notifications.history.tab."]')).toHaveCount(0);
   await expect(page.locator(".hero-panel").getByRole("heading", { name: "Notifications" })).toBeVisible();
+  await page.locator('[data-pd-id="notifications.trigger"]').click();
+  await expect(page.locator('[data-pd-id="notifications.panel"]')).toBeVisible();
+  await expect(page.locator('[data-pd-id="notifications.v2.dropdown"]')).toHaveCount(0);
 });

@@ -219,6 +219,10 @@ for (const width of [1440, 390] as const) {
       if (await cookie.isVisible()) await cookie.click();
       await setTheme(page, theme);
       await page.locator('[data-pd-id="lab.header-trigger.notifications"]').click();
+      const labDropdownRow = page.locator('[data-pd-id="lab.notifications"] [data-pd-id^="lab.notification."]').first();
+      await expect(labDropdownRow).toBeVisible();
+      const labDropdownStyle = await labDropdownRow.evaluate(element => ({ className: element.className, radius: getComputedStyle(element).borderRadius, padding: getComputedStyle(element).padding }));
+      const labDropdownWidth = await page.locator('[data-pd-id="lab.header-menu"]').evaluate(element => element.getBoundingClientRect().width);
       await page.screenshot({ path: join(evidence, `lab-notifications-dropdown-${width}-${theme}.png`), fullPage: true });
       await page.locator('[data-pd-id="lab.notifications"]').getByRole("button", { name: "View All Notifications" }).click();
       const labPanel = page.locator('[data-pd-id="lab.notifications"]');
@@ -236,6 +240,22 @@ for (const width of [1440, 390] as const) {
       await page.goto("/notifications");
       await page.locator('[data-pd-id="notifications.history.loading-shell"]').waitFor({ state: "hidden", timeout: 45_000 });
       await setTheme(page, theme);
+      await page.locator('[data-pd-id="notifications.trigger"]').click();
+      const realDropdown = page.locator('[data-pd-id="notifications.v2.dropdown"]');
+      await expect(realDropdown).toBeVisible();
+      const realDropdownBoundary = page.locator('[data-pd-id="notifications.panel"]');
+      expect(await realDropdownBoundary.evaluate(element => element.getBoundingClientRect().width)).toBe(labDropdownWidth);
+      expect(await realDropdownBoundary.evaluate(element => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(1);
+      const realDropdownRow = realDropdown.locator('[data-pd-id^="notifications.item."]').first();
+      await expect(realDropdownRow).toBeVisible();
+      expect(await realDropdownRow.evaluate(element => ({ className: element.className, radius: getComputedStyle(element).borderRadius, padding: getComputedStyle(element).padding }))).toEqual(labDropdownStyle);
+      await expect(realDropdown.getByRole("button", { name: "Priority" })).toBeVisible();
+      await expect(realDropdown.getByRole("button", { name: "History" })).toBeVisible();
+      await expect(realDropdownRow.getByRole("link", { name: "Open Source" })).toHaveAttribute("href", /\S+/);
+      await noPageOverflow(page);
+      await page.screenshot({ path: join(evidence, `v2-notifications-dropdown-${width}-${theme}.png`), fullPage: true });
+      await realDropdown.getByRole("button", { name: "Close" }).click();
+      await expect(realDropdown).toBeHidden();
       const realPanel = page.locator('[data-pd-id="notifications.history"]');
       const realRow = realPanel.locator('[data-pd-id^="notifications.history.item."]').first();
       await expect(realRow).toBeVisible();
@@ -261,6 +281,35 @@ for (const width of [1440, 390] as const) {
     });
   }
 }
+
+test("notifications V2 dropdown retains source-backed read and clear commands", async ({ page }) => {
+  await page.goto("/notifications");
+  await page.locator('[data-pd-id="notifications.history.loading-shell"]').waitFor({ state: "hidden", timeout: 45_000 });
+  await page.locator('[data-pd-id="notifications.trigger"]').click();
+  const dropdown = page.locator('[data-pd-id="notifications.v2.dropdown"]');
+  const row = dropdown.getByRole("region", { name: "Action Required" }).locator('[data-pd-id^="notifications.item."]')
+    .filter({ has: page.getByRole("button", { name: "Mark Read" }) }).first();
+  await expect(row).toBeVisible();
+  const id = await row.getAttribute("data-pd-id");
+  expect(id).toBeTruthy();
+  const retained = dropdown.locator(`[data-pd-id="${id}"]`);
+  await row.getByRole("button", { name: "Mark Read" }).click();
+  await expect(retained.getByText("Read", { exact: true })).toBeVisible();
+  await page.reload();
+  await page.locator('[data-pd-id="notifications.trigger"]').click();
+  await expect(retained.getByText("Read", { exact: true })).toBeVisible();
+  await retained.getByRole("button", { name: "Clear", exact: true }).click();
+  await expect(retained.getByText("Clear this notification? The source task remains available.")).toBeVisible();
+  await retained.getByRole("button", { name: "Clear Notification" }).click();
+  await expect(retained).toHaveCount(0);
+  await page.reload();
+  await page.locator('[data-pd-id="notifications.trigger"]').click();
+  await expect(dropdown.locator(`[data-pd-id="${id}"]`)).toHaveCount(0);
+  await dropdown.getByRole("button", { name: "History" }).click();
+  await expect(dropdown.getByRole("button", { name: "History" })).toHaveAttribute("aria-pressed", "true");
+  await dropdown.getByRole("button", { name: "View All Notifications" }).click();
+  await expect(page).toHaveURL(/\/notifications$/);
+});
 
 test("Sportsbook floating and full editor use the integrated V2 surfaces", async ({ page }) => {
   await mkdir(evidence, { recursive: true });
