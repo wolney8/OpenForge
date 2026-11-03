@@ -3,6 +3,7 @@ import { expect, test } from "@playwright/test";
 test.use({ actionTimeout: 15000 });
 
 test("Daily Tasks scales through lifecycle views, combined filters and stable pagination", async ({ page }) => {
+  await page.route("**/api/auth/session", (route) => route.fulfill({ json: { authenticated: true, role: "fund_manager", email: "owner@example.invalid", name: "Synthetic Owner", linked_profile_ids: ["PROFILE-A", "PROFILE-B"] } }));
   const now = new Date();
   const tomorrow = new Date(now); tomorrow.setDate(tomorrow.getDate() + 1);
   const yesterday = new Date(now); yesterday.setDate(yesterday.getDate() - 1);

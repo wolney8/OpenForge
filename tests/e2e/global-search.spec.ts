@@ -62,8 +62,18 @@ test.describe("Founder global search", () => {
 
   test("fits the canonical shell in mobile and dark mode", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 720 });
+    await page.emulateMedia({ colorScheme: "light" });
     await page.goto("/profiles");
-    await page.locator('[data-pd-id="app-shell.theme-toggle"]').click();
+    await expect(page.locator(".theme-ready")).toBeVisible();
+    if (await page.locator("html").getAttribute("data-theme") === "light") {
+      if (await page.locator('[data-pd-id="app-shell.theme-toggle"]').count()) {
+        await page.locator('[data-pd-id="app-shell.theme-toggle"]').click();
+      } else {
+        await page.locator('[data-pd-id="fund-manager-identity.trigger"]').click();
+        await page.getByRole("switch", { name: "Dark mode" }).click();
+      }
+    }
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
 
     await page.getByRole("button", { name: "Open Plum Duff search" }).click();
     const search = page.locator('[data-pd-id="global-search.input"]');

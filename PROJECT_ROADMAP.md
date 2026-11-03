@@ -1,5 +1,9 @@
 # Project Roadmap — Plum Duff / OpenForge — Doc ID: PR-CODEX-001
 
+## CP-117 integrated adoption candidate — 2026-11-03
+
+Review the flagged real Today List/detail, pinned Actions, authenticated source-edit path, shell navigation and private recordings before expanding presentation migration. Next increments need typed adapters and disposable fixture tests for Sportsbook, Free Bet and Casino Add/Edit, settlement and reporting; Accounts, fees, saved views and specialist tools retain their existing authorities until their own parity checks. Keep the server flag default OFF and the old shell available. No main merge or deployment before owner review of design, functional parity and rollback evidence. [Coverage and limits](docs/audits/platform-quality-audit.md#cp-117-integrated-adoption-coverage--2026-11-03).
+
 ## CP-119F then CP-116 — 2026-11-02
 
 Verify and preserve the lab-only CP-119F review cues, Today dependency tasks, status chip semantics and full Notifications filters first. If the complete lab regression passes without a safety defect, checkpoint CP-119F, then build a separate CP-116 fixture-backed Free Bet/Casino slice. Normal ledger, task, notification and financial authorities stay unchanged; no migration wave begins. [Requirements](docs/agent-contracts/plum-duff-ui-change-register.md#cp-119f-review-cells-task-linkage-status-colours-and-inbox-filters--2026-11-02).

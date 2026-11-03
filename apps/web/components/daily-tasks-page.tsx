@@ -54,7 +54,7 @@ function priorityLabel(priority: "high" | "medium" | "low"): string {
   return priority[0].toUpperCase() + priority.slice(1);
 }
 
-export function DailyTasksPage() {
+export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
   const router = useRouter();
   const refreshVersionRef = useRef(0);
   const stateRequestVersionRef = useRef(0);
@@ -78,6 +78,8 @@ export function DailyTasksPage() {
   const [isPersistingState, setIsPersistingState] = useState(false);
   const [openingId, setOpeningId] = useState("");
   const [actionError, setActionError] = useState("");
+  const [inspectedTaskId, setInspectedTaskId] = useState("");
+  const taskRowRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
 
   const applyViewState = useCallback((next: NotificationViewState) => {
     viewStateRef.current = next;
@@ -180,12 +182,25 @@ export function DailyTasksPage() {
     (result, view) => ({ ...result, [view.id]: taskViews.filter((task) => task.dueState === view.id).length }),
     { today: 0, upcoming: 0, overdue: 0, completed: 0 }
   ), [taskViews]);
-  const filtered = useMemo(() => filterAndSortDailyTasks(taskViews, {
-    dueState, profileId, bookmaker, notificationType, source, query, sort,
-  }), [bookmaker, dueState, notificationType, profileId, query, sort, source, taskViews]);
+  const filtered = useMemo(() => {
+    const options = { profileId, bookmaker, notificationType, source, query, sort };
+    const current = filterAndSortDailyTasks(taskViews, { ...options, dueState });
+    // The flagged Today view includes genuinely overdue work before today's work.
+    // The legacy route and the source-derived date semantics remain unchanged.
+    return uxV2 && dueState === "today"
+      ? [...filterAndSortDailyTasks(taskViews, { ...options, dueState: "overdue" }), ...current]
+      : current;
+  }, [bookmaker, dueState, notificationType, profileId, query, sort, source, taskViews, uxV2]);
   const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, pageCount);
   const paginated = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const inspectedTask = uxV2 ? paginated.find((task) => task.notification.notification_id === inspectedTaskId) : undefined;
+
+  const closeInspector = () => {
+    const returnId = inspectedTaskId;
+    setInspectedTaskId("");
+    window.requestAnimationFrame(() => taskRowRefs.current.get(returnId)?.focus());
+  };
 
   const changeControls = (change: () => void) => {
     change();
@@ -223,8 +238,11 @@ export function DailyTasksPage() {
   };
 
   return (
-    <main className="page-shell stack daily-tasks-page" data-pd-id="tasks.page">
-      <section className="hero-panel split-hero" data-pd-id="tasks.page-header">
+    <main className={`page-shell stack daily-tasks-page${uxV2 ? " ux-v2-today" : ""}`} data-pd-id="tasks.page">
+      {uxV2 ? <section className="ux-v2-today-heading" data-pd-id="tasks.page-header">
+        <div><h1>Today</h1><span aria-live="polite">{isLoading || loadFailed ? "—" : counts.today + counts.overdue} Needs Attention</span></div>
+        <Link className="text-link" href="/notifications">Notifications</Link>
+      </section> : <section className="hero-panel split-hero" data-pd-id="tasks.page-header">
         <div className="stack">
           <span className="eyebrow">Fund Manager</span>
           <h1>Daily Tasks</h1>
@@ -235,7 +253,7 @@ export function DailyTasksPage() {
           <span className="eyebrow">Actionable Now</span>
           <strong aria-hidden={isLoading}>{isLoading || loadFailed ? "—" : counts.today + counts.overdue}</strong>
         </aside>
-      </section>
+      </section>}
 
       <section aria-label="Daily Tasks" className="content-panel stack" data-pd-id="tasks.workspace">
         <div aria-label="Task lifecycle views" className="analytics-tab-list daily-task-tabs" data-pd-id="tasks.tabs" role="tablist">
@@ -251,7 +269,7 @@ export function DailyTasksPage() {
               role="tab"
               type="button"
             >
-              {view.label}<span>{counts[view.id]}</span>
+              {uxV2 && view.id === "today" ? "Needs Action" : view.label}<span>{uxV2 && view.id === "today" ? counts.today + counts.overdue : counts[view.id]}</span>
             </button>
           ))}
         </div>
@@ -284,9 +302,34 @@ export function DailyTasksPage() {
           <div className="notification-action-error" role="alert">Daily Tasks are temporarily unavailable. Use Refresh Tasks to retry.</div>
         ) : (
           <section aria-labelledby={`daily-task-tab-${dueState}`} id="daily-task-panel" role="tabpanel">
-            <p aria-live="polite" className="notification-history-count" role="status">{filtered.length} {dueViews.find((view) => view.id === dueState)?.label.toLocaleLowerCase()} task{filtered.length === 1 ? "" : "s"}</p>
+            <p aria-live="polite" className="notification-history-count" role="status">{filtered.length} {uxV2 && dueState === "today" ? "needs action" : dueViews.find((view) => view.id === dueState)?.label.toLocaleLowerCase()} task{filtered.length === 1 ? "" : "s"}</p>
             <LedgerPagination ariaLabel="Daily Tasks" currentPage={currentPage} onPageChange={setPage} onPageSizeChange={(next) => { setPageSize(next); setPage(1); }} pageCount={pageCount} pageSize={pageSize} position="top" totalRows={filtered.length} />
-            <div className="table-scroll daily-task-table-scroll" data-pd-id="tasks.table-scroll">
+            {uxV2 ? <div className={`ux-v2-task-layout${inspectedTask ? " has-inspector" : ""}`} data-pd-id="tasks.v2.layout">
+              <div aria-label="Tasks" className="ux-v2-task-list" role="list">
+                {paginated.map((task) => {
+                  const item = task.notification;
+                  const active = inspectedTaskId === item.notification_id;
+                  return <div data-pd-id={`tasks.item.${item.notification_id}`} key={item.notification_id} role="listitem">
+                    <button aria-controls="tasks-v2-inspector" aria-expanded={active} className={`ux-v2-task-row${active ? " is-selected" : ""}${task.priority === "high" ? " is-urgent" : ""}`} data-pd-id={`tasks.v2.row.${item.notification_id}`} onClick={() => setInspectedTaskId(item.notification_id)} ref={(node) => { if (node) taskRowRefs.current.set(item.notification_id, node); else taskRowRefs.current.delete(item.notification_id); }} type="button">
+                      <span aria-hidden="true" className="material-symbols-outlined ux-v2-task-icon">{task.priority === "high" ? "priority_high" : "task_alt"}</span>
+                      <span className="ux-v2-task-copy"><strong>{item.title}</strong><small>{item.bookmaker_label || item.ledger_label} · {item.profile_name}</small></span>
+                      <span className={`table-chip daily-task-due daily-task-due-${task.dueState}`}>{task.dueLabel}</span>
+                      <span aria-hidden="true" className="material-symbols-outlined ux-v2-task-open">chevron_right</span>
+                    </button>
+                  </div>;
+                })}
+                {!paginated.length ? <p className="ux-v2-task-empty">No tasks match these controls.</p> : null}
+              </div>
+              {inspectedTask ? <aside aria-label="Task Details" className="ux-v2-task-inspector" data-pd-id="tasks.v2.inspector" id="tasks-v2-inspector">
+                <div className="ux-v2-task-inspector-heading"><h2>Task Details</h2><button aria-label="Close Task Details" className="icon-button" onClick={closeInspector} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button></div>
+                <strong>{inspectedTask.notification.title}</strong>
+                <div className="ux-v2-task-inspector-meta"><span>{inspectedTask.notification.profile_name}</span><span>{inspectedTask.notification.bookmaker_label || inspectedTask.notification.ledger_label}</span><span className={`table-chip daily-task-due daily-task-due-${inspectedTask.dueState}`}>{inspectedTask.dueLabel}</span></div>
+                <p>{inspectedTask.evidence}</p>
+                <dl><div><dt>Source</dt><dd>{inspectedTask.notification.ledger_label} · {inspectedTask.notification.record_id}</dd></div><div><dt>Type</dt><dd>{taskTypeLabel(inspectedTask.notification.notification_type)}</dd></div></dl>
+                <div className="ux-v2-task-inspector-actions"><Link aria-busy={openingId === inspectedTask.notification.notification_id} className="button-link" href={inspectedTask.notification.href} onClick={(event) => { event.preventDefault(); endRouteTransition(); void openTask(inspectedTask.notification); }} prefetch={false}>{openingId === inspectedTask.notification.notification_id ? "Checking Access…" : "Open Source"}</Link><button className="button-link" disabled={isPersistingState} onClick={() => void persistState(inspectedTask.dueState === "completed" ? restoreNotificationIds(viewStateRef.current, [inspectedTask.notification.notification_id]) : dismissNotificationIds(viewStateRef.current, [inspectedTask.notification.notification_id]), "Unable to update this task.")} type="button">{inspectedTask.dueState === "completed" ? "Restore To Tasks" : "Clear From Tasks"}</button></div>
+                <small>Clearing changes this work list only. The source record and notification history remain.</small>
+              </aside> : null}
+            </div> : <div className="table-scroll daily-task-table-scroll" data-pd-id="tasks.table-scroll">
               <table className="data-table daily-task-table">
                 <thead><tr><th>Priority</th><th>Task</th><th>Profile</th><th>Bookmaker</th><th>Due</th><th>Type</th><th>Source</th><th>Action</th></tr></thead>
                 <tbody>
@@ -309,7 +352,7 @@ export function DailyTasksPage() {
                   {!paginated.length ? <tr><td className="dialog-table-empty-cell" colSpan={8}>No {dueViews.find((view) => view.id === dueState)?.label.toLocaleLowerCase()} tasks match these controls.</td></tr> : null}
                 </tbody>
               </table>
-            </div>
+            </div>}
             <LedgerPagination ariaLabel="Daily Tasks" currentPage={currentPage} onPageChange={setPage} onPageSizeChange={(next) => { setPageSize(next); setPage(1); }} pageCount={pageCount} pageSize={pageSize} position="bottom" totalRows={filtered.length} />
           </section>
         )}

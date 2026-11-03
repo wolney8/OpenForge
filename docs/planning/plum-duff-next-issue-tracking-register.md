@@ -1,5 +1,9 @@
 # Plum Duff Next Issue Tracking Register
 
+## CP-117 integrated adoption — 2026-11-03
+
+`PD-PR-117A-01–06` in the [UI change register](../agent-contracts/plum-duff-ui-change-register.md#cp-117-design-lab-adoption--2026-11-03) retain the owner's discovery, reversible integration, full-module parity, Playwright recording and owner-promotion gates. The existing Wave 1 shell is the real baseline; lab-only task state, notification triage and financial editing do not become production authorities by copying their UI. Existing [Design Lab issue #114](https://github.com/wolney8/OpenForge/issues/114) is the area link; live adoption subitem sync is unverified.
+
 ## CP-119F review cells and inbox navigation — 2026-11-02
 
 `PD-PR-119F-01–05` preserve the owner's compact review-cell, source-linked Today task, approved status-chip, full Notifications filter and verification requirements in the [UI change register](../agent-contracts/plum-duff-ui-change-register.md#cp-119f-review-cells-task-linkage-status-colours-and-inbox-filters--2026-11-02). Lab-only under existing [issue #114](https://github.com/wolney8/OpenForge/issues/114); live subitem sync unverified. CP-116 requires a separate tested source checkpoint and fixture-backed financial scope.

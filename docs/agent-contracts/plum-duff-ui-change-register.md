@@ -1,5 +1,21 @@
 # Plum Duff UI Change Register
 
+## CP-117 Design Lab adoption — 2026-11-03
+
+Owner authorises a reversible, non-main integration candidate and recordings, without financial/schema/API changes or promotion. Current app shell under `OPENFORGE_FUND_MANAGER_UX_V2`, legacy `/tasks`, `NotificationCentre`, existing workflow shells and the synthetic Design Lab are the comparison sources. `PROPOSED — FLAGGED REAL UI`: the first Today slice may replace the wide task table with compact rows and a detail pane while reusing the same authorised notification collection, filters, read/clear persistence and source recheck. The old `/tasks` presentation remains available with the flag OFF. Do not port lab-only tracking, Board work states, recurrence or priority-bell rules as new production authorities.
+
+| ID | Owner request / integration boundary | Status |
+| --- | --- | --- |
+| PD-PR-117A-01 | Verify CP-116 and current source custody, normal-owner isolation and flag rollback | CODE-VERIFIED — source lineage and flag-off browser path; final database fingerprint receipt at handoff |
+| PD-PR-117A-02 | Map every real route/module to lab evidence, authority, tests, parity and adoption decision | DOCUMENTED — [adoption coverage matrix](../audits/platform-quality-audit.md#cp-117-integrated-adoption-coverage--2026-11-03); owner decisions remain open |
+| PD-PR-117A-03 | Integrate approved presentation through existing shell/primitives without synthetic money or duplicate route engines | IN PROGRESS — flagged real Today List/detail uses existing notification authority; other page designs remain unmigrated |
+| PD-PR-117A-04 | Keep specialist ledgers, calculators, Oddsmatcher, auth, import/recovery and subscriber authorities intact while assessing adoption | CODE-VERIFIED for route/source retention; full functional parity UNVERIFIED |
+| PD-PR-117A-05 | Verify real-route parity with disposable data; produce Playwright videos, screenshots and evidence index | IN PROGRESS — source edit, navigation and pinned Actions browser paths pass; specialist lifecycle recordings remain |
+| PD-PR-117A-06 | Preserve a non-main candidate; prove flag OFF rollback and stop before main/deployment | CODE-VERIFIED rollback; remote checkpoint pending |
+| PD-PR-117A-07 | PROPOSED — FLAGGED REAL UI: reuse the CP-116 complete sticky Actions column across the six existing ledger tables; preserve original column order, widths, row semantics and flag-off presentation | NEEDS VERIFICATION — real Sportsbook and Accounts scrolled geometry/browser pass; other ledgers share classes but lack populated-route captures |
+
+Production decisions still open: task annotation/tracking persistence, CP-049 bell prioritisation, spreadsheet save/correction authority and narrow ledger column treatment. Existing owner requests remain below; this batch does not close them.
+
 ## CP-118C Today tracked tasks and Board — 2026-11-02
 
 Owner likes the CP-118B List/Board direction; visual acceptance remains pending. All changes below are `PROPOSED — LAB ONLY`. Existing Today rows/details, `DesignLabSelect`, Material status/focus tokens, notification authority and synthetic task IDs are the nearest equivalents. [Design Lab issue #114](https://github.com/wolney8/OpenForge/issues/114) is the existing scope link; live issue sync is unverified. The Board-only non-modal overlay drawer and indigo tracked tray are presentation exceptions; neither changes source resolution, Profile ownership or real task persistence.

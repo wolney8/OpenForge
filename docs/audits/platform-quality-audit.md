@@ -1,5 +1,45 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
+## CP-117 integrated adoption coverage — 2026-11-03
+
+This matrix describes the **real application**, not synthetic lab completeness. `ADOPT` means an approved lab presentation replaces a real one; `ADAPT` means the existing route keeps its authority and adopts only shared UI; `RETAIN` leaves a working specialist interaction in place; `DEFER` needs a further decision. Current `fund_manager_ux_v2` is server configured and default OFF. The CP-116 branch and earlier Wave 1 shell are the source baseline. Prior CP-115D mapping below remains historical evidence.
+
+| Existing module / route | Lab equivalent | Existing authority | Approach | Workflow dependencies | Current tests | Parity requirement | Adoption status | Owner decision |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `/login`, session, `/account` | Simulated auth/menu | OAuth, session bootstrap, role/API guards | RETAIN + V2 shell | All protected routes | Auth/security browser/API | No lab auth state or weaker role check | Wave 1 shell present; auth redesign not started | Auth presentation review later |
+| `/`, `/performance`, Position | Synthetic Position | Fund Manager summaries, fee/report APIs | ADAPT | Profiles, Accounts, Reports | Dashboard/report fixtures + browser | Known/unknown cash, realised/current, fees distinct | Real V2 shell present; page adoption not started | Financial layout and fee evidence |
+| `/tasks` Today | Lab compact List/Board | `DailyTasksPage`, notification feed + durable clear | ADOPT compact List only | Source ledger, notifications | CP049 workflow; new flagged browser path | Source recheck, due semantics, clear ≠ resolve | Flagged list/detail candidate tested; Board/tracking not ported | Persistent work annotations require authority |
+| `/notifications` bell/history | Lab priority inbox | CP049 notification sources, preferences, read/clear | RETAIN | Today and source records | Notification browser/API | Approved source set, IDs, audience, history | Wave 1 overlay real; lab triage not adopted | Versioned CP049 policy amendment |
+| `/profiles`, `/profiles/new`, `/:id/manage` | Lab Profile selector/onboarding | Profile API, fresh/import, fee/commission rules | ADAPT | All Profile-owned modules | Onboarding/profile browser/API | £0 vs unknown, role and Profile isolation | Selector in V2; onboarding layout pending | Full-page layout and corrections |
+| Profile Accounts, `/settings#catalogue` | Lab Accounts/grid/balance | Account API, observed balance and eligibility | ADAPT | Betting, cash, search | Account/API/fixture/browser | Unknown vs zero, observed vs expected, audit | Real shell access; grid migration pending | Balance shortcut and saved views |
+| Profile Sportsbook | Lab grid + Quick Capture/workbench | Sportsbook API, calculation/placement/audit | DEFER financial UI replacement | Free Bet bridge, Reports, Today | Engine fixtures + lifecycle browser/API | Every field/column; partial lay; correction | Real route reachable; lab UI not wired | Field command + execution evidence mapping |
+| Profile Free Bets | Lab connected fixture flow | Free Bet API, SNR/SR, award bridge | DEFER financial UI replacement | Qualifying bet, Reports | Award/current-value fixtures + browser/API | Split/idempotent award, placement, settlement | Real route retained; lab UI not wired | Source/award/audit adapter |
+| Profile Casino Offers | Lab conditional fixture flow | Casino API, offer types, wager/reward engine | DEFER financial UI replacement | Accounts, Reports, Today | Casino fixtures + browser/API | Own cash/bonus/converted reward/final P&L | Real route retained; lab UI not wired | Conditional stage mapping |
+| Profile Extra Place | Lab grid/preview | Signed-off racing contract + normal route | RETAIN pending parity audit | Reports, Account, correction | Extra Place fixtures/browser | Approved columns, no duplicate Status | Real route present; conflict remains | Resolve normal Status discrepancy |
+| Profile Cash Adjustments | Lab grid/preview | Cash adjustment API/audit | RETAIN pending parity audit | Accounts, Reports | Cash/report browser/API | Cash movement ≠ betting profit | Real route present; lab UI not wired | Correction presentation |
+| `/reports`, Profile reports, profit tracker | Lab charts/drilldown | Report APIs, range/current-final contracts | ADAPT | All ledgers, fees, source Back | P&L fixtures + browser/API | Partial-known/unknown and exact period values | V2 shell present; charts not adopted | Chart data compatibility |
+| `/fund-manager/calculators`, `/calculator` | Launcher preview only | Existing engines and standalone restrictions | RETAIN + V2 navigation | Odds, ledgers, opportunities | Calculator fixtures + popout browser | All modes, reference-only boundaries | Real launcher route present | Specialist visual exceptions |
+| `/oddsmatcher` | Launcher preview only | Provider provenance, filters, quota/replay | RETAIN + V2 navigation | Calculators, bet entry | Oddsmatcher browser/API | No fabricated odds or provider action | Real launcher route present | Cross-module handoff scope |
+| `/profiles/requests`, `/invite`, `/subscriber` | Lab subscriber preview | CP056 invitation, grants, role boundary | RETAIN + V2 navigation | Profiles, auth | Subscriber browser/API | No public signup or cross-Profile access | Real management route present | Subscriber layout separately |
+| `/settings`, admin, `/profiles/restore`, imports/exports/recovery | Launcher previews | Settings, backup, import/recovery authorities | RETAIN + V2 navigation | Profiles, auth, data integrity | Recovery/import fixtures + browser/API | No silent import, restore or permission change | Real routes retained | Separate recovery acceptance |
+
+**Integration gate:** The shared shell is already real under the flag; the flagged Today list is the first further real presentation slice. The lab spreadsheet command, Board, tracking, recurring offers, specialist financial steppers and bell prioritisation remain synthetic proposals. The absence of a lab equivalent does not remove a real route. No production finance or task authority was changed.
+
+### CP-117 review evidence index
+
+Private artifacts belong under `data/private/evidence/cp117-adoption/` and are excluded from source custody. A synthetic API or intercepted fixture is stated explicitly; neither proves owner-data behaviour. Playwright failure traces stay in ignored `test-results/`.
+
+| Workflow / route | Browser test | Video and capture | Source SHA / outcome | Limit |
+| --- | --- | --- | --- | --- |
+| Flagged Today compact queue/detail `/tasks` | `cp117-integrated-today.spec.ts` | `today-v2.webm`, `today-v2-desktop.png`, `today-v2-mobile.png` | Candidate commit at checkpoint; browser and actual Chromium 200% zoom geometry pass | Intercepted synthetic notification feed for main visual path; headless zoom capture unsuitable for visual sign-off |
+| Today → real Sportsbook source → descriptive Save | `cp117-integrated-source.spec.ts` | `today-real-api-source.webm`, `today-real-api-source.png` | Authenticated disposable API/SQLite; browser and API assertion pass | One supported descriptive edit; no financial lifecycle parity claim |
+| Legacy Today flag OFF `/tasks` | `cp117-flag-rollback.spec.ts`, `daily-tasks-workflow.spec.ts` | `today-legacy.webm`, `today-legacy-desktop.png` | Flag-off browser 2/2 | Existing table and shell preserved |
+| V2 shell: Sportsbook → Reports → Calculators → Oddsmatcher → Position → Today | `cp117-integrated-navigation.spec.ts` | `connected-navigation.webm`, `connected-navigation.png` | Authenticated disposable API; browser pass | Oddsmatcher replay/no provider request; full tool interaction unverified |
+| Flagged pinned Actions on real Sportsbook and Accounts ledgers | `cp117-integrated-sticky-actions.spec.ts` | `sportsbook-actions-scrolled.webm`, `sportsbook-actions-scrolled.png`, `accounts-actions-scrolled.png` | Authenticated disposable API; 2/2 geometry/browser pass | Shared classes cover the other four ledgers; populated-route visual checks pending |
+| Sportsbook, Free Bet, Casino, Accounts and Reports | Existing route/fixture suites | Integrated recordings pending | Real modules retained | Lab workflows are not production adapters |
+
+**Promotion remains blocked:** a passing lab suite or a shell screenshot cannot demonstrate financial Add/Edit parity. Each financial UI replacement needs its own typed adapter, isolated write fixtures, original-field comparison, browser recording and owner review. The old-shell flag remains the immediate UI rollback; it cannot reverse a financial write.
+
 ## CP-119F review and notification coverage — 2026-11-02
 
 | Requirement | Lab evidence | Remaining authority |

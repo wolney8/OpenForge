@@ -2275,6 +2275,207 @@ html[data-theme="dark"] .notification-count-badge {
   min-height: 2.75rem;
 }
 
+/* Flagged real Today presentation. The legacy task table remains the OFF path. */
+.ux-v2-today-heading,
+.ux-v2-today-heading > div {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.ux-v2-today-heading {
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.ux-v2-today-heading h1 {
+  margin: 0;
+}
+
+.ux-v2-today-heading span {
+  color: var(--muted);
+  font-weight: 650;
+}
+
+.ux-v2-task-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+  min-width: 0;
+}
+
+.ux-v2-task-layout.has-inspector {
+  grid-template-columns: minmax(0, 1fr) minmax(18rem, 22rem);
+}
+
+.ux-v2-task-list,
+.ux-v2-task-inspector {
+  min-width: 0;
+  border: 1px solid var(--outline);
+  border-radius: 1rem;
+  background: var(--surface-container);
+  overflow: hidden;
+}
+
+.ux-v2-task-row {
+  display: flex;
+  width: 100%;
+  min-height: 4rem;
+  align-items: center;
+  gap: 0.75rem;
+  border: 0;
+  border-bottom: 1px solid var(--outline);
+  padding: 0.65rem 0.9rem;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.ux-v2-task-row:hover,
+.ux-v2-task-row.is-selected {
+  background: var(--surface-container-high);
+}
+
+.ux-v2-task-row.is-urgent {
+  background: color-mix(in srgb, var(--danger) 8%, var(--surface-container));
+}
+
+.ux-v2-task-row.is-urgent:hover,
+.ux-v2-task-row.is-urgent.is-selected {
+  background: color-mix(in srgb, var(--danger) 13%, var(--surface-container-high));
+}
+
+.ux-v2-task-row:focus-visible,
+.ux-v2-task-inspector button:focus-visible,
+.ux-v2-task-inspector a:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: -3px;
+}
+
+.ux-v2-task-icon {
+  flex: 0 0 auto;
+  color: var(--primary-strong);
+}
+
+.ux-v2-task-row.is-urgent .ux-v2-task-icon {
+  color: var(--danger);
+}
+
+.ux-v2-task-copy {
+  display: grid;
+  flex: 1 1 auto;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.ux-v2-task-copy strong,
+.ux-v2-task-copy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ux-v2-task-copy small,
+.ux-v2-task-open {
+  color: var(--muted);
+}
+
+.ux-v2-task-open {
+  flex: 0 0 auto;
+}
+
+.ux-v2-task-empty {
+  margin: 0;
+  padding: 1.25rem;
+  color: var(--muted);
+}
+
+.ux-v2-task-inspector {
+  display: grid;
+  align-content: start;
+  gap: 0.9rem;
+  padding: 1rem;
+  overflow: auto;
+  max-height: min(42rem, 75vh);
+}
+
+.ux-v2-task-inspector-heading,
+.ux-v2-task-inspector-actions,
+.ux-v2-task-inspector-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.ux-v2-task-inspector-heading {
+  justify-content: space-between;
+}
+
+.ux-v2-task-inspector-heading h2 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.ux-v2-task-inspector p,
+.ux-v2-task-inspector dl,
+.ux-v2-task-inspector small {
+  margin: 0;
+}
+
+.ux-v2-task-inspector dl {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.ux-v2-task-inspector dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.ux-v2-task-inspector dt,
+.ux-v2-task-inspector small {
+  color: var(--muted);
+}
+
+@media (max-width: 960px) {
+  .ux-v2-task-layout.has-inspector {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 560px) {
+  .ux-v2-task-row {
+    flex-wrap: wrap;
+  }
+
+  .ux-v2-task-row .daily-task-due {
+    margin-left: 2.5rem;
+  }
+}
+
+/* Flagged ledger presentation: pin the complete Actions column, using the
+   existing table/colgroup widths and preserving each row's semantic surface. */
+.ux-v2-main .ledger-table-scroll-wrap .data-table:is(.sportsbook-data-table, .accounts-data-table, .extra-place-data-table) > thead > tr > th:last-child,
+.ux-v2-main .ledger-table-scroll-wrap .data-table:is(.sportsbook-data-table, .accounts-data-table, .extra-place-data-table) > tbody > tr > td:last-child:not([colspan]) {
+  position: sticky;
+  right: 0;
+  box-shadow: -1px 0 0 var(--outline-strong), -8px 0 12px -12px color-mix(in srgb, var(--text) 22%, transparent);
+}
+
+.ux-v2-main .ledger-table-scroll-wrap .data-table:is(.sportsbook-data-table, .accounts-data-table, .extra-place-data-table) > thead > tr > th:last-child {
+  z-index: 4;
+  background: var(--surface-container);
+}
+
+.ux-v2-main .ledger-table-scroll-wrap .data-table:is(.sportsbook-data-table, .accounts-data-table, .extra-place-data-table) > tbody > tr > td:last-child:not([colspan]) {
+  z-index: 2;
+  background: inherit;
+}
+
 @media (max-width: 860px) {
   .daily-task-filter-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
