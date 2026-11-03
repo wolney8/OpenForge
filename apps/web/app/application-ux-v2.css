@@ -157,47 +157,20 @@ html[data-ux-shell="v2"] .ux-v2-main .is-progress-replaying::after { display: no
 .ux-v2-main .v2-position-analytics > .workflow-panel-header { display: none; }
 .ux-v2-main .v2-position-analytics > .fund-manager-control-bar { padding: .8rem 1rem; background: var(--surface); border: 1px solid var(--outline); border-radius: .85rem; }
 .ux-v2-main .v2-position-analytics.has-position-overview .analytics-tab-list { order: 3; margin-top: .5rem; }
-.ux-v2-main .v2-position-overview { display: grid; gap: 1rem; min-width: 0; }
-.ux-v2-main .v2-position-metrics { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); background: var(--surface); border: 1px solid var(--outline); border-radius: .85rem; overflow: hidden; }
-.ux-v2-main .v2-position-metrics article { min-width: 0; padding: 1.2rem 1.35rem; }
-.ux-v2-main .v2-position-metrics article + article { border-left: 1px solid var(--outline); }
-.ux-v2-main .v2-position-metrics h3 { margin: 0 0 .35rem; font-size: .9rem; font-weight: 500; color: var(--muted); }
-.ux-v2-main .v2-position-metrics strong { display: block; font-size: clamp(1.45rem,2.7vw,2.15rem); font-weight: 700; line-height: 1.2; letter-spacing: -.03em; }
-.ux-v2-main .v2-position-metrics p { margin: .35rem 0 0; color: var(--muted); font-size: .86rem; }
-.ux-v2-main .v2-position-work-grid { display: grid; grid-template-columns: minmax(0,1.7fr) minmax(0,1fr); gap: 1rem; }
-.ux-v2-main .v2-position-surface { min-width: 0; padding: 1.25rem 1.35rem; background: var(--surface); border: 1px solid var(--outline); border-radius: .85rem; }
-.ux-v2-main .v2-position-surface h3 { margin: 0; font-size: 1.24rem; letter-spacing: -.02em; }
-.ux-v2-main .v2-position-section-head { display: flex; justify-content: space-between; align-items: baseline; gap: .8rem; margin-bottom: 1rem; }
-.ux-v2-main .v2-position-section-head > span { color: var(--muted); font-size: .85rem; }
-.ux-v2-main .v2-position-action { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .8rem 0; border-bottom: 1px solid var(--outline); }
-.ux-v2-main .v2-position-action:last-child { border-bottom: 0; }
-.ux-v2-main .v2-position-action p, .ux-v2-main .v2-position-empty { margin: .2rem 0 0; color: var(--muted); }
-.ux-v2-main .v2-position-action > a { flex: none; padding: .55rem .8rem; border: 1px solid var(--outline-strong); border-radius: .55rem; text-decoration: none; }
-.ux-v2-main .v2-position-shortcuts { display: grid; }
-.ux-v2-main .v2-position-shortcuts a { display: flex; align-items: center; justify-content: space-between; gap: 1rem; min-height: 3.15rem; border-bottom: 1px solid var(--outline); color: var(--text); text-decoration: none; }
-.ux-v2-main .v2-position-shortcuts a:last-child { border-bottom: 0; }
-.ux-v2-main .v2-position-shortcuts a:hover, .ux-v2-main .v2-position-shortcuts a:focus-visible { color: var(--primary); }
+.ux-v2-main .v2-position-overview { min-width: 0; }
+.ux-v2-main [data-pd-id="position.profile-table"] { margin-top: 1rem; }
+.ux-v2-main [data-pd-id="position.profile-table"] .field-hint { margin: .85rem 0 0; }
 .ux-v2-main .v2-position-table { max-width: 100%; overflow-x: auto; }
 .ux-v2-main .v2-position-table table { width: 100%; min-width: 980px; border-collapse: collapse; }
 .ux-v2-main .v2-position-table th, .ux-v2-main .v2-position-table td { padding: .8rem .65rem; border-bottom: 1px solid var(--outline); text-align: left; vertical-align: top; }
 .ux-v2-main .v2-position-table thead { background: var(--surface-container); }
 .ux-v2-main .v2-position-table thead th { font-size: .82rem; }
 .ux-v2-main .v2-position-table tbody th small { display: block; color: var(--muted); font-weight: 400; }
-.ux-v2-main .v2-position-surface > .field-hint { margin: .85rem 0 0; }
 .ux-v2-main .v2-position-analytics [data-pd-id="performance.selected-range"] { display: none; }
 .ux-v2-main .v2-position-detail { min-width: 0; }
 .ux-v2-main .v2-position-detail > summary { cursor: pointer; padding: .9rem 1.15rem; background: var(--surface); border: 1px solid var(--outline); border-radius: .85rem; font-weight: 650; }
 .ux-v2-main .v2-position-detail[open] > summary { margin-bottom: 1rem; }
 .ux-v2-main .v2-position-detail > * + * { margin-top: 1rem; }
-@media (max-width: 900px) {
-  .ux-v2-main .v2-position-work-grid { grid-template-columns: 1fr; }
-}
-@media (max-width: 680px) {
-  .ux-v2-main .v2-position-metrics { grid-template-columns: 1fr; }
-  .ux-v2-main .v2-position-metrics article + article { border-left: 0; border-top: 1px solid var(--outline); }
-  .ux-v2-main .v2-position-section-head { align-items: start; flex-wrap: wrap; }
-  .ux-v2-main .v2-position-action { align-items: start; flex-direction: column; }
-}
 
 /* The report record inspector is in document flow. The shared popover class
    remains fixed for chart point overlays elsewhere. */

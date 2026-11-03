@@ -8,6 +8,7 @@ import { CurrentAccountCash } from "@/components/current-account-cash";
 
 import Link from "next/link";
 import { ReportExplorer } from "@/components/report-explorer";
+import { DesignPositionMetrics, DesignPositionWorkGrid, DesignPositionSurface, DesignPositionSectionHead, DesignPositionTask, DesignPositionShortcut, designPositionActionClasses } from "@/components/design-position-presentation";
 import { PeriodPnlReport } from "@/components/period-pnl-report";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { usePersistedState } from "@/lib/ledger-ui";
@@ -1412,46 +1413,34 @@ export function CrossProfileAnalytics({
 
       {visualV2 && (activeTab === "performance" || activeTab === "reports") ? (
         <section className="v2-position-overview" aria-label={activeTab === "reports" ? "Reports overview" : "Position overview"} data-pd-id={activeTab === "reports" ? "reports.overview" : "position.overview"}>
-          <div className="v2-position-metrics" aria-label="Selected position metrics">
-            <article>
-              <h3>Known cash</h3>
-              <strong>{selectedReadState === "ready" && combined.incompleteCashAccountCount > 0 ? <FinancialValue value={combined.knownCashSubtotal} animate={false} /> : <FinancialReadValue state={selectedReadState} subject="Account cash" value={combined.totals.cashSnapshot} animate={false} />}</strong>
-              <p>{combined.incompleteCashAccountCount > 0 ? `Incomplete · ${combined.incompleteCashAccountCount} Account ${combined.incompleteCashAccountCount === 1 ? "balance" : "balances"} missing` : "Current Account balances"}</p>
-            </article>
-            <article>
-              <h3>Selected range P&amp;L</h3>
-              <strong><FinancialAggregateReadValue aggregate={combined.selectedRangeFinancials.grossBettingPnl} label="selected range profit and loss" state={selectedReadState} subject="profit and loss" /></strong>
-              <p>{preset} · governed reporting values</p>
-            </article>
-            <article>
-              <h3>Current liability</h3>
-              <strong><FinancialReadValue state={selectedReadState} subject="current liability" value={combined.totals.currentLiability} animate={false} /></strong>
-              <p>Open sportsbook, Free Bet and Extra Place exposure</p>
-            </article>
-          </div>
-          {activeTab === "performance" ? <><div className="v2-position-work-grid">
-            <section className="v2-position-surface" aria-labelledby="position-next-actions">
-              <div className="v2-position-section-head"><h3 id="position-next-actions">Next actions</h3><Link href="/tasks">All tasks <span aria-hidden="true">→</span></Link></div>
-              {combined.profileRows.some((row) => row.overdueBets > 0) ? <div className="v2-position-action"><div><strong>Review overdue Sportsbook positions</strong><p>Source rows remain in the owning Profile.</p></div><Link href={buildOperationalLedgerHref(combined.profileRows.find((row) => row.overdueBets > 0)!.profileId, "sportsbook", "all")}>Open Sportsbook</Link></div> : null}
-              {combined.incompleteCashAccountCount > 0 ? <div className="v2-position-action"><div><strong>Confirm current balances</strong><p>{combined.incompleteCashAccountCount} Account {combined.incompleteCashAccountCount === 1 ? "balance is" : "balances are"} missing.</p></div><Link href={combined.cashIssues?.find((issue) => issue.profileId)?.profileId ? `/profiles/${combined.cashIssues.find((issue) => issue.profileId)!.profileId}/tracker/accounts?view=issues&issue=needs-attention&source=position` : "/profiles"}>Review Accounts</Link></div> : null}
-              {!combined.profileRows.some((row) => row.overdueBets > 0) && combined.incompleteCashAccountCount === 0 ? <p className="v2-position-empty">No immediate source action is identified for this selection.</p> : null}
-            </section>
-            <section className="v2-position-surface" aria-labelledby="position-continue-work">
-              <h3 id="position-continue-work">Continue work</h3>
-              <nav aria-label="Position shortcuts" className="v2-position-shortcuts">
-                <Link href="/profiles">Manage Profiles <span aria-hidden="true">→</span></Link>
-                <Link href="/reports">Review reports <span aria-hidden="true">→</span></Link>
-                <Link href="/tasks">Open Today <span aria-hidden="true">→</span></Link>
+          <DesignPositionMetrics dataPdId={activeTab === "reports" ? "reports.metrics" : "position.metrics"} label="Selected position metrics" items={[
+            { key: "cash", label: "Known cash", value: selectedReadState === "ready" && combined.incompleteCashAccountCount > 0 ? <FinancialValue value={combined.knownCashSubtotal} animate={false} /> : <FinancialReadValue state={selectedReadState} subject="Account cash" value={combined.totals.cashSnapshot} animate={false} />, description: combined.incompleteCashAccountCount > 0 ? `Incomplete · ${combined.incompleteCashAccountCount} Account ${combined.incompleteCashAccountCount === 1 ? "balance" : "balances"} missing` : "Current Account balances" },
+            { key: "pnl", label: "Selected range P&L", value: <FinancialAggregateReadValue aggregate={combined.selectedRangeFinancials.grossBettingPnl} label="selected range profit and loss" state={selectedReadState} subject="profit and loss" />, description: `${preset} · governed reporting values` },
+            { key: "liability", label: "Current liability", value: <FinancialReadValue state={selectedReadState} subject="current liability" value={combined.totals.currentLiability} animate={false} />, description: "Open sportsbook, Free Bet and Extra Place exposure" },
+          ]} />
+          {activeTab === "performance" ? <><DesignPositionWorkGrid>
+            <DesignPositionSurface labelledBy="position-next-actions">
+              <DesignPositionSectionHead id="position-next-actions" title="Next actions" action={<Link className={designPositionActionClasses.link} href="/tasks">All tasks <span aria-hidden="true" className="material-symbols-outlined">arrow_forward</span></Link>} />
+              {combined.profileRows.some((row) => row.overdueBets > 0) ? <DesignPositionTask title="Review overdue Sportsbook positions" description="Source rows remain in the owning Profile." action={<Link className={designPositionActionClasses.secondary} href={buildOperationalLedgerHref(combined.profileRows.find((row) => row.overdueBets > 0)!.profileId, "sportsbook", "all")}>Open Sportsbook</Link>} /> : null}
+              {combined.incompleteCashAccountCount > 0 ? <DesignPositionTask title="Confirm current balances" description={`${combined.incompleteCashAccountCount} Account ${combined.incompleteCashAccountCount === 1 ? "balance is" : "balances are"} missing.`} action={<Link className={designPositionActionClasses.primary} href={combined.cashIssues?.find((issue) => issue.profileId)?.profileId ? `/profiles/${combined.cashIssues.find((issue) => issue.profileId)!.profileId}/tracker/accounts?view=issues&issue=needs-attention&source=position` : "/profiles"}>Review Accounts</Link>} /> : null}
+              {!combined.profileRows.some((row) => row.overdueBets > 0) && combined.incompleteCashAccountCount === 0 ? <p>No immediate source action is identified for this selection.</p> : null}
+            </DesignPositionSurface>
+            <DesignPositionSurface labelledBy="position-continue-work">
+              <DesignPositionSectionHead id="position-continue-work" title="Continue work" />
+              <nav aria-label="Position shortcuts">
+                <DesignPositionShortcut href="/profiles" icon="group" label="Manage Profiles" />
+                <DesignPositionShortcut href="/reports" icon="monitoring" label="Review reports" />
+                <DesignPositionShortcut href="/tasks" icon="task_alt" label="Open Today" />
               </nav>
-            </section>
-          </div>
-          <section className="v2-position-surface" aria-labelledby="position-profile-heading">
-            <div className="v2-position-section-head"><h3 id="position-profile-heading">Profiles · financial position</h3><span>{reportScopeLabel} · {preset}</span></div>
+            </DesignPositionSurface>
+          </DesignPositionWorkGrid>
+          <DesignPositionSurface labelledBy="position-profile-heading" dataPdId="position.profile-table">
+            <DesignPositionSectionHead id="position-profile-heading" title="Profiles · financial position" action={<span>{reportScopeLabel} · {preset}</span>} />
             <div className="table-shell v2-position-table"><table><thead><tr><th scope="col">Profile</th><th scope="col">Selected range P&amp;L</th><th scope="col">Current / projected</th><th scope="col">Current liability</th><th scope="col">Fees earned</th><th scope="col">Available to withdraw</th><th scope="col">Cash readiness</th><th scope="col">Report</th></tr></thead><tbody>
               {combined.profileRows.map((row) => <tr key={row.profileId}><th scope="row"><strong>{row.displayName}</strong><small>{row.profileCode}</small></th><td><FinancialAggregateReadValue aggregate={row.grossBettingPnlAggregate} label={`${row.displayName} profit and loss`} state={profileReadState([row.profileId])} subject="profit and loss" /></td><td><FinancialReadValue state={profileReadState([row.profileId])} subject="open current value" value={row.openCurrentValue} animate={false} /></td><td><FinancialReadValue state={profileReadState([row.profileId])} subject="current liability" value={row.currentLiability} animate={false} /></td><td><FinancialReadValue state={profileReadState([row.profileId], "fees")} subject="fees earned" value={feePositionByProfile.get(row.profileId)?.feesEarned ?? Number.NaN} animate={false} /></td><td><FinancialReadValue state={profileReadState([row.profileId], "fees")} subject="available fees" value={feePositionByProfile.get(row.profileId)?.availableToWithdraw ?? Number.NaN} animate={false} /></td><td><FinancialReadValue state={profileReadState([row.profileId])} subject="Account cash" value={row.cashSnapshot} animate={false} /></td><td><Link href={`/profiles/${row.profileId}/tracker/reports`}>View report</Link></td></tr>)}
             </tbody></table></div>
             <p className="field-hint">Known and unknown values retain their source readiness. Fees and withdrawal detail remain in Fees; open source records remain in the Profile tracker.</p>
-          </section></> : null}
+          </DesignPositionSurface></> : null}
         </section>
       ) : null}
 

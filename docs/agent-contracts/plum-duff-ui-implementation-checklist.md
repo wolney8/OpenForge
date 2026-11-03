@@ -395,3 +395,10 @@ Scope: `PD-PR-117A-17–20`, open #118. Sportsbook and Accounts only; full six-l
 - [x] Shared ledger header/table/editor geometry, Account/Profile/Settings surfaces and specialist shell checked for page overflow at 1440/390 px in light/dark. Native Add/Edit, protected correction paths and source identity retained.
 - [x] Comparable screenshots and actual integrated V2 videos captured privately, without credentials or owner data. Governed Reports points, filters and source drilldown exercised. Visual browser 62/62, loaded Today/Notifications recapture 8/8 and final-source recordings 3/3; web 701/701, typecheck and build pass; isolated runner V2 21/21, OFF 2/2 and V2 restored.
 - [ ] Owner visual Design Acceptance, spoken screen-reader review, Today annotation authority, saved-view preference authority and remaining partial page compositions are open. UI verification does not clear historical broader financial-fixture failures.
+
+## CP-123 single-host direct Lab presentation adoption — 2026-11-03
+
+- [x] Approved local normal web source moved to the CP-117 branch using the canonical normal environment and exact source revision. Normal API process and database remain in place; no preview secret/session/database copy. Both `/` and `/design-lab` use `localhost:3010`. Owner completed a fresh Google sign-in.
+- [x] Nearest signed-off equivalents: connected Lab Position metric/action/surface components and Lab Today task row. Shared components render synthetic Lab state or real governed state through separate props; native API, Profile, reporting, source commands and specialist workflows stay authoritative. Removed duplicate Position CSS rather than making another visual variant.
+- [x] Semantic financial statuses, known/unknown values, focusable action controls, accessible task-row names, 44px action targets, legacy flag-OFF path, light/dark tokens and responsive Lab geometry retained in shared presentation.
+- [ ] Final-source synthetic Playwright geometry, editor/rollback checks, recording, web build and normal 3010 source restart pending. Owner Design Acceptance and spoken screen-reader review remain open.

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { DesignLabSelect } from "@/components/design-lab-select";
 import { ModalBoundary } from "@/components/modal-boundary";
 import { DesignLabTaskState } from "@/components/design-lab-task-state";
+import { DesignTodayTaskRow } from "@/components/design-today-task-row";
 import { buildLabTodayTasks, labClock, labTaskDateLabel, labTaskNeedsUrgentReview, labTaskSourceType, labTaskUrgency, sortLabTodayTasks, summarizeLabToday, type LabTaskUrgency, type LabTodayTask } from "@/lib/design-lab-operations";
 import { labProfiles, type LabAccount, type LabProfileId, type LabScope } from "@/lib/design-lab-fixture";
 import type { LabRecord } from "@/lib/design-lab-connected-data";
@@ -105,13 +106,12 @@ export function DesignLabToday({ scope, records, accounts, extraTasks = [], task
   }
   function taskRow(task: LabTodayTask, board = false) {
     const state = taskStates[task.id] ?? "To Do";
-    return <button aria-label={`Inspect ${task.title} · ${profileName(task.profileId)}`} aria-pressed={selectedId === task.id} className={`${styles.taskRow} ${board ? styles.boardCard : ""} ${labTaskNeedsUrgentReview(task) ? styles.urgent : ""}`} data-pd-id={`lab.task.${task.id}`} key={task.id} onClick={() => openDetails(task)} ref={node => { rowRefs.current[task.id] = node; }} type="button">
-      <span aria-hidden="true" className={`material-symbols-outlined ${styles.rowIcon}`}>{iconFor(task)}</span>
-      <span className={styles.rowMain}><strong>{task.title}</strong><small>{task.provider} · {profileName(task.profileId)}{task.group === "Opportunities / Suggestions" ? " · Advisory" : ""}</small>{state === "Do Later" && reviewDates[task.id] ? <small>Review {reviewDates[task.id]}</small> : null}{state === "Blocked" && blockedReasons[task.id] ? <small>Blocked: {blockedReasons[task.id]}</small> : null}</span>
-      {task.due ? <time className={styles.rowDate} dateTime={task.due}>{labTaskDateLabel(task)}</time> : null}
-      <span className={styles.rowState}><DesignLabTaskState state={state}/></span>
-      <span aria-hidden="true" className={`material-symbols-outlined ${styles.rowArrow}`}>chevron_right</span>
-    </button>;
+    return <DesignTodayTaskRow accessibleName={`Inspect ${task.title} · ${profileName(task.profileId)}`} active={selectedId === task.id} board={board}
+      context={<>{task.provider} · {profileName(task.profileId)}{task.group === "Opportunities / Suggestions" ? " · Advisory" : ""}</>}
+      dataPdId={`lab.task.${task.id}`} date={task.due ? labTaskDateLabel(task) : undefined} dateTime={task.due}
+      extraContext={<>{state === "Do Later" && reviewDates[task.id] ? <small>Review {reviewDates[task.id]}</small> : null}{state === "Blocked" && blockedReasons[task.id] ? <small>Blocked: {blockedReasons[task.id]}</small> : null}</>}
+      icon={iconFor(task)} key={task.id} onClick={() => openDetails(task)} ref={node => { rowRefs.current[task.id] = node; }} selectionMode="pressed"
+      state={<DesignLabTaskState state={state}/>} title={task.title} urgent={labTaskNeedsUrgentReview(task)} />;
   }
   function taskDetails(task: LabTodayTask) {
     const state = taskStates[task.id] ?? "To Do";

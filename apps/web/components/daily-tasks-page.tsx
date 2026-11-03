@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerPagination } from "@/components/ledger-pagination";
+import { DesignTodayTaskRow, designTodayTaskCollectionClass } from "@/components/design-today-task-row";
 import { apiBaseUrl } from "@/lib/api";
 import {
   currentDailyTasks,
@@ -305,17 +306,17 @@ export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
             <p aria-live="polite" className="notification-history-count" role="status">{filtered.length} {uxV2 && dueState === "today" ? "needs action" : dueViews.find((view) => view.id === dueState)?.label.toLocaleLowerCase()} task{filtered.length === 1 ? "" : "s"}</p>
             <LedgerPagination ariaLabel="Daily Tasks" currentPage={currentPage} onPageChange={setPage} onPageSizeChange={(next) => { setPageSize(next); setPage(1); }} pageCount={pageCount} pageSize={pageSize} position="top" totalRows={filtered.length} />
             {uxV2 ? <div className={`ux-v2-task-layout${inspectedTask ? " has-inspector" : ""}`} data-pd-id="tasks.v2.layout">
-              <div aria-label="Tasks" className="ux-v2-task-list" role="list">
+              <div aria-label="Tasks" className={designTodayTaskCollectionClass} role="list">
                 {paginated.map((task) => {
                   const item = task.notification;
                   const active = inspectedTaskId === item.notification_id;
                   return <div data-pd-id={`tasks.item.${item.notification_id}`} key={item.notification_id} role="listitem">
-                    <button aria-controls="tasks-v2-inspector" aria-expanded={active} className={`ux-v2-task-row${active ? " is-selected" : ""}${task.priority === "high" ? " is-urgent" : ""}`} data-pd-id={`tasks.v2.row.${item.notification_id}`} onClick={() => setInspectedTaskId(item.notification_id)} ref={(node) => { if (node) taskRowRefs.current.set(item.notification_id, node); else taskRowRefs.current.delete(item.notification_id); }} type="button">
-                      <span aria-hidden="true" className="material-symbols-outlined ux-v2-task-icon">{task.priority === "high" ? "priority_high" : "task_alt"}</span>
-                      <span className="ux-v2-task-copy"><strong>{item.title}</strong><small>{item.bookmaker_label || item.ledger_label} · {item.profile_name}</small></span>
-                      <span className={`table-chip daily-task-due daily-task-due-${task.dueState}`}>{task.dueLabel}</span>
-                      <span aria-hidden="true" className="material-symbols-outlined ux-v2-task-open">chevron_right</span>
-                    </button>
+                    <DesignTodayTaskRow accessibleName={`Inspect ${item.title} · ${item.profile_name}`} active={active}
+                      context={<>{item.bookmaker_label || item.ledger_label} · {item.profile_name}</>} controls="tasks-v2-inspector"
+                      dataPdId={`tasks.v2.row.${item.notification_id}`} date={task.dueLabel}
+                      icon={task.priority === "high" ? "priority_high" : "task_alt"} onClick={() => setInspectedTaskId(item.notification_id)}
+                      ref={(node) => { if (node) taskRowRefs.current.set(item.notification_id, node); else taskRowRefs.current.delete(item.notification_id); }}
+                      selectionMode="expanded" title={item.title} urgent={task.priority === "high"} />
                   </div>;
                 })}
                 {!paginated.length ? <p className="ux-v2-task-empty">No tasks match these controls.</p> : null}

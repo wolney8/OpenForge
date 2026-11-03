@@ -51,13 +51,30 @@ for (const route of routes) {
         await expect(page.getByRole("heading", { name: route.heading, exact: true }).first()).toBeVisible();
         await setTheme(page, theme);
         await noPageOverflow(page);
+        const labPositionStyle = route.name === "position" ? await page.locator('[data-pd-id="lab.metrics"]').evaluate((element) => {
+          const item = element.firstElementChild!;
+          const label = item.querySelector("span")!;
+          return {
+            className: element.className,
+            radius: getComputedStyle(element).borderRadius,
+            padding: getComputedStyle(item).padding,
+            labelSize: getComputedStyle(label).fontSize,
+          };
+        }) : null;
+        const labTodayRowStyle = route.name === "today" ? await page.locator('[data-pd-id^="lab.task."]').first().evaluate((element) => ({
+          className: element.className.split(" ")[0],
+          fontFamily: getComputedStyle(element).fontFamily,
+          fontSize: getComputedStyle(element).fontSize,
+          padding: getComputedStyle(element).padding,
+          minimumHeight: getComputedStyle(element).minHeight,
+        })) : null;
         await page.screenshot({ path: join(evidence, `lab-${route.name}-${width}-${theme}.png`), fullPage: true });
 
         await page.goto(route.path);
         await expect(page.getByRole("heading", { name: route.heading, exact: true }).first()).toBeVisible();
         if (route.name === "position" || route.name === "reports") {
           await expect(page.locator(`[data-pd-id="${route.name}.overview"]`)).toBeVisible();
-          await expect(page.locator(".v2-position-metrics")).not.toContainText(/Loading|Updating/, { timeout: 45_000 });
+          await expect(page.locator(`[data-pd-id="${route.name}.metrics"]`)).not.toContainText(/Loading|Updating/, { timeout: 45_000 });
           await page.locator('[data-pd-id="combined-reporting.loading"]').waitFor({ state: "hidden" });
         } else if (route.name === "accounts" || route.name === "sportsbook") {
           await page.locator(".ledger-loading-overlay").first().waitFor({ state: "hidden" });
@@ -69,7 +86,18 @@ for (const route of routes) {
         await page.screenshot({ path: join(evidence, `v2-${route.name}-${width}-${theme}.png`), fullPage: true });
 
         if (route.name === "position") {
-          await expect(page.locator(".v2-position-metrics article")).toHaveCount(3);
+          await expect(page.locator('[data-pd-id="position.metrics"] > div')).toHaveCount(3);
+          const realPositionStyle = await page.locator('[data-pd-id="position.metrics"]').evaluate((element) => {
+            const item = element.firstElementChild!;
+            const label = item.querySelector("span")!;
+            return {
+              className: element.className,
+              radius: getComputedStyle(element).borderRadius,
+              padding: getComputedStyle(item).padding,
+              labelSize: getComputedStyle(label).fontSize,
+            };
+          });
+          expect(realPositionStyle).toEqual(labPositionStyle);
           await expect(page.locator(".v2-position-table tbody tr")).toHaveCount(2);
           await page.locator(".v2-position-detail > summary").click();
           await expect(page.locator('[data-pd-id="reports.profile-performance"]')).toBeVisible();
@@ -79,6 +107,16 @@ for (const route of routes) {
           await page.locator(".v2-position-detail > summary").click();
           const source = page.locator('[data-pd-id="reports.period-pnl.records"]');
           if (await source.count()) await expect(source).toHaveCSS("position", "static");
+        }
+        if (route.name === "today") {
+          const realTodayRowStyle = await page.locator('[data-pd-id^="tasks.v2.row."]').first().evaluate((element) => ({
+            className: element.className.split(" ")[0],
+            fontFamily: getComputedStyle(element).fontFamily,
+            fontSize: getComputedStyle(element).fontSize,
+            padding: getComputedStyle(element).padding,
+            minimumHeight: getComputedStyle(element).minHeight,
+          }));
+          expect(realTodayRowStyle).toEqual(labTodayRowStyle);
         }
       });
     }
@@ -162,7 +200,7 @@ test("Reports uses governed integrated points and source drilldown", async ({ pa
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/reports");
   await expect(page.locator('[data-pd-id="reports.explorer"]')).toBeVisible();
-  await expect(page.locator(".v2-position-metrics")).not.toContainText(/Loading|Updating/, { timeout: 45_000 });
+  await expect(page.locator('[data-pd-id="reports.metrics"]')).not.toContainText(/Loading|Updating/, { timeout: 45_000 });
   await setTheme(page, "light");
   const explorer = page.locator('[data-pd-id="reports.explorer"]');
   await explorer.getByRole("button", { name: "Custom", exact: true }).click();

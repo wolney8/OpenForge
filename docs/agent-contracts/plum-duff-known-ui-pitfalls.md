@@ -1620,3 +1620,7 @@ V2 tokens belong to the server-owned root flag, so native-modal portals receive 
 ## CP-122 V2 presentation — report source detail must stay in flow
 
 The legacy `.dashboard-chart-drilldown` can be fixed-position for its older context. When formal Period P&L reports appear inside the V2 Reports page, keep the record inspector in normal document flow and within the report surface. Check desktop/mobile and both themes with the disclosure open; `cp117-visual-adoption.spec.ts` asserts the integrated source inspector position. Scope the correction to V2 so flag-OFF rollback retains its established layout.
+
+## CP-123 direct Lab adoption needs a shared presentational boundary
+
+Matching a Lab screenshot with new V2-only CSS leaves two sources of truth. Extract the signed-off presentational component and its module styles, then supply synthetic Lab values or governed real values through props. Keep Lab simulation callbacks out of normal commands. `DesignPositionMetrics` and `DesignTodayTaskRow` are shared examples; `cp117-visual-adoption.spec.ts` compares their computed class, padding and responsive geometry across Lab and real V2.
