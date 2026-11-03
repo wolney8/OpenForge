@@ -42,7 +42,7 @@ test("header tracked panel, three banner states, X removal and source urgency", 
   await expect(panel.locator('[data-pd-id^="lab.header-tracked-task."]')).toHaveCount(3);
   await panel.locator('[data-pd-id="lab.header-tracked-task.reload"]').getByRole("button",{name:/Untrack/}).click();
   await expect(trigger).toHaveAttribute("aria-label", "Tracked Tasks, 2 active");
-  await panel.getByRole("button",{name:"Show Full Banner"}).click();
+  await panel.getByRole("button",{name:"View All Tracked Tasks"}).click();
   await expect(banner.locator('[data-pd-id^="lab.tracked-task."]')).toHaveCount(2);
   await page.locator('[data-pd-id="lab.nav.sportsbook"]').click();
   await expect(trigger).toHaveAttribute("aria-label", "Tracked Tasks, 2 active");

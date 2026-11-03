@@ -1,5 +1,9 @@
 # Project Roadmap — Plum Duff / OpenForge — Doc ID: PR-CODEX-001
 
+## CP-117 Today adoption gate — 2026-11-03
+
+Finish and review the lab populated-task presentation. In a later adoption wave, fixture and implement the owner-approved direction for minimal server-owned personal tracking annotations before adopting Board/Tracked Tasks in real Today; review the exact API/schema contract with the owner then. Keep CP-049 notification read/clear, manual routine completion and financial source resolution separate. The default-off shell and older UI remain the rollback path; no Wave 2 financial migration is part of this correction.
+
 ## CP-117 integrated adoption candidate — 2026-11-03
 
 Review the flagged real Today List/detail, pinned Actions, authenticated source-edit path, shell navigation and private recordings before expanding presentation migration. Next increments need typed adapters and disposable fixture tests for Sportsbook, Free Bet and Casino Add/Edit, settlement and reporting; Accounts, fees, saved views and specialist tools retain their existing authorities until their own parity checks. Keep the server flag default OFF and the old shell available. No main merge or deployment before owner review of design, functional parity and rollback evidence. [Coverage and limits](docs/audits/platform-quality-audit.md#cp-117-integrated-adoption-coverage--2026-11-03).

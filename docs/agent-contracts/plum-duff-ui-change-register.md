@@ -1238,3 +1238,15 @@ Owner-authorised lab-only follow-on to verified CP-119F. Existing calculation an
 | PD-FIX-505 | `DesignLabLedgerGrid` body Actions cells must stay pinned with the header during horizontal scroll across all six lab ledgers, with aligned width, opaque row-aware background, divider, action access and zoom/theme support. | NEEDS VERIFICATION — browser geometry and before/after scrolled captures show the correction; owner visual review remains open. |
 
 Evidence: at 900px and `scrollLeft=180`, the Sportsbook header/body Actions right edges both measured 853.5px after the fix; before, the row cell ended at 1336.5px. The 76px cell widths match and the 44px action target ends inside the 854.5px table viewport. Private local captures: `data/private/evidence/cp116-sticky-actions/`; no owner screenshot or financial data was committed. Final-source Design Lab browser suite 125/125, web typecheck and build passed. Broad web lint retains the unchanged Free Bet render-ref error and 12 warnings. Manual screen-reader review and owner visual approval remain open.
+
+## CP-117 Today populated-state correction — 2026-11-03
+
+`PROPOSED — LAB ONLY` for the Design Lab. Existing CP-118B compact Today rows, CP-118D tracked banner, CP-114C anchored overlay and CP-049 task/notification authority are the nearest equivalents. [CP-117 adoption issue #118](https://github.com/wolney8/OpenForge/issues/118) is the integration checklist; live subitem sync pending. No production task persistence or financial authority is approved by this presentation batch.
+
+| ID | Surface and requested outcome | Status |
+| --- | --- | --- |
+| PD-FIX-506 | Today List: one bulk tracking action per primary section, without repeated urgency-subgroup controls; Board retains scoped bulk actions. | COMPLETE — synthetic pointer/browser regression; owner visual review open. |
+| PD-FIX-507 | Header Tracked Tasks: bounded, actionable five-item preview with total count and full-banner route; 13+ items must not overlap or compete with the expanded banner. | COMPLETE — 13/14-item geometry, focus and actual 200% zoom browser checks; owner visual review open. |
+| PD-FIX-508 | Urgent source tasks: overdue bet and partial lay retain pointer/keyboard source and untrack actions; tracking, Done, source resolution and notification state remain separate. | COMPLETE — pointer/keyboard source, untrack focus and source-resolution regressions pass; owner visual review open. |
+| PD-PR-117-TRACK | Personal tracking and legitimate work progress survive sessions, with exact user/Profile/source identity and server authority. | DOCUMENTED — owner approved the authority direction but deferred API/schema implementation to a later adoption wave; no real persistence claim. |
+| PD-FIX-509 | Real populated-state browser geometry, pointer, keyboard, responsive/zoom/theme evidence, recording, rollback and source-isolation checkpoint. | COMPLETE — 129/129 full lab, 15/15 affected, flag-OFF 1/1, build/typecheck/changed-file lint, private before/after recordings and normal-owner fingerprint verified; owner visual review remains open. |

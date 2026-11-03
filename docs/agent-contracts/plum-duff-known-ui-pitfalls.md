@@ -1,5 +1,9 @@
 # Plum Duff Known UI Pitfalls
 
+## CP-117 populated Tracked Tasks overlay — 2026-11-03
+
+A task popover that renders the entire tracked collection can overflow, overlap its own action buttons and compete with an expanded page banner. Keep the anchored popover to a bounded, priority-ordered preview with one scroll owner and a route to the full tracked surface; compact the banner when opening the popover. Test 13+ items with real pointer and keyboard actions, viewport geometry, urgent rows and focus after removing a row. Regression: `design-lab-cp117-today.spec.ts`. This is lab presentation only; synthetic tracking is not session persistence.
+
 ## CP-119E lab selection and bell ownership — 2026-11-02
 
 A selected ledger cell can keep a blue selection ring after a user moves to a toolbar or blank page area. Clear selection from one document pointer listener only when no floating editor owns the interaction; the portal editor must validate changed drafts first and retain invalid drafts. Regression: `design-lab-cp119e.spec.ts` selects/transfers/clears cells and tests valid/invalid outside commits. A notification source event is not the Today task or a personal tracked-task state: CP-049 settlement/Account sources remain in full history even if a proposed priority bell suppresses them. Do not infer settlement urgency from an event date or create an event from tracking a task. Regression: `design-lab-notification-policy.test.ts` and the CP-119E browser source/history cases. Both corrections are Design Lab only.

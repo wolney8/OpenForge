@@ -45,8 +45,9 @@ test("tracked completion preserves source authority and retains resolved history
   await page.keyboard.press("Escape");
   await page.locator('[data-pd-id="lab.task.task:LAB-ACCOUNT-C"]').click();
   await page.locator('[data-pd-id="lab.task-track.task:LAB-ACCOUNT-C"]').click();
-  await banner.locator('[data-pd-id="lab.tracked-task.task:LAB-ACCOUNT-C"]').getByRole("button",{name:/Mark .* Done/}).click();
-  await expect(banner).toContainText("requires source resolution");
+  await banner.getByRole("button",{name:"Expand Tracked Tasks"}).click();
+  await expect(banner.locator('[data-pd-id="lab.tracked-task.task:LAB-ACCOUNT-C"]').getByRole("button",{name:/Mark .* Done/})).toHaveCount(0);
+  await expect(banner.locator('[data-pd-id="lab.tracked-task.task:LAB-ACCOUNT-C"]').getByRole("button",{name:"Resolve Source"})).toBeVisible();
   await expect(banner.locator('[data-pd-id="lab.tracked-task.task:LAB-ACCOUNT-C"]')).toContainText("To Do");
   await page.locator('[data-pd-id="lab.today.detail"]').getByRole("button",{name:"Review Account"}).click();
   await page.locator('[data-pd-id="lab.record-detail"]').getByRole("button",{name:"Review balance"}).click();

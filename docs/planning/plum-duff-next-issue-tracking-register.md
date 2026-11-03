@@ -2373,3 +2373,7 @@ Local checklist under [Design Lab issue #114](https://github.com/wolney8/OpenFor
 ## CP-116 pinned Actions column — 2026-11-02
 
 `PD-FIX-505` tracks the owner's shared Design Lab ledger pinning defect in the [UI change register](../agent-contracts/plum-duff-ui-change-register.md#cp-116-pinned-ledger-actions-refinement--2026-11-02). Scope is CSS and browser geometry only; the existing financial and ledger authorities remain unchanged. Issue [#114](https://github.com/wolney8/OpenForge/issues/114) covers the lab; live subitem sync is unverified.
+
+## CP-117 Today populated-state and tracking adoption — 2026-11-03
+
+`PD-FIX-506–509` and `PD-PR-117-TRACK` retain the owner's List bulk-action, populated tracked-panel, urgent action, durable personal tracking and stress-evidence requests in the [UI change register](../agent-contracts/plum-duff-ui-change-register.md#cp-117-today-populated-state-correction--2026-11-03). Lab presentation is `PROPOSED — LAB ONLY`. The owner approved the viewer/Profile-scoped tracking annotation direction but deferred API/schema implementation to a later adoption wave; the source/authority audit is documented. [CP-117 issue #118](https://github.com/wolney8/OpenForge/issues/118) is the adoption checklist; live subitem sync pending.

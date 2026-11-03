@@ -145,7 +145,7 @@ export function DesignLabToday({ scope, records, accounts, extraTasks = [], task
         {view.layout === "List" ? <>
           <section aria-label="Needs Action" className={styles.collection}><div className={styles.collectionHeading}><h2>Needs Action <span>{filtered.filter(task => task.group === "Needs Action").length}</span></h2>{bulkTrackButton("Needs Action",filtered.filter(task => task.group === "Needs Action"))}</div>{view.sort !== "Priority" ? filtered.filter(task => task.group === "Needs Action").map(task => taskRow(task)) : urgencyGroups.map(group => {
             const rows = filtered.filter(task => task.group === "Needs Action" && labTaskUrgency(task) === group);
-            return rows.length ? <div className={styles.priorityGroup} key={group}><div className={styles.collectionHeading}><h3>{group}</h3>{bulkTrackButton(group,rows)}</div>{rows.map(task => taskRow(task))}</div> : null;
+            return rows.length ? <div className={styles.priorityGroup} key={group}><div className={styles.collectionHeading}><h3>{group}</h3></div>{rows.map(task => taskRow(task))}</div> : null;
           })}</section>
           <section aria-label="Recurring Work" className={styles.collection}><div className={styles.collectionHeading}><h2>Recurring Work <span>{filtered.filter(task => task.group === "Recurring Work").length}</span></h2>{bulkTrackButton("Recurring Work",filtered.filter(task => task.group === "Recurring Work"))}</div>{(() => {
             const rows = filtered.filter(task => task.group === "Recurring Work");
