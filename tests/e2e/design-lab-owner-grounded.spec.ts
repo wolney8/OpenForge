@@ -168,7 +168,7 @@ test("narrow ledgers retain source access and required details without page over
   if (evidence) await page.screenshot({ path: join(evidence, "cp114-accounts-390.png"), fullPage: true });
   await page.getByRole("button", { name: "Show Labelled Details" }).first().click();
   await expect(page.getByText("Account ID", { exact: true }).last()).toBeVisible();
-  await page.getByRole("button", { name: "Open Full Record" }).first().click();
+  await page.getByRole("button", { name: /^Open full record for / }).first().click();
   await page.getByRole("button", { name: "Back to Accounts" }).click();
   await page.getByRole("button", { name: "Open navigation" }).click();
   await page.locator('[data-pd-id="lab.nav.sportsbook"]').click();

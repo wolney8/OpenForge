@@ -37,6 +37,32 @@ export function DesignPageHead({ children }: { children: ReactNode }) {
 export const designPageHeadClasses = { actions: styles.headActions };
 export const designLedgerClasses = { actionRow: styles.actionRow };
 
+export type DesignLedgerDetailRow = {
+  id: string;
+  title: string;
+  status?: string;
+  subtitle?: string;
+  fields: Array<{ key: string; label: string; value: ReactNode }>;
+  onOpen?: () => void;
+  extraAction?: ReactNode;
+};
+
+export function DesignLedgerNarrowToggle({ expanded, onToggle }: { expanded: boolean; onToggle: () => void }) {
+  return <button aria-pressed={expanded} className={`${styles.secondaryButton} ${styles.gridNarrowToggle}`} onClick={onToggle} type="button">{expanded ? "Show Full Table" : "Show Labelled Details"}</button>;
+}
+
+export function DesignLedgerMobileRows({ expanded, rows, dataPdId, onRowOpen }: { expanded: boolean; rows: DesignLedgerDetailRow[]; dataPdId: string; onRowOpen?: (rowId: string) => void }) {
+  return <div className={`${styles.mobileRows} ${expanded ? styles.mobileDetailVisible : ""}`} data-pd-id={dataPdId}>
+    {rows.map(row => <article data-pd-id={`${dataPdId}.${row.id}`} key={row.id}>
+      <div><strong>{row.title}</strong>{row.status ? <span className={styles.status}>{row.status}</span> : null}</div>
+      {row.subtitle ? <p>{row.subtitle}</p> : null}
+      <dl className={styles.detailGrid}>{row.fields.map(field => <div key={field.key}><dt>{field.label}</dt><dd>{field.value}</dd></div>)}</dl>
+      <button aria-label={`Open full record for ${row.title}`} className={styles.secondaryButton} disabled={!row.onOpen && !onRowOpen} onClick={() => { if (row.onOpen) row.onOpen(); else onRowOpen?.(row.id); }} type="button">Open Full Record</button>
+      {row.extraAction}
+    </article>)}
+  </div>;
+}
+
 export function DesignLedgerToolbarAction({ ariaExpanded, children, dataPdId, onClick }: {
   ariaExpanded?: boolean;
   children: ReactNode;

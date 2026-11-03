@@ -19,7 +19,7 @@ import { AccountMoneyStatus } from "@/components/account-money-status";
 import { accountMoneyDisplayValue, accountMoneyError, normalizeAccountMoney, sumAccountMoney } from "@/lib/account-money";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
 import { DesignLedgerSearch } from "@/components/design-ledger-search";
-import { DesignLedgerScreen, DesignLedgerToolbar, DesignLedgerToolbarAction, DesignLedgerPrimaryAction, DesignPageHead } from "@/components/design-ledger-screen";
+import { DesignLedgerScreen, DesignLedgerToolbar, DesignLedgerToolbarAction, DesignLedgerPrimaryAction, DesignPageHead, DesignLedgerNarrowToggle, DesignLedgerMobileRows } from "@/components/design-ledger-screen";
 import { DesignLabSelect } from "@/components/design-lab-select";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerPagination } from "@/components/ledger-pagination";
@@ -535,6 +535,7 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialIssue
   const [tableSort, setTableSort] = useState<AccountSort | null>(null);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [mobileDetail, setMobileDetail] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(8);
   const [statusMessage, setStatusMessage] = useState("");
@@ -1401,7 +1402,8 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialIssue
               position="top"
               totalRows={filteredRows.length}
             />
-            <LedgerTableScroll dataPdId="accounts.table-scroll" visualV2={visualV2} cellNavigation={{ label: "Accounts", onActivate: (rowId, column, anchor) => { const record = resolvedRows.find(row => row.account_id === rowId); const supported = column in inlineCellFields && record?.catalogue_id && record.type !== "Exchange" && record.signup_offer_status !== "Yes"; void selectRow(rowId, supported ? { column, anchor } : undefined); } }}>
+            {visualV2 ? <DesignLedgerNarrowToggle expanded={mobileDetail} onToggle={() => setMobileDetail(value => !value)} /> : null}
+            <LedgerTableScroll dataPdId="accounts.table-scroll" visualV2={visualV2} narrowDetail={visualV2 && mobileDetail} cellNavigation={{ label: "Accounts", onActivate: (rowId, column, anchor) => { const record = resolvedRows.find(row => row.account_id === rowId); const supported = column in inlineCellFields && record?.catalogue_id && record.type !== "Exchange" && record.signup_offer_status !== "Yes"; void selectRow(rowId, supported ? { column, anchor } : undefined); } }}>
               <table className="data-table accounts-data-table">
                 <colgroup>
                   {visibleTableColumns.map((column) => (
@@ -1509,6 +1511,28 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialIssue
                 </tbody>
               </table>
             </LedgerTableScroll>
+            {visualV2 ? <DesignLedgerMobileRows dataPdId="accounts.labelled-details" expanded={mobileDetail} rows={pagedRows.map(row => {
+              const rowId = String(row.account_id ?? "");
+              const record = resolvedRows.find(entry => entry.account_id === rowId);
+              const provider = findMasterAccountCatalogueEntry(masterAccountCatalogue, { catalogueId: record?.catalogue_id, accountName: String(row.account ?? "") });
+              return {
+                id: rowId,
+                title: String(row.account ?? "").trim() || rowId,
+                status: String(row.status ?? ""),
+                subtitle: provider ? masterAccountProfileType(provider) : String(row.type ?? ""),
+                fields: tableColumns.filter(column => column.key !== "actions").map(column => ({
+                  key: column.key,
+                  label: column.label,
+                  value: column.key === "account" ? <AccountProviderIdentity fallbackName={String(row.account ?? "")} provider={provider} />
+                    : column.key === "type" ? <span className={`table-chip ${accountTypeChipClass(provider ? masterAccountProfileType(provider) : String(row.type))}`}>{provider ? masterAccountProfileType(provider) : String(row.type || "—")}</span>
+                    : column.key === "status" ? <span className={`table-chip ${accountStatusChipClass(String(row.status))}`}>{String(row.status || "—")}</span>
+                    : column.key === "current_balance" || column.key === "pending_withdrawal_amount" ? <FinancialValue value={accountMoneyDisplayValue(String(row[column.key] ?? ""))} />
+                    : column.key === "channel" ? <span className="table-chip-stack">{parseChannels(String(row.channel)).map(channel => <span className="table-chip table-chip-info" key={channel}>{channel}</span>)}</span>
+                    : String(row[column.key] ?? "").trim() || "—",
+                })),
+                onOpen: () => void selectRow(rowId),
+              };
+            })} /> : null}
             <div className="accounts-card-list" data-pd-id="accounts.card-list">
               {pagedRows.length === 0 ? <div className="compact-empty-state"><strong>No account rows match the current filter.</strong></div> : pagedRows.map((row) => {
                 const rowId = String(row.account_id);

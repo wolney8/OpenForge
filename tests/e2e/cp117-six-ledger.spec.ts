@@ -62,6 +62,25 @@ test.beforeEach(async ({ page }) => {
   expect(rangeSetup.status()).toBe(200);
 });
 
+test("free-bet new draft keeps SNR-only retention while existing record keeps its mode", async ({ page }) => {
+  test.skip(legacy);
+  await ready(page, "free-bets");
+  await page.locator('[data-pd-id="free-bets.toolbar.add-row"]').click();
+  const dialog = page.locator('[data-pd-id="free-bets.editor.dialog"]');
+  await expect(dialog).toBeVisible();
+  await dialog.locator('[data-pd-id="ledger-editor.tab.settlement"]').click();
+  await expect(dialog.getByLabel("Retention mode")).toHaveValue("SNR");
+  await expect(dialog.getByLabel("Retention mode").locator("option")).toHaveCount(1);
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  await cell(page, cases[1], "event_name").click();
+  await page.keyboard.press("F2");
+  await floating(page).getByRole("button", { name: "Open full editor" }).click();
+  await expect(dialog).toBeVisible();
+  await dialog.locator('[data-pd-id="ledger-editor.tab.settlement"]').click();
+  await expect(dialog.getByLabel("Retention mode").locator("option")).toHaveCount(2);
+});
+
 for (const item of cases) {
   test(`${item.module}: floating Save, authoritative invalid-input error, retry and specialist handoff`, async ({ page }) => {
     test.skip(legacy);

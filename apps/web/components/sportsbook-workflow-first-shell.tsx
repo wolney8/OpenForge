@@ -64,7 +64,7 @@ import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerPnlCard, type LedgerReadState } from "@/components/ledger-pnl-card";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
 import { DesignLedgerSearch } from "@/components/design-ledger-search";
-import { DesignLedgerScreen, DesignLedgerToolbar, DesignLedgerToolbarAction, DesignLedgerPrimaryAction, DesignPageHead, designPageHeadClasses } from "@/components/design-ledger-screen";
+import { DesignLedgerScreen, DesignLedgerToolbar, DesignLedgerToolbarAction, DesignLedgerPrimaryAction, DesignPageHead, DesignLedgerNarrowToggle, DesignLedgerMobileRows, designPageHeadClasses } from "@/components/design-ledger-screen";
 import { DesignLabSelect } from "@/components/design-lab-select";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerViewContext } from "@/components/ledger-view-context";
@@ -3129,6 +3129,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     () => new Set(defaultVisibleSportsbookColumns)
   );
   const [columnWidths, setColumnWidths] = useState<SportsbookColumnWidths>(defaultSportsbookColumnWidths);
+  const [mobileDetail, setMobileDetail] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [statusMessage, setStatusMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
@@ -7328,7 +7329,8 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
               position="top"
               totalRows={filteredRows.length}
             />
-            <LedgerTableScroll dataPdId="sportsbook.table-scroll" visualV2={visualV2} cellNavigation={{ label: "Sportsbook", onActivate: (rowId, column, anchor) => void selectRow(rowId, { cell: column in inlineCellFields ? { column, anchor } : undefined }) }}>
+            {visualV2 ? <DesignLedgerNarrowToggle expanded={mobileDetail} onToggle={() => setMobileDetail(value => !value)} /> : null}
+            <LedgerTableScroll dataPdId="sportsbook.table-scroll" visualV2={visualV2} narrowDetail={visualV2 && mobileDetail} cellNavigation={{ label: "Sportsbook", onActivate: (rowId, column, anchor) => void selectRow(rowId, { cell: column in inlineCellFields ? { column, anchor } : undefined }) }}>
               <table className="data-table sportsbook-data-table">
                 <colgroup>
                   {tableColumns.map((column) => {
@@ -7479,6 +7481,10 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                 </tbody>
               </table>
             </LedgerTableScroll>
+            {visualV2 ? <DesignLedgerMobileRows dataPdId="sportsbook.labelled-details" expanded={mobileDetail} rows={pagedRows.map(row => {
+              const rowId = String(row.sportsbook_bet_id ?? "");
+              return { id: rowId, title: String(row.event_name ?? "").trim() || rowId, status: String(row.status ?? ""), subtitle: String(row.offer_name ?? "").trim(), fields: sportsbookTableColumns.filter(column => column.key !== "actions").map(column => ({ key: column.key, label: column.label, value: renderTableCell(row, column) })), onOpen: () => void selectRow(rowId) };
+            })} /> : null}
             <LedgerPagination
               ariaLabel="Sportsbook pagination"
               currentPage={effectivePage}
@@ -7959,6 +7965,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                 guidedTargetTabId={guidedEntryVisible ? guidedEntryTargetTabId : null}
                 onActiveTabChange={(tabId) => activateEditorTab(tabId as SportsbookEditorTabId)}
                 tabs={editorTabs}
+                visualV2={visualV2}
               />
             </div>
             <div className="workflow-editor-body">

@@ -23,7 +23,7 @@ import {
 } from "@/components/bookmaker-identity";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
 import { DesignLedgerSearch } from "@/components/design-ledger-search";
-import { DesignLedgerScreen, DesignLedgerToolbar, DesignLedgerToolbarAction, DesignLedgerPrimaryAction, DesignPageHead, designPageHeadClasses } from "@/components/design-ledger-screen";
+import { DesignLedgerScreen, DesignLedgerToolbar, DesignLedgerToolbarAction, DesignLedgerPrimaryAction, DesignPageHead, DesignLedgerNarrowToggle, DesignLedgerMobileRows, designPageHeadClasses } from "@/components/design-ledger-screen";
 import { DesignLabSelect } from "@/components/design-lab-select";
 import { LedgerViewContext } from "@/components/ledger-view-context";
 import { LedgerPagination } from "@/components/ledger-pagination";
@@ -359,6 +359,7 @@ export function EachWayExtraPlaceWorkflowShell({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
+  const [mobileDetail, setMobileDetail] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [tableFilters, setTableFilters] = useState<ExtraPlaceTableFilters>(() => ({
@@ -980,6 +981,10 @@ export function EachWayExtraPlaceWorkflowShell({
     ],
     [effectivePage, pageableRows, pageSize, pinnedIssueRows],
   );
+  const openRowById = (rowId: string) => {
+    const row = paginatedRows.find(item => item.each_way_extra_place_id === rowId);
+    if (row) openRow(row);
+  };
   const selectedRow = selectedId
     ? (rows.find((row) => row.each_way_extra_place_id === selectedId) ?? null)
     : null;
@@ -1216,6 +1221,7 @@ export function EachWayExtraPlaceWorkflowShell({
         position="top"
         totalRows={pageableRows.length}
       />
+      {visualV2 ? <DesignLedgerNarrowToggle expanded={mobileDetail} onToggle={() => setMobileDetail(value => !value)} /> : null}
       <ExtraPlaceTable
         bookmakerCatalogue={bookmakerCatalogue}
         outOfRangeIssueIds={new Set(
@@ -1229,7 +1235,34 @@ export function EachWayExtraPlaceWorkflowShell({
         currentTime={currentTime}
         visibleColumns={visibleColumns}
         visualV2={visualV2}
+        narrowDetail={visualV2 && mobileDetail}
       />
+      {visualV2 ? <DesignLedgerMobileRows dataPdId="extra-place.labelled-details" expanded={mobileDetail} onRowOpen={openRowById} rows={paginatedRows.map(row => ({
+        id: row.each_way_extra_place_id,
+        title: row.runner || row.each_way_extra_place_id,
+        status: row.status,
+        subtitle: row.race || "Race needed",
+        fields: [
+          { key: "date", label: "Date / time", value: formatLedgerDateTime(row.placed_at) },
+          { key: "runner", label: "Runner / Race", value: <><strong>{row.runner || "Runner needed"}</strong><br />{row.race || "Race needed"}</> },
+          { key: "bookmaker", label: "Bookmaker", value: row.bookmaker ? <BookmakerIdentity bookmaker={row.bookmaker} catalogueId={catalogueIdForBookmaker(providerIdsByName, row.bookmaker)} catalogue={bookmakerCatalogue} mode="Brand badge" /> : "Bookmaker needed" },
+          { key: "stake", label: "E/W Stake", value: neutralValue(row.each_way_stake) },
+          { key: "backOdds", label: "Back Odds", value: row.back_odds || "—" },
+          { key: "terms", label: "E/W Terms", value: `1 / ${row.place_term_denominator || "—"}` },
+          { key: "placeOdds", label: "Place Odds", value: row.place_back_odds || "—" },
+          { key: "winLayOdds", label: "Win Lay Odds", value: row.win_lay_odds || "—" },
+          { key: "winLayStake", label: "Win Lay Stake", value: neutralValue(row.win_lay_stake) },
+          { key: "winLiability", label: "Win Lay Liab", value: neutralValue(row.win_liability) },
+          { key: "placeLayOdds", label: "Place Lay Odds", value: row.place_lay_odds || "—" },
+          { key: "placeLayStake", label: "Place Lay Stake", value: neutralValue(row.place_lay_stake) },
+          { key: "placeLiability", label: "Place Lay Liab", value: neutralValue(row.place_liability) },
+          { key: "rating", label: "Rating %", value: <RatingPill rating={row.rating_percent} /> },
+          { key: "impliedOdds", label: "Implied Odds", value: decimalDisplay(row.implied_odds) },
+          { key: "qualLoss", label: "Qual Loss", value: value(row.qualifying_loss) },
+          { key: "epProfit", label: "EP Profit", value: <EpProfit row={row} /> },
+          { key: "status", label: "Status", value: row.status || "—" },
+        ],
+      }))} /> : null}
       <LedgerPagination
         ariaLabel="Extra Place pagination"
         currentPage={effectivePage}
@@ -1760,6 +1793,7 @@ function ExtraPlaceTable({
   rows,
   visibleColumns,
   visualV2,
+  narrowDetail,
   onDelete,
   onEdit,
   onResult,
@@ -1771,6 +1805,7 @@ function ExtraPlaceTable({
   rows: Row[];
   visibleColumns: ExtraPlaceVisibleColumns;
   visualV2: boolean;
+  narrowDetail: boolean;
   onDelete: (row: Row) => void;
   onEdit: (row: Row, cell?: LedgerCellSession) => void;
   onResult: (row: Row, result: string) => void;
@@ -1813,7 +1848,7 @@ function ExtraPlaceTable({
     window.addEventListener("mouseup", stop);
   };
   return (
-    <LedgerTableScroll dataPdId="extra-place.table-scroll" visualV2={visualV2} cellNavigation={{ label: "Extra Place", onActivate: (rowId, column, anchor) => { const row = rows.find(item => item.each_way_extra_place_id === rowId); if (row) onEdit(row, column === "runner" ? { column, anchor } : undefined); } }}>
+    <LedgerTableScroll dataPdId="extra-place.table-scroll" visualV2={visualV2} narrowDetail={narrowDetail} cellNavigation={{ label: "Extra Place", onActivate: (rowId, column, anchor) => { const row = rows.find(item => item.each_way_extra_place_id === rowId); if (row) onEdit(row, column === "runner" ? { column, anchor } : undefined); } }}>
       <table className="data-table extra-place-data-table">
         <colgroup>
           {activeColumns.map((key) => <col key={key} style={{ width: `${columnWidths[key]}px` }} />)}

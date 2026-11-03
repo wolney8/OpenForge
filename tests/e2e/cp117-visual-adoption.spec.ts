@@ -1,5 +1,6 @@
-import { expect, test, type Page } from "@playwright/test";
-import { mkdir } from "node:fs/promises";
+import { chromium, expect, test, type Page } from "@playwright/test";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const authURL = process.env.OPENFORGE_CP117_AUTH_URL ?? "http://127.0.0.1:9127/";
@@ -207,6 +208,162 @@ for (const width of [1440, 390] as const) {
     });
   }
 }
+
+for (const theme of ["light", "dark"] as const) {
+  test(`six ledgers ${theme}: labelled mobile details retain the complete table`, async ({ page }) => {
+    test.setTimeout(180_000);
+    await mkdir(evidence, { recursive: true });
+    await page.setViewportSize({ width: 390, height: 900 });
+    const range = await page.request.put("/api/fund-manager/preferences/selected-range", { data: {
+      selected_range_preset: "All Dates", selected_range_custom_start: null, selected_range_custom_end: null,
+    } });
+    expect(range.status()).toBe(200);
+    for (const ledger of ledgerSearchRoutes) {
+      await page.goto("/design-lab");
+      await page.locator('[data-pd-id="design-lab-connected.root"]').waitFor();
+      const cookie = page.getByRole("button", { name: "Understood" });
+      if (await cookie.isVisible()) await cookie.click();
+      await page.getByRole("button", { name: "Open navigation" }).click();
+      await page.getByRole("button", { name: ledger.lab, exact: true }).first().click();
+      await setTheme(page, theme);
+      await page.getByRole("button", { name: "Show Labelled Details" }).click();
+      const labRows = page.locator(`[data-pd-id="lab.ledger.${"labKey" in ledger ? ledger.labKey : ledger.key}"]`).locator("article");
+      await expect(labRows.first()).toBeVisible();
+      const labDetailStyle = await labRows.first().evaluate(element => ({
+        className: element.className,
+        padding: getComputedStyle(element).padding,
+        radius: getComputedStyle(element).borderRadius,
+      }));
+      await page.screenshot({ path: join(evidence, `lab-${ledger.key}-detail-390-${theme}.png`), fullPage: true });
+
+      await page.goto(ledger.path);
+      await page.locator(".ledger-loading-overlay").first().waitFor({ state: "hidden", timeout: 45_000 });
+      await setTheme(page, theme);
+      const screen = page.locator(`[data-pd-id="${ledger.key}.design-screen"]`);
+      await screen.getByRole("button", { name: "Show Labelled Details" }).click();
+      const details = page.locator(`[data-pd-id="${ledger.key}.labelled-details"]`);
+      await expect(details.locator("article").first()).toBeVisible();
+      const table = page.locator(`[data-pd-id="${ledger.key}.table-scroll"]`);
+      await expect(table).toBeHidden();
+      const realDetailStyle = await details.locator("article").first().evaluate(element => ({
+        className: element.className,
+        padding: getComputedStyle(element).padding,
+        radius: getComputedStyle(element).borderRadius,
+      }));
+      expect(realDetailStyle).toEqual(labDetailStyle);
+      const fieldCount = await details.locator("article").first().locator("dt").count();
+      const fullColumns = await table.locator("thead th").count();
+      expect(fieldCount).toBeGreaterThanOrEqual(fullColumns - 2);
+      await noPageOverflow(page);
+      await page.screenshot({ path: join(evidence, `v2-${ledger.key}-detail-390-${theme}.png`), fullPage: true });
+      await details.getByRole("button", { name: /^Open full record for / }).first().click();
+      await expect(page.getByRole("dialog").first()).toBeVisible();
+      await page.screenshot({ path: join(evidence, `v2-${ledger.key}-editor-390-${theme}.png`), fullPage: true });
+      await page.keyboard.press("Escape");
+      await expect(page.getByRole("dialog")).toHaveCount(0);
+      await screen.getByRole("button", { name: "Show Full Table" }).click();
+      await expect(table).toBeVisible();
+      await expect(details).toBeHidden();
+      expect(await table.evaluate(element => element.scrollWidth)).toBeGreaterThan(await table.evaluate(element => element.clientWidth));
+      await noPageOverflow(page);
+    }
+  });
+}
+
+test("six ledgers: shared grid cell rhythm and pinned Actions", async ({ page }) => {
+  test.setTimeout(180_000);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const range = await page.request.put("/api/fund-manager/preferences/selected-range", { data: {
+    selected_range_preset: "All Dates", selected_range_custom_start: null, selected_range_custom_end: null,
+  } });
+  expect(range.status()).toBe(200);
+  for (const ledger of ledgerSearchRoutes) {
+    await page.goto("/design-lab");
+    await page.locator('[data-pd-id="design-lab-connected.root"]').waitFor();
+    const cookie = page.getByRole("button", { name: "Understood" });
+    if (await cookie.isVisible()) await cookie.click();
+    await page.getByRole("button", { name: ledger.lab, exact: true }).first().click();
+    const labTable = page.locator(`[data-pd-id="lab.ledger-pan.${"labKey" in ledger ? ledger.labKey : ledger.key}"] table`);
+    const labCell = await labTable.locator("tbody td").first().evaluate(element => ({
+      padding: getComputedStyle(element).padding,
+      fontSize: getComputedStyle(element).fontSize,
+      lineHeight: getComputedStyle(element).lineHeight,
+    }));
+    const labHeader = await labTable.locator("thead th").first().evaluate(element => ({ padding: getComputedStyle(element).padding, fontSize: getComputedStyle(element).fontSize, lineHeight: getComputedStyle(element).lineHeight, background: getComputedStyle(element).backgroundColor }));
+    await page.goto(ledger.path);
+    await page.locator(".ledger-loading-overlay").first().waitFor({ state: "hidden", timeout: 45_000 });
+    const table = page.locator(`[data-pd-id="${ledger.key}.table-scroll"] table`);
+    const cell = await table.locator("tbody td").first().evaluate(element => ({
+      padding: getComputedStyle(element).padding,
+      fontSize: getComputedStyle(element).fontSize,
+      lineHeight: getComputedStyle(element).lineHeight,
+    }));
+    const header = await table.locator("thead th").first().evaluate(element => ({ padding: getComputedStyle(element).padding, fontSize: getComputedStyle(element).fontSize, lineHeight: getComputedStyle(element).lineHeight, background: getComputedStyle(element).backgroundColor }));
+    expect(cell, ledger.key).toEqual(labCell);
+    expect(header, `${ledger.key} header`).toEqual(labHeader);
+    await expect(table.locator("th").last()).toHaveCSS("position", "sticky");
+    await noPageOverflow(page);
+  }
+});
+
+test("actual 200% zoom retains labelled details and the full spreadsheet", async ({}, info) => {
+  const scratch = await mkdtemp(join(tmpdir(), "pd-cp126-zoom-"));
+  const extension = join(scratch, "extension");
+  await mkdir(extension);
+  await writeFile(join(extension, "manifest.json"), JSON.stringify({ manifest_version: 3, name: "Disposable ledger zoom check", version: "1.0", permissions: ["tabs"], background: { service_worker: "background.js" } }));
+  await writeFile(join(extension, "background.js"), "chrome.runtime.onInstalled.addListener(() => {});");
+  const context = await chromium.launchPersistentContext(join(scratch, "profile"), { channel: "chromium", headless: true, viewport: { width: 780, height: 900 }, args: [`--disable-extensions-except=${extension}`, `--load-extension=${extension}`] });
+  try {
+    const page = await context.newPage();
+    await page.goto(authURL);
+    const health = await (await page.request.get("/api/healthz")).json();
+    expect(health.database_identity).toBe("cp117-integration-synthetic");
+    const range = await page.request.put("/api/fund-manager/preferences/selected-range", { data: { selected_range_preset: "All Dates", selected_range_custom_start: null, selected_range_custom_end: null } });
+    expect(range.status()).toBe(200);
+    await page.goto(`${String(info.project.use.baseURL)}${profile}/sportsbook-bets`);
+    await page.locator(".ledger-loading-overlay").first().waitFor({ state: "hidden", timeout: 45_000 });
+    const worker = context.serviceWorkers()[0] ?? await context.waitForEvent("serviceworker");
+    await worker.evaluate(async (url) => { const tabs = (globalThis as unknown as { chrome: { tabs: { query: (filter: { url: string }) => Promise<Array<{ id: number }>>; setZoom: (id: number, zoom: number) => Promise<void> } } }).chrome.tabs; const matches = await tabs.query({ url: `${url}/*` }); await tabs.setZoom(matches[0].id, 2); }, String(info.project.use.baseURL));
+    await expect.poll(() => page.evaluate(() => innerWidth)).toBe(390);
+    await page.getByRole("button", { name: "Show Labelled Details" }).click();
+    await expect(page.locator('[data-pd-id="sportsbook.labelled-details"] article').first()).toBeVisible();
+    await noPageOverflow(page);
+    await page.getByRole("button", { name: "Show Full Table" }).click();
+    await expect(page.locator('[data-pd-id="sportsbook.table-scroll"]')).toBeVisible();
+    await noPageOverflow(page);
+  } finally {
+    await context.close();
+    await rm(scratch, { recursive: true, force: true });
+  }
+});
+
+test("Sportsbook specialist editor uses the approved Lab step presentation", async ({ page }) => {
+  await mkdir(evidence, { recursive: true });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/design-lab");
+  await page.locator('[data-pd-id="design-lab-connected.root"]').waitFor();
+  const cookie = page.getByRole("button", { name: "Understood" });
+  if (await cookie.isVisible()) await cookie.click();
+  await page.locator('[data-pd-id="lab.nav.sportsbook"]').click();
+  await page.locator('[data-pd-id="lab.add.modal"]').click();
+  await expect(page.getByRole("dialog", { name: "Quick Add Sportsbook Bet" })).toBeVisible();
+  await page.screenshot({ path: join(evidence, "lab-sportsbook-quick-add-1440-light.png") });
+  await page.getByRole("button", { name: "Open full workbench" }).click();
+  const labStep = page.locator('[aria-label="Bet workbench sections"] button').first();
+  const labStyle = await labStep.evaluate(element => ({ padding: getComputedStyle(element).padding, radius: getComputedStyle(element).borderRadius, minimumHeight: getComputedStyle(element).minHeight }));
+  await page.screenshot({ path: join(evidence, "lab-sportsbook-workbench-1440-light.png") });
+
+  await page.goto(`${profile}/sportsbook-bets`);
+  await page.locator(".ledger-loading-overlay").first().waitFor({ state: "hidden", timeout: 45_000 });
+  await page.locator('[data-pd-id="sportsbook.toolbar.add-row"]').click();
+  const dialog = page.locator('[data-pd-id="sportsbook.editor.dialog"]');
+  await expect(dialog).toBeVisible();
+  const realStep = dialog.locator('[data-pd-id="ledger-editor.tabs"] button').first();
+  const realStyle = await realStep.evaluate(element => ({ padding: getComputedStyle(element).padding, radius: getComputedStyle(element).borderRadius, minimumHeight: getComputedStyle(element).minHeight }));
+  expect(realStyle).toEqual(labStyle);
+  await page.screenshot({ path: join(evidence, "v2-sportsbook-add-1440-light.png") });
+  await noPageOverflow(page);
+});
 
 for (const width of [1440, 390] as const) {
   for (const theme of ["light", "dark"] as const) {

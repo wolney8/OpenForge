@@ -42,7 +42,7 @@ import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerPnlCard, type LedgerReadState } from "@/components/ledger-pnl-card";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
 import { DesignLedgerSearch } from "@/components/design-ledger-search";
-import { DesignLedgerScreen, DesignLedgerToolbar, DesignLedgerToolbarAction, DesignLedgerPrimaryAction, DesignPageHead, designPageHeadClasses } from "@/components/design-ledger-screen";
+import { DesignLedgerScreen, DesignLedgerToolbar, DesignLedgerToolbarAction, DesignLedgerPrimaryAction, DesignPageHead, DesignLedgerNarrowToggle, DesignLedgerMobileRows, designPageHeadClasses } from "@/components/design-ledger-screen";
 import { DesignLabSelect } from "@/components/design-lab-select";
 import { LedgerViewContext } from "@/components/ledger-view-context";
 import { LedgerPagination } from "@/components/ledger-pagination";
@@ -1368,6 +1368,7 @@ export function FreeBetWorkflowShell({
     Boolean(initialTableMode || initialIssueFilter)
   );
   const [query, setQuery] = useState(initialQuery);
+  const [mobileDetail, setMobileDetail] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [statusMessage, setStatusMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
@@ -1392,6 +1393,7 @@ export function FreeBetWorkflowShell({
   const ignoreInitialRecordIdRef = useRef(false);
   const loadRowsRequestIdRef = useRef(0);
   const isCreatingDraftRef = useRef(false);
+  const [isCreatingDraft, setIsCreatingDraft] = useState(false);
   const [isNewCoreIntent, setIsNewCoreIntent] = useState(false);
 
   const isPersistingRef = useRef(false);
@@ -1510,6 +1512,7 @@ export function FreeBetWorkflowShell({
       setSelectedId(selected);
       if (selected) {
         isCreatingDraftRef.current = false;
+        setIsCreatingDraft(false);
         if (!shouldPreserveEditorStep) {
           setActiveEditorTabId("setup");
           setFreeBetLayWorkflowModeOverride(null);
@@ -2764,6 +2767,7 @@ export function FreeBetWorkflowShell({
     setFreeBetCustomSliderDraftValue("");
     setFollowUpReminderEditorState(null);
     isCreatingDraftRef.current = false;
+    setIsCreatingDraft(false);
     setIsNewCoreIntent(false);
     setPreviewCalculation(null);
     const nextFormState = recordToForm(record);
@@ -2793,6 +2797,7 @@ export function FreeBetWorkflowShell({
     setFreeBetCustomSliderDraftValue("");
     setFollowUpReminderEditorState(null);
     isCreatingDraftRef.current = true;
+    setIsCreatingDraft(true);
     setIsNewCoreIntent(true);
     setWorkflowVisible(true);
     workflowVisibleRef.current = true;
@@ -2822,6 +2827,7 @@ export function FreeBetWorkflowShell({
     setFollowUpReminderEditorState(null);
     ignoreInitialRecordIdRef.current = true;
     isCreatingDraftRef.current = false;
+    setIsCreatingDraft(false);
     setTableCollapsed(false);
     setStatusMessage("");
   }
@@ -2944,6 +2950,7 @@ export function FreeBetWorkflowShell({
         setWorkflowVisible(false);
         setTableCollapsed(false);
         isCreatingDraftRef.current = false;
+        setIsCreatingDraft(false);
         setStatusMessage("");
       } else if (!workflowVisible) {
         setStatusMessage(
@@ -3593,7 +3600,8 @@ export function FreeBetWorkflowShell({
               position="top"
               totalRows={filteredRows.length}
             />
-            <LedgerTableScroll dataPdId="free-bets.table-scroll" visualV2={visualV2} cellNavigation={{ label: "Free Bets", onActivate: (rowId, column, anchor) => void selectRow(rowId, { cell: column in inlineCellFields ? { column, anchor } : undefined }) }}>
+            {visualV2 ? <DesignLedgerNarrowToggle expanded={mobileDetail} onToggle={() => setMobileDetail(value => !value)} /> : null}
+            <LedgerTableScroll dataPdId="free-bets.table-scroll" visualV2={visualV2} narrowDetail={visualV2 && mobileDetail} cellNavigation={{ label: "Free Bets", onActivate: (rowId, column, anchor) => void selectRow(rowId, { cell: column in inlineCellFields ? { column, anchor } : undefined }) }}>
               <table className="data-table sportsbook-data-table">
                 <colgroup>
                   {tableColumns.map((column) => {
@@ -3738,6 +3746,10 @@ export function FreeBetWorkflowShell({
                 </tbody>
               </table>
             </LedgerTableScroll>
+            {visualV2 ? <DesignLedgerMobileRows dataPdId="free-bets.labelled-details" expanded={mobileDetail} rows={pagedRows.map(row => {
+              const rowId = String(row.free_bet_id ?? "");
+              return { id: rowId, title: String(row.event_name ?? "").trim() || rowId, status: String(row.status ?? ""), subtitle: String(row.offer_name ?? "").trim(), fields: freeBetTableColumns.filter(column => column.key !== "actions").map(column => ({ key: column.key, label: column.label, value: renderTableCell(row, column) })), onOpen: () => void selectRow(rowId) };
+            })} /> : null}
             <LedgerPagination
               ariaLabel="Free Bet pagination"
               currentPage={effectivePage}
@@ -4220,6 +4232,7 @@ export function FreeBetWorkflowShell({
             guidedTargetTabId={guidedEntryVisible ? guidedEntryTargetTabId : null}
             onActiveTabChange={(tabId) => activateFreeBetEditorTab(tabId as FreeBetEditorTabId)}
             tabs={freeBetEditorTabs}
+            visualV2={visualV2}
           />
         </div>
         {guidedEntryVisible ? (
@@ -4882,7 +4895,7 @@ export function FreeBetWorkflowShell({
                   }
                   value={formState.retention_mode}
                 >
-                  {freeBetRetentionModeOptions.filter(option => !isCreatingDraftRef.current || option === "SNR").map((option) => (
+                  {freeBetRetentionModeOptions.filter(option => !isCreatingDraft || option === "SNR").map((option) => (
                     <option key={option} value={option}>{option}</option>
                   ))}
                 </select>

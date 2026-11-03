@@ -2,6 +2,13 @@
 
 Complete this for every feature, bug fix, component, fixture-backed UI, route or page change.
 
+## CP-126 ledger presentation handoff — 2026-11-03 / #118
+
+- [x] Reused the connected Lab ledger detail, toggle, table surface and stepper presentation; retained existing row adapters, financial field controls, Save/correction workflows, Profile scoping and default-OFF rollback. Requests `PD-PR-117A-42–45` and `PD-FIX-510` remain individually reconciled in the UI change register.
+- [x] Six ledger desktop grid computed geometry, 390 px labelled details in both themes, full table return, full-record handoff, actual 200% Chromium zoom, light/dark editor captures and pinned Actions checked with disposable authentication and records. Important controls have contextual names and stable `data-pd-id` selectors; no normal-owner financial writes.
+- [x] Focused lint clears the inherited Free Bet render-ref error; new-draft SNR and existing-row retention modes pass. Synthetic six-ledger integration 21/21, flag-OFF 2/2 and web unit 701/701 passed; production web build and typecheck passed. Existing unrelated warnings and broader financial-fixture baseline are not claimed resolved.
+- [ ] Whole specialist modal/field/review composition and remaining route-group Design Acceptance stay open; owner visual judgement and spoken screen-reader output are unverified. These are recorded as partial in the CP-126 route matrix.
+
 ## Before implementation
 
 - [ ] Read `plum-duff-ui-accessibility-contract.md`.

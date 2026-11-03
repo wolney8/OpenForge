@@ -29,7 +29,7 @@ import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerPnlCard, type LedgerReadState } from "@/components/ledger-pnl-card";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
 import { DesignLedgerSearch } from "@/components/design-ledger-search";
-import { DesignLedgerScreen, DesignLedgerToolbar, DesignLedgerToolbarAction, DesignLedgerPrimaryAction, DesignPageHead, designPageHeadClasses, designLedgerClasses } from "@/components/design-ledger-screen";
+import { DesignLedgerScreen, DesignLedgerToolbar, DesignLedgerToolbarAction, DesignLedgerPrimaryAction, DesignPageHead, DesignLedgerNarrowToggle, DesignLedgerMobileRows, designPageHeadClasses, designLedgerClasses } from "@/components/design-ledger-screen";
 import { DesignLabSelect } from "@/components/design-lab-select";
 import { LedgerViewContext } from "@/components/ledger-view-context";
 import { LedgerPagination } from "@/components/ledger-pagination";
@@ -1818,6 +1818,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
     Boolean(initialIssueFilter)
   );
   const [query, setQuery] = useState(initialQuery);
+  const [mobileDetail, setMobileDetail] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [statusMessage, setStatusMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
@@ -3801,7 +3802,8 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
               position="top"
               totalRows={filteredRows.length}
             />
-            <LedgerTableScroll dataPdId="casino-offers.table-scroll" visualV2={visualV2} cellNavigation={{ label: "Casino Offers", onActivate: (rowId, column, anchor) => void selectRow(rowId, { cell: column in inlineCellFields ? { column, anchor } : undefined }) }}>
+            {visualV2 ? <DesignLedgerNarrowToggle expanded={mobileDetail} onToggle={() => setMobileDetail(value => !value)} /> : null}
+            <LedgerTableScroll dataPdId="casino-offers.table-scroll" visualV2={visualV2} narrowDetail={visualV2 && mobileDetail} cellNavigation={{ label: "Casino Offers", onActivate: (rowId, column, anchor) => void selectRow(rowId, { cell: column in inlineCellFields ? { column, anchor } : undefined }) }}>
               <table className="data-table sportsbook-data-table">
                 <colgroup>
                   {tableColumns.map((column) => {
@@ -3938,6 +3940,10 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
                 </tbody>
               </table>
             </LedgerTableScroll>
+            {visualV2 ? <DesignLedgerMobileRows dataPdId="casino-offers.labelled-details" expanded={mobileDetail} rows={pagedRows.map(row => {
+              const rowId = String(row.casino_offer_id ?? "");
+              return { id: rowId, title: String(row.game ?? "").trim() || rowId, status: String(row.status ?? ""), subtitle: String(row.offer_name ?? "").trim(), fields: casinoTableColumns.filter(column => column.key !== "actions").map(column => ({ key: column.key, label: column.label, value: renderTableCell(row, column) })), onOpen: () => void selectRow(rowId) };
+            })} /> : null}
             <LedgerPagination
               ariaLabel="Casino Offer pagination"
               currentPage={effectivePage}
@@ -4369,6 +4375,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
             guidedTargetTabId={guidedEntryVisible ? guidedEntryTargetTabId : null}
             onActiveTabChange={(tabId) => activateCasinoEditorTab(tabId as CasinoEditorTabId)}
             tabs={casinoEditorTabs}
+            visualV2={visualV2}
           />
         </div>
         {guidedEntryVisible ? (

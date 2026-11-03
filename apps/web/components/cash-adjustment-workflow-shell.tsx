@@ -23,7 +23,7 @@ import { EditorValidationBanner } from "@/components/editor-validation-banner";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
 import { DesignLedgerSearch } from "@/components/design-ledger-search";
-import { DesignLedgerScreen, DesignLedgerToolbar, DesignLedgerToolbarAction, DesignLedgerPrimaryAction, DesignPageHead, designPageHeadClasses } from "@/components/design-ledger-screen";
+import { DesignLedgerScreen, DesignLedgerToolbar, DesignLedgerToolbarAction, DesignLedgerPrimaryAction, DesignPageHead, DesignLedgerNarrowToggle, DesignLedgerMobileRows, designPageHeadClasses } from "@/components/design-ledger-screen";
 import { DesignLabSelect } from "@/components/design-lab-select";
 import { LedgerViewContext } from "@/components/ledger-view-context";
 import { LedgerPagination } from "@/components/ledger-pagination";
@@ -650,6 +650,7 @@ export function CashAdjustmentWorkflowShell({ profileId, visualV2 = false }: { p
     "recent"
   );
   const [query, setQuery] = useState("");
+  const [mobileDetail, setMobileDetail] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [statusMessage, setStatusMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
@@ -1902,7 +1903,8 @@ export function CashAdjustmentWorkflowShell({ profileId, visualV2 = false }: { p
               position="top"
               totalRows={filteredRows.length}
             />
-            <LedgerTableScroll dataPdId="cash-adjustments.table-scroll" visualV2={visualV2} cellNavigation={{ label: "Cash Adjustments", onActivate: (rowId, column, anchor) => void selectRow(rowId, { cell: column in inlineCellFields ? { column, anchor } : undefined }) }}>
+            {visualV2 ? <DesignLedgerNarrowToggle expanded={mobileDetail} onToggle={() => setMobileDetail(value => !value)} /> : null}
+            <LedgerTableScroll dataPdId="cash-adjustments.table-scroll" visualV2={visualV2} narrowDetail={visualV2 && mobileDetail} cellNavigation={{ label: "Cash Adjustments", onActivate: (rowId, column, anchor) => void selectRow(rowId, { cell: column in inlineCellFields ? { column, anchor } : undefined }) }}>
               <table className="data-table sportsbook-data-table">
                 <colgroup>
                   {tableColumns.map((column) => {
@@ -2027,6 +2029,10 @@ export function CashAdjustmentWorkflowShell({ profileId, visualV2 = false }: { p
                 </tbody>
               </table>
             </LedgerTableScroll>
+            {visualV2 ? <DesignLedgerMobileRows dataPdId="cash-adjustments.labelled-details" expanded={mobileDetail} rows={pagedRows.map(row => {
+              const rowId = String(row.cash_adjustment_id ?? "");
+              return { id: rowId, title: String(row.description ?? "").trim() || rowId, status: String(row.status ?? ""), subtitle: String(row.adjustment_type ?? "").trim(), fields: cashAdjustmentTableColumns.filter(column => column.key !== "actions").map(column => ({ key: column.key, label: column.label, value: renderTableCell(row, column) })), onOpen: () => void selectRow(rowId) };
+            })} /> : null}
             <LedgerPagination
               ariaLabel="Cash Adjustment pagination"
               currentPage={effectivePage}

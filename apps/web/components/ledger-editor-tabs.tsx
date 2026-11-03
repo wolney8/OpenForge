@@ -1,6 +1,7 @@
 "use client";
 
 import { type KeyboardEvent, type ReactNode } from "react";
+import styles from "@/components/design-lab-connected.module.css";
 import {
   getLedgerEditorTabBadgeLabel,
   getLedgerEditorTabStatusLabel,
@@ -14,6 +15,7 @@ type LedgerEditorTabRailProps = {
   guidedTargetTabId?: string | null;
   onActiveTabChange: (tabId: string) => void;
   tabs: LedgerEditorTabDefinition[];
+  visualV2?: boolean;
 };
 
 export function LedgerEditorTabRail({
@@ -22,6 +24,7 @@ export function LedgerEditorTabRail({
   guidedTargetTabId = null,
   onActiveTabChange,
   tabs,
+  visualV2 = false,
 }: LedgerEditorTabRailProps) {
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
@@ -37,7 +40,7 @@ export function LedgerEditorTabRail({
   return (
     <div
       aria-label={ariaLabel}
-      className="ledger-editor-tab-rail"
+      className={`ledger-editor-tab-rail${visualV2 ? ` ${styles.stepper}` : ""}`}
       data-pd-id="ledger-editor.tabs"
       onKeyDown={handleKeyDown}
       role="tablist"

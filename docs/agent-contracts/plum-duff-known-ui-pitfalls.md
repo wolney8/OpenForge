@@ -1617,6 +1617,10 @@ V2 tokens belong to the server-owned root flag, so native-modal portals receive 
 
 `PD-PR-117A-21–24`: a field-looking-editable allowlist cannot override the owning row's settled/resolved/correction gates. Reuse native read-only and explicit Edit state; hand off settled rows and any legacy draft whose native Save preparation changes unrelated financial/date fields. Do not infer edit authority from successful low-level API validation alone. Failed async Save must release disabled controls and restore focus into the retained draft; disabling the focused Save button otherwise leaves Escape on the document body. The regression path is `cp117-six-ledger.spec.ts` (six native saves/rejections, pending exclusion, correction gates, narrow themes and rollback).
 
+## CP-126 Lab grid and mobile detail parity — #118
+
+Shared scroll wrappers and table surfaces alone do not make a real operational grid match the connected Lab. Legacy `.data-table` cell padding/type rules can win against module styles, and the Lab's first header uses narrower trailing padding. Compare computed cell and header padding, text size and line height for all six ledgers, then test sticky Actions and complete narrow details separately. The labelled view must retain every table display field and an explicit full-table switch; the real editor remains the source for Open Full Record. Focused geometry, mobile-theme and actual 200% zoom checks live in `cp117-visual-adoption.spec.ts`.
+
 ## CP-122 V2 presentation — report source detail must stay in flow
 
 The legacy `.dashboard-chart-drilldown` can be fixed-position for its older context. When formal Period P&L reports appear inside the V2 Reports page, keep the record inspector in normal document flow and within the report surface. Check desktop/mobile and both themes with the disclosure open; `cp117-visual-adoption.spec.ts` asserts the integrated source inspector position. Scope the correction to V2 so flag-OFF rollback retains its established layout.

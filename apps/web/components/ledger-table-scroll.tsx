@@ -9,6 +9,7 @@ type LedgerTableScrollProps = {
   className?: string;
   dataPdId: string;
   visualV2?: boolean;
+  narrowDetail?: boolean;
   cellNavigation?: { label: string; onActivate: (rowId: string, column: string, anchor: HTMLElement) => void };
 };
 
@@ -28,6 +29,7 @@ export function LedgerTableScroll({
   className = "",
   dataPdId,
   visualV2 = false,
+  narrowDetail = false,
   cellNavigation,
 }: LedgerTableScrollProps) {
   const ref = useRef<HTMLDivElement>(null);
@@ -334,7 +336,7 @@ export function LedgerTableScroll({
       : null;
 
   return (
-    <div className={`ledger-table-scroll-wrap ${className}`.trim()} ref={wrapperRef}>
+    <div className={`ledger-table-scroll-wrap ${narrowDetail ? styles.tableHiddenForDetail : ""} ${className}`.trim()} ref={wrapperRef}>
       {cellNavigation ? <span className="sr-only" id={instructionsId}>Use arrow keys, Home or End to select a cell. Press Enter or F2, or double-click, to open the existing {cellNavigation.label} editor. Escape clears cell selection.</span> : null}
       <div className={`table-scroll${visualV2 ? ` ${styles.tableScroll}` : ""}`} data-pd-id={dataPdId} ref={ref}>
         {children}

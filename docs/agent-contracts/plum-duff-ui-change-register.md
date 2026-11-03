@@ -1351,3 +1351,17 @@ Owner continuation under [#118](https://github.com/wolney8/OpenForge/issues/118)
 | PD-PR-117A-41 | Deliver one integrated single-host candidate with paired complete-screen visual evidence, real native editor journey videos, V2/legacy regression, source custody and issue receipt | Existing CP-117 synthetic runner and normal 3010 | IN PROGRESS — synthetic complete-screen and editor videos captured; integration, rollback, source checkpoint and normal 3010 restoration still being verified |
 
 Today tracking and saved-view persistence remain separate authority decisions. Their absence does not block independent presentation work.
+
+## CP-126 six-ledger design parity — 2026-11-03
+
+Owner continuation under [#118](https://github.com/wolney8/OpenForge/issues/118). Preserve CP-125's shared Lab components and real financial authorities; assess full rendered screens in equivalent states. Existing approval covers presentation and interaction changes only.
+
+| ID | Surface and requested outcome | Signed-off equivalent | Status |
+| --- | --- | --- | --- |
+| PD-PR-117A-42 | Match Lab ledger grid row/cell/header/sticky/selection geometry across all six real ledgers without removing essential fields | Connected Lab ledger grid and shared table-scroll styles | NEEDS VERIFICATION — all six rendered cell padding, type size and line height now match Lab; sticky Actions and navigation tested. Column widths and complete row composition remain open. |
+| PD-PR-117A-43 | Adopt Lab narrow labelled-detail mode while retaining full spreadsheet, every essential field, row actions, pointer/keyboard/zoom access | Connected Lab `Show Labelled Details` grid mode | COMPLETE implementation candidate — shared Lab toggle/detail components render in all six real ledgers with all table display fields and full-record handoff; 390 px both themes, real 200% zoom and six editor handoffs pass. Spoken screen reader and owner Design Acceptance remain open. |
+| PD-PR-117A-44 | Translate Sportsbook, Free Bet, Casino and other supported native Add/Edit interiors to Lab modal, stepper and field composition without altering financial workflow authority | Connected Lab entry and workbench presentation; native editor contracts | IN PROGRESS — native Sportsbook, Free Bet and Casino tab rails now use the Lab stepper presentation while retaining governed stages. Full modal, field and review composition still differs materially. |
+| PD-PR-117A-45 | Matched fixture/theme/viewport visual acceptance, synthetic integrated/rollback tests and complete-screen/editor recordings; then continue Today/Notifications/Reports/Profit Tracker/Profile/Settings route groups | CP-125 paired visual and independent synthetic runner | IN PROGRESS — paired six-ledger desktop/mobile light/dark captures, editor recordings, grid geometry and actual zoom paths added; 21/21 V2, 2/2 flag-OFF and 701/701 web tests passed. Later route groups and owner Design Acceptance remain open. |
+| PD-FIX-510 | Resolve inherited Free Bet render-ref lint error if a narrow state-derived equivalent preserves existing SNR draft restriction and financial behavior | Existing Free Bet form state and React render-state contract | COMPLETE — render uses mirrored state while the existing async ref guard remains; focused lint and synthetic new-draft SNR versus existing-row mode Playwright pass. |
+
+Saved-view and Today annotation persistence remain under their prior authority gates. No owner financial data or normal authentication material enters synthetic tests.
