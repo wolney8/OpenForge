@@ -156,6 +156,15 @@ function AppChromeContent({
   const [trackerMenuOpen, setTrackerMenuOpen] = useState(false);
   const [appMenuOpen, setAppMenuOpen] = useState(false);
   const [uxV2MobileOpen, setUxV2MobileOpen] = useState(false);
+  const [uxV2Collapsed, setUxV2Collapsed] = useState(false);
+  const [uxV2Narrow, setUxV2Narrow] = useState(false);
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 760px)");
+    const update = () => setUxV2Narrow(media.matches);
+    const frame = requestAnimationFrame(update);
+    media.addEventListener("change", update);
+    return () => { cancelAnimationFrame(frame); media.removeEventListener("change", update); };
+  }, []);
   const [profileSearch, setProfileSearch] = useState("");
   const [selectedCommandProfileId, setSelectedCommandProfileId] = useState<string | null>(null);
   const [activeProfiles, setActiveProfiles] = useState<ProfileHeaderRecord[]>([]);
@@ -588,21 +597,24 @@ function AppChromeContent({
       <a className="skip-link" href="#main-content">
         Skip to content
       </a>
-      <div className={`app-frame${uxV2 && !isPublicAuthRoute ? " ux-v2-frame" : ""}`} data-ux-shell={uxV2 && !isPublicAuthRoute ? "v2" : "legacy"}>
+      <div className={`app-frame${uxV2 && !isPublicAuthRoute ? ` ux-v2-frame${uxV2Collapsed ? " is-sidebar-collapsed" : ""}` : ""}`} data-ux-shell={uxV2 && !isPublicAuthRoute ? "v2" : "legacy"}>
         {!isPublicAuthRoute ? <header className={`top-app-bar${uxV2 ? " ux-v2-top-bar" : ""}`} data-openforge-top-bar="" data-pd-id="app-shell.top-bar">
           <div className="brand-lockup">
             {!isPublicAuthRoute ? <div className="app-menu-shell">
               <button
-                aria-expanded={uxV2 ? uxV2MobileOpen : appMenuOpen}
+                aria-expanded={uxV2 ? (uxV2Narrow ? uxV2MobileOpen : !uxV2Collapsed) : appMenuOpen}
                 aria-controls={uxV2 ? "ux-v2-sidebar" : "app-navigation-drawer"}
-                aria-haspopup="dialog"
-                aria-label="Open navigation drawer"
+                aria-haspopup={uxV2 ? undefined : "dialog"}
+                aria-label={uxV2 ? "Toggle Navigation" : "Open navigation drawer"}
                 className="icon-button app-navigation-drawer-trigger"
                 data-pd-id="app-navigation.trigger"
                 onClick={() => {
                   setTrackerMenuOpen(false);
                   setProfileSearch("");
-                  if (uxV2) setUxV2MobileOpen(true);
+                  if (uxV2) {
+                    if (window.matchMedia("(max-width: 760px)").matches) setUxV2MobileOpen(true);
+                    else setUxV2Collapsed(value => !value);
+                  }
                   else setAppMenuOpen(true);
                 }}
                 ref={appMenuTriggerRef}

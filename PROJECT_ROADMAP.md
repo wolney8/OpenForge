@@ -1,5 +1,9 @@
 # Project Roadmap — Plum Duff / OpenForge — Doc ID: PR-CODEX-001
 
+## CP-117 continuous adoption — 2026-11-03
+
+Continue from the isolated real V2 candidate and the existing adoption matrix. The Lab direction is provisionally accepted; ordinary implementation increments do not require renewed design permission. Shared presentation now reaches all six ledgers and existing editors. Next: complete governed spreadsheet/editor interaction parity and remaining reporting/Profile presentation, retaining existing financial services. Personal tracking awaits the minimal viewer/Profile annotation API/schema approval; the existing atomic test-fixture/catalogue mismatch needs reconciliation before claiming full financial parity. Keep the flag default OFF, normal-owner isolated and promotion separately gated.
+
 ## CP-117 reviewable build and ledger adoption — 2026-11-03
 
 Review the preserved Today Lab at `localhost:3117/design-lab`, then compare the default-off flagged real Sportsbook/Accounts presentation against the existing tables using disposable integrated evidence. Keep source-backed filters, sorting, Actions, Profile context, Add/Edit and financial authorities intact. The next bounded increment is real ledger interaction parity only after this visual review and a field-level correction/save contract; Board and durable personal tracking need their separate approved API/schema wave. Do not promote to main or deploy from this checkpoint.

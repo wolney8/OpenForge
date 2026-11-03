@@ -28,6 +28,7 @@ import { LedgerValueCell } from "@/components/ledger-value-cell";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerPnlCard, type LedgerReadState } from "@/components/ledger-pnl-card";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
+import { LedgerViewContext } from "@/components/ledger-view-context";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerQuickActions, type LedgerQuickAction } from "@/components/ledger-quick-actions";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
@@ -3761,6 +3762,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
                 {errorMessage}
               </p>
             ) : null}
+            <LedgerViewContext ledger="casino-offers" activeControls={activeTableControlCount} searchActive={query.trim().length > 0} totalRows={rows.length} visibleRows={filteredRows.length} />
             <LedgerPagination
               ariaLabel="Casino Offer pagination"
               currentPage={effectivePage}

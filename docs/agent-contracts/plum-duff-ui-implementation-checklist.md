@@ -347,3 +347,12 @@ Complete this for every feature, bug fix, component, fixture-backed UI, route or
       displayed as current.
 - [x] Selected-range metric blocks use structural spacing and remain contained at 430px.
 - [ ] Owner verification of first-login and partial-known presentation remains pending.
+
+## CP-117 continuous adoption — 2026-11-03
+
+- [x] Existing Lab direction is provisionally accepted; `PD-PR-117A-11–16` records the bounded adoption increment before implementation.
+- [x] Reused real six-ledger tables, tabs, native ModalBoundary, shared fields, status/financial tokens and existing APIs. No financial logic or required-column template was replaced.
+- [x] Root server flag scopes neutral surfaces, including portalled editors; OFF keeps existing styling. Header/sidebar reuse the persistent navigation component, with desktop collapse and mobile focus behaviour retained.
+- [x] Populated real tables/editors, sticky header/body Actions, pointer panning, keyboard scroll, sidebar width release, failed-save draft/retry, source ownership and mobile themes have real-route browser paths.
+- [x] Financial/auth safeguard failures were compared with the preserved baseline; unchanged failures are reported rather than hidden or weakened.
+- [ ] Complete financial lifecycle UI parity, persistent tracking/Board and manual spoken screen-reader verification remain outside this bounded presentation receipt. Consolidated owner review is still outstanding.

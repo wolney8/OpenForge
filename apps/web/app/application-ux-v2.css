@@ -1,0 +1,126 @@
+/* PD-UX adoption: presentation only. The server owns this root attribute, so
+   legacy routes and the OFF rollback never acquire these overrides. Existing
+   financial, provider and back/lay semantic tokens retain their authorities. */
+html[data-ux-shell="v2"] {
+  --bg: #f8f9fa;
+  --bg-elevated: #fff;
+  --bg-muted: #f0f2f4;
+  --surface: #fff;
+  --surface-strong: #fff;
+  --surface-container: #f5f6f7;
+  --surface-container-high: #f0f2f4;
+  --surface-container-highest: #e9ecef;
+  --text: #171b20;
+  --muted: #56616c;
+  --outline: rgba(24, 30, 36, .13);
+  --outline-strong: rgba(24, 30, 36, .23);
+  --shadow: 0 4px 16px rgba(24, 30, 36, .06);
+  --hero-glow: none;
+}
+html[data-ux-shell="v2"][data-theme="dark"] {
+  --bg: #0d0f12;
+  --bg-elevated: #111316;
+  --bg-muted: #1b1e22;
+  --surface: #111316;
+  --surface-strong: #1b1e22;
+  --surface-container: #24272d;
+  --surface-container-high: #292d33;
+  --surface-container-highest: #32373f;
+  --text: #f2f3f5;
+  --muted: #a0a5af;
+  --outline: rgba(244, 246, 248, .11);
+  --outline-strong: rgba(244, 246, 248, .2);
+  --shadow: 0 4px 16px rgba(0, 0, 0, .12);
+}
+html[data-ux-shell="v2"], html[data-ux-shell="v2"] body { background: var(--bg); }
+
+.ux-v2-frame .ux-v2-top-bar .app-navigation-drawer-trigger { display: inline-flex; }
+.ux-v2-main > .page-shell,
+.ux-v2-main > .ux-v2-crumb-row { width: calc(100% - 2rem); max-width: none; }
+.ux-v2-main :is(.hero-panel, .content-panel, .route-card) {
+  border-radius: var(--shape-large);
+  backdrop-filter: none;
+  box-shadow: none;
+}
+.ux-v2-main .hero-panel { background: var(--surface); }
+.ux-v2-main h1 { font-size: clamp(1.75rem, 2.5vw, 2.5rem); }
+.ux-v2-main .content-subpanel { box-shadow: none; }
+.ux-v2-main .ledger-table-scroll-wrap .data-table > thead > tr > th,
+.ux-v2-main .ledger-table-scroll-wrap .data-table > tbody > tr > td {
+  padding: .7rem .65rem;
+}
+.ux-v2-main .ledger-table-scroll-wrap .data-table > thead > tr > th {
+  color: var(--text);
+  font-size: .8rem;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.ux-v2-main .ledger-table-scroll-wrap .data-table > tbody > tr:focus-within {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+.ux-v2-main .ledger-table-scroll-wrap > .table-scroll {
+  scrollbar-width: auto;
+  scroll-behavior: auto;
+  overscroll-behavior-x: contain;
+}
+.ux-v2-main .ledger-table-scroll-wrap > .table-scroll:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.ux-v2-main .ledger-table-scroll-wrap > .table-scroll.is-panning {
+  cursor: grabbing;
+  user-select: none;
+}
+/* Portalled editors inherit the same tokens without changing their validation,
+   tab stages, scroll owner or governed Save/Cancel behaviours. */
+html[data-ux-shell="v2"] :is(.workflow-editor-modal, .accounts-editor-modal, .extra-place-editor-modal) {
+  background: var(--surface);
+  border-radius: var(--shape-large);
+}
+html[data-ux-shell="v2"] :is(.workflow-editor-header, .workflow-editor-footer) {
+  background: var(--surface);
+}
+html[data-ux-shell="v2"] .editor-section.is-invalid-section {
+  animation: none;
+}
+html[data-ux-shell="v2"] .ledger-editor-tab-button {
+  box-shadow: none;
+}
+html[data-ux-shell="v2"] .ledger-editor-tab-button.is-active {
+  background: var(--primary-soft);
+}
+html[data-ux-shell="v2"] :is(.ledger-editor-tab-button.is-guided-target, .ledger-editor-tab-attention) {
+  animation: none;
+}
+html[data-ux-shell="v2"] .ledger-editor-tab-button-matching::before { content: none; }
+html[data-ux-shell="v2"] :is(.ledger-toolbar-add-action, .modal-primary-button, .workflow-editor-header button, .workflow-editor-footer button) {
+  box-shadow: none;
+}
+html[data-ux-shell="v2"] :is(.ledger-toolbar-add-action, .modal-primary-button, .workflow-editor-header button, .workflow-editor-footer button):focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+html[data-ux-shell="v2"] .ledger-table-scroll-arrow {
+  background: var(--surface-container);
+  box-shadow: var(--shadow);
+  backdrop-filter: none;
+}
+html[data-ux-shell="v2"] .ledger-table-scroll-arrow::before { content: none; }
+@media (min-width: 761px) {
+  .ux-v2-frame.is-sidebar-collapsed { --ux-v2-nav-width: 4.5rem; }
+  .ux-v2-frame.is-sidebar-collapsed .ux-v2-sidebar { padding-inline: .4rem; }
+  .ux-v2-frame.is-sidebar-collapsed .ux-v2-nav-link {
+    grid-template-columns: 1.5rem;
+    justify-content: center;
+    padding-inline: .45rem;
+  }
+  .ux-v2-frame.is-sidebar-collapsed .ux-v2-nav-link > span:not(:first-child) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .ux-v2-frame.is-sidebar-collapsed .ux-v2-nav-children { padding-left: 0; }
+}

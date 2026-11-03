@@ -1604,3 +1604,7 @@ A later generic `td[tabindex]{position:relative}` rule can override a sticky Act
 header stays pinned. Keep relative positioning on editable data cells only; compare the pinned
 header/body right edges and action target bounds after horizontal scroll. The shared Design Lab
 regression is `tests/e2e/design-lab-sticky-actions.spec.ts`.
+
+## Flagged presentation must scope portalled surfaces and retain text selection
+
+V2 tokens belong to the server-owned root flag, so native-modal portals receive the same neutral surfaces without changing the OFF shell. A shared horizontal pan region must exclude controls, headers/resizers and actual text hit rectangles before capturing a left-button drag; middle-button panning may use ordinary cell text. Require a drag threshold and suppress the release click after a pan. `cp117-continuous-adoption.spec.ts` covers six populated real editors/tables, shared panning, sidebar-width release, mobile containment and source ownership; `cp117-flag-rollback.spec.ts` retains the OFF checks.

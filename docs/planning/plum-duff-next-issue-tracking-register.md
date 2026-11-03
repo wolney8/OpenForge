@@ -2,7 +2,7 @@
 
 ## CP-117 integrated adoption — 2026-11-03
 
-`PD-PR-117A-01–10` in the [UI change register](../agent-contracts/plum-duff-ui-change-register.md#cp-117-design-lab-adoption--2026-11-03) retain the owner's discovery, reversible integration, full-module parity, isolated Lab review instance, real-ledger presentation, Playwright recording and owner-promotion gates. [GitHub issue #118](https://github.com/wolney8/OpenForge/issues/118) tracks the live adoption scope; [#114](https://github.com/wolney8/OpenForge/issues/114) retains the earlier platform audit. The existing Wave 1 shell is the real baseline; lab-only task state, notification triage and financial editing do not become production authorities by copying their UI. Issue creation is verified; detailed subitem sync remains pending.
+`PD-PR-117A-01–16` in the [UI change register](../agent-contracts/plum-duff-ui-change-register.md#cp-117-design-lab-adoption--2026-11-03) retain the owner's discovery, reversible integration, full-module parity, isolated Lab review instance, real-ledger presentation, Playwright recording and owner-promotion gates. [GitHub issue #118](https://github.com/wolney8/OpenForge/issues/118) tracks the live adoption scope; [#114](https://github.com/wolney8/OpenForge/issues/114) retains the earlier platform audit. The existing Wave 1 shell is the real baseline; lab-only task state, notification triage and financial editing do not become production authorities by copying their UI. Issue #118 is verified; the checkpoint receipt records the current subitem sync state.
 
 ## CP-119F review cells and inbox navigation — 2026-11-02
 

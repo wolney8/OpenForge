@@ -15,4 +15,13 @@ describe("server-flagged Fund Manager destinations", () => {
     expect(destinationForPath("/profiles/profile-a/tracker/accounts")?.id).toBe("accounts");
     expect(destinationForPath("/profiles/profile-a/tracker/accounts", "#profile-opportunities")?.id).toBe("opportunities");
   });
+
+  it("keeps Profile reports, profit tracking and settings in their logical section", () => {
+    for (const [module, parent] of [["reports", "reports"], ["profit-tracker", "reports"], ["settings", "settings"]]) {
+      const destination = destinationForPath(`/profiles/profile-a/tracker/${module}`);
+      expect(destination?.group).toBe("context");
+      expect(destination?.parent).toBe(parent);
+      expect(destination?.href("profile-a")).toBe(`/profiles/profile-a/tracker/${module}`);
+    }
+  });
 });

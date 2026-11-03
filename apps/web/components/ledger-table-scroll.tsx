@@ -36,6 +36,92 @@ export function LedgerTableScroll({
 
   useEffect(() => {
     const element = ref.current;
+    if (!element || document.documentElement.dataset.uxShell !== "v2") return;
+    element.tabIndex = 0;
+    element.setAttribute("role", "region");
+    element.setAttribute("aria-label", "Ledger Table — Use Left and Right Arrows to Scroll");
+    let drag: { id: number; start: number; scroll: number; active: boolean } | null = null;
+    let suppressClick = false;
+    const interactive = 'a,button,input,select,textarea,[contenteditable="true"],[draggable="true"],[role="separator"],.column-resize-handle,.table-column-resize-handle';
+    const down = (event: PointerEvent) => {
+      if (event.pointerType === "touch" || (event.button !== 0 && event.button !== 1)) return;
+      const target = event.target instanceof Element ? event.target : null;
+      if (!target || target.closest(interactive) || target.closest("th")) return;
+      // Left-button text selection remains native on nested cell content.
+      // Middle-button panning works on ordinary cell text as well as background.
+      if (event.button === 0 && target !== element && target.tagName !== "TD") return;
+      if (event.button === 0 && target.tagName === "TD") {
+        const hitsText = [...target.childNodes].some(node => {
+          if (node.nodeType !== Node.TEXT_NODE || !node.textContent?.trim()) return false;
+          const range = document.createRange();
+          range.selectNodeContents(node);
+          return [...range.getClientRects()].some(rect => event.clientX >= rect.left && event.clientX <= rect.right && event.clientY >= rect.top && event.clientY <= rect.bottom);
+        });
+        if (hitsText) return;
+      }
+      if (element.scrollWidth <= element.clientWidth) return;
+      suppressClick = false;
+      drag = { id: event.pointerId, start: event.clientX, scroll: element.scrollLeft, active: false };
+      if (event.button === 1) event.preventDefault();
+    };
+    const move = (event: PointerEvent) => {
+      if (!drag || event.pointerId !== drag.id) return;
+      const distance = event.clientX - drag.start;
+      if (!drag.active && Math.abs(distance) < 6) return;
+      if (!drag.active) {
+        drag.active = true;
+        element.setPointerCapture(event.pointerId);
+        element.classList.add("is-panning");
+      }
+      event.preventDefault();
+      element.scrollLeft = drag.scroll - distance;
+    };
+    const finish = () => {
+      if (!drag) return;
+      suppressClick = drag.active;
+      const id = drag.id;
+      drag = null;
+      element.classList.remove("is-panning");
+      if (element.hasPointerCapture(id)) element.releasePointerCapture(id);
+    };
+    const click = (event: MouseEvent) => {
+      if (event.type === "auxclick" && event.button === 1) event.preventDefault();
+      if (!suppressClick) return;
+      event.preventDefault();
+      event.stopPropagation();
+      suppressClick = false;
+    };
+    const keyboard = (event: KeyboardEvent) => {
+      if (event.target !== element || !["ArrowLeft", "ArrowRight"].includes(event.key)) return;
+      event.preventDefault();
+      element.scrollBy({ left: event.key === "ArrowRight" ? 120 : -120, behavior: "auto" });
+    };
+    element.addEventListener("pointerdown", down);
+    element.addEventListener("pointermove", move);
+    element.addEventListener("click", click, true);
+    element.addEventListener("auxclick", click, true);
+    element.addEventListener("keydown", keyboard);
+    window.addEventListener("pointerup", finish);
+    window.addEventListener("pointercancel", finish);
+    window.addEventListener("blur", finish);
+    return () => {
+      finish();
+      element.removeAttribute("tabindex");
+      element.removeAttribute("role");
+      element.removeAttribute("aria-label");
+      element.removeEventListener("pointerdown", down);
+      element.removeEventListener("pointermove", move);
+      element.removeEventListener("click", click, true);
+      element.removeEventListener("auxclick", click, true);
+      element.removeEventListener("keydown", keyboard);
+      window.removeEventListener("pointerup", finish);
+      window.removeEventListener("pointercancel", finish);
+      window.removeEventListener("blur", finish);
+    };
+  }, []);
+
+  useEffect(() => {
+    const element = ref.current;
     const wrapper = wrapperRef.current;
     if (!element || !wrapper) return;
 

@@ -41,6 +41,7 @@ import { LedgerValueCell } from "@/components/ledger-value-cell";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerPnlCard, type LedgerReadState } from "@/components/ledger-pnl-card";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
+import { LedgerViewContext } from "@/components/ledger-view-context";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
 import { LedgerQuickActions, type LedgerQuickAction } from "@/components/ledger-quick-actions";
@@ -3570,6 +3571,7 @@ export function FreeBetWorkflowShell({
         {!tableCollapsed ? (
           <>
             {errorMessage ? <p className="error-text" role="alert">{errorMessage}</p> : null}
+            <LedgerViewContext ledger="free-bets" activeControls={activeTableControlCount} searchActive={query.trim().length > 0} totalRows={rows.length} visibleRows={filteredRows.length} />
             <LedgerPagination
               ariaLabel="Free Bet pagination"
               currentPage={effectivePage}

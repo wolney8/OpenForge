@@ -22,6 +22,7 @@ import {
   useBookmakerCatalogue,
 } from "@/components/bookmaker-identity";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
+import { LedgerViewContext } from "@/components/ledger-view-context";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
 import { ModalBoundary } from "@/components/modal-boundary";
@@ -1208,6 +1209,7 @@ export function EachWayExtraPlaceWorkflowShell({
           <EachWayColourSchemeToggle onChange={setTableTheme} value={tableTheme} />
         </div>
       </div>
+      <LedgerViewContext ledger="extra-place" activeControls={Object.entries(tableFilters).filter(([key, value]) => Boolean(value) && !(key === "view" && value === "recent")).length} searchActive={query.trim().length > 0} totalRows={tableRows.length} visibleRows={pageableRows.length} />
       <LedgerPagination
         ariaLabel="Extra Place pagination"
         currentPage={effectivePage}

@@ -2,7 +2,8 @@ export type ShellDestination = {
   id: string;
   label: string;
   icon: string;
-  group: "primary" | "tracker" | "more" | "launcher";
+  group: "primary" | "tracker" | "more" | "launcher" | "context";
+  parent?: "profiles" | "reports" | "settings";
   href: (profileId: string | null) => string | null;
 };
 
@@ -30,6 +31,10 @@ export const shellDestinations: ShellDestination[] = [
   { id: "catalogue", label: "Account Catalogue", icon: "account_balance", group: "launcher", href: () => "/settings#catalogue" },
   { id: "administration", label: "Administration / Settings", icon: "settings", group: "launcher", href: () => "/settings" },
   { id: "recovery", label: "Recovery & Backups", icon: "restore", group: "launcher", href: () => "/profiles/restore" },
+  { id: "profile-operations", label: "Profile Operations", icon: "space_dashboard", group: "context", parent: "profiles", href: profileRoute("dashboard") },
+  { id: "profile-reports", label: "Profile Reports", icon: "summarize", group: "context", parent: "reports", href: profileRoute("reports") },
+  { id: "profit-tracker", label: "Profit Tracker", icon: "monitoring", group: "context", parent: "reports", href: profileRoute("profit-tracker") },
+  { id: "profile-settings", label: "Profile Settings", icon: "settings", group: "context", parent: "settings", href: profileRoute("settings") },
 ];
 
 export function destinationForPath(pathname: string, hash = ""): ShellDestination | null {

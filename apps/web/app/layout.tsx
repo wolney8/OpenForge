@@ -5,6 +5,7 @@ import { CookieNotice } from "@/components/cookie-notice";
 import { ThemeProvider } from "@/components/theme-provider";
 import { platformBrand } from "@/lib/brand";
 import "./globals.css";
+import "./application-ux-v2.css";
 
 export const metadata: Metadata = {
   title: platformBrand.name,
@@ -20,7 +21,7 @@ export default async function RootLayout({
   await headers();
   const uxV2 = process.env.OPENFORGE_FUND_MANAGER_UX_V2 === "true";
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html data-ux-shell={uxV2 ? "v2" : "legacy"} lang="en" suppressHydrationWarning>
       <head>
         {/* Material Symbols does not currently have a Next.js font-loader export. */}
         {/* eslint-disable-next-line @next/next/no-page-custom-font */}

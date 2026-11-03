@@ -19,6 +19,21 @@ Live adoption tracking: [GitHub #118](https://github.com/wolney8/OpenForge/issue
 | PD-PR-117A-09 | PROPOSED — FLAGGED REAL UI: bring Sportsbook and Accounts ledger presentation closer to the approved grid using their existing real tables, filters, sorting, resizing, actions and API authority; use a compact Sportsbook summary by removing duplicated metric descriptions in V2 only; retain default columns and flag-OFF layout | NEEDS VERIFICATION — disposable real-route browser 7/7 and flag-OFF 2/2; owner visual assessment and full financial UI parity remain open |
 | PD-PR-117A-10 | Capture disposable-data integrated ledger/navigation evidence and reconcile lab-versus-real differences in the adoption matrix | CODE-VERIFIED — private desktop/mobile/zoom screenshots and real-route videos indexed in the adoption matrix; source checkpoint pending |
 
+### CP-117 continuous application adoption — 2026-11-03
+
+Owner authorises sustained local adoption; intermediate checkpoints do not require renewed visual approval. Existing Lab direction is provisionally accepted. Canonical equivalents are the existing real ledger/editor primitives plus CP-114C neutral shell and CP-119 table interaction references.
+
+| ID | Request / surface and equivalent | Status |
+| --- | --- | --- |
+| PD-PR-117A-11 | Verify 3010 running source/flag and flag-OFF isolation; existing server-owned flag and rollback tests | PROVEN — current process override ON at old source; OFF rollback 2/2 retains original tokens, table and shell |
+| PD-PR-117A-12 | One authenticated V2 real-route preview with disposable database and current services; canonical runtime launchers | PROVEN — localhost:3127 / API 8127; isolated identity and current authorised owner session verified; renewal limitation documented |
+| PD-PR-117A-13 | PROPOSED — FLAGGED REAL UI: neutral shared surface/token treatment, compact six-ledger tables and editor surfaces; reuse existing panels, fields, dialogs, status/financial tokens and authoritative columns | CODE-VERIFIED — six real populated tables/editors and scoped neutral surfaces; complete Lab interaction adoption remains PARTIAL |
+| PD-PR-117A-14 | Desktop sidebar collapse and released ledger width; shared persistent sidebar and existing mobile navigation | PROVEN — pointer interaction releases more than 100 CSS pixels; mobile navigation and focus retained |
+| PD-PR-117A-15 | Shared real-ledger horizontal pointer/keyboard navigation; `LedgerTableScroll`, native scrolling and protected row actions | PROVEN — left/middle-pointer drag threshold, no release navigation, keyboard scroll and protected controls; text hit rectangles remain native |
+| PD-PR-117A-16 | Integrated real-route Add/Edit, specialist, reporting/tool navigation evidence and meaningful rollback checkpoint; existing Playwright suites | CODE-VERIFIED — final integrated browser 21/21, OFF 2/2, build/typecheck and 3 navigation units; unchanged baseline financial fixture failures remain visible |
+
+Personal tracking/Board persistence remains BLOCKED on a separately approved API/schema amendment. No synthetic state may stand in for real persistence. Extra Place's normal duplicate Status discrepancy remains deferred against the signed-off no-duplicate decision; this increment preserves existing columns pending its scoped reconciliation.
+
 Production decisions still open: task annotation/tracking persistence, CP-049 bell prioritisation, spreadsheet save/correction authority and narrow ledger column treatment. Existing owner requests remain below; this batch does not close them.
 
 ## CP-118C Today tracked tasks and Board — 2026-11-02

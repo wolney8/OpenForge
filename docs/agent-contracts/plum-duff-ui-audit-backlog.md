@@ -82,3 +82,10 @@ surfaces and record actual composed-layout, theme, focus, scaling and responsive
 - Low-risk modal semantics, undefined token and stable-ID fixes listed in the completion report.
 - Profile Settings section navigation with keyboard operation and hash deep links.
 - Shared ledger-editor sticky headers/actions, stable IDs and mobile reflow coverage.
+
+## CP-117 bounded adoption gaps — 2026-11-03
+
+| ID / blast radius | Surface | Evidence / next action |
+| --- | --- | --- |
+| PD-UI-AUD-117-01 / MEDIUM | Free Bet editor execution summary | An Available preview with complete planning inputs and no actual matched stake can display the calculation authority's `lay_status` as `Fully Laid`. Preserve calculation outputs, but reconcile the label's planning versus actual-execution meaning before adopting the Lab execution workbench. No financial authority was changed here. |
+| PD-UI-AUD-117-02 / MEDIUM | Casino imported Date Started precision | Existing datetime editor does not populate a date-only source as a recorded time. The disposable preview now uses explicitly known synthetic datetime inputs. Date-only historical editing needs a governed unknown-time presentation; do not infer midnight to make an editor appear populated. |

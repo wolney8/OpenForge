@@ -22,6 +22,7 @@ import { EditorSection } from "@/components/editor-section";
 import { EditorValidationBanner } from "@/components/editor-validation-banner";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
+import { LedgerViewContext } from "@/components/ledger-view-context";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
 import { LedgerQuickActions, type LedgerQuickAction } from "@/components/ledger-quick-actions";
@@ -1890,6 +1891,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
         />
         {!tableCollapsed ? (
           <>
+            <LedgerViewContext ledger="cash-adjustments" activeControls={activeTableControlCount} searchActive={query.trim().length > 0} totalRows={rows.length} visibleRows={filteredRows.length} />
             <LedgerPagination
               ariaLabel="Cash Adjustment pagination"
               currentPage={effectivePage}

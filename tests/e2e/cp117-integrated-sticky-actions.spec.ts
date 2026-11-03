@@ -82,11 +82,16 @@ test("flagged real Sportsbook search keeps an honest row count and recoverable t
   await page.goto("/profiles/profile-notification-acceptance/tracker/sportsbook-bets");
   const search = page.getByRole("searchbox", { name: "Search sportsbook rows" });
   await expect(search).toBeVisible();
+  const context = page.locator('[data-pd-id="sportsbook.view-context"]');
+  await expect(context).toContainText(/\d+ of \d+ Rows?/);
+  const rowCount = (await context.textContent())!.match(/of (\d+) Rows?/)![1];
   await search.fill("no synthetic record matches this search");
-  await expect(page.locator('[data-pd-id="sportsbook.view-context"]')).toContainText("0 of 1 Row · Search Active");
+  await expect(context).toContainText(`0 of ${rowCount} Row`);
+  await expect(context).toContainText("Search Active");
   await expect(page.getByText("No sportsbook rows match the current filter.")).toBeVisible();
   await search.clear();
-  await expect(page.locator('[data-pd-id="sportsbook.view-context"]')).toContainText("1 of 1 Row");
+  await expect(context).toContainText(`of ${rowCount} Row`);
+  await expect(context).not.toContainText("Search Active");
   await page.screenshot({ path: info.outputPath("sportsbook-v2-table-filtered-recovered.png") });
 });
 

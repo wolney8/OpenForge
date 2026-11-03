@@ -27,10 +27,13 @@ test("flag off retains the original real Sportsbook table presentation", async (
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/profiles/profile-notification-acceptance/tracker/sportsbook-bets");
   await expect(page.getByRole("heading", { name: "Sportsbook Bets" })).toBeVisible();
+  await expect(page.locator("html")).toHaveAttribute("data-ux-shell", "legacy");
+  expect(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--bg").trim())).toMatch(/^#(?:10161d|f5f7fb)$/);
   await expect(page.locator('[data-pd-id="ux-v2.sidebar"]')).toHaveCount(0);
   await expect(page.locator('[data-pd-id="sportsbook.view-context"]')).toBeHidden();
   await page.getByRole("combobox", { name: "Change tracker date range" }).selectOption({ label: "All Dates" });
   const scroll = page.locator('[data-pd-id="sportsbook.table-scroll"]');
+  await expect(scroll).not.toHaveAttribute("tabindex", "0");
   await expect(scroll.locator("tbody tr td:last-child:not([colspan])").first()).toBeVisible();
   await scroll.scrollIntoViewIfNeeded();
   await scroll.evaluate((element) => { element.scrollLeft = element.scrollWidth; });

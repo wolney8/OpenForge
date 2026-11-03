@@ -27,9 +27,10 @@ function NavLink({ item, profileId, pathname, locationHash, onNavigate }: {
 }) {
   const navigate = useShellNavigation();
   const href = item.href(profileId);
-  const active = destinationForPath(pathname, locationHash)?.id === item.id;
+  const destination = destinationForPath(pathname, locationHash);
+  const active = destination?.id === item.id || destination?.parent === item.id;
   if (!href) return <span aria-disabled="true" className="ux-v2-nav-link is-unavailable" title="Select a Profile to open this destination"><span aria-hidden="true" className="material-symbols-outlined">{item.icon}</span><span>{item.label}</span></span>;
-  return <Link aria-current={active ? "page" : undefined} className={`ux-v2-nav-link${active ? " is-active" : ""}`} data-pd-id={`ux-v2.nav.${item.id}`} href={href} onClick={(event) => void navigate(event, href, onNavigate)}><span aria-hidden="true" className="material-symbols-outlined">{item.icon}</span><span>{item.label}</span></Link>;
+  return <Link aria-current={active ? (destination?.id === item.id ? "page" : "location") : undefined} className={`ux-v2-nav-link${active ? " is-active" : ""}`} data-pd-id={`ux-v2.nav.${item.id}`} href={href} onClick={(event) => void navigate(event, href, onNavigate)} title={item.label}><span aria-hidden="true" className="material-symbols-outlined">{item.icon}</span><span>{item.label}</span></Link>;
 }
 
 export function FundManagerUxV2Sidebar({ profileId, mobileOpen, onMobileClose, triggerRef }: {
@@ -40,7 +41,9 @@ export function FundManagerUxV2Sidebar({ profileId, mobileOpen, onMobileClose, t
   const [trackerExpanded, setTrackerExpanded] = useState<boolean | null>(null);
   const trackerIsExpanded = trackerExpanded ?? pathname.includes("/tracker/");
   const [moreExpanded, setMoreExpanded] = useState<boolean | null>(null);
-  const currentMore = destinationForPath(pathname, locationHash)?.group === "more" ? destinationForPath(pathname, locationHash) : null;
+  const destination = destinationForPath(pathname, locationHash);
+  const currentMore = destination?.group === "more" ? destination
+    : shellDestinations.find(item => item.group === "more" && item.id === destination?.parent) ?? null;
   const moreIsExpanded = moreExpanded ?? Boolean(currentMore);
   const sidebarRef = useRef<HTMLElement | null>(null);
   useEffect(() => { const sync = () => setLocationHash(window.location.hash); const frame = requestAnimationFrame(sync); window.addEventListener("hashchange", sync); return () => { cancelAnimationFrame(frame); window.removeEventListener("hashchange", sync); }; }, [pathname]);
@@ -69,7 +72,7 @@ export function FundManagerUxV2Sidebar({ profileId, mobileOpen, onMobileClose, t
       <div className="ux-v2-sidebar-mobile-heading"><strong>Navigation</strong><button aria-label="Close navigation" className="icon-button" onClick={onMobileClose} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button></div>
       <nav aria-label="Primary navigation" className="ux-v2-nav-stack">
         {group("primary").filter((item) => item.id !== "reports").map((item) => <NavLink item={item} key={item.id} locationHash={locationHash} onNavigate={onMobileClose} pathname={pathname} profileId={profileId} />)}
-        <button aria-expanded={trackerIsExpanded} className={`ux-v2-nav-link ux-v2-nav-group${pathname.includes("/tracker/") ? " is-group-active" : ""}`} data-pd-id="ux-v2.nav.tracker" onClick={() => setTrackerExpanded(!trackerIsExpanded)} type="button"><span aria-hidden="true" className="material-symbols-outlined">view_list</span><span>Tracker</span><span aria-hidden="true" className="material-symbols-outlined ux-v2-nav-chevron">{trackerIsExpanded ? "expand_less" : "expand_more"}</span></button>
+        <button aria-expanded={trackerIsExpanded} className={`ux-v2-nav-link ux-v2-nav-group${destinationForPath(pathname, locationHash)?.group === "tracker" ? " is-group-active" : ""}`} data-pd-id="ux-v2.nav.tracker" onClick={() => setTrackerExpanded(!trackerIsExpanded)} type="button"><span aria-hidden="true" className="material-symbols-outlined">view_list</span><span>Tracker</span><span aria-hidden="true" className="material-symbols-outlined ux-v2-nav-chevron">{trackerIsExpanded ? "expand_less" : "expand_more"}</span></button>
         {trackerIsExpanded ? <div className="ux-v2-nav-children">{group("tracker").map((item) => <NavLink item={item} key={item.id} locationHash={locationHash} onNavigate={onMobileClose} pathname={pathname} profileId={profileId} />)}</div> : null}
         {group("primary").filter((item) => item.id === "reports").map((item) => <NavLink item={item} key={item.id} locationHash={locationHash} onNavigate={onMobileClose} pathname={pathname} profileId={profileId} />)}
         <button aria-expanded={moreIsExpanded} className={`ux-v2-nav-link ux-v2-nav-group${currentMore ? " is-group-active" : ""}`} data-pd-id="ux-v2.nav.more" onClick={() => setMoreExpanded(!moreIsExpanded)} type="button"><span aria-hidden="true" className="material-symbols-outlined">more_horiz</span><span>{!moreIsExpanded && currentMore ? `See More · ${currentMore.label}` : "See More"}</span><span aria-hidden="true" className="material-symbols-outlined ux-v2-nav-chevron">{moreIsExpanded ? "expand_less" : "expand_more"}</span></button>
@@ -144,6 +147,11 @@ export function FundManagerUxV2Breadcrumbs({ profileId, profileName }: { profile
   const tracker = current.group === "tracker";
   const crumbs: { label: string; href?: string }[] = [{ label: "Position", href: "/" }];
   if (tracker) crumbs.push({ label: "Tracker", href: profileId ? `/profiles/${encodeURIComponent(profileId)}/tracker/dashboard` : "/profiles" });
+  else if (current.parent) {
+    const parent = shellDestinations.find(item => item.id === current.parent);
+    const href = parent?.href(profileId);
+    if (parent && href) crumbs.push({ label: parent.label, href });
+  }
   else if (profileId && pathname.startsWith("/profiles/")) crumbs.push({ label: "Profiles", href: "/profiles" });
   crumbs.push({ label: current.label });
   return <div className="ux-v2-crumb-row" data-pd-id="ux-v2.breadcrumbs"><nav aria-label="Breadcrumb"><ol>{crumbs.map((crumb, index) => <li key={`${crumb.label}-${index}`}>{crumb.href ? <Link href={crumb.href} onClick={(event) => void navigate(event, crumb.href!)}>{crumb.label}</Link> : <span aria-current="page">{crumb.label}</span>}</li>)}</ol></nav>{origin ? <div className="ux-v2-origin-group">{/^\/(reports|tasks)(?:[/?#]|$)/.test(origin.href) ? <span className="ux-v2-origin-context">All Profiles view · viewing {profileName}</span> : null}<Link className="ux-v2-origin-back" href={origin.href} onClick={(event) => { void navigate(event, origin.href, () => sessionStorage.setItem(scrollRestoreKey, JSON.stringify({ href: origin.href, y: origin.scrollY }))); }}><span aria-hidden="true" className="material-symbols-outlined">arrow_back</span>Back to {origin.label}</Link></div> : null}</div>;
