@@ -411,4 +411,5 @@ Scope: `PD-PR-117A-17–20`, open #118. Sportsbook and Accounts only; full six-l
 - [x] Existing Notifications read, clear, search, type/status and source-link authorities preserved. V2 tabs derive Action Required, System & Results and History from retained real notification kinds and states; flag-OFF keeps the legacy page.
 - [x] Focused synthetic visual browser checks passed 12/12 across 1440/390 and light/dark, including List/Board pointer operation, desktop close hit-test, mobile Escape, shared row geometry and tabs keyboard navigation. Web tests passed 701/701; changed UI files passed focused lint and typecheck.
 - [x] Final-source web build passed. Independent runner passed integrated navigation 1/1 and flag-OFF 2/2, including legacy Notifications without V2 tabs. The repository-wide web lint gate has one unchanged Free Bets render-time ref error; changed CP-124 files pass focused lint.
-- [ ] Local 3010 restart, full-route parity and spoken screen-reader review remain open at this stage.
+- [x] Normal 3010 web restarted from the pinned CP-124 source; `/login` 200, `/` and `/design-lab` protected, Google initiation 302 to Google's host, existing 8010 API health 200. Disposable test ports closed and worktree clean.
+- [ ] Full-route parity and spoken screen-reader review remain open at this stage.
