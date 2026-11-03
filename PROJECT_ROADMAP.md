@@ -1,5 +1,9 @@
 # Project Roadmap — Plum Duff / OpenForge — Doc ID: PR-CODEX-001
 
+## CP-117 reviewable build and ledger adoption — 2026-11-03
+
+Review the preserved Today Lab at `localhost:3117/design-lab`, then compare the default-off flagged real Sportsbook/Accounts presentation against the existing tables using disposable integrated evidence. Keep source-backed filters, sorting, Actions, Profile context, Add/Edit and financial authorities intact. The next bounded increment is real ledger interaction parity only after this visual review and a field-level correction/save contract; Board and durable personal tracking need their separate approved API/schema wave. Do not promote to main or deploy from this checkpoint.
+
 ## CP-117 Today adoption gate — 2026-11-03
 
 Finish and review the lab populated-task presentation. In a later adoption wave, fixture and implement the owner-approved direction for minimal server-owned personal tracking annotations before adopting Board/Tracked Tasks in real Today; review the exact API/schema contract with the owner then. Keep CP-049 notification read/clear, manual routine completion and financial source resolution separate. The default-off shell and older UI remain the rollback path; no Wave 2 financial migration is part of this correction.

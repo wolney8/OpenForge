@@ -64,6 +64,7 @@ import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerPnlCard, type LedgerReadState } from "@/components/ledger-pnl-card";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
 import { LedgerPagination } from "@/components/ledger-pagination";
+import { LedgerViewContext } from "@/components/ledger-view-context";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
 import { LedgerQuickActions, type LedgerQuickAction } from "@/components/ledger-quick-actions";
 import { LedgerSettledDeleteGuard } from "@/components/ledger-settled-delete-guard";
@@ -7286,6 +7287,13 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
         ) : null}
         {!tableCollapsed ? (
           <>
+            <LedgerViewContext
+              activeControls={activeTableControlCount}
+              ledger="sportsbook"
+              searchActive={query.trim().length > 0}
+              totalRows={rows.length}
+              visibleRows={filteredRows.length}
+            />
             <LedgerPagination
               ariaLabel="Sportsbook pagination"
               currentPage={effectivePage}

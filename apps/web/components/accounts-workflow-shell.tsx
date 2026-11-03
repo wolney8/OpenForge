@@ -20,6 +20,7 @@ import { accountMoneyDisplayValue, accountMoneyError, normalizeAccountMoney, sum
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerPagination } from "@/components/ledger-pagination";
+import { LedgerViewContext } from "@/components/ledger-view-context";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
 import { MaterialDateField, MaterialDateTimeField } from "@/components/material-date-time-field";
 import { StatusToast } from "@/components/status-toast";
@@ -1368,6 +1369,13 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialIssue
               </p>
             ) : null}
             <div ref={resultsRef} tabIndex={-1} data-pd-id="accounts.filtered-results">
+            <LedgerViewContext
+              activeControls={activeTableControlCount}
+              ledger="accounts"
+              searchActive={query.trim().length > 0}
+              totalRows={resolvedRows.length}
+              visibleRows={filteredRows.length}
+            />
             <LedgerPagination
               ariaLabel="Accounts"
               currentPage={effectivePage}

@@ -2476,6 +2476,65 @@ html[data-theme="dark"] .notification-count-badge {
   background: inherit;
 }
 
+/* The real ledger keeps its existing API, columns and controls. The V2 shell
+   gives the table the compact reading rhythm used by the approved lab grid. */
+.ledger-view-context { display: none; }
+.ux-v2-main .ledger-view-context {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .2rem;
+  margin: 0;
+  color: var(--muted);
+  font-size: .875rem;
+  line-height: 1.4;
+}
+.ux-v2-main .sportsbook-page-shell > .stat-strip {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.ux-v2-main .sportsbook-page-shell > .stat-strip > * {
+  min-width: 0;
+}
+@media (min-width: 1200px) {
+  .ux-v2-main .sportsbook-page-shell > .stat-strip {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: .65rem;
+  }
+  .ux-v2-main .sportsbook-page-shell > .stat-strip .stat-card {
+    padding: .75rem;
+  }
+  .ux-v2-main .sportsbook-page-shell > .stat-strip > .stat-card:not(:first-child):not(:last-child) > span:last-child {
+    display: none;
+  }
+}
+.ux-v2-main .sportsbook-page-shell .ledger-table-scroll-wrap .data-table:is(.sportsbook-data-table, .accounts-data-table) > thead > tr > th,
+.ux-v2-main .sportsbook-page-shell .ledger-table-scroll-wrap .data-table:is(.sportsbook-data-table, .accounts-data-table) > tbody > tr > td {
+  padding: .7rem .65rem;
+}
+.ux-v2-main .sportsbook-page-shell .ledger-table-scroll-wrap .data-table:is(.sportsbook-data-table, .accounts-data-table) > thead > tr > th {
+  color: var(--text);
+  font-size: .8rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.ux-v2-main .accounts-data-table tbody tr { height: auto; }
+.ux-v2-main .sportsbook-page-shell .ledger-table-scroll-wrap .data-table:is(.sportsbook-data-table, .accounts-data-table) > tbody > tr:focus-within {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
+@media (max-width: 760px) {
+  .ux-v2-main .sportsbook-page-shell > .stat-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .ux-v2-main .accounts-page-shell [data-pd-id="accounts.table-scroll"] { display: block; }
+  .ux-v2-main .accounts-card-list { display: none; }
+}
+@media (max-width: 330px) {
+  .ux-v2-main .sportsbook-page-shell > .stat-strip {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 @media (max-width: 860px) {
   .daily-task-filter-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));

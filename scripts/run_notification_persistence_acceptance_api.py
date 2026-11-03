@@ -35,6 +35,9 @@ def main() -> None:
 
     os.environ.update(
         {
+            "OPENFORGE_ACCOUNT_CATALOGUE_SOURCE": str(
+                ROOT / "tests/fixtures/openforge-api-master-catalogue.synthetic.json"
+            ),
             "OPENFORGE_AUTH_OWNER_EMAILS": OWNER_EMAIL,
             "OPENFORGE_AUTH_REQUIRED": "true",
             "OPENFORGE_AUTH_SESSION_SECRET": (
