@@ -6,6 +6,7 @@ import { ContextHelp } from "@/components/context-help";
 import { FinancialValue } from "@/components/financial-value";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { ReportPointChart } from "@/components/report-point-chart";
+import { DesignLabReportChart } from "@/components/design-lab-report-chart";
 import { buildSparklinePoints } from "@/lib/dashboard-analytics";
 import { usePersistedState } from "@/lib/ledger-ui";
 import {
@@ -48,6 +49,7 @@ export function ReportExplorer({scopes,contextKey,state,scopeLabel,summaryFirst=
   const points=dates.map(date=>{const records=output.eligibleRecords.filter(record=>record.date===date);return {key:date,label:date,
     value:records.some(record=>!Number.isFinite(record.value))?Number.NaN:records.reduce((sum,record)=>sum+Math.round(record.value*100),0)/100};});
   const graph=buildSparklinePoints(points,true),pointIndex=Math.max(0,points.findIndex(point=>point.key===selection.point));
+  const useLabChart=summaryFirst&&selection.metric==="pnl"&&complete&&points.length>0&&points.length<=12&&points.every(point=>Number.isFinite(point.value));
   const groupPageCount=Math.max(1,Math.ceil(output.groups.length/groupPageSize));
   const visibleGroups=output.groups.slice((boundedPage(groupPage,groupPageCount)-1)*groupPageSize,boundedPage(groupPage,groupPageCount)*groupPageSize);
   const matchingRecords=selection.expanded?output.records.filter(record=>record[selection.group]===selection.expanded):output.records;
@@ -111,7 +113,9 @@ export function ReportExplorer({scopes,contextKey,state,scopeLabel,summaryFirst=
     <dl className="dashboard-focus-list"><div><dt>{count?unit:metrics[selection.metric]}</dt><dd data-pd-id="reports.explorer.total">{state!=="ready"?state==="loading"?"Loading…":"Unavailable — selected Profile data failed":!output.valid?"Choose a valid range":complete?value(output.known):"Incomplete"}</dd></div><div><dt>Matching Records</dt><dd data-pd-id="reports.explorer.match-count">{state==="ready"&&output.valid?output.records.length:"—"}</dd></div></dl>
     {state==="ready"&&output.valid&&!complete?<p role="status">Known subtotal: {value(output.known)}. {output.unknown} unavailable eligible {output.unknown===1?"result":"results"}; {output.undated.length} undated candidate {output.undated.length===1?"record":"records"}. These are not a complete selected-range total.</p>:null}
     {state==="ready"&&output.valid?<>
-      {summaryFirst&&!count&&points.length?<ReportPointChart area={graph.area} line={graph.line} zeroY={graph.zeroY} label="Explorer daily values" points={points} selectedIndex={pointIndex} onSelect={index=>{change({point:points[index].key});document.getElementById(sourceId)?.setAttribute("open","");}}/>:null}
+      {useLabChart?<DesignLabReportChart dataPdId="reports.lab-chart" points={points.map(point=>({id:point.key,date:point.label,value:point.value}))}
+        valueDescription="authoritative daily realised P&L" sourceActionLabel="source records"
+        onOpen={date=>{change({point:date});document.getElementById(sourceId)?.setAttribute("open","");}}/>:summaryFirst&&!count&&points.length?<ReportPointChart area={graph.area} line={graph.line} zeroY={graph.zeroY} label="Explorer daily values" points={points} selectedIndex={pointIndex} onSelect={index=>{change({point:points[index].key});document.getElementById(sourceId)?.setAttribute("open","");}}/>:null}
       <SourceContainer className={summaryFirst?"v2-report-source-detail":undefined} id={sourceId}>
         {summaryFirst?<summary>Explore grouped results and source records</summary>:null}
       <LedgerPagination ariaLabel="Explorer Groups" currentPage={boundedPage(groupPage,groupPageCount)} onPageChange={setGroupPage} onPageSizeChange={size=>{setGroupPageSize(size);setGroupPage(1);}} pageCount={groupPageCount} pageSize={groupPageSize} position="top" totalRows={output.groups.length}/>

@@ -305,8 +305,48 @@ test("Reports uses governed integrated points and source drilldown", async ({ pa
   await explorer.getByLabel("Explorer start").fill("2025-01-01");
   await explorer.getByLabel("Explorer end").fill("2026-12-31");
   await expect(explorer.locator('[data-pd-id="reports.explorer.total"]')).not.toContainText(/Loading|Unavailable/);
+  const labChart = explorer.locator('[data-pd-id="reports.lab-chart"]');
+  await expect(labChart).toBeVisible();
   await page.screenshot({ path: join(evidence, "v2-reports-real-points-1440-light.png"), fullPage: true });
-  await explorer.locator(".v2-report-source-detail > summary").click();
+  await labChart.getByRole("button", { name: /Open .* source records/ }).first().click();
+  await expect(explorer.locator(".v2-report-source-detail")).toHaveAttribute("open", "");
   await expect(explorer.locator('[data-pd-id="reports.explorer.sources"]')).toBeVisible();
+  await explorer.getByRole("combobox", { name: "Explorer metric" }).selectOption("count");
+  await expect(explorer.locator('[data-pd-id="reports.lab-chart"]')).toHaveCount(0);
   await noPageOverflow(page);
 });
+
+for (const width of [1440, 390] as const) {
+  for (const theme of ["light", "dark"] as const) {
+    test(`reports ${width} ${theme}: shared Lab chart with governed points`, async ({ page }) => {
+      await mkdir(evidence, { recursive: true });
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto("/design-lab");
+      await page.locator('[data-pd-id="design-lab-connected.root"]').waitFor();
+      const cookie = page.getByRole("button", { name: "Understood" });
+      if (await cookie.isVisible()) await cookie.click();
+      if (width < 761) await page.getByRole("button", { name: "Open navigation" }).click();
+      await page.getByRole("button", { name: "Reports", exact: true }).first().click();
+      await setTheme(page, theme);
+      const lab = page.locator('[data-pd-id="lab.report-chart"]');
+      await expect(lab).toBeVisible();
+      const labStyle = await lab.evaluate(element => ({ className: element.className, radius: getComputedStyle(element).borderRadius, padding: getComputedStyle(element).padding }));
+      await page.screenshot({ path: join(evidence, `lab-reports-chart-${width}-${theme}.png`), fullPage: true });
+      await page.goto("/reports");
+      const explorer = page.locator('[data-pd-id="reports.explorer"]');
+      await explorer.getByRole("button", { name: "Custom", exact: true }).click();
+      await explorer.getByLabel("Explorer start").fill("2026-01-01");
+      await explorer.getByLabel("Explorer end").fill("2026-12-31");
+      await setTheme(page, theme);
+      const real = explorer.locator('[data-pd-id="reports.lab-chart"]');
+      await expect(real).toBeVisible();
+      const realStyle = await real.evaluate(element => ({ className: element.className, radius: getComputedStyle(element).borderRadius, padding: getComputedStyle(element).padding }));
+      expect(realStyle).toEqual(labStyle);
+      await real.getByRole("radio", { name: "Line" }).click();
+      await expect(real.getByRole("radio", { name: "Line" })).toHaveAttribute("aria-checked", "true");
+      await expect(real.getByRole("img", { name: /Line chart of authoritative daily realised P&L/ })).toBeVisible();
+      await noPageOverflow(page);
+      await page.screenshot({ path: join(evidence, `v2-reports-chart-${width}-${theme}.png`), fullPage: true });
+    });
+  }
+}
