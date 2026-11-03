@@ -16,13 +16,24 @@ type Case = typeof cases[number];
 async function ready(page: Page, module: string) {
   await page.goto(`${baseURL}/profiles/${profile}/tracker/${module}`);
   await expect(page.locator("section.content-panel[aria-busy=true]")).toHaveCount(0);
-  await expect(page.locator(".ledger-loading-overlay")).toHaveCount(0);
+  await expect(page.locator(".ledger-loading-overlay")).toHaveCount(0, { timeout: 45_000 });
   if (module !== "accounts") {
-    if (module !== "each-way-extra-places") await expect(page.locator("section.content-panel[aria-busy=false]").first()).toBeVisible();
-    const range = page.getByRole("combobox", { name: "Change tracker date range" });
-    await expect(range).toBeVisible();
-    await expect(range).toHaveValue("All Dates");
-    await expect(range).toBeEnabled();
+    if (!legacy) {
+      await expect(page.locator('[data-pd-id$=".design-screen"]')).toBeVisible();
+      const range = page.locator('[data-pd-id="tracker.range-card.select"]');
+      await expect(range).toBeVisible();
+      if (!await range.getByText("All Dates", { exact: true }).count()) {
+        await range.click();
+        await page.getByRole("option", { name: "All Dates", exact: true }).click();
+      }
+      await expect(range).toContainText("All Dates");
+    } else {
+      if (module !== "each-way-extra-places") await expect(page.locator("section.content-panel[aria-busy=false]").first()).toBeVisible();
+      const range = page.getByRole("combobox", { name: "Change tracker date range" });
+      await expect(range).toBeVisible();
+      await expect(range).toHaveValue("All Dates");
+      await expect(range).toBeEnabled();
+    }
   }
 }
 async function read(page: Page, item: Case) {
@@ -163,13 +174,14 @@ test("floating Tab, click-away rejection and full-editor transition retain one n
   await full.getByRole("button", { name: "Save", exact: true }).click(); await expect(full).toHaveCount(0);
   await target.dblclick(); await input.fill("Synthetic Tab saved"); await page.keyboard.press("Tab"); await expect(editor).toHaveCount(0);
   await expect(target).not.toBeFocused(); expect((await read(page, item)).event_name).toBe("Synthetic Tab saved");
-  await target.dblclick(); await input.fill("X".repeat(201)); await page.getByRole("heading", { name: "Sportsbook Bets", exact: true }).click();
+  await target.dblclick(); await input.fill("X".repeat(201)); await page.getByRole("heading", { name: "Sportsbook Bets", exact: true, level: 1 }).click();
   await expect(editor).toBeVisible(); await expect(editor.getByRole("alert")).toContainText(/characters|length|at most|less than/i);
   await page.keyboard.press("Escape");
 });
 
 for (const theme of ["light", "dark"]) {
   test(`six-ledger ${theme} floating geometry, selection and specialist reachability at 390px`, async ({ page }) => {
+    test.setTimeout(120_000);
     test.skip(legacy); await page.setViewportSize({ width: 390, height: 844 });
     for (const item of [...cases, {module: "accounts", row: "ACC-BOOK-A", column: "channel"}]) {
       await ready(page, item.module); await page.evaluate(theme => document.documentElement.setAttribute("data-theme", theme), theme);

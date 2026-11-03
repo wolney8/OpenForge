@@ -1628,3 +1628,7 @@ Matching a Lab screenshot with new V2-only CSS leaves two sources of truth. Extr
 ## CP-124 Board detail drawers need their Lab positioning context
 
 The shared Today `boardDrawer` is absolute within the Lab's `boardWithDetail` container. Applying the drawer class without that container positions the detail against the page and lets the sticky app header intercept its Close control. Reuse both classes together and assert a real pointer click on Close at desktop width. At mobile width use the existing `ModalBoundary`, then verify Escape and focus return. `cp117-visual-adoption.spec.ts` covers these paths.
+
+## CP-125 wide real ledgers need a usable narrow cell target
+
+The Lab grid and a real ledger share a table surface, but the real ledger has many more columns and action buttons. At 390px, pinning both edge columns covered a middle editable cell after horizontal scroll. In the real V2 narrow table, allow the first column to scroll, retain the pinned Actions column, and give editable cells enough trailing scroll margin. Verify an actual pointer click, floating editor, Escape/focus return and no page overflow across all six ledgers; viewport containment alone misses the blocked target. `cp117-six-ledger.spec.ts` is the focused regression.

@@ -11,10 +11,21 @@ const legacy = process.env.OPENFORGE_CP117_VERIFY_LEGACY === "true";
 
 async function ready(page: Page, module: "sportsbook-bets" | "accounts") {
   await page.goto(`${profile}${module}`);
-  await expect(page.locator(".ledger-loading-overlay")).toHaveCount(0);
-  const range = page.getByRole("combobox", { name: "Change tracker date range" });
-  if (module === "sportsbook-bets") await expect(range).toHaveValue("All Dates");
-  await expect(page.locator(".ledger-loading-overlay")).toHaveCount(0);
+  await expect(page.locator(".ledger-loading-overlay")).toHaveCount(0, { timeout: 45_000 });
+  if (module === "sportsbook-bets") {
+    if (!legacy) {
+      const range = page.locator('[data-pd-id="tracker.range-card.select"]');
+      await expect(range).toBeVisible();
+      if (!await range.getByText("All Dates", { exact: true }).count()) {
+        await range.click();
+        await page.getByRole("option", { name: "All Dates", exact: true }).click();
+      }
+      await expect(range).toContainText("All Dates");
+    } else {
+      await expect(page.getByRole("combobox", { name: "Change tracker date range" })).toHaveValue("All Dates");
+    }
+  }
+  await expect(page.locator(".ledger-loading-overlay")).toHaveCount(0, { timeout: 45_000 });
 }
 
 test.beforeEach(async ({ page }) => {

@@ -42,6 +42,8 @@ import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerPnlCard, type LedgerReadState } from "@/components/ledger-pnl-card";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
 import { DesignLedgerSearch } from "@/components/design-ledger-search";
+import { DesignLedgerScreen, DesignLedgerToolbar, DesignLedgerToolbarAction, DesignLedgerPrimaryAction, DesignPageHead, designPageHeadClasses } from "@/components/design-ledger-screen";
+import { DesignLabSelect } from "@/components/design-lab-select";
 import { LedgerViewContext } from "@/components/ledger-view-context";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
@@ -1276,6 +1278,7 @@ export function FreeBetWorkflowShell({
   initialIssueFilter,
   initialRecordId,
   feeReviewContext,
+  visualV2 = false,
 }: {
   profileId: string;
   initialTableMode?: string;
@@ -1283,6 +1286,7 @@ export function FreeBetWorkflowShell({
   initialIssueFilter?: string;
   initialRecordId?: string;
   feeReviewContext?: FeeReviewResolutionContext;
+  visualV2?: boolean;
 }) {
   const { catalogue: bookmakerCatalogue, providerIdsByName } =
     useBookmakerCatalogue(profileId);
@@ -3433,37 +3437,16 @@ export function FreeBetWorkflowShell({
     return <span className="table-cell-text">{value}</span>;
   }
 
-  return (
-    <section className="stack">
-      {feeReviewContext ? (
-        <FeeReviewResolutionBanner
-          context={feeReviewContext}
-          hasUnsavedChanges={isDirty}
-          onSaveAndLeave={() => persistForm(formState, { returnToLedgerOnSuccess: false })}
-        />
-      ) : null}
-      {!workflowVisible || cellEditor.active ? (
-        <StatusToast message={statusMessage} onDismiss={clearStatusMessage} />
-      ) : null}
-      <section
-        aria-busy={isInitialLoading}
-        className="content-panel stack sportsbook-page-shell"
-      >
-        <div className="sportsbook-page-header">
-          <h1 className="sportsbook-page-title">Free Bets</h1>
-        </div>
-        {isInitialLoading ? (
-          <LedgerLoadingIndicator label="Loading free-bet ledger" />
-        ) : null}
+  const quickViewPanel = (
         <section className="stat-strip" aria-label="Free-bet quick view">
-          <TrackerRangeCard
+          {!visualV2 ? <TrackerRangeCard
             activePreset={trackerSettings?.active_date_preset ?? "Week (Mon-Sun)"}
             isActionView={Boolean(initialIssueFilter)}
             isSaving={isTrackerRangeSaving}
             onPresetChange={(preset) => void updateTrackerDatePreset(preset)}
             rangeDetail={quickViewRangeDetail}
             rangeContext={quickViewRangeContext}
-          />
+          /> : null}
           <article className="stat-card">
             <span className="eyebrow">Open / overdue</span>
             <strong>{quickView.openCount} / {quickView.overdueCount}</strong>
@@ -3491,16 +3474,44 @@ export function FreeBetWorkflowShell({
             state={pnlReadState?.profileId === profileId ? pnlReadState.state : "loading"}
           />
         </section>
+  );
+
+  return (
+    <section className="stack">
+      {feeReviewContext ? (
+        <FeeReviewResolutionBanner
+          context={feeReviewContext}
+          hasUnsavedChanges={isDirty}
+          onSaveAndLeave={() => persistForm(formState, { returnToLedgerOnSuccess: false })}
+        />
+      ) : null}
+      {!workflowVisible || cellEditor.active ? (
+        <StatusToast message={statusMessage} onDismiss={clearStatusMessage} />
+      ) : null}
+      <section
+        aria-busy={isInitialLoading}
+        className={visualV2 ? "stack sportsbook-page-shell ledger-v2-page" : "content-panel stack sportsbook-page-shell"}
+      >
+        {visualV2 ? <DesignPageHead><div><h1>Free Bets</h1></div><div className={designPageHeadClasses.actions}><TrackerRangeCard activePreset={trackerSettings?.active_date_preset ?? "Week (Mon-Sun)"} isActionView={Boolean(initialIssueFilter)} isSaving={isTrackerRangeSaving} onPresetChange={(preset) => void updateTrackerDatePreset(preset)} rangeDetail={quickViewRangeDetail} rangeContext={quickViewRangeContext} visualV2 /></div></DesignPageHead> : <div className="sportsbook-page-header"><h1 className="sportsbook-page-title">Free Bets</h1></div>}
+        {isInitialLoading ? (
+          <LedgerLoadingIndicator label="Loading free-bet ledger" />
+        ) : null}
+        {!visualV2 ? quickViewPanel : null}
         {quickView.financialIssues.length ? (
           <p className="error-text" role="status" data-pd-id="free-bet-money.incomplete">
             Free Bet P&amp;L incomplete. {quickView.financialIssues.map((row) =>
               `${row.free_bet_id}: ${row.calculation_notes.join("; ")}`).join(" · ")}
           </p>
         ) : null}
-        <div className="sportsbook-review-bar" aria-label="Free-bet ledger controls" role="toolbar">
+        <DesignLedgerScreen actions={visualV2 ? <DesignLedgerPrimaryAction dataPdId="free-bets.toolbar.add-row" onClick={() => void startNewRow()}>Add Free Bet</DesignLedgerPrimaryAction> : null} dataPdId="free-bets.design-screen" description={`${filteredRows.length} of ${rows.length} rows · ${activeTableControlCount ? `${activeTableControlCount} active table controls` : query.trim() ? "Search active" : "No filters"} · Current Profile`} enabled={visualV2} title="Free Bets">
+        <DesignLedgerToolbar ariaLabel="Free-bet ledger controls" className="sportsbook-review-bar" enabled={visualV2}>
           <DesignLedgerSearch dataPdId="free-bets.toolbar.search" label="Search free-bet rows" onChange={event => { setQuery(event.target.value); setCurrentPage(1); }} placeholder="Search free-bet rows" value={query} />
-          <LedgerAddRowButton label="Add free-bet row" onClick={() => void startNewRow()} />
-          <div className="table-filter-button-wrap">
+          {!visualV2 ? <LedgerAddRowButton label="Add free-bet row" onClick={() => void startNewRow()} /> : null}
+          {visualV2 ? <>
+            <DesignLabSelect compact dataPdId="free-bets.toolbar.status-filter" label="Status Filter" onChange={status => updateTableFilter("status", status)} options={[{ value: "", label: "All statuses" }, ...freeBetFilterOptions.statuses.map(value => ({ value, label: value }))]} value={tableFilters.status} />
+            <DesignLedgerToolbarAction dataPdId="free-bets.toolbar.filter" onClick={() => setIsFilterModalOpen(true)}>Filters &amp; Columns</DesignLedgerToolbarAction>
+            <DesignLedgerToolbarAction dataPdId="free-bets.toolbar.restore-columns" onClick={() => { setVisibleColumnKeys(new Set(defaultVisibleFreeBetColumns)); setColumnWidths(defaultFreeBetColumnWidths); }}>Restore Default Columns</DesignLedgerToolbarAction>
+          </> : <div className="table-filter-button-wrap">
             <button
               aria-label="Open free-bet filter and column controls"
               className={`icon-button table-filter-button${hasActiveTableControls ? " has-active-table-controls" : ""}`}
@@ -3544,8 +3555,8 @@ export function FreeBetWorkflowShell({
                 ×
               </button>
             ) : null}
-          </div>
-        </div>
+          </div>}
+        </DesignLedgerToolbar>
         <LedgerQuickActions
           ledgerType="Free Bets"
           onSelect={async (action: LedgerQuickAction) => {
@@ -3582,7 +3593,7 @@ export function FreeBetWorkflowShell({
               position="top"
               totalRows={filteredRows.length}
             />
-            <LedgerTableScroll dataPdId="free-bets.table-scroll" cellNavigation={{ label: "Free Bets", onActivate: (rowId, column, anchor) => void selectRow(rowId, { cell: column in inlineCellFields ? { column, anchor } : undefined }) }}>
+            <LedgerTableScroll dataPdId="free-bets.table-scroll" visualV2={visualV2} cellNavigation={{ label: "Free Bets", onActivate: (rowId, column, anchor) => void selectRow(rowId, { cell: column in inlineCellFields ? { column, anchor } : undefined }) }}>
               <table className="data-table sportsbook-data-table">
                 <colgroup>
                   {tableColumns.map((column) => {
@@ -3742,6 +3753,8 @@ export function FreeBetWorkflowShell({
             />
           </>
         ) : null}
+        </DesignLedgerScreen>
+        {visualV2 ? quickViewPanel : null}
       </section>
       {isFilterModalOpen ? (
         <div className="modal-backdrop" onClick={() => setIsFilterModalOpen(false)}>

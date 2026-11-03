@@ -108,6 +108,7 @@ export default async function TrackerModulePage({
   const dataRows = hasTable
     ? await getModuleRows(profileId, module as TrackerModuleKey)
     : [];
+  const visualV2 = process.env.OPENFORGE_FUND_MANAGER_UX_V2 === "true";
 
   return (
     <main className="page-shell stack">
@@ -120,17 +121,17 @@ export default async function TrackerModulePage({
         </section>
       ) : null}
       {module === "accounts" ? (
-        <AccountsWorkflowShell profileId={profile.profileId} initialRecordId={requestedRecord} initialIssueFilter={requestedIssue} />
+        <AccountsWorkflowShell profileId={profile.profileId} initialRecordId={requestedRecord} initialIssueFilter={requestedIssue} visualV2={visualV2} />
       ) : module === "sportsbook-bets" ? (
-        <SportsbookWorkflowShell feeReviewContext={feeReviewContext} initialIssueFilter={requestedIssue} initialQuery={requestedSearch} initialRecordId={requestedRecord} key={`sportsbook:${requestedRecord ?? requestedIssue ?? (requestedRecords.join(",") || "default")}`} profileId={profile.profileId} />
+        <SportsbookWorkflowShell feeReviewContext={feeReviewContext} initialIssueFilter={requestedIssue} initialQuery={requestedSearch} initialRecordId={requestedRecord} key={`sportsbook:${requestedRecord ?? requestedIssue ?? (requestedRecords.join(",") || "default")}`} profileId={profile.profileId} visualV2={visualV2} />
       ) : module === "free-bets" ? (
-        <FreeBetWorkflowShell feeReviewContext={feeReviewContext} initialIssueFilter={requestedIssue} initialQuery={requestedSearch} initialRecordId={requestedRecord} initialTableMode={requestedView} key={`free-bets:${requestedRecord ?? requestedIssue ?? (requestedRecords.join(",") || requestedView || "default")}`} profileId={profile.profileId} />
+        <FreeBetWorkflowShell feeReviewContext={feeReviewContext} initialIssueFilter={requestedIssue} initialQuery={requestedSearch} initialRecordId={requestedRecord} initialTableMode={requestedView} key={`free-bets:${requestedRecord ?? requestedIssue ?? (requestedRecords.join(",") || requestedView || "default")}`} profileId={profile.profileId} visualV2={visualV2} />
       ) : module === "casino-offers" ? (
-        <CasinoOfferWorkflowShell feeReviewContext={feeReviewContext} initialIssueFilter={requestedIssue} initialQuery={requestedSearch} initialRecordId={requestedRecord} key={`casino:${requestedRecord ?? requestedIssue ?? (requestedRecords.join(",") || "default")}`} profileId={profile.profileId} />
+        <CasinoOfferWorkflowShell feeReviewContext={feeReviewContext} initialIssueFilter={requestedIssue} initialQuery={requestedSearch} initialRecordId={requestedRecord} key={`casino:${requestedRecord ?? requestedIssue ?? (requestedRecords.join(",") || "default")}`} profileId={profile.profileId} visualV2={visualV2} />
       ) : module === "each-way-extra-places" ? (
-        <EachWayExtraPlaceWorkflowShell initialIssueFilter={requestedIssue} key={`extra-place:${requestedIssue ?? "default"}`} profileId={profile.profileId} />
+        <EachWayExtraPlaceWorkflowShell initialIssueFilter={requestedIssue} key={`extra-place:${requestedIssue ?? "default"}`} profileId={profile.profileId} visualV2={visualV2} />
       ) : module === "cash-adjustments" ? (
-        <CashAdjustmentWorkflowShell profileId={profile.profileId} />
+        <CashAdjustmentWorkflowShell profileId={profile.profileId} visualV2={visualV2} />
       ) : module === "profit-tracker" ? (
         <TrackerSummaryShell profileId={profile.profileId} variant="profit-tracker" />
       ) : module === "reports" ? (

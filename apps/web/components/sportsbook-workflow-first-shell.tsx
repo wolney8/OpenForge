@@ -64,6 +64,8 @@ import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerPnlCard, type LedgerReadState } from "@/components/ledger-pnl-card";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
 import { DesignLedgerSearch } from "@/components/design-ledger-search";
+import { DesignLedgerScreen, DesignLedgerToolbar, DesignLedgerToolbarAction, DesignLedgerPrimaryAction, DesignPageHead, designPageHeadClasses } from "@/components/design-ledger-screen";
+import { DesignLabSelect } from "@/components/design-lab-select";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerViewContext } from "@/components/ledger-view-context";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
@@ -3025,7 +3027,7 @@ function makeOfferGroupId(): string {
   return `OFG-${new Date().toISOString().slice(0, 10).replaceAll("-", "")}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
 }
 
-export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialIssueFilter, initialRecordId, feeReviewContext }: { profileId: string; initialQuery?: string; initialIssueFilter?: string; initialRecordId?: string; feeReviewContext?: FeeReviewResolutionContext }) {
+export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialIssueFilter, initialRecordId, feeReviewContext, visualV2 = false }: { profileId: string; initialQuery?: string; initialIssueFilter?: string; initialRecordId?: string; feeReviewContext?: FeeReviewResolutionContext; visualV2?: boolean }) {
   const { catalogue: bookmakerCatalogue, providerIdsByName } =
     useBookmakerCatalogue(profileId);
   const [guidedAccessMode] = useProfileGuidedAccessMode(profileId);
@@ -7188,37 +7190,16 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     );
   }
 
-  return (
-    <section className="stack">
-      {feeReviewContext ? (
-        <FeeReviewResolutionBanner
-          context={feeReviewContext}
-          hasUnsavedChanges={isDirty}
-          onSaveAndLeave={() => persistForm(formState, { returnToLedgerOnSuccess: false })}
-        />
-      ) : null}
-      {!workflowVisible || cellEditor.active ? (
-        <StatusToast message={statusMessage} onDismiss={clearStatusMessage} />
-      ) : null}
-      <section
-        aria-busy={isInitialLoading}
-        className="content-panel stack sportsbook-page-shell"
-      >
-        <div className="sportsbook-page-header">
-          <h1 className="sportsbook-page-title">Sportsbook Bets</h1>
-        </div>
-        {isInitialLoading ? (
-          <LedgerLoadingIndicator label="Loading sportsbook ledger" />
-        ) : null}
+  const quickViewPanel = (
         <section className="stat-strip" aria-label="Sportsbook quick view">
-          <TrackerRangeCard
+          {!visualV2 ? <TrackerRangeCard
             activePreset={trackerSettings?.active_date_preset ?? "Week (Mon-Sun)"}
             isActionView={Boolean(initialIssueFilter)}
             isSaving={isTrackerRangeSaving}
             onPresetChange={(preset) => void updateTrackerDatePreset(preset)}
             rangeDetail={quickViewRangeDetail}
             rangeContext={quickViewRangeContext}
-          />
+          /> : null}
           <article className="stat-card">
             <span className="eyebrow">Open / overdue</span>
             <strong>
@@ -7252,17 +7233,51 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
             state={pnlReadState?.profileId === profileId ? pnlReadState.state : "loading"}
           />
         </section>
-        <div className="sportsbook-review-bar" aria-label="Sportsbook ledger controls" role="toolbar">
+  );
+
+  return (
+    <section className="stack">
+      {feeReviewContext ? (
+        <FeeReviewResolutionBanner
+          context={feeReviewContext}
+          hasUnsavedChanges={isDirty}
+          onSaveAndLeave={() => persistForm(formState, { returnToLedgerOnSuccess: false })}
+        />
+      ) : null}
+      {!workflowVisible || cellEditor.active ? (
+        <StatusToast message={statusMessage} onDismiss={clearStatusMessage} />
+      ) : null}
+      <section
+        aria-busy={isInitialLoading}
+        className={visualV2 ? "stack sportsbook-page-shell ledger-v2-page" : "content-panel stack sportsbook-page-shell"}
+      >
+        {visualV2 ? <DesignPageHead><div><h1>Sportsbook Bets</h1></div><div className={designPageHeadClasses.actions}><TrackerRangeCard activePreset={trackerSettings?.active_date_preset ?? "Week (Mon-Sun)"} isActionView={Boolean(initialIssueFilter)} isSaving={isTrackerRangeSaving} onPresetChange={(preset) => void updateTrackerDatePreset(preset)} rangeDetail={quickViewRangeDetail} rangeContext={quickViewRangeContext} visualV2 /></div></DesignPageHead> : <div className="sportsbook-page-header"><h1 className="sportsbook-page-title">Sportsbook Bets</h1></div>}
+        {isInitialLoading ? (
+          <LedgerLoadingIndicator label="Loading sportsbook ledger" />
+        ) : null}
+        {!visualV2 ? quickViewPanel : null}
+        <DesignLedgerScreen
+          actions={visualV2 ? <DesignLedgerPrimaryAction dataPdId="sportsbook.toolbar.add-row" onClick={() => void startNewRow()}>Add Sportsbook Bet</DesignLedgerPrimaryAction> : null}
+          dataPdId="sportsbook.design-screen"
+          description={`${filteredRows.length} of ${rows.length} rows · ${activeTableControlCount ? `${activeTableControlCount} active table controls` : query.trim() ? "Search active" : "No filters"} · Current Profile`}
+          enabled={visualV2}
+          title="Sportsbook Bets"
+        >
+        <DesignLedgerToolbar ariaLabel="Sportsbook ledger controls" className="sportsbook-review-bar" enabled={visualV2}>
           <DesignLedgerSearch dataPdId="sportsbook.toolbar.search" label="Search sportsbook rows" onChange={event => { setQuery(event.target.value); setCurrentPage(1); }} placeholder="Search sportsbook rows" value={query} />
-          <LedgerAddRowButton label="Add sportsbook row" onClick={() => void startNewRow()} />
-          <div className="table-filter-button-wrap">
+          {!visualV2 ? <LedgerAddRowButton label="Add sportsbook row" onClick={() => void startNewRow()} /> : null}
+          {visualV2 ? <>
+            <DesignLabSelect compact dataPdId="sportsbook.toolbar.status-filter" label="Status Filter" onChange={status => updateTableFilter("status", status)} options={[{ value: "", label: "All statuses" }, ...sportsbookFilterOptions.statuses.map(value => ({ value, label: value }))]} value={tableFilters.status} />
+            <DesignLedgerToolbarAction dataPdId="sportsbook.toolbar.filter" onClick={() => setIsFilterModalOpen(true)}>Filters &amp; Columns</DesignLedgerToolbarAction>
+            <DesignLedgerToolbarAction dataPdId="sportsbook.toolbar.restore-columns" onClick={() => { setVisibleColumnKeys(new Set(defaultVisibleSportsbookColumns)); setColumnWidths(defaultSportsbookColumnWidths); }}>Restore Default Columns</DesignLedgerToolbarAction>
+          </> : <div className="table-filter-button-wrap">
             <button aria-label="Open sportsbook filter and column controls" className={`icon-button table-filter-button${hasActiveTableControls ? " has-active-table-controls" : ""}`} onClick={() => setIsFilterModalOpen(true)} title="Filter and columns" type="button">
               <svg aria-hidden="true" className="table-filter-icon" fill="none" viewBox="0 0 24 24"><path d="M4 6h16l-6.5 7.3v4.9l-3 1.8v-6.7L4 6Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" /></svg>
               {hasActiveTableControls ? <span aria-label={`${activeTableControlCount} active table controls`} className="table-filter-badge">{activeTableControlCount > 9 ? "9+" : activeTableControlCount}</span> : null}
             </button>
             {hasActiveTableControls ? <button aria-label="Clear active sportsbook filters and hidden-column states" className="table-filter-clear" onClick={() => { clearTableFilters(); setVisibleColumnKeys(new Set(defaultVisibleSportsbookColumns)); }} type="button">×</button> : null}
-          </div>
-        </div>
+          </div>}
+        </DesignLedgerToolbar>
         <LedgerQuickActions
           ledgerType="Sportsbook"
           onSelect={async (action: LedgerQuickAction) => {
@@ -7313,7 +7328,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
               position="top"
               totalRows={filteredRows.length}
             />
-            <LedgerTableScroll dataPdId="sportsbook.table-scroll" cellNavigation={{ label: "Sportsbook", onActivate: (rowId, column, anchor) => void selectRow(rowId, { cell: column in inlineCellFields ? { column, anchor } : undefined }) }}>
+            <LedgerTableScroll dataPdId="sportsbook.table-scroll" visualV2={visualV2} cellNavigation={{ label: "Sportsbook", onActivate: (rowId, column, anchor) => void selectRow(rowId, { cell: column in inlineCellFields ? { column, anchor } : undefined }) }}>
               <table className="data-table sportsbook-data-table">
                 <colgroup>
                   {tableColumns.map((column) => {
@@ -7479,6 +7494,8 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
             />
           </>
         ) : null}
+        </DesignLedgerScreen>
+        {visualV2 ? quickViewPanel : null}
       </section>
 
       {isFilterModalOpen ? (

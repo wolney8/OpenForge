@@ -404,4 +404,6 @@ Hold a reference response while editing settlement; assert queued intent and act
 
 ### Native field-edit adapter gate
 
+For a narrow real ledger using the shared Lab table surface, test an actual pointer click on a middle editable cell after horizontal scroll. Pinned edge columns can cover the cell while the table and page still report no overflow. Retain the Actions column while keeping the first column scrollable if required for the wider real schema; verify focus return in every ledger.
+
 For any floating/inline adapter over an existing full editor, compare its row lock, explicit Edit enablement, specialist correction state and native Save preparation with the full editor before exposing the control. An allowlisted descriptive field is insufficient if the row is read-only or native full-form normalization changes unrelated fields. Verify populated fallback and unchanged financial/source identity. After a rejected async Save, re-enable controls and restore draft focus so Escape/retry still work; never let a disabled focused Save strand keyboard handling on the page body.

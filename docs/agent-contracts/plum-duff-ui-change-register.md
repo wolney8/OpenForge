@@ -1339,3 +1339,15 @@ Owner continuation under [#118](https://github.com/wolney8/OpenForge/issues/118)
 | PD-PR-117A-38 | Keep normal 3010 current, synthetic authenticated Playwright evidence/recordings and flag-OFF rollback, while preserving auth/API/owner data and source custody | COMPLETE for CP-124 delivery — synthetic Today/Notifications 12/12, web 701/701, typecheck/build, integrated navigation 1/1 and flag-OFF 2/2 passed; normal web serves feature branch on 3010, API unchanged, issue receipt posted |
 
 Today tracking persistence and saved ledger views remain gated. The Lab's synthetic work-state transitions are not real task commands.
+
+## CP-125 complete screen adoption — 2026-11-03
+
+Owner continuation under [#118](https://github.com/wolney8/OpenForge/issues/118). The connected Design Lab is the signed-off screen reference. Preserve real financial, authentication, Profile, reporting and specialist authorities; acceptance is measured on complete rendered routes rather than isolated controls.
+
+| ID | Surface and requested outcome | Signed-off equivalent | Status |
+| --- | --- | --- | --- |
+| PD-PR-117A-39 | Complete all six ledger screen compositions, grids, controls, selection/floating editors and supported native Add/Edit presentation without changing authority or hiding fields | Connected Design Lab's six ledger pages, grid and workbench | IN PROGRESS — all six real routes now use the Lab screen/head/toolbar/table-scroll presentation components; desktop/mobile pairs and native editor captures pass. Grid density, mobile labelled detail and specialist modal composition remain open Design Acceptance items; existing authorities remain |
+| PD-PR-117A-40 | Complete supported Today/Notifications, Reports/Profit Tracker, Profiles/Accounts management, Settings/onboarding design adoption while retaining real functions | Corresponding connected Design Lab pages and shared shell; specialist tools where no Lab equivalent exists | NOT STARTED for CP-125 route completion; earlier partial adoption retained |
+| PD-PR-117A-41 | Deliver one integrated single-host candidate with paired complete-screen visual evidence, real native editor journey videos, V2/legacy regression, source custody and issue receipt | Existing CP-117 synthetic runner and normal 3010 | IN PROGRESS — synthetic complete-screen and editor videos captured; integration, rollback, source checkpoint and normal 3010 restoration still being verified |
+
+Today tracking and saved-view persistence remain separate authority decisions. Their absence does not block independent presentation work.

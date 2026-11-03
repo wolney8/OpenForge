@@ -23,6 +23,8 @@ import { EditorValidationBanner } from "@/components/editor-validation-banner";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
 import { DesignLedgerSearch } from "@/components/design-ledger-search";
+import { DesignLedgerScreen, DesignLedgerToolbar, DesignLedgerToolbarAction, DesignLedgerPrimaryAction, DesignPageHead, designPageHeadClasses } from "@/components/design-ledger-screen";
+import { DesignLabSelect } from "@/components/design-lab-select";
 import { LedgerViewContext } from "@/components/ledger-view-context";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
@@ -608,7 +610,7 @@ function sortCashAdjustmentsByDate(rows: CashAdjustmentRecord[]): CashAdjustment
   });
 }
 
-export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }) {
+export function CashAdjustmentWorkflowShell({ profileId, visualV2 = false }: { profileId: string; visualV2?: boolean }) {
   const [guidedAccessMode] = useProfileGuidedAccessMode(profileId);
   const guidedAccessEnabled = isGuidedAccessEnabled(guidedAccessMode);
   const [rows, setRows] = useState<CashAdjustmentRecord[]>([]);
@@ -1827,6 +1829,16 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
     return <span className="table-cell-text">{value}</span>;
   }
 
+  const quickViewPanel = (
+        <section aria-busy={summaryReadState === "loading"} className="stat-strip" aria-label="Cash-adjustment quick view">
+          {!visualV2 ? <TrackerRangeCard activePreset={trackerSettings?.active_date_preset ?? "Week (Mon-Sun)"} isSaving={isTrackerRangeSaving} onPresetChange={(preset) => void updateTrackerDatePreset(preset)} rangeDetail={quickViewRangeDetail} rangeContext={quickViewRangeContext} /> : null}
+          <MotionReplayGroup><article className="stat-card"><span className="eyebrow">Withdrawals</span><strong>{summaryReadState === "ready" ? quickView.withdrawalCount : "—"}</strong><span><FinancialReadValue state={summaryReadState} subject="Cash value" value={quickView.withdrawalTotal} /></span></article></MotionReplayGroup>
+          <MotionReplayGroup><article className="stat-card"><span className="eyebrow">Costs</span><strong>{summaryReadState === "ready" ? quickView.costCount : "—"}</strong><span><FinancialReadValue state={summaryReadState} subject="Cash value" value={quickView.costTotal} /></span></article></MotionReplayGroup>
+          <article className="stat-card"><span className="eyebrow">Cash impact</span><strong>{summaryReadState === "ready" ? `${quickView.investmentCount} / ${quickView.cashSnapshotCount}` : "—"}</strong><span>Investment rows • Account-cash rows</span></article>
+          <MotionReplayGroup><article className="stat-card"><span className="eyebrow">Cash Adjustment Net</span><strong><FinancialReadValue state={summaryReadState} subject="Cash value" value={quickView.signedTotal} /></strong><span>Selected-range cash movement</span></article></MotionReplayGroup>
+        </section>
+  );
+
   return (
     <section className="stack">
       {!workflowVisible || cellEditor.active ? (
@@ -1834,53 +1846,29 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
       ) : null}
       <section
         aria-busy={isInitialLoading}
-        className="content-panel stack sportsbook-page-shell"
+        className={visualV2 ? "stack sportsbook-page-shell ledger-v2-page" : "content-panel stack sportsbook-page-shell"}
       >
-        <div className="sportsbook-page-header">
+        {visualV2 ? <DesignPageHead><div><h1>Cash Adjustments</h1></div><div className={designPageHeadClasses.actions}><TrackerRangeCard activePreset={trackerSettings?.active_date_preset ?? "Week (Mon-Sun)"} isSaving={isTrackerRangeSaving} onPresetChange={(preset) => void updateTrackerDatePreset(preset)} rangeDetail={quickViewRangeDetail} rangeContext={quickViewRangeContext} visualV2 /></div></DesignPageHead> : <div className="sportsbook-page-header">
           <h1 className="sportsbook-page-title">Cash Adjustments</h1>
-        </div>
+        </div>}
         {isInitialLoading ? (
           <LedgerLoadingIndicator label="Loading cash-adjustment ledger" />
         ) : null}
-        <section aria-busy={summaryReadState === "loading"} className="stat-strip" aria-label="Cash-adjustment quick view">
-          <TrackerRangeCard
-            activePreset={trackerSettings?.active_date_preset ?? "Week (Mon-Sun)"}
-            isSaving={isTrackerRangeSaving}
-            onPresetChange={(preset) => void updateTrackerDatePreset(preset)}
-            rangeDetail={quickViewRangeDetail}
-            rangeContext={quickViewRangeContext}
-          />
-          <MotionReplayGroup><article className="stat-card">
-            <span className="eyebrow">Withdrawals</span>
-            <strong>{summaryReadState === "ready" ? quickView.withdrawalCount : "—"}</strong>
-            <span><FinancialReadValue state={summaryReadState} subject="Cash value" value={quickView.withdrawalTotal} /></span>
-          </article></MotionReplayGroup>
-          <MotionReplayGroup><article className="stat-card">
-            <span className="eyebrow">Costs</span>
-            <strong>{summaryReadState === "ready" ? quickView.costCount : "—"}</strong>
-            <span><FinancialReadValue state={summaryReadState} subject="Cash value" value={quickView.costTotal} /></span>
-          </article></MotionReplayGroup>
-          <article className="stat-card">
-            <span className="eyebrow">Cash impact</span>
-            <strong>
-              {summaryReadState === "ready" ? `${quickView.investmentCount} / ${quickView.cashSnapshotCount}` : "—"}
-            </strong>
-            <span>Investment rows • Account-cash rows</span>
-          </article>
-          <MotionReplayGroup><article className="stat-card">
-            <span className="eyebrow">Cash Adjustment Net</span>
-            <strong><FinancialReadValue state={summaryReadState} subject="Cash value" value={quickView.signedTotal} /></strong>
-            <span>Selected-range cash movement</span>
-          </article></MotionReplayGroup>
-        </section>
-        <div className="sportsbook-review-bar" aria-label="Cash-adjustment ledger controls" role="toolbar">
+        {!visualV2 ? quickViewPanel : null}
+        <DesignLedgerScreen actions={visualV2 ? <DesignLedgerPrimaryAction dataPdId="cash-adjustments.toolbar.add-row" onClick={() => void startNewRow()}>Add Cash Adjustment</DesignLedgerPrimaryAction> : null} dataPdId="cash-adjustments.design-screen" description={`${filteredRows.length} of ${rows.length} rows · ${activeTableControlCount ? `${activeTableControlCount} active table controls` : query.trim() ? "Search active" : "No filters"} · Current Profile`} enabled={visualV2} title="Cash Adjustments">
+        <DesignLedgerToolbar ariaLabel="Cash-adjustment ledger controls" className="sportsbook-review-bar" enabled={visualV2}>
           <DesignLedgerSearch dataPdId="cash-adjustments.toolbar.search" label="Search cash-adjustment rows" onChange={event => { setQuery(event.target.value); setCurrentPage(1); }} placeholder="Search cash-adjustment rows" value={query} />
-          <LedgerAddRowButton label="Add cash adjustment" onClick={() => void startNewRow()} />
-          <div className="table-filter-button-wrap">
+          {!visualV2 ? <LedgerAddRowButton label="Add cash adjustment" onClick={() => void startNewRow()} /> : null}
+          {visualV2 ? <>
+            <DesignLabSelect dataPdId="cash-adjustments.toolbar.status" label="Calculation state" value={tableFilters.calculation_state} options={[{ value: "", label: "All states" }, ...cashAdjustmentFilterOptions.calculationStates.map(value => ({ value, label: value }))]} onChange={value => updateTableFilter("calculation_state", value)} compact />
+            <DesignLedgerToolbarAction dataPdId="cash-adjustments.toolbar.filter" onClick={() => setIsFilterModalOpen(true)}>Filters &amp; Columns</DesignLedgerToolbarAction>
+            <DesignLedgerToolbarAction dataPdId="cash-adjustments.toolbar.restore-columns" onClick={() => { setVisibleColumnKeys(new Set(defaultVisibleCashAdjustmentColumns)); setColumnWidths(defaultCashAdjustmentColumnWidths); }}>Restore Default Columns</DesignLedgerToolbarAction>
+          </> : null}
+          {!visualV2 ? <div className="table-filter-button-wrap">
             <button aria-label="Open cash-adjustment filter and column controls" className={`icon-button table-filter-button${hasActiveTableControls ? " has-active-table-controls" : ""}`} onClick={() => setIsFilterModalOpen(true)} title="Filter and columns" type="button"><svg aria-hidden="true" className="table-filter-icon" fill="none" viewBox="0 0 24 24"><path d="M4 6h16l-6.5 7.3v4.9l-3 1.8v-6.7L4 6Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" /></svg>{hasActiveTableControls ? <span aria-label={`${activeTableControlCount} active table controls`} className="table-filter-badge">{activeTableControlCount > 9 ? "9+" : activeTableControlCount}</span> : null}</button>
             {hasActiveTableControls ? <button aria-label="Clear active cash-adjustment filters and hidden-column states" className="table-filter-clear" onClick={() => { clearTableFilters(); setVisibleColumnKeys(new Set(defaultVisibleCashAdjustmentColumns)); }} type="button">×</button> : null}
-          </div>
-        </div>
+          </div> : null}
+        </DesignLedgerToolbar>
         <LedgerQuickActions
           ledgerType="Cash Adjustments"
           onSelect={async (action: LedgerQuickAction) => {
@@ -1914,7 +1902,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
               position="top"
               totalRows={filteredRows.length}
             />
-            <LedgerTableScroll dataPdId="cash-adjustments.table-scroll" cellNavigation={{ label: "Cash Adjustments", onActivate: (rowId, column, anchor) => void selectRow(rowId, { cell: column in inlineCellFields ? { column, anchor } : undefined }) }}>
+            <LedgerTableScroll dataPdId="cash-adjustments.table-scroll" visualV2={visualV2} cellNavigation={{ label: "Cash Adjustments", onActivate: (rowId, column, anchor) => void selectRow(rowId, { cell: column in inlineCellFields ? { column, anchor } : undefined }) }}>
               <table className="data-table sportsbook-data-table">
                 <colgroup>
                   {tableColumns.map((column) => {
@@ -2054,6 +2042,8 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
             />
           </>
         ) : null}
+        </DesignLedgerScreen>
+        {visualV2 ? quickViewPanel : null}
       </section>
       {isFilterModalOpen ? (
         <div className="modal-backdrop" onClick={() => setIsFilterModalOpen(false)}>

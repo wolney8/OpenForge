@@ -23,6 +23,8 @@ import {
 } from "@/components/bookmaker-identity";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
 import { DesignLedgerSearch } from "@/components/design-ledger-search";
+import { DesignLedgerScreen, DesignLedgerToolbar, DesignLedgerToolbarAction, DesignLedgerPrimaryAction, DesignPageHead, designPageHeadClasses } from "@/components/design-ledger-screen";
+import { DesignLabSelect } from "@/components/design-lab-select";
 import { LedgerViewContext } from "@/components/ledger-view-context";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
@@ -336,9 +338,11 @@ function isDateWithinRange(
 export function EachWayExtraPlaceWorkflowShell({
   profileId,
   initialIssueFilter,
+  visualV2 = false,
 }: {
   profileId: string;
   initialIssueFilter?: string;
+  visualV2?: boolean;
 }) {
   const baseUrl = `${apiBaseUrl}/profiles/${profileId}/each-way-extra-places`;
   const editorRef = useRef<HTMLElement | null>(null);
@@ -1030,25 +1034,15 @@ export function EachWayExtraPlaceWorkflowShell({
   const rangeContext = formatResolvedDateRange(resolvedDateRange);
   const rangeDetail = formatResolvedDateRangeContext(resolvedDateRange);
 
-  return (
-    <section
-      className={`content-panel stack extra-place-ledger extra-place-theme-${tableTheme}`}
-      data-pd-id="extra-place.ledger"
-    >
-      <div className="tracker-toolbar">
-        <div className="stack">
-          <span className="eyebrow">Horse racing</span>
-          <h1>Extra Places</h1>
-        </div>
-      </div>
+  const quickViewPanel = (
       <section aria-busy={summaryReadState === "loading"} aria-label="Extra Place quick view" className="stat-strip">
-        <TrackerRangeCard
+        {!visualV2 ? <TrackerRangeCard
           activePreset={activeDatePreset}
           isSaving={savingRange}
           onPresetChange={(preset) => void updateTrackerRange(preset)}
           rangeContext={rangeContext}
           rangeDetail={rangeDetail}
-        />
+        /> : null}
         <Stat
           label="Open rows"
           value={summaryReadState === "ready" ? openCount : "—"}
@@ -1099,13 +1093,20 @@ export function EachWayExtraPlaceWorkflowShell({
         </article>
         </FinancialValueReplayGroup>
       </section>
-      <div
-        aria-label="Extra Place controls"
-        className="sportsbook-review-bar"
-        role="toolbar"
-      >
+  );
+
+  return (
+    <section
+      className={`${visualV2 ? "stack ledger-v2-page" : "content-panel stack"} extra-place-ledger extra-place-theme-${tableTheme}`}
+      data-pd-id="extra-place.ledger"
+    >
+      {visualV2 ? <DesignPageHead><div><h1>Extra Places</h1></div><div className={designPageHeadClasses.actions}><TrackerRangeCard activePreset={activeDatePreset} isSaving={savingRange} onPresetChange={(preset) => void updateTrackerRange(preset)} rangeContext={rangeContext} rangeDetail={rangeDetail} visualV2 /></div></DesignPageHead> : <div className="tracker-toolbar"><div className="stack"><span className="eyebrow">Horse racing</span><h1>Extra Places</h1></div></div>}
+      {!visualV2 ? quickViewPanel : null}
+      <DesignLedgerScreen actions={visualV2 ? <DesignLedgerPrimaryAction dataPdId="extra-place.toolbar.add-row" onClick={openNew}>Add Extra Place</DesignLedgerPrimaryAction> : null} dataPdId="extra-place.design-screen" description={`${pageableRows.length} of ${tableRows.length} rows · ${activeTableControlCount ? `${activeTableControlCount} active table controls` : query.trim() ? "Search active" : "No filters"} · Current Profile`} enabled={visualV2} title="Extra Places">
+      <DesignLedgerToolbar ariaLabel="Extra Place controls" className="sportsbook-review-bar" enabled={visualV2}>
         <DesignLedgerSearch dataPdId="extra-place.toolbar.search" label="Search Extra Place rows" onChange={event => { setQuery(event.target.value); setCurrentPage(1); }} placeholder="Search Extra Place rows" value={query} />
-        <div className="extra-place-toolbar-actions">
+        {visualV2 ? <><DesignLabSelect dataPdId="extra-place.toolbar.view" label="View" value={tableFilters.view} options={[{ value: "recent", label: "Recent" }, { value: "issues", label: "Issues" }, { value: "all", label: "All" }]} onChange={value => { setTableFilters(current => ({ ...current, view: value as ExtraPlaceTableFilters["view"] })); setCurrentPage(1); }} compact /><DesignLedgerToolbarAction dataPdId="extra-place.toolbar.filter" onClick={() => setIsFilterModalOpen(true)}>Filters &amp; Columns</DesignLedgerToolbarAction><DesignLedgerToolbarAction dataPdId="extra-place.toolbar.restore-columns" onClick={() => setVisibleColumns(defaultVisibleColumns)}>Restore Default Columns</DesignLedgerToolbarAction></> : null}
+        {!visualV2 ? <div className="extra-place-toolbar-actions">
           <LedgerAddRowButton label="Add Extra Place row" onClick={openNew} />
           <span className="table-filter-button-wrap">
             <button
@@ -1143,8 +1144,8 @@ export function EachWayExtraPlaceWorkflowShell({
               </button>
             ) : null}
           </span>
-        </div>
-      </div>
+        </div> : null}
+      </DesignLedgerToolbar>
       <div className="extra-place-table-heading-controls">
         <div
           aria-label="Extra Place quick select loadouts"
@@ -1227,6 +1228,7 @@ export function EachWayExtraPlaceWorkflowShell({
         rows={paginatedRows}
         currentTime={currentTime}
         visibleColumns={visibleColumns}
+        visualV2={visualV2}
       />
       <LedgerPagination
         ariaLabel="Extra Place pagination"
@@ -1241,6 +1243,8 @@ export function EachWayExtraPlaceWorkflowShell({
         position="bottom"
         totalRows={pageableRows.length}
       />
+      </DesignLedgerScreen>
+      {visualV2 ? quickViewPanel : null}
       {open && cellEditor.session ? <LedgerFloatingCellEditor session={cellEditor.session} ledger="Extra Place" label="Runner / Race" dirty={isDirty} pending={saving} error={typeof error === "string" ? error : JSON.stringify(error)} onSave={async () => { const saved = await save(); if (saved) cellEditor.close(); return saved; }} onCancel={() => { setForm(pristine); setOpen(false); cellEditor.close(); }} onReview={() => cellEditor.close()}>
         <label className="field-control"><span>Runner</span><input data-pd-id="extra-place.cell-editor.runner" aria-label="Runner" value={form.runner} onChange={event => { setError(""); update("runner", event.target.value); }} /></label>
         <label className="field-control"><span>Race</span><input data-pd-id="extra-place.cell-editor.race" aria-label="Race" value={form.race} onChange={event => { setError(""); update("race", event.target.value); }} /></label>
@@ -1755,6 +1759,7 @@ function ExtraPlaceTable({
   providerIdsByName,
   rows,
   visibleColumns,
+  visualV2,
   onDelete,
   onEdit,
   onResult,
@@ -1765,6 +1770,7 @@ function ExtraPlaceTable({
   providerIdsByName: Record<string, string>;
   rows: Row[];
   visibleColumns: ExtraPlaceVisibleColumns;
+  visualV2: boolean;
   onDelete: (row: Row) => void;
   onEdit: (row: Row, cell?: LedgerCellSession) => void;
   onResult: (row: Row, result: string) => void;
@@ -1807,7 +1813,7 @@ function ExtraPlaceTable({
     window.addEventListener("mouseup", stop);
   };
   return (
-    <LedgerTableScroll dataPdId="extra-place.table-scroll" cellNavigation={{ label: "Extra Place", onActivate: (rowId, column, anchor) => { const row = rows.find(item => item.each_way_extra_place_id === rowId); if (row) onEdit(row, column === "runner" ? { column, anchor } : undefined); } }}>
+    <LedgerTableScroll dataPdId="extra-place.table-scroll" visualV2={visualV2} cellNavigation={{ label: "Extra Place", onActivate: (rowId, column, anchor) => { const row = rows.find(item => item.each_way_extra_place_id === rowId); if (row) onEdit(row, column === "runner" ? { column, anchor } : undefined); } }}>
       <table className="data-table extra-place-data-table">
         <colgroup>
           {activeColumns.map((key) => <col key={key} style={{ width: `${columnWidths[key]}px` }} />)}

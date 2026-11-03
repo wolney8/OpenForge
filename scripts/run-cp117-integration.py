@@ -310,7 +310,7 @@ const {chromium} = require('@playwright/test');
     const page = await context.newPage();
     await page.goto('http://127.0.0.1:' + process.argv[2] + '/');
     await page.goto('http://127.0.0.1:' + process.argv[1] + '/profiles/profile-demo-001/tracker/sportsbook-bets');
-    await page.getByRole('heading', {name:'Sportsbook Bets', exact:true}).waitFor({timeout:60000});
+    await page.getByRole('heading', {name:'Sportsbook Bets', exact:true, level:1}).waitFor({timeout:60000});
   } finally { await browser.close(); }
 })().catch(() => process.exit(1));
 """

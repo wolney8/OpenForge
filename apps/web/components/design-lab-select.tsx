@@ -8,7 +8,7 @@ type Option<T extends string> = { value: T; label: string };
 
 /** Lab-scoped single select using the platform's explicit-trigger/listbox pattern. */
 export function DesignLabSelect<T extends string>({
-  dataPdId, label, onChange, options, value, compact = false,
+  dataPdId, label, onChange, options, value, compact = false, disabled = false,
 }: {
   dataPdId: string;
   label: string;
@@ -16,6 +16,7 @@ export function DesignLabSelect<T extends string>({
   options: readonly Option<T>[];
   value: T;
   compact?: boolean;
+  disabled?: boolean;
 }) {
   const id = useId().replaceAll(":", "");
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -87,12 +88,13 @@ export function DesignLabSelect<T extends string>({
     <button
       aria-activedescendant={open ? `${id}-option-${active}` : undefined}
       aria-controls={`${id}-options`}
-      aria-expanded={open}
+      aria-expanded={open && !disabled}
       aria-haspopup="listbox"
       aria-label={compact ? `${label}: ${options[selectedIndex]?.label ?? ""}` : undefined}
       aria-labelledby={compact ? undefined : `${id}-label ${id}-selected`}
       className={styles.labSelectTrigger}
       data-pd-id={dataPdId}
+      disabled={disabled}
       onClick={() => { position(); setActive(selectedIndex); setOpen((current) => !current); }}
       onKeyDown={(event) => {
         if (event.key === "Escape" && open) { event.preventDefault(); event.stopPropagation(); setOpen(false); triggerRef.current?.focus(); }
@@ -108,7 +110,7 @@ export function DesignLabSelect<T extends string>({
       role="combobox"
       type="button"
     ><span id={`${id}-selected`}>{options[selectedIndex]?.label}</span><span aria-hidden="true" className="material-symbols-outlined">expand_more</span></button>
-    {open && portalHost ? createPortal(<div className={styles.labSelectPanel} data-pd-overlay-child id={`${id}-options`} ref={panelRef} role="listbox" aria-label={`${label} options`} style={placement}>
+    {open && !disabled && portalHost ? createPortal(<div className={styles.labSelectPanel} data-pd-overlay-child id={`${id}-options`} ref={panelRef} role="listbox" aria-label={`${label} options`} style={placement}>
       {options.map((option, index) => <div aria-selected={index === selectedIndex} className={`${styles.labSelectOption} ${index === active ? styles.labSelectOptionActive : ""}`} id={`${id}-option-${index}`} key={option.value} onClick={() => choose(index)} role="option" tabIndex={-1}>
         <span>{option.label}</span>{index === selectedIndex ? <span aria-hidden="true" className="material-symbols-outlined">check</span> : null}
       </div>)}

@@ -417,3 +417,13 @@ Scope: `PD-PR-117A-17–20`, open #118. Sportsbook and Accounts only; full six-l
 - [x] The V2 notification dropdown now shares Lab panel/section/row presentation, keeps existing read/clear/complete/source commands and hover/focus read behavior, and retains the flag-OFF legacy dropdown. Paired synthetic boundary and row checks passed 4/4 at 1440/390 in both themes; read/clear persisted through reload in 1/1 focused test. Real retained-history and full-page filter differences remain open.
 - [x] Normal 3010 web restarted from the pinned CP-124 source; `/login` 200, `/` and `/design-lab` protected, Google initiation 302 to Google's host, existing 8010 API health 200. Disposable test ports closed and worktree clean.
 - [ ] Full-route parity and spoken screen-reader review remain open at this stage.
+
+## CP-125 six-ledger whole-screen checkpoint — 2026-11-03
+
+- [x] Canonical equivalent: connected Design Lab ledger screen, page head, toolbar, select and table-scroll components. The six real ledgers now use those surfaces with real row/filter/range/Add adapters and source-default-OFF flag. Lab fixture callbacks do not enter real financial commands.
+- [x] Existing semantic tables, accessible toolbar/field names, stable `data-pd-id`, financial status and unknown-state renderers, Profile isolation and native Add/Edit/correction authorities retained. Account opportunities and specialist Extra Place quick loadouts remain available.
+- [x] Full-screen Lab/V2 pairs at 1440 light and 390 dark; each route checked for surface class, toolbar/table presence and page overflow. Six real native Add editors captured at both widths, with viewport bounds and close controls asserted.
+- [x] Shared wide-table adoption exposed a mobile pinned-column pointer blocker. Corrected the real V2 narrow geometry and passed the actual six-ledger pointer/floating-editor regression. The signed-off Lab grid retains its own geometry.
+- [x] Web source suite 701/701 and typecheck pass. The unchanged Free Bet render-ref lint error remains in the incoming checkpoint; focused changed-file lint has that one error and ten warnings, without a new CP-125 lint error.
+- [ ] Full Design Acceptance remains open: real operational grid density, Lab mobile labelled details and specialist modal compositions differ. Equivalent Profile/range fixture content and owner visual/spoken screen-reader review remain separate acceptance work.
+- [x] Consolidated synthetic Playwright 21/21 V2 paths (two flag-OFF paths skipped in that run); refreshed paired visual/editor paths 4/4; independent runner then passed V2 navigation 1/1 and flag-OFF rollback 2/2. Final web build passed. Git checkpoint, issue receipt and normal 3010 restoration are recorded in the delivery report.

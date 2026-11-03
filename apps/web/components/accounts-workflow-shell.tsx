@@ -19,6 +19,8 @@ import { AccountMoneyStatus } from "@/components/account-money-status";
 import { accountMoneyDisplayValue, accountMoneyError, normalizeAccountMoney, sumAccountMoney } from "@/lib/account-money";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
 import { DesignLedgerSearch } from "@/components/design-ledger-search";
+import { DesignLedgerScreen, DesignLedgerToolbar, DesignLedgerToolbarAction, DesignLedgerPrimaryAction, DesignPageHead } from "@/components/design-ledger-screen";
+import { DesignLabSelect } from "@/components/design-lab-select";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerViewContext } from "@/components/ledger-view-context";
@@ -497,7 +499,7 @@ function sortAccountRows(rows: TrackerRow[], sort: AccountSort | null) {
   });
 }
 
-export function AccountsWorkflowShell({ profileId, initialRecordId, initialIssueFilter }: { profileId: string; initialRecordId?: string; initialIssueFilter?: string }) {
+export function AccountsWorkflowShell({ profileId, initialRecordId, initialIssueFilter, visualV2 = false }: { profileId: string; initialRecordId?: string; initialIssueFilter?: string; visualV2?: boolean }) {
   const initialRecordOpenedRef = useRef("");
   const [rows, setRows] = useState<AccountRecord[]>([]);
   const [bookmakerCatalogue, setBookmakerCatalogue] = useState<BookmakerCatalogueRecord[]>([]);
@@ -1254,23 +1256,8 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialIssue
     }
   }
 
-  return (
-    <section className="stack accounts-page-shell">
-      <StatusToast message={statusMessage} onDismiss={clearStatusMessage} />
-      <section
-        aria-busy={isInitialLoading}
-        className="content-panel stack sportsbook-page-shell"
-      >
-        <div className="sportsbook-page-header accounts-page-header">
-          <h1 className="sportsbook-page-title">Accounts</h1>
-        </div>
-        {isInitialLoading ? (
-          <LedgerLoadingIndicator
-            dataPdId="profile-accounts.loading"
-            label="Loading Profile Accounts"
-          />
-        ) : null}
-        <section aria-busy={summaryReadState === "loading"} className="stat-strip" aria-label="Account quick view">
+  const quickViewPanel = (
+<section aria-busy={summaryReadState === "loading"} className="stat-strip" aria-label="Account quick view">
           <article className="stat-card">
             <span className="eyebrow">Active accounts</span>
             <strong>{summaryReadState === "ready" ? accountQuickView.activeAccounts : "—"}</strong>
@@ -1297,17 +1284,42 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialIssue
             <p className="lede">Across all tracked account rows for this profile.</p>
           </article></MotionReplayGroup>
         </section>
+  );
+  const opportunityQueue = <div id="profile-opportunities"><ProfileOpportunityQueue profileId={profileId} /></div>;
+
+  return (
+    <section className="stack accounts-page-shell">
+      <StatusToast message={statusMessage} onDismiss={clearStatusMessage} />
+      <section
+        aria-busy={isInitialLoading}
+        className={visualV2 ? "stack sportsbook-page-shell ledger-v2-page" : "content-panel stack sportsbook-page-shell"}
+      >
+        {visualV2 ? <DesignPageHead><div><h1>Accounts</h1></div></DesignPageHead> : <div className="sportsbook-page-header accounts-page-header">
+          <h1 className="sportsbook-page-title">Accounts</h1>
+        </div>}
+        {isInitialLoading ? (
+          <LedgerLoadingIndicator
+            dataPdId="profile-accounts.loading"
+            label="Loading Profile Accounts"
+          />
+        ) : null}
+        {!visualV2 ? quickViewPanel : null}
         {summaryReadState === "ready" ? <AccountMoneyStatus issues={accountQuickView.moneyIssues} /> : null}
-        <div id="profile-opportunities"><ProfileOpportunityQueue profileId={profileId} /></div>
+        {!visualV2 ? opportunityQueue : null}
+        <DesignLedgerScreen actions={visualV2 ? <DesignLedgerPrimaryAction dataPdId="accounts.toolbar.add-row" onClick={startNewRow}>Add Account</DesignLedgerPrimaryAction> : null} dataPdId="accounts.design-screen" description={`${filteredRows.length} of ${resolvedRows.length} rows · ${activeTableControlCount ? `${activeTableControlCount} active table controls` : query.trim() ? "Search active" : "No filters"} · Current Profile`} enabled={visualV2} title="Accounts">
         <>
-            <div
-              aria-label="Accounts controls"
+            <DesignLedgerToolbar
+              ariaLabel="Accounts controls"
               className="sportsbook-review-bar accounts-table-toolbar"
               data-pd-id="accounts.table-toolbar"
-              role="toolbar"
+              enabled={visualV2}
             >
               <DesignLedgerSearch dataPdId="accounts.toolbar.search" label="Search accounts" onChange={event => { setQuery(event.target.value); setCurrentPage(1); }} placeholder="Search account rows" value={query} />
-              <div className="table-filter-button-wrap">
+              {visualV2 ? <>
+                <DesignLabSelect dataPdId="accounts.toolbar.status" label="Account status" value={tableFilters.status} options={[{ value: "", label: "All statuses" }, ...accountFilterOptions.statuses.map(value => ({ value, label: value }))]} onChange={value => { setTableFilters(current => ({ ...current, status: value })); setCurrentPage(1); }} compact />
+                <DesignLedgerToolbarAction dataPdId="accounts.toolbar.filter" onClick={() => setIsFilterModalOpen(true)}>Filters &amp; Columns</DesignLedgerToolbarAction>
+                <DesignLedgerToolbarAction dataPdId="accounts.toolbar.restore-columns" onClick={() => { setVisibleColumnKeys(new Set(defaultVisibleAccountColumns)); setColumnWidths(defaultAccountColumnWidths); }}>Restore Default Columns</DesignLedgerToolbarAction>
+              </> : <div className="table-filter-button-wrap">
                 <button
                   aria-haspopup="dialog"
                   aria-label="Filter accounts"
@@ -1339,11 +1351,11 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialIssue
                     ×
                   </button>
                 ) : null}
-              </div>
-              <div className="extra-place-toolbar-actions">
+              </div>}
+              {!visualV2 ? <div className="extra-place-toolbar-actions">
                 <LedgerAddRowButton label="Add Account" onClick={startNewRow} />
-              </div>
-            </div>
+              </div> : null}
+            </DesignLedgerToolbar>
             <div className="extra-place-table-heading-controls" data-pd-id="accounts.table-loadouts">
               <div className="tracker-nav extra-place-loadouts" role="group" aria-label="Accounts review modes">
                 <button aria-pressed={tableFilters.issue === "needs-attention"} className={`review-chip${tableFilters.issue === "needs-attention" ? " is-active" : ""}`} data-pd-id="accounts.filter.needs-attention" onClick={() => { setTableFilters((current) => ({ ...current, issue: current.issue === "needs-attention" ? "" : "needs-attention" })); setCurrentPage(1); }} type="button">Needs attention{attentionCount ? ` (${attentionCount})` : ""}</button>
@@ -1389,7 +1401,7 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialIssue
               position="top"
               totalRows={filteredRows.length}
             />
-            <LedgerTableScroll dataPdId="accounts.table-scroll" cellNavigation={{ label: "Accounts", onActivate: (rowId, column, anchor) => { const record = resolvedRows.find(row => row.account_id === rowId); const supported = column in inlineCellFields && record?.catalogue_id && record.type !== "Exchange" && record.signup_offer_status !== "Yes"; void selectRow(rowId, supported ? { column, anchor } : undefined); } }}>
+            <LedgerTableScroll dataPdId="accounts.table-scroll" visualV2={visualV2} cellNavigation={{ label: "Accounts", onActivate: (rowId, column, anchor) => { const record = resolvedRows.find(row => row.account_id === rowId); const supported = column in inlineCellFields && record?.catalogue_id && record.type !== "Exchange" && record.signup_offer_status !== "Yes"; void selectRow(rowId, supported ? { column, anchor } : undefined); } }}>
               <table className="data-table accounts-data-table">
                 <colgroup>
                   {visibleTableColumns.map((column) => (
@@ -1533,6 +1545,9 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialIssue
             />
             </div>
         </>
+        </DesignLedgerScreen>
+        {visualV2 ? quickViewPanel : null}
+        {visualV2 ? opportunityQueue : null}
       </section>
 
       {isFilterModalOpen && typeof document !== "undefined"

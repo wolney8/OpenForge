@@ -440,3 +440,70 @@ for (const width of [1440, 390] as const) {
     });
   }
 }
+
+for (const { width, theme } of [{ width: 1440, theme: "light" }, { width: 390, theme: "dark" }] as const) {
+  test(`six complete ledger screens ${width} ${theme}: Lab and integrated V2`, async ({ page }) => {
+    test.setTimeout(180_000);
+    await mkdir(evidence, { recursive: true });
+    await page.setViewportSize({ width, height: 900 });
+    for (const ledger of ledgerSearchRoutes) {
+      const labKey = "labKey" in ledger ? ledger.labKey : ledger.key;
+      await page.goto("/design-lab");
+      await page.locator('[data-pd-id="design-lab-connected.root"]').waitFor();
+      const cookie = page.getByRole("button", { name: "Understood" });
+      if (await cookie.isVisible()) await cookie.click();
+      if (width < 761) await page.getByRole("button", { name: "Open navigation" }).click();
+      await page.getByRole("button", { name: ledger.lab, exact: true }).first().click();
+      const labRange = page.locator('[data-pd-id="lab.range"]');
+      if (!await labRange.getByText("This Year", { exact: true }).count()) {
+        await labRange.click();
+        await page.getByRole("option", { name: "This Year", exact: true }).click();
+      }
+      await setTheme(page, theme);
+      const labSurface = page.locator(`[data-pd-id="lab.ledger.${labKey}"]`);
+      await expect(labSurface).toBeVisible();
+      const labClass = await labSurface.evaluate(element => element.className);
+      await noPageOverflow(page);
+      await page.screenshot({ path: join(evidence, `lab-${ledger.key}-screen-${width}-${theme}.png`), fullPage: true });
+
+      await page.goto(ledger.path);
+      await page.locator(".ledger-loading-overlay").first().waitFor({ state: "hidden", timeout: 45_000 });
+      const realRange = page.locator('[data-pd-id="tracker.range-card.select"]');
+      if (await realRange.count() && !await realRange.getByText("This Year", { exact: true }).count()) {
+        await realRange.click();
+        await page.getByRole("option", { name: "This Year", exact: true }).click();
+      }
+      if (ledger.key === "extra-place") await expect(page.getByRole("region", { name: "Extra Place quick view" })).toHaveAttribute("aria-busy", "false", { timeout: 45_000 });
+      await setTheme(page, theme);
+      const realSurface = page.locator(`[data-pd-id="${ledger.key}.design-screen"]`);
+      await expect(realSurface).toBeVisible();
+      await expect(realSurface.getByRole("toolbar")).toBeVisible();
+      await expect(realSurface.locator("table").first()).toBeVisible();
+      expect(await realSurface.evaluate(element => element.className)).toBe(labClass);
+      await noPageOverflow(page);
+      await page.screenshot({ path: join(evidence, `v2-${ledger.key}-screen-${width}-${theme}.png`), fullPage: true });
+    }
+  });
+}
+
+for (const { width, theme } of [{ width: 1440, theme: "light" }, { width: 390, theme: "dark" }] as const) {
+  test(`six native ledger editors ${width} ${theme}: real V2 handoff`, async ({ page }) => {
+    test.setTimeout(180_000);
+    await mkdir(evidence, { recursive: true });
+    await page.setViewportSize({ width, height: 900 });
+    for (const ledger of ledgerSearchRoutes) {
+      await page.goto(ledger.path);
+      await page.locator(".ledger-loading-overlay").first().waitFor({ state: "hidden", timeout: 45_000 });
+      await setTheme(page, theme);
+      await page.locator(`[data-pd-id="${ledger.key}.toolbar.add-row"]`).click();
+      const editor = page.getByRole("dialog").first();
+      await expect(editor).toBeVisible();
+      await expect(editor.getByRole("button", { name: /close/i }).first()).toBeVisible();
+      await noPageOverflow(page);
+      const box = await editor.boundingBox();
+      expect(box!.x).toBeGreaterThanOrEqual(0);
+      expect(box!.x + box!.width).toBeLessThanOrEqual(width + 1);
+      await page.screenshot({ path: join(evidence, `v2-${ledger.key}-editor-${width}-${theme}.png`), fullPage: true });
+    }
+  });
+}
