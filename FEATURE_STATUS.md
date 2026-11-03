@@ -1,5 +1,9 @@
 # Feature Status — Plum Duff / OpenForge — Doc ID: FS-CODEX-001
 
+## CP-117 isolated integration milestone — 2026-11-03 12:08 GMT
+
+Sportsbook/Accounts cell selection, arrows/Home/End and Enter/F2/double-click open the existing real editor; saved reload/reopen and rejected-save retry are verified on independent disposable authentication/data. Available in local V2 only; normal source is unchanged. Other ledgers, floating saves, reorder/saved views and full Lab adoption remain partial. No deployment. [#118](https://github.com/wolney8/OpenForge/issues/118) · [Detailed evidence](docs/audits/platform-quality-audit.md#cp-117-real-spreadsheet-interaction-integration--2026-11-03)
+
 > 2026-10-14 local correction: Selected Range is migrating to the persisted Fund Manager setting
 > (`Week (Mon-Sun)` default, nullable Custom bounds). Profile-specific range columns remain only for
 > compatibility/history. Common financial readiness, stable chart interaction and self-contained
@@ -19,9 +23,9 @@
 > The authenticated 26-transition synthetic browser gate passed; canonical owner interaction is
 > still unverified and workbook acceptance remains paused.
 
-**Last updated:** 2026-09-26 23:29:27 BST
+**Last updated:** 2026-11-03 12:08 GMT; historical entries retain their original evidence dates.
 
-## Operational summary
+## Historical operational summary — current CP-117 availability above
 
 | Area | Current state |
 | --- | --- |

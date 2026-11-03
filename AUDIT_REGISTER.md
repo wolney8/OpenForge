@@ -1,12 +1,16 @@
 # Audit Register — Plum Duff / OpenForge — Doc ID: AR-CODEX-001
 
-## CP-110 current checkpoint — 2026-11-01
+## CP-117 real cell integration — 2026-11-03 12:08 GMT
+
+Bounded Sportsbook/Accounts spreadsheet handoff: 8 V2 and 1 rollback browser paths, 701 web and 43 focused API assertions; typecheck/build pass. Design Acceptance, manual spoken screen-reader output and full six-ledger adoption remain open. Existing broader baseline failures remain visible in the detailed audit. [#118](https://github.com/wolney8/OpenForge/issues/118) · [Detailed evidence](docs/audits/platform-quality-audit.md#cp-117-real-spreadsheet-interaction-integration--2026-11-03)
+
+## CP-110 historical checkpoint — 2026-11-01
 
 - `PD-PR-110-01`: Fund Manager journey and isolated Design Lab direction are documented, not implemented or owner accepted. The [initial brief](docs/planning/plum-duff-design-lab-brief.md) is explicitly sourced to the owner's two prompts; DJList source and public Coinbase CDS references are inspected. Their authenticated/runtime visual behaviour and owner lab acceptance remain unverified.
 - `PD-FIX-504`: owner-observed `ECONNREFUSED 127.0.0.1:8010` occurred during the CP-109 web/API startup gap after an exact-revision API gate rejected `04f591d…+dirty`. Both canonical services are healthy now; recurrence outside that logged event is unverified. No service was restarted for CP-110.
 - CP-109 broad API run (1,200 passed / 125 failed / 20 skipped) and broad Ruff lint (264 findings) are **reported baseline**, not a clean gate or proof that every failure is harmless. Focused CP-109 checks and owner acceptance remain distinct. [Detail](docs/audits/platform-quality-audit.md#cp-110-design-lab-discovery-and-ux-direction--2026-11-01).
 
-**Last updated:** 2026-11-01 for the CP-110 checkpoint; historical tables below retain their checkpoint-time status.
+**Last updated:** 2026-11-03 12:08 GMT; historical entries retain their original evidence dates.
 
 This is the owner-facing index for audit evidence. The
 [platform quality audit](docs/audits/platform-quality-audit.md) remains the detailed authority.

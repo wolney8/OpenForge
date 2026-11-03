@@ -323,6 +323,8 @@ For dialogs and drawers, assert:
 
 For tables and rows, assert:
 
+- spreadsheet cell selection preserves nested controls/panning and never issues ledger persistence writes; explicit activation reuses the existing editor and restores cell focus. Reveal keyboard focus beside sticky Actions; at fixed-column narrow overflow, maximise and hit-test the visible fragment without shrinking columns/actions.
+
 - header and body columns align;
 - pinned columns remain pinned in both header and body after horizontal scroll; their action
   targets stay inside the cell/viewport with an opaque row-aware surface in both themes;

@@ -356,3 +356,19 @@ Complete this for every feature, bug fix, component, fixture-backed UI, route or
 - [x] Populated real tables/editors, sticky header/body Actions, pointer panning, keyboard scroll, sidebar width release, failed-save draft/retry, source ownership and mobile themes have real-route browser paths.
 - [x] Financial/auth safeguard failures were compared with the preserved baseline; unchanged failures are reported rather than hidden or weakened.
 - [ ] Complete financial lifecycle UI parity, persistent tracking/Board and manual spoken screen-reader verification remain outside this bounded presentation receipt. Consolidated owner review is still outstanding.
+
+
+## CP-117 real cell navigation — 2026-11-03 12:08 GMT
+
+Scope: `PD-PR-117A-17–20`, open #118. Sportsbook and Accounts only; full six-ledger adoption remains partial.
+
+- [x] Mandatory UI, modal-parity, consistency and workflow authorities read; real `LedgerTableScroll`, native editors and Lab selection are the canonical equivalents.
+- [x] One shared opt-in interaction primitive; semantic tables, contextual instructions, roving Tab stop and stable cell identifiers. No new modal, field, action or money renderer.
+- [x] Pointer selection, arrows/Home/End, Enter/F2/double-click, Escape, outside clearing and editor focus return asserted.
+- [x] Native controls, panning, row actions and sticky header/body alignment retained. Fixed columns can intentionally exceed narrow space; visible cell fragments are maximised and pointer hit-tested.
+- [x] Light/dark, 390/1440px, reduced motion respected through immediate navigation; actual Chromium 200% zoom and editor containment pass. Focus contrast 3.28:1 / 7.70:1; text contrast 13.16:1 / 12.58:1.
+- [x] Real Sportsbook failed draft/retry, actual saves, reload/reopen, unchanged financial fields and foreign-Profile rejection; canonical Account notes save/reopen retains identity/balances. No selection persistence writes; existing calculation-preview POST is read-only.
+- [x] Flag OFF restores original row activation and no cell navigation; source flag default remains OFF.
+- [x] Focused browser 8/8 V2 plus 1/1 rollback; web 701/701; focused API 43/43; typecheck, webpack build and scoped lint (zero errors, seven existing warnings). Vercel services configuration checked separately.
+- [x] Real synthetic-data recordings and visual captures inspected; named local evidence index retained, no traces/cookies/token files committed.
+- [x] Existing baseline limitations remain visible: first-save legacy catalogue binding is outside the canonical Account assertion; existing financial-fixture failures are not claimed fixed; manual screen reader and owner Design Acceptance remain open.

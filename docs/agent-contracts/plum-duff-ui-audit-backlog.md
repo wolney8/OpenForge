@@ -89,3 +89,8 @@ surfaces and record actual composed-layout, theme, focus, scaling and responsive
 | --- | --- | --- |
 | PD-UI-AUD-117-01 / MEDIUM | Free Bet editor execution summary | An Available preview with complete planning inputs and no actual matched stake can display the calculation authority's `lay_status` as `Fully Laid`. Preserve calculation outputs, but reconcile the label's planning versus actual-execution meaning before adopting the Lab execution workbench. No financial authority was changed here. |
 | PD-UI-AUD-117-02 / MEDIUM | Casino imported Date Started precision | Existing datetime editor does not populate a date-only source as a recorded time. The disposable preview now uses explicitly known synthetic datetime inputs. Date-only historical editing needs a governed unknown-time presentation; do not infer midnight to make an editor appear populated. |
+
+
+## PD-AUDIT-117A-01 — existing Sportsbook Review Account sizing — 2026-11-03 12:08 GMT
+
+NOT STARTED · MEDIUM blast radius · [#118](https://github.com/wolney8/OpenForge/issues/118) existing-editor parity checklist. The unchanged populated Sportsbook editor's Review Account control occupies a taller row than neighbouring field controls. Nearest signed-off reference: compact shared Account review action and ledger field geometry. Observed in the real synthetic dark editor capture during the cell-handoff review. Record for a bounded shared-field review; do not rewrite signed-off modal layout in the navigation tranche. Cell navigation and native save behaviour do not change this existing composition.

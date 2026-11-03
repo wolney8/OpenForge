@@ -18661,3 +18661,11 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
   .ux-v2-header-right .back-lay-theme-shell .app-menu-panel { position: fixed; top: 4rem; right: .5rem; left: .5rem; width: auto; max-width: none; min-width: 0; }
 }
 @media (prefers-reduced-motion: reduce) { .ux-v2-sidebar { transition: none; } }
+
+/* Real-ledger cell selection reuses the approved spreadsheet focus token.
+   An inset outline stays inside the cell without changing table geometry. */
+html[data-ux-shell="v2"] td[data-ledger-selected="true"],
+html[data-ux-shell="v2"] td[data-ledger-column]:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}

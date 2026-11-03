@@ -37,5 +37,10 @@
         "service": "frontend"
       }
     }
-  ]
+  ],
+  "git": {
+    "deploymentEnabled": {
+      "feature/cp117-ledger-adoption": false
+    }
+  }
 }

@@ -1,5 +1,9 @@
 # Plum Duff Known UI Pitfalls
 
+## CP-117 real spreadsheet handoff — 2026-11-03 12:08 GMT
+
+A cell-selection handler must stop the old row-open click while preserving nested controls, native text selection, pan-release suppression and explicit editor activation. Share it through `LedgerTableScroll`, keep a roving Tab stop and restore the connected cell after the existing modal closes. Keyboard reveal must account for sticky Actions. If preserved fixed columns exceed the remaining narrow space, maximise the visible fragment and assert real pointer hit-testing rather than shrinking signed-off columns or covering Actions. Regression: `cp117-spreadsheet.spec.ts`, both themes and actual Chromium 200% zoom. Existing calculation-preview POSTs are read-only; no-write assertions must still reject genuine ledger persistence requests.
+
 ## CP-117 populated Tracked Tasks overlay — 2026-11-03
 
 A task popover that renders the entire tracked collection can overflow, overlap its own action buttons and compete with an expanded page banner. Keep the anchored popover to a bounded, priority-ordered preview with one scroll owner and a route to the full tracked surface; compact the banner when opening the popover. Test 13+ items with real pointer and keyboard actions, viewport geometry, urgent rows and focus after removing a row. Regression: `design-lab-cp117-today.spec.ts`. This is lab presentation only; synthetic tracking is not session persistence.

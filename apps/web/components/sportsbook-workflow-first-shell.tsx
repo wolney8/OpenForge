@@ -7307,7 +7307,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
               position="top"
               totalRows={filteredRows.length}
             />
-            <LedgerTableScroll dataPdId="sportsbook.table-scroll">
+            <LedgerTableScroll dataPdId="sportsbook.table-scroll" cellNavigation={{ label: "Sportsbook", onActivate: (rowId) => void selectRow(rowId) }}>
               <table className="data-table sportsbook-data-table">
                 <colgroup>
                   {tableColumns.map((column) => {
@@ -7420,6 +7420,9 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                         >
                           {tableColumns.map((column) => (
                             <td
+                              data-ledger-row={column.key !== "actions" ? rowId : undefined}
+                              data-ledger-column={column.key !== "actions" ? column.key : undefined}
+                              data-pd-id={column.key !== "actions" ? `sportsbook.cell.${rowId}.${column.key}` : undefined}
                               className={
                                 column.key === "actions"
                                   ? "align-center"

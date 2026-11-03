@@ -1,12 +1,13 @@
 "use client";
 
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useEffectEvent, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 type LedgerTableScrollProps = {
   children: ReactNode;
   className?: string;
   dataPdId: string;
+  cellNavigation?: { label: string; onActivate: (rowId: string, column: string) => void };
 };
 
 type ArrowAnchor = {
@@ -24,6 +25,7 @@ export function LedgerTableScroll({
   children,
   className = "",
   dataPdId,
+  cellNavigation,
 }: LedgerTableScrollProps) {
   const ref = useRef<HTMLDivElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -33,6 +35,11 @@ export function LedgerTableScroll({
     right: false,
   });
   const [arrowAnchor, setArrowAnchor] = useState<ArrowAnchor | null>(null);
+  const instructionsId = useId();
+  const activateCell = useEffectEvent((cell: HTMLTableCellElement) => {
+    cellNavigation?.onActivate(cell.dataset.ledgerRow!, cell.dataset.ledgerColumn!);
+  });
+  const navigationLabel = cellNavigation?.label;
 
   useEffect(() => {
     const element = ref.current;
@@ -40,6 +47,46 @@ export function LedgerTableScroll({
     element.tabIndex = 0;
     element.setAttribute("role", "region");
     element.setAttribute("aria-label", "Ledger Table — Use Left and Right Arrows to Scroll");
+    if (navigationLabel) {
+      element.setAttribute("aria-label", `${navigationLabel} spreadsheet`);
+      element.setAttribute("aria-describedby", instructionsId);
+    }
+    let selectedCell: HTMLTableCellElement | null = null;
+    const cells = () => [...element.querySelectorAll<HTMLTableCellElement>("td[data-ledger-row][data-ledger-column]")];
+    const initialiseCells = () => {
+      const available = cells();
+      if (selectedCell && !available.includes(selectedCell)) selectedCell = null;
+      available.forEach((cell, index) => { cell.tabIndex = selectedCell ? cell === selectedCell ? 0 : -1 : index === 0 ? 0 : -1; });
+    };
+    const selectCell = (cell: HTMLTableCellElement, focus = true) => {
+      selectedCell?.removeAttribute("data-ledger-selected");
+      selectedCell = cell;
+      cell.dataset.ledgerSelected = "true";
+      initialiseCells();
+      if (focus) cell.focus({ preventScroll: true });
+    };
+    const cellFor = (target: EventTarget | null) => {
+      if (!navigationLabel || !(target instanceof Element) || target.closest('a,button,input,select,textarea,[contenteditable="true"],[role="button"],[role="combobox"]')) return null;
+      const cell = target.closest<HTMLTableCellElement>("td[data-ledger-row][data-ledger-column]");
+      return cell && element.contains(cell) ? cell : null;
+    };
+    const clearSelection = (event: Event) => {
+      if (event.target instanceof Node && !element.contains(event.target) && !document.querySelector('dialog[open], [role="dialog"][aria-modal="true"]')) {
+        selectedCell?.removeAttribute("data-ledger-selected");
+      }
+    };
+    const focused = (event: FocusEvent) => {
+      const cell = cellFor(event.target);
+      if (cell && event.target === cell) selectCell(cell, false);
+    };
+    const activate = (event: MouseEvent) => {
+      const cell = cellFor(event.target);
+      if (!cell || suppressClick) return;
+      event.preventDefault();
+      event.stopPropagation();
+      selectCell(cell);
+      activateCell(cell);
+    };
     let drag: { id: number; start: number; scroll: number; active: boolean } | null = null;
     let suppressClick = false;
     const interactive = 'a,button,input,select,textarea,[contenteditable="true"],[draggable="true"],[role="separator"],.column-resize-handle,.table-column-resize-handle';
@@ -86,12 +133,61 @@ export function LedgerTableScroll({
     };
     const click = (event: MouseEvent) => {
       if (event.type === "auxclick" && event.button === 1) event.preventDefault();
-      if (!suppressClick) return;
-      event.preventDefault();
+      if (suppressClick) {
+        event.preventDefault();
+        event.stopPropagation();
+        suppressClick = false;
+        return;
+      }
+      if (event.type !== "click" || event.button !== 0) return;
+      const cell = cellFor(event.target);
+      if (!cell) return;
       event.stopPropagation();
-      suppressClick = false;
+      // Keep an actual native text selection intact; selecting a cell never saves it.
+      if (!window.getSelection()?.isCollapsed) return;
+      selectCell(cell);
     };
     const keyboard = (event: KeyboardEvent) => {
+      const cell = cellFor(event.target);
+      if (cell && event.target === cell && !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
+        if (["Enter", "F2"].includes(event.key)) {
+          event.preventDefault(); event.stopPropagation(); activateCell(cell); return;
+        }
+        if (event.key === "Escape") {
+          cell.removeAttribute("data-ledger-selected"); event.stopPropagation(); return;
+        }
+        if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"].includes(event.key)) {
+          event.preventDefault(); event.stopPropagation();
+          const row = cell.parentElement;
+          const rowCells = row ? [...row.querySelectorAll<HTMLTableCellElement>("td[data-ledger-column]")] : [];
+          const index = rowCells.indexOf(cell);
+          const target = event.key === "Home" ? rowCells[0]
+            : event.key === "End" ? rowCells.at(-1)
+            : event.key === "ArrowLeft" ? rowCells[index - 1]
+            : event.key === "ArrowRight" ? rowCells[index + 1]
+            : [...(event.key === "ArrowUp" ? row?.previousElementSibling : row?.nextElementSibling)?.querySelectorAll<HTMLTableCellElement>("td[data-ledger-column]") ?? []].find(item => item.dataset.ledgerColumn === cell.dataset.ledgerColumn);
+          if (target) {
+            selectCell(target);
+            target.scrollIntoView({ block: "nearest", inline: "nearest" });
+            // Native scrolling does not account for the sticky Actions column.
+            const actions = target.parentElement?.lastElementChild;
+            const actionBounds = actions?.getBoundingClientRect();
+            const bounds = target.getBoundingClientRect();
+            if (actions && getComputedStyle(actions).position === "sticky" && actionBounds) {
+              const viewport = element.getBoundingClientRect();
+              const available = actionBounds.left - viewport.left;
+              if (bounds.width > available) {
+                // Preserve existing column widths at narrow viewports: maximise
+                // the visible cell fragment instead of hiding it under Actions.
+                element.scrollLeft += bounds.left + bounds.width / 2 - (viewport.left + available / 2);
+              } else if (bounds.right > actionBounds.left) {
+                element.scrollLeft += bounds.right - actionBounds.left;
+              }
+            }
+          }
+          return;
+        }
+      }
       if (event.target !== element || !["ArrowLeft", "ArrowRight"].includes(event.key)) return;
       event.preventDefault();
       element.scrollBy({ left: event.key === "ArrowRight" ? 120 : -120, behavior: "auto" });
@@ -101,6 +197,11 @@ export function LedgerTableScroll({
     element.addEventListener("click", click, true);
     element.addEventListener("auxclick", click, true);
     element.addEventListener("keydown", keyboard);
+    element.addEventListener("dblclick", activate, true);
+    element.addEventListener("focusin", focused);
+    document.addEventListener("pointerdown", clearSelection, true);
+    const cellObserver = new MutationObserver(initialiseCells);
+    if (navigationLabel) { initialiseCells(); cellObserver.observe(element, { childList: true, subtree: true }); }
     window.addEventListener("pointerup", finish);
     window.addEventListener("pointercancel", finish);
     window.addEventListener("blur", finish);
@@ -109,16 +210,22 @@ export function LedgerTableScroll({
       element.removeAttribute("tabindex");
       element.removeAttribute("role");
       element.removeAttribute("aria-label");
+      element.removeAttribute("aria-describedby");
+      cells().forEach(cell => { cell.removeAttribute("tabindex"); cell.removeAttribute("data-ledger-selected"); });
+      cellObserver.disconnect();
       element.removeEventListener("pointerdown", down);
       element.removeEventListener("pointermove", move);
       element.removeEventListener("click", click, true);
       element.removeEventListener("auxclick", click, true);
       element.removeEventListener("keydown", keyboard);
+      element.removeEventListener("dblclick", activate, true);
+      element.removeEventListener("focusin", focused);
+      document.removeEventListener("pointerdown", clearSelection, true);
       window.removeEventListener("pointerup", finish);
       window.removeEventListener("pointercancel", finish);
       window.removeEventListener("blur", finish);
     };
-  }, []);
+  }, [instructionsId, navigationLabel]);
 
   useEffect(() => {
     const element = ref.current;
@@ -225,6 +332,7 @@ export function LedgerTableScroll({
 
   return (
     <div className={`ledger-table-scroll-wrap ${className}`.trim()} ref={wrapperRef}>
+      {cellNavigation ? <span className="sr-only" id={instructionsId}>Use arrow keys, Home or End to select a cell. Press Enter or F2, or double-click, to open the existing {cellNavigation.label} editor. Escape clears cell selection.</span> : null}
       <div className="table-scroll" data-pd-id={dataPdId} ref={ref}>
         {children}
       </div>

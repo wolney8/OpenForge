@@ -1,5 +1,20 @@
 # Plum Duff UI Change Register
 
+## CP-117 secure resumption and real cell navigation — 2026-11-03
+
+Security closure accepted: normal signing-key rotation, session revocation and identified preview cleanup are recorded in the local sanitised recovery receipt. Prior owner-session seeding instructions are historical and unsafe; they must not be reused. Development now uses an independently authenticated synthetic identity, separate signing key/database and a different browser hostname. No normal-owner data is used. [Issue #118](https://github.com/wolney8/OpenForge/issues/118) remains open.
+
+| ID | Requested outcome / canonical equivalent | Status |
+| --- | --- | --- |
+| PD-PR-117A-17 | Adopt real spreadsheet selection, arrow/Home/End navigation and Enter/F2/double-click editor handoff in Sportsbook and Accounts; reuse approved Lab cell selection plus existing `LedgerTableScroll` and native editors | COMPLETE — bounded increment code/browser verified; Design Acceptance remains open |
+| PD-PR-117A-18 | Prove real save/reopen, failed-draft retention, Profile isolation and flag-OFF Add/Edit rollback; existing API and correction authorities remain unchanged | COMPLETE — bounded increment code/browser verified; Design Acceptance remains open |
+| PD-PR-117A-19 | Record the real independently authenticated V2 application; preserve all six-ledger adoption requirements and distinct Design versus Integration Acceptance | COMPLETE — bounded increment code/browser verified; Design Acceptance remains open |
+| PD-PR-117A-20 | Honour the owner’s no-deployment constraint while preserving source remotely; branch-scoped `git.deploymentEnabled` guard, documented Vercel equivalent | COMPLETE — bounded increment code/browser verified; Design Acceptance remains open |
+
+Narrow-width invariant: retain the signed-off column and Actions widths. A fixed-width data cell can exceed the space remaining beside sticky Actions; keyboard reveal must maximise its visible portion and keep that portion pointer-reachable. Full content remains available through the semantic cell and existing editor. Do not shrink columns or action targets to force an impossible full-cell fit.
+
+Bounded milestone: cell navigation and existing-editor handoff, starting with Sportsbook/Accounts. A single V2 cell click selects; explicit activation opens the existing populated editor. Interactive children, row actions, native text selection and drag-to-pan keep their own behaviour. Financial cells never become unvalidated direct writes. Floating field saves, column reorder, durable saved views and the remaining four-ledger interaction adapters remain visible unfinished scope; this increment neither closes nor narrows them. No new persistence, calculation, financial fixtures or modal variants are introduced.
+
 ## CP-117 Design Lab adoption — 2026-11-03
 
 Owner authorises a reversible, non-main integration candidate and recordings, without financial/schema/API changes or promotion. Current app shell under `OPENFORGE_FUND_MANAGER_UX_V2`, legacy `/tasks`, `NotificationCentre`, existing workflow shells and the synthetic Design Lab are the comparison sources. `PROPOSED — FLAGGED REAL UI`: the first Today slice may replace the wide task table with compact rows and a detail pane while reusing the same authorised notification collection, filters, read/clear persistence and source recheck. The old `/tasks` presentation remains available with the flag OFF. Do not port lab-only tracking, Board work states, recurrence or priority-bell rules as new production authorities.
@@ -26,7 +41,7 @@ Owner authorises sustained local adoption; intermediate checkpoints do not requi
 | ID | Request / surface and equivalent | Status |
 | --- | --- | --- |
 | PD-PR-117A-11 | Verify 3010 running source/flag and flag-OFF isolation; existing server-owned flag and rollback tests | PROVEN — current process override ON at old source; OFF rollback 2/2 retains original tokens, table and shell |
-| PD-PR-117A-12 | One authenticated V2 real-route preview with disposable database and current services; canonical runtime launchers | PROVEN — localhost:3127 / API 8127; isolated identity and current authorised owner session verified; renewal limitation documented |
+| PD-PR-117A-12 | One authenticated V2 real-route preview with disposable database and current services; canonical runtime launchers | HISTORICAL UNSAFE SETUP — withdrawn after approved security recovery; independent synthetic authentication now required |
 | PD-PR-117A-13 | PROPOSED — FLAGGED REAL UI: neutral shared surface/token treatment, compact six-ledger tables and editor surfaces; reuse existing panels, fields, dialogs, status/financial tokens and authoritative columns | CODE-VERIFIED — six real populated tables/editors and scoped neutral surfaces; complete Lab interaction adoption remains PARTIAL |
 | PD-PR-117A-14 | Desktop sidebar collapse and released ledger width; shared persistent sidebar and existing mobile navigation | PROVEN — pointer interaction releases more than 100 CSS pixels; mobile navigation and focus retained |
 | PD-PR-117A-15 | Shared real-ledger horizontal pointer/keyboard navigation; `LedgerTableScroll`, native scrolling and protected row actions | PROVEN — left/middle-pointer drag threshold, no release navigation, keyboard scroll and protected controls; text hit rectangles remain native |

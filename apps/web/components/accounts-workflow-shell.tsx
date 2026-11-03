@@ -1389,7 +1389,7 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialIssue
               position="top"
               totalRows={filteredRows.length}
             />
-            <LedgerTableScroll dataPdId="accounts.table-scroll">
+            <LedgerTableScroll dataPdId="accounts.table-scroll" cellNavigation={{ label: "Accounts", onActivate: (rowId) => void selectRow(rowId) }}>
               <table className="data-table accounts-data-table">
                 <colgroup>
                   {visibleTableColumns.map((column) => (
@@ -1450,6 +1450,9 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialIssue
                         >
                           {visibleTableColumns.map((column) => (
                             <td
+                              data-ledger-row={column.key !== "actions" ? rowId : undefined}
+                              data-ledger-column={column.key !== "actions" ? column.key : undefined}
+                              data-pd-id={column.key !== "actions" ? `accounts.cell.${rowId}.${column.key}` : undefined}
                               className={`${column.align === "end" ? "align-end" : ""}${column.key === "account_id" ? " accounts-id-cell" : ""}`.trim() || undefined}
                               key={column.key}
                             >
