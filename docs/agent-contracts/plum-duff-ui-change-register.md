@@ -1322,8 +1322,8 @@ Owner request under [#118](https://github.com/wolney8/OpenForge/issues/118). The
 
 | ID | Surface and requested outcome | Status |
 | --- | --- | --- |
-| PD-PR-117A-33 | Run the approved CP-117 web source and Design Lab together on localhost:3010 with normal sign-in, API/data custody, explicit V2 local flag and rollback | IN PROGRESS — source switched; Google initiation redirects; owner callback check pending |
-| PD-PR-117A-34 | Replace V2 visual approximations with shared signed-off Lab presentation components, starting at Position and continuing through Today/Notifications, six ledgers, Reports, Accounts, Settings and specialist shell | IN PROGRESS — shared Position primitive extraction planned |
-| PD-PR-117A-35 | Keep normal-owner mutation testing prohibited, synthetic runner internal, final-source Playwright, recordings, branch checkpoints and #118 evidence current | IN PROGRESS |
+| PD-PR-117A-33 | Run the approved CP-117 web source and Design Lab together on localhost:3010 with normal sign-in, API/data custody, explicit V2 local flag and rollback | COMPLETE for local source consolidation — normal web serves CP-117 at d3185bd, owner confirmed fresh Google sign-in; normal API remained running, and both protected routes share 3010 |
+| PD-PR-117A-34 | Replace V2 visual approximations with shared signed-off Lab presentation components, starting at Position and continuing through Today/Notifications, six ledgers, Reports, Accounts, Settings and specialist shell | IN PROGRESS — Lab Position metrics/surfaces/actions and Today task row now render in both Lab and V2; remaining route and workflow presentation remains visible |
+| PD-PR-117A-35 | Keep normal-owner mutation testing prohibited, synthetic runner internal, final-source Playwright, recordings, branch checkpoints and #118 evidence current | IN PROGRESS — independent synthetic runner passed V2/legacy checks and focused visual comparisons; wider presentation and recording coverage remains |
 
 Saved-view/reorder and Today persistence authority gates remain open; this request does not approve their schema/API changes.
