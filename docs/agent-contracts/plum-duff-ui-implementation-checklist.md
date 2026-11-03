@@ -386,3 +386,12 @@ Scope: `PD-PR-117A-17–20`, open #118. Sportsbook and Accounts only; full six-l
 - [x] Existing columns, Add/Edit, sort/filter/resize and specialist actions retained; Calculators/Oddsmatcher/Reports navigation covered without provider activity. Flag default OFF and branch deployment guard preserved.
 - [x] Adoption matrix and saved-view assessment updated. Durable real views/reorder require the documented minimal authority amendment; no browser-local saved-view authority introduced.
 - [ ] Owner Design Acceptance, manual spoken screen-reader verification, full specialist lifecycle replacement and Today tracking remain open. Passing adapter tests do not imply those acceptances.
+
+## CP-122 integrated V2 visual adoption — 2026-11-03
+
+- [x] Compared the connected Design Lab and independently authenticated integrated V2 at matched desktop/mobile widths and both themes. Route-by-route presentation, interaction and integration states are in the adoption matrix; partial surfaces remain visible.
+- [x] Reused V2 shell, Material tokens, `workflow-panel-header`, existing Profile/Account/ledger surfaces, Report Explorer and native editor controls. No duplicate calculation, mutation, reporting or authentication authority.
+- [x] Flag-scoped neutral surfaces remove decorative gradients/glows and visible money animation. Position uses real cash, selected-range reporting P&L, current liability, Profile fees, warnings, source links and progressive detail; unknown remains unknown.
+- [x] Shared ledger header/table/editor geometry, Account/Profile/Settings surfaces and specialist shell checked for page overflow at 1440/390 px in light/dark. Native Add/Edit, protected correction paths and source identity retained.
+- [x] Comparable screenshots and actual integrated V2 videos captured privately, without credentials or owner data. Governed Reports points, filters and source drilldown exercised.
+- [ ] Owner visual Design Acceptance, spoken screen-reader review, Today annotation authority, saved-view preference authority and remaining partial page compositions are open. UI verification does not clear historical broader financial-fixture failures.

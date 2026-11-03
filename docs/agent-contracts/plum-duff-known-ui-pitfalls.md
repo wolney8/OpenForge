@@ -1616,3 +1616,7 @@ V2 tokens belong to the server-owned root flag, so native-modal portals receive 
 ## CP-117 native cell-edit adapters — 2026-11-03 / #118
 
 `PD-PR-117A-21–24`: a field-looking-editable allowlist cannot override the owning row's settled/resolved/correction gates. Reuse native read-only and explicit Edit state; hand off settled rows and any legacy draft whose native Save preparation changes unrelated financial/date fields. Do not infer edit authority from successful low-level API validation alone. Failed async Save must release disabled controls and restore focus into the retained draft; disabling the focused Save button otherwise leaves Escape on the document body. The regression path is `cp117-six-ledger.spec.ts` (six native saves/rejections, pending exclusion, correction gates, narrow themes and rollback).
+
+## CP-122 V2 presentation — report source detail must stay in flow
+
+The legacy `.dashboard-chart-drilldown` can be fixed-position for its older context. When formal Period P&L reports appear inside the V2 Reports page, keep the record inspector in normal document flow and within the report surface. Check desktop/mobile and both themes with the disclosure open; `cp117-visual-adoption.spec.ts` asserts the integrated source inspector position. Scope the correction to V2 so flag-OFF rollback retains its established layout.

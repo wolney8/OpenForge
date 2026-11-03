@@ -1,5 +1,25 @@
 # Platform quality audit — PLATFORM-QUALITY-AUDIT-001 / #114
 
+## CP-122 — integrated V2 visual design adoption candidate — 2026-11-03
+
+`PD-PR-117A-27–32`, [#118](https://github.com/wolney8/OpenForge/issues/118). The approved connected Design Lab is the presentation reference. This is a visual integration candidate over CP-121's real six-ledger interactions; **Design Acceptance remains OPEN** until owner review. The isolated fixture is synthetic and independently authenticated. No financial calculation, report authority, schema, API or owner record was changed.
+
+| Route / surface | Presentation | Interaction | Integration | Remaining difference |
+| --- | --- | --- | --- | --- |
+| Position `/` | PRESENTATION ADOPTED for overview hierarchy | INTERACTION ADOPTED for range, source links and progressive detail | FUNCTIONALLY INTEGRATED with real Profile-scoped cash, selected-range P&L, current liability, fees and source readiness | Lab uses different settled/exposure fixture definitions; the real governed values retain their accurate labels. Secondary analytics remain in a disclosure. |
+| Today `/tasks` | PARTIAL | PARTIAL | FUNCTIONALLY INTEGRATED with existing source tasks | Lab's compact grouped layout and persistent annotations/Board are not fully integrated. |
+| Notifications `/notifications` | PARTIAL | PARTIAL | FUNCTIONALLY INTEGRATED with existing notification authority | Legacy grouping/density remains. |
+| Reports `/reports` | PARTIAL: overview and explorer promoted | INTERACTION ADOPTED for existing filters, point selection and source records | FUNCTIONALLY INTEGRATED with real report datasets and formal tables | Formal reports remain in a disclosure; Lab's exact chart composition differs. |
+| Profit Tracker | PARTIAL | PARTIAL | FUNCTIONALLY INTEGRATED with existing reporting authority | Legacy detailed layout remains. |
+| Accounts and Balances | PRESENTATION ADOPTED for shared ledger shell | INTERACTION ADOPTED per CP-121 | FUNCTIONALLY INTEGRATED with Account and balance authorities | Balance specialist layout retains legacy detail. |
+| Sportsbook, Free Bets, Casino Offers, Extra Place, Cash Adjustments | PRESENTATION ADOPTED for shared ledger shell and calmer native editor frame | INTERACTION ADOPTED per CP-121 | FUNCTIONALLY INTEGRATED with existing Add/Edit, corrections, audit and APIs | Specialist editor interiors remain partly legacy; financial and protected fields use native workflows. |
+| Profiles and Settings | PARTIAL: flattened directory and calmer Settings navigation | PARTIAL | FUNCTIONALLY INTEGRATED with existing Profile/catalogue authorities | Dense management forms remain. |
+| Calculators and Oddsmatcher | PARTIAL: neutral shared shell | PARTIAL | FUNCTIONALLY INTEGRATED with existing specialist tools and navigation | Specialist content intentionally retains its native layout. |
+
+Shared V2 presentation removes decorative gradients, glows and visible number animation, uses neutral Material surfaces, restrained titles, compact ledger summary strips and a consistent source/detail disclosure. It preserves semantic money/status colours, Profile isolation, known-versus-unknown values, warnings, date scope, audit and source drilldowns. The feature flag remains default OFF, with the old shell available as rollback. Saved-view/reorder persistence and Today annotations remain deferred to their separately documented authority decisions.
+
+**Visual acceptance evidence:** comparable actual Lab/V2 Position, Today, Reports, Accounts and Sportsbook captures at 1440/390 px in both themes; V2 captures for all remaining named routes, floating/full editor and governed Reports points; real integrated browser videos. Private index: `data/private/evidence/cp117-visual-adoption/REVIEW-EVIDENCE.md`. This compares presentation independently of functional tests. Manual screen-reader review and final owner Design Acceptance remain open. Earlier broad financial-fixture baseline failures are not resolved by this UI tranche.
+
 ## CP-121 — consolidated real six-ledger spreadsheet candidate — 2026-11-03
 
 `PD-PR-117A-21–26`, open [#118](https://github.com/wolney8/OpenForge/issues/118). Continuous implementation resumes directly from preserved CP-120 `cbe8317…`; no new design review was imposed. Design direction remains provisionally accepted; **Design Acceptance is OPEN** and does not follow from Integration Acceptance.

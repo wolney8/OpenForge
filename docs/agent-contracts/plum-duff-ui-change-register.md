@@ -1300,3 +1300,18 @@ Evidence: at 900px and `scrollLeft=180`, the Sportsbook header/body Actions righ
 | PD-FIX-508 | Urgent source tasks: overdue bet and partial lay retain pointer/keyboard source and untrack actions; tracking, Done, source resolution and notification state remain separate. | COMPLETE — pointer/keyboard source, untrack focus and source-resolution regressions pass; owner visual review open. |
 | PD-PR-117-TRACK | Personal tracking and legitimate work progress survive sessions, with exact user/Profile/source identity and server authority. | DOCUMENTED — owner approved the authority direction but deferred API/schema implementation to a later adoption wave; no real persistence claim. |
 | PD-FIX-509 | Real populated-state browser geometry, pointer, keyboard, responsive/zoom/theme evidence, recording, rollback and source-isolation checkpoint. | COMPLETE — 129/129 full lab, 15/15 affected, flag-OFF 1/1, build/typecheck/changed-file lint, private before/after recordings and normal-owner fingerprint verified; owner visual review remains open. |
+
+## CP-117 V2 visual adoption — 2026-11-03
+
+Owner request under [#118](https://github.com/wolney8/OpenForge/issues/118). Signed-off reference: connected Design Lab Position, Today, Reports, Accounts, ledger and specialist shell. Integrated V2 remains independently authenticated and default OFF. Design Acceptance and Integration Acceptance are separate.
+
+| ID | Surface and requested outcome | Status |
+| --- | --- | --- |
+| PD-PR-117A-27 | Compare real V2 with Lab by route, theme and viewport; record presentation, interaction and integration separately | COMPLETE — route matrix and 1440/390 light/dark integrated captures; owner Design Acceptance open |
+| PD-PR-117A-28 | Shared neutral Material 3 surfaces, typography, density and controls; remove glows, decorative gradients and financial motion in V2 | COMPLETE for shared V2 surfaces and visible financial motion; semantic financial/status colour retained. Some specialist internals remain PARTIAL in matrix |
+| PD-PR-117A-29 | Position composition with real, scoped cash, P&L, exposure, fees, actions, warnings and drilldowns | COMPLETE candidate — governed values and source links; 4 matched Lab/V2 captures; owner Design Acceptance open |
+| PD-PR-117A-30 | Today, notifications, Reports, Profit Tracker and Account/Balances presentation | PARTIAL — Today/Notifications/Profit Tracker retain legacy content density; Reports governed explorer and Account shared shell adopted |
+| PD-PR-117A-31 | Six ledger headers, editors, Profile management, Settings and specialist shell parity | PARTIAL — shared ledger presentation adopted, native editors calmed, Profile/Settings/specialist interiors retain established dense layouts |
+| PD-PR-117A-32 | Integrated Playwright visual comparisons, accessibility/containment, recording and flag-OFF rollback | NEEDS VERIFICATION — 62/62 visual browser paths and 8/8 loaded Today/Notifications recapture pass; final CP-121 rollback/build and owner visual review pending |
+
+Saved-view persistence and Today annotations remain deferred under their existing authority requests. No financial or authentication authority change is approved.

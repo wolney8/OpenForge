@@ -125,6 +125,7 @@ function normalizeProfileStatus(status: string) {
 type CrossProfileAnalyticsProps = {
   initialTab?: AnalyticsTab;
   profiles: ProfileDescriptor[];
+  visualV2?: boolean;
 };
 
 type ProfileLoadFailure = {
@@ -377,6 +378,7 @@ function OperationalActionLinks({ row }: { row: ProfileComparisonRow }) {
 
 export function CrossProfileAnalytics({
   profiles,
+  visualV2 = false,
   initialTab = "profiles",
   initialDetailProfileId,
   initialFeeReviewMonth,
@@ -1157,7 +1159,7 @@ export function CrossProfileAnalytics({
 
   return (
     <section
-      className="content-panel stack cross-profile-analytics"
+      className={`content-panel stack cross-profile-analytics${visualV2 ? " v2-position-analytics" : ""}${visualV2 && (activeTab === "performance" || activeTab === "reports") ? " has-position-overview" : ""}`}
       aria-labelledby="combined-analytics-title"
     >
       <div
@@ -1408,6 +1410,51 @@ export function CrossProfileAnalytics({
         </div>
       ) : null}
 
+      {visualV2 && (activeTab === "performance" || activeTab === "reports") ? (
+        <section className="v2-position-overview" aria-label={activeTab === "reports" ? "Reports overview" : "Position overview"} data-pd-id={activeTab === "reports" ? "reports.overview" : "position.overview"}>
+          <div className="v2-position-metrics" aria-label="Selected position metrics">
+            <article>
+              <h3>Known cash</h3>
+              <strong>{selectedReadState === "ready" && combined.incompleteCashAccountCount > 0 ? <FinancialValue value={combined.knownCashSubtotal} animate={false} /> : <FinancialReadValue state={selectedReadState} subject="Account cash" value={combined.totals.cashSnapshot} animate={false} />}</strong>
+              <p>{combined.incompleteCashAccountCount > 0 ? `Incomplete · ${combined.incompleteCashAccountCount} Account ${combined.incompleteCashAccountCount === 1 ? "balance" : "balances"} missing` : "Current Account balances"}</p>
+            </article>
+            <article>
+              <h3>Selected range P&amp;L</h3>
+              <strong><FinancialAggregateReadValue aggregate={combined.selectedRangeFinancials.grossBettingPnl} label="selected range profit and loss" state={selectedReadState} subject="profit and loss" /></strong>
+              <p>{preset} · governed reporting values</p>
+            </article>
+            <article>
+              <h3>Current liability</h3>
+              <strong><FinancialReadValue state={selectedReadState} subject="current liability" value={combined.totals.currentLiability} animate={false} /></strong>
+              <p>Open sportsbook, Free Bet and Extra Place exposure</p>
+            </article>
+          </div>
+          {activeTab === "performance" ? <><div className="v2-position-work-grid">
+            <section className="v2-position-surface" aria-labelledby="position-next-actions">
+              <div className="v2-position-section-head"><h3 id="position-next-actions">Next actions</h3><Link href="/tasks">All tasks <span aria-hidden="true">→</span></Link></div>
+              {combined.profileRows.some((row) => row.overdueBets > 0) ? <div className="v2-position-action"><div><strong>Review overdue Sportsbook positions</strong><p>Source rows remain in the owning Profile.</p></div><Link href={buildOperationalLedgerHref(combined.profileRows.find((row) => row.overdueBets > 0)!.profileId, "sportsbook", "all")}>Open Sportsbook</Link></div> : null}
+              {combined.incompleteCashAccountCount > 0 ? <div className="v2-position-action"><div><strong>Confirm current balances</strong><p>{combined.incompleteCashAccountCount} Account {combined.incompleteCashAccountCount === 1 ? "balance is" : "balances are"} missing.</p></div><Link href={combined.cashIssues?.find((issue) => issue.profileId)?.profileId ? `/profiles/${combined.cashIssues.find((issue) => issue.profileId)!.profileId}/tracker/accounts?view=issues&issue=needs-attention&source=position` : "/profiles"}>Review Accounts</Link></div> : null}
+              {!combined.profileRows.some((row) => row.overdueBets > 0) && combined.incompleteCashAccountCount === 0 ? <p className="v2-position-empty">No immediate source action is identified for this selection.</p> : null}
+            </section>
+            <section className="v2-position-surface" aria-labelledby="position-continue-work">
+              <h3 id="position-continue-work">Continue work</h3>
+              <nav aria-label="Position shortcuts" className="v2-position-shortcuts">
+                <Link href="/profiles">Manage Profiles <span aria-hidden="true">→</span></Link>
+                <Link href="/reports">Review reports <span aria-hidden="true">→</span></Link>
+                <Link href="/tasks">Open Today <span aria-hidden="true">→</span></Link>
+              </nav>
+            </section>
+          </div>
+          <section className="v2-position-surface" aria-labelledby="position-profile-heading">
+            <div className="v2-position-section-head"><h3 id="position-profile-heading">Profiles · financial position</h3><span>{reportScopeLabel} · {preset}</span></div>
+            <div className="table-shell v2-position-table"><table><thead><tr><th scope="col">Profile</th><th scope="col">Selected range P&amp;L</th><th scope="col">Current / projected</th><th scope="col">Current liability</th><th scope="col">Fees earned</th><th scope="col">Available to withdraw</th><th scope="col">Cash readiness</th><th scope="col">Report</th></tr></thead><tbody>
+              {combined.profileRows.map((row) => <tr key={row.profileId}><th scope="row"><strong>{row.displayName}</strong><small>{row.profileCode}</small></th><td><FinancialAggregateReadValue aggregate={row.grossBettingPnlAggregate} label={`${row.displayName} profit and loss`} state={profileReadState([row.profileId])} subject="profit and loss" /></td><td><FinancialReadValue state={profileReadState([row.profileId])} subject="open current value" value={row.openCurrentValue} animate={false} /></td><td><FinancialReadValue state={profileReadState([row.profileId])} subject="current liability" value={row.currentLiability} animate={false} /></td><td><FinancialReadValue state={profileReadState([row.profileId], "fees")} subject="fees earned" value={feePositionByProfile.get(row.profileId)?.feesEarned ?? Number.NaN} animate={false} /></td><td><FinancialReadValue state={profileReadState([row.profileId], "fees")} subject="available fees" value={feePositionByProfile.get(row.profileId)?.availableToWithdraw ?? Number.NaN} animate={false} /></td><td><FinancialReadValue state={profileReadState([row.profileId])} subject="Account cash" value={row.cashSnapshot} animate={false} /></td><td><Link href={`/profiles/${row.profileId}/tracker/reports`}>View report</Link></td></tr>)}
+            </tbody></table></div>
+            <p className="field-hint">Known and unknown values retain their source readiness. Fees and withdrawal detail remain in Fees; open source records remain in the Profile tracker.</p>
+          </section></> : null}
+        </section>
+      ) : null}
+
       <div
         aria-label="Fund Manager profile and analytics sections"
         className="analytics-tab-list"
@@ -1638,6 +1685,8 @@ export function CrossProfileAnalytics({
             </article>
             </FinancialValueReplayGroup>
           </section>
+          <details className="v2-position-detail" open={!visualV2}>
+            {visualV2 ? <summary>Explore performance, source records and profile comparisons</summary> : null}
           <div className="reporting-breakdown-grid">
             <section className="content-subpanel stack" data-pd-id="reports.category-breakdown">
               <h3>P&amp;L Breakdown</h3>
@@ -1708,6 +1757,7 @@ export function CrossProfileAnalytics({
             </tbody></table></div>
             <LedgerPagination ariaLabel="Profile Performance" currentPage={Math.min(reportProfileTablePage,reportProfileTablePageCount)} onPageChange={setReportProfileTablePage} onPageSizeChange={(size)=>{setReportProfileTablePageSize(size);setReportProfileTablePage(1);}} pageCount={reportProfileTablePageCount} pageSize={reportProfileTablePageSize} position="bottom" totalRows={reportProfileRows.length}/>
           </section>
+          </details>
           </section>
           ) : null}
 
@@ -1718,6 +1768,10 @@ export function CrossProfileAnalytics({
             id="analytics-panel-reports"
             role="tabpanel"
           >
+          {visualV2 ? <ReportExplorer contextKey="combined-reports" state={selectedReadState} scopeLabel={reportScopeLabel} summaryFirst
+            scopes={profileRecords.filter((profile) => selectedProfileIds.includes(profile.profileId)).flatMap((profile) => { const dataset = datasets.get(profile.profileId); return dataset ? [{ profileId: profile.profileId, label: profile.displayName, dataset }] : []; })} /> : null}
+          <details className="v2-position-detail" open={!visualV2}>
+            {visualV2 ? <summary>Formal reports and source records</summary> : null}
           <PeriodPnlReport rows={formalCombined.weeklyReports} contextKey="combined"
             scopeLabel={reportScopeLabel}
             scopes={profileRecords.filter((profile) => selectedProfileIds.includes(profile.profileId))
@@ -1750,6 +1804,7 @@ export function CrossProfileAnalytics({
             rows={formalCombined.yearlyReports}
             title="Combined Yearly Reports"
           />
+          </details>
           </section>
           ) : null}
         </>

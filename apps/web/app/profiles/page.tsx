@@ -21,6 +21,7 @@ export default async function ProfilesPage({
         initialFeeReviewMonth={typeof query.feeReview === "string" ? query.feeReview : undefined}
         initialOpportunityId={typeof query.opportunity === "string" ? query.opportunity : undefined}
         pageKind="profiles"
+        visualV2={process.env.OPENFORGE_FUND_MANAGER_UX_V2 === "true"}
       />
   );
 }

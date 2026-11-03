@@ -22,7 +22,9 @@ const metrics:Record<ExplorerMetric,string>={pnl:"Realised betting P&L",count:"A
 const datePresets:ExplorerDatePreset[]=["Today","This Week","Last Week","This Month","Last Month","Custom"];
 const boundedPage=(page:number,count:number)=>Math.min(Math.max(1,page),Math.max(1,count));
 
-export function ReportExplorer({scopes,contextKey,state,scopeLabel}:{scopes:ExplorerScope[];contextKey:string;state:"ready"|"loading"|"error";scopeLabel?:string}) {
+export function ReportExplorer({scopes,contextKey,state,scopeLabel,summaryFirst=false}:{scopes:ExplorerScope[];contextKey:string;state:"ready"|"loading"|"error";scopeLabel?:string;summaryFirst?:boolean}) {
+  const SourceContainer = summaryFirst ? "details" : "div";
+  const sourceId = `report-explorer-source-${contextKey}`;
   const [stored,setStored]=usePersistedState<Selection>("openforge-report-explorer:"+contextKey,defaults);
   const [showMoreRecipes,setShowMoreRecipes]=useState(false);
   const [groupPage,setGroupPage]=useState(1),[groupPageSize,setGroupPageSize]=useState(16);
@@ -109,6 +111,9 @@ export function ReportExplorer({scopes,contextKey,state,scopeLabel}:{scopes:Expl
     <dl className="dashboard-focus-list"><div><dt>{count?unit:metrics[selection.metric]}</dt><dd data-pd-id="reports.explorer.total">{state!=="ready"?state==="loading"?"Loading…":"Unavailable — selected Profile data failed":!output.valid?"Choose a valid range":complete?value(output.known):"Incomplete"}</dd></div><div><dt>Matching Records</dt><dd data-pd-id="reports.explorer.match-count">{state==="ready"&&output.valid?output.records.length:"—"}</dd></div></dl>
     {state==="ready"&&output.valid&&!complete?<p role="status">Known subtotal: {value(output.known)}. {output.unknown} unavailable eligible {output.unknown===1?"result":"results"}; {output.undated.length} undated candidate {output.undated.length===1?"record":"records"}. These are not a complete selected-range total.</p>:null}
     {state==="ready"&&output.valid?<>
+      {summaryFirst&&!count&&points.length?<ReportPointChart area={graph.area} line={graph.line} zeroY={graph.zeroY} label="Explorer daily values" points={points} selectedIndex={pointIndex} onSelect={index=>{change({point:points[index].key});document.getElementById(sourceId)?.setAttribute("open","");}}/>:null}
+      <SourceContainer className={summaryFirst?"v2-report-source-detail":undefined} id={sourceId}>
+        {summaryFirst?<summary>Explore grouped results and source records</summary>:null}
       <LedgerPagination ariaLabel="Explorer Groups" currentPage={boundedPage(groupPage,groupPageCount)} onPageChange={setGroupPage} onPageSizeChange={size=>{setGroupPageSize(size);setGroupPage(1);}} pageCount={groupPageCount} pageSize={groupPageSize} position="top" totalRows={output.groups.length}/>
       <div className="table-shell"><table className="data-table"><caption>{explorerDimensions[selection.group]} · {count?unit:metrics[selection.metric]}</caption><thead><tr><th scope="col">Group</th><th className="align-end" scope="col">{count?unit:metrics[selection.metric]}</th><th scope="col">Matching Records</th></tr></thead><tbody>
         {visibleGroups.map(group=><tr key={group.key}><td>{selection.group==="module"?explorerModules[group.key]:group.key}</td><td className="align-end">{group.unknown?<>Incomplete · known {value(group.known)}</>:value(group.known)}</td><td><button type="button" className="button-link" aria-expanded={selection.expanded===group.key} aria-label={`Inspect ${group.key} records`} onClick={()=>change({expanded:selection.expanded===group.key?"":group.key})}>Inspect {group.records.length} records</button></td></tr>)}
@@ -124,7 +129,8 @@ export function ReportExplorer({scopes,contextKey,state,scopeLabel}:{scopes:Expl
         <LedgerPagination ariaLabel="Explorer Matching Records" currentPage={boundedPage(recordPage,recordPageCount)} onPageChange={setRecordPage} onPageSizeChange={size=>{setRecordPageSize(size);setRecordPage(1);}} pageCount={recordPageCount} pageSize={recordPageSize} position="bottom" totalRows={matchingRecords.length}/>
       </section>
       {output.undated.length?<details><summary>Inspect Undated Candidates ({output.undated.length})</summary><div className="stack"><LedgerPagination ariaLabel="Explorer Undated Records" currentPage={boundedPage(undatedPage,undatedPageCount)} onPageChange={setUndatedPage} onPageSizeChange={size=>{setUndatedPageSize(size);setUndatedPage(1);}} pageCount={undatedPageCount} pageSize={undatedPageSize} position="top" totalRows={output.undated.length}/><ul>{visibleUndated.map(record=><li key={`${record.profileId}:${record.module}:${record.id}`}><Link href={`/profiles/${record.profileId}/tracker/${record.module}?search=${encodeURIComponent(record.id)}&source=report-explorer`}>{record.profileLabel} · {record.label} · reporting date not recorded</Link></li>)}</ul><LedgerPagination ariaLabel="Explorer Undated Records" currentPage={boundedPage(undatedPage,undatedPageCount)} onPageChange={setUndatedPage} onPageSizeChange={size=>{setUndatedPageSize(size);setUndatedPage(1);}} pageCount={undatedPageCount} pageSize={undatedPageSize} position="bottom" totalRows={output.undated.length}/></div></details>:null}
-      {!count&&points.length?<ReportPointChart area={graph.area} line={graph.line} zeroY={graph.zeroY} label="Explorer daily values" points={points} selectedIndex={pointIndex} onSelect={index=>change({point:points[index].key})}/>:null}
+      </SourceContainer>
+      {!summaryFirst&&!count&&points.length?<ReportPointChart area={graph.area} line={graph.line} zeroY={graph.zeroY} label="Explorer daily values" points={points} selectedIndex={pointIndex} onSelect={index=>change({point:points[index].key})}/>:null}
     </>:null}
   </section>;
 }

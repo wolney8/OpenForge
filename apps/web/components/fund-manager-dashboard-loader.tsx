@@ -41,6 +41,7 @@ export function FundManagerDashboardLoader({
   initialOpportunityId,
   initialDirectoryStatus,
   pageKind = "dashboard",
+  visualV2 = false,
 }: {
   initialTab: AnalyticsTab;
   initialDetailProfileId?: string;
@@ -48,10 +49,11 @@ export function FundManagerDashboardLoader({
   initialOpportunityId?: string;
   initialDirectoryStatus?: DirectoryStatus;
   pageKind?: "dashboard" | "profiles" | "reports";
+  visualV2?: boolean;
 }) {
   const [profiles, setProfiles] = useState<ProfileDescriptor[] | null>(null);
   const [error, setError] = useState("");
-  const pageTitle = pageKind === "profiles" ? "Profiles" : pageKind === "reports" ? "Reports" : "Summary Dashboard";
+  const pageTitle = pageKind === "profiles" ? "Profiles" : pageKind === "reports" ? "Reports" : visualV2 ? "Position" : "Summary Dashboard";
 
   useEffect(() => {
     let active = true;
@@ -109,7 +111,7 @@ export function FundManagerDashboardLoader({
 
   return (
     <main className="page-shell stack">
-      <section className="hero-panel split-hero">
+      <section className={`hero-panel split-hero${visualV2 ? " v2-position-heading" : ""}`}>
         <div className="stack">
           <h1>{pageTitle}</h1>
         </div>
@@ -126,6 +128,7 @@ export function FundManagerDashboardLoader({
         </section>
       ) : (
         <CrossProfileAnalytics
+          visualV2={visualV2}
           initialTab={initialTab}
           initialDetailProfileId={initialDetailProfileId}
           initialFeeReviewMonth={initialFeeReviewMonth}
