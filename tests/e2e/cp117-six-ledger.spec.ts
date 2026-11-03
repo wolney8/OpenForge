@@ -261,4 +261,9 @@ test("flag OFF: all six ledgers preserve native editor activation and no floatin
     await ready(page, item.module); await cell(page, item).click(); await expect(page.getByRole("dialog", { name: item.dialog, exact: true })).toBeVisible(); await expect(floating(page)).toHaveCount(0); await page.keyboard.press("Escape");
   }
   await ready(page, "accounts"); await page.locator('td[data-ledger-row="ACC-BOOK-A"][data-ledger-column="channel"]').click(); await expect(page.getByRole("dialog", { name: "Edit account", exact: true })).toBeVisible(); await expect(floating(page)).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await page.goto("/notifications");
+  await expect(page.locator('[data-pd-id="notifications.history"]')).toBeVisible();
+  await expect(page.locator('[data-pd-id^="notifications.history.tab."]')).toHaveCount(0);
+  await expect(page.locator(".hero-panel").getByRole("heading", { name: "Notifications" })).toBeVisible();
 });

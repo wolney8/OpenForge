@@ -1327,3 +1327,15 @@ Owner request under [#118](https://github.com/wolney8/OpenForge/issues/118). The
 | PD-PR-117A-35 | Keep normal-owner mutation testing prohibited, synthetic runner internal, final-source Playwright, recordings, branch checkpoints and #118 evidence current | IN PROGRESS — independent synthetic runner passed V2/legacy checks and focused visual comparisons; wider presentation and recording coverage remains |
 
 Saved-view/reorder and Today persistence authority gates remain open; this request does not approve their schema/API changes.
+
+## CP-124 direct Lab component adoption — 2026-11-03
+
+Owner continuation under [#118](https://github.com/wolney8/OpenForge/issues/118). The connected Design Lab is the signed-off presentation reference; real task, notification, reporting and ledger authorities stay in their current adapters.
+
+| ID | Surface and requested outcome | Status |
+| --- | --- | --- |
+| PD-PR-117A-36 | Complete Today List/Board composition, grouping, details, tracking affordances and navigation through shared Lab presentation without inventing durable work-state authority | PARTIAL — shared List/Board, source-priority groups, row/detail geometry and mobile dialog; Lab work-state tracking requires separate approved authority |
+| PD-PR-117A-37 | Adopt shared Lab Notifications dropdown/page, Reports/Profit Tracker, six ledger and management presentation with exact theme/responsive comparisons | IN PROGRESS — Notifications page shares Lab panel, tabs, sections and rows; dropdown and remaining routes still partial |
+| PD-PR-117A-38 | Keep normal 3010 current, synthetic authenticated Playwright evidence/recordings and flag-OFF rollback, while preserving auth/API/owner data and source custody | IN PROGRESS — synthetic Today/Notifications 12/12, web 701/701, typecheck/build, integrated navigation 1/1 and flag-OFF 2/2 passed; local restart and issue receipt pending |
+
+Today tracking persistence and saved ledger views remain gated. The Lab's synthetic work-state transitions are not real task commands.

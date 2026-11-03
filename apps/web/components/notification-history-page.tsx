@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
+import { DesignNotificationRow, DesignNotificationSection, DesignNotificationSurface, DesignNotificationTabs, designNotificationClasses, type DesignNotificationView } from "@/components/design-notification-presentation";
+import labPageStyles from "@/components/design-lab-connected.module.css";
 import { apiBaseUrl } from "@/lib/api";
 import { beginRouteTransition, endRouteTransition } from "@/lib/shell-loading";
 import {
@@ -46,7 +48,7 @@ function notificationTypeLabel(type: string): string {
     .replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
-export function NotificationHistoryPage({ daily = false }: { daily?: boolean }) {
+export function NotificationHistoryPage({ daily = false, visualV2 = false }: { daily?: boolean; visualV2?: boolean }) {
   const router = useRouter();
   const [profileFilter, setProfileFilter] = useState("all");
   const [confirmClearId, setConfirmClearId] = useState("");
@@ -58,6 +60,7 @@ export function NotificationHistoryPage({ daily = false }: { daily?: boolean }) 
   const [query, setQuery] = useState("");
   const [notificationType, setNotificationType] = useState("all");
   const [status, setStatus] = useState<NotificationHistoryStatus>(daily ? "new" : "all");
+  const [presentationView, setPresentationView] = useState<DesignNotificationView>("all");
   const [isLoading, setIsLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
   const [isPersistingState, setIsPersistingState] = useState(false);
@@ -190,12 +193,19 @@ export function NotificationHistoryPage({ daily = false }: { daily?: boolean }) 
     notificationType,
     status,
   });
-  const unread = filtered.filter(
+  const visibleNotifications = visualV2 ? filtered.filter(notification => {
+    const cleared = isNotificationCleared(notification, viewState);
+    if (presentationView === "priority") return notification.kind === "task" && notification.task_state === "new" && !cleared;
+    if (presentationView === "system") return notification.kind === "information";
+    if (presentationView === "history") return cleared || notification.task_state === "done";
+    return true;
+  }) : filtered;
+  const unread = visibleNotifications.filter(
     (notification) =>
       !isNotificationCleared(notification, viewState) &&
       isNotificationUnread(notification, viewState, now)
   );
-  const clearable = filtered.filter(
+  const clearable = visibleNotifications.filter(
     (notification) => !isNotificationCleared(notification, viewState)
   );
   const unreadTotal = getUnreadNotificationCount(notifications, viewState, now);
@@ -250,9 +260,28 @@ export function NotificationHistoryPage({ daily = false }: { daily?: boolean }) 
     } finally { if (requestVersion === openVersionRef.current) setOpeningId(""); }
   };
 
+  const renderV2Notification = (notification: FundManagerNotification) => {
+    const cleared = isNotificationCleared(notification, viewState);
+    const unread = !cleared && isNotificationUnread(notification, viewState, now);
+    return <DesignNotificationRow
+      actions={<>
+        <Link href={notification.href} onClick={() => markRead([notification])}>Open Source</Link>
+        {unread ? <button disabled={isPersistingState} onClick={() => markRead([notification])} type="button">Mark Read</button> : null}
+        {!cleared ? <button disabled={isPersistingState} onClick={() => clear([notification])} type="button">Clear</button> : null}
+      </>}
+      context={<>{notification.profile_name} · {notification.bookmaker_label || notification.ledger_label}</>}
+      dataPdId={`notifications.history.item.${notification.record_id}`}
+      detail={<>{notificationTypeLabel(notification.notification_type)} · {formatNotificationDue(notification.due_at)} · {notification.message}</>}
+      key={notification.notification_id}
+      severity={notification.tone === "danger" || notification.tone === "warning" ? "urgent" : "review"}
+      status={cleared ? "Cleared" : unread ? "Unread" : "Read"}
+      title={notification.title}
+    />;
+  };
+
   return (
     <main className="page-shell stack notification-history-page" data-pd-id={daily ? "tasks.page" : "notifications.page"}>
-      <section className="hero-panel split-hero">
+      {visualV2 ? <div className={labPageStyles.pageHead} data-pd-id="notifications.page-header"><div><h1>Notifications</h1></div><div className={labPageStyles.headActions}><Link className={labPageStyles.linkButton} href="/tasks">Today</Link></div></div> : <section className="hero-panel split-hero">
         <div className="stack">
           <span className="eyebrow">Fund Manager</span>
           <h1>{daily ? "Daily tasks" : "Notifications"}</h1>
@@ -263,9 +292,10 @@ export function NotificationHistoryPage({ daily = false }: { daily?: boolean }) 
           <span className="eyebrow">{daily ? "Needs attention" : "Unread"}</span>
           <strong aria-hidden={isLoading}>{isLoading || loadFailed ? "—" : daily ? filterNotificationHistory(notifications.filter(item => profileFilter === "all" || item.profile_id === profileFilter), viewState, { query, notificationType, status: "new" }).length : unreadTotal}</strong>
         </aside>
-      </section>
+      </section>}
 
-      <section aria-label={daily ? "Current daily tasks" : "Notification history"} className="content-panel stack" data-pd-id="notifications.history">
+      <DesignNotificationSurface ariaLabel={daily ? "Current daily tasks" : "Notification history"} dataPdId="notifications.history" fullPage={visualV2} heading="Notifications" legacy={!visualV2} summary={`${unreadTotal} unread`}>
+        {visualV2 ? <DesignNotificationTabs controlsId="notification-history-list" dataPdIdPrefix="notifications.history.tab" onChange={next => { setPresentationView(next); setStatus("all"); }} view={presentationView} /> : null}
         <div className="table-toolbar settings-table-toolbar notification-history-toolbar">
           <label className="field-control table-search-field">
             <span>{daily ? "Search tasks" : "Search notifications"}</span>
@@ -352,13 +382,19 @@ export function NotificationHistoryPage({ daily = false }: { daily?: boolean }) 
         ) : (
           <>
             <p aria-live="polite" className="notification-history-count" role="status">
-              {filtered.length} {daily ? "current task" : "retained notification"}{filtered.length === 1 ? "" : "s"} · {unread.length} unread
+              {visibleNotifications.length} {daily ? "current task" : "retained notification"}{visibleNotifications.length === 1 ? "" : "s"} · {unread.length} unread
             </p>
-            {filtered.length === 0 ? (
+            {visibleNotifications.length === 0 ? (
               <div className="notification-empty-state" role="status">{daily ? "No current tasks match these filters." : "No retained notifications match these filters."}</div>
             ) : (
-              <div className="notification-history-list" data-pd-id="notifications.history.list">
-                {filtered.map((notification) => {
+              <div className={visualV2 ? designNotificationClasses.list : "notification-history-list"} data-pd-id="notifications.history.list" id="notification-history-list" role={visualV2 ? "tabpanel" : undefined}>
+                {visualV2 ? <>
+                  {presentationView === "history" ? <DesignNotificationSection title="History">{visibleNotifications.map(renderV2Notification)}</DesignNotificationSection> : <>
+                    <DesignNotificationSection title="Action Required">{visibleNotifications.filter(notification => notification.kind === "task" && notification.task_state === "new").map(renderV2Notification)}</DesignNotificationSection>
+                    <DesignNotificationSection title="Other Source Events">{visibleNotifications.filter(notification => notification.kind === "task" && notification.task_state !== "new").map(renderV2Notification)}</DesignNotificationSection>
+                    <DesignNotificationSection title="System & Results">{visibleNotifications.filter(notification => notification.kind === "information").map(renderV2Notification)}</DesignNotificationSection>
+                  </>}
+                </> : visibleNotifications.map((notification) => {
                   const isCleared = isNotificationCleared(notification, viewState);
                   const isUnread =
                     !isCleared && isNotificationUnread(notification, viewState, now);
@@ -396,7 +432,7 @@ export function NotificationHistoryPage({ daily = false }: { daily?: boolean }) 
             )}
           </>
         )}
-      </section>
+      </DesignNotificationSurface>
     </main>
   );
 }

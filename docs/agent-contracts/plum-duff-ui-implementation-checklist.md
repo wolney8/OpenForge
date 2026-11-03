@@ -403,3 +403,12 @@ Scope: `PD-PR-117A-17–20`, open #118. Sportsbook and Accounts only; full six-l
 - [x] Semantic financial statuses, known/unknown values, focusable action controls, accessible task-row names, 44px action targets, legacy flag-OFF path, light/dark tokens and responsive Lab geometry retained in shared presentation.
 - [x] Focused synthetic Playwright passed Position/Today Lab-versus-V2 geometry in desktop/mobile and both themes (8/8); the independent runner passed integrated navigation (1/1) and V2/legacy rollback (2/2). Final-source `pnpm build:web` passed. Normal 3010 restarted from d3185bd with `/login` 200, `/` and `/design-lab` protected, normal API health 200. Existing editor coverage and earlier recordings remain evidence for unchanged workflow code.
 - [ ] Full route-by-route presentation adoption, new consolidated recording set, owner Design Acceptance and spoken screen-reader review remain open.
+
+## CP-124 Today and Notifications shared presentation — 2026-11-03
+
+- [x] Signed-off equivalents: connected Lab Today List/Board toggle, board, task row and detail layout; Lab Notifications full-page panel, tabs, sections and row. The same presentation components now accept synthetic Lab or real source-backed data.
+- [x] Existing Today source-priority, due-state, Profile filter, source recheck and clear/restore commands preserved. Real Board is grouped by recorded priority; synthetic Lab work states and personal tracking are excluded pending their separate persistence authority.
+- [x] Existing Notifications read, clear, search, type/status and source-link authorities preserved. V2 tabs derive Action Required, System & Results and History from retained real notification kinds and states; flag-OFF keeps the legacy page.
+- [x] Focused synthetic visual browser checks passed 12/12 across 1440/390 and light/dark, including List/Board pointer operation, desktop close hit-test, mobile Escape, shared row geometry and tabs keyboard navigation. Web tests passed 701/701; changed UI files passed focused lint and typecheck.
+- [x] Final-source web build passed. Independent runner passed integrated navigation 1/1 and flag-OFF 2/2, including legacy Notifications without V2 tabs. The repository-wide web lint gate has one unchanged Free Bets render-time ref error; changed CP-124 files pass focused lint.
+- [ ] Local 3010 restart, full-route parity and spoken screen-reader review remain open at this stage.

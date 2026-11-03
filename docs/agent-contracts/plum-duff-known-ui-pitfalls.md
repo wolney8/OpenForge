@@ -1624,3 +1624,7 @@ The legacy `.dashboard-chart-drilldown` can be fixed-position for its older cont
 ## CP-123 direct Lab adoption needs a shared presentational boundary
 
 Matching a Lab screenshot with new V2-only CSS leaves two sources of truth. Extract the signed-off presentational component and its module styles, then supply synthetic Lab values or governed real values through props. Keep Lab simulation callbacks out of normal commands. `DesignPositionMetrics` and `DesignTodayTaskRow` are shared examples; `cp117-visual-adoption.spec.ts` compares their computed class, padding and responsive geometry across Lab and real V2.
+
+## CP-124 Board detail drawers need their Lab positioning context
+
+The shared Today `boardDrawer` is absolute within the Lab's `boardWithDetail` container. Applying the drawer class without that container positions the detail against the page and lets the sticky app header intercept its Close control. Reuse both classes together and assert a real pointer click on Close at desktop width. At mobile width use the existing `ModalBoundary`, then verify Escape and focus return. `cp117-visual-adoption.spec.ts` covers these paths.

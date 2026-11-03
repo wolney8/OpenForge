@@ -68,7 +68,17 @@ for (const route of routes) {
           padding: getComputedStyle(element).padding,
           minimumHeight: getComputedStyle(element).minHeight,
         })) : null;
+        const labTodayCollectionStyle = route.name === "today" ? await page.locator('[aria-label="Needs Action"]').first().evaluate((element) => ({
+          className: element.className,
+          radius: getComputedStyle(element).borderRadius,
+          padding: getComputedStyle(element).padding,
+        })) : null;
         await page.screenshot({ path: join(evidence, `lab-${route.name}-${width}-${theme}.png`), fullPage: true });
+        if (route.name === "today") {
+          await page.locator('[data-pd-id="lab.today.layout"]').getByRole("button", { name: "Board" }).click();
+          await expect(page.locator('[data-pd-id="lab.today.board"]')).toBeVisible();
+          await page.screenshot({ path: join(evidence, `lab-today-board-${width}-${theme}.png`), fullPage: true });
+        }
 
         await page.goto(route.path);
         await expect(page.getByRole("heading", { name: route.heading, exact: true }).first()).toBeVisible();
@@ -124,9 +134,90 @@ for (const route of routes) {
             minimumHeight: getComputedStyle(element).minHeight,
           }));
           expect(realTodayRowStyle).toEqual(labTodayRowStyle);
+          const realCollectionStyle = await page.locator('[data-pd-id="tasks.v2.collection"]').evaluate((element) => ({
+            className: element.className,
+            radius: getComputedStyle(element).borderRadius,
+            padding: getComputedStyle(element).padding,
+          }));
+          expect(realCollectionStyle).toEqual(labTodayCollectionStyle);
+          await page.locator('[data-pd-id="tasks.v2.layout-toggle"]').getByRole("button", { name: "Board" }).click();
+          const board = page.locator('[data-pd-id="tasks.v2.board"]');
+          await expect(board).toBeVisible();
+          await expect(board).toHaveAttribute("aria-label", "Task Board");
+          await expect(board.locator("section")).toHaveCount(3);
+          await page.screenshot({ path: join(evidence, `v2-today-board-${width}-${theme}.png`), fullPage: true });
+          await board.locator('[data-pd-id^="tasks.v2.row."]').first().click();
+          const inspector = page.locator('[data-pd-id="tasks.v2.inspector"]');
+          await expect(inspector).toBeVisible();
+          await expect(inspector.getByRole("link", { name: "Open Source" })).toBeVisible();
+          await noPageOverflow(page);
+          await page.screenshot({ path: join(evidence, `v2-today-detail-${width}-${theme}.png`), fullPage: true });
+          if (width === 390) {
+            await expect(inspector).toHaveAttribute("role", "dialog");
+            await page.keyboard.press("Escape");
+          } else {
+            await inspector.getByRole("button", { name: "Close Task Details" }).click();
+          }
+          await expect(inspector).toHaveCount(0);
+          await page.locator('[data-pd-id="tasks.v2.layout-toggle"]').getByRole("button", { name: "List" }).click();
+          await expect(page.locator('[data-pd-id="tasks.v2.collection"]')).toBeVisible();
         }
       });
     }
+  }
+}
+
+for (const width of [1440, 390] as const) {
+  for (const theme of ["light", "dark"] as const) {
+    test(`notifications ${width} ${theme}: shared Lab surface and source actions`, async ({ page }) => {
+      await mkdir(evidence, { recursive: true });
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto("/design-lab");
+      await page.locator('[data-pd-id="design-lab-connected.root"]').waitFor();
+      const cookie = page.getByRole("button", { name: "Understood" });
+      if (await cookie.isVisible()) await cookie.click();
+      await setTheme(page, theme);
+      await page.locator('[data-pd-id="lab.header-trigger.notifications"]').click();
+      await page.screenshot({ path: join(evidence, `lab-notifications-dropdown-${width}-${theme}.png`), fullPage: true });
+      await page.locator('[data-pd-id="lab.notifications"]').getByRole("button", { name: "View All Notifications" }).click();
+      const labPanel = page.locator('[data-pd-id="lab.notifications"]');
+      const labRow = labPanel.locator('[data-pd-id^="lab.notification."]').first();
+      await expect(labRow).toBeVisible();
+      const labStyle = await labRow.evaluate(element => ({
+        className: element.className,
+        radius: getComputedStyle(element).borderRadius,
+        padding: getComputedStyle(element).padding,
+      }));
+      const labTabsClass = await labPanel.getByRole("tablist", { name: "Notification Views" }).getAttribute("class");
+      await noPageOverflow(page);
+      await page.screenshot({ path: join(evidence, `lab-notifications-page-${width}-${theme}.png`), fullPage: true });
+
+      await page.goto("/notifications");
+      await page.locator('[data-pd-id="notifications.history.loading-shell"]').waitFor({ state: "hidden", timeout: 45_000 });
+      await setTheme(page, theme);
+      const realPanel = page.locator('[data-pd-id="notifications.history"]');
+      const realRow = realPanel.locator('[data-pd-id^="notifications.history.item."]').first();
+      await expect(realRow).toBeVisible();
+      const realStyle = await realRow.evaluate(element => ({
+        className: element.className,
+        radius: getComputedStyle(element).borderRadius,
+        padding: getComputedStyle(element).padding,
+      }));
+      expect(realStyle).toEqual(labStyle);
+      expect(await realPanel.getByRole("tablist", { name: "Notification Views" }).getAttribute("class")).toBe(labTabsClass);
+      await expect(realRow.getByRole("link", { name: "Open Source" })).toHaveAttribute("href", /\S+/);
+      await expect(realPanel.getByRole("combobox", { name: "Filter notifications by type" })).toBeVisible();
+      await noPageOverflow(page);
+      await page.screenshot({ path: join(evidence, `v2-notifications-page-${width}-${theme}.png`), fullPage: true });
+      const allTab = realPanel.getByRole("tab", { name: "All", exact: true });
+      await allTab.focus();
+      await page.keyboard.press("ArrowRight");
+      await expect(realPanel.getByRole("tab", { name: "Action Required" })).toHaveAttribute("aria-selected", "true");
+      await expect(realPanel.getByRole("tabpanel").locator('[data-pd-id^="notifications.history.item."]')).not.toHaveCount(0);
+      await realPanel.getByRole("tab", { name: "System & Results" }).click();
+      await expect(realPanel.getByRole("tab", { name: "System & Results" })).toHaveAttribute("aria-selected", "true");
+      await noPageOverflow(page);
+    });
   }
 }
 
