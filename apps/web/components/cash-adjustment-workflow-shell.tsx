@@ -22,6 +22,7 @@ import { EditorSection } from "@/components/editor-section";
 import { EditorValidationBanner } from "@/components/editor-validation-banner";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
+import { DesignLedgerSearch } from "@/components/design-ledger-search";
 import { LedgerViewContext } from "@/components/ledger-view-context";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
@@ -1873,7 +1874,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
           </article></MotionReplayGroup>
         </section>
         <div className="sportsbook-review-bar" aria-label="Cash-adjustment ledger controls" role="toolbar">
-          <label className="field-control table-search-field"><span className="visually-hidden">Search cash-adjustment rows</span><input aria-label="Search cash-adjustment rows" onChange={(event) => { setQuery(event.target.value); setCurrentPage(1); }} placeholder="Search cash-adjustment rows" type="search" value={query} /></label>
+          <DesignLedgerSearch dataPdId="cash-adjustments.toolbar.search" label="Search cash-adjustment rows" onChange={event => { setQuery(event.target.value); setCurrentPage(1); }} placeholder="Search cash-adjustment rows" value={query} />
           <LedgerAddRowButton label="Add cash adjustment" onClick={() => void startNewRow()} />
           <div className="table-filter-button-wrap">
             <button aria-label="Open cash-adjustment filter and column controls" className={`icon-button table-filter-button${hasActiveTableControls ? " has-active-table-controls" : ""}`} onClick={() => setIsFilterModalOpen(true)} title="Filter and columns" type="button"><svg aria-hidden="true" className="table-filter-icon" fill="none" viewBox="0 0 24 24"><path d="M4 6h16l-6.5 7.3v4.9l-3 1.8v-6.7L4 6Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" /></svg>{hasActiveTableControls ? <span aria-label={`${activeTableControlCount} active table controls`} className="table-filter-badge">{activeTableControlCount > 9 ? "9+" : activeTableControlCount}</span> : null}</button>

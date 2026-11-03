@@ -258,9 +258,15 @@ test("integrated shell reaches Calculators, Oddsmatcher and Reports without prov
 test("flag OFF: all six ledgers preserve native editor activation and no floating adapter", async ({ page }) => {
   test.skip(!legacy);
   for (const item of cases) {
-    await ready(page, item.module); await cell(page, item).click(); await expect(page.getByRole("dialog", { name: item.dialog, exact: true })).toBeVisible(); await expect(floating(page)).toHaveCount(0); await page.keyboard.press("Escape");
+    await ready(page, item.module);
+    const search = page.locator(`[data-pd-id="${item.id}.toolbar.search"]`);
+    await expect(search).toBeVisible();
+    await expect(search.locator(".material-symbols-outlined")).toBeHidden();
+    await cell(page, item).click(); await expect(page.getByRole("dialog", { name: item.dialog, exact: true })).toBeVisible(); await expect(floating(page)).toHaveCount(0); await page.keyboard.press("Escape");
   }
-  await ready(page, "accounts"); await page.locator('td[data-ledger-row="ACC-BOOK-A"][data-ledger-column="channel"]').click(); await expect(page.getByRole("dialog", { name: "Edit account", exact: true })).toBeVisible(); await expect(floating(page)).toHaveCount(0);
+  await ready(page, "accounts");
+  await expect(page.locator('[data-pd-id="accounts.toolbar.search"] .material-symbols-outlined')).toBeHidden();
+  await page.locator('td[data-ledger-row="ACC-BOOK-A"][data-ledger-column="channel"]').click(); await expect(page.getByRole("dialog", { name: "Edit account", exact: true })).toBeVisible(); await expect(floating(page)).toHaveCount(0);
   await page.keyboard.press("Escape");
   await page.goto("/notifications");
   await expect(page.locator('[data-pd-id="notifications.history"]')).toBeVisible();

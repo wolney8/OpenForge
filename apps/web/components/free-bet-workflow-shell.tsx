@@ -41,6 +41,7 @@ import { LedgerValueCell } from "@/components/ledger-value-cell";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerPnlCard, type LedgerReadState } from "@/components/ledger-pnl-card";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
+import { DesignLedgerSearch } from "@/components/design-ledger-search";
 import { LedgerViewContext } from "@/components/ledger-view-context";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
@@ -3497,19 +3498,7 @@ export function FreeBetWorkflowShell({
           </p>
         ) : null}
         <div className="sportsbook-review-bar" aria-label="Free-bet ledger controls" role="toolbar">
-          <label className="field-control table-search-field">
-            <span className="visually-hidden">Search free-bet rows</span>
-            <input
-              aria-label="Search free-bet rows"
-              onChange={(event) => {
-                setQuery(event.target.value);
-                setCurrentPage(1);
-              }}
-              placeholder="Search free-bet rows"
-              type="search"
-              value={query}
-            />
-          </label>
+          <DesignLedgerSearch dataPdId="free-bets.toolbar.search" label="Search free-bet rows" onChange={event => { setQuery(event.target.value); setCurrentPage(1); }} placeholder="Search free-bet rows" value={query} />
           <LedgerAddRowButton label="Add free-bet row" onClick={() => void startNewRow()} />
           <div className="table-filter-button-wrap">
             <button

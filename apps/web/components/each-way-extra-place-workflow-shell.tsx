@@ -22,6 +22,7 @@ import {
   useBookmakerCatalogue,
 } from "@/components/bookmaker-identity";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
+import { DesignLedgerSearch } from "@/components/design-ledger-search";
 import { LedgerViewContext } from "@/components/ledger-view-context";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
@@ -1103,19 +1104,7 @@ export function EachWayExtraPlaceWorkflowShell({
         className="sportsbook-review-bar"
         role="toolbar"
       >
-        <label className="field-control table-search-field">
-          <span className="visually-hidden">Search Extra Place rows</span>
-          <input
-            aria-label="Search Extra Place rows"
-            onChange={(event) => {
-              setQuery(event.target.value);
-              setCurrentPage(1);
-            }}
-            placeholder="Search Extra Place rows"
-            type="search"
-            value={query}
-          />
-        </label>
+        <DesignLedgerSearch dataPdId="extra-place.toolbar.search" label="Search Extra Place rows" onChange={event => { setQuery(event.target.value); setCurrentPage(1); }} placeholder="Search Extra Place rows" value={query} />
         <div className="extra-place-toolbar-actions">
           <LedgerAddRowButton label="Add Extra Place row" onClick={openNew} />
           <span className="table-filter-button-wrap">

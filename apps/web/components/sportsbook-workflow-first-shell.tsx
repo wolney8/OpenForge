@@ -63,6 +63,7 @@ import { LedgerValueCell } from "@/components/ledger-value-cell";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerPnlCard, type LedgerReadState } from "@/components/ledger-pnl-card";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
+import { DesignLedgerSearch } from "@/components/design-ledger-search";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerViewContext } from "@/components/ledger-view-context";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
@@ -7252,10 +7253,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
           />
         </section>
         <div className="sportsbook-review-bar" aria-label="Sportsbook ledger controls" role="toolbar">
-          <label className="field-control table-search-field">
-            <span className="visually-hidden">Search sportsbook rows</span>
-            <input aria-label="Search sportsbook rows" onChange={(event) => { setQuery(event.target.value); setCurrentPage(1); }} placeholder="Search sportsbook rows" type="search" value={query} />
-          </label>
+          <DesignLedgerSearch dataPdId="sportsbook.toolbar.search" label="Search sportsbook rows" onChange={event => { setQuery(event.target.value); setCurrentPage(1); }} placeholder="Search sportsbook rows" value={query} />
           <LedgerAddRowButton label="Add sportsbook row" onClick={() => void startNewRow()} />
           <div className="table-filter-button-wrap">
             <button aria-label="Open sportsbook filter and column controls" className={`icon-button table-filter-button${hasActiveTableControls ? " has-active-table-controls" : ""}`} onClick={() => setIsFilterModalOpen(true)} title="Filter and columns" type="button">

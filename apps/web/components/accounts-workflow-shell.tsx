@@ -18,6 +18,7 @@ import { FinancialTextInput } from "@/components/financial-text-input";
 import { AccountMoneyStatus } from "@/components/account-money-status";
 import { accountMoneyDisplayValue, accountMoneyError, normalizeAccountMoney, sumAccountMoney } from "@/lib/account-money";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
+import { DesignLedgerSearch } from "@/components/design-ledger-search";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerViewContext } from "@/components/ledger-view-context";
@@ -1305,18 +1306,7 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialIssue
               data-pd-id="accounts.table-toolbar"
               role="toolbar"
             >
-              <label className="field-control table-search-field">
-                <span className="visually-hidden">Search accounts</span>
-                <input
-                  onChange={(event) => {
-                    setQuery(event.target.value);
-                    setCurrentPage(1);
-                  }}
-                  placeholder="Search account rows"
-                  type="search"
-                  value={query}
-                />
-              </label>
+              <DesignLedgerSearch dataPdId="accounts.toolbar.search" label="Search accounts" onChange={event => { setQuery(event.target.value); setCurrentPage(1); }} placeholder="Search account rows" value={query} />
               <div className="table-filter-button-wrap">
                 <button
                   aria-haspopup="dialog"

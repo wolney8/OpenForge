@@ -12,6 +12,14 @@ const routes = [
   { name: "accounts", lab: "Accounts", path: `${profile}/accounts`, heading: "Accounts" },
   { name: "sportsbook", lab: "Sportsbook Bets", path: `${profile}/sportsbook-bets`, heading: "Sportsbook Bets" },
 ] as const;
+const ledgerSearchRoutes = [
+  { key: "accounts", lab: "Accounts", path: `${profile}/accounts` },
+  { key: "sportsbook", lab: "Sportsbook Bets", path: `${profile}/sportsbook-bets` },
+  { key: "free-bets", lab: "Free Bets", path: `${profile}/free-bets`, labKey: "freeBets" },
+  { key: "casino-offers", lab: "Casino Offers", path: `${profile}/casino-offers`, labKey: "casino" },
+  { key: "extra-place", lab: "Extra Place", path: `${profile}/each-way-extra-places`, labKey: "extraPlace" },
+  { key: "cash-adjustments", lab: "Cash Adjustments", path: `${profile}/cash-adjustments`, labKey: "cash" },
+] as const;
 
 async function setTheme(page: Page, theme: "light" | "dark") {
   await page.evaluate((value) => { document.documentElement.dataset.theme = value; document.documentElement.style.colorScheme = value; }, theme);
@@ -164,6 +172,39 @@ for (const route of routes) {
         }
       });
     }
+  }
+}
+
+for (const width of [1440, 390] as const) {
+  for (const theme of ["light", "dark"] as const) {
+    test(`six ledger searches ${width} ${theme}: shared Lab input geometry`, async ({ page }) => {
+      test.setTimeout(120_000);
+      await mkdir(evidence, { recursive: true });
+      await page.setViewportSize({ width, height: 900 });
+      for (const ledger of ledgerSearchRoutes) {
+        await page.goto("/design-lab");
+        await page.locator('[data-pd-id="design-lab-connected.root"]').waitFor();
+        const cookie = page.getByRole("button", { name: "Understood" });
+        if (await cookie.isVisible()) await cookie.click();
+        if (width < 761) await page.getByRole("button", { name: "Open navigation" }).click();
+        await page.getByRole("button", { name: ledger.lab, exact: true }).first().click();
+        await setTheme(page, theme);
+        const labSearch = page.locator(`[data-pd-id="lab.ledger.search.${"labKey" in ledger ? ledger.labKey : ledger.key}"]`);
+        await expect(labSearch).toBeVisible();
+        const labStyle = await labSearch.evaluate(element => ({ className: element.className.split(" ")[0], height: getComputedStyle(element).height, radius: getComputedStyle(element).borderRadius, padding: getComputedStyle(element).padding }));
+        await page.screenshot({ path: join(evidence, `lab-${ledger.key}-search-${width}-${theme}.png`), fullPage: true });
+
+        await page.goto(ledger.path);
+        await page.locator(".ledger-loading-overlay").first().waitFor({ state: "hidden", timeout: 45_000 });
+        await setTheme(page, theme);
+        const realSearch = page.locator(`[data-pd-id="${ledger.key}.toolbar.search"]`);
+        await expect(realSearch).toBeVisible();
+        const realStyle = await realSearch.evaluate(element => ({ className: element.className.split(" ")[0], height: getComputedStyle(element).height, radius: getComputedStyle(element).borderRadius, padding: getComputedStyle(element).padding }));
+        expect(realStyle).toEqual(labStyle);
+        await noPageOverflow(page);
+        await page.screenshot({ path: join(evidence, `v2-${ledger.key}-search-${width}-${theme}.png`), fullPage: true });
+      }
+    });
   }
 }
 

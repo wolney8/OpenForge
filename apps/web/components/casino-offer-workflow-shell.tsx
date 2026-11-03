@@ -28,6 +28,7 @@ import { LedgerValueCell } from "@/components/ledger-value-cell";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerPnlCard, type LedgerReadState } from "@/components/ledger-pnl-card";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
+import { DesignLedgerSearch } from "@/components/design-ledger-search";
 import { LedgerViewContext } from "@/components/ledger-view-context";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerQuickActions, type LedgerQuickAction } from "@/components/ledger-quick-actions";
@@ -3747,7 +3748,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
           />
         </section>
         <div className="sportsbook-review-bar" aria-label="Casino-offer ledger controls" role="toolbar">
-          <label className="field-control table-search-field"><span className="visually-hidden">Search casino-offer rows</span><input aria-label="Search casino-offer rows" onChange={(event) => { setQuery(event.target.value); setCurrentPage(1); }} placeholder="Search casino-offer rows" type="search" value={query} /></label>
+          <DesignLedgerSearch dataPdId="casino-offers.toolbar.search" label="Search casino-offer rows" onChange={event => { setQuery(event.target.value); setCurrentPage(1); }} placeholder="Search casino-offer rows" value={query} />
           <button
             aria-label="Quick add Free Spins"
             className="icon-button ledger-toolbar-quick-add-action"
