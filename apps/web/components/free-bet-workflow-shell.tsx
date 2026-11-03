@@ -44,6 +44,8 @@ import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
 import { LedgerViewContext } from "@/components/ledger-view-context";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
+import { LedgerFloatingCellEditor, useLedgerCellEditor, type LedgerCellSession } from "@/components/ledger-floating-cell-editor";
+
 import { LedgerQuickActions, type LedgerQuickAction } from "@/components/ledger-quick-actions";
 import { LedgerSettledDeleteGuard } from "@/components/ledger-settled-delete-guard";
 import { TrackerRangeCard } from "@/components/tracker-range-card";
@@ -104,6 +106,8 @@ import {
   getOfferTypeOptions,
   normalizeSportsbookBetType,
 } from "@/lib/workbook-options";
+
+const inlineCellFields = {"event_name": {"key": "event_name", "label": "Event name"}, "offer_name": {"key": "offer_name", "label": "Campaign Tag"}} as const;
 
 const commonFixtureQuickPicks = ["Football", "Horse Racing", "Golf", "Tennis"];
 
@@ -1293,6 +1297,8 @@ export function FreeBetWorkflowShell({
   const [lookupValues, setLookupValues] = useState<LookupValueRecord[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [workflowVisible, setWorkflowVisible] = useState(false);
+  const cellEditor = useLedgerCellEditor();
+  const inlineField = cellEditor.session ? inlineCellFields[cellEditor.session.column as keyof typeof inlineCellFields] : undefined;
   const [tableCollapsed, setTableCollapsed] = usePersistedBoolean(
     `openforge-ledger-collapsed:${profileId}:free-bets`,
     false
@@ -1430,11 +1436,11 @@ export function FreeBetWorkflowShell({
   const hasActiveTableControls = hiddenColumnCount > 0 || tableMode !== "recent" || activeFilterCount > 0;
   const activeTableControlCount = hiddenColumnCount + activeFilterCount + (tableMode !== "recent" ? 1 : 0);
 
-  const hasOpenModal = workflowVisible || isFilterModalOpen || Boolean(outcomeModalState);
+  const hasOpenModal = (workflowVisible && !cellEditor.active) || isFilterModalOpen || Boolean(outcomeModalState);
 
   useToastDismiss(statusMessage, clearStatusMessage);
   useBodyScrollLock(hasOpenModal);
-  useDialogFocusLifecycle(workflowVisible, editorRef);
+  useDialogFocusLifecycle(workflowVisible && !cellEditor.active, editorRef);
 
   const revealEditor = useCallback(
     (options?: { expandLedger?: boolean }) => {
@@ -2735,7 +2741,7 @@ export function FreeBetWorkflowShell({
     [editorHeaderFullTitle]
   );
 
-  async function selectRow(rowId: string, options?: { collapseTable?: boolean }) {
+  async function selectRow(rowId: string, options?: { collapseTable?: boolean; cell?: LedgerCellSession }) {
     if (rowId !== selectedId && hasPendingEditorChanges && !(await confirmDiscardChanges())) {
       return;
     }
@@ -2743,6 +2749,7 @@ export function FreeBetWorkflowShell({
     if (!record) {
       return;
     }
+    if (options?.cell && record.status !== "Settled") cellEditor.start(options.cell.column, options.cell.anchor); else cellEditor.close();
     setSelectedId(rowId);
     selectedIdRef.current = rowId;
     setActiveEditorTabId("setup");
@@ -2768,6 +2775,7 @@ export function FreeBetWorkflowShell({
   }
 
   async function startNewRow() {
+    cellEditor.close();
     if (hasPendingEditorChanges && !(await confirmDiscardChanges())) {
       return;
     }
@@ -3433,7 +3441,7 @@ export function FreeBetWorkflowShell({
           onSaveAndLeave={() => persistForm(formState, { returnToLedgerOnSuccess: false })}
         />
       ) : null}
-      {!workflowVisible ? (
+      {!workflowVisible || cellEditor.active ? (
         <StatusToast message={statusMessage} onDismiss={clearStatusMessage} />
       ) : null}
       <section
@@ -3585,7 +3593,7 @@ export function FreeBetWorkflowShell({
               position="top"
               totalRows={filteredRows.length}
             />
-            <LedgerTableScroll dataPdId="free-bets.table-scroll">
+            <LedgerTableScroll dataPdId="free-bets.table-scroll" cellNavigation={{ label: "Free Bets", onActivate: (rowId, column, anchor) => void selectRow(rowId, { cell: column in inlineCellFields ? { column, anchor } : undefined }) }}>
               <table className="data-table sportsbook-data-table">
                 <colgroup>
                   {tableColumns.map((column) => {
@@ -3699,7 +3707,7 @@ export function FreeBetWorkflowShell({
                           onDoubleClick={() => void selectRow(rowId, { collapseTable: true })}
                         >
                           {tableColumns.map((column) => (
-                            <td className="align-center" key={column.key}>
+                            <td className="align-center" key={column.key} data-ledger-row={column.key !== "actions" ? rowId : undefined} data-ledger-column={column.key !== "actions" ? column.key : undefined} data-pd-id={column.key !== "actions" ? `free-bets.cell.${rowId}.${column.key}` : undefined}>
                               {column.key === "date_settled" && rowIssueBadges.length > 0 ? (
                                 <div className="row-issue-overlay" aria-hidden="true">
                                   {rowIssueBadges.map((badge) => (
@@ -4101,7 +4109,10 @@ export function FreeBetWorkflowShell({
         </div>
       ) : null}
 
-      {workflowVisible ? (
+      {workflowVisible && cellEditor.session && inlineField ? <LedgerFloatingCellEditor session={cellEditor.session} ledger="Free Bets" label={inlineField.label} dirty={isDirty} pending={isPersisting} error={errorMessage || statusMessage} onSave={async () => { const saved = await persistForm(formStateRef.current); if (saved) cellEditor.close(); return saved; }} onCancel={() => { handleResetForm(); setWorkflowVisible(false); setSelectedId(null); workflowVisibleRef.current = false; selectedIdRef.current = null; cellEditor.close(); }} onReview={() => { cellEditor.close(); revealEditor(); }}>
+        <label className="field-control"><span>{inlineField.label}</span><input data-pd-id={`free-bets.cell-editor.${inlineField.key}`} aria-label={inlineField.label} value={formState[inlineField.key]} onChange={event => { setErrorMessage(""); setFormState(current => ({ ...current, [inlineField.key]: event.target.value })); }} type="text" /></label>
+      </LedgerFloatingCellEditor> : null}
+      {workflowVisible && !cellEditor.active ? (
         <ModalBoundary onDismiss={() => void closeEditor()}>
         <div className="modal-backdrop" onClick={() => void closeEditor()}>
       <section

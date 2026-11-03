@@ -32,6 +32,8 @@ import { LedgerViewContext } from "@/components/ledger-view-context";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerQuickActions, type LedgerQuickAction } from "@/components/ledger-quick-actions";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
+import { LedgerFloatingCellEditor, useLedgerCellEditor, type LedgerCellSession } from "@/components/ledger-floating-cell-editor";
+
 import { CasinoFreeSpinsQuickAdd, type CasinoFreeSpinsQuickAddValues, type CasinoQuickAddLoadout } from "@/components/casino-free-spins-quick-add";
 import { LedgerSettledDeleteGuard } from "@/components/ledger-settled-delete-guard";
 import { TrackerRangeCard } from "@/components/tracker-range-card";
@@ -95,6 +97,8 @@ import {
   casinoOfferStatusOptions,
   dedupeOptions,
 } from "@/lib/workbook-options";
+
+const inlineCellFields = {"offer_name": {"key": "offer_name", "label": "Offer name"}, "game": {"key": "game", "label": "Game"}} as const;
 
 type CasinoOfferRecord = {
   casino_offer_id: string;
@@ -1761,6 +1765,8 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
   const [isTrackerRangeSaving, setIsTrackerRangeSaving] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [workflowVisible, setWorkflowVisible] = useState(false);
+  const cellEditor = useLedgerCellEditor();
+  const inlineField = cellEditor.session ? inlineCellFields[cellEditor.session.column as keyof typeof inlineCellFields] : undefined;
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
   const [quickAddReturnValues, setQuickAddReturnValues] =
     useState<CasinoFreeSpinsQuickAddValues | null>(null);
@@ -1867,11 +1873,11 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
   const hasActiveTableControls = hiddenColumnCount > 0 || tableMode !== "recent" || activeFilterCount > 0;
   const activeTableControlCount = hiddenColumnCount + activeFilterCount + (tableMode !== "recent" ? 1 : 0);
 
-  const hasOpenModal = workflowVisible || isQuickAddOpen || isFilterModalOpen || Boolean(outcomeModalState);
+  const hasOpenModal = (workflowVisible && !cellEditor.active) || isQuickAddOpen || isFilterModalOpen || Boolean(outcomeModalState);
 
   useToastDismiss(statusMessage, clearStatusMessage);
   useBodyScrollLock(hasOpenModal);
-  useDialogFocusLifecycle(workflowVisible, editorRef);
+  useDialogFocusLifecycle(workflowVisible && !cellEditor.active, editorRef);
   useDialogFocusLifecycle(isQuickAddOpen, quickAddRef);
 
   const revealEditor = useCallback(
@@ -3120,7 +3126,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
     [editorHeaderFullTitle]
   );
 
-  async function selectRow(rowId: string, options?: { collapseTable?: boolean }) {
+  async function selectRow(rowId: string, options?: { collapseTable?: boolean; cell?: LedgerCellSession }) {
     if (rowId !== selectedId && isDirty && !(await confirmDiscardChanges())) {
       return;
     }
@@ -3128,6 +3134,14 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
     if (!record) {
       return;
     }
+    // A descriptive edit must not silently normalize legacy financial/date fields.
+    // Compare the native Save preparation with the native draft; otherwise hand off.
+    const draft = recordToForm(record);
+    const prepared = buildPersistForm(draft);
+    const preservesOtherFields = (Object.keys(draft) as (keyof CasinoOfferFormState)[])
+      .every((key) => prepared[key] === draft[key]);
+    if (options?.cell && record.status !== "Settled" && preservesOtherFields) cellEditor.start(options.cell.column, options.cell.anchor);
+    else cellEditor.close();
     setSelectedId(rowId);
     setActiveEditorTabId("setup");
     setSelectedComboId("");
@@ -3147,6 +3161,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
   }
 
   async function startNewRow() {
+    cellEditor.close();
     if (isDirty && !(await confirmDiscardChanges())) {
       return;
     }
@@ -3681,7 +3696,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
           onSaveAndLeave={() => persistForm(formState, { returnToLedgerOnSuccess: false })}
         />
       ) : null}
-      {!workflowVisible ? (
+      {!workflowVisible || cellEditor.active ? (
         <StatusToast message={statusMessage} onDismiss={clearStatusMessage} />
       ) : null}
       <section
@@ -3776,7 +3791,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
               position="top"
               totalRows={filteredRows.length}
             />
-            <LedgerTableScroll dataPdId="casino-offers.table-scroll">
+            <LedgerTableScroll dataPdId="casino-offers.table-scroll" cellNavigation={{ label: "Casino Offers", onActivate: (rowId, column, anchor) => void selectRow(rowId, { cell: column in inlineCellFields ? { column, anchor } : undefined }) }}>
               <table className="data-table sportsbook-data-table">
                 <colgroup>
                   {tableColumns.map((column) => {
@@ -3886,7 +3901,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
                           onDoubleClick={() => void selectRow(rowId, { collapseTable: true })}
                         >
                           {tableColumns.map((column) => (
-                            <td className="align-center" key={column.key}>
+                            <td className="align-center" key={column.key} data-ledger-row={column.key !== "actions" ? rowId : undefined} data-ledger-column={column.key !== "actions" ? column.key : undefined} data-pd-id={column.key !== "actions" ? `casino-offers.cell.${rowId}.${column.key}` : undefined}>
                               {column.key === "date_settling" && rowIssueBadges.length > 0 ? (
                                 <div className="row-issue-overlay" aria-hidden="true">
                                   {rowIssueBadges.map((badge) => (
@@ -4237,7 +4252,10 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
         </div>
       ) : null}
 
-      {workflowVisible ? (
+      {workflowVisible && cellEditor.session && inlineField ? <LedgerFloatingCellEditor session={cellEditor.session} ledger="Casino Offers" label={inlineField.label} dirty={isDirty} pending={isPersisting} error={errorMessage || statusMessage} onSave={async () => { const saved = await persistForm(formState); if (saved) cellEditor.close(); return saved; }} onCancel={() => { handleResetForm(); setWorkflowVisible(false); setSelectedId(null); selectedIdRef.current = null; cellEditor.close(); }} onReview={() => { cellEditor.close(); revealEditor(); }}>
+        <label className="field-control"><span>{inlineField.label}</span><input data-pd-id={`casino-offers.cell-editor.${inlineField.key}`} aria-label={inlineField.label} value={formState[inlineField.key]} onChange={event => { setErrorMessage(""); setFormState(current => ({ ...current, [inlineField.key]: event.target.value })); }} type="text" /></label>
+      </LedgerFloatingCellEditor> : null}
+      {workflowVisible && !cellEditor.active ? (
         <ModalBoundary onDismiss={() => void closeEditor()}>
         <div className="modal-backdrop" onClick={() => void closeEditor()}>
       <section

@@ -1,5 +1,11 @@
 # Changelog — Plum Duff / OpenForge
 
+## CP-121 — 2026-11-03
+
+- Extend shared spreadsheet selection/navigation across all six real ledgers and add supported floating native field edits, preserving correction gates, Profile identity, existing Save/calculation authorities and full Add/Edit.
+- Add an independently authenticated disposable fixture runner and real save/error/reload/isolation/rollback recordings. Default-OFF flag and feature-branch deployment guard remain; no normal financial change or schema/API addition.
+- Assess saved views/column customisation; durable views and reorder await a minimal viewer/Profile-scoped authority amendment. Design Acceptance remains open.
+
 ## CP-113 — 2026-11-01
 
 - Isolated synthetic Design Lab connects navigation, search, Profile context, ledgers, one validated-fixture Sportsbook lifecycle and Reports drilldown. Normal product/data/provider unchanged; owner design decisions pending.

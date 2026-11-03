@@ -22,6 +22,8 @@ import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerViewContext } from "@/components/ledger-view-context";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
+import { LedgerFloatingCellEditor, useLedgerCellEditor, type LedgerCellSession } from "@/components/ledger-floating-cell-editor";
+
 import { MaterialDateField, MaterialDateTimeField } from "@/components/material-date-time-field";
 import { StatusToast } from "@/components/status-toast";
 import { SearchableCombobox, type OptionListMode } from "@/components/selection-controls";
@@ -54,6 +56,8 @@ import {
   isMasterAccountAvailable,
   masterAccountProfileType,
 } from "@/lib/bookmaker-catalogue";
+
+const inlineCellFields = {"channel": {"key": "channel", "label": "Access channels"}} as const;
 
 type AccountRecord = {
   account_id: string;
@@ -509,6 +513,8 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialIssue
   });
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [workflowVisible, setWorkflowVisible] = useState(false);
+  const cellEditor = useLedgerCellEditor();
+  const inlineField = cellEditor.session ? inlineCellFields[cellEditor.session.column as keyof typeof inlineCellFields] : undefined;
   const [formState, setFormState] = useState<AccountFormState>(createBlankForm);
   const [accessChannelMode, setAccessChannelMode] = useState<OptionListMode>("CLOSED");
   const [pristineFormState, setPristineFormState] = useState<AccountFormState>(createBlankForm);
@@ -550,8 +556,8 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialIssue
     message: "Your unsaved changes will be lost.",
     title: "Discard changes?",
   });
-  useBodyScrollLock(workflowVisible || isFilterModalOpen);
-  useDialogFocusLifecycle(workflowVisible, editorRef);
+  useBodyScrollLock((workflowVisible && !cellEditor.active) || isFilterModalOpen);
+  useDialogFocusLifecycle(workflowVisible && !cellEditor.active, editorRef);
   useDialogFocusLifecycle(isFilterModalOpen, filterDialogRef);
   const clearStatusMessage = useCallback(() => setStatusMessage(""), []);
 
@@ -951,7 +957,7 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialIssue
     [effectivePage, filteredRows, pageSize]
   );
 
-  async function selectRow(rowId: string) {
+  async function selectRow(rowId: string, cell?: LedgerCellSession) {
     if (rowId !== selectedId && isDirty && !(await confirmDiscardChanges())) {
       return;
     }
@@ -959,6 +965,7 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialIssue
     if (!record) {
       return;
     }
+    if (cell) cellEditor.start(cell.column, cell.anchor); else cellEditor.close();
     setSelectedId(rowId);
     isCreatingDraftRef.current = false;
     setWorkflowVisible(true);
@@ -1019,6 +1026,7 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialIssue
   }, [initialIssueFilter, isInitialLoading]);
 
   async function startNewRow() {
+    cellEditor.close();
     if (isDirty && !(await confirmDiscardChanges())) {
       return;
     }
@@ -1070,17 +1078,17 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialIssue
     setErrorMessage("");
   }
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (saveInFlightRef.current || isSaving || isArchiving) return;
+  async function handleSubmit(event?: React.FormEvent<HTMLFormElement>) {
+    event?.preventDefault();
+    if (saveInFlightRef.current || isSaving || isArchiving) return false;
     setErrorMessage("");
     const isEditing = Boolean(selectedId);
     if(accountMoneyError(formState.current_balance)||accountMoneyError(formState.pending_withdrawal_amount)) {
-      setErrorMessage("Correct the Account money fields before saving.");return;
+      setErrorMessage("Correct the Account money fields before saving.");return false;
     }
     if (!isEditing && !formState.catalogue_id) {
       setErrorMessage("Select an account from the Fund Manager Account Catalogue.");
-      return;
+      return false;
     }
     const commissionError = formState.type === "Exchange"
       ? exchangeCommissionError(formState.commission_rate)
@@ -1091,7 +1099,7 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialIssue
         document.getElementById("account-commission-input")?.scrollIntoView({ block: "center" });
         document.getElementById("account-commission-input")?.focus();
       });
-      return;
+      return false;
     }
     const needsSignupDefinition = formState.type === "Bookie"
       && formState.signup_offer_status === "Yes"
@@ -1101,7 +1109,7 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialIssue
     );
     if (needsSignupDefinition && !linkedSignupOffer && !signupOfferDraft.offerName.trim()) {
       setErrorMessage("Enter an offer name or link an existing Account offer before saving Yes.");
-      return;
+      return false;
     }
     const url = isEditing
       ? `${apiBaseUrl}/profiles/${profileId}/accounts/${selectedId}`
@@ -1129,7 +1137,7 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialIssue
 
       if (!response.ok) {
         setErrorMessage(await readApiError(response, "Account could not be saved."));
-        return;
+        return false;
       }
 
       const saved = (await response.json()) as AccountRecord;
@@ -1190,7 +1198,7 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialIssue
           setFormState(nextForm);
           setPristineFormState(nextForm);
           setErrorMessage(await readApiError(definitionResponse, "Account saved, but the signup opportunity could not be created."));
-          return;
+          return false;
         }
         const definition = (await definitionResponse.json()) as ProfileOfferAction;
         setOfferActions((current) => [...current, definition]);
@@ -1212,8 +1220,10 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialIssue
           ? `Updated account ${saved.account_id}.`
           : `Created account ${saved.account_id}.`
       );
+      return true;
     } catch {
       setErrorMessage("Account could not be saved. Please try again.");
+      return false;
     } finally {
       saveInFlightRef.current = false;
       setIsSaving(false);
@@ -1389,7 +1399,7 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialIssue
               position="top"
               totalRows={filteredRows.length}
             />
-            <LedgerTableScroll dataPdId="accounts.table-scroll" cellNavigation={{ label: "Accounts", onActivate: (rowId) => void selectRow(rowId) }}>
+            <LedgerTableScroll dataPdId="accounts.table-scroll" cellNavigation={{ label: "Accounts", onActivate: (rowId, column, anchor) => { const record = resolvedRows.find(row => row.account_id === rowId); const supported = column in inlineCellFields && record?.catalogue_id && record.type !== "Exchange" && record.signup_offer_status !== "Yes"; void selectRow(rowId, supported ? { column, anchor } : undefined); } }}>
               <table className="data-table accounts-data-table">
                 <colgroup>
                   {visibleTableColumns.map((column) => (
@@ -1597,7 +1607,10 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialIssue
           )
         : null}
 
-      {workflowVisible && typeof document !== "undefined"
+      {workflowVisible && cellEditor.session && inlineField ? <LedgerFloatingCellEditor session={cellEditor.session} ledger="Accounts" label={inlineField.label} dirty={isDirty} pending={isSaving || isArchiving} error={errorMessage || statusMessage} onSave={async () => { const saved = await handleSubmit(); if (saved) cellEditor.close(); return saved; }} onCancel={() => { handleResetForm(); setWorkflowVisible(false); setSelectedId(null); cellEditor.close(); }} onReview={() => { cellEditor.close(); revealEditor(); }}>
+        <SearchableCombobox dataPdId="accounts.cell.access-channels" id="account-cell-access-channels" label="Access channels" mode={accessChannelMode} onChange={(accessChannels) => { setErrorMessage(""); setFormState(current => ({ ...current, access_channels: accessChannels, channel: accessChannels.join(", ") || "Unknown" })); }} onModeChange={setAccessChannelMode} options={["Online", "Mobile", "Retail", "Unknown"].map(value => ({ id: value, name: value }))} values={formState.access_channels} />
+      </LedgerFloatingCellEditor> : null}
+      {workflowVisible && !cellEditor.active && typeof document !== "undefined"
         ? createPortal(
             <ModalBoundary onDismiss={() => void closeEditor()}>
             <div className="modal-backdrop" onMouseDown={(event) => {

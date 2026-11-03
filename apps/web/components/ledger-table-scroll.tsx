@@ -7,7 +7,7 @@ type LedgerTableScrollProps = {
   children: ReactNode;
   className?: string;
   dataPdId: string;
-  cellNavigation?: { label: string; onActivate: (rowId: string, column: string) => void };
+  cellNavigation?: { label: string; onActivate: (rowId: string, column: string, anchor: HTMLElement) => void };
 };
 
 type ArrowAnchor = {
@@ -37,7 +37,7 @@ export function LedgerTableScroll({
   const [arrowAnchor, setArrowAnchor] = useState<ArrowAnchor | null>(null);
   const instructionsId = useId();
   const activateCell = useEffectEvent((cell: HTMLTableCellElement) => {
-    cellNavigation?.onActivate(cell.dataset.ledgerRow!, cell.dataset.ledgerColumn!);
+    cellNavigation?.onActivate(cell.dataset.ledgerRow!, cell.dataset.ledgerColumn!, cell);
   });
   const navigationLabel = cellNavigation?.label;
 
@@ -71,7 +71,7 @@ export function LedgerTableScroll({
       return cell && element.contains(cell) ? cell : null;
     };
     const clearSelection = (event: Event) => {
-      if (event.target instanceof Node && !element.contains(event.target) && !document.querySelector('dialog[open], [role="dialog"][aria-modal="true"]')) {
+      if (event.target instanceof Node && !element.contains(event.target) && !document.querySelector('dialog[open], [role="dialog"][aria-modal="true"], [data-pd-id="ledger.floating-editor"]')) {
         selectedCell?.removeAttribute("data-ledger-selected");
       }
     };

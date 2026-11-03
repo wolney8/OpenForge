@@ -1,5 +1,22 @@
 # Plum Duff UI Change Register
 
+## CP-117 consolidated six-ledger adoption — 2026-11-03
+
+Owner directs continuous implementation from CP-120 through a consolidated six-ledger candidate, without routine design-review stops. Existing Lab direction is provisionally accepted; Design Acceptance and Integration Acceptance remain distinct. [#118](https://github.com/wolney8/OpenForge/issues/118) stays open. No main merge, deployment, normal financial write or new schema/API authority.
+
+| ID | Owner outcome / signed-off equivalent | Status |
+| --- | --- | --- |
+| PD-PR-117A-21 | Extend CP-120 shared cell navigation to Free Bets, Casino, Extra Place and Cash, preserving native actions/restrictions and essential columns | COMPLETE |
+| PD-PR-117A-22 | Async floating edits for supported fields through existing typed drafts and native Save; Lab floating cell surface, native field controls and existing specialist editor fallback | COMPLETE |
+| PD-PR-117A-23 | Small reusable synthetic fixture runner with independent credentials, disposable storage and normal runtime-safety checks; canonical runtime launchers | COMPLETE |
+| PD-PR-117A-24 | Real six-ledger valid/invalid/save/reload/Profile/rollback evidence and meaningful recordings; no weakened money assertions | COMPLETE |
+| PD-PR-117A-25 | Consolidated Calculators/Oddsmatcher/Reports navigation and truthful implemented/partial/unsupported matrix | COMPLETE |
+| PD-PR-117A-26 | Assess Lab column customisation and saved views after ledger adoption; reuse existing persistence or present smallest amendment rather than invent browser-local authority | COMPLETE — assessment; new persistence authority awaits approval |
+
+Presentation exception: the approved Lab floating surface is reused for asynchronous real Save. Save/pending/error/cancel/full-editor controls follow canonical action semantics. Inputs disable while the submitted snapshot is pending; invalid or failed saves retain the exact draft. Protected or unsupported fields use the populated specialist editor. Field allowlists and invariants are in [the cell editing contract](../contracts/real-ledger-cell-editing.md).
+
+Integration evidence: CP-121, 21 V2/2 rollback paths, final gutter/AA/geometry checks, web 701 and focused API/runtime 152. Design Acceptance remains open. Saved-view/reorder persistence is BLOCKED on the explicit narrow amendment; full specialist replacement and Today tracking remain visible prior scope. #118 receives the consolidated receipt; no request is closed.
+
 ## CP-117 secure resumption and real cell navigation — 2026-11-03
 
 Security closure accepted: normal signing-key rotation, session revocation and identified preview cleanup are recorded in the local sanitised recovery receipt. Prior owner-session seeding instructions are historical and unsafe; they must not be reused. Development now uses an independently authenticated synthetic identity, separate signing key/database and a different browser hostname. No normal-owner data is used. [Issue #118](https://github.com/wolney8/OpenForge/issues/118) remains open.

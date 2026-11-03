@@ -372,3 +372,17 @@ Scope: `PD-PR-117A-17–20`, open #118. Sportsbook and Accounts only; full six-l
 - [x] Focused browser 8/8 V2 plus 1/1 rollback; web 701/701; focused API 43/43; typecheck, webpack build and scoped lint (zero errors, seven existing warnings). Vercel services configuration checked separately.
 - [x] Real synthetic-data recordings and visual captures inspected; named local evidence index retained, no traces/cookies/token files committed.
 - [x] Existing baseline limitations remain visible: first-save legacy catalogue binding is outside the canonical Account assertion; existing financial-fixture failures are not claimed fixed; manual screen reader and owner Design Acceptance remain open.
+
+
+## CP-121 consolidated six-ledger spreadsheet adoption — 2026-11-03
+
+- [x] UI/accessibility/modal-parity contracts, local review/consistency skills and native workflow authorities applied. `PD-PR-117A-21–26` mapped before implementation under #118.
+- [x] Reused CP-120 `LedgerTableScroll`, approved Lab floating surface, native typed drafts/controls, `workflow-panel-header`, modal close/actions and existing API Save. No financial/schema/API redesign or second calculation engine.
+- [x] All six ledger cell mappings; native settled/correction gates, Cash explicit Edit, confirmed fee withdrawal restriction, Account catalogue/commission/signup coupling and Casino normalization fallback preserved.
+- [x] Real save/reload/reopen, invalid/rejected input retention, error focus/retry, pending/duplicate exclusion, full-editor draft handoff and foreign-Profile read/write rejection verified.
+- [x] Light/dark 390px, real 200% zoom, body/document scrollbar gutter, field/footer containment, close target alignment and enabled Save AA text contrast have automated evidence. Local captures inspected; native full editor actions/geometry retained.
+- [x] Seven independent-runner guard tests; generated synthetic key/session/database only, standard runtime-safety checks, occupied/normal port/private source refusal, fresh Next graph and real client-route readiness; V2/OFF/V2 runner cycle proved.
+- [x] 21 V2 and two rollback browser paths; web 701 and focused API/runtime 152; typecheck and webpack build. Existing Free Bet render-ref lint error and ten source warnings remain explicit; prior broader financial-fixture failures are unchanged, not claimed fixed.
+- [x] Existing columns, Add/Edit, sort/filter/resize and specialist actions retained; Calculators/Oddsmatcher/Reports navigation covered without provider activity. Flag default OFF and branch deployment guard preserved.
+- [x] Adoption matrix and saved-view assessment updated. Durable real views/reorder require the documented minimal authority amendment; no browser-local saved-view authority introduced.
+- [ ] Owner Design Acceptance, manual spoken screen-reader verification, full specialist lifecycle replacement and Today tracking remain open. Passing adapter tests do not imply those acceptances.

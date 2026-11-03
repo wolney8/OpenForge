@@ -3,6 +3,9 @@ import { mkdtemp, mkdir, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+const baseURL = process.env.OPENFORGE_CP117_BASE_URL ?? "http://127.0.0.1:3127";
+const authURL = process.env.OPENFORGE_CP117_AUTH_URL ?? "http://127.0.0.1:9127/";
+
 const profile = "/profiles/profile-demo-001/tracker/";
 const legacy = process.env.OPENFORGE_CP117_VERIFY_LEGACY === "true";
 
@@ -10,20 +13,26 @@ async function ready(page: Page, module: "sportsbook-bets" | "accounts") {
   await page.goto(`${profile}${module}`);
   await expect(page.locator(".ledger-loading-overlay")).toHaveCount(0);
   const range = page.getByRole("combobox", { name: "Change tracker date range" });
-  if (await range.count()) await range.selectOption({ label: "All Dates" });
+  if (module === "sportsbook-bets") await expect(range).toHaveValue("All Dates");
   await expect(page.locator(".ledger-loading-overlay")).toHaveCount(0);
 }
 
 test.beforeEach(async ({ page }) => {
   const health = await (await page.request.get("/api/healthz")).json();
   expect(health.database_classification).toBe("isolated");
-  expect(health.database_identity).toBe("security-recovery-synthetic-only");
+  expect(health.database_identity).toBe("cp117-integration-synthetic");
   await page.addInitScript(() => localStorage.setItem("pd-required-storage-notice", "acknowledged"));
   // The bootstrap issues only an independently signed synthetic session in memory.
-  await page.goto("http://127.0.0.1:9127/");
+  await page.goto(authURL);
   const auth = await (await page.request.get("/api/auth/session")).json();
   expect(auth.authenticated).toBe(true);
   expect(auth.email).toBe("demo@example.invalid");
+  // Fixture scope is set through the existing preference authority before loading
+  // the table; an initial settings fetch cannot race a synthetic range selection.
+  const rangeSetup = await page.request.put("/api/fund-manager/preferences/selected-range", { data: {
+    selected_range_preset: "All Dates", selected_range_custom_start: null, selected_range_custom_end: null,
+  } });
+  expect(rangeSetup.status()).toBe(200);
 });
 
 for (const module of ["sportsbook-bets", "accounts"] as const) {
@@ -40,7 +49,7 @@ for (const module of ["sportsbook-bets", "accounts"] as const) {
     });
     const cell = module === "accounts"
       ? viewport.locator('td[data-ledger-row="ACC-BOOK-A"][data-ledger-column="account_id"]')
-      : viewport.locator('td[data-ledger-row="CP117-CELL-001"][data-ledger-column="event_name"]');
+      : viewport.locator('td[data-ledger-row="CP117-CELL-001"][data-ledger-column="date_settled"]');
     await cell.click();
     await expect(page.getByRole("dialog")).toHaveCount(0);
     await expect(cell).toHaveAttribute("data-ledger-selected", "true");
@@ -87,6 +96,7 @@ test("Sportsbook cell handoff saves through the real API and retains a failed dr
   const before = await (await page.request.get(endpoint)).json();
   const cell = page.locator('td[data-ledger-row="CP117-CELL-001"][data-ledger-column="event_name"]');
   await cell.click(); await page.keyboard.press("Enter");
+  await page.getByRole("button", { name: "Open full editor", exact: true }).click();
   const editor = page.getByRole("dialog", { name: "Edit sportsbook row", exact: true });
   const input = editor.getByRole("textbox", { name: "Event name", exact: true });
   const next = before.event_name.endsWith("Reviewed") ? "Synthetic cell review 1" : "Synthetic cell review 1 Reviewed";
@@ -107,6 +117,7 @@ test("Sportsbook cell handoff saves through the real API and retains a failed dr
   for (const key of ["profile_id", "status", "result", "back_stake", "back_odds", "lay_odds_1", "lay_commission_1", "exchange_name", "manual_override_value", "projected_current_pnl"]) expect(after[key]).toBe(before[key]);
   await page.reload(); await ready(page, "sportsbook-bets");
   await cell.click(); await page.keyboard.press("Enter");
+  await page.getByRole("button", { name: "Open full editor", exact: true }).click();
   await expect(input).toHaveValue(next);
   await page.keyboard.press("Escape");
   expect((await page.request.get('/api/profiles/profile-demo-002/sportsbook-bets/CP117-CELL-001')).status()).toBe(404);
@@ -211,16 +222,16 @@ test("actual Chromium 200% zoom keeps selected cells and native editors reachabl
   const context = await chromium.launchPersistentContext(join(scratch, "profile"), { channel: "chromium", headless: true, viewport: { width: 1440, height: 1000 }, recordVideo: { dir: info.outputPath("actual-zoom-recording") }, args: [`--disable-extensions-except=${extension}`, `--load-extension=${extension}`] });
   try {
     await context.addInitScript(() => localStorage.setItem("pd-required-storage-notice", "acknowledged"));
-    const page = await context.newPage(); await page.goto("http://127.0.0.1:9127/");
-    await page.goto(`http://127.0.0.1:3127${profile}sportsbook-bets`);
+    const page = await context.newPage(); await page.goto(authURL);
+    await page.goto(`${baseURL}${profile}sportsbook-bets`);
     const worker = context.serviceWorkers()[0] ?? await context.waitForEvent("serviceworker");
-    await worker.evaluate(async () => {
+    await worker.evaluate(async (baseURL) => {
       const tabs = (globalThis as unknown as { chrome: { tabs: { query: (filter: { url: string }) => Promise<Array<{ id: number }>>; setZoom: (id: number, zoom: number) => Promise<void> } } }).chrome.tabs;
-      const matches = await tabs.query({ url: "http://127.0.0.1:3127/*" }); await tabs.setZoom(matches[0].id, 2);
-    });
+      const matches = await tabs.query({ url: `${baseURL}/*` }); await tabs.setZoom(matches[0].id, 2);
+    }, baseURL);
     await expect.poll(() => page.evaluate(() => innerWidth)).toBe(720);
     for (const module of ["sportsbook-bets", "accounts"] as const) {
-      await page.goto(`http://127.0.0.1:3127${profile}${module}`);
+      await page.goto(`${baseURL}${profile}${module}`);
       await expect(page.locator(".ledger-loading-overlay")).toHaveCount(0);
       const range = page.getByRole("combobox", { name: "Change tracker date range" });
       if (await range.count()) await range.selectOption({ label: "All Dates" });
@@ -232,6 +243,18 @@ test("actual Chromium 200% zoom keeps selected cells and native editors reachabl
       expect(rect!.x).toBeGreaterThanOrEqual(0); expect(rect!.x + rect!.width).toBeLessThanOrEqual(721);
       expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
       await page.keyboard.press("Escape"); await expect(cell).toBeFocused();
+      const supportedCell = page.locator(module === "accounts"
+        ? 'td[data-ledger-row="ACC-BOOK-A"][data-ledger-column="channel"]'
+        : 'td[data-ledger-row="CP117-CELL-001"][data-ledger-column="event_name"]');
+      await supportedCell.dblclick();
+      const floating = page.locator('[data-pd-id="ledger.floating-editor"]');
+      await expect(floating).toBeVisible();
+      const floatingBounds = await floating.boundingBox();
+      expect(floatingBounds!.x).toBeGreaterThanOrEqual(0);
+      expect(floatingBounds!.x + floatingBounds!.width).toBeLessThanOrEqual(721);
+      expect(floatingBounds!.y + floatingBounds!.height).toBeLessThanOrEqual(501);
+      await expect(floating.getByRole("button", {name:"Save",exact:true})).toBeInViewport();
+      await page.keyboard.press("Escape"); await expect(supportedCell).toBeFocused();
     }
   } finally { await context.close(); await rm(scratch, { recursive: true, force: true }); }
 });

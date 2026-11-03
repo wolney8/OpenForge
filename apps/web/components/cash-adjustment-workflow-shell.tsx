@@ -25,6 +25,8 @@ import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
 import { LedgerViewContext } from "@/components/ledger-view-context";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
+import { LedgerFloatingCellEditor, useLedgerCellEditor, type LedgerCellSession } from "@/components/ledger-floating-cell-editor";
+
 import { LedgerQuickActions, type LedgerQuickAction } from "@/components/ledger-quick-actions";
 import { LedgerEditorTabPanel, LedgerEditorTabRail } from "@/components/ledger-editor-tabs";
 import { LedgerSettledDeleteGuard } from "@/components/ledger-settled-delete-guard";
@@ -61,6 +63,8 @@ import {
   dedupeOptions,
 } from "@/lib/workbook-options";
 import { type LedgerEditorTabDefinition } from "@/lib/ledger-editor-tabs";
+
+const inlineCellFields = {"description": {"key": "description", "label": "Description"}} as const;
 
 type CashAdjustmentRecord = {
   cash_adjustment_id: string;
@@ -617,6 +621,8 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
   const [isTrackerRangeSaving, setIsTrackerRangeSaving] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [workflowVisible, setWorkflowVisible] = useState(false);
+  const cellEditor = useLedgerCellEditor();
+  const inlineField = cellEditor.session ? inlineCellFields[cellEditor.session.column as keyof typeof inlineCellFields] : undefined;
   const [tableCollapsed, setTableCollapsed] = usePersistedBoolean(
     `openforge-ledger-collapsed:${profileId}:cash-adjustments`,
     false
@@ -699,11 +705,11 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
   const hasActiveTableControls = hiddenColumnCount > 0 || tableMode !== "recent" || activeFilterCount > 0;
   const activeTableControlCount = hiddenColumnCount + activeFilterCount + (tableMode !== "recent" ? 1 : 0);
 
-  const hasOpenModal = workflowVisible || isFilterModalOpen;
+  const hasOpenModal = (workflowVisible && !cellEditor.active) || isFilterModalOpen;
 
   useToastDismiss(statusMessage, clearStatusMessage);
   useBodyScrollLock(hasOpenModal);
-  useDialogFocusLifecycle(workflowVisible, editorRef);
+  useDialogFocusLifecycle(workflowVisible && !cellEditor.active, editorRef);
 
   const revealEditor = useCallback(
     (options?: { expandLedger?: boolean }) => {
@@ -1440,7 +1446,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
   const quickViewRangeContext = formatResolvedDateRange(resolvedDateRange);
   const quickViewRangeDetail = formatResolvedDateRangeContext(resolvedDateRange);
 
-  async function selectRow(rowId: string, options?: { collapseTable?: boolean }) {
+  async function selectRow(rowId: string, options?: { collapseTable?: boolean; cell?: LedgerCellSession }) {
     if (rowId !== selectedId && isDirty && !(await confirmDiscardChanges())) {
       return;
     }
@@ -1454,6 +1460,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
       );
       return;
     }
+    if (options?.cell) cellEditor.start(options?.cell.column, options?.cell.anchor); else cellEditor.close();
     setSelectedId(rowId);
     selectedIdRef.current = rowId;
     isCreatingDraftRef.current = false;
@@ -1473,6 +1480,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
   }
 
   async function startNewRow() {
+    cellEditor.close();
     if (isDirty && !(await confirmDiscardChanges())) {
       return;
     }
@@ -1820,7 +1828,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
 
   return (
     <section className="stack">
-      {!workflowVisible ? (
+      {!workflowVisible || cellEditor.active ? (
         <StatusToast message={statusMessage} onDismiss={clearStatusMessage} />
       ) : null}
       <section
@@ -1905,7 +1913,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
               position="top"
               totalRows={filteredRows.length}
             />
-            <LedgerTableScroll dataPdId="cash-adjustments.table-scroll">
+            <LedgerTableScroll dataPdId="cash-adjustments.table-scroll" cellNavigation={{ label: "Cash Adjustments", onActivate: (rowId, column, anchor) => void selectRow(rowId, { cell: column in inlineCellFields ? { column, anchor } : undefined }) }}>
               <table className="data-table sportsbook-data-table">
                 <colgroup>
                   {tableColumns.map((column) => {
@@ -2010,7 +2018,7 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
                           onDoubleClick={() => void selectRow(rowId, { collapseTable: true })}
                         >
                           {tableColumns.map((column) => (
-                            <td className="align-center" key={column.key}>
+                            <td className="align-center" key={column.key} data-ledger-row={column.key !== "actions" ? rowId : undefined} data-ledger-column={column.key !== "actions" ? column.key : undefined} data-pd-id={column.key !== "actions" ? `cash-adjustments.cell.${rowId}.${column.key}` : undefined}>
                               {column.key === "adjustment_date" && rowIssueBadges.length > 0 ? (
                                 <div className="row-issue-overlay" aria-hidden="true">
                                   {rowIssueBadges.map((badge) => (
@@ -2232,7 +2240,10 @@ export function CashAdjustmentWorkflowShell({ profileId }: { profileId: string }
         </div>
       ) : null}
 
-      {workflowVisible ? (
+      {workflowVisible && cellEditor.session && inlineField ? <LedgerFloatingCellEditor session={cellEditor.session} ledger="Cash Adjustments" label={inlineField.label} readOnly={isResolvedReadOnly} enableEditingLabel="Edit cash-adjustment row" onEnableEditing={() => setResolvedEditEnabled(true)} dirty={isDirty} pending={isPersisting} error={errorMessage || statusMessage} onSave={async () => { const saved = await persistForm(formState); if (saved) cellEditor.close(); return saved; }} onCancel={() => { handleResetForm(); setWorkflowVisible(false); setSelectedId(null); workflowVisibleRef.current = false; selectedIdRef.current = null; cellEditor.close(); }} onReview={() => { cellEditor.close(); revealEditor(); }}>
+        <label className="field-control"><span>{inlineField.label}</span><textarea data-pd-id="cash-adjustments.cell-editor.description" aria-label={inlineField.label} value={formState[inlineField.key]} onChange={event => { setErrorMessage(""); setFormState(current => ({ ...current, [inlineField.key]: event.target.value })); }} rows={3} /></label>
+      </LedgerFloatingCellEditor> : null}
+      {workflowVisible && !cellEditor.active ? (
         <ModalBoundary onDismiss={() => void closeEditor()}>
         <div className="modal-backdrop" onClick={() => void closeEditor()}>
       <section

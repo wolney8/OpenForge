@@ -25,6 +25,8 @@ import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
 import { LedgerViewContext } from "@/components/ledger-view-context";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
+import { formatApiErrorBody } from "@/lib/api-error";
+import { LedgerFloatingCellEditor, useLedgerCellEditor, type LedgerCellSession } from "@/components/ledger-floating-cell-editor";
 import { ModalBoundary } from "@/components/modal-boundary";
 import { QuickSelectRail, type QuickSelectChoice } from "@/components/quick-select-rail";
 import {
@@ -378,9 +380,10 @@ export function EachWayExtraPlaceWorkflowShell({
   const parserOwnedDateRef = useRef<string | null>(null);
   const { catalogue: bookmakerCatalogue, providerIdsByName } = useBookmakerCatalogue(profileId);
   const [guidedAccessMode] = useProfileGuidedAccessMode(profileId);
-  const isAnyDialogOpen = open || isFilterModalOpen || Boolean(deleteTarget);
+  const cellEditor = useLedgerCellEditor();
+  const isAnyDialogOpen = (open && !cellEditor.active) || isFilterModalOpen || Boolean(deleteTarget);
   useBodyScrollLock(isAnyDialogOpen);
-  useDialogFocusLifecycle(open, editorRef);
+  useDialogFocusLifecycle(open && !cellEditor.active, editorRef);
   const filterDialogRef = useRef<HTMLElement>(null);
   useDialogFocusLifecycle(isFilterModalOpen, filterDialogRef);
   const isDirty = useMemo(
@@ -571,7 +574,8 @@ export function EachWayExtraPlaceWorkflowShell({
     });
     return true;
   };
-  const resetEditor = (next: Form, row: Row | null) => {
+  const resetEditor = (next: Form, row: Row | null, cell?: LedgerCellSession) => {
+    if (cell) cellEditor.start(cell.column, cell.anchor); else cellEditor.close();
     parserOwnedDateRef.current = null;
     setForm(next);
     setPristine(next);
@@ -634,7 +638,7 @@ export function EachWayExtraPlaceWorkflowShell({
     next.place_exchange = preferredExchange;
     resetEditor(next, null);
   };
-  const openRow = (row: Row) => {
+  const openRow = (row: Row, cell?: LedgerCellSession) => {
     const next = newForm();
     (Object.keys(next) as Array<keyof Form>).forEach((key) => {
       const saved = String(row[key] ?? next[key]);
@@ -646,7 +650,7 @@ export function EachWayExtraPlaceWorkflowShell({
           : saved
       ) as never;
     });
-    resetEditor(next, row);
+    resetEditor(next, row, cell);
   };
   const close = async () => {
     if (saving || (isDirty && !(await confirmDiscardChanges()))) return;
@@ -666,8 +670,7 @@ export function EachWayExtraPlaceWorkflowShell({
       );
       if (!response.ok) {
         setError(
-          (await response.json()).detail ||
-            "Could not save the Extra Place row.",
+          formatApiErrorBody(await response.text(), "Could not save the Extra Place row."),
         );
         return false;
       }
@@ -1249,7 +1252,11 @@ export function EachWayExtraPlaceWorkflowShell({
         position="bottom"
         totalRows={pageableRows.length}
       />
-      {typeof document !== "undefined" && open
+      {open && cellEditor.session ? <LedgerFloatingCellEditor session={cellEditor.session} ledger="Extra Place" label="Runner / Race" dirty={isDirty} pending={saving} error={typeof error === "string" ? error : JSON.stringify(error)} onSave={async () => { const saved = await save(); if (saved) cellEditor.close(); return saved; }} onCancel={() => { setForm(pristine); setOpen(false); cellEditor.close(); }} onReview={() => cellEditor.close()}>
+        <label className="field-control"><span>Runner</span><input data-pd-id="extra-place.cell-editor.runner" aria-label="Runner" value={form.runner} onChange={event => { setError(""); update("runner", event.target.value); }} /></label>
+        <label className="field-control"><span>Race</span><input data-pd-id="extra-place.cell-editor.race" aria-label="Race" value={form.race} onChange={event => { setError(""); update("race", event.target.value); }} /></label>
+      </LedgerFloatingCellEditor> : null}
+      {typeof document !== "undefined" && open && !cellEditor.active
         ? createPortal(
             <ModalBoundary onDismiss={() => void close()}>
             <div
@@ -1770,7 +1777,7 @@ function ExtraPlaceTable({
   rows: Row[];
   visibleColumns: ExtraPlaceVisibleColumns;
   onDelete: (row: Row) => void;
-  onEdit: (row: Row) => void;
+  onEdit: (row: Row, cell?: LedgerCellSession) => void;
   onResult: (row: Row, result: string) => void;
 }) {
   const columns = [
@@ -1811,7 +1818,7 @@ function ExtraPlaceTable({
     window.addEventListener("mouseup", stop);
   };
   return (
-    <LedgerTableScroll dataPdId="extra-place.table-scroll">
+    <LedgerTableScroll dataPdId="extra-place.table-scroll" cellNavigation={{ label: "Extra Place", onActivate: (rowId, column, anchor) => { const row = rows.find(item => item.each_way_extra_place_id === rowId); if (row) onEdit(row, column === "runner" ? { column, anchor } : undefined); } }}>
       <table className="data-table extra-place-data-table">
         <colgroup>
           {activeColumns.map((key) => <col key={key} style={{ width: `${columnWidths[key]}px` }} />)}
@@ -1926,20 +1933,21 @@ function LedgerRow({
   // Result due is an operational cue, not an additional data-completeness issue.
   const displayIssues = raceReady?.tone === "due" ? ["Result Needed", ...rowIssues] : rowIssues;
   const visibleIssues = displayIssues.slice(0, 4);
+  const cell = (column: string) => ({ "data-ledger-row": row.each_way_extra_place_id, "data-ledger-column": column, "data-pd-id": `extra-place.cell.${row.each_way_extra_place_id}.${column}` });
   return (
     <FinancialValueReplayGroup>
     <tr
       className={`${issue ? issueCount > 4 ? "row-state-issue-danger" : "row-state-issue-warning" : ""}${raceReady?.tone === "due" ? " extra-place-row-result-due" : ""}${outsideTrackerRange ? " extra-place-row-outside-range" : ""}`}
       onClick={onEdit}
       onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
+        if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) {
           event.preventDefault();
           onEdit();
         }
       }}
       tabIndex={0}
     >
-      <td>
+      <td {...cell("date")}>
         {row.calculation_state === "historical_imported" ? <div className="row-issue-overlay"><span className="table-chip table-chip-warning">Historical / Manual</span></div> : displayIssues.length > 0 ? (
           <div aria-label={`Issues for ${row.runner || "Extra Place row"}`} className="row-issue-overlay">
             {visibleIssues.map((label) => (
@@ -1959,12 +1967,12 @@ function LedgerRow({
         ) : null}
         {formatLedgerDateTime(row.placed_at)}
       </td>
-      <td>
+      <td {...cell("runner")}>
         <strong>{row.runner || "Runner needed"}</strong>
         <br />
         {row.race || "Race needed"}
       </td>
-      <td>
+      <td {...cell("bookmaker")}>
         {row.bookmaker ? (
           <BookmakerIdentity
             bookmaker={row.bookmaker}
@@ -1976,7 +1984,7 @@ function LedgerRow({
           "Bookmaker needed"
         )}
       </td>
-      <td>
+      <td {...cell("stake")}>
         <span className="extra-place-stake-stack">
           {neutralValue(row.each_way_stake)}
           <small>
@@ -1986,32 +1994,32 @@ function LedgerRow({
           </small>
         </span>
       </td>
-      {visibleColumns.back_odds ? <td>{row.back_odds || "-"}</td> : null}
+      {visibleColumns.back_odds ? <td {...cell("backOdds")}>{row.back_odds || "-"}</td> : null}
       {visibleColumns.terms ? (
-        <td>1 / {row.place_term_denominator || "-"}</td>
+        <td {...cell("terms")}>1 / {row.place_term_denominator || "-"}</td>
       ) : null}
-      {visibleColumns.place_odds ? <td>{row.place_back_odds || "-"}</td> : null}
-      {visibleColumns.win_lay_odds ? <td><strong>{row.win_lay_odds || "-"}</strong><small>{row.win_exchange || "Unselected"}</small></td> : null}
+      {visibleColumns.place_odds ? <td {...cell("placeOdds")}>{row.place_back_odds || "-"}</td> : null}
+      {visibleColumns.win_lay_odds ? <td {...cell("winLayOdds")}><strong>{row.win_lay_odds || "-"}</strong><small>{row.win_exchange || "Unselected"}</small></td> : null}
       {visibleColumns.win_lay_stake ? (
-        <td>{neutralValue(row.win_lay_stake)}</td>
+        <td {...cell("winLayStake")}>{neutralValue(row.win_lay_stake)}</td>
       ) : null}
       {visibleColumns.win_lay_liability ? (
-        <td>{neutralValue(row.win_liability)}</td>
+        <td {...cell("winLiability")}>{neutralValue(row.win_liability)}</td>
       ) : null}
       {visibleColumns.place_lay_odds ? (
-        <td><strong>{row.place_lay_odds || "-"}</strong><small>{row.place_exchange || "Unselected"}</small></td>
+        <td {...cell("placeLayOdds")}><strong>{row.place_lay_odds || "-"}</strong><small>{row.place_exchange || "Unselected"}</small></td>
       ) : null}
       {visibleColumns.place_lay_stake ? (
-        <td>{neutralValue(row.place_lay_stake)}</td>
+        <td {...cell("placeLayStake")}>{neutralValue(row.place_lay_stake)}</td>
       ) : null}
       {visibleColumns.place_lay_liability ? (
-        <td>{neutralValue(row.place_liability)}</td>
+        <td {...cell("placeLiability")}>{neutralValue(row.place_liability)}</td>
       ) : null}
-      {visibleColumns.rating ? <td><RatingPill rating={row.rating_percent} /></td> : null}
-      {visibleColumns.implied_odds ? <td>{decimalDisplay(row.implied_odds)}</td> : null}
-      <td>{value(row.qualifying_loss)}</td>
-      <td><EpProfit row={row} /></td>
-      <td><StatusDisplay outsideTrackerRange={outsideTrackerRange} raceReady={raceReady} row={row} /></td>
+      {visibleColumns.rating ? <td {...cell("rating")}><RatingPill rating={row.rating_percent} /></td> : null}
+      {visibleColumns.implied_odds ? <td {...cell("impliedOdds")}>{decimalDisplay(row.implied_odds)}</td> : null}
+      <td {...cell("qualLoss")}>{value(row.qualifying_loss)}</td>
+      <td {...cell("epProfit")}><EpProfit row={row} /></td>
+      <td {...cell("status")}><StatusDisplay outsideTrackerRange={outsideTrackerRange} raceReady={raceReady} row={row} /></td>
       <td>
         <div
           className="table-action-row extra-place-table-actions"

@@ -1,5 +1,8 @@
 # Project Status — Plum Duff / OpenForge — Doc ID: PS-CODEX-001
 
+> **CP-121 — consolidated six-ledger spreadsheet candidate — 2026-11-03 13:19 GMT:** All six real ledgers now share cell selection/navigation and supported floating native Save, retaining populated correction/full-editor fallbacks and existing financial authorities. Independent synthetic fixture runner automates authentication and V2/OFF/V2 verification. Browser 21 V2/2 rollback plus final gutter/contrast/zoom checks, web 701, focused API/runtime 152, typecheck and webpack build pass. Design Acceptance remains open; durable saved views/reorder await the documented minimal schema/API amendment. Normal owner environment, default-OFF flag, rollback and no-deployment guard preserved. [Evidence](docs/audits/platform-quality-audit.md#cp-121--consolidated-real-six-ledger-spreadsheet-candidate--2026-11-03).
+
+
 > **CP-120 — CP-117 real cell navigation — 2026-11-03 12:08 GMT:** Security recovery gate passed. Independently authenticated V2 Sportsbook and Accounts now support cell selection, keyboard movement and explicit native-editor activation; real save/retry/reopen, Profile isolation, theme/reflow/zoom and flag-OFF rollback pass. Eight V2 plus one rollback browser paths, 701 web and 43 focused API tests pass; typecheck/build pass. Design Acceptance and full six-ledger/floating-save/saved-view adoption remain open. No normal-owner financial change, main merge or deployment. [Evidence](docs/audits/platform-quality-audit.md#cp-117-real-spreadsheet-interaction-integration--2026-11-03).
 
 
@@ -269,17 +272,17 @@
 > failure, refresh and re-authentication. Canonical owner interaction remains to be checked after
 > the local process restart; workbook acceptance stays paused.
 
-**Last updated:** 2026-11-03 12:08 GMT; historical entries retain their original evidence dates.
+**Last updated:** 2026-11-03 13:19 GMT; historical entries retain their original evidence dates.
 
 ## Right now
 
-- **Working on:** CP-120, completed local CP-117 Sportsbook/Accounts cell navigation milestone under default-OFF V2. Native Add/Edit/API/calculation/audit/Profile authorities are unchanged.
-- **Next:** owner review of this bounded integrated increment, then remaining six-ledger cell/edit mappings. Design Acceptance remains separate from these passing integration checks.
-- **Blocked on:** no engineering blocker for this milestone. Durable tracking/saved-view authority and full financial lifecycle parity remain open in #118; manual screen-reader review is unverified.
-- **Runtime:** normal services retain their recovered existing source; V2 is independently authenticated on `http://127.0.0.1:3127` / API 8127. Synthetic sign-in uses loopback 9127. No normal session/secret/database record is copied.
-- **Release boundary:** non-main feature branch only; its Vercel Git deployment is explicitly disabled. No main merge or hosted deployment.
+- **Working on:** CP-121 consolidated six-ledger V2 candidate under open #118; shared cell navigation, supported native floating edits, isolated repeatable fixture runner and real recordings are integration-verified.
+- **Next:** consolidated owner review, with Design Acceptance separate from passing integration checks; approve the minimal saved-view authority amendment before durable views/reorder implementation.
+- **On hold:** saved-view schema/API, Today tracking/Board, full specialist editor replacement, main merge/deployment and all normal-owner financial changes. Existing financial-fixture baseline failures, Free Bet lint error and manual screen-reader verification remain explicit.
+- **Runtime:** independent synthetic sign-in `http://127.0.0.1:9127/`, V2 web `http://127.0.0.1:3127`, isolated API 8127. Reproduce with `./scripts/run-python.sh scripts/run-cp117-integration.py --test --keep-running`. Normal `http://localhost:3010/login` and API 8010 remain healthy on recovered existing source.
+- **Release boundary:** `feature/cp117-ledger-adoption` only; server flag defaults OFF and this branch's Git-triggered Vercel deployment is disabled. CP-120 and earlier checkpoints/worktrees remain intact.
 
-## Historical model handover — superseded by CP-120 above
+## Historical model handover — superseded by CP-121 above
 
 | Item | Current state |
 | --- | --- |
@@ -325,6 +328,7 @@ Primary-root routing still points here/the same owner notebook. Preserve unrelat
 | CP-054 | 2026-09-26 21:15 BST | Restored latest compatible local runtime, promoted accepted repairs to protected Preview and added an owner notebook/model handover; no personal cutover | [#101](https://github.com/wolney8/OpenForge/issues/101), [#104](https://github.com/wolney8/OpenForge/issues/104), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Evidence](docs/audits/platform-quality-audit.md#cp-054-operational-consolidation-and-model-handover--2026-09-26-2115-bst) |
 | CP-055 | 2026-09-26 23:29:27 BST | Delivered explicit Profile relationships, Reports Explorer V1 and Accounts-only portability locally; additive schema preserves all prior data, Preview promotion held on recovery/session resources | [#111](https://github.com/wolney8/OpenForge/issues/111), [#109](https://github.com/wolney8/OpenForge/issues/109), [#114](https://github.com/wolney8/OpenForge/issues/114) | [Evidence](docs/audits/platform-quality-audit.md#cp-055-personal-foundation-reports-explorer-and-account-authority) |
 | CP-120 | 2026-11-03 12:08 GMT | CP-117 real Sportsbook/Accounts spreadsheet navigation with native editor/save handoff; independent authentication, 8 V2/1 rollback paths and no deployment | [#118](https://github.com/wolney8/OpenForge/issues/118) | [Evidence](docs/audits/platform-quality-audit.md#cp-117-real-spreadsheet-interaction-integration--2026-11-03) |
+| CP-121 | 2026-11-03 13:19 GMT | Consolidated real six-ledger navigation and supported floating native edits; independent fixture runner, 21 V2/2 rollback paths; saved-view authority proposed, no deployment | [#118](https://github.com/wolney8/OpenForge/issues/118) | [Evidence](docs/audits/platform-quality-audit.md#cp-121--consolidated-real-six-ledger-spreadsheet-candidate--2026-11-03) |
 
 ## CP-100 read-only financial availability audit
 
