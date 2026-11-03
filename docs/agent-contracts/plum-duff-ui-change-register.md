@@ -4,6 +4,8 @@
 
 Owner authorises a reversible, non-main integration candidate and recordings, without financial/schema/API changes or promotion. Current app shell under `OPENFORGE_FUND_MANAGER_UX_V2`, legacy `/tasks`, `NotificationCentre`, existing workflow shells and the synthetic Design Lab are the comparison sources. `PROPOSED — FLAGGED REAL UI`: the first Today slice may replace the wide task table with compact rows and a detail pane while reusing the same authorised notification collection, filters, read/clear persistence and source recheck. The old `/tasks` presentation remains available with the flag OFF. Do not port lab-only tracking, Board work states, recurrence or priority-bell rules as new production authorities.
 
+Live adoption tracking: [GitHub #118](https://github.com/wolney8/OpenForge/issues/118). The prior whole-platform audit remains [#114](https://github.com/wolney8/OpenForge/issues/114).
+
 | ID | Owner request / integration boundary | Status |
 | --- | --- | --- |
 | PD-PR-117A-01 | Verify CP-116 and current source custody, normal-owner isolation and flag rollback | CODE-VERIFIED — source lineage and flag-off browser path; final database fingerprint receipt at handoff |
