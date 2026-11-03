@@ -124,8 +124,25 @@ test("more than thirteen tracked tasks keep a five-item preview at narrow width"
   expect(rect.top).toBeGreaterThanOrEqual(0);
   expect(rect.bottom).toBeLessThanOrEqual(850);
   await panel.getByRole("button", { name: "View All Tracked Tasks" }).click();
-  await expect(page.locator('[data-pd-id="lab.active-task"] [data-pd-id^="lab.tracked-task."]')).toHaveCount(14);
+  const bannerRows = page.locator('[data-pd-id="lab.active-task"] [data-pd-id^="lab.tracked-task."]');
+  await expect(bannerRows).toHaveCount(14);
+  const bannerGeometry = await page.locator('[data-pd-id="lab.active-task"] [class*="trackedRows"]').evaluate(node => {
+    const rows = [...node.querySelectorAll<HTMLElement>('[data-pd-id^="lab.tracked-task."]')];
+    return { scrollHeight: node.scrollHeight, clientHeight: node.clientHeight, rows: rows.map(row => {
+      const bounds = row.getBoundingClientRect();
+      const actions = row.querySelector<HTMLElement>('[class*="trackedActions"]')!.getBoundingClientRect();
+      return { top: bounds.top, bottom: bounds.bottom, actionTop: actions.top, actionBottom: actions.bottom };
+    }) };
+  });
+  expect(bannerGeometry.scrollHeight).toBeGreaterThan(bannerGeometry.clientHeight);
+  for (const [index, row] of bannerGeometry.rows.entries()) {
+    expect(row.actionTop).toBeGreaterThanOrEqual(row.top);
+    expect(row.actionBottom).toBeLessThanOrEqual(row.bottom);
+    if (index) expect(row.top).toBeGreaterThanOrEqual(bannerGeometry.rows[index - 1].bottom - 1);
+  }
   if (evidence) await page.screenshot({ path: `${evidence}/cp117-today-tracked-14-mobile-after.png`, fullPage: true, style: "nextjs-portal { display: none !important; }" });
+  await bannerRows.last().getByRole("button", { name: /Untrack/ }).click();
+  await expect(trigger).toHaveAttribute("aria-label", "Tracked Tasks, 13 active");
 });
 
 test("thirteen tracked tasks remain actionable at actual Chromium 200% zoom", async ({}, info) => {
