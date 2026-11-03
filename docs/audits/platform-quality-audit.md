@@ -29,6 +29,8 @@ This matrix describes the **real application**, not synthetic lab completeness. 
 
 Private artifacts belong under `data/private/evidence/cp117-adoption/` and are excluded from source custody. A synthetic API or intercepted fixture is stated explicitly; neither proves owner-data behaviour. Playwright failure traces stay in ignored `test-results/`.
 
+Integrated UI source: `2866c1e01e80276b5e29ac5fe9045eaad0b207b9` (tree `bdee80db4e12ca3c7b91d94f51a088feb2f19b26`). The final documentation receipt may have a later SHA without changing that UI tree.
+
 | Workflow / route | Browser test | Video and capture | Source SHA / outcome | Limit |
 | --- | --- | --- | --- | --- |
 | Flagged Today compact queue/detail `/tasks` | `cp117-integrated-today.spec.ts` | `today-v2.webm`, `today-v2-desktop.png`, `today-v2-mobile.png` | Candidate commit at checkpoint; browser and actual Chromium 200% zoom geometry pass | Intercepted synthetic notification feed for main visual path; headless zoom capture unsuitable for visual sign-off |
