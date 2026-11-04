@@ -597,7 +597,7 @@ export function deriveDailyTaskView(
 export function filterAndSortDailyTasks(
   tasks: DailyTaskView[],
   options: {
-    dueState: DailyTaskDueState | "actionable";
+    dueState?: DailyTaskDueState | "actionable";
     profileId: string;
     bookmaker: string;
     notificationType: string;
@@ -610,7 +610,7 @@ export function filterAndSortDailyTasks(
   const normalizedQuery = options.query.trim().toLocaleLowerCase();
   const filtered = tasks.filter((task) => {
     const item = task.notification;
-    if (options.dueState === "actionable" ? !isActionableDailyTask(task) : task.dueState !== options.dueState) return false;
+    if (options.dueState && (options.dueState === "actionable" ? !isActionableDailyTask(task) : task.dueState !== options.dueState)) return false;
     if (options.profileId !== "all" && item.profile_id !== options.profileId) return false;
     if (options.bookmaker !== "all" && item.bookmaker_label !== options.bookmaker) return false;
     if (options.notificationType !== "all" && item.notification_type !== options.notificationType) return false;

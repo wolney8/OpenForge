@@ -1,4 +1,5 @@
 import logging
+import os
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -88,6 +89,10 @@ app.include_router(bookmaker_catalogue_router)
 app.include_router(sportsbook_router)
 app.include_router(multi_profile_opportunities_router)
 app.include_router(notifications_router)
+if os.environ.get("OPENFORGE_TASK_ANNOTATIONS_ISOLATED_ENABLED") == "true":
+    from openforge_api.task_annotations import router as task_annotations_router
+
+    app.include_router(task_annotations_router)
 app.include_router(oddsmatcher_router)
 app.include_router(oddsmatcher_global_router)
 app.include_router(free_bets_router)

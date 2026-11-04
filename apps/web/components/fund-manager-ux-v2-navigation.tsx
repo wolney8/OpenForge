@@ -12,6 +12,7 @@ import { platformBrand } from "@/lib/brand";
 import { DesignLabHeaderOverlay } from "@/components/design-lab-header-overlay";
 import { ModalBoundary } from "@/components/modal-boundary";
 import { labDestinations } from "@/lib/design-lab-navigation";
+import { loadTaskAnnotations, TASK_ANNOTATIONS_REFRESH_EVENT, type TaskAnnotation } from "@/lib/task-annotations";
 
 const originStorageKey = "plum-duff:ux-v2-source-origin";
 const scrollRestoreKey = "plum-duff:ux-v2-scroll-restore";
@@ -125,7 +126,23 @@ const launcherGroups = [
 
 export function FundManagerUxV2HeaderTasks() {
   const navigate = useShellNavigation();
-  return <Link aria-label="Open Tasks" className={labStyles.iconButton} data-pd-id="ux-v2.header.tasks" href="/tasks" onClick={(event) => void navigate(event, "/tasks")} title="Tasks"><span aria-hidden="true" className="material-symbols-outlined">task_alt</span></Link>;
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const [open, setOpen] = useState(false);
+  const [annotations, setAnnotations] = useState<TaskAnnotation[] | null>(null);
+  useEffect(() => {
+    let active = true;
+    const refresh = () => void loadTaskAnnotations().then(rows => { if (active) setAnnotations(rows); });
+    refresh();
+    window.addEventListener(TASK_ANNOTATIONS_REFRESH_EVENT, refresh);
+    return () => { active = false; window.removeEventListener(TASK_ANNOTATIONS_REFRESH_EVENT, refresh); };
+  }, []);
+  if (!annotations) return <Link aria-label="Open Tasks" className={labStyles.iconButton} data-pd-id="ux-v2.header.tasks" href="/tasks" onClick={(event) => void navigate(event, "/tasks")} title="Tasks"><span aria-hidden="true" className="material-symbols-outlined">task_alt</span></Link>;
+  const active = annotations.filter(item => item.tracked && item.source_status === "active");
+  const preview = active.slice(0, 5);
+  return <div className="app-menu-shell ux-v2-tracked-root">
+    <button aria-expanded={open} aria-label={`Tracked Tasks, ${active.length} active`} className={labStyles.iconButton} data-pd-id="ux-v2.header.tasks" onClick={() => setOpen(value => !value)} ref={triggerRef} type="button"><span aria-hidden="true" className="material-symbols-outlined">task_alt</span>{active.length ? <span aria-hidden="true" className={labStyles.notificationCount}>{active.length}</span> : null}</button>
+    {open ? <DesignLabHeaderOverlay anchorRef={triggerRef} label="Tracked Tasks" onClose={() => setOpen(false)} preferredWidth={380}><div className={labStyles.menuBody} data-pd-id="ux-v2.header.tracked-panel"><h2>Tracked Tasks ({active.length})</h2>{preview.length ? <div className={labStyles.trackedPanelRows}>{preview.map(item => { const href = `/tasks?collection=tracked&task=${encodeURIComponent(item.occurrence_key)}`; return <div className={labStyles.trackedRow} key={`${item.profile_id}:${item.occurrence_key}`}><div><Link href={href} onClick={event => void navigate(event, href, () => setOpen(false))}><strong>{item.title}</strong></Link><small>{item.profile_name} · {item.work_state}</small></div></div>; })}</div> : <p className={labStyles.menuEmpty}>No Active Tracked Tasks</p>}{active.length > preview.length ? <p className={labStyles.trackedPreviewCount}>Showing {preview.length} of {active.length} active tasks</p> : null}<Link className={labStyles.menuRow} data-pd-id="ux-v2.header.tracked-view-all" href="/tasks?collection=tracked" onClick={event => void navigate(event, "/tasks?collection=tracked", () => setOpen(false))}><span aria-hidden="true" className="material-symbols-outlined">view_list</span><span>View All Tracked Tasks</span></Link></div></DesignLabHeaderOverlay> : null}
+  </div>;
 }
 
 export function FundManagerUxV2Help() {

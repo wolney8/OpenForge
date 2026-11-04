@@ -24,6 +24,8 @@ export const designTodayBoardWithDetailClass = styles.boardWithDetail;
 export const designTodayMobileDetailClass = styles.mobileDetail;
 export const designTodayRootClass = styles.today;
 export const designTodayToolButtonClass = styles.toolButton;
+export const designTodayBulkTrackClass = styles.bulkTrack;
+export const designTodayStateEditorClass = styles.stateEditor;
 
 export function DesignTodayToolbar({ actions, dataPdId, summary }: { actions: ReactNode; dataPdId: string; summary: ReactNode }) {
   return <div className={styles.toolbar} data-pd-id={dataPdId}>

@@ -83,6 +83,7 @@ def fixture_environment(
             "OPENFORGE_CORS_ALLOW_ORIGINS": f"http://127.0.0.1:{web}",
             "OPENFORGE_FUND_MANAGER_UX_V2": "true",
             "OPENFORGE_DESIGN_LAB_ENABLED": "true",
+            "OPENFORGE_TASK_ANNOTATIONS_ISOLATED_ENABLED": "true",
             "UVICORN_ACCESS_LOG": "false",
             "NEXT_TELEMETRY_DISABLED": "1",
             "PYTHONDONTWRITEBYTECODE": "1",
@@ -149,6 +150,9 @@ def seed_and_issue_session(env: dict[str, str]) -> str:
         )
     seed_committed_test_database()
     seed_synthetic_betting_context()
+    from openforge_api.task_annotations import install_isolated_schema
+
+    install_isolated_schema()
     from openforge_api.accounts import AccountWritePayload, update_profile_account
     from openforge_api.db import get_account
 

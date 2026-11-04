@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerPagination } from "@/components/ledger-pagination";
-import { DesignTodayBoard, DesignTodayDetail, DesignTodayFilters, DesignTodayTaskRow, DesignTodayToolbar, DesignTodayViewToggle, designTodayBoardColumnClass, designTodayBoardControlsClass, designTodayBoardDrawerClass, designTodayBoardWithDetailClass, designTodayCollectionHeadingClass, designTodayContentClass, designTodayDetailActionsClass, designTodayDetailPaneClass, designTodayDetailTextClass, designTodayMobileDetailClass, designTodayPaginationClass, designTodayPropertiesClass, designTodayQueueClass, designTodayRootClass, designTodayTaskCollectionClass, designTodayTaskListClass, designTodayToolButtonClass, designTodayWithDetailClass } from "@/components/design-today-task-row";
+import { DesignTodayBoard, DesignTodayDetail, DesignTodayFilters, DesignTodayTaskRow, DesignTodayToolbar, DesignTodayViewToggle, designTodayBoardColumnClass, designTodayBoardControlsClass, designTodayBoardDrawerClass, designTodayBoardWithDetailClass, designTodayBulkTrackClass, designTodayCollectionHeadingClass, designTodayContentClass, designTodayDetailActionsClass, designTodayDetailPaneClass, designTodayDetailTextClass, designTodayMobileDetailClass, designTodayPaginationClass, designTodayPropertiesClass, designTodayQueueClass, designTodayRootClass, designTodayStateEditorClass, designTodayTaskCollectionClass, designTodayTaskListClass, designTodayToolButtonClass, designTodayWithDetailClass } from "@/components/design-today-task-row";
+import { DesignLabTaskState } from "@/components/design-lab-task-state";
 import { DesignLabSelect } from "@/components/design-lab-select";
 import { ModalBoundary } from "@/components/modal-boundary";
 import { apiBaseUrl } from "@/lib/api";
@@ -37,6 +38,7 @@ import {
   type NotificationViewState,
 } from "@/lib/notifications";
 import { beginRouteTransition, endRouteTransition } from "@/lib/shell-loading";
+import { loadTaskAnnotations, patchTaskAnnotations, TASK_ANNOTATIONS_REFRESH_EVENT, type TaskAnnotation, type TaskAnnotationChange, type TaskWorkState } from "@/lib/task-annotations";
 
 const dueViews: { id: DailyTaskDueState; label: string }[] = [
   { id: "today", label: "Today" },
@@ -66,6 +68,7 @@ function priorityLabel(priority: "high" | "medium" | "low"): string {
 
 export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const refreshVersionRef = useRef(0);
   const stateRequestVersionRef = useRef(0);
   const stateMutationPendingRef = useRef(false);
@@ -83,7 +86,7 @@ export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
   const [source, setSource] = useState<DailyTaskSource | "all">("all");
   const [sort, setSort] = useState<DailyTaskSort>("priority");
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(16);
+  const [pageSize, setPageSize] = useState(uxV2 ? 8 : 16);
   const [isLoading, setIsLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
   const [isPersistingState, setIsPersistingState] = useState(false);
@@ -91,6 +94,12 @@ export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
   const [actionError, setActionError] = useState("");
   const [inspectedTaskId, setInspectedTaskId] = useState("");
   const [layout, setLayout] = useState<"List" | "Board">("List");
+  const [collection, setCollection] = useState<"all" | "tracked">("all");
+  const [annotations, setAnnotations] = useState<TaskAnnotation[] | null>(null);
+  const [trackingPending, setTrackingPending] = useState(false);
+  const [draftState, setDraftState] = useState<TaskWorkState>("To Do");
+  const [draftBlockedReason, setDraftBlockedReason] = useState("");
+  const [draftReviewDate, setDraftReviewDate] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [narrow, setNarrow] = useState(false);
   const taskRowRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
@@ -106,10 +115,24 @@ export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
   }, []);
   useEffect(() => { if (inspectedTaskId) window.requestAnimationFrame(() => detailHeadingRef.current?.focus({ preventScroll: true })); }, [inspectedTaskId, narrow]);
   useEffect(() => {
+    if (!uxV2) return;
+    let active = true;
+    const refreshAnnotations = () => void loadTaskAnnotations().then(rows => { if (active) setAnnotations(rows); });
+    refreshAnnotations();
+    window.addEventListener(TASK_ANNOTATIONS_REFRESH_EVENT, refreshAnnotations);
+    return () => { active = false; window.removeEventListener(TASK_ANNOTATIONS_REFRESH_EVENT, refreshAnnotations); };
+  }, [uxV2]);
+  useEffect(() => {
+    if (uxV2 && searchParams.get("collection") === "tracked") {
+      const frame = requestAnimationFrame(() => { setCollection("tracked"); setPage(1); setInspectedTaskId(""); });
+      return () => cancelAnimationFrame(frame);
+    }
+  }, [searchParams, uxV2]);
+  useEffect(() => {
     const showActionable = () => {
       setDueState("today"); setQuery(""); setProfileId("all"); setBookmaker("all");
       setNotificationType("all"); setSource("all"); setSort("priority");
-      setPage(1); setInspectedTaskId(""); setLayout("List"); window.scrollTo({ top: 0 });
+      setPage(1); setInspectedTaskId(""); setLayout("List"); setCollection("all"); window.scrollTo({ top: 0 });
     };
     window.addEventListener(TODAY_ACTIONABLE_NAVIGATION_EVENT, showActionable);
     return () => window.removeEventListener(TODAY_ACTIONABLE_NAVIGATION_EVENT, showActionable);
@@ -131,10 +154,11 @@ export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
     if (showLoading) setIsLoading(true);
     setNow(new Date());
     try {
-      const [response, persistedState, preferences] = await Promise.all([
+      const [response, persistedState, preferences, persistedAnnotations] = await Promise.all([
         fetch(`${apiBaseUrl}/fund-manager/notifications`, { cache: "no-store", credentials: "include" }),
         loadPersistedNotificationState(),
         loadPersistedNotificationPreferences(),
+        uxV2 ? loadTaskAnnotations() : Promise.resolve(null),
       ]);
       if (!response.ok || !persistedState || !preferences) throw new Error("Task evidence unavailable");
       const remote = currentDailyTasks(await response.json() as FundManagerNotification[]);
@@ -143,6 +167,7 @@ export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
       if (stateRequestVersion === stateRequestVersionRef.current) applyViewState(persistedState);
       setNotifications(filterFundManagerNotificationsForViewer(remote, preferences));
       setSourceIndex(verifiedSources);
+      if (uxV2) setAnnotations(persistedAnnotations);
       setLoadFailed(false);
     } catch {
       if (requestVersion !== refreshVersionRef.current) return;
@@ -223,12 +248,60 @@ export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
   const activeFilterCount = [query.trim(), profileId !== "all", bookmaker !== "all", notificationType !== "all", source !== "all", dueState !== "today"].filter(Boolean).length;
   const filtered = useMemo(() => {
     const options = { profileId, bookmaker, notificationType, source, query, sort, legacySort: !uxV2 };
-    return filterAndSortDailyTasks(taskViews, { ...options, dueState: uxV2 && dueState === "today" ? "actionable" : dueState });
-  }, [bookmaker, dueState, notificationType, profileId, query, sort, source, taskViews, uxV2]);
+    const rows = filterAndSortDailyTasks(taskViews, { ...options, dueState: uxV2 && collection === "tracked" ? undefined : uxV2 && dueState === "today" ? "actionable" : dueState });
+    return collection === "tracked" ? rows.filter(task => annotations?.some(item => item.tracked && item.source_status === "active" && item.occurrence_key === task.notification.notification_id)) : rows;
+  }, [annotations, bookmaker, collection, dueState, notificationType, profileId, query, sort, source, taskViews, uxV2]);
   const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, pageCount);
   const paginated = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  useEffect(() => {
+    const target = searchParams.get("task");
+    if (!uxV2 || collection !== "tracked" || !target) return;
+    const index = filtered.findIndex(task => task.notification.notification_id === target);
+    if (index >= 0) {
+      const frame = requestAnimationFrame(() => { setPage(Math.floor(index / pageSize) + 1); setInspectedTaskId(target); });
+      return () => cancelAnimationFrame(frame);
+    }
+  }, [collection, filtered, pageSize, searchParams, uxV2]);
   const inspectedTask = uxV2 ? paginated.find((task) => task.notification.notification_id === inspectedTaskId) : undefined;
+  const annotationFor = (task: DailyTaskView) => annotations?.find(item => item.occurrence_key === task.notification.notification_id && item.profile_id === task.notification.profile_id);
+  const trackedCount = annotations?.filter(item => item.tracked && item.source_status === "active").length ?? 0;
+  const trackedHistory = annotations?.filter(item => item.tracked && item.source_status !== "active") ?? [];
+
+  const saveAnnotations = async (rows: DailyTaskView[], tracked: boolean, override?: { work_state: TaskWorkState; blocked_reason: string | null; review_date: string | null }) => {
+    if (!annotations || trackingPending || !rows.length) return;
+    setTrackingPending(true); setActionError("");
+    const changes: TaskAnnotationChange[] = rows.map(task => {
+      const item = annotationFor(task);
+      return { profile_id: task.notification.profile_id, occurrence_key: task.notification.notification_id,
+        tracked, work_state: override?.work_state ?? item?.work_state ?? "To Do",
+        blocked_reason: override ? override.blocked_reason : item?.blocked_reason ?? null,
+        review_date: override ? override.review_date : item?.review_date ?? null,
+        expected_version: item?.version ?? 0 };
+    });
+    const result = await patchTaskAnnotations(changes);
+    if (result.error) setActionError(result.error);
+    else if (result.rows) setAnnotations(previous => [...(previous ?? []).filter(item => !result.rows!.some(row => row.occurrence_key === item.occurrence_key && row.profile_id === item.profile_id)), ...result.rows!]);
+    setTrackingPending(false);
+  };
+  const untrackHistory = async (item: TaskAnnotation) => {
+    if (trackingPending) return;
+    setTrackingPending(true); setActionError("");
+    const result = await patchTaskAnnotations([{ profile_id: item.profile_id, occurrence_key: item.occurrence_key, tracked: false,
+      work_state: item.work_state, blocked_reason: item.blocked_reason, review_date: item.review_date,
+      expected_version: item.version }]);
+    if (result.error) setActionError(result.error);
+    else if (result.rows) setAnnotations(previous => [...(previous ?? []).filter(row => row.occurrence_key !== item.occurrence_key || row.profile_id !== item.profile_id), ...result.rows!]);
+    setTrackingPending(false);
+  };
+  const inspectTask = (task: DailyTaskView) => {
+    const item = annotationFor(task);
+    setDraftState(item?.work_state ?? "To Do");
+    setDraftBlockedReason(item?.blocked_reason ?? "");
+    setDraftReviewDate(item?.review_date ?? "");
+    returnFocusRef.current = taskRowRefs.current.get(task.notification.notification_id) ?? null;
+    setInspectedTaskId(task.notification.notification_id);
+  };
 
   const closeInspector = () => {
     const returnId = inspectedTaskId;
@@ -273,15 +346,17 @@ export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
 
   const taskRow = (task: DailyTaskView, board = false) => {
     const item = task.notification;
+    const annotation = annotationFor(task);
     return <div data-pd-id={`tasks.item.${item.notification_id}`} key={item.notification_id} role="listitem">
       <DesignTodayTaskRow accessibleName={`Inspect ${item.title} · ${item.profile_name}`} active={inspectedTaskId === item.notification_id}
         board={board} context={<>{item.bookmaker_label || item.ledger_label} · {item.profile_name}</>}
         controls="tasks-v2-inspector" dataPdId={`tasks.v2.row.${item.notification_id}`}
         date={task.dueLabel} extraContext={<small>{task.priorityReason}</small>} icon={task.priority === "high" ? "priority_high" : "task_alt"}
-        onClick={() => { returnFocusRef.current = taskRowRefs.current.get(item.notification_id) ?? null; setInspectedTaskId(item.notification_id); }}
+        onClick={() => inspectTask(task)}
         ref={(node) => { if (node) taskRowRefs.current.set(item.notification_id, node); else taskRowRefs.current.delete(item.notification_id); }}
-        selectionMode="expanded" state={board ? priorityLabel(task.priority) : undefined}
+        selectionMode="expanded" state={annotation?.tracked ? <DesignLabTaskState state={annotation.work_state} /> : board ? priorityLabel(task.priority) : undefined}
         title={item.title} urgent={task.priority === "high"} />
+      {annotations ? <button aria-label={`${annotation?.tracked ? "Untrack" : "Track"} ${item.title} · ${item.profile_name}`} aria-pressed={Boolean(annotation?.tracked)} className={designTodayBulkTrackClass} data-pd-id={`tasks.v2.track.${item.notification_id}`} disabled={trackingPending || annotation?.source_status === "resolved"} onClick={() => void saveAnnotations([task], !annotation?.tracked)} type="button">{annotation?.tracked ? "Untrack" : "Track"}</button> : null}
     </div>;
   };
 
@@ -295,14 +370,23 @@ export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
       <div><dt>Date Context</dt><dd>{inspectedTask.dueLabel}</dd></div>
       <div><dt>Task Type</dt><dd>{taskTypeLabel(inspectedTask.notification.notification_type)}</dd></div>
       <div><dt>Priority</dt><dd>{inspectedTask.priorityReason}</dd></div>
+      {annotations ? <div><dt>Work State</dt><dd><DesignLabTaskState state={annotationFor(inspectedTask)?.work_state ?? "To Do"} /></dd></div> : null}
       <div><dt>Source</dt><dd>{inspectedTask.notification.ledger_label} · {inspectedTask.notification.record_id}</dd></div>
     </dl>
     <p className={designTodayDetailTextClass}>{inspectedTask.evidence}</p>
+    {actionError ? <p className="notification-action-error" role="alert">{actionError}</p> : null}
+    {annotations ? <div className={designTodayStateEditorClass}>
+      <DesignLabSelect dataPdId={`tasks.v2.work-state.${inspectedTask.notification.notification_id}`} label="Work State" onChange={setDraftState} options={(["To Do", "In Progress", "Blocked", "Do Later"] as TaskWorkState[]).map(value => ({ value, label: value }))} value={draftState} />
+      {draftState === "Blocked" ? <label>Blocked Reason<input aria-label={`${inspectedTask.notification.title} blocked reason`} maxLength={500} onChange={event => setDraftBlockedReason(event.target.value)} value={draftBlockedReason} /></label> : null}
+      {draftState === "Do Later" ? <label>Review / Resume Date<input aria-label={`${inspectedTask.notification.title} review date`} onChange={event => setDraftReviewDate(event.target.value)} type="date" value={draftReviewDate} /></label> : null}
+      <button disabled={trackingPending} onClick={() => { if (draftState === "Do Later" && !draftReviewDate) { setActionError("Choose a review date before saving Do Later."); return; } void saveAnnotations([inspectedTask], annotationFor(inspectedTask)?.tracked ?? false, { work_state: draftState, blocked_reason: draftState === "Blocked" ? draftBlockedReason || null : null, review_date: draftState === "Do Later" ? draftReviewDate || null : null }); }} type="button">Save Work State</button>
+    </div> : <p>Personal tracking awaits normal API activation.</p>}
     <div className={designTodayDetailActionsClass}>
       <Link aria-busy={openingId === inspectedTask.notification.notification_id} className="button-link" href={inspectedTask.notification.href}
         onClick={(event) => { event.preventDefault(); endRouteTransition(); void openTask(inspectedTask.notification); }} prefetch={false}>
         {openingId === inspectedTask.notification.notification_id ? "Checking Access…" : "Open Source"}
       </Link>
+      {annotations ? <button aria-pressed={Boolean(annotationFor(inspectedTask)?.tracked)} disabled={trackingPending} onClick={() => void saveAnnotations([inspectedTask], !annotationFor(inspectedTask)?.tracked)} type="button">{annotationFor(inspectedTask)?.tracked ? "Untrack" : "Track Task"}</button> : null}
       <button disabled={isPersistingState} onClick={() => void persistState(inspectedTask.dueState === "completed" ? restoreNotificationIds(viewStateRef.current, [inspectedTask.notification.notification_id]) : dismissNotificationIds(viewStateRef.current, [inspectedTask.notification.notification_id]), "Unable to update this task.")} type="button">
         {inspectedTask.dueState === "completed" ? "Restore To Tasks" : "Clear From Tasks"}
       </button>
@@ -330,6 +414,11 @@ export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
 
       <section aria-label="Daily Tasks" className={uxV2 ? designTodayRootClass : "content-panel stack"} data-pd-id="tasks.workspace">
         {uxV2 ? <>
+          <nav aria-label="Today collections" className={designTodayDetailActionsClass} data-pd-id="tasks.v2.collections">
+            <button aria-current={collection === "all" ? "page" : undefined} onClick={() => { setCollection("all"); setDueState("today"); setPage(1); setInspectedTaskId(""); router.replace("/tasks"); }} type="button">All Tasks</button>
+            <button aria-current={collection === "tracked" ? "page" : undefined} disabled={!annotations} onClick={() => { setCollection("tracked"); setDueState("today"); setPage(1); setInspectedTaskId(""); router.replace("/tasks?collection=tracked"); }} type="button">Tracked Tasks{annotations ? ` (${trackedCount})` : ""}</button>
+            {!annotations ? <small>Personal tracking awaits normal API activation.</small> : null}
+          </nav>
           <DesignTodayToolbar dataPdId="tasks.v2.toolbar" summary={<><strong>{isLoading || loadFailed ? "—" : actionableCount} Needs Attention</strong><span>{counts.upcoming} Upcoming</span><span>{counts.completed} Completed</span></>} actions={<>
             <DesignTodayViewToggle dataPdId="tasks.v2.layout-toggle" layout={layout} onChange={(next) => { setLayout(next); setInspectedTaskId(""); }} />
             <button aria-expanded={filtersOpen} className={designTodayToolButtonClass} data-pd-id="tasks.v2.filter-toggle" onClick={() => setFiltersOpen(value => !value)} type="button"><span aria-hidden="true" className="material-symbols-outlined">filter_list</span>Filters{activeFilterCount ? ` ${activeFilterCount}` : ""}</button>
@@ -400,8 +489,9 @@ export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
               <div className={`${designTodayContentClass}${inspectedTask && !narrow ? ` ${layout === "Board" ? designTodayBoardWithDetailClass : designTodayWithDetailClass}` : ""}`} data-pd-id="tasks.v2.layout">
                 <div className={designTodayQueueClass}>
                   {layout === "List" ? <section aria-label="Source Tasks" className={designTodayTaskCollectionClass} data-pd-id="tasks.v2.collection">
-                    <div className={designTodayCollectionHeadingClass}><h2>{dueState === "today" ? "Needs Action" : dueViews.find(view => view.id === dueState)?.label} <span>{paginated.length}</span></h2></div>
+                    <div className={designTodayCollectionHeadingClass}><h2>{collection === "tracked" ? "Tracked Tasks" : dueState === "today" ? "Needs Action" : dueViews.find(view => view.id === dueState)?.label} <span>{paginated.length}</span></h2>{annotations && paginated.length ? <button aria-label={`${paginated.every(task => annotationFor(task)?.tracked) ? "Untrack" : "Track"} all ${paginated.length} tasks on this page only`} className={designTodayBulkTrackClass} data-pd-id="tasks.v2.bulk-track" disabled={trackingPending} onClick={() => void saveAnnotations(paginated, !paginated.every(task => annotationFor(task)?.tracked))} type="button">{paginated.every(task => annotationFor(task)?.tracked) ? "Untrack All" : "Track All"} · This page ({paginated.length})</button> : null}</div>
                     <div aria-label="Tasks" className={designTodayTaskListClass} role="list">{paginated.map(task => taskRow(task))}</div>
+                    {collection === "tracked" && trackedHistory.length ? <details data-pd-id="tasks.v2.tracked-history"><summary>Source history and unavailable tasks ({trackedHistory.length})</summary>{trackedHistory.map(item => <p key={`${item.profile_id}:${item.occurrence_key}`}>{item.title} · {item.source_status === "resolved" ? "Source Resolved" : item.source_status === "changed" ? "Source Changed" : "Source Unavailable"} <button aria-label={`Untrack ${item.title} from history`} disabled={trackingPending} onClick={() => void untrackHistory(item)} type="button">Untrack</button></p>)}</details> : null}
                     {!paginated.length ? <p className="ux-v2-task-empty">No tasks match these controls.</p> : null}
                   </section> : <>
                     <div className={designTodayBoardControlsClass}><span>Board grouped by source priority</span><div>
@@ -412,7 +502,7 @@ export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
                       {(["high", "medium", "low"] as const).map(priority => {
                         const rows = paginated.filter(task => task.priority === priority);
                         return <section aria-label={`${priorityLabel(priority)} Priority`} className={designTodayBoardColumnClass} data-empty={rows.length === 0} key={priority}>
-                          <div className={designTodayCollectionHeadingClass}><h2>{priorityLabel(priority)} Priority <span>{rows.length}</span></h2></div>
+                          <div className={designTodayCollectionHeadingClass}><h2>{priorityLabel(priority)} Priority <span>{rows.length}</span></h2>{annotations && rows.length ? <button aria-label={`${rows.every(task => annotationFor(task)?.tracked) ? "Untrack" : "Track"} all ${rows.length} visible ${priorityLabel(priority)} Priority tasks on this page only`} className={designTodayBulkTrackClass} disabled={trackingPending} onClick={() => void saveAnnotations(rows, !rows.every(task => annotationFor(task)?.tracked))} type="button">{rows.every(task => annotationFor(task)?.tracked) ? "Untrack All" : "Track All"} · This group ({rows.length})</button> : null}</div>
                           <div role="list">{rows.map(task => taskRow(task, true))}</div>
                         </section>;
                       })}

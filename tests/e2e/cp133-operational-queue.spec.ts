@@ -66,11 +66,18 @@ for (const [width, mode] of [[1440, "light"], [390, "dark"]] as const) {
     await expect(page.locator('[data-pd-id="tasks.v2.row.SB-PART"]')).toBeVisible();
     await expect(page.locator('[data-pd-id="tasks.v2.row.SB-PART"]')).toContainText("£42.50 calculated lay liability");
     const rows = page.locator('[data-pd-id^="tasks.v2.row."]');
-    await expect(rows).toHaveCount(16);
+    await expect(rows).toHaveCount(8);
     expect(await rows.first().getAttribute("data-pd-id")).toBe("tasks.v2.row.SB-PART");
     expect(await rows.nth(1).getAttribute("data-pd-id")).toBe("tasks.v2.row.FB-EXP");
     expect(await rows.nth(2).getAttribute("data-pd-id")).toBe("tasks.v2.row.SB-QUAL");
+    await expect(page.locator('[data-pd-id="tasks.v2.pagination"]')).toContainText("Showing 1–8 of 27");
+    await page.locator('[data-pd-id="tasks.v2.filter-toggle"]').click();
+    await page.locator('[data-pd-id="tasks.v2.page-size"]').selectOption("16");
     await expect(page.locator('[data-pd-id="tasks.v2.pagination"]')).toContainText("Showing 1–16 of 27");
+    await page.locator('[data-pd-id="tasks.v2.page-size"]').selectOption("32");
+    await expect(page.locator('[data-pd-id="tasks.v2.pagination"]')).toContainText("Showing 1–27 of 27");
+    await page.locator('[data-pd-id="tasks.v2.page-size"]').selectOption("8");
+    await page.locator('[data-pd-id="tasks.v2.filter-toggle"]').click();
     const gap = await rows.first().evaluate(element => {
       const next = element.closest('[role="listitem"]')?.nextElementSibling?.querySelector("button");
       return next ? next.getBoundingClientRect().top - element.getBoundingClientRect().bottom : 0;
@@ -80,7 +87,7 @@ for (const [width, mode] of [[1440, "light"], [390, "dark"]] as const) {
     await page.screenshot({ path: `${evidence}/today-${width}-${mode}.png`, fullPage: true });
     if (width <= 700) await page.getByRole("button", { name: "Close navigation" }).click();
     await page.locator('[data-pd-id="tasks.v2.pagination"] button').last().click();
-    await expect(page.locator('[data-pd-id="tasks.v2.pagination"]')).toContainText("Showing 17–27 of 27");
+    await expect(page.locator('[data-pd-id="tasks.v2.pagination"]')).toContainText("Showing 9–16 of 27");
     await page.evaluate(() => scrollTo(0, 0));
     await page.locator('[data-pd-id="notifications.trigger"]').click();
     const panel = page.locator('[data-pd-id="notifications.v2.dropdown"]');
@@ -108,7 +115,7 @@ for (const [width, mode] of [[1440, "light"], [390, "dark"]] as const) {
     await page.screenshot({ path: `${evidence}/notifications-expanded-${width}-${mode}.png`, fullPage: true });
     await panel.locator('[data-pd-id="notifications.view-actionable"]').click();
     await expect(page).toHaveURL(/\/tasks\?view=actionable$/);
-    await expect(page.locator('[data-pd-id="tasks.v2.pagination"]')).toContainText("Showing 1–16 of 27");
+    await expect(page.locator('[data-pd-id="tasks.v2.pagination"]')).toContainText("Showing 1–8 of 27");
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
     await page.locator('[data-pd-id="notifications.trigger"]').click();
     await page.locator('[data-pd-id="notifications.view-all"]').click();

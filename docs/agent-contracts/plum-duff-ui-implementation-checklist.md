@@ -2,6 +2,14 @@
 
 Complete this for every feature, bug fix, component, fixture-backed UI, route or page change.
 
+## CP-134 eight-task Today and isolated tracking — 2026-11-04 / #118
+
+- [x] V2 Today defaults to eight rows, retains 8/16/32 and compact range navigation. The legacy 16-row default and global ledger pagination are unchanged.
+- [x] Reused the connected Lab work-state chip, Today collection/detail/Board, Track All styling and five-item header preview. Individual and detail Track actions, visible-page bulk scope, history states and source actions are kept distinct.
+- [x] The synthetic candidate alone installs `task_annotations` and mounts GET/PATCH. Viewer email, active owning Profile and current source occurrence are rechecked; batch writes are atomic and versioned. Read/clear, financial source records and source completion are untouched. The normal API/schema activation request is recorded in `docs/planning/cp134-task-annotations-normal-activation.md`.
+- [x] Synthetic API checks cover persistence, idempotency, conflict, source resolved/changed/unavailable, foreign Profile rejection and viewer separation. Final focused integrated V2 checks pass 2/2 for Track/Untrack, work state, refresh/new session, header, page-two and bulk scope; CP-133 desktop/mobile/theme and Chromium 200% visual paths pass 8/8 with CP-134. The broader V2 run passed 23 paths, skipped five legacy-only paths and had one test-only mobile assertion failure; the corrected focused path passed. Legacy flag-OFF passed 9/9. Web unit 706/706, typecheck and build pass; web lint has zero errors and 12 inherited warnings. Changed API files pass Ruff; the separate repository baseline remains 270 findings.
+- [ ] Normal-owner API 8010 and database migration approval, owner visual acceptance and spoken screen-reader verification remain open. The normal V2 page states that personal tracking awaits activation.
+
 ## CP-133 Today queue, notification triage and Profile choice — 2026-11-04 / #118
 
 - [x] Reused the Lab Today row, collection, detail, filter and notification surface; added V2-only row separation and compact pagination. The real task source, notification persistence and old-shell task ranking remain separate.
