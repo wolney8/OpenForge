@@ -2,6 +2,13 @@
 
 Complete this for every feature, bug fix, component, fixture-backed UI, route or page change.
 
+## CP-130 real login presentation and OAuth blocker — 2026-11-04 / #118
+
+- [x] Reused the exact Lab auth card, brand and action CSS through one shared presentation component. The real Google endpoint, safe return path, registration link and public auth error semantics remain; no simulated sign-in behaviour was transferred.
+- [x] Compared the public login at 1280/390 px in light/dark, including error, expiry, keyboard focus, action containment and page overflow. Five focused login paths and one existing public error path pass; real button text contrast is 7.44:1 light and 10.96:1 dark. Scoped typecheck, lint and auth unit/API tests pass.
+- [x] Searched equivalent public auth and Lab components; the shared card now drives both, and the signed-in shell remains absent on the login route. No financial data, authentication secret or normal API configuration was changed.
+- [ ] Actual owner Google callback, authenticated `/` and `/design-lab` navigation, paired authenticated Lab screenshot, production build and flag-OFF rollback remain unverified. The owner reported `invalid_oauth_state`; a fresh synthetic state validates, but the failing owner-browser cause has not been established. This tranche is incomplete until that live gate passes.
+
 ## CP-129 specialist and management continuation — 2026-11-04 / #118
 
 - [x] Compared Lab financial workbench cards and real Sportsbook, Free Bet and Casino native Add editors; shared the actual Lab stage-card component with all three while keeping their required fields, tab contract, Save/correction, modal scroll ownership and legacy flag-OFF tree. Desktop light and mobile dark Add editor geometry/footer paths passed in synthetic Playwright.
