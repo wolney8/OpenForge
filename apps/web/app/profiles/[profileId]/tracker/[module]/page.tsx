@@ -133,9 +133,9 @@ export default async function TrackerModulePage({
       ) : module === "cash-adjustments" ? (
         <CashAdjustmentWorkflowShell profileId={profile.profileId} visualV2={visualV2} />
       ) : module === "profit-tracker" ? (
-        <TrackerSummaryShell profileId={profile.profileId} variant="profit-tracker" />
+        <TrackerSummaryShell profileId={profile.profileId} variant="profit-tracker" visualV2={visualV2} />
       ) : module === "reports" ? (
-        <TrackerSummaryShell profileId={profile.profileId} variant="reports" />
+        <TrackerSummaryShell profileId={profile.profileId} variant="reports" visualV2={visualV2} />
       ) : module === "settings" ? (
         <ProfileSettingsShell profileId={profile.profileId} />
       ) : hasTable ? (

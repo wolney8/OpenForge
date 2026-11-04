@@ -6438,3 +6438,17 @@ The real Today route now renders the connected Lab toolbar and filter components
 | Calculators and Oddsmatcher | PARTIAL — shared V2 shell | Specialist routes reachable | Existing engines retained | The Lab supplies no complete specialist screen equivalents; shell and accessibility are the current design boundary |
 
 This is an integration checkpoint, not full application Design Acceptance. Existing financial-fixture baseline failures remain separate; saved ledger views and Today persistence still require their documented authority approval.
+
+## CP-128 Reports and Profiles screen composition — 2026-11-04
+
+The real Reports route now places the connected Lab chart, a ledger P&L breakdown and source drilldown in the Lab's order. All values come from the existing governed report explorer. Extra real filters, recipes, source tables and formal reports remain available in disclosures. The Profile Reports route uses the shared Lab metric strip and the same governed explorer presentation. The Profiles route now places the Lab's shared Profile rows and surface first; the full operational directory table, financial overview, workload and balance history remain accessible. The flag-OFF tree retains its prior order and table.
+
+| Route group | Design Acceptance | Interaction Acceptance | Integration Acceptance | Remaining difference |
+| --- | --- | --- | --- | --- |
+| Combined Reports | PARTIAL — Lab chart, breakdown, source rows and main ordering directly shared | ADOPTED for chart modes, source links and advanced disclosure | Governing report dates, Profile scope, incomplete values and formal reports retained | Real scope/range toolbar, metric semantics, explorer recipes and formal reports exceed the Lab sample; owner visual acceptance open |
+| Profile Reports and Profit Tracker | PARTIAL — Profile Reports uses shared metric/chart composition; Profit Tracker retains specialist layout | Existing controls and source drilldowns retained | Realised/projected, current/final and retained values remain distinct | Profit Tracker has no complete Lab equivalent; Profile Reports retains extra real module and formal reports |
+| Profiles and management | PARTIAL — Lab Profile list and surface shared on V2 directory | ADOPTED for primary Position links and full table disclosure | Directory columns, management links, financial overview, workload and history retained | Detail, onboarding, Accounts management and Settings still use established real layouts; Lab shows only limited management previews |
+| Six ledgers and native editors | PARTIAL — unchanged from CP-127 | Existing shared grid/edit journeys retained | Established financial workflows retained | Full native financial editor composition still differs from Lab's smaller synthetic Quick Capture/workbench |
+| Today, Notifications, Calculators and Oddsmatcher | Existing CP-127 status retained | Existing CP-127 status retained | Existing authorities and specialist engines retained | No CP-128 change claimed |
+
+The separate Design, Interaction and Integration gates remain open for full application adoption. Saved views and Today tracking persistence still require their documented authority amendments; no financial/API/schema change was made in this tranche.

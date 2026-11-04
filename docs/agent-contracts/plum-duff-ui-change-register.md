@@ -1380,3 +1380,7 @@ Owner continuation under [#118](https://github.com/wolney8/OpenForge/issues/118)
 | PD-PR-117A-51 | Consolidated paired Lab/V2 complete-route screenshots, integrated journeys, theme/zoom/a11y, synthetic regressions, rollback, source custody and issue evidence | CP-117 independent fixture runner and local 3010 source pin | IN PROGRESS — paired route captures, Today/Notifications recordings, actual 200% zoom and 22 V2 plus 6 flag-OFF synthetic checks; final whole-application Design Acceptance remains open |
 
 Saved-view and Today annotation persistence stay behind their existing API/schema authority gates; this request does not approve them. No main merge, hosted deployment or normal-owner automated financial writes.
+
+## CP-128 whole-screen continuation — 2026-11-04
+
+Owner continuation under [#118](https://github.com/wolney8/OpenForge/issues/118) retains IDs `PD-PR-117A-46–51`. Reports (`PD-PR-117A-48`) is IN PROGRESS: the connected Lab report chart and report surface are the signed-off equivalents for the real governed chart and ledger breakdown. Specialist editors (`46`), Today/Notifications (`47`), Profiles/Accounts/Settings (`49`), specialist navigation (`50`) and consolidated evidence (`51`) remain IN PROGRESS or NEEDS VERIFICATION until their complete routes pass the separate Design, Interaction and Integration gates. No request is treated as complete because one control or screen fragment changed.

@@ -130,7 +130,7 @@ for (const route of routes) {
         }
         if (route.name === "reports") {
           await expect(page.locator('[data-pd-id="reports.explorer"]')).toBeVisible();
-          await page.locator(".v2-position-detail > summary").click();
+          await page.getByText("Formal reports and source records", { exact: true }).click();
           const source = page.locator('[data-pd-id="reports.period-pnl.records"]');
           if (await source.count()) await expect(source).toHaveCSS("position", "static");
         }
@@ -349,6 +349,7 @@ test("six ledgers: shared grid cell rhythm and pinned Actions", async ({ page })
 });
 
 test("actual 200% zoom retains the full spreadsheet and notification filters", async ({}, info) => {
+  await mkdir(evidence, { recursive: true });
   const scratch = await mkdtemp(join(tmpdir(), "pd-cp126-zoom-"));
   const extension = join(scratch, "extension");
   await mkdir(extension);
@@ -379,6 +380,18 @@ test("actual 200% zoom retains the full spreadsheet and notification filters", a
     await page.locator('[data-pd-id="notifications.history.advanced-filters"] summary').click();
     await expect(page.getByRole("searchbox", { name: "Search notifications by name or context" })).toBeVisible();
     await noPageOverflow(page);
+    await page.goto(`${String(info.project.use.baseURL)}/reports`);
+    await expect(page.locator('[data-pd-id="reports.ledger-breakdown"]')).toBeVisible({ timeout: 45_000 });
+    await noPageOverflow(page);
+    await page.screenshot({ path: join(evidence, "v2-reports-actual-200-percent.png"), fullPage: true });
+    await page.goto(`${String(info.project.use.baseURL)}/profiles`);
+    await expect(page.locator('[data-pd-id="profiles.design-list"]')).toBeVisible();
+    await noPageOverflow(page);
+    const directoryDetails = page.locator('[data-pd-id="profiles.directory.details"]');
+    await directoryDetails.locator(':scope > summary').click();
+    await expect(directoryDetails.locator('table')).toBeVisible();
+    await noPageOverflow(page);
+    await page.screenshot({ path: join(evidence, "v2-profiles-actual-200-percent.png"), fullPage: true });
   } finally {
     await context.close();
     await rm(scratch, { recursive: true, force: true });
@@ -586,6 +599,14 @@ for (const route of integratedRoutes) {
         if (route.name === "profiles") {
           await expect(page.locator('[data-pd-id="profiles.directory.panel"]')).toBeVisible({ timeout: 45_000 });
           await expect(page.locator('[data-pd-id="profiles.directory.panel"] .stat-strip')).not.toContainText(/Loading|Updating/, { timeout: 45_000 });
+          const directoryTop = await page.locator('[data-pd-id="profiles.design-screen"]').evaluate(element => element.getBoundingClientRect().top);
+          const overviewTop = await page.locator('[data-pd-id="profiles.workload"]').evaluate(element => element.getBoundingClientRect().top);
+          expect(directoryTop).toBeLessThan(overviewTop);
+          await expect(page.locator('[data-pd-id="profiles.design-list"] a').first()).toHaveAttribute("href", /\/profiles\/[^/]+\/tracker\/dashboard/);
+          const detailedDirectory = page.locator('[data-pd-id="profiles.directory.details"]');
+          await detailedDirectory.locator(':scope > summary').click();
+          await expect(detailedDirectory.locator('table')).toBeVisible();
+          await detailedDirectory.locator(':scope > summary').click();
         }
         if (route.name === "settings") {
           await expect(page.locator('[data-pd-id="account-catalogue.section"]')).toHaveAttribute("aria-busy", "false", { timeout: 45_000 });
@@ -602,6 +623,30 @@ for (const route of integratedRoutes) {
   }
 }
 
+for (const width of [1440, 390] as const) {
+  for (const theme of ["light", "dark"] as const) {
+    test(`Profiles ${width} ${theme}: paired Lab and V2 directory`, async ({ page }) => {
+      await mkdir(evidence, { recursive: true });
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto("/design-lab");
+      await page.locator('[data-pd-id="design-lab-connected.root"]').waitFor();
+      const cookie = page.getByRole("button", { name: "Understood" });
+      if (await cookie.isVisible()) await cookie.click();
+      if (width < 761) await page.getByRole("button", { name: "Open navigation" }).click();
+      await page.getByRole("button", { name: "See More" }).click();
+      await page.locator('[data-pd-id="lab.nav.profiles"]').click();
+      await setTheme(page, theme);
+      await expect(page.locator('[data-pd-id="lab.profiles"]')).toBeVisible();
+      await page.screenshot({ path: join(evidence, `lab-profiles-${width}-${theme}.png`), fullPage: true });
+      await page.goto("/profiles");
+      await expect(page.locator('[data-pd-id="profiles.design-list"]')).toBeVisible();
+      await setTheme(page, theme);
+      await noPageOverflow(page);
+      await page.screenshot({ path: join(evidence, `v2-profiles-paired-${width}-${theme}.png`), fullPage: true });
+    });
+  }
+}
+
 test("Reports uses governed integrated points and source drilldown", async ({ page }) => {
   await mkdir(evidence, { recursive: true });
   await page.setViewportSize({ width: 1440, height: 900 });
@@ -610,18 +655,71 @@ test("Reports uses governed integrated points and source drilldown", async ({ pa
   await expect(page.locator('[data-pd-id="reports.metrics"]')).not.toContainText(/Loading|Updating/, { timeout: 45_000 });
   await setTheme(page, "light");
   const explorer = page.locator('[data-pd-id="reports.explorer"]');
+  await explorer.locator('[data-pd-id="reports.explorer.advanced"] > summary').click();
   await explorer.getByRole("button", { name: "Custom", exact: true }).click();
   await explorer.getByLabel("Explorer start").fill("2025-01-01");
   await explorer.getByLabel("Explorer end").fill("2026-12-31");
+  await expect(explorer.locator('[data-pd-id="reports.chart-period"]')).toContainText("2025-01-01 to 2026-12-31");
   await expect(explorer.locator('[data-pd-id="reports.explorer.total"]')).not.toContainText(/Loading|Unavailable/);
   const labChart = explorer.locator('[data-pd-id="reports.lab-chart"]');
   await expect(labChart).toBeVisible();
+  await expect(explorer.locator('[data-pd-id="reports.ledger-breakdown"]')).toBeVisible();
+  await expect(explorer.locator('[data-pd-id="reports.ledger-breakdown.values"]')).toContainText(/Sportsbook|Free Bets|Casino/);
+  const sourceRows = explorer.locator('[data-pd-id="reports.source-drilldown.rows"] a');
+  await expect(sourceRows.first()).toHaveAttribute("href", /\/profiles\/[^/]+\/tracker\//);
+  const reportMetricLabels = await page.locator('[data-pd-id="reports.metrics"] > div > span').allTextContents();
+  expect(reportMetricLabels).toEqual(["Selected range P&L", "Current liability", "Known cash"]);
+  await explorer.locator('[data-pd-id="reports.explorer.advanced"] > summary').click();
   await page.screenshot({ path: join(evidence, "v2-reports-real-points-1440-light.png"), fullPage: true });
   await labChart.getByRole("button", { name: /Open .* source records/ }).first().click();
+  await expect(explorer.locator('[data-pd-id="reports.explorer.advanced"]')).toHaveAttribute("open", "");
   await expect(explorer.locator(".v2-report-source-detail")).toHaveAttribute("open", "");
   await expect(explorer.locator('[data-pd-id="reports.explorer.sources"]')).toBeVisible();
   await explorer.getByRole("combobox", { name: "Explorer metric" }).selectOption("count");
   await expect(explorer.locator('[data-pd-id="reports.lab-chart"]')).toHaveCount(0);
+  await explorer.getByLabel("Explorer start").fill("2026-12-31");
+  await explorer.getByLabel("Explorer end").fill("2026-01-01");
+  await expect(explorer.locator('p[role="alert"]')).toContainText("Choose a valid Explorer date range");
+  await noPageOverflow(page);
+});
+
+test("Profile Reports preserve governed metrics in the Lab composition", async ({ page }) => {
+  await mkdir(evidence, { recursive: true });
+  await page.goto(`${profile}/reports`);
+  const metrics = page.locator('[data-pd-id="profile-reports.metrics"]');
+  await expect(metrics).toBeVisible({ timeout: 45_000 });
+  await expect(metrics.locator(':scope > div')).toHaveCount(3);
+  await expect(metrics).toContainText("Selected range P&L");
+  await expect(metrics).toContainText("Retained profit");
+  await expect(metrics).toContainText("Open current / settled final");
+  await expect(page.locator('[data-pd-id="reports.explorer"]')).toBeVisible();
+  await page.screenshot({ path: join(evidence, "v2-profile-reports-1440-light.png"), fullPage: true });
+  await noPageOverflow(page);
+});
+
+test("V2 management and specialist navigation retains the real routes", async ({ page }) => {
+  await mkdir(evidence, { recursive: true });
+  await page.goto("/profiles");
+  const directory = page.locator('[data-pd-id="profiles.directory.details"]');
+  await directory.locator(':scope > summary').click();
+  await directory.getByRole("link", { name: /Manage Subscriber Alpha/ }).click();
+  await expect(page.locator('[data-pd-id="profile-management.page"]')).toBeVisible();
+  await page.getByRole("tab", { name: "Accounts", exact: true }).click();
+  await expect(page.getByRole("link", { name: "Open Accounts" })).toBeVisible();
+  await page.screenshot({ path: join(evidence, "v2-profile-management-accounts-1440-light.png"), fullPage: true });
+  await page.goto("/profiles/new");
+  await expect(page.locator('[data-pd-id="founder-onboarding.page"]')).toBeVisible();
+  await page.screenshot({ path: join(evidence, "v2-onboarding-1440-light.png"), fullPage: true });
+  await page.goto("/settings");
+  await expect(page.locator('[data-pd-id="fund-manager-settings.tabs"]')).toBeVisible();
+  await page.getByRole("tab", { name: "Lists", exact: true }).click();
+  await page.screenshot({ path: join(evidence, "v2-settings-lists-1440-light.png"), fullPage: true });
+  await page.locator('[data-pd-id="ux-v2.launcher.trigger"]').click();
+  await page.locator('[data-pd-id="ux-v2.launcher.calculators"]').click();
+  await expect(page).toHaveURL(/\/fund-manager\/calculators/);
+  await page.locator('[data-pd-id="ux-v2.launcher.trigger"]').click();
+  await page.locator('[data-pd-id="ux-v2.launcher.oddsmatcher"]').click();
+  await expect(page).toHaveURL(/\/oddsmatcher/);
   await noPageOverflow(page);
 });
 
@@ -643,19 +741,22 @@ for (const width of [1440, 390] as const) {
       await page.screenshot({ path: join(evidence, `lab-reports-chart-${width}-${theme}.png`), fullPage: true });
       await page.goto("/reports");
       const explorer = page.locator('[data-pd-id="reports.explorer"]');
+      await explorer.locator('[data-pd-id="reports.explorer.advanced"] > summary').click();
       await explorer.getByRole("button", { name: "Custom", exact: true }).click();
       await explorer.getByLabel("Explorer start").fill("2026-01-01");
       await explorer.getByLabel("Explorer end").fill("2026-12-31");
+      await explorer.locator('[data-pd-id="reports.explorer.advanced"] > summary').click();
       await setTheme(page, theme);
       const real = explorer.locator('[data-pd-id="reports.lab-chart"]');
       await expect(real).toBeVisible();
       const realStyle = await real.evaluate(element => ({ className: element.className, radius: getComputedStyle(element).borderRadius, padding: getComputedStyle(element).padding }));
       expect(realStyle).toEqual(labStyle);
+      await noPageOverflow(page);
+      await page.screenshot({ path: join(evidence, `v2-reports-chart-${width}-${theme}.png`), fullPage: true });
       await real.getByRole("radio", { name: "Line" }).click();
       await expect(real.getByRole("radio", { name: "Line" })).toHaveAttribute("aria-checked", "true");
       await expect(real.getByRole("img", { name: /Line chart of authoritative daily realised P&L/ })).toBeVisible();
-      await noPageOverflow(page);
-      await page.screenshot({ path: join(evidence, `v2-reports-chart-${width}-${theme}.png`), fullPage: true });
+      await page.screenshot({ path: join(evidence, `v2-reports-line-${width}-${theme}.png`), fullPage: true });
     });
   }
 }

@@ -2,6 +2,14 @@
 
 Complete this for every feature, bug fix, component, fixture-backed UI, route or page change.
 
+## CP-128 Reports and Profiles whole-screen composition — 2026-11-04 / #118
+
+- [x] Compared the connected Lab Reports and Profiles screens with independently authenticated, populated V2 at 1440/390 px in both themes. Reused the actual Lab report chart, report surfaces, source-row treatment, Profile surface and Profile task rows. The real adapters retain authoritative values, Profile links, filters, formal reports, directory actions and incomplete states.
+- [x] Main Reports order now reads metrics, chart, ledger breakdown and source drilldown; additional explorer/formal-report controls remain accessible in disclosures. V2 Profiles opens with the Lab list and keeps the full operational table, financial overview, workload and balance history. Legacy flag-OFF rendering remains conditional.
+- [x] Focused browser paths checked chart source disclosure, real source links, Profile directory detail table, desktop/mobile light/dark overflow and actual Chromium 200% zoom. Web typecheck, lint and 701 unit tests passed; lint retains 12 inherited warnings.
+- [x] Consolidated visual suite ran 90 paths: 86 passed; four Profit Tracker failures came from an incorrect new heading assertion, which was removed, and all four affected cases passed on rerun (11/11 focused paths). The independent synthetic runner passed 22 V2 paths and seven flag-OFF paths, including Profile directory rollback. Final build and local source-pin verification are recorded in the delivery receipt.
+- [ ] Full native editor, Profit Tracker, onboarding, settings and remaining management Design Acceptance remain open. Additional real financial controls are documented in the CP-128 route matrix; owner visual judgement and spoken screen-reader review remain unverified.
+
 ## CP-127 Today whole-screen integration — 2026-11-04 / #118
 
 - [x] Used the connected Lab toolbar, filter, select, list/board, row and detail presentation components for the real Today route; retained the unchanged legacy flag-OFF table and the established task/notification source authority.

@@ -7,6 +7,7 @@ import { FinancialValue } from "@/components/financial-value";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { ReportPointChart } from "@/components/report-point-chart";
 import { DesignLabReportChart } from "@/components/design-lab-report-chart";
+import { DesignReportAdvanced, DesignReportBreakdown, DesignReportSourceRows, DesignReportSurface, designReportClasses } from "@/components/design-report-presentation";
 import { buildSparklinePoints } from "@/lib/dashboard-analytics";
 import { usePersistedState } from "@/lib/ledger-ui";
 import {
@@ -26,6 +27,7 @@ const boundedPage=(page:number,count:number)=>Math.min(Math.max(1,page),Math.max
 export function ReportExplorer({scopes,contextKey,state,scopeLabel,summaryFirst=false}:{scopes:ExplorerScope[];contextKey:string;state:"ready"|"loading"|"error";scopeLabel?:string;summaryFirst?:boolean}) {
   const SourceContainer = summaryFirst ? "details" : "div";
   const sourceId = `report-explorer-source-${contextKey}`;
+  const controlsId = `report-explorer-controls-${contextKey}`;
   const [stored,setStored]=usePersistedState<Selection>("openforge-report-explorer:"+contextKey,defaults);
   const [showMoreRecipes,setShowMoreRecipes]=useState(false);
   const [groupPage,setGroupPage]=useState(1),[groupPageSize,setGroupPageSize]=useState(16);
@@ -40,6 +42,8 @@ export function ReportExplorer({scopes,contextKey,state,scopeLabel,summaryFirst=
   const rows=useMemo(()=>buildExplorerRecords(scopes),[scopes]);
   const range=explorerRange(selection.preset,new Date(),selection.start,selection.end);
   const output=exploreRecords(rows,selection.metric,range,selection.filters,selection.group);
+  const moduleOutput=summaryFirst&&selection.metric==="pnl"?exploreRecords(rows,"pnl",range,selection.filters,"module"):null;
+  const visibleModuleGroups=moduleOutput?.groups.filter(group=>moduleOutput.eligibleRecords.some(record=>record.module===group.key))??[];
   const count=selection.metric==="count";
   const unit=selection.filters.module?.includes("sportsbook-bets")?"Placed sportsbook records":selection.filters.module?.includes("free-bets")?"Placed Free Bet records":"Activities";
   const complete=state==="ready"&&output.valid&&!output.unknown&&!output.undated.length;
@@ -70,7 +74,27 @@ export function ReportExplorer({scopes,contextKey,state,scopeLabel,summaryFirst=
   });
   const resetFilters=()=>change({...defaults,filters:{},expanded:"",point:""});
 
-  return <section className="content-subpanel stack" aria-label="Reports Explorer" data-pd-id="reports.explorer">
+  return <section className={summaryFirst?designReportClasses.grid:"content-subpanel stack"} aria-label="Reports Explorer" data-pd-id="reports.explorer">
+    {summaryFirst?<p className="field-hint" data-pd-id="reports.chart-period">Explorer period · {selection.preset} · {range.start??"Choose start"} to {range.end??"choose end"}{scopeLabel?` · ${scopeLabel}`:""}</p>:null}
+    {summaryFirst&&state==="loading"?<p role="status">Loading selected Profile reports…</p>:null}
+    {summaryFirst&&state==="error"?<p role="alert">Selected Profile reports are unavailable. Open report data and filters for source details.</p>:null}
+    {summaryFirst&&state==="ready"&&!output.valid?<p role="alert">Choose a valid Explorer date range in report data and filters.</p>:null}
+    {summaryFirst&&state==="ready"&&output.valid ? useLabChart ? <DesignLabReportChart dataPdId="reports.lab-chart" points={points.map(point=>({id:point.key,date:point.label,value:point.value}))}
+      valueDescription="authoritative daily realised P&L" sourceActionLabel="source records"
+      onOpen={date=>{change({point:date});document.getElementById(controlsId)?.setAttribute("open","");document.getElementById(sourceId)?.setAttribute("open","");}}/> : !count&&points.length ? <ReportPointChart area={graph.area} line={graph.line} zeroY={graph.zeroY} label="Explorer daily values" points={points} selectedIndex={pointIndex} onSelect={index=>{change({point:points[index].key});document.getElementById(controlsId)?.setAttribute("open","");document.getElementById(sourceId)?.setAttribute("open","");}}/> : <DesignReportSurface title="Performance" dataPdId="reports.performance-empty"><p>No dated, complete values are available for this chart selection. The source results remain available below.</p></DesignReportSurface> : null}
+    {moduleOutput&&state==="ready"&&moduleOutput.valid ? <DesignReportSurface title="P&L by ledger" dataPdId="reports.ledger-breakdown">
+      <DesignReportBreakdown dataPdId="reports.ledger-breakdown.values" rows={visibleModuleGroups.length?visibleModuleGroups.map(group=>({key:group.key,label:explorerModules[group.key]??group.key,value:group.unknown?<>Incomplete · known {money(group.known)}</>:money(group.known)})):[{key:"none",label:"Selected range",value:"No dated settled results"}]} />
+      {moduleOutput.undated.length||moduleOutput.unknown?<p className="field-hint">{moduleOutput.unknown} unavailable eligible results · {moduleOutput.undated.length} undated candidate records. Known subtotals are incomplete.</p>:null}
+    </DesignReportSurface> : null}
+    {moduleOutput&&state==="ready"&&moduleOutput.valid ? <DesignReportSurface title="Source drilldown" dataPdId="reports.source-drilldown">
+      <DesignReportSourceRows dataPdId="reports.source-drilldown.rows">
+        {moduleOutput.eligibleRecords.slice(0,8).map(record=><Link href={`/profiles/${record.profileId}/tracker/${record.module}?search=${encodeURIComponent(record.id)}&source=report-explorer`} key={`${record.profileId}:${record.module}:${record.id}`}><span><strong>{record.label}</strong><small>{record.profileLabel} · {explorerModules[record.module]} · {record.date}</small></span><span>{Number.isFinite(record.value)?money(record.value):"Unavailable"}</span></Link>)}
+      </DesignReportSourceRows>
+      {!moduleOutput.eligibleRecords.length?<p>No dated settled source records are available for this selection.</p>:null}
+      {moduleOutput.eligibleRecords.length>8?<button className="button-link" onClick={()=>{document.getElementById(controlsId)?.setAttribute("open","");document.getElementById(sourceId)?.setAttribute("open","");}} type="button">View all matching source records</button>:null}
+    </DesignReportSurface> : null}
+    <DesignReportAdvanced dataPdId="reports.explorer.advanced" enabled={summaryFirst} id={controlsId}>
+    <section className="content-subpanel stack" data-pd-id="reports.explorer.controls">
     <div className="section-heading-row formal-report-section-heading"><h3>Trend And Activity Explorer <ContextHelp label="About Trend And Activity Explorer"
       text="Profile performance, not Fund Manager earnings. Realised betting P&L uses authoritative settled results once; funding, balances and History are excluded. Matching records can include open activity without treating it as realised profit. Cash costs and withdrawals are separate signed metrics. The date is the existing reporting date, not independently recorded placement time. Missing dates or results make totals incomplete."/></h3></div>
     <p className="field-hint">Scope: {scopeLabel??(scopes.map(scope=>scope.label).join(", ")||"No Profiles selected")}. Reporting dates · Europe/London · {range.start??"Choose start"} to {range.end??"choose end"}.</p>
@@ -113,9 +137,6 @@ export function ReportExplorer({scopes,contextKey,state,scopeLabel,summaryFirst=
     <dl className="dashboard-focus-list"><div><dt>{count?unit:metrics[selection.metric]}</dt><dd data-pd-id="reports.explorer.total">{state!=="ready"?state==="loading"?"Loading…":"Unavailable — selected Profile data failed":!output.valid?"Choose a valid range":complete?value(output.known):"Incomplete"}</dd></div><div><dt>Matching Records</dt><dd data-pd-id="reports.explorer.match-count">{state==="ready"&&output.valid?output.records.length:"—"}</dd></div></dl>
     {state==="ready"&&output.valid&&!complete?<p role="status">Known subtotal: {value(output.known)}. {output.unknown} unavailable eligible {output.unknown===1?"result":"results"}; {output.undated.length} undated candidate {output.undated.length===1?"record":"records"}. These are not a complete selected-range total.</p>:null}
     {state==="ready"&&output.valid?<>
-      {useLabChart?<DesignLabReportChart dataPdId="reports.lab-chart" points={points.map(point=>({id:point.key,date:point.label,value:point.value}))}
-        valueDescription="authoritative daily realised P&L" sourceActionLabel="source records"
-        onOpen={date=>{change({point:date});document.getElementById(sourceId)?.setAttribute("open","");}}/>:summaryFirst&&!count&&points.length?<ReportPointChart area={graph.area} line={graph.line} zeroY={graph.zeroY} label="Explorer daily values" points={points} selectedIndex={pointIndex} onSelect={index=>{change({point:points[index].key});document.getElementById(sourceId)?.setAttribute("open","");}}/>:null}
       <SourceContainer className={summaryFirst?"v2-report-source-detail":undefined} id={sourceId}>
         {summaryFirst?<summary>Explore grouped results and source records</summary>:null}
       <LedgerPagination ariaLabel="Explorer Groups" currentPage={boundedPage(groupPage,groupPageCount)} onPageChange={setGroupPage} onPageSizeChange={size=>{setGroupPageSize(size);setGroupPage(1);}} pageCount={groupPageCount} pageSize={groupPageSize} position="top" totalRows={output.groups.length}/>
@@ -136,5 +157,7 @@ export function ReportExplorer({scopes,contextKey,state,scopeLabel,summaryFirst=
       </SourceContainer>
       {!summaryFirst&&!count&&points.length?<ReportPointChart area={graph.area} line={graph.line} zeroY={graph.zeroY} label="Explorer daily values" points={points} selectedIndex={pointIndex} onSelect={index=>change({point:points[index].key})}/>:null}
     </>:null}
+    </section>
+    </DesignReportAdvanced>
   </section>;
 }

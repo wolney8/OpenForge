@@ -6,6 +6,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ReportExplorer } from "@/components/report-explorer";
+import { DesignPositionMetrics } from "@/components/design-position-presentation";
 import { PeriodPnlReport } from "@/components/period-pnl-report";
 import { apiBaseUrl } from "@/lib/api";
 import { AccessScopeBadge } from "@/components/access-scope-badge";
@@ -57,6 +58,7 @@ type TrackerSummaryShellProps = {
   profileId: string;
   profileTitle?: string;
   variant: SummaryVariant;
+  visualV2?: boolean;
 };
 
 type TrackerSettingsRecord = {
@@ -263,7 +265,7 @@ function renderAttentionTable({
   });
 }
 
-export function TrackerSummaryShell({ profileId, profileTitle, variant }: TrackerSummaryShellProps) {
+export function TrackerSummaryShell({ profileId, profileTitle, variant, visualV2 = false }: TrackerSummaryShellProps) {
   const { catalogue: bookmakerCatalogue, providerIdsByName } = useBookmakerCatalogue(profileId);
   const [data, setData] = useState<TrackerSummaryDataset | null>(null);
   const [feePeriods, setFeePeriods] = useState<FeePeriodApiRecord[]>([]);
@@ -666,7 +668,7 @@ export function TrackerSummaryShell({ profileId, profileTitle, variant }: Tracke
             rangeDetail={formatResolvedDateRangeContext(displayedRange)}
             rangeContext={formatResolvedDateRange(displayedRange)}
           />
-          {summary && !isDashboardLike ? (
+          {summary && !isDashboardLike && !visualV2 ? (
             <>
               <FinancialValueReplayGroup><article className="stat-card">
                 <span className="eyebrow">Selected Range P&amp;L</span>
@@ -705,6 +707,14 @@ export function TrackerSummaryShell({ profileId, profileTitle, variant }: Tracke
             </>
           ) : null}
         </section>
+        {summary && isReports && visualV2 ? <>
+          <DesignPositionMetrics dataPdId="profile-reports.metrics" label="Profile reports metrics" items={[
+            { key: "pnl", label: "Selected range P&L", value: <FinancialReadValue state={selectedRangeReadState} subject="value" value={summary.profitQuickView.overallPnl} animate={false} />, description: "Authoritative selected range profit and loss" },
+            { key: "retained", label: "Retained profit", value: <FinancialReadValue state={selectedRangeReadState} subject="value" value={summary.reportingModel.selectedRange.retainedProfit} animate={false} />, description: "After withdrawals, costs and retained adjustments" },
+            { key: "current-final", label: "Open current / settled final", value: <><FinancialReadValue state={selectedRangeReadState} subject="value" value={summary.reportingModel.selectedRange.openCurrentValue} animate={false} /> / <FinancialReadValue state={selectedRangeReadState} subject="value" value={summary.reportingModel.selectedRange.settledFinalValue} animate={false} /></>, description: "Current value remains separate from settled value" },
+          ]} />
+          <details className="v2-position-detail"><summary>Formal report periods</summary><p>{summary.reportingModel.formalReports.weeklyPeriods} weekly, {summary.reportingModel.formalReports.monthlyPeriods} monthly and {summary.reportingModel.formalReports.yearlyPeriods} yearly periods.</p></details>
+        </> : null}
         {!isDashboardLike && trackerRangeError ? (
           <p className="error-text" role="alert">
             {trackerRangeError}
@@ -1322,7 +1332,7 @@ export function TrackerSummaryShell({ profileId, profileTitle, variant }: Tracke
                       )),
               })}
 
-              {data ? <ReportExplorer contextKey={profileId} state={selectedRangeReadState} scopes={[{profileId,label:"This Profile",dataset:data}]} /> : null}
+              {data ? <ReportExplorer contextKey={profileId} state={selectedRangeReadState} scopes={[{profileId,label:"This Profile",dataset:data}]} summaryFirst={visualV2} /> : null}
               {data ? <PeriodPnlReport rows={summary.weeklyReports} contextKey={profileId}
                 scopes={[{ profileId, label: "This Profile", dataset: data }]} /> : null}
               {renderReportTable({ title: "Weekly reports", rows: summary.weeklyReports })}

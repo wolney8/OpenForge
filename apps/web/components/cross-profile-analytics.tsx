@@ -8,6 +8,7 @@ import { CurrentAccountCash } from "@/components/current-account-cash";
 
 import Link from "next/link";
 import { ReportExplorer } from "@/components/report-explorer";
+import { DesignManagementDetail, DesignManagementSurface } from "@/components/design-management-presentation";
 import { DesignPositionMetrics, DesignPositionWorkGrid, DesignPositionSurface, DesignPositionSectionHead, DesignPositionTask, DesignPositionShortcut, designPositionActionClasses } from "@/components/design-position-presentation";
 import { PeriodPnlReport } from "@/components/period-pnl-report";
 import { LedgerPagination } from "@/components/ledger-pagination";
@@ -1157,6 +1158,73 @@ export function CrossProfileAnalytics({
 
   const reportingIsLoading = isLoading && activeTab !== "profiles";
   const failedProfileIds = new Set(failures.map((failure) => failure.profileId));
+  const cashMetric = { key: "cash", label: "Known cash", value: selectedReadState === "ready" && combined.incompleteCashAccountCount > 0 ? <FinancialValue value={combined.knownCashSubtotal} animate={false} /> : <FinancialReadValue state={selectedReadState} subject="Account cash" value={combined.totals.cashSnapshot} animate={false} />, description: combined.incompleteCashAccountCount > 0 ? `Incomplete · ${combined.incompleteCashAccountCount} Account ${combined.incompleteCashAccountCount === 1 ? "balance" : "balances"} missing` : "Current Account balances" };
+  const pnlMetric = { key: "pnl", label: "Selected range P&L", value: <FinancialAggregateReadValue aggregate={combined.selectedRangeFinancials.grossBettingPnl} label="selected range profit and loss" state={selectedReadState} subject="profit and loss" />, description: `${preset} · governed reporting values` };
+  const liabilityMetric = { key: "liability", label: "Current liability", value: <FinancialReadValue state={selectedReadState} subject="current liability" value={combined.totals.currentLiability} animate={false} />, description: "Open sportsbook, Free Bet and Extra Place exposure" };
+
+  const profileOverview = <>
+        <section
+          aria-busy={headlineReadState === "loading"}
+          className="stat-strip"
+          aria-label="All-profile headline totals"
+        >
+          <FinancialValueReplayGroup>
+            <article className="stat-card">
+              <span className="eyebrow">Gross P&amp;L</span>
+              <strong><FinancialReadValue state={headlineReadState} subject="gross profit and loss" value={activeProfilesCombined.totals.grossBettingPnl} zeroTone="neutral" /></strong>
+              <span>Sportsbook + Free Bets + Casino</span>
+            </article>
+          </FinancialValueReplayGroup>
+          <FinancialValueReplayGroup>
+            <article className="stat-card">
+              <span className="eyebrow">Retained profit</span>
+              <strong><FinancialReadValue state={headlineReadState} subject="retained profit" value={activeProfilesCombined.totals.retainedProfit} zeroTone="neutral" /></strong>
+              <span>Gross P&amp;L after signed withdrawals and costs</span>
+            </article>
+          </FinancialValueReplayGroup>
+          <FinancialValueReplayGroup>
+            <article className="stat-card">
+              <span className="eyebrow">Current Account Cash</span>
+              {headlineReadState === "ready" && !Number.isFinite(trackerRangeActiveProfilesCombined.totals.cashSnapshot) && trackerRangeActiveProfilesCombined.incompleteCashAccountCount > 0 ? <><strong>Known cash <FinancialValue value={trackerRangeActiveProfilesCombined.knownCashSubtotal} /></strong><span className="warning-text">Incomplete — {trackerRangeActiveProfilesCombined.incompleteCashAccountCount} Account {trackerRangeActiveProfilesCombined.incompleteCashAccountCount === 1 ? "balance" : "balances"} missing</span></> : <><strong><FinancialReadValue state={headlineReadState} subject="current Account cash" value={trackerRangeActiveProfilesCombined.totals.cashSnapshot} zeroTone="neutral" /></strong><span>Current bookmaker, exchange, and bank balances</span></>}
+            </article>
+          </FinancialValueReplayGroup>
+          <FinancialValueReplayGroup>
+            <article className="stat-card" data-pd-id="profiles.fees.available-to-withdraw">
+              <span className="eyebrow">Available to Withdraw</span>
+              <strong><FinancialReadValue state={activeFeeReadState} subject="available fees" value={activeProfilesFeePosition.availableToWithdraw} zeroTone="neutral" /></strong>
+              <span>
+                {activeFeeReadState !== "ready"
+                  ? activeFeeReadState === "loading" ? "Loading fee position" : "Fee position unavailable"
+                  : activeProfilesFeePosition.crystallisedPeriodCount > 0
+                  ? <><FinancialValue value={activeProfilesFeePosition.feesEarned} /> earned · <FinancialValue value={activeProfilesFeePosition.feesWithdrawn} /> withdrawn</>
+                  : "No crystallised fee periods in this range"}
+              </span>
+            </article>
+          </FinancialValueReplayGroup>
+        </section>
+        <section className="content-subpanel stack" data-pd-id="profiles.workload">
+          <h3>Profile Workload</h3>
+          <dl className="dashboard-focus-list">
+            <div><dt>Sportsbook</dt><dd>{selectedReadState === "ready" ? combined.profileRows.reduce((total, row) => total + row.sportsbookActionCount, 0) : selectedReadState === "loading" ? "Loading…" : "Unavailable"}</dd></div>
+            <div><dt>Free Bets</dt><dd>{selectedReadState === "ready" ? combined.profileRows.reduce((total, row) => total + row.freeBetActionCount, 0) : selectedReadState === "loading" ? "Loading…" : "Unavailable"}</dd></div>
+            <div><dt>Casino</dt><dd>{selectedReadState === "ready" ? combined.profileRows.reduce((total, row) => total + row.casinoActionCount, 0) : selectedReadState === "loading" ? "Loading…" : "Unavailable"}</dd></div>
+            <div><dt>Extra Place</dt><dd>{selectedReadState === "ready" ? combined.profileRows.reduce((total, row) => total + row.extraPlaceActionCount, 0) : selectedReadState === "loading" ? "Loading…" : "Unavailable"}</dd></div>
+          </dl>
+        </section>
+        <section className="content-subpanel stack profiles-balance-history" data-pd-id="profiles.balance-history">
+          <div className="section-heading-row formal-report-section-heading"><h3>Balance Snapshot History</h3>{balanceSnapshots.length ? <div className="compact-report-controls formal-report-section-controls">
+            <label className="m3-picker-field"><span className="m3-picker-label">Snapshot Range</span><span className="m3-picker-control"><span aria-hidden="true" className="material-symbols-outlined">date_range</span><select aria-label="Balance snapshot period range" data-pd-id="profiles.balance-snapshots.period-range" onChange={(event)=>{setBalanceSnapshotRange(event.target.value);setBalancePage(1);}} value={balanceSnapshotRange}><option value="all">All Snapshots</option><option value="30">Last 30 Days</option><option value="90">Last 3 Months</option><option value="180">Last 6 Months</option></select></span></label>
+            <label className="m3-picker-field"><span className="m3-picker-label">Snapshot Type</span><span className="m3-picker-control"><span aria-hidden="true" className="material-symbols-outlined">filter_alt</span><select aria-label="Balance snapshot type" data-pd-id="profiles.balance-snapshots.type" onChange={(event)=>{setBalanceSnapshotType(event.target.value);setBalancePage(1);}} value={balanceSnapshotType}><option value="all">All Types</option>{balanceSnapshotTypes.map((type)=><option key={type} value={type}>{type}</option>)}</select></span></label>
+          </div> : null}</div>
+          {!balanceSnapshots.length ? <div className="compact-empty-state" data-pd-id="profiles.balance-history.empty"><span aria-hidden="true" className="material-symbols-outlined">history</span><strong>No balance snapshots yet</strong></div> : visibleBalanceSnapshots.length ? <>
+            <LedgerPagination ariaLabel="Balance Snapshot History" currentPage={Math.min(balancePage,balancePageCount)} onPageChange={setBalancePage} onPageSizeChange={(size)=>{setBalancePageSize(size);setBalancePage(1);}} pageCount={balancePageCount} pageSize={balancePageSize} position="top" totalRows={balanceSnapshots.length}/>
+            <div className="table-shell"><table className="profile-action-table"><thead><tr><th scope="col">Profile</th><th scope="col">Captured</th><th scope="col">Type</th><th scope="col">Account</th><th scope="col">Balance</th></tr></thead><tbody>
+              {visibleBalanceSnapshots.map((row)=><FinancialValueReplayRow key={`${row.profile_id}-${row.balance_snapshot_id}`}><td>{row.displayName}</td><td>{formatHumanDisplayDate(row.snapshot_at,true)}</td><td>{row.snapshot_type}</td><td>{row.account_id??"Profile total"}</td><td><FinancialValue value={Number(row.balance_amount)}/></td></FinancialValueReplayRow>)}
+            </tbody></table></div>
+            <LedgerPagination ariaLabel="Balance Snapshot History" currentPage={Math.min(balancePage,balancePageCount)} onPageChange={setBalancePage} onPageSizeChange={(size)=>{setBalancePageSize(size);setBalancePage(1);}} pageCount={balancePageCount} pageSize={balancePageSize} position="bottom" totalRows={balanceSnapshots.length}/>
+          </> : <div className="compact-empty-state"><span aria-hidden="true" className="material-symbols-outlined">filter_alt_off</span><strong>No balance snapshots match these filters</strong></div>}
+        </section>
+  </>;
 
   return (
     <section
@@ -1413,11 +1481,7 @@ export function CrossProfileAnalytics({
 
       {visualV2 && (activeTab === "performance" || activeTab === "reports") ? (
         <section className="v2-position-overview" aria-label={activeTab === "reports" ? "Reports overview" : "Position overview"} data-pd-id={activeTab === "reports" ? "reports.overview" : "position.overview"}>
-          <DesignPositionMetrics dataPdId={activeTab === "reports" ? "reports.metrics" : "position.metrics"} label="Selected position metrics" items={[
-            { key: "cash", label: "Known cash", value: selectedReadState === "ready" && combined.incompleteCashAccountCount > 0 ? <FinancialValue value={combined.knownCashSubtotal} animate={false} /> : <FinancialReadValue state={selectedReadState} subject="Account cash" value={combined.totals.cashSnapshot} animate={false} />, description: combined.incompleteCashAccountCount > 0 ? `Incomplete · ${combined.incompleteCashAccountCount} Account ${combined.incompleteCashAccountCount === 1 ? "balance" : "balances"} missing` : "Current Account balances" },
-            { key: "pnl", label: "Selected range P&L", value: <FinancialAggregateReadValue aggregate={combined.selectedRangeFinancials.grossBettingPnl} label="selected range profit and loss" state={selectedReadState} subject="profit and loss" />, description: `${preset} · governed reporting values` },
-            { key: "liability", label: "Current liability", value: <FinancialReadValue state={selectedReadState} subject="current liability" value={combined.totals.currentLiability} animate={false} />, description: "Open sportsbook, Free Bet and Extra Place exposure" },
-          ]} />
+          <DesignPositionMetrics dataPdId={activeTab === "reports" ? "reports.metrics" : "position.metrics"} label={activeTab === "reports" ? "Reports metrics" : "Selected position metrics"} items={activeTab === "reports" ? [pnlMetric, liabilityMetric, cashMetric] : [cashMetric, pnlMetric, liabilityMetric]} />
           {activeTab === "performance" ? <><DesignPositionWorkGrid>
             <DesignPositionSurface labelledBy="position-next-actions">
               <DesignPositionSectionHead id="position-next-actions" title="Next actions" action={<Link className={designPositionActionClasses.link} href="/tasks">All tasks <span aria-hidden="true" className="material-symbols-outlined">arrow_forward</span></Link>} />
@@ -1802,72 +1866,13 @@ export function CrossProfileAnalytics({
       {activeTab === "profiles" ? (
       <section
         aria-labelledby="analytics-tab-profiles"
-        className="analytics-tab-panel content-subpanel stack profile-directory"
+        className={`analytics-tab-panel stack profile-directory${visualV2 ? "" : " content-subpanel"}`}
         data-pd-id="profiles.directory.panel"
         id="analytics-panel-profiles"
         role="tabpanel"
       >
-        <section
-          aria-busy={headlineReadState === "loading"}
-          className="stat-strip"
-          aria-label="All-profile headline totals"
-        >
-          <FinancialValueReplayGroup>
-            <article className="stat-card">
-              <span className="eyebrow">Gross P&amp;L</span>
-              <strong><FinancialReadValue state={headlineReadState} subject="gross profit and loss" value={activeProfilesCombined.totals.grossBettingPnl} zeroTone="neutral" /></strong>
-              <span>Sportsbook + Free Bets + Casino</span>
-            </article>
-          </FinancialValueReplayGroup>
-          <FinancialValueReplayGroup>
-            <article className="stat-card">
-              <span className="eyebrow">Retained profit</span>
-              <strong><FinancialReadValue state={headlineReadState} subject="retained profit" value={activeProfilesCombined.totals.retainedProfit} zeroTone="neutral" /></strong>
-              <span>Gross P&amp;L after signed withdrawals and costs</span>
-            </article>
-          </FinancialValueReplayGroup>
-          <FinancialValueReplayGroup>
-            <article className="stat-card">
-              <span className="eyebrow">Current Account Cash</span>
-              {headlineReadState === "ready" && !Number.isFinite(trackerRangeActiveProfilesCombined.totals.cashSnapshot) && trackerRangeActiveProfilesCombined.incompleteCashAccountCount > 0 ? <><strong>Known cash <FinancialValue value={trackerRangeActiveProfilesCombined.knownCashSubtotal} /></strong><span className="warning-text">Incomplete — {trackerRangeActiveProfilesCombined.incompleteCashAccountCount} Account {trackerRangeActiveProfilesCombined.incompleteCashAccountCount === 1 ? "balance" : "balances"} missing</span></> : <><strong><FinancialReadValue state={headlineReadState} subject="current Account cash" value={trackerRangeActiveProfilesCombined.totals.cashSnapshot} zeroTone="neutral" /></strong><span>Current bookmaker, exchange, and bank balances</span></>}
-            </article>
-          </FinancialValueReplayGroup>
-          <FinancialValueReplayGroup>
-            <article className="stat-card" data-pd-id="profiles.fees.available-to-withdraw">
-              <span className="eyebrow">Available to Withdraw</span>
-              <strong><FinancialReadValue state={activeFeeReadState} subject="available fees" value={activeProfilesFeePosition.availableToWithdraw} zeroTone="neutral" /></strong>
-              <span>
-                {activeFeeReadState !== "ready"
-                  ? activeFeeReadState === "loading" ? "Loading fee position" : "Fee position unavailable"
-                  : activeProfilesFeePosition.crystallisedPeriodCount > 0
-                  ? <><FinancialValue value={activeProfilesFeePosition.feesEarned} /> earned · <FinancialValue value={activeProfilesFeePosition.feesWithdrawn} /> withdrawn</>
-                  : "No crystallised fee periods in this range"}
-              </span>
-            </article>
-          </FinancialValueReplayGroup>
-        </section>
-        <section className="content-subpanel stack" data-pd-id="profiles.workload">
-          <h3>Profile Workload</h3>
-          <dl className="dashboard-focus-list">
-            <div><dt>Sportsbook</dt><dd>{selectedReadState === "ready" ? combined.profileRows.reduce((total, row) => total + row.sportsbookActionCount, 0) : selectedReadState === "loading" ? "Loading…" : "Unavailable"}</dd></div>
-            <div><dt>Free Bets</dt><dd>{selectedReadState === "ready" ? combined.profileRows.reduce((total, row) => total + row.freeBetActionCount, 0) : selectedReadState === "loading" ? "Loading…" : "Unavailable"}</dd></div>
-            <div><dt>Casino</dt><dd>{selectedReadState === "ready" ? combined.profileRows.reduce((total, row) => total + row.casinoActionCount, 0) : selectedReadState === "loading" ? "Loading…" : "Unavailable"}</dd></div>
-            <div><dt>Extra Place</dt><dd>{selectedReadState === "ready" ? combined.profileRows.reduce((total, row) => total + row.extraPlaceActionCount, 0) : selectedReadState === "loading" ? "Loading…" : "Unavailable"}</dd></div>
-          </dl>
-        </section>
-        <section className="content-subpanel stack profiles-balance-history" data-pd-id="profiles.balance-history">
-          <div className="section-heading-row formal-report-section-heading"><h3>Balance Snapshot History</h3>{balanceSnapshots.length ? <div className="compact-report-controls formal-report-section-controls">
-            <label className="m3-picker-field"><span className="m3-picker-label">Snapshot Range</span><span className="m3-picker-control"><span aria-hidden="true" className="material-symbols-outlined">date_range</span><select aria-label="Balance snapshot period range" data-pd-id="profiles.balance-snapshots.period-range" onChange={(event)=>{setBalanceSnapshotRange(event.target.value);setBalancePage(1);}} value={balanceSnapshotRange}><option value="all">All Snapshots</option><option value="30">Last 30 Days</option><option value="90">Last 3 Months</option><option value="180">Last 6 Months</option></select></span></label>
-            <label className="m3-picker-field"><span className="m3-picker-label">Snapshot Type</span><span className="m3-picker-control"><span aria-hidden="true" className="material-symbols-outlined">filter_alt</span><select aria-label="Balance snapshot type" data-pd-id="profiles.balance-snapshots.type" onChange={(event)=>{setBalanceSnapshotType(event.target.value);setBalancePage(1);}} value={balanceSnapshotType}><option value="all">All Types</option>{balanceSnapshotTypes.map((type)=><option key={type} value={type}>{type}</option>)}</select></span></label>
-          </div> : null}</div>
-          {!balanceSnapshots.length ? <div className="compact-empty-state" data-pd-id="profiles.balance-history.empty"><span aria-hidden="true" className="material-symbols-outlined">history</span><strong>No balance snapshots yet</strong></div> : visibleBalanceSnapshots.length ? <>
-            <LedgerPagination ariaLabel="Balance Snapshot History" currentPage={Math.min(balancePage,balancePageCount)} onPageChange={setBalancePage} onPageSizeChange={(size)=>{setBalancePageSize(size);setBalancePage(1);}} pageCount={balancePageCount} pageSize={balancePageSize} position="top" totalRows={balanceSnapshots.length}/>
-            <div className="table-shell"><table className="profile-action-table"><thead><tr><th scope="col">Profile</th><th scope="col">Captured</th><th scope="col">Type</th><th scope="col">Account</th><th scope="col">Balance</th></tr></thead><tbody>
-              {visibleBalanceSnapshots.map((row)=><FinancialValueReplayRow key={`${row.profile_id}-${row.balance_snapshot_id}`}><td>{row.displayName}</td><td>{formatHumanDisplayDate(row.snapshot_at,true)}</td><td>{row.snapshot_type}</td><td>{row.account_id??"Profile total"}</td><td><FinancialValue value={Number(row.balance_amount)}/></td></FinancialValueReplayRow>)}
-            </tbody></table></div>
-            <LedgerPagination ariaLabel="Balance Snapshot History" currentPage={Math.min(balancePage,balancePageCount)} onPageChange={setBalancePage} onPageSizeChange={(size)=>{setBalancePageSize(size);setBalancePage(1);}} pageCount={balancePageCount} pageSize={balancePageSize} position="bottom" totalRows={balanceSnapshots.length}/>
-          </> : <div className="compact-empty-state"><span aria-hidden="true" className="material-symbols-outlined">filter_alt_off</span><strong>No balance snapshots match these filters</strong></div>}
-        </section>
+        {!visualV2 ? profileOverview : null}
+        <DesignManagementSurface dataPdId="profiles.design-screen" enabled={visualV2}>
         <div className="section-heading-row">
           <div>
             <span className="eyebrow">Profile management</span>
@@ -1895,6 +1900,11 @@ export function CrossProfileAnalytics({
             </button>
           </div>
         </div>
+        {visualV2 ? <div data-pd-id="profiles.design-list">
+          {visibleDirectoryProfiles.map(profile=><DesignPositionTask key={profile.profileId} title={profile.displayName} description={`${profile.profileCode} · ${normalizeProfileStatus(profile.status)}`} action={<Link aria-label={`Open position for ${profile.displayName}`} className={designPositionActionClasses.secondary} href={`/profiles/${profile.profileId}/tracker/dashboard`}>Open position</Link>} />)}
+          {!visibleDirectoryProfiles.length?<p>{directoryStatus === "Archived" ? "No archived Profiles" : directoryStatus === "Active" ? "No active Profiles" : "No Profiles match these controls"}</p>:null}
+        </div> : null}
+        <DesignManagementDetail dataPdId="profiles.directory.details" enabled={visualV2} label="Detailed Profile data and actions">
         <LedgerPagination ariaLabel="Profile Directory" currentPage={Math.min(directoryPage,directoryPageCount)} onPageChange={setDirectoryPage} onPageSizeChange={(size)=>{setDirectoryPageSize(size);setDirectoryPage(1);}} pageCount={directoryPageCount} pageSize={directoryPageSize} position="top" totalRows={directoryProfiles.length}/>
         <div className="table-shell">
           <table className="profile-action-table">
@@ -2030,6 +2040,9 @@ export function CrossProfileAnalytics({
           </table>
         </div>
         <LedgerPagination ariaLabel="Profile Directory" currentPage={Math.min(directoryPage,directoryPageCount)} onPageChange={setDirectoryPage} onPageSizeChange={(size)=>{setDirectoryPageSize(size);setDirectoryPage(1);}} pageCount={directoryPageCount} pageSize={directoryPageSize} position="bottom" totalRows={directoryProfiles.length}/>
+        </DesignManagementDetail>
+        </DesignManagementSurface>
+        {visualV2 ? profileOverview : null}
       </section>
       ) : null}
 

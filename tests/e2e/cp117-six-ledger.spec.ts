@@ -307,3 +307,17 @@ test("flag OFF: all six ledgers preserve native editor activation and no floatin
   await expect(page.locator('[data-pd-id="notifications.panel"]')).toBeVisible();
   await expect(page.locator('[data-pd-id="notifications.v2.dropdown"]')).toHaveCount(0);
 });
+
+test("flag OFF: Profile directory keeps its original table and financial overview order", async ({ page }) => {
+  test.skip(!legacy);
+  await page.goto("/profiles");
+  await expect(page.locator("html")).toHaveAttribute("data-ux-shell", "legacy");
+  const panel = page.locator('[data-pd-id="profiles.directory.panel"]');
+  await expect(panel.locator("table")).toBeVisible();
+  await expect(page.locator('[data-pd-id="profiles.design-list"]')).toHaveCount(0);
+  await expect(page.locator('[data-pd-id="profiles.design-screen"]')).toHaveCount(0);
+  await expect(page.locator('[data-pd-id="profiles.directory.details"]')).toHaveCount(0);
+  const summaryTop = await panel.locator('.stat-strip').evaluate(element => element.getBoundingClientRect().top);
+  const tableTop = await panel.locator('table').evaluate(element => element.getBoundingClientRect().top);
+  expect(summaryTop).toBeLessThan(tableTop);
+});
