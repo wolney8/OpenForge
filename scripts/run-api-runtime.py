@@ -30,7 +30,9 @@ def primary_checkout_root() -> Path:
     return common_path.parent if common_path.name == ".git" else common_path
 
 
-def resolve_environment_file(*, role: str, explicit: str | None) -> tuple[Path | None, str]:
+def resolve_environment_file(
+    *, role: str, explicit: str | None
+) -> tuple[Path | None, str]:
     if explicit:
         selected = Path(explicit).expanduser().resolve()
         if not selected.is_file():
@@ -65,7 +67,14 @@ def source_revision() -> str:
         text=True,
     ).stdout.strip()
     dirty = subprocess.run(
-        ["git", "-C", str(REPOSITORY_ROOT), "status", "--porcelain", "--untracked-files=normal"],
+        [
+            "git",
+            "-C",
+            str(REPOSITORY_ROOT),
+            "status",
+            "--porcelain",
+            "--untracked-files=normal",
+        ],
         check=True,
         capture_output=True,
         text=True,
@@ -74,8 +83,12 @@ def source_revision() -> str:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Start a role-bound Plum Duff API runtime")
-    parser.add_argument("--role", required=True, choices=("normal-owner", "candidate", "test"))
+    parser = argparse.ArgumentParser(
+        description="Start a role-bound Plum Duff API runtime"
+    )
+    parser.add_argument(
+        "--role", required=True, choices=("normal-owner", "candidate", "test")
+    )
     parser.add_argument("--database-target")
     parser.add_argument("--database-identity")
     parser.add_argument("--frontend-endpoint")
@@ -84,6 +97,11 @@ def main() -> None:
     parser.add_argument("--environment-source")
     parser.add_argument("--environment-file")
     parser.add_argument("--owner-approved-revision")
+    parser.add_argument(
+        "--task-annotation-migration",
+        choices=("check", "apply"),
+        help="Inspect or explicitly migrate Today annotations without starting the API",
+    )
     args = parser.parse_args()
 
     try:
@@ -159,7 +177,24 @@ def main() -> None:
         }
     )
     if args.owner_approved_revision:
-        os.environ["OPENFORGE_RUNTIME_OWNER_APPROVED_REVISION"] = args.owner_approved_revision
+        os.environ["OPENFORGE_RUNTIME_OWNER_APPROVED_REVISION"] = (
+            args.owner_approved_revision
+        )
+    if args.task_annotation_migration:
+        if args.role != "normal-owner":
+            parser.error("The normal activation command requires --role normal-owner")
+        sys.path.insert(0, str(REPOSITORY_ROOT / "apps/api/src"))
+        from openforge_api.task_annotation_migration import apply, inspect
+
+        revision = source_revision()
+        if args.task_annotation_migration == "check":
+            state = inspect(database_identity, revision)
+            print(f"Task annotation schema: {state}; no changes")
+        else:
+            backup, checksum = apply(database_identity, revision)
+            print(f"Task annotation schema installed; protected backup: {backup}")
+            print(f"Protected backup SHA-256: {checksum}")
+        return
     os.execv(
         sys.executable,
         [

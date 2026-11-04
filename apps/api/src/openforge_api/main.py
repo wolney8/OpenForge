@@ -88,6 +88,10 @@ app.include_router(bookmaker_catalogue_router)
 app.include_router(sportsbook_router)
 app.include_router(multi_profile_opportunities_router)
 app.include_router(notifications_router)
+if settings.task_annotations_isolated_enabled or settings.task_annotations_normal_enabled:
+    from openforge_api.task_annotations import router as task_annotations_router
+
+    app.include_router(task_annotations_router)
 app.include_router(oddsmatcher_router)
 app.include_router(oddsmatcher_global_router)
 app.include_router(free_bets_router)
