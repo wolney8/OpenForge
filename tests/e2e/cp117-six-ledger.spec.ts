@@ -324,6 +324,17 @@ test("flag OFF: Profile directory keeps its original table and financial overvie
   expect(summaryTop).toBeLessThan(tableTop);
 });
 
+test("flag OFF: legacy header retains its Back/Lay colour control", async ({ page }) => {
+  test.skip(!legacy);
+  await page.goto("/profiles");
+  await expect(page.locator("html")).toHaveAttribute("data-ux-shell", "legacy");
+  const palette = page.getByRole("button", { name: "Choose back/lay colour theme" });
+  await expect(palette).toBeVisible();
+  await palette.click();
+  await expect(page.getByRole("menu").getByRole("button", { name: /Smarkets/ })).toBeVisible();
+  await expect(page.getByRole("menu").getByRole("button", { name: /Betfair/ })).toBeVisible();
+});
+
 test("flag OFF: Profile onboarding keeps the original shell and guided controls", async ({ page }) => {
   test.skip(!legacy);
   await page.goto("/profiles/new");

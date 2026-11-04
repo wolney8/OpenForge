@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { DesignNotificationRow, DesignNotificationSection, DesignNotificationSurface, designNotificationClasses } from "@/components/design-notification-presentation";
+import labStyles from "@/components/design-lab-connected.module.css";
 import { apiBaseUrl } from "@/lib/api";
 import { redirectExpiredSession } from "@/lib/session-inactivity";
 import { APP_CONFIRMATION_OPEN_EVENT } from "@/lib/use-unsaved-changes-guard";
@@ -399,7 +400,7 @@ export function NotificationCentre({ uxV2 = false }: { uxV2?: boolean }) {
               ? `Open notifications, ${visibleCount} retained`
               : "Open notifications"
         }
-        className={`icon-button notification-trigger${visibleCount > 0 ? " has-notifications" : ""}${unreadCount > 0 ? " has-unread" : ""}`}
+        className={uxV2 ? `${labStyles.iconButton} ${labStyles.notificationTrigger}` : `icon-button notification-trigger${visibleCount > 0 ? " has-notifications" : ""}${unreadCount > 0 ? " has-unread" : ""}`}
         data-pd-id="notifications.trigger"
         onClick={() => {
           if (!isOpen) setActiveView("new");
@@ -413,11 +414,11 @@ export function NotificationCentre({ uxV2 = false }: { uxV2?: boolean }) {
           <span aria-hidden="true" className="button-spinner" />
         ) : (
           <span aria-hidden="true" className="material-symbols-outlined">
-            {visibleCount > 0 ? "notifications_active" : "notifications"}
+            {uxV2 ? "notifications" : visibleCount > 0 ? "notifications_active" : "notifications"}
           </span>
         )}
         {unreadCount > 0 ? (
-          <span aria-hidden="true" className="notification-count-badge">
+          <span aria-hidden="true" className={uxV2 ? labStyles.notificationCount : "notification-count-badge"}>
             {formatUnreadNotificationCount(unreadCount)}
           </span>
         ) : null}

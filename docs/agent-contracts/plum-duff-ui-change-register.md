@@ -1412,3 +1412,13 @@ Owner corrective batch under [#118](https://github.com/wolney8/OpenForge/issues/
 | PD-FIX-515 | Add whole-screen Lab/V2 geometry and hierarchy assertions at 1024/1440/390 in both themes, with navigation, financial and flag-OFF safeguards | CP-117 synthetic runner and paired visual suite | COMPLETE — final-source six-pair checks pass, broader visual run 111/111, synthetic V2 22/22 and flag-OFF 8/8. |
 
 No financial calculation, schema, API, authentication, owner data or source-default flag change is authorised by this visual batch.
+
+## CP-132 header, sidebar and launcher correction — 2026-11-04 / #118
+
+| ID | Requested outcome | Signed-off equivalent | Status |
+| --- | --- | --- | --- |
+| PD-FIX-516 | Five real V2 header controls in Lab order and geometry; actual notification badge, Tasks link and useful Help panel | Connected Lab header icons and anchored overlay | COMPLETE — focused 9/9 path covers geometry, real Tasks/Help/notification commands and source unread badge. |
+| PD-FIX-517 | Move independent Back/Lay colour preference beneath Dark mode in the V2 account menu; retain legacy header | Lab account-menu grouping and existing theme authority | COMPLETE — native radio choice persists through the existing theme provider, independent of Dark mode; final rollback runner pending. |
+| PD-FIX-518 | Match Tracker nested guide/spacing and See More leading chevron without changing destinations | Connected Lab tracker children and more button | COMPLETE — paired eight-state captures and guide/chevron assertions pass; Profile-dependent routes retain their guard. |
+| PD-FIX-519 | Use Lab Apps and tools grouped menu with real destinations, descriptions and protected navigation | Connected Lab menu body, rows and anchored overlay | COMPLETE — six real links, matched menu width/row height, Escape focus and calculator navigation pass at 1440/1024/800/390 in both themes. |
+| PD-FIX-520 | Matched viewport/theme captures, geometry and real-action tests, integration/flag-OFF safeguards and local 3010 update | CP-131 paired shell tests and independent runner | NEEDS VERIFICATION — visual 120/120, V2 22/22 and fresh flag-OFF 9/9 pass; the first flag-OFF attempt had one Casino readiness timeout. Local 3010 and owner visual approval pending. |

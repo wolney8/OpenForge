@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTheme } from "@/components/theme-provider";
 import type { BackLayTheme } from "@/lib/theme";
 
-const backLayThemeOptions: Array<{
+export const backLayThemeOptions: Array<{
   value: BackLayTheme;
   label: string;
   description: string;

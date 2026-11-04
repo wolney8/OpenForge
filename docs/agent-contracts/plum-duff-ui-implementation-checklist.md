@@ -2,6 +2,15 @@
 
 Complete this for every feature, bug fix, component, fixture-backed UI, route or page change.
 
+## CP-132 header, sidebar and launcher — 2026-11-04 / #118
+
+- [x] Compared connected Lab and real V2 with independent synthetic authentication at 1440, 1024, 800 and 390 px in light/dark; captured matched launcher, sidebar and account-menu states privately.
+- [x] Reused Lab icon, nested navigation, menu body/row, identity/switch and anchored overlay presentation. Kept real notification commands, Tasks, Help links, launcher destinations, account identity, independent Back/Lay preference and source-default-OFF legacy header.
+- [x] Focused CP-132 browser paths passed 9/9, including menu geometry, Escape focus, sidebar state, notification opening, real Tasks/calculator navigation and both theme preferences. Web unit passed 701/701 and typecheck passed.
+- [x] Full clean-fixture visual suite passed 120/120 on the final application source. A separate fresh two-Profile run regenerated the paired CP-132 captures and passed 9/9. Lint passed with zero errors and 12 inherited warnings.
+- [x] Independent synthetic V2 integration passed 22/22. Flag-OFF first ran 8/9: the existing six-ledger readiness wait timed out on Casino before an editor assertion. A fresh targeted rollback run passed 9/9, including that path and the new legacy palette check. Web production build passed.
+- [ ] Local 3010 source pin and owner Design Acceptance remain pending at this source edit. Manual spoken screen-reader behavior remains unverified.
+
 ## CP-131 shell and Position parity — 2026-11-04 / #118
 
 - [x] Compared actual connected Lab and independently authenticated real V2 at 1024, 1440 and 390 px in light/dark with paired full-page screenshots; the CP-131 browser test asserts whole-screen geometry, ordering, containment, semantic controls and mobile navigation.

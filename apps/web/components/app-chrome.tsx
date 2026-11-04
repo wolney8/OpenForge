@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { AppNavigationDrawer } from "@/components/app-navigation-drawer";
 import labStyles from "@/components/design-lab-connected.module.css";
-import { FundManagerUxV2Breadcrumbs, FundManagerUxV2Launcher, FundManagerUxV2Sidebar } from "@/components/fund-manager-ux-v2-navigation";
+import { FundManagerUxV2Breadcrumbs, FundManagerUxV2HeaderTasks, FundManagerUxV2Help, FundManagerUxV2Launcher, FundManagerUxV2Sidebar } from "@/components/fund-manager-ux-v2-navigation";
 import { BackLayThemeToggle } from "@/components/back-lay-theme-toggle";
 import { BrandLogo } from "@/components/brand-logo";
 import { FinancialValue, FinancialValueReplayGroup } from "@/components/financial-value";
@@ -814,7 +814,7 @@ function AppChromeContent({
             ) : uxV2 ? <Link className="ux-v2-all-profiles" href="/profiles">All Profiles<span aria-hidden="true" className="material-symbols-outlined">expand_more</span></Link> : null}
           </div>
           </div>
-          {uxV2 ? <div className={`ux-v2-header-right ${labStyles.headerRight}`}><GlobalSearch /><div className="top-bar-actions"><NotificationCentre uxV2 /><BackLayThemeToggle /><FundManagerUxV2Launcher key={pathname} /><FundManagerIdentityMenu uxV2 /></div></div> : <div className="top-bar-actions"><NotificationCentre /><BackLayThemeToggle /><FundManagerIdentityMenu /><ThemeToggle /></div>}
+          {uxV2 ? <div className={`ux-v2-header-right ${labStyles.headerRight}`}><GlobalSearch /><div className="top-bar-actions"><NotificationCentre uxV2 /><FundManagerUxV2HeaderTasks /><FundManagerUxV2Help key={`help-${pathname}`} /><FundManagerUxV2Launcher key={pathname} /><FundManagerIdentityMenu uxV2 /></div></div> : <div className="top-bar-actions"><NotificationCentre /><BackLayThemeToggle /><FundManagerIdentityMenu /><ThemeToggle /></div>}
           <Suspense fallback={null}><ShellLoadingProgress /></Suspense>
         </header> : null}
         {!isPublicAuthRoute && !uxV2 ? <Suspense fallback={null}>

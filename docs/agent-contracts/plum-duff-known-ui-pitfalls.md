@@ -1,5 +1,9 @@
 # Plum Duff Known UI Pitfalls
 
+## CP-132 connected header menu parity — 2026-11-04 / #118
+
+Using a Lab menu row class on a real link does not by itself reproduce the Lab row height: inherited line height and a wrapping description change the whole launcher geometry, especially at 390 px. Reuse the Lab anchored overlay, menu body and row classes, wait for fonts before measuring, and compare the populated menu at 1440/1024/800/390 in both themes. Keep real controls functional: notification count, Tasks, Help, launcher destinations, account identity and independent Back/Lay preference. Regression: `cp132-shell-parity.spec.ts` plus synthetic V2/flag-OFF runner.
+
 ## CP-131 whole-screen Lab parity — 2026-11-04 / #118
 
 Shared KPI or navigation classes can pass isolated component tests while the enclosing real header, fixed sidebar and Position controls still produce a different screen. Reuse the Lab frame/header/sidebar/page-head composition and remove conflicting legacy offsets for V2. At 1024 px, inherited minimum widths in the reporting control bar can extend the document beyond the viewport; at 390 px, an inherited column flex direction plus row flex-basis can create hundreds of pixels of empty space before KPIs. Compare full rendered Lab/V2 geometry and section order at 1024/1440/390 in light/dark. Regression: `cp131-position-parity.spec.ts`; the flag-OFF shell remains a separate check.

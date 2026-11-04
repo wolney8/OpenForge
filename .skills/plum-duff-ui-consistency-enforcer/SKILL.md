@@ -405,6 +405,8 @@ Hold a reference response while editing settlement; assert queued intent and act
 
 ### Native field-edit adapter gate
 
+For a connected Lab header menu, compare the complete anchored surface and actual row height after fonts load, including long real descriptions at 390 px. Verify five desktop controls, responsive hiding of Help, actual unread badge, real navigation, independent Dark mode and Back/Lay preferences, Escape focus return and flag-OFF header preservation. `cp132-shell-parity.spec.ts` is the focused regression.
+
 For a narrow real ledger using the shared Lab table surface, test an actual pointer click on a middle editable cell after horizontal scroll. Pinned edge columns can cover the cell while the table and page still report no overflow. Retain the Actions column while keeping the first column scrollable if required for the wider real schema; verify focus return in every ledger.
 
 For connected Lab ledger adoption, compare computed header and body cell padding, type size and line height across each real ledger. A shared wrapper can still inherit denser legacy `.data-table` rules. At narrow width and actual 200% browser zoom, prove labelled details and the full horizontally scrollable table can both be reached; include every displayed field and the native full-record action.

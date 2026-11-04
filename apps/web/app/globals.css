@@ -18595,9 +18595,9 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
 .ux-v2-top-bar .app-navigation-drawer-trigger { display: grid; }
 .ux-v2-top-bar .top-bar-profile-context { min-width: 0; }
 .ux-v2-header-right { min-width: 0; }
-.ux-v2-header-right .global-search { flex: 0 1 clamp(310px,26vw,375px); width: clamp(310px,26vw,375px); min-width: 0; }
+.ux-v2-header-right .global-search { flex: 0 1 clamp(300px,22vw,460px); width: clamp(300px,22vw,460px); min-width: 0; }
 .ux-v2-header-right .global-search-field { min-height: 50px; border-color: var(--outline); border-radius: 999px; background: var(--surface-container); }
-.ux-v2-header-right .top-bar-actions { flex: 0 0 auto; display: flex; flex-wrap: nowrap; justify-content: flex-end; gap: .35rem; width: auto; }
+.ux-v2-header-right .top-bar-actions { flex: 0 0 auto; display: flex; flex-wrap: nowrap; justify-content: flex-end; gap: 10px; width: auto; }
 .ux-v2-all-profiles { display: flex; align-items: center; justify-content: space-between; min-height: 44px; padding: 0 .75rem; border: 1px solid var(--outline); border-radius: .75rem; color: var(--text); text-decoration: none; }
 .ux-v2-all-profiles:hover { background: var(--surface-strong); }
 .ux-v2-main { grid-column: 2; grid-row: 2; box-sizing: border-box; min-width: 0; padding-top: 0; }
@@ -18615,22 +18615,13 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
 .ux-v2-nav-chevron { justify-self: end; }
 .ux-v2-sidebar-scrim { display: none; }
 .ux-v2-launcher-root { display: flex; align-items: center; }
-.ux-v2-launcher-panel { position: absolute; z-index: 60; top: calc(100% + .65rem); right: 0; width: min(21rem, calc(100vw - 1.5rem)); box-sizing: border-box; padding: .8rem; border: 1px solid var(--outline); border-radius: 1rem; background: var(--surface); box-shadow: 0 1rem 2.5rem #0005; }
-.ux-v2-launcher-panel > strong { display: block; padding: .35rem .6rem .65rem; }
-.ux-v2-launcher-panel nav { display: grid; gap: .15rem; }
-.ux-v2-launcher-link { display: flex; align-items: center; gap: .7rem; min-height: 44px; padding: .45rem .6rem; border-radius: .65rem; color: var(--text); text-decoration: none; }
 .ux-v2-identity-trigger { width: 44px; height: 44px; min-height: 44px; padding: .2rem; border: 0; background: transparent; }
 .ux-v2-identity-trigger .fund-manager-role-chip,
 .ux-v2-identity-trigger > .material-symbols-outlined { display: none; }
-.ux-v2-identity-panel { gap: .1rem; padding: .65rem; background: var(--surface); }
-.ux-v2-identity-panel .fund-manager-identity-summary { padding: .65rem; border-bottom: 0; }
-.ux-v2-identity-panel .profile-command-add-action { display: grid; grid-template-columns: 1.5rem minmax(0,1fr) auto; align-items: center; min-height: 44px; width: 100%; padding: .5rem .65rem; border: 0; border-radius: .6rem; background: transparent; color: var(--text); text-align: left; text-decoration: none; font: inherit; cursor: pointer; }
-.ux-v2-identity-panel .profile-command-add-action:hover { background: var(--surface-strong); }
-.ux-v2-menu-divider { height: 1px; margin: .4rem -.65rem; background: var(--outline); }
-.ux-v2-switch-track { display: inline-flex; align-items: center; width: 2.4rem; height: 1.45rem; padding: .16rem; border-radius: 999px; background: var(--outline-strong); }
-.ux-v2-switch-track > span { width: 1.12rem; height: 1.12rem; border-radius: 50%; background: var(--surface); transition: transform .16s ease; }
-.ux-v2-switch-track.is-on { background: var(--primary); }
-.ux-v2-switch-track.is-on > span { transform: translateX(.94rem); }
+.ux-v2-back-lay-group { min-width: 0; margin: 4px 0 0; padding: 10px 0; border: 0; border-top: 1px solid var(--outline); }
+.ux-v2-back-lay-group legend { padding: 8px 14px 2px; color: var(--muted); font-size: .8rem; font-weight: 700; letter-spacing: .035em; text-transform: uppercase; }
+.ux-v2-back-lay-group input[type="radio"] { width: 18px; height: 18px; margin: 0; accent-color: var(--primary); }
+.ux-v2-back-lay-group .back-lay-theme-swatch { justify-self: end; }
 .ux-v2-crumb-row { display: flex; align-items: center; justify-content: space-between; gap: .75rem; width: min(1560px, calc(100% - 2rem)); margin: 0 auto 1rem; font-size: .9rem; }
 .ux-v2-crumb-row ol { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; margin: 0; padding: 0; list-style: none; }
 .ux-v2-crumb-row li + li::before { content: "›"; margin-right: .4rem; color: var(--muted-text); }
@@ -18647,6 +18638,7 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
   .ux-v2-top-bar .global-search { grid-area: 1 / 2; }
   .ux-v2-top-bar .top-bar-actions { grid-area: 1 / 3; }
   .ux-v2-top-bar .top-bar-profile-context { grid-area: 2 / 1 / 3 / -1; width: 100%; }
+  .ux-v2-help-root { display: none; }
   .ux-v2-header-right .global-search { flex: 0 0 44px; width: 44px; }
   .ux-v2-header-right .global-search .global-search-compact-trigger { display: inline-flex; width: 44px; height: 44px; }
   .ux-v2-header-right .global-search .global-search-field { display: none; }
@@ -18654,7 +18646,7 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
   .ux-v2-header-right .global-search.is-compact-open .global-search-field { display: block; }
 }
 @media (min-width: 701px) and (max-width: 1280px) {
-  .ux-v2-header-right .global-search { flex: 0 1 clamp(310px,26vw,375px); width: clamp(310px,26vw,375px); justify-self: auto; }
+  .ux-v2-header-right .global-search { flex: 0 1 clamp(230px,27vw,340px); width: clamp(230px,27vw,340px); justify-self: auto; }
   .ux-v2-header-right .global-search .global-search-compact-trigger { display: none; }
   .ux-v2-header-right .global-search .global-search-field { display: flex; }
 }
@@ -18666,13 +18658,12 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
 @media (max-width: 430px) {
   .ux-v2-top-bar { gap: .35rem; padding: .55rem; }
   .ux-v2-header-right { gap: .15rem; }
-  .ux-v2-header-right .top-bar-actions { gap: .1rem; }
+  .ux-v2-header-right .top-bar-actions { gap: 6px; }
   .ux-v2-header-right .fund-manager-role-chip,
   .ux-v2-header-right .fund-manager-identity-trigger > .material-symbols-outlined,
   .ux-v2-header-right .top-bar-actions .icon-button,
   .ux-v2-header-right .top-bar-actions button { min-width: 44px; min-height: 44px; }
   .ux-v2-crumb-row { align-items: flex-start; flex-direction: column; }
-  .ux-v2-launcher-panel { position: fixed; top: 4rem; right: .5rem; left: .5rem; width: auto; }
   .ux-v2-header-right .notification-panel,
   .ux-v2-header-right .back-lay-theme-shell .app-menu-panel { position: fixed; top: 4rem; right: .5rem; left: .5rem; width: auto; max-width: none; min-width: 0; }
   .ux-v2-header-right .notification-panel-v2 { right: auto; left: 12px; width: calc(100vw - 24px); max-width: none; }
