@@ -524,7 +524,7 @@ def main() -> int:
             wait_ready(f"http://127.0.0.1:{args.web_port}/login", web)
             verify_authenticated_route(args.web_port, args.auth_port)
             result = subprocess.run(
-                command + ["--grep", "flag OFF"],
+                command + ["--grep", "flag OFF|Notification History|shared settings filters"],
                 cwd=ROOT,
                 env={**browser_env, "OPENFORGE_CP117_VERIFY_LEGACY": "true"},
             )

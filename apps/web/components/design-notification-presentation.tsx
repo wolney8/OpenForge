@@ -2,6 +2,7 @@ import type { FocusEventHandler, MouseEventHandler, ReactNode } from "react";
 import styles from "@/components/design-lab-notifications.module.css";
 
 export const designNotificationClasses = {
+  advancedFilters: styles.advancedFilters,
   actions: styles.actions,
   confirm: styles.confirm,
   empty: styles.empty,
@@ -32,6 +33,20 @@ export function DesignNotificationTabs({ controlsId, dataPdIdPrefix, onChange, v
     {notificationTabs.map(([id, label]) => <button aria-controls={controlsId} aria-selected={view === id} data-pd-id={`${dataPdIdPrefix}.${id}`}
       key={id} onClick={() => onChange(id)} role="tab" tabIndex={view === id ? 0 : -1} type="button">{label}</button>)}
   </div>;
+}
+
+export function DesignNotificationTypeFilter<T extends string>({ ariaLabel, dataPdId, onChange, options, value }: {
+  ariaLabel?: string;
+  dataPdId: string;
+  onChange: (value: T) => void;
+  options: readonly { value: T; label: string }[];
+  value: T;
+}) {
+  return <label className={styles.typeFilter}>Notification Type<select aria-label={ariaLabel} data-pd-id={dataPdId} onChange={event => onChange(event.target.value as T)} value={value}>{options.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>;
+}
+
+export function DesignNotificationActions({ children }: { children: ReactNode }) {
+  return <div className={styles.actions}>{children}</div>;
 }
 
 export function DesignNotificationSurface({ ariaLabel, children, dataPdId, fullPage = false, heading, headingAction, legacy = false, summary }: {

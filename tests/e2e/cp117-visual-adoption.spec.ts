@@ -23,7 +23,7 @@ const ledgerSearchRoutes = [
 ] as const;
 
 async function setTheme(page: Page, theme: "light" | "dark") {
-  await page.evaluate((value) => { document.documentElement.dataset.theme = value; document.documentElement.style.colorScheme = value; }, theme);
+  await page.evaluate((value) => { window.localStorage.setItem("openforge-theme", value); document.documentElement.dataset.theme = value; document.documentElement.style.colorScheme = value; }, theme);
   await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
   await page.waitForTimeout(250); // Allow the established 160 ms surface transition to settle.
 }
@@ -348,7 +348,7 @@ test("six ledgers: shared grid cell rhythm and pinned Actions", async ({ page })
   }
 });
 
-test("actual 200% zoom retains labelled details and the full spreadsheet", async ({}, info) => {
+test("actual 200% zoom retains the full spreadsheet and notification filters", async ({}, info) => {
   const scratch = await mkdtemp(join(tmpdir(), "pd-cp126-zoom-"));
   const extension = join(scratch, "extension");
   await mkdir(extension);
@@ -372,6 +372,12 @@ test("actual 200% zoom retains labelled details and the full spreadsheet", async
     await noPageOverflow(page);
     await page.getByRole("button", { name: "Show Full Table" }).click();
     await expect(page.locator('[data-pd-id="sportsbook.table-scroll"]')).toBeVisible();
+    await noPageOverflow(page);
+    await page.goto(`${String(info.project.use.baseURL)}/notifications`);
+    await page.locator('[data-pd-id="notifications.history.loading-shell"]').waitFor({ state: "hidden", timeout: 45_000 });
+    await expect(page.getByRole("combobox", { name: "Filter notifications by type" })).toBeVisible();
+    await page.locator('[data-pd-id="notifications.history.advanced-filters"] summary').click();
+    await expect(page.getByRole("searchbox", { name: "Search notifications by name or context" })).toBeVisible();
     await noPageOverflow(page);
   } finally {
     await context.close();
@@ -433,6 +439,8 @@ for (const width of [1440, 390] as const) {
         padding: getComputedStyle(element).padding,
       }));
       const labTabsClass = await labPanel.getByRole("tablist", { name: "Notification Views" }).getAttribute("class");
+      const labTypeClass = await labPanel.locator('label:has([data-pd-id="lab.notifications.type-filter"])').getAttribute("class");
+      const labActionsClass = await labPanel.getByRole("button", { name: "Mark All Read" }).locator("..").getAttribute("class");
       await noPageOverflow(page);
       await page.screenshot({ path: join(evidence, `lab-notifications-page-${width}-${theme}.png`), fullPage: true });
 
@@ -467,8 +475,18 @@ for (const width of [1440, 390] as const) {
       expect(await realPanel.getByRole("tablist", { name: "Notification Views" }).getAttribute("class")).toBe(labTabsClass);
       await expect(realRow.getByRole("link", { name: "Open Source" })).toHaveAttribute("href", /\S+/);
       await expect(realPanel.getByRole("combobox", { name: "Filter notifications by type" })).toBeVisible();
+      expect(await realPanel.locator('label:has([data-pd-id="notifications.history.type"])').getAttribute("class")).toBe(labTypeClass);
+      expect(await realPanel.getByRole("button", { name: "Mark filtered as read" }).locator("..").getAttribute("class")).toBe(labActionsClass);
+      const advancedFilters = realPanel.locator('[data-pd-id="notifications.history.advanced-filters"]');
+      await expect(advancedFilters).not.toHaveAttribute("open", "");
+      await expect(realPanel.getByRole("button", { name: "View Today" })).toBeVisible();
       await noPageOverflow(page);
       await page.screenshot({ path: join(evidence, `v2-notifications-page-${width}-${theme}.png`), fullPage: true });
+      await advancedFilters.locator("summary").click();
+      await expect(advancedFilters.getByRole("searchbox", { name: "Search notifications by name or context" })).toBeVisible();
+      await advancedFilters.getByRole("searchbox", { name: "Search notifications by name or context" }).fill("no such synthetic notice");
+      await expect(realPanel.locator(".notification-empty-state")).toHaveText("No retained notifications match these filters.");
+      await advancedFilters.getByRole("searchbox", { name: "Search notifications by name or context" }).fill("");
       const allTab = realPanel.getByRole("tab", { name: "All", exact: true });
       await allTab.focus();
       await page.keyboard.press("ArrowRight");
@@ -477,6 +495,8 @@ for (const width of [1440, 390] as const) {
       await realPanel.getByRole("tab", { name: "System & Results" }).click();
       await expect(realPanel.getByRole("tab", { name: "System & Results" })).toHaveAttribute("aria-selected", "true");
       await noPageOverflow(page);
+      await realPanel.getByRole("button", { name: "View Today" }).click();
+      await expect(page.locator('[data-pd-id="tasks.page"]')).toBeVisible();
     });
   }
 }

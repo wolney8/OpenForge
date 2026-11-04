@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { labTaskDateLabel, type LabTodayTask } from "@/lib/design-lab-operations";
 import { activeLabNotificationEvents, type LabNotificationEvent } from "@/lib/design-lab-notification-policy";
-import { DesignNotificationRow, DesignNotificationSection, DesignNotificationSurface, DesignNotificationTabs, type DesignNotificationView } from "@/components/design-notification-presentation";
+import { DesignNotificationActions, DesignNotificationRow, DesignNotificationSection, DesignNotificationSurface, DesignNotificationTabs, DesignNotificationTypeFilter, type DesignNotificationView } from "@/components/design-notification-presentation";
 import styles from "./design-lab-notifications.module.css";
 
 const notificationTypeLabels: Record<LabNotificationEvent["kind"], string> = {
@@ -46,15 +46,15 @@ export function DesignLabNotifications({ events, liveTasks, scope, read, cleared
       : view === "system" ? [{ name: "System & Results", rows: visible }] : [{ name: "History", rows: visible }];
   return <DesignNotificationSurface dataPdId="lab.notifications" fullPage={fullPage} heading="Notifications" headingAction={!fullPage ? onViewAll : undefined} summary={`${unread} priority unread`}>
     {fullPage ? <DesignNotificationTabs controlsId="lab-notification-list" dataPdIdPrefix="lab.notifications.tab" onChange={setView} view={view} /> : null}
-    {fullPage ? <label className={styles.typeFilter}>Notification Type<select data-pd-id="lab.notifications.type-filter" onChange={event => setTypeFilter(event.target.value as typeof typeFilter)} value={typeFilter}><option value="all">All Types</option>{([...new Set(scoped.map(event => event.kind))] as LabNotificationEvent["kind"][]).map(kind => <option key={kind} value={kind}>{notificationTypeLabels[kind]}</option>)}</select></label> : null}
-    <div className={styles.actions}>
+    {fullPage ? <DesignNotificationTypeFilter dataPdId="lab.notifications.type-filter" onChange={setTypeFilter} options={[{ value: "all", label: "All Types" }, ...([...new Set(scoped.map(event => event.kind))] as LabNotificationEvent["kind"][]).map(kind => ({ value: kind, label: notificationTypeLabels[kind] }))]} value={typeFilter} /> : null}
+    <DesignNotificationActions>
       {!fullPage ? <>
       <button aria-pressed={view === "priority"} onClick={() => setView("priority")} type="button">Priority</button>
       <button aria-pressed={view === "all"} onClick={() => onViewAll ? onViewAll() : setView("all")} type="button">View All Notifications</button>
       <button aria-pressed={view === "history"} onClick={() => setView("history")} type="button">History</button>
       </> : null}
       {visible.some(event => !read.includes(event.id)) ? <button onClick={() => onRead(visible.map(event => event.id))} type="button">Mark All Read</button> : null}
-    </div>
+    </DesignNotificationActions>
     {fetchState === "loading" ? <p role="status">Loading simulated notifications…</p> : fetchState === "error" ? <div role="alert"><p>Notifications could not be loaded. Today remains available.</p><button onClick={() => setFetchState("normal")} type="button">Retry</button></div> : <div className={styles.list} id="lab-notification-list" role={fullPage ? "tabpanel" : undefined}>
       {categories.map(category => <DesignNotificationSection key={category.name} title={category.name}>
         {category.rows.map(event => {

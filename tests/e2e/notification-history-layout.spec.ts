@@ -1,5 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
 
+test.beforeEach(async ({ page }) => {
+  const independentAuthUrl = process.env.OPENFORGE_CP117_AUTH_URL;
+  if (independentAuthUrl) await page.goto(independentAuthUrl);
+});
+
 const longNotificationType =
   "synthetic_notification_type_with_a_deliberately_long_descriptive_label_for_layout_testing";
 

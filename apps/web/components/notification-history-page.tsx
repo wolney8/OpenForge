@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
-import { DesignNotificationRow, DesignNotificationSection, DesignNotificationSurface, DesignNotificationTabs, designNotificationClasses, type DesignNotificationView } from "@/components/design-notification-presentation";
+import { DesignNotificationActions, DesignNotificationRow, DesignNotificationSection, DesignNotificationSurface, DesignNotificationTabs, DesignNotificationTypeFilter, designNotificationClasses, type DesignNotificationView } from "@/components/design-notification-presentation";
 import labPageStyles from "@/components/design-lab-connected.module.css";
 import { apiBaseUrl } from "@/lib/api";
 import { beginRouteTransition, endRouteTransition } from "@/lib/shell-loading";
@@ -279,6 +279,18 @@ export function NotificationHistoryPage({ daily = false, visualV2 = false }: { d
     />;
   };
 
+  const searchFilter = <label className="field-control table-search-field">
+    <span>{daily ? "Search tasks" : "Search notifications"}</span>
+    <input aria-label={daily ? "Search tasks by name or context" : "Search notifications by name or context"} data-pd-id="notifications.history.search" onChange={event => setQuery(event.target.value)} placeholder="Name, profile, ledger, bookmaker or record" type="search" value={query} />
+  </label>;
+  const statusFilter = <label className="field-control table-filter-field"><span>Status</span><select aria-label="Filter notifications by status" data-pd-id="notifications.history.status" onChange={event => setStatus(event.target.value as NotificationHistoryStatus)} value={status}><option value="all">{daily ? "All current" : "All retained"}</option><option value="new">New</option><option value="done">Done</option><option value="cleared">Cleared</option></select></label>;
+  const typeFilter = <label className="field-control table-filter-field"><span>Type</span><select aria-label="Filter notifications by type" data-pd-id="notifications.history.type" onChange={event => setNotificationType(event.target.value)} value={notificationType}><option value="all">All types</option>{types.map(type => <option key={type} value={type}>{notificationTypeLabel(type)}</option>)}</select></label>;
+  const bulkActionButtons = <>
+    {daily ? <button type="button" className="button-link" disabled={isLoading || isPersistingState} data-pd-id="tasks.refresh" onClick={() => window.dispatchEvent(new Event(FUND_MANAGER_NOTIFICATIONS_REFRESH_EVENT))}><span aria-hidden="true" className="material-symbols-outlined">refresh</span>Refresh tasks</button> : null}
+    <button className="button-link" data-pd-id="notifications.history.mark-read" disabled={unread.length === 0 || isPersistingState || isLoading || loadFailed} onClick={() => markRead(unread)} type="button"><span aria-hidden="true" className="material-symbols-outlined">done_all</span>Mark filtered as read</button>
+    <button className="button-link destructive-action" data-pd-id="notifications.history.clear" disabled={clearable.length === 0 || isPersistingState || isLoading || loadFailed} onClick={() => daily ? setConfirmClearId("filtered") : clear(clearable)} type="button"><span aria-hidden="true" className="material-symbols-outlined">clear_all</span>Clear filtered</button>
+  </>;
+
   return (
     <main className="page-shell stack notification-history-page" data-pd-id={daily ? "tasks.page" : "notifications.page"}>
       {visualV2 ? <div className={labPageStyles.pageHead} data-pd-id="notifications.page-header"><div><h1>Notifications</h1></div><div className={labPageStyles.headActions}><Link className={labPageStyles.linkButton} href="/tasks">Today</Link></div></div> : <section className="hero-panel split-hero">
@@ -296,71 +308,21 @@ export function NotificationHistoryPage({ daily = false, visualV2 = false }: { d
 
       <DesignNotificationSurface ariaLabel={daily ? "Current daily tasks" : "Notification history"} dataPdId="notifications.history" fullPage={visualV2} heading="Notifications" legacy={!visualV2} summary={`${unreadTotal} unread`}>
         {visualV2 ? <DesignNotificationTabs controlsId="notification-history-list" dataPdIdPrefix="notifications.history.tab" onChange={next => { setPresentationView(next); setStatus("all"); }} view={presentationView} /> : null}
-        <div className="table-toolbar settings-table-toolbar notification-history-toolbar">
-          <label className="field-control table-search-field">
-            <span>{daily ? "Search tasks" : "Search notifications"}</span>
-            <input
-              aria-label={daily ? "Search tasks by name or context" : "Search notifications by name or context"}
-              data-pd-id="notifications.history.search"
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Name, profile, ledger, bookmaker or record"
-              type="search"
-              value={query}
-            />
-          </label>
+        {visualV2 ? <>
+          <DesignNotificationTypeFilter ariaLabel="Filter notifications by type" dataPdId="notifications.history.type" onChange={setNotificationType} options={[{ value: "all", label: "All types" }, ...types.map(type => ({ value: type, label: notificationTypeLabel(type) }))]} value={notificationType} />
+          <DesignNotificationActions>{bulkActionButtons}</DesignNotificationActions>
+          <details className={designNotificationClasses.advancedFilters} data-pd-id="notifications.history.advanced-filters">
+            <summary>Search and status filters{query || status !== "all" ? " · Active" : ""}</summary>
+            <div className="table-toolbar settings-table-toolbar notification-history-toolbar">{searchFilter}<div className="settings-table-filter-group notification-history-filter-group">{statusFilter}</div></div>
+          </details>
+        </> : <div className="table-toolbar settings-table-toolbar notification-history-toolbar">
+          {searchFilter}
           <div className="settings-table-filter-group notification-history-filter-group">
             {daily ? <label className="field-control table-filter-field"><span>Profile</span><select aria-label="Filter tasks by Profile" value={profileFilter} onChange={event => setProfileFilter(event.target.value)}><option value="all">All authorised Active Profiles</option>{profileFilter !== "all" && !profiles.some(([id]) => id === profileFilter) ? <option value={profileFilter}>Selected Profile: no current tasks</option> : null}{profiles.map(([id,name]) => <option key={id} value={id}>{name}</option>)}</select></label> : null}
-            <label className="field-control table-filter-field">
-              <span>Type</span>
-              <select
-                aria-label="Filter notifications by type"
-                data-pd-id="notifications.history.type"
-                onChange={(event) => setNotificationType(event.target.value)}
-                value={notificationType}
-              >
-                <option value="all">All types</option>
-                {types.map((type) => <option key={type} value={type}>{notificationTypeLabel(type)}</option>)}
-              </select>
-            </label>
-            <label className="field-control table-filter-field">
-              <span>Status</span>
-              <select
-                aria-label="Filter notifications by status"
-                data-pd-id="notifications.history.status"
-                onChange={(event) => setStatus(event.target.value as NotificationHistoryStatus)}
-                value={status}
-              >
-                <option value="all">{daily ? "All current" : "All retained"}</option>
-                <option value="new">New</option>
-                <option value="done">Done</option>
-                <option value="cleared">Cleared</option>
-              </select>
-            </label>
+            {typeFilter}{statusFilter}
           </div>
-          <div className="notification-history-actions">
-            {daily ? <button type="button" className="button-link" disabled={isLoading || isPersistingState} data-pd-id="tasks.refresh" onClick={() => window.dispatchEvent(new Event(FUND_MANAGER_NOTIFICATIONS_REFRESH_EVENT))}><span aria-hidden="true" className="material-symbols-outlined">refresh</span>Refresh tasks</button> : null}
-            <button
-              className="button-link"
-              data-pd-id="notifications.history.mark-read"
-              disabled={unread.length === 0 || isPersistingState || isLoading || loadFailed}
-              onClick={() => markRead(unread)}
-              type="button"
-            >
-              <span aria-hidden="true" className="material-symbols-outlined">done_all</span>
-              Mark filtered as read
-            </button>
-            <button
-              className="button-link destructive-action"
-              data-pd-id="notifications.history.clear"
-              disabled={clearable.length === 0 || isPersistingState || isLoading || loadFailed}
-              onClick={() => daily ? setConfirmClearId("filtered") : clear(clearable)}
-              type="button"
-            >
-              <span aria-hidden="true" className="material-symbols-outlined">clear_all</span>
-              Clear filtered
-            </button>
-          </div>
-        </div>
+          <div className="notification-history-actions">{bulkActionButtons}</div>
+        </div>}
 
         {daily && confirmClearId === "filtered" ? <div className="notification-clear-confirm" role="group" aria-label="Confirm clear filtered tasks"><span>Clear filtered tasks without changing their records?</span><button className="button-link destructive-action" type="button" onClick={() => clear(clearable)}>Clear</button><button className="button-link" type="button" onClick={() => setConfirmClearId("")}>Cancel</button></div> : null}
         {actionError ? (
@@ -432,6 +394,7 @@ export function NotificationHistoryPage({ daily = false, visualV2 = false }: { d
             )}
           </>
         )}
+        {visualV2 ? <div className={designNotificationClasses.footer}><button data-pd-id="notifications.history.view-today" onClick={() => router.push("/tasks")} type="button">View Today</button></div> : null}
       </DesignNotificationSurface>
     </main>
   );

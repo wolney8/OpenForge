@@ -13,7 +13,9 @@ if (target.port === bootstrap.port) throw new Error("Synthetic authentication us
 
 export default defineConfig({
   testDir: "./tests/e2e",
-  testMatch: ["cp117-spreadsheet.spec.ts", "cp117-six-ledger.spec.ts"],
+  testMatch: process.env.OPENFORGE_CP117_VERIFY_LEGACY === "true"
+    ? ["cp117-spreadsheet.spec.ts", "cp117-six-ledger.spec.ts", "notification-history-layout.spec.ts"]
+    : ["cp117-spreadsheet.spec.ts", "cp117-six-ledger.spec.ts"],
   workers: 1,
   retries: 0,
   outputDir: process.env.OPENFORGE_CP117_VERIFY_LEGACY === "true"
