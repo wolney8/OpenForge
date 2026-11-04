@@ -57,6 +57,10 @@ for (const route of routes) {
           if (width < 761) await page.getByRole("button", { name: "Open navigation" }).click();
           await page.getByRole("button", { name: route.lab, exact: true }).first().click();
         }
+        if (route.name === "reports") {
+          await page.getByRole("combobox", { name: "Selected Range" }).click();
+          await page.getByRole("option", { name: "This Year" }).click();
+        }
         await expect(page.getByRole("heading", { name: route.heading, exact: true }).first()).toBeVisible();
         await setTheme(page, theme);
         await noPageOverflow(page);
@@ -91,10 +95,27 @@ for (const route of routes) {
 
         await page.goto(route.path);
         await expect(page.getByRole("heading", { name: route.heading, exact: true }).first()).toBeVisible();
+        let originalReportRange: string | null = null;
         if (route.name === "position" || route.name === "reports") {
           await expect(page.locator(`[data-pd-id="${route.name}.overview"]`)).toBeVisible();
           await expect(page.locator(`[data-pd-id="${route.name}.metrics"]`)).not.toContainText(/Loading|Updating/, { timeout: 45_000 });
           await page.locator('[data-pd-id="combined-reporting.loading"]').waitFor({ state: "hidden" });
+          if (route.name === "reports") {
+            const range = page.getByRole("combobox", { name: "Date range" });
+            originalReportRange = await range.inputValue();
+            await range.selectOption("This Year");
+            await expect(range).toHaveValue("This Year");
+            const explorer = page.locator('[data-pd-id="reports.explorer"]');
+            const advanced = explorer.locator('[data-pd-id="reports.explorer.advanced"] > summary');
+            await advanced.click();
+            await explorer.getByRole("button", { name: "Custom", exact: true }).click();
+            await explorer.getByLabel("Explorer start").fill("2026-01-01");
+            await explorer.getByLabel("Explorer end").fill("2026-12-31");
+            await expect(explorer).toContainText("2026-01-01 to 2026-12-31");
+            await advanced.click();
+            await expect(explorer.locator('[data-pd-id="reports.lab-chart"]')).toBeVisible();
+            await expect(explorer.locator('[data-pd-id="reports.source-drilldown.rows"] a').first()).toBeVisible();
+          }
         } else if (route.name === "accounts" || route.name === "sportsbook") {
           await page.locator(".ledger-loading-overlay").first().waitFor({ state: "hidden" });
         } else if (route.name === "today") {
@@ -102,6 +123,8 @@ for (const route of routes) {
         }
         await setTheme(page, theme);
         await noPageOverflow(page);
+        await page.evaluate(() => window.scrollTo(0, 0));
+        await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
         await page.screenshot({ path: join(evidence, `v2-${route.name}-${width}-${theme}.png`), fullPage: true });
 
         if (route.name === "position") {
@@ -133,6 +156,7 @@ for (const route of routes) {
           await page.getByText("Formal reports and source records", { exact: true }).click();
           const source = page.locator('[data-pd-id="reports.period-pnl.records"]');
           if (await source.count()) await expect(source).toHaveCSS("position", "static");
+          if (originalReportRange) await page.getByRole("combobox", { name: "Date range" }).selectOption(originalReportRange);
         }
         if (route.name === "today") {
           const realTodayRowStyle = await page.locator('[data-pd-id^="tasks.v2.row."]:not([class*="urgent"])').first().evaluate((element) => ({
@@ -649,7 +673,7 @@ for (const route of integratedRoutes) {
         }
         if (route.name === "onboarding") {
           await expect(page.locator('[data-pd-id="founder-onboarding.page"]')).toBeVisible();
-          await expect(page.locator('[data-pd-id="ledger-editor.tabs"]')).toBeVisible();
+          await expect(page.getByRole("list", { name: "Onboarding progress" })).toBeVisible();
         }
         if (route.name === "settings") {
           await expect(page.locator('[data-pd-id="account-catalogue.section"]')).toHaveAttribute("aria-busy", "false", { timeout: 45_000 });
@@ -716,11 +740,28 @@ for (const width of [1440, 390] as const) {
       await expect(page.locator('[data-pd-id="lab.onboarding"]')).toBeVisible();
       await setTheme(page, theme);
       await noPageOverflow(page);
+      const labComposition = await page.locator('[data-pd-id="lab.onboarding"]').evaluate((element) => ({
+        page: element.className,
+        intro: element.querySelector("header")?.className,
+        progress: element.querySelector('ol[aria-label="Onboarding progress"]')?.className,
+        panel: element.querySelector('ol[aria-label="Onboarding progress"]')?.nextElementSibling?.className,
+      }));
       await page.screenshot({ path: join(evidence, `lab-onboarding-${width}-${theme}.png`), fullPage: true });
       await page.goto("/profiles/new");
-      await expect(page.locator('[data-pd-id="founder-onboarding.page"]')).toBeVisible();
+      const governedPage = page.locator('[data-pd-id="founder-onboarding.page"]');
+      await expect(governedPage).toBeVisible();
+      await expect(governedPage.getByRole("heading", { name: "Create a Profile" })).toBeVisible();
+      await expect(page.locator(".ux-v2-main")).toHaveCount(0);
+      await governedPage.getByRole("combobox", { name: "Profile relationship" }).selectOption("Personal");
+      await governedPage.getByLabel("Tracking Start Date").fill("2026-11-02");
       await setTheme(page, theme);
       await noPageOverflow(page);
+      expect(await governedPage.evaluate((element) => ({
+        page: element.className,
+        intro: element.querySelector("header")?.className,
+        progress: element.querySelector('ol[aria-label="Onboarding progress"]')?.className,
+        panel: element.querySelector('ol[aria-label="Onboarding progress"]')?.nextElementSibling?.className,
+      }))).toEqual(labComposition);
       await page.screenshot({ path: join(evidence, `v2-onboarding-${width}-${theme}.png`), fullPage: true });
     });
   }
@@ -908,3 +949,22 @@ for (const { width, theme } of [{ width: 1440, theme: "light" }, { width: 390, t
     }
   });
 }
+
+test("real V2 onboarding retains validation and creates an isolated synthetic import Profile", async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.goto("/profiles/new");
+  const setup = page.locator('[data-pd-id="founder-onboarding.page"]');
+  await expect(setup.getByRole("heading", { name: "Create a Profile" })).toBeVisible();
+  await setup.getByRole("button", { name: "Continue", exact: true }).click();
+  await expect(setup.getByRole("alert")).toContainText("Complete the Profile identity");
+  await setup.getByRole("radio", { name: /Import existing workbook\/data/ }).check();
+  await setup.getByRole("combobox", { name: "Profile relationship" }).selectOption("Personal");
+  await setup.getByLabel("Display Name").fill("Synthetic CP129 Profile");
+  await setup.getByLabel("Profile Code").fill("CP129-ONBOARD-01");
+  await setup.getByRole("button", { name: "Continue", exact: true }).click();
+  await expect(setup.getByRole("heading", { name: "Review Profile" })).toBeVisible();
+  await expect(setup.getByText("Synthetic CP129 Profile")).toBeVisible();
+  await setup.getByRole("button", { name: "Create and import" }).click();
+  await expect(page).toHaveURL(/\/profiles\/[^/]+\/tracker\/settings\?setup=import/, { timeout: 30_000 });
+  await expect(page.getByText("Synthetic CP129 Profile").first()).toBeVisible();
+});

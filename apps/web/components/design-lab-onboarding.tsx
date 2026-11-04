@@ -1,10 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { BrandLogo } from "@/components/brand-logo";
 import { ConfirmationDialog } from "@/components/confirmation-dialog";
 import { DesignLabSelect } from "@/components/design-lab-select";
-import { DesignOnboardingFieldRow, DesignOnboardingFooter, DesignOnboardingPanel } from "@/components/design-onboarding-field-row";
+import { DesignOnboardingButton, DesignOnboardingFieldRow, DesignOnboardingFooter, DesignOnboardingIntro, DesignOnboardingPage, DesignOnboardingPanel, DesignOnboardingProgress } from "@/components/design-onboarding-field-row";
 import styles from "./design-lab-onboarding.module.css";
 
 type Step = "Identity" | "Modules" | "Accounts" | "Quick Actions" | "Review";
@@ -36,7 +35,6 @@ export function DesignLabOnboarding({ onExit, onCreated }: { onExit: () => void;
   const [created, setCreated] = useState(false);
   const [status, setStatus] = useState("");
   const headingRef = useRef<HTMLHeadingElement>(null);
-  const exitRef = useRef<HTMLButtonElement>(null);
   const creationTimerRef = useRef<number | null>(null);
 
   useEffect(() => { headingRef.current?.focus(); }, [step, created]);
@@ -71,12 +69,10 @@ export function DesignLabOnboarding({ onExit, onCreated }: { onExit: () => void;
     creationTimerRef.current = window.setTimeout(() => { creationTimerRef.current = null; setSaving(false); if (failNext) { setFailNext(false); setError("Simulated creation failed. Your entries are retained; retry when ready."); return; } setCreated(true); setDirty(false); setError(""); onCreated({ name, code }); setStatus("Synthetic Profile created once. No application Profile or Account was written."); }, 350);
   }
 
-  return <main className={styles.page} data-pd-id="lab.onboarding">
-    <div className={styles.top}><div className={styles.brand}><span className="brand-mark"><BrandLogo variant="mark" /></span><span className={styles.brandText}>Plum Duff <small>Design Lab · synthetic onboarding</small></span></div><button className={styles.secondary} disabled={saving} onClick={requestExit} ref={exitRef} type="button">Exit onboarding</button></div>
-    <div className={styles.content}>
+  return <DesignOnboardingPage dataPdId="lab.onboarding" exitDisabled={saving} onExit={requestExit} subtitle="Design Lab · synthetic onboarding">
       {created ? <section className={styles.panel} data-pd-id="lab.onboarding-created"><h1 ref={headingRef} tabIndex={-1}>First use · {name}</h1><p role="status">{status}</p><div className={styles.firstUse}><div><strong>Profile identity</strong><span>{code} · {relationship}</span></div><div><strong>Current cash</strong><span>{path === "import" && !bookmaker && !exchange ? "Unknown · no reviewed Accounts" : "Unknown until confirmed observations"}</span></div><div><strong>Next action</strong><span>{path === "import" ? "Review workbook mappings before any Apply" : "Confirm Account opening balances"}</span></div></div><button className={styles.primary} onClick={onExit} type="button">Return to Position</button></section> : <>
-        <header className={styles.intro}><span className={styles.eyebrow}>Fund Manager · Add Profile</span><h1 ref={headingRef} tabIndex={-1}>Create a Profile</h1><p>One isolated tracker. No Account or financial record is created in this lab.</p></header>
-        <ol aria-label="Onboarding progress" className={styles.stepper}>{steps.map((item, index) => <li key={item}><button aria-current={step === item ? "step" : undefined} className={step === item ? styles.stepActive : ""} disabled={index > steps.indexOf(step)} onClick={() => { setStep(item); setError(""); }} type="button"><span>{index + 1}</span>{item}</button></li>)}</ol>
+        <DesignOnboardingIntro description="One isolated tracker. No Account or financial record is created in this lab." eyebrow="Fund Manager · Add Profile" headingRef={headingRef} title="Create a Profile" />
+        <DesignOnboardingProgress activeId={step} onSelect={id => { setStep(id as Step); setError(""); }} steps={steps.map((item, index) => ({ id: item, label: item, disabled: index > steps.indexOf(step) }))} />
         <DesignOnboardingPanel aria-label={`${step} step`}>
           {step === "Identity" ? <div className={styles.fields}>
             <h2>Identity and terms</h2><DesignOnboardingFieldRow><div className={styles.selectField}><DesignLabSelect dataPdId="lab.onboarding.path" label="Setup path" onChange={value => edit(setPath, value)} options={[{value:"fresh",label:"Fresh setup"},{value:"import",label:"Import existing tracker"}]} value={path}/></div><div className={styles.selectField}><DesignLabSelect dataPdId="lab.onboarding.relationship" label="Relationship" onChange={value => { edit(setRelationship, value); if (value === "Personal") { setManagementFee(""); setInvestmentFee(""); } }} options={[{value:"Personal",label:"Personal"},{value:"Managed",label:"Managed"}]} value={relationship}/></div></DesignOnboardingFieldRow>
@@ -90,10 +86,9 @@ export function DesignLabOnboarding({ onExit, onCreated }: { onExit: () => void;
           {step === "Quick Actions" ? <div className={styles.fields}><h2>Quick Actions</h2><p>Required global actions are inherited. Optional favourites are Profile-specific.</p><div className={styles.checks}><label><input checked disabled type="checkbox"/>Add Sportsbook Bet · inherited</label><label><input checked={quickAction} onChange={event => edit(setQuickAction, event.target.checked)} type="checkbox"/>Favourite: Review Accounts</label></div></div> : null}
           {step === "Review" ? <div className={styles.fields}><h2>Review simulated creation</h2><dl className={styles.review}><div><dt>Profile</dt><dd>{name} · {code} · {relationship}</dd></div><div><dt>Setup</dt><dd>{path === "fresh" ? "Fresh" : "Import"} · tracking from {trackingStart}</dd></div><div><dt>New starting bankroll</dt><dd>£{Number(bankroll).toFixed(2)} · no existing Profile balance changes</dd></div><div><dt>Fees</dt><dd>Management {relationship === "Personal" ? "0.00" : managementFee}% · Investment {relationship === "Personal" ? "0.00" : investmentFee}%</dd></div><div><dt>Accounts</dt><dd>{bookmaker ? "Bookmaker A; " : ""}{exchange ? `Exchange A · commission ${commission}` : "None selected"}</dd></div><div><dt>Current cash</dt><dd>Unknown until authoritative Account observations</dd></div></dl><label className={styles.failure}><input checked={failNext} onChange={event => setFailNext(event.target.checked)} type="checkbox"/>Simulate creation failure on next attempt</label></div> : null}
           {error ? <p className={styles.error} data-pd-id="lab.onboarding-error" role="alert">{error}</p> : null}
-          <DesignOnboardingFooter><button className={styles.secondary} disabled={step === "Identity" || saving} onClick={() => { setStep(steps[steps.indexOf(step) - 1]); setError(""); }} type="button">Back</button>{step === "Review" ? <button className={styles.primary} disabled={saving} onClick={simulateCreation} type="button">{saving ? "Creating…" : "Create Profile · simulation"}</button> : <button className={styles.primary} onClick={next} type="button">Continue</button>}</DesignOnboardingFooter>
+          <DesignOnboardingFooter><DesignOnboardingButton disabled={step === "Identity" || saving} onClick={() => { setStep(steps[steps.indexOf(step) - 1]); setError(""); }} variant="secondary">Back</DesignOnboardingButton>{step === "Review" ? <DesignOnboardingButton disabled={saving} onClick={simulateCreation} variant="primary">{saving ? "Creating…" : "Create Profile · simulation"}</DesignOnboardingButton> : <DesignOnboardingButton onClick={next} variant="primary">Continue</DesignOnboardingButton>}</DesignOnboardingFooter>
         </DesignOnboardingPanel>
       </>}
-    </div>
     <ConfirmationDialog cancelLabel="Keep editing" confirmLabel="Discard synthetic draft" description="Your unsaved Profile setup will be lost. No real Profile has been created." onCancel={() => setExitConfirm(false)} onConfirm={() => { setExitConfirm(false); onExit(); }} open={exitConfirm} title="Unsaved Profile setup" />
-  </main>;
+  </DesignOnboardingPage>;
 }

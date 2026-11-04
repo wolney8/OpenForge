@@ -118,6 +118,8 @@ for (const item of cases) {
     await expect(editor.getByRole("alert")).toContainText(/characters|length|at most|less than/i);
     await expect(input).toHaveValue("X".repeat(item.limit + 1));
     expect((await read(page, item))[item.field]).toBe(value);
+    await expect(editor).toHaveAttribute("aria-busy", "false");
+    await expect(editor.locator('[data-pd-id="ledger.floating-editor.cancel"]')).toBeEnabled();
     await page.keyboard.press("Escape"); await expect(editor).toHaveCount(0); await expect(target).toBeFocused();
     await page.keyboard.press("Enter");
     if (item.module === "cash-adjustments") await editor.getByRole("button", { name: "Edit cash-adjustment row", exact: true }).click();
@@ -320,4 +322,15 @@ test("flag OFF: Profile directory keeps its original table and financial overvie
   const summaryTop = await panel.locator('.stat-strip').evaluate(element => element.getBoundingClientRect().top);
   const tableTop = await panel.locator('table').evaluate(element => element.getBoundingClientRect().top);
   expect(summaryTop).toBeLessThan(tableTop);
+});
+
+test("flag OFF: Profile onboarding keeps the original shell and guided controls", async ({ page }) => {
+  test.skip(!legacy);
+  await page.goto("/profiles/new");
+  await expect(page.locator("html")).toHaveAttribute("data-ux-shell", "legacy");
+  const onboarding = page.locator('[data-pd-id="founder-onboarding.page"]');
+  await expect(onboarding.getByRole("heading", { name: "Create Profile", exact: true })).toBeVisible();
+  await expect(page.locator("main.page-shell")).toContainText("Profile relationship");
+  await expect(onboarding.getByRole("button", { name: "Next", exact: true })).toBeVisible();
+  await expect(onboarding.getByRole("button", { name: "Exit onboarding" })).toHaveCount(0);
 });

@@ -5,9 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { FinancialTextInput } from "@/components/financial-text-input";
-import { DesignPageHead } from "@/components/design-ledger-screen";
-import { DesignManagementSurface } from "@/components/design-management-presentation";
-import { DesignOnboardingFieldRow, DesignOnboardingFooter, DesignOnboardingPanel } from "@/components/design-onboarding-field-row";
+import { DesignOnboardingButton, DesignOnboardingFieldRow, DesignOnboardingFooter, DesignOnboardingFrame, DesignOnboardingIntro, DesignOnboardingPage, DesignOnboardingPanel, DesignOnboardingProgress } from "@/components/design-onboarding-field-row";
 import { FinancialValue, FinancialValueReplayGroup } from "@/components/financial-value";
 import { LedgerEditorTabPanel, LedgerEditorTabRail } from "@/components/ledger-editor-tabs";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
@@ -643,21 +641,25 @@ export function ProfileOnboarding({ visualV2 = false }: { visualV2?: boolean }) 
     router.push("/profiles");
   }
 
+  const createAction = <button className="modal-primary-button icon-text-action" disabled={isSaving || (setupPath === "fresh" && catalogueState !== "ready") || !stageIsValid("profile")} onClick={() => void createProfile()} type="button">{isSaving ? <span aria-hidden="true" className="button-spinner" /> : <span aria-hidden="true" className="material-symbols-outlined">person_add</span>}<span>{isSaving ? "Creating Profile" : setupPath === "import" ? "Create and import" : "Create Profile"}</span></button>;
+
   return (
-    <DesignManagementSurface className="founder-onboarding" dataPdId="founder-onboarding.page" enabled={visualV2} legacyClassName="content-panel stack founder-onboarding">
-      {visualV2 ? <DesignPageHead><div><h1 ref={headingRef} tabIndex={-1}>Create Profile</h1><p>One isolated tracker</p></div></DesignPageHead> : <header className="stack-tight">
+    <DesignOnboardingPage dataPdId="founder-onboarding.page" enabled={visualV2} exitDisabled={isSaving} legacyClassName="content-panel stack founder-onboarding" onExit={() => void cancelOnboarding()} subtitle="Profile onboarding">
+      {visualV2 ? <DesignOnboardingIntro description="One isolated tracker. Profile access is separate from login identity." eyebrow="Fund Manager · Add Profile" headingRef={headingRef} title="Create a Profile" /> : <header className="stack-tight">
         <span className="eyebrow">Fund Manager</span>
         <h1>Create Profile</h1>
       </header>}
 
-      <LedgerEditorTabRail
+      {visualV2 ? <DesignOnboardingProgress activeId={stage} onSelect={id => selectStage(id as Stage)} steps={onboardingTabs.map(item => ({ id: item.id, label: item.label === "Profile" ? "Identity" : item.label, disabled: item.status === "locked" }))} /> : <LedgerEditorTabRail
         activeTabId={stage}
         ariaLabel="Profile setup steps"
         guidedTargetTabId={guidedEntryDismissed ? null : guidedTarget.stage}
         onActiveTabChange={(tabId) => selectStage(tabId as Stage)}
         tabs={onboardingTabs}
         visualV2={visualV2}
-      />
+      />}
+
+      <DesignOnboardingFrame enabled={visualV2}>
 
       {!guidedEntryDismissed ? (
         <section
@@ -678,7 +680,7 @@ export function ProfileOnboarding({ visualV2 = false }: { visualV2?: boolean }) 
 
       {stage === "profile" ? (
         <LedgerEditorTabPanel activeTabId={stage} tabId="profile">
-        <DesignOnboardingPanel className="analytics-tab-panel stack" enabled={visualV2}>
+        <DesignOnboardingPanel className="analytics-tab-panel stack" enabled={false}>
           <section className="content-subpanel stack-tight" data-pd-id="profile-onboarding.setup-path">
             <div><span className="eyebrow">Setup path</span><h2>How should this Profile start?</h2></div>
             <div aria-label="Profile setup path" className="settings-card-grid" role="radiogroup">
@@ -729,7 +731,7 @@ export function ProfileOnboarding({ visualV2 = false }: { visualV2?: boolean }) 
       ) : null}
 
       {stage === "modules" ? (
-        <LedgerEditorTabPanel activeTabId={stage} tabId="modules"><DesignOnboardingPanel className="analytics-tab-panel stack" enabled={visualV2} data-guided-field="modules">
+        <LedgerEditorTabPanel activeTabId={stage} tabId="modules"><DesignOnboardingPanel className="analytics-tab-panel stack" enabled={false} data-guided-field="modules">
           <h2>Enabled Modules</h2>
           <div className="settings-card-grid">
             {alwaysOnModules.map((module) => <label className="profile-filter-chip is-selected" key={module.id}><input checked disabled type="checkbox" /><span>{module.label}</span><small>Required</small></label>)}
@@ -740,7 +742,7 @@ export function ProfileOnboarding({ visualV2 = false }: { visualV2?: boolean }) 
       ) : null}
 
       {stage === "accounts" ? (
-        <LedgerEditorTabPanel activeTabId={stage} tabId="accounts"><DesignOnboardingPanel className="analytics-tab-panel stack" enabled={visualV2} data-guided-field="accounts">
+        <LedgerEditorTabPanel activeTabId={stage} tabId="accounts"><DesignOnboardingPanel className="analytics-tab-panel stack" enabled={false} data-guided-field="accounts">
           <h2>Profile Accounts</h2>
           {catalogueState === "ready" ? <p className="field-hint">{catalogue.length} active GB providers from the Fund Manager Account Catalogue.</p> : null}
           <div className="table-toolbar settings-table-toolbar">
@@ -790,7 +792,7 @@ export function ProfileOnboarding({ visualV2 = false }: { visualV2?: boolean }) 
       ) : null}
 
       {stage === "quick-actions" ? (
-        <LedgerEditorTabPanel activeTabId={stage} tabId="quick-actions"><DesignOnboardingPanel className="analytics-tab-panel stack" enabled={visualV2} data-guided-field="quick-actions">
+        <LedgerEditorTabPanel activeTabId={stage} tabId="quick-actions"><DesignOnboardingPanel className="analytics-tab-panel stack" enabled={false} data-guided-field="quick-actions">
           <h2>Quick Actions</h2>
           <p className="field-hint">Required Fund Manager actions are inherited automatically. Select up to four optional favourites per enabled ledger; defaults can be refined later in Profile Settings.</p>
           {quickActionsState === "loading" ? (
@@ -828,7 +830,7 @@ export function ProfileOnboarding({ visualV2 = false }: { visualV2?: boolean }) 
       ) : null}
 
       {stage === "review" ? (
-        <LedgerEditorTabPanel activeTabId={stage} tabId="review"><DesignOnboardingPanel className="analytics-tab-panel stack" enabled={visualV2} data-guided-field="create-profile">
+        <LedgerEditorTabPanel activeTabId={stage} tabId="review"><DesignOnboardingPanel className="analytics-tab-panel stack" enabled={false} data-guided-field="create-profile">
           <h2>Review Profile</h2>
           <div className="stat-grid founder-onboarding-review-grid">
             <article className="stat-card"><span className="eyebrow">Profile</span><strong>{profile.display_name || "Not set"}</strong><span>{profile.profile_code || "No code"}</span><span>{profile.profile_relationship} · Fees {profile.management_fee_percent}% / {profile.investment_fee_percent}%</span></article>
@@ -845,13 +847,19 @@ export function ProfileOnboarding({ visualV2 = false }: { visualV2?: boolean }) 
       ) : null}
 
       {error ? <p className="error-text" role="alert">{error}</p> : null}
-      <DesignOnboardingFooter className="tracker-nav founder-onboarding-actions" enabled={visualV2}>
+      <DesignOnboardingFooter className={visualV2 ? "" : "tracker-nav founder-onboarding-actions"} enabled={visualV2}>
+        {visualV2 ? <>
+          <DesignOnboardingButton disabled={stage === "profile" || isSaving} onClick={goPrevious} variant="secondary">Back</DesignOnboardingButton>
+          {stage !== "review" ? <DesignOnboardingButton disabled={(setupPath === "fresh" && catalogueState === "error") || isSaving} onClick={goNext} variant="primary">Continue</DesignOnboardingButton> : createAction}
+        </> : <>
         <button className="button-link" disabled={isSaving} onClick={() => void cancelOnboarding()} type="button">Cancel</button>
         <div className="tracker-nav">
           <button className="review-chip review-chip-action-previous" disabled={stage === "profile" || isSaving} onClick={goPrevious} type="button">Previous</button>
-          {stage !== "review" ? <button className="review-chip review-chip-action-next" disabled={(setupPath === "fresh" && catalogueState === "error") || isSaving} onClick={goNext} type="button">Next</button> : <button className="modal-primary-button icon-text-action" disabled={isSaving || (setupPath === "fresh" && catalogueState !== "ready") || !stageIsValid("profile")} onClick={() => void createProfile()} type="button">{isSaving ? <span aria-hidden="true" className="button-spinner" /> : <span aria-hidden="true" className="material-symbols-outlined">person_add</span>}<span>{isSaving ? "Creating Profile" : setupPath === "import" ? "Create and import" : "Create Profile"}</span></button>}
+          {stage !== "review" ? <button className="review-chip review-chip-action-next" disabled={(setupPath === "fresh" && catalogueState === "error") || isSaving} onClick={goNext} type="button">Next</button> : createAction}
         </div>
+        </>}
       </DesignOnboardingFooter>
-    </DesignManagementSurface>
+      </DesignOnboardingFrame>
+    </DesignOnboardingPage>
   );
 }

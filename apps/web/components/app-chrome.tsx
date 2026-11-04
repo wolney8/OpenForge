@@ -101,6 +101,7 @@ export function AppChrome({ children, uxV2 = false }: { children: React.ReactNod
   if (pathname === "/invite" || pathname.startsWith("/subscriber")) return <><a className="skip-link" href="#main-content">Skip to content</a><header className="calculator-popout-toolbar"><Link href="/subscriber">Plum Duff · Subscriber</Link><ThemeToggle /><button className="button-link" onClick={async () => { await fetch("/api/auth/logout", { method: "POST" }); window.location.replace("/login"); }}>Sign out</button></header>{children}</>;
   const isCalculatorPopout = pathname === "/calculator";
   const isDesignLab = pathname === "/design-lab";
+  const isV2Onboarding = uxV2 && pathname === "/profiles/new";
   const isPublicAuthRoute =
     pathname === "/login" ||
     pathname === "/register" ||
@@ -110,7 +111,7 @@ export function AppChrome({ children, uxV2 = false }: { children: React.ReactNod
   return (
     <SessionBootstrapGate>
       {(session) => (
-        isDesignLab ? <><a className="skip-link" href="#main-content">Skip to content</a><SessionInactivityGuard initialSession={session} />{children}</> :
+        isDesignLab || isV2Onboarding ? <><a className="skip-link" href="#main-content">Skip to content</a><SessionInactivityGuard initialSession={session} />{isV2Onboarding ? <FinancialMotionPreferenceProvider>{children}</FinancialMotionPreferenceProvider> : children}</> :
           <FinancialMotionPreferenceProvider>
             {isCalculatorPopout ? <CalculatorPopoutChrome initialSession={session}>{children}</CalculatorPopoutChrome> : <AppChromeContent initialSession={session} uxV2={uxV2}>{children}</AppChromeContent>}
           </FinancialMotionPreferenceProvider>
