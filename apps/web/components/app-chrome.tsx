@@ -5,6 +5,7 @@ import { ModalBoundary } from "@/components/modal-boundary";
 import { usePathname, useRouter } from "next/navigation";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { AppNavigationDrawer } from "@/components/app-navigation-drawer";
+import labStyles from "@/components/design-lab-connected.module.css";
 import { FundManagerUxV2Breadcrumbs, FundManagerUxV2Launcher, FundManagerUxV2Sidebar } from "@/components/fund-manager-ux-v2-navigation";
 import { BackLayThemeToggle } from "@/components/back-lay-theme-toggle";
 import { BrandLogo } from "@/components/brand-logo";
@@ -160,7 +161,7 @@ function AppChromeContent({
   const [uxV2Collapsed, setUxV2Collapsed] = useState(false);
   const [uxV2Narrow, setUxV2Narrow] = useState(false);
   useEffect(() => {
-    const media = window.matchMedia("(max-width: 760px)");
+    const media = window.matchMedia("(max-width: 900px)");
     const update = () => setUxV2Narrow(media.matches);
     const frame = requestAnimationFrame(update);
     media.addEventListener("change", update);
@@ -598,22 +599,24 @@ function AppChromeContent({
       <a className="skip-link" href="#main-content">
         Skip to content
       </a>
-      <div className={`app-frame${uxV2 && !isPublicAuthRoute ? ` ux-v2-frame${uxV2Collapsed ? " is-sidebar-collapsed" : ""}` : ""}`} data-ux-shell={uxV2 && !isPublicAuthRoute ? "v2" : "legacy"}>
-        {!isPublicAuthRoute ? <header className={`top-app-bar${uxV2 ? " ux-v2-top-bar" : ""}`} data-openforge-top-bar="" data-pd-id="app-shell.top-bar">
-          <div className="brand-lockup">
+      <div className={`app-frame${uxV2 && !isPublicAuthRoute ? ` ux-v2-frame ${labStyles.frame}${uxV2Collapsed ? ` is-sidebar-collapsed ${labStyles.collapsed}` : ""}` : ""}`} data-ux-shell={uxV2 && !isPublicAuthRoute ? "v2" : "legacy"}>
+        {!isPublicAuthRoute && uxV2 ? <FundManagerUxV2Sidebar profileId={resolvedProfileId} mobileOpen={uxV2MobileOpen} onMobileClose={() => setUxV2MobileOpen(false)} triggerRef={appMenuTriggerRef} /> : null}
+        {!isPublicAuthRoute ? <header className={`top-app-bar${uxV2 ? ` ux-v2-top-bar ${labStyles.header}` : ""}`} data-openforge-top-bar="" data-pd-id="app-shell.top-bar">
+          <div className={uxV2 ? labStyles.headerLeft : "legacy-header-left"}>
+          <div className={`brand-lockup${uxV2 ? ` ${labStyles.headerIdentity}` : ""}`}>
             {!isPublicAuthRoute ? <div className="app-menu-shell">
               <button
                 aria-expanded={uxV2 ? (uxV2Narrow ? uxV2MobileOpen : !uxV2Collapsed) : appMenuOpen}
                 aria-controls={uxV2 ? "ux-v2-sidebar" : "app-navigation-drawer"}
                 aria-haspopup={uxV2 ? undefined : "dialog"}
-                aria-label={uxV2 ? "Toggle Navigation" : "Open navigation drawer"}
-                className="icon-button app-navigation-drawer-trigger"
+                aria-label={uxV2 ? uxV2Narrow ? "Open navigation" : uxV2Collapsed ? "Expand navigation" : "Collapse navigation" : "Open navigation drawer"}
+                className={`icon-button app-navigation-drawer-trigger${uxV2 ? ` ${labStyles.iconButton}` : ""}`}
                 data-pd-id="app-navigation.trigger"
                 onClick={() => {
                   setTrackerMenuOpen(false);
                   setProfileSearch("");
                   if (uxV2) {
-                    if (window.matchMedia("(max-width: 760px)").matches) setUxV2MobileOpen(true);
+                    if (window.matchMedia("(max-width: 900px)").matches) setUxV2MobileOpen(true);
                     else setUxV2Collapsed(value => !value);
                   }
                   else setAppMenuOpen(true);
@@ -621,18 +624,18 @@ function AppChromeContent({
                 ref={appMenuTriggerRef}
                 type="button"
               >
-                <span aria-hidden="true" className="material-symbols-outlined">menu</span>
+                <span aria-hidden="true" className="material-symbols-outlined">{uxV2 && !uxV2Narrow ? uxV2Collapsed ? "keyboard_double_arrow_right" : "keyboard_double_arrow_left" : "menu"}</span>
               </button>
             </div> : null}
-            <Link aria-label={`${platformBrand.name} home`} className="brand-mark" href={isPublicAuthRoute ? "/login" : "/"}>
+            {!uxV2 ? <Link aria-label={`${platformBrand.name} home`} className="brand-mark" href={isPublicAuthRoute ? "/login" : "/"}>
               <BrandLogo priority variant="mark" />
-            </Link>
+            </Link> : null}
             <div>
-              <div className="brand-title">{platformBrand.name}</div>
+              <div className={`brand-title${uxV2 ? ` ${labStyles.headerTitle}` : ""}`}>{uxV2 ? "Fund Manager" : platformBrand.name}</div>
             </div>
           </div>
           {!uxV2 ? <GlobalSearch /> : null}
-          <div className="top-bar-profile-context">
+          <div className={`top-bar-profile-context${uxV2 ? ` ${labStyles.profileSelect}` : ""}`}>
             {!isPublicAuthRoute && isInsideProfile ? (
               <div className="app-menu-shell profile-summary-menu-shell" ref={trackerMenuRef}>
                 <FinancialValueReplayGroup>
@@ -808,9 +811,10 @@ function AppChromeContent({
                   </div>
                 </div>
               </div>
-            ) : uxV2 ? <Link className="ux-v2-all-profiles" href="/profiles">All Profiles<span aria-hidden="true" className="material-symbols-outlined">unfold_more</span></Link> : null}
+            ) : uxV2 ? <Link className="ux-v2-all-profiles" href="/profiles">All Profiles<span aria-hidden="true" className="material-symbols-outlined">expand_more</span></Link> : null}
           </div>
-          {uxV2 ? <div className="ux-v2-header-right"><GlobalSearch /><div className="top-bar-actions"><NotificationCentre uxV2 /><BackLayThemeToggle /><FundManagerUxV2Launcher key={pathname} /><FundManagerIdentityMenu uxV2 /></div></div> : <div className="top-bar-actions"><NotificationCentre /><BackLayThemeToggle /><FundManagerIdentityMenu /><ThemeToggle /></div>}
+          </div>
+          {uxV2 ? <div className={`ux-v2-header-right ${labStyles.headerRight}`}><GlobalSearch /><div className="top-bar-actions"><NotificationCentre uxV2 /><BackLayThemeToggle /><FundManagerUxV2Launcher key={pathname} /><FundManagerIdentityMenu uxV2 /></div></div> : <div className="top-bar-actions"><NotificationCentre /><BackLayThemeToggle /><FundManagerIdentityMenu /><ThemeToggle /></div>}
           <Suspense fallback={null}><ShellLoadingProgress /></Suspense>
         </header> : null}
         {!isPublicAuthRoute && !uxV2 ? <Suspense fallback={null}>
@@ -825,7 +829,6 @@ function AppChromeContent({
             triggerRef={appMenuTriggerRef}
           />
         </Suspense> : null}
-        {!isPublicAuthRoute && uxV2 ? <FundManagerUxV2Sidebar profileId={resolvedProfileId} mobileOpen={uxV2MobileOpen} onMobileClose={() => setUxV2MobileOpen(false)} triggerRef={appMenuTriggerRef} /> : null}
         {!isPublicAuthRoute ? <SessionInactivityGuard initialSession={initialSession} /> : null}
         {!isPublicAuthRoute ? <ImportExecutionMonitor /> : null}
         <div className={`main-shell${uxV2 && !isPublicAuthRoute ? " ux-v2-main" : ""}`} id="main-content">

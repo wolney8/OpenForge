@@ -30,8 +30,8 @@ export function DesignLedgerToolbar({ ariaLabel, children, className = "", dataP
   return <div aria-label={ariaLabel} className={`${enabled ? styles.toolbar : ""} ${className}`.trim()} data-pd-id={dataPdId} role={ariaLabel ? "toolbar" : undefined}>{children}</div>;
 }
 
-export function DesignPageHead({ children }: { children: ReactNode }) {
-  return <div className={styles.pageHead}>{children}</div>;
+export function DesignPageHead({ children, dataPdId, enabled = true }: { children: ReactNode; dataPdId?: string; enabled?: boolean }) {
+  return enabled ? <div className={styles.pageHead} data-pd-id={dataPdId}>{children}</div> : <>{children}</>;
 }
 
 export const designPageHeadClasses = { actions: styles.headActions };

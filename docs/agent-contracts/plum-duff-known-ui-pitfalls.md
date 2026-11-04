@@ -1,5 +1,9 @@
 # Plum Duff Known UI Pitfalls
 
+## CP-131 whole-screen Lab parity — 2026-11-04 / #118
+
+Shared KPI or navigation classes can pass isolated component tests while the enclosing real header, fixed sidebar and Position controls still produce a different screen. Reuse the Lab frame/header/sidebar/page-head composition and remove conflicting legacy offsets for V2. At 1024 px, inherited minimum widths in the reporting control bar can extend the document beyond the viewport; at 390 px, an inherited column flex direction plus row flex-basis can create hundreds of pixels of empty space before KPIs. Compare full rendered Lab/V2 geometry and section order at 1024/1440/390 in light/dark. Regression: `cp131-position-parity.spec.ts`; the flag-OFF shell remains a separate check.
+
 ## CP-117 real spreadsheet handoff — 2026-11-03 12:08 GMT
 
 A cell-selection handler must stop the old row-open click while preserving nested controls, native text selection, pan-release suppression and explicit editor activation. Share it through `LedgerTableScroll`, keep a roving Tab stop and restore the connected cell after the existing modal closes. Keyboard reveal must account for sticky Actions. If preserved fixed columns exceed the remaining narrow space, maximise the visible fragment and assert real pointer hit-testing rather than shrinking signed-off columns or covering Actions. Regression: `cp117-spreadsheet.spec.ts`, both themes and actual Chromium 200% zoom. Existing calculation-preview POSTs are read-only; no-write assertions must still reject genuine ledger persistence requests.

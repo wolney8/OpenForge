@@ -1399,3 +1399,16 @@ Owner continuation under [#118](https://github.com/wolney8/OpenForge/issues/118)
 | --- | --- | --- | --- |
 | PD-FIX-511 | Restore the normal Google sign-in callback at localhost:3010; identify the actual `invalid_oauth_state` cause without copying credentials, weakening state checks or changing normal API configuration without approval | Existing OAuth callback and normal session authority | IN PROGRESS — owner error code confirmed; safe browser and HTTP probes validate a fresh state cookie, but the owner's failing browser journey remains unverified |
 | PD-PR-117A-52 | Use the actual Lab auth card/brand/action presentation for the one real login screen, retaining Google, registration, safe return path and public error states | `DesignLabAuth` presentation | NEEDS VERIFICATION — shared auth card is in the feature worktree; focused public-page checks pass, full authenticated sign-in and flag-OFF regression remain open |
+
+## CP-131 rejected shell and Position Design Acceptance — 2026-11-04
+
+Owner corrective batch under [#118](https://github.com/wolney8/OpenForge/issues/118). The approved connected Design Lab is the reference; current V2 whole-screen shell and Position Design Acceptance is rejected.
+
+| ID | Surface and requested outcome | Signed-off equivalent | Status |
+| --- | --- | --- | --- |
+| PD-FIX-512 | Match the Lab global shell: brand, sidebar, collapse, header, Profile selector, search/actions, breadcrumbs and responsive surfaces without changing real commands | Connected Lab sidebar/header/workspace | COMPLETE — shared Lab classes and final-source six-pair geometry/collapse/navigation paths pass; owner Design Acceptance remains separate. |
+| PD-FIX-513 | Place Position heading and contextual controls before three authoritative KPIs, Next actions, Continue work, Profile table and progressive details | Lab `DesignPageHead` and `DesignPosition*` components | COMPLETE — complete-screen order/containment passes at 1024/1440/390 in both themes; owner Design Acceptance remains separate. |
+| PD-FIX-514 | Move Account/Sportsbook financial completeness warnings into discoverable metric/action detail while retaining source links, severity and records | Lab metric support and Next actions; native `AccountMoneyStatus` and `FinancialIssueStatus` | NEEDS VERIFICATION — source keeps issue counts, actions and all native linked issue records in a disclosure; the clean synthetic fixture does not reproduce the owner's populated warning state. |
+| PD-FIX-515 | Add whole-screen Lab/V2 geometry and hierarchy assertions at 1024/1440/390 in both themes, with navigation, financial and flag-OFF safeguards | CP-117 synthetic runner and paired visual suite | COMPLETE — final-source six-pair checks pass, broader visual run 111/111, synthetic V2 22/22 and flag-OFF 8/8. |
+
+No financial calculation, schema, API, authentication, owner data or source-default flag change is authorised by this visual batch.

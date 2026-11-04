@@ -111,7 +111,7 @@ export function FundManagerDashboardLoader({
 
   return (
     <main className="page-shell stack">
-      <section className={`hero-panel split-hero${visualV2 ? " v2-position-heading" : ""}`}>
+      {!(visualV2 && pageKind === "dashboard") ? <section className={`hero-panel split-hero${visualV2 ? " v2-position-heading" : ""}`}>
         <div className="stack">
           <h1>{pageTitle}</h1>
         </div>
@@ -119,7 +119,7 @@ export function FundManagerDashboardLoader({
           <span className="eyebrow">Active profiles</span>
           <strong>{profiles.filter((profile) => profile.status.toLowerCase() === "active").length} / {profiles.length}</strong>
         </aside>
-      </section>
+      </section> : null}
       {profiles.length === 0 ? (
         <section className="content-panel stack">
           <h2>{pageKind === "profiles" ? "No Profiles yet" : "Create the first Profile"}</h2>

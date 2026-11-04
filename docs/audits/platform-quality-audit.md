@@ -6469,3 +6469,12 @@ The table below is the current CP-117 adoption status; earlier checkpoint tables
 | Today, Notifications, Calculators, Oddsmatcher | CP-127 statuses retained | CP-127 statuses retained | CP-127 statuses retained | No CP-129 source change |
 
 Saved ledger views and Today tracking persistence remain deferred behind their separate authority proposals. No schema, API, calculation or owner-data change was made for this presentation tranche.
+
+## CP-131 shell and Position correction — current route status, 2026-11-04
+
+| Route group | Design | Interaction | Integration | Justified difference or open work |
+| --- | --- | --- | --- | --- |
+| Global shell | PARTIAL — actual Lab frame, sidebar, brand, header and breadcrumb classes now drive V2; owner visual judgement pending | PARTIAL — collapse, mobile drawer, real search, menus and navigation retained; full equivalent control journey pending | COMPLETE — existing server session, route and Profile authorities unchanged | Lab-only tracked/help actions and simulation identity are absent from real V2. The real header Profile command navigates to established Profile management rather than changing a synthetic scope. |
+| Position `/` | PARTIAL — shared Lab page head, KPIs, work grid and surfaces now render in Lab order; owner visual judgement pending | PARTIAL — real range, Profile scope, source links, disclosure and shortcuts retained; complete warning-state browser journey pending | COMPLETE — existing selected-range, cash, P&L, liability, fee and unknown-value authorities unchanged | Real Profile scope and additional financial columns remain. KPI labels preserve real definitions; full native financial issue records are in a progressive disclosure after the Profile table, with counts and actions above. |
+
+Paired full-page synthetic screenshots and final-source six whole-screen geometry paths cover 1024, 1440 and 390 px in both themes. The broader visual suite passed 111/111 before the final header grid correction; focused final-source parity passed 6/6. Independent synthetic integration passed 22/22 V2 and 8/8 flag-OFF; web unit passed 701/701; final-source production web build passed. The clean fixture lacks the owner's populated warning state, so its disclosure remains code-verified pending owner visual review. Local 3010 and owner Design Acceptance remain pending; CP-129 route statuses otherwise remain in force.

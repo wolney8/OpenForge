@@ -10,6 +10,7 @@ import Link from "next/link";
 import { ReportExplorer } from "@/components/report-explorer";
 import { DesignManagementDetail, DesignManagementSurface } from "@/components/design-management-presentation";
 import { DesignPositionMetrics, DesignPositionWorkGrid, DesignPositionSurface, DesignPositionSectionHead, DesignPositionTask, DesignPositionShortcut, designPositionActionClasses } from "@/components/design-position-presentation";
+import { DesignPageHead, designPageHeadClasses } from "@/components/design-ledger-screen";
 import { PeriodPnlReport } from "@/components/period-pnl-report";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { usePersistedState } from "@/lib/ledger-ui";
@@ -1158,9 +1159,10 @@ export function CrossProfileAnalytics({
 
   const reportingIsLoading = isLoading && activeTab !== "profiles";
   const failedProfileIds = new Set(failures.map((failure) => failure.profileId));
-  const cashMetric = { key: "cash", label: "Known cash", value: selectedReadState === "ready" && combined.incompleteCashAccountCount > 0 ? <FinancialValue value={combined.knownCashSubtotal} animate={false} /> : <FinancialReadValue state={selectedReadState} subject="Account cash" value={combined.totals.cashSnapshot} animate={false} />, description: combined.incompleteCashAccountCount > 0 ? `Incomplete · ${combined.incompleteCashAccountCount} Account ${combined.incompleteCashAccountCount === 1 ? "balance" : "balances"} missing` : "Current Account balances" };
-  const pnlMetric = { key: "pnl", label: "Selected range P&L", value: <FinancialAggregateReadValue aggregate={combined.selectedRangeFinancials.grossBettingPnl} label="selected range profit and loss" state={selectedReadState} subject="profit and loss" />, description: `${preset} · governed reporting values` };
-  const liabilityMetric = { key: "liability", label: "Current liability", value: <FinancialReadValue state={selectedReadState} subject="current liability" value={combined.totals.currentLiability} animate={false} />, description: "Open sportsbook, Free Bet and Extra Place exposure" };
+  const cashMetric = { key: "cash", label: "Known cash", value: selectedReadState === "ready" && combined.incompleteCashAccountCount > 0 ? <FinancialValue value={combined.knownCashSubtotal} animate={false} tone="inherit" /> : <FinancialReadValue state={selectedReadState} subject="Account cash" value={combined.totals.cashSnapshot} animate={false} tone="inherit" />, description: combined.incompleteCashAccountCount > 0 ? `Incomplete · ${combined.incompleteCashAccountCount} Account ${combined.incompleteCashAccountCount === 1 ? "balance" : "balances"} missing` : "Current Account balances" };
+  const pnlMetric = { key: "pnl", label: "Selected range P&L", value: <FinancialAggregateReadValue aggregate={combined.selectedRangeFinancials.grossBettingPnl} label="selected range profit and loss" state={selectedReadState} subject="profit and loss" />, description: `${preset} · governed reporting values${combined.selectedRangeFinancials.grossBettingPnl.unknownCount ? ` · ${combined.selectedRangeFinancials.grossBettingPnl.unknownCount} unavailable` : ""}${trackerRangeActiveProfilesCombined.sportsbookHistoricalFinancialIssues?.length ? ` · ${trackerRangeActiveProfilesCombined.sportsbookHistoricalFinancialIssues.length} settled ${trackerRangeActiveProfilesCombined.sportsbookHistoricalFinancialIssues.length === 1 ? "record lacks" : "records lack"} P&L` : ""}` };
+  const liabilityMetric = { key: "liability", label: "Current liability", value: <FinancialReadValue state={selectedReadState} subject="current liability" value={combined.totals.currentLiability} animate={false} tone="inherit" />, description: `Open sportsbook, Free Bet and Extra Place exposure${trackerRangeActiveProfilesCombined.sportsbookCommittedFinancialIssues?.length ? ` · ${trackerRangeActiveProfilesCombined.sportsbookCommittedFinancialIssues.length} open ${trackerRangeActiveProfilesCombined.sportsbookCommittedFinancialIssues.length === 1 ? "position needs" : "positions need"} details` : !Number.isFinite(combined.totals.currentLiability) && selectedReadState === "ready" ? " · incomplete" : ""}` };
+  const hasUnresolvedPositionValue = selectedReadState === "ready" && (!combined.selectedRangeFinancials.grossBettingPnl.isComplete || !Number.isFinite(combined.totals.currentLiability));
 
   const profileOverview = <>
         <section
@@ -1226,22 +1228,43 @@ export function CrossProfileAnalytics({
         </section>
   </>;
 
+  const financialCompleteness = <>
+    <AccountMoneyStatus issues={trackerRangeActiveProfilesCombined.cashIssues} />
+    <FinancialIssueStatus
+      headline={`${trackerRangeActiveProfilesCombined.sportsbookCommittedFinancialIssues?.length ?? 0} open Sportsbook ${trackerRangeActiveProfilesCombined.sportsbookCommittedFinancialIssues?.length === 1 ? "position needs" : "positions need"} calculation details.`}
+      issues={trackerRangeActiveProfilesCombined.sportsbookCommittedFinancialIssues ?? []}
+      pdId="sportsbook-money.committed-incomplete"
+    />
+    <FinancialIssueStatus
+      headline={`${trackerRangeActiveProfilesCombined.sportsbookHistoricalFinancialIssues?.length ?? 0} settled Sportsbook ${trackerRangeActiveProfilesCombined.sportsbookHistoricalFinancialIssues?.length === 1 ? "record has" : "records have"} no authoritative P&L.`}
+      issues={trackerRangeActiveProfilesCombined.sportsbookHistoricalFinancialIssues ?? []}
+      pdId="sportsbook-money.historical-incomplete"
+    />
+    <FinancialIssueStatus
+      headline={`${trackerRangeActiveProfilesCombined.freeBetFinancialIssues?.length ?? 0} Free Bet ${trackerRangeActiveProfilesCombined.freeBetFinancialIssues?.length === 1 ? "record needs" : "records need"} financial details.`}
+      issues={trackerRangeActiveProfilesCombined.freeBetFinancialIssues ?? []}
+      pdId="free-bet-money.incomplete"
+    />
+  </>;
+
   return (
     <section
       className={`content-panel stack cross-profile-analytics${visualV2 ? " v2-position-analytics" : ""}${visualV2 && (activeTab === "performance" || activeTab === "reports") ? " has-position-overview" : ""}`}
       aria-labelledby="combined-analytics-title"
     >
+      <DesignPageHead dataPdId="position.page-head" enabled={visualV2 && activeTab === "performance"}>
+      {visualV2 && activeTab === "performance" ? <div><h1 id="combined-analytics-title">Position</h1><p>Position, tasks and the next decision.</p></div> : null}
       <div
-        className={`fund-manager-control-bar${activeTab === "profiles" ? " is-directory" : " is-analytics"}`}
+        className={`fund-manager-control-bar${activeTab === "profiles" ? " is-directory" : " is-analytics"}${visualV2 && activeTab === "performance" ? ` ${designPageHeadClasses.actions}` : ""}`}
       >
         {activeTab !== "profiles" && activeTab !== "fees" ? (
         <details className="profile-report-picker fund-manager-control-slot-profile" data-pd-id="reports.profile-scope">
-        <summary>
+        <summary aria-label={visualV2 && activeTab === "performance" ? `Profile scope: ${reportScopeLabel}` : undefined}>
           <span aria-hidden="true" className="material-symbols-outlined">
             group
           </span>
-          <span>{isReportAnalysisTab ? "Profile Scope" : "Profiles"}</span>
-          <span className="profile-picker-count">{isReportAnalysisTab ? reportScopeLabel : `${selectedProfileIds.length} of ${profileRecords.length}`}</span>
+          <span>{isReportAnalysisTab && !(visualV2 && activeTab === "performance") ? "Profile Scope" : "Profiles"}</span>
+          <span className="profile-picker-count">{isReportAnalysisTab ? visualV2 && activeTab === "performance" ? reportScopeLabel.replace(/ Profiles$/, "") : reportScopeLabel : `${selectedProfileIds.length} of ${profileRecords.length}`}</span>
         </summary>
         <fieldset>
           <legend>{isReportAnalysisTab ? "Profiles Included In Reports" : "Profiles included in combined analytics"}</legend>
@@ -1422,11 +1445,12 @@ export function CrossProfileAnalytics({
         </div>
         ) : null}
       </div>
+      </DesignPageHead>
       <div className="workflow-panel-header">
         <div className="stack-tight">
           <span className="eyebrow">Portfolio control</span>
           <div className="section-heading-row">
-            <h2 id="combined-analytics-title">
+            <h2 id={visualV2 && activeTab === "performance" ? undefined : "combined-analytics-title"}>
               {activeTab === "profiles" ? "Profile management" : "Combined analytics"}
             </h2>
             <AccessScopeBadge />
@@ -1443,28 +1467,7 @@ export function CrossProfileAnalytics({
           <LedgerLoadingIndicator label="Loading combined profile reporting" />
         </section>
       ) : null}
-      {!isLoading ? <AccountMoneyStatus issues={trackerRangeActiveProfilesCombined.cashIssues} /> : null}
-      {!isLoading ? (
-        <FinancialIssueStatus
-          headline={`${trackerRangeActiveProfilesCombined.sportsbookCommittedFinancialIssues?.length ?? 0} open Sportsbook ${trackerRangeActiveProfilesCombined.sportsbookCommittedFinancialIssues?.length === 1 ? "position needs" : "positions need"} calculation details.`}
-          issues={trackerRangeActiveProfilesCombined.sportsbookCommittedFinancialIssues ?? []}
-          pdId="sportsbook-money.committed-incomplete"
-        />
-      ) : null}
-      {!isLoading ? (
-        <FinancialIssueStatus
-          headline={`${trackerRangeActiveProfilesCombined.sportsbookHistoricalFinancialIssues?.length ?? 0} settled Sportsbook ${trackerRangeActiveProfilesCombined.sportsbookHistoricalFinancialIssues?.length === 1 ? "record has" : "records have"} no authoritative P&L.`}
-          issues={trackerRangeActiveProfilesCombined.sportsbookHistoricalFinancialIssues ?? []}
-          pdId="sportsbook-money.historical-incomplete"
-        />
-      ) : null}
-      {!isLoading ? (
-        <FinancialIssueStatus
-          headline={`${trackerRangeActiveProfilesCombined.freeBetFinancialIssues?.length ?? 0} Free Bet ${trackerRangeActiveProfilesCombined.freeBetFinancialIssues?.length === 1 ? "record needs" : "records need"} financial details.`}
-          issues={trackerRangeActiveProfilesCombined.freeBetFinancialIssues ?? []}
-          pdId="free-bet-money.incomplete"
-        />
-      ) : null}
+      {!isLoading && !(visualV2 && activeTab === "performance") ? financialCompleteness : null}
 
       {failures.filter((failure) => selectedProfileIds.includes(failure.profileId)).length > 0 ? (
         <div className="validation-message" role="alert">
@@ -1487,7 +1490,11 @@ export function CrossProfileAnalytics({
               <DesignPositionSectionHead id="position-next-actions" title="Next actions" action={<Link className={designPositionActionClasses.link} href="/tasks">All tasks <span aria-hidden="true" className="material-symbols-outlined">arrow_forward</span></Link>} />
               {combined.profileRows.some((row) => row.overdueBets > 0) ? <DesignPositionTask title="Review overdue Sportsbook positions" description="Source rows remain in the owning Profile." action={<Link className={designPositionActionClasses.secondary} href={buildOperationalLedgerHref(combined.profileRows.find((row) => row.overdueBets > 0)!.profileId, "sportsbook", "all")}>Open Sportsbook</Link>} /> : null}
               {combined.incompleteCashAccountCount > 0 ? <DesignPositionTask title="Confirm current balances" description={`${combined.incompleteCashAccountCount} Account ${combined.incompleteCashAccountCount === 1 ? "balance is" : "balances are"} missing.`} action={<Link className={designPositionActionClasses.primary} href={combined.cashIssues?.find((issue) => issue.profileId)?.profileId ? `/profiles/${combined.cashIssues.find((issue) => issue.profileId)!.profileId}/tracker/accounts?view=issues&issue=needs-attention&source=position` : "/profiles"}>Review Accounts</Link>} /> : null}
-              {!combined.profileRows.some((row) => row.overdueBets > 0) && combined.incompleteCashAccountCount === 0 ? <p>No immediate source action is identified for this selection.</p> : null}
+              {(trackerRangeActiveProfilesCombined.sportsbookCommittedFinancialIssues?.length ?? 0) > 0 ? <DesignPositionTask title="Complete open Sportsbook calculations" description={`${trackerRangeActiveProfilesCombined.sportsbookCommittedFinancialIssues!.length} placed ${trackerRangeActiveProfilesCombined.sportsbookCommittedFinancialIssues!.length === 1 ? "position needs" : "positions need"} source details before current liability is complete.`} action={<Link className={designPositionActionClasses.secondary} href={selectedProfileIds.length === 1 ? buildOperationalLedgerHref(selectedProfileIds[0], "sportsbook", "all") : "/profiles"}>{selectedProfileIds.length === 1 ? "Open Sportsbook" : "Choose Profile"}</Link>} /> : null}
+              {(trackerRangeActiveProfilesCombined.sportsbookHistoricalFinancialIssues?.length ?? 0) > 0 ? <DesignPositionTask title="Review settled Sportsbook P&L" description={`${trackerRangeActiveProfilesCombined.sportsbookHistoricalFinancialIssues!.length} settled ${trackerRangeActiveProfilesCombined.sportsbookHistoricalFinancialIssues!.length === 1 ? "record has" : "records have"} no authoritative P&L.`} action={<Link className={designPositionActionClasses.secondary} href={selectedProfileIds.length === 1 ? buildOperationalLedgerHref(selectedProfileIds[0], "sportsbook", "all") : "/profiles"}>{selectedProfileIds.length === 1 ? "Open Sportsbook" : "Choose Profile"}</Link>} /> : null}
+              {(trackerRangeActiveProfilesCombined.freeBetFinancialIssues?.length ?? 0) > 0 ? <DesignPositionTask title="Review Free Bet financial details" description={`${trackerRangeActiveProfilesCombined.freeBetFinancialIssues!.length} Free Bet ${trackerRangeActiveProfilesCombined.freeBetFinancialIssues!.length === 1 ? "record needs" : "records need"} source details.`} action={<Link className={designPositionActionClasses.secondary} href={selectedProfileIds.length === 1 ? buildOperationalLedgerHref(selectedProfileIds[0], "free-bets", "all") : "/profiles"}>{selectedProfileIds.length === 1 ? "Open Free Bets" : "Choose Profile"}</Link>} /> : null}
+              {hasUnresolvedPositionValue && !(trackerRangeActiveProfilesCombined.sportsbookCommittedFinancialIssues?.length || trackerRangeActiveProfilesCombined.sportsbookHistoricalFinancialIssues?.length || trackerRangeActiveProfilesCombined.freeBetFinancialIssues?.length) ? <DesignPositionTask title="Review unavailable financial values" description="Some selected-range results or current liabilities have no complete authoritative value. Profile reports retain the source detail." action={<Link className={designPositionActionClasses.secondary} href="/reports">Review reports</Link>} /> : null}
+              {!hasUnresolvedPositionValue && !combined.profileRows.some((row) => row.overdueBets > 0) && combined.incompleteCashAccountCount === 0 && !(trackerRangeActiveProfilesCombined.sportsbookCommittedFinancialIssues?.length || trackerRangeActiveProfilesCombined.sportsbookHistoricalFinancialIssues?.length || trackerRangeActiveProfilesCombined.freeBetFinancialIssues?.length) ? <p>No immediate source action is identified for this selection.</p> : null}
             </DesignPositionSurface>
             <DesignPositionSurface labelledBy="position-continue-work">
               <DesignPositionSectionHead id="position-continue-work" title="Continue work" />
@@ -1504,7 +1511,9 @@ export function CrossProfileAnalytics({
               {combined.profileRows.map((row) => <tr key={row.profileId}><th scope="row"><strong>{row.displayName}</strong><small>{row.profileCode}</small></th><td><FinancialAggregateReadValue aggregate={row.grossBettingPnlAggregate} label={`${row.displayName} profit and loss`} state={profileReadState([row.profileId])} subject="profit and loss" /></td><td><FinancialReadValue state={profileReadState([row.profileId])} subject="open current value" value={row.openCurrentValue} animate={false} /></td><td><FinancialReadValue state={profileReadState([row.profileId])} subject="current liability" value={row.currentLiability} animate={false} /></td><td><FinancialReadValue state={profileReadState([row.profileId], "fees")} subject="fees earned" value={feePositionByProfile.get(row.profileId)?.feesEarned ?? Number.NaN} animate={false} /></td><td><FinancialReadValue state={profileReadState([row.profileId], "fees")} subject="available fees" value={feePositionByProfile.get(row.profileId)?.availableToWithdraw ?? Number.NaN} animate={false} /></td><td><FinancialReadValue state={profileReadState([row.profileId])} subject="Account cash" value={row.cashSnapshot} animate={false} /></td><td><Link href={`/profiles/${row.profileId}/tracker/reports`}>View report</Link></td></tr>)}
             </tbody></table></div>
             <p className="field-hint">Known and unknown values retain their source readiness. Fees and withdrawal detail remain in Fees; open source records remain in the Profile tracker.</p>
-          </DesignPositionSurface></> : null}
+          </DesignPositionSurface>
+          {!isLoading && (trackerRangeActiveProfilesCombined.cashIssues?.length || trackerRangeActiveProfilesCombined.sportsbookCommittedFinancialIssues?.length || trackerRangeActiveProfilesCombined.sportsbookHistoricalFinancialIssues?.length || trackerRangeActiveProfilesCombined.freeBetFinancialIssues?.length) ? <details className="v2-position-detail" data-pd-id="position.financial-completeness"><summary>Financial completeness · review source issues</summary><div className="v2-position-completeness-content">{financialCompleteness}</div></details> : null}
+          </> : null}
         </section>
       ) : null}
 

@@ -6,6 +6,9 @@ import { useCallback, useEffect, useRef, useState, type MouseEvent } from "react
 import { destinationForPath, shellDestinations, type ShellDestination } from "@/lib/fund-manager-destinations";
 import { beginRouteTransition } from "@/lib/shell-loading";
 import { confirmUnsavedTrackerChanges } from "@/lib/use-unsaved-changes-guard";
+import { BrandLogo } from "@/components/brand-logo";
+import labStyles from "@/components/design-lab-connected.module.css";
+import { platformBrand } from "@/lib/brand";
 
 const originStorageKey = "plum-duff:ux-v2-source-origin";
 const scrollRestoreKey = "plum-duff:ux-v2-scroll-restore";
@@ -39,7 +42,7 @@ export function FundManagerUxV2Sidebar({ profileId, mobileOpen, onMobileClose, t
   const pathname = usePathname() ?? "";
   const [locationHash, setLocationHash] = useState("");
   const [trackerExpanded, setTrackerExpanded] = useState<boolean | null>(null);
-  const trackerIsExpanded = trackerExpanded ?? pathname.includes("/tracker/");
+  const trackerIsExpanded = trackerExpanded ?? true;
   const [moreExpanded, setMoreExpanded] = useState<boolean | null>(null);
   const destination = destinationForPath(pathname, locationHash);
   const currentMore = destination?.group === "more" ? destination
@@ -68,8 +71,9 @@ export function FundManagerUxV2Sidebar({ profileId, mobileOpen, onMobileClose, t
   const group = (name: ShellDestination["group"]) => shellDestinations.filter((item) => item.group === name);
   return <>
     <div className={`ux-v2-sidebar-scrim${mobileOpen ? " is-open" : ""}`} onMouseDown={onMobileClose} />
-    <aside aria-label="Fund Manager navigation" className={`ux-v2-sidebar${mobileOpen ? " is-mobile-open" : ""}`} data-pd-id="ux-v2.sidebar" id="ux-v2-sidebar" ref={sidebarRef}>
-      <div className="ux-v2-sidebar-mobile-heading"><strong>Navigation</strong><button aria-label="Close navigation" className="icon-button" onClick={onMobileClose} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button></div>
+    <aside aria-label="Fund Manager navigation" className={`ux-v2-sidebar ${labStyles.sidebar}${mobileOpen ? ` is-mobile-open ${labStyles.sidebarOpen}` : ""}`} data-pd-id="ux-v2.sidebar" id="ux-v2-sidebar" ref={sidebarRef}>
+      <div className={labStyles.brand}><BrandLogo variant="mark" /><span>{platformBrand.name} <small>Fund Manager</small></span><button aria-label="Close navigation" className={`${labStyles.sidebarClose} ${labStyles.iconButton}`} onClick={onMobileClose} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button></div>
+      <div className={labStyles.navGroup}><p>Fund Manager</p>
       <nav aria-label="Primary navigation" className="ux-v2-nav-stack">
         {group("primary").filter((item) => item.id !== "reports").map((item) => <NavLink item={item} key={item.id} locationHash={locationHash} onNavigate={onMobileClose} pathname={pathname} profileId={profileId} />)}
         <button aria-expanded={trackerIsExpanded} className={`ux-v2-nav-link ux-v2-nav-group${destinationForPath(pathname, locationHash)?.group === "tracker" ? " is-group-active" : ""}`} data-pd-id="ux-v2.nav.tracker" onClick={() => setTrackerExpanded(!trackerIsExpanded)} type="button"><span aria-hidden="true" className="material-symbols-outlined">view_list</span><span>Tracker</span><span aria-hidden="true" className="material-symbols-outlined ux-v2-nav-chevron">{trackerIsExpanded ? "expand_less" : "expand_more"}</span></button>
@@ -78,6 +82,7 @@ export function FundManagerUxV2Sidebar({ profileId, mobileOpen, onMobileClose, t
         <button aria-expanded={moreIsExpanded} className={`ux-v2-nav-link ux-v2-nav-group${currentMore ? " is-group-active" : ""}`} data-pd-id="ux-v2.nav.more" onClick={() => setMoreExpanded(!moreIsExpanded)} type="button"><span aria-hidden="true" className="material-symbols-outlined">more_horiz</span><span>{!moreIsExpanded && currentMore ? `See More · ${currentMore.label}` : "See More"}</span><span aria-hidden="true" className="material-symbols-outlined ux-v2-nav-chevron">{moreIsExpanded ? "expand_less" : "expand_more"}</span></button>
         {moreIsExpanded ? <div className="ux-v2-nav-children">{group("more").map((item) => <NavLink item={item} key={item.id} locationHash={locationHash} onNavigate={onMobileClose} pathname={pathname} profileId={profileId} />)}</div> : null}
       </nav>
+      </div>
     </aside>
   </>;
 }
@@ -143,7 +148,8 @@ export function FundManagerUxV2Breadcrumbs({ profileId, profileName }: { profile
     return () => cancelAnimationFrame(frame);
   }, [pathname, profileId]);
   const current = destinationForPath(pathname);
-  if (!current || pathname === "/") return null;
+  if (pathname === "/") return <nav aria-label="Breadcrumb" className={labStyles.breadcrumb} data-pd-id="ux-v2.breadcrumbs"><span aria-current="page">Position</span></nav>;
+  if (!current) return null;
   const tracker = current.group === "tracker";
   const crumbs: { label: string; href?: string }[] = [{ label: "Position", href: "/" }];
   if (tracker) crumbs.push({ label: "Tracker", href: profileId ? `/profiles/${encodeURIComponent(profileId)}/tracker/dashboard` : "/profiles" });

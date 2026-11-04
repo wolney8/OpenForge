@@ -63,6 +63,7 @@ use the canonical primitive and computed styling.
 ## 3. Non-negotiable implementation rules
 
 - Use existing Plum Duff components, classes, tokens and Material Symbols before adding local CSS.
+- For connected Lab adoption, compare the entire real route against the equivalent Lab route, including sidebar/header/breadcrumb/page head/primary content order at desktop, side-by-side and mobile widths. An imported child component or matching token is insufficient when legacy wrappers still determine the overall geometry. Assert selector placement, no pre-KPI control or warning panel, and no page overflow; verify flag-OFF shell separately.
 - Chart pointer inspection and keyboard inspection must select the same readable date/value and
   records. Verify intermediate points and drilldown use the headline's governed financial scope;
   a matching final total alone cannot validate the chart. Reuse existing detail/FinancialValue UI.

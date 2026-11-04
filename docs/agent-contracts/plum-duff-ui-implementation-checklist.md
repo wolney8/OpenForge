@@ -2,6 +2,15 @@
 
 Complete this for every feature, bug fix, component, fixture-backed UI, route or page change.
 
+## CP-131 shell and Position parity — 2026-11-04 / #118
+
+- [x] Compared actual connected Lab and independently authenticated real V2 at 1024, 1440 and 390 px in light/dark with paired full-page screenshots; the CP-131 browser test asserts whole-screen geometry, ordering, containment, semantic controls and mobile navigation.
+- [x] Reused the Lab frame, sidebar, brand, navigation group, header, breadcrumb, page head and Position components. Removed the legacy V2 header/sidebar offset and the separate Position control panel. The flag-OFF shell remains conditional and unchanged in source.
+- [x] Retained real Profile/reporting controls, search, notifications, identity, range, financial source reads, unknown values and links. Completeness counts remain in KPI support and Next actions; full native issue records remain in a disclosure after the Profile table. No financial calculation, API or authentication code changed.
+- [x] Broader visual suite passed 111/111; the final header grid correction passed a fresh-fixture 6/6 whole-screen rerun. Synthetic integration passed 22/22 V2 and 8/8 flag-OFF. Web unit passed 701/701, typecheck and lint passed (12 inherited warnings).
+- [x] Production web build passed on the final source.
+- [ ] Local 3010 source pin and owner Design Acceptance are pending. The clean synthetic fixture did not contain the owner's populated Account/Sportsbook warning state; its native linked issue detail is code-verified and awaits direct visual review.
+
 ## CP-130 real login presentation and OAuth blocker — 2026-11-04 / #118
 
 - [x] Reused the exact Lab auth card, brand and action CSS through one shared presentation component. The real Google endpoint, safe return path, registration link and public auth error semantics remain; no simulated sign-in behaviour was transferred.
