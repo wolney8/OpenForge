@@ -176,6 +176,48 @@ for (const route of routes) {
   }
 }
 
+test("Today uses the shared Lab toolbar and preserves real lifecycle controls", async ({ page }) => {
+  await mkdir(evidence, { recursive: true });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/design-lab");
+  await page.locator('[data-pd-id="design-lab-connected.root"]').waitFor();
+  const cookie = page.getByRole("button", { name: "Understood" });
+  if (await cookie.isVisible()) await cookie.click();
+  await page.getByRole("button", { name: "Today", exact: true }).first().click();
+  await setTheme(page, "light");
+  const labToolbar = page.locator('[data-pd-id="lab.today.toolbar"]');
+  const labStyle = await labToolbar.evaluate(element => ({ className: element.className, padding: getComputedStyle(element).padding, border: getComputedStyle(element).borderBottomWidth }));
+  await page.screenshot({ path: join(evidence, "lab-today-structure-1440-light.png"), fullPage: true });
+
+  await page.goto("/tasks");
+  await expect(page.locator('[data-pd-id="tasks.v2.collection"]')).toBeVisible({ timeout: 45_000 });
+  await expect(page.locator('[data-pd-id="tasks.loading-shell"]')).toHaveCount(0);
+  await setTheme(page, "light");
+  const toolbar = page.locator('[data-pd-id="tasks.v2.toolbar"]');
+  await expect(toolbar).toBeVisible();
+  expect(await toolbar.evaluate(element => ({ className: element.className, padding: getComputedStyle(element).padding, border: getComputedStyle(element).borderBottomWidth }))).toEqual(labStyle);
+  await expect(page.locator('[data-pd-id="tasks.tabs"]')).toHaveCount(0);
+  await expect(page.locator('[data-pd-id="tasks.workspace"]')).not.toHaveClass(/content-panel/);
+  await page.screenshot({ path: join(evidence, "v2-today-structure-1440-light.png"), fullPage: true });
+  await page.locator('[data-pd-id="tasks.v2.filter-toggle"]').click();
+  const filters = page.locator('[data-pd-id="tasks.v2.filters"]');
+  await expect(filters).toBeVisible();
+  await filters.getByRole("searchbox", { name: "Search Daily Tasks" }).fill("no such synthetic task");
+  await expect(page.locator('[data-pd-id="tasks.v2.collection"]')).toContainText("No tasks match these controls.");
+  await filters.getByRole("button", { name: "Clear Filters" }).click();
+  await expect(page.locator('[data-pd-id^="tasks.v2.row."]').first()).toBeVisible();
+  await page.getByRole("combobox", { name: /^Task lifecycle view/ }).click();
+  await page.getByRole("option", { name: "Completed" }).click();
+  await expect(page.locator('[data-pd-id="tasks.v2.collection"] h2')).toContainText("Completed");
+  await page.getByRole("combobox", { name: /^Task lifecycle view/ }).click();
+  await page.getByRole("option", { name: "Needs Action" }).click();
+  await page.locator('[data-pd-id^="tasks.v2.row."]').first().click();
+  await expect(page.locator('[data-pd-id="tasks.v2.inspector"]')).toBeVisible();
+  await expect(page.locator('[data-pd-id="tasks.v2.inspector"]').getByRole("link", { name: "Open Source" })).toBeVisible();
+  await noPageOverflow(page);
+  await page.screenshot({ path: join(evidence, "v2-today-detail-1440-light.png"), fullPage: true });
+});
+
 for (const width of [1440, 390] as const) {
   for (const theme of ["light", "dark"] as const) {
     test(`six ledger searches ${width} ${theme}: shared Lab input geometry`, async ({ page }) => {

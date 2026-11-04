@@ -1365,3 +1365,18 @@ Owner continuation under [#118](https://github.com/wolney8/OpenForge/issues/118)
 | PD-FIX-510 | Resolve inherited Free Bet render-ref lint error if a narrow state-derived equivalent preserves existing SNR draft restriction and financial behavior | Existing Free Bet form state and React render-state contract | COMPLETE — render uses mirrored state while the existing async ref guard remains; focused lint and synthetic new-draft SNR versus existing-row mode Playwright pass. |
 
 Saved-view and Today annotation persistence remain under their prior authority gates. No owner financial data or normal authentication material enters synthetic tests.
+
+## CP-127 final screen adoption — 2026-11-04
+
+Owner continuation under [#118](https://github.com/wolney8/OpenForge/issues/118). Connected Design Lab presentation is canonical; the real app retains all financial, Profile, authentication and reporting authorities. Design, Interaction and Integration Acceptance remain separate.
+
+| ID | Surface and requested outcome | Signed-off equivalent | Status |
+| --- | --- | --- | --- |
+| PD-PR-117A-46 | Complete six-ledger specialist Add/Edit modal composition and operational toolbar/grid geometry while preserving all required fields, financial commands and correction gates | Connected Lab entry modal, workbench, grid and toolbar; existing native editor contract | IN PROGRESS — CP-126 stepper, grid rhythm and mobile detail retained; full modal composition and operational layout open |
+| PD-PR-117A-47 | Complete supported Today and Notifications whole-screen presentation and interactions without inventing tracking persistence or source resolution | Connected Lab Today, task detail and notification surfaces | IN PROGRESS — Today now shares the Lab toolbar/filter presentation, with real lifecycle, search, sort and refresh inside the approved composition; recurring synthetic work and Notifications whole-screen parity remain open |
+| PD-PR-117A-48 | Complete Reports and Profit Tracker hierarchy, filters, charts and details with unchanged reporting definitions | Connected Lab reports compositions and existing governed report source views | NOT STARTED for CP-127; prior governed explorer retained |
+| PD-PR-117A-49 | Adopt approved Profiles, Accounts management, Settings and onboarding layouts/forms/dialogs without changing authority | Connected Lab management screens and existing native management workflows | NOT STARTED for CP-127 |
+| PD-PR-117A-50 | Keep Calculators and Oddsmatcher reachable and visually integrated through the shared shell without changing specialist engines | Connected Lab shell; established calculator and Oddsmatcher routes | NOT STARTED for CP-127 verification |
+| PD-PR-117A-51 | Consolidated paired Lab/V2 complete-route screenshots, integrated journeys, theme/zoom/a11y, synthetic regressions, rollback, source custody and issue evidence | CP-117 independent fixture runner and local 3010 source pin | NOT STARTED for CP-127 |
+
+Saved-view and Today annotation persistence stay behind their existing API/schema authority gates; this request does not approve them. No main merge, hosted deployment or normal-owner automated financial writes.

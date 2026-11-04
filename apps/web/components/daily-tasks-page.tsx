@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerPagination } from "@/components/ledger-pagination";
-import { DesignTodayBoard, DesignTodayDetail, DesignTodayTaskRow, DesignTodayViewToggle, designTodayBoardColumnClass, designTodayBoardControlsClass, designTodayBoardDrawerClass, designTodayBoardWithDetailClass, designTodayCollectionHeadingClass, designTodayContentClass, designTodayDetailActionsClass, designTodayDetailPaneClass, designTodayDetailTextClass, designTodayMobileDetailClass, designTodayPropertiesClass, designTodayQueueClass, designTodaySummaryClass, designTodayTaskCollectionClass, designTodayToolbarActionsClass, designTodayToolbarClass, designTodayWithDetailClass } from "@/components/design-today-task-row";
+import { DesignTodayBoard, DesignTodayDetail, DesignTodayFilters, DesignTodayTaskRow, DesignTodayToolbar, DesignTodayViewToggle, designTodayBoardColumnClass, designTodayBoardControlsClass, designTodayBoardDrawerClass, designTodayBoardWithDetailClass, designTodayCollectionHeadingClass, designTodayContentClass, designTodayDetailActionsClass, designTodayDetailPaneClass, designTodayDetailTextClass, designTodayMobileDetailClass, designTodayPropertiesClass, designTodayQueueClass, designTodayRootClass, designTodayTaskCollectionClass, designTodayToolButtonClass, designTodayWithDetailClass } from "@/components/design-today-task-row";
+import { DesignLabSelect } from "@/components/design-lab-select";
 import { ModalBoundary } from "@/components/modal-boundary";
 import { apiBaseUrl } from "@/lib/api";
 import {
@@ -83,6 +84,7 @@ export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
   const [actionError, setActionError] = useState("");
   const [inspectedTaskId, setInspectedTaskId] = useState("");
   const [layout, setLayout] = useState<"List" | "Board">("List");
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [narrow, setNarrow] = useState(false);
   const taskRowRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
   const detailHeadingRef = useRef<HTMLHeadingElement>(null);
@@ -198,6 +200,7 @@ export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
     (result, view) => ({ ...result, [view.id]: taskViews.filter((task) => task.dueState === view.id).length }),
     { today: 0, upcoming: 0, overdue: 0, completed: 0 }
   ), [taskViews]);
+  const activeFilterCount = [query.trim(), profileId !== "all", bookmaker !== "all", notificationType !== "all", source !== "all", dueState !== "today"].filter(Boolean).length;
   const filtered = useMemo(() => {
     const options = { profileId, bookmaker, notificationType, source, query, sort };
     const current = filterAndSortDailyTasks(taskViews, { ...options, dueState });
@@ -309,11 +312,24 @@ export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
         </aside>
       </section>}
 
-      <section aria-label="Daily Tasks" className="content-panel stack" data-pd-id="tasks.workspace">
-        {uxV2 ? <div className={designTodayToolbarClass} data-pd-id="tasks.v2.toolbar">
-          <div className={designTodaySummaryClass} aria-live="polite"><strong>{isLoading || loadFailed ? "—" : counts.today + counts.overdue} Needs Attention</strong><span>{counts.upcoming} Upcoming</span><span>{counts.completed} Completed</span></div>
-          <div className={designTodayToolbarActionsClass}><DesignTodayViewToggle dataPdId="tasks.v2.layout-toggle" layout={layout} onChange={(next) => { setLayout(next); setInspectedTaskId(""); }} /></div>
-        </div> : null}
+      <section aria-label="Daily Tasks" className={uxV2 ? designTodayRootClass : "content-panel stack"} data-pd-id="tasks.workspace">
+        {uxV2 ? <>
+          <DesignTodayToolbar dataPdId="tasks.v2.toolbar" summary={<><strong>{isLoading || loadFailed ? "—" : counts.today + counts.overdue} Needs Attention</strong><span>{counts.upcoming} Upcoming</span><span>{counts.completed} Completed</span></>} actions={<>
+            <DesignTodayViewToggle dataPdId="tasks.v2.layout-toggle" layout={layout} onChange={(next) => { setLayout(next); setInspectedTaskId(""); }} />
+            <button aria-expanded={filtersOpen} className={designTodayToolButtonClass} data-pd-id="tasks.v2.filter-toggle" onClick={() => setFiltersOpen(value => !value)} type="button"><span aria-hidden="true" className="material-symbols-outlined">filter_list</span>Filters{activeFilterCount ? ` ${activeFilterCount}` : ""}</button>
+            <DesignLabSelect compact dataPdId="tasks.sort" label="Sort Daily Tasks" onChange={value => changeControls(() => setSort(value))} options={[{ value: "priority", label: "Priority And Due Time" }, { value: "due", label: "Due Time" }, { value: "profile", label: "Profile" }, { value: "bookmaker", label: "Bookmaker" }]} value={sort} />
+          </>} />
+          {filtersOpen ? <DesignTodayFilters dataPdId="tasks.v2.filters">
+            <DesignLabSelect dataPdId="tasks.v2.view" label="Task lifecycle view" onChange={value => changeControls(() => setDueState(value))} options={dueViews.map(view => ({ value: view.id, label: view.id === "today" ? "Needs Action" : view.label }))} value={dueState} />
+            <label className="field-control table-search-field"><span>Search Tasks</span><input aria-label="Search Daily Tasks" data-pd-id="tasks.search" onChange={(event) => changeControls(() => setQuery(event.target.value))} placeholder="Task, Profile, bookmaker or record" type="search" value={query} /></label>
+            <label className="field-control table-filter-field"><span>Profile</span><select aria-label="Filter Tasks By Profile" onChange={(event) => changeControls(() => setProfileId(event.target.value))} value={profileId}><option value="all">All Authorised Active Profiles</option>{profiles.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></label>
+            <label className="field-control table-filter-field"><span>Bookmaker</span><select aria-label="Filter Tasks By Bookmaker" onChange={(event) => changeControls(() => setBookmaker(event.target.value))} value={bookmaker}><option value="all">All Bookmakers</option>{bookmakers.map(value => <option key={value}>{value}</option>)}</select></label>
+            <label className="field-control table-filter-field"><span>Task Type</span><select aria-label="Filter Tasks By Type" onChange={(event) => changeControls(() => setNotificationType(event.target.value))} value={notificationType}><option value="all">All Task Types</option>{types.map(value => <option key={value} value={value}>{taskTypeLabel(value)}</option>)}</select></label>
+            <label className="field-control table-filter-field"><span>Source</span><select aria-label="Filter Tasks By Source" onChange={(event) => changeControls(() => setSource(event.target.value as DailyTaskSource | "all"))} value={source}><option value="all">All Sources</option><option value="deterministic">Deterministic</option><option value="recurring" disabled>Recurring — Not Active</option><option value="ai" disabled>AI — Not Active</option></select></label>
+            <button className={designTodayToolButtonClass} disabled={!activeFilterCount} onClick={() => changeControls(() => { setQuery(""); setProfileId("all"); setBookmaker("all"); setNotificationType("all"); setSource("all"); setDueState("today"); })} type="button">Clear Filters</button>
+            <button className={designTodayToolButtonClass} data-pd-id="tasks.refresh" disabled={isLoading || isPersistingState} onClick={() => void refresh()} type="button"><span aria-hidden="true" className="material-symbols-outlined">refresh</span>Refresh Tasks</button>
+          </DesignTodayFilters> : null}
+        </> : <>
         <div aria-label="Task lifecycle views" className="analytics-tab-list daily-task-tabs" data-pd-id="tasks.tabs" role="tablist">
           {dueViews.map((view) => (
             <button
@@ -352,6 +368,7 @@ export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
             <label className="field-control table-filter-field"><span>Source</span><select aria-label="Filter Tasks By Source" onChange={(event) => changeControls(() => setSource(event.target.value as DailyTaskSource | "all"))} value={source}><option value="all">All Sources</option><option value="deterministic">Deterministic</option><option value="recurring" disabled>Recurring — Not Active</option><option value="ai" disabled>AI — Not Active</option></select></label>
           </div>
         </details>
+        </>}
 
         {actionError ? <div className="notification-action-error" role="alert">{actionError}</div> : null}
         {isLoading ? (
@@ -359,9 +376,9 @@ export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
         ) : loadFailed ? (
           <div className="notification-action-error" role="alert">Daily Tasks are temporarily unavailable. Use Refresh Tasks to retry.</div>
         ) : (
-          <section aria-labelledby={`daily-task-tab-${dueState}`} id="daily-task-panel" role="tabpanel">
-            <p aria-live="polite" className="notification-history-count" role="status">{filtered.length} {uxV2 && dueState === "today" ? "needs action" : dueViews.find((view) => view.id === dueState)?.label.toLocaleLowerCase()} task{filtered.length === 1 ? "" : "s"}</p>
-            <LedgerPagination ariaLabel="Daily Tasks" currentPage={currentPage} onPageChange={setPage} onPageSizeChange={(next) => { setPageSize(next); setPage(1); }} pageCount={pageCount} pageSize={pageSize} position="top" totalRows={filtered.length} />
+          <section aria-label={uxV2 ? "Source Tasks" : undefined} aria-labelledby={uxV2 ? undefined : `daily-task-tab-${dueState}`} id="daily-task-panel" role={uxV2 ? undefined : "tabpanel"}>
+            {!uxV2 ? <p aria-live="polite" className="notification-history-count" role="status">{filtered.length} {dueViews.find((view) => view.id === dueState)?.label.toLocaleLowerCase()} task{filtered.length === 1 ? "" : "s"}</p> : null}
+            {!uxV2 || pageCount > 1 ? <LedgerPagination ariaLabel="Daily Tasks" currentPage={currentPage} onPageChange={setPage} onPageSizeChange={(next) => { setPageSize(next); setPage(1); }} pageCount={pageCount} pageSize={pageSize} position="top" totalRows={filtered.length} /> : null}
             {uxV2 ? <>
               <div className={`${designTodayContentClass}${inspectedTask && !narrow ? ` ${layout === "Board" ? designTodayBoardWithDetailClass : designTodayWithDetailClass}` : ""}`} data-pd-id="tasks.v2.layout">
                 <div className={designTodayQueueClass}>

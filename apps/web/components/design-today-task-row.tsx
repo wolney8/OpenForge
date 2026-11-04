@@ -17,12 +17,22 @@ export const designTodayPropertiesClass = styles.properties;
 export const designTodayDetailTextClass = styles.detailText;
 export const designTodayDetailActionsClass = styles.detailActions;
 export const designTodayCloseButtonClass = styles.closeButton;
-export const designTodayToolbarClass = styles.toolbar;
-export const designTodaySummaryClass = styles.summary;
-export const designTodayToolbarActionsClass = styles.toolbarActions;
 export const designTodayBoardDrawerClass = styles.boardDrawer;
 export const designTodayBoardWithDetailClass = styles.boardWithDetail;
 export const designTodayMobileDetailClass = styles.mobileDetail;
+export const designTodayRootClass = styles.today;
+export const designTodayToolButtonClass = styles.toolButton;
+
+export function DesignTodayToolbar({ actions, dataPdId, summary }: { actions: ReactNode; dataPdId: string; summary: ReactNode }) {
+  return <div className={styles.toolbar} data-pd-id={dataPdId}>
+    <div className={styles.summary}>{summary}</div>
+    <div className={styles.toolbarActions}>{actions}</div>
+  </div>;
+}
+
+export function DesignTodayFilters({ children, dataPdId }: { children: ReactNode; dataPdId: string }) {
+  return <section aria-label="Task Filters" className={styles.filters} data-pd-id={dataPdId}>{children}</section>;
+}
 
 export function DesignTodayViewToggle({ layout, onChange, dataPdId }: { layout: "List" | "Board"; onChange: (layout: "List" | "Board") => void; dataPdId: string }) {
   return <div aria-label="Task Layout" className={styles.viewToggle} data-pd-id={dataPdId} role="group">

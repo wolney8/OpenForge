@@ -2,6 +2,13 @@
 
 Complete this for every feature, bug fix, component, fixture-backed UI, route or page change.
 
+## CP-127 Today whole-screen integration — 2026-11-04 / #118
+
+- [x] Used the connected Lab toolbar, filter, select, list/board, row and detail presentation components for the real Today route; retained the unchanged legacy flag-OFF table and the established task/notification source authority.
+- [x] Real-only lifecycle, search, Profile, bookmaker, task type, source and refresh controls remain available in the Lab filter area. No synthetic recurring tasks, settlement or browser-only tracking authority was added.
+- [x] Compared loaded desktop/mobile light/dark Lab and V2 screens, checked toolbar geometry and page overflow, and exercised search, clear, lifecycle, detail and source controls in independently authenticated synthetic Playwright. Source-backed notifications, ledgers, Reports and specialist routes remain separately covered by the broader visual suite.
+- [ ] Complete visual parity for Notifications, Reports, management routes and specialist editor interiors. Today's Lab-only recurring/suggestion workflow and durable tracking remain outside the authorised real-data scope; owner visual judgement and spoken screen-reader testing remain unverified.
+
 ## CP-126 ledger presentation handoff — 2026-11-03 / #118
 
 - [x] Reused the connected Lab ledger detail, toggle, table surface and stepper presentation; retained existing row adapters, financial field controls, Save/correction workflows, Profile scoping and default-OFF rollback. Requests `PD-PR-117A-42–45` and `PD-FIX-510` remain individually reconciled in the UI change register.

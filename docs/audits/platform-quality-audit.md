@@ -6423,3 +6423,18 @@ All six real ledgers now render the connected Lab's labelled-detail component at
 | Today, Notifications, Position, Reports, Profit Tracker, Profiles, Settings, Calculators, Oddsmatcher | Earlier route status retained | Earlier route status retained | Earlier authority retained | Whole-screen acceptance remains open for the next route group |
 
 Paired light/dark 390 px Lab/V2 detail screenshots, native editor captures, grid geometry and actual Chromium 200% zoom are under ignored `data/private/evidence/cp117-visual-adoption/`. Design Acceptance remains OPEN; authenticated browser regression, rollback and owner visual judgement are tracked separately. Saved-view and Today persistence authority remains deferred.
+
+## CP-127 whole-screen adoption status — 2026-11-04
+
+The real Today route now renders the connected Lab toolbar and filter components with the same default List/Board, Filters and Sort order. Its V2 route removes the legacy nested card, duplicate lifecycle tabs and always-visible control row. Existing source-backed task filtering, search, refresh, completion view, task detail and source navigation stay available inside the Lab composition. The flag-OFF route keeps its original table and controls. Paired desktop/mobile light/dark captures and an integrated synthetic journey are in ignored `data/private/evidence/cp117-visual-adoption/`.
+
+| Route group | Design Acceptance | Interaction Acceptance | Integration Acceptance | Specific remaining difference |
+| --- | --- | --- | --- | --- |
+| Six ledgers | PARTIAL | ADOPTED for shared grid navigation, mobile detail, floating edit and native editor handoff | Existing authoritative operations retained; synthetic regression receipt separate | Lab Quick Capture and workbench do not match the native financial editor's complete field/review/footer composition; real grid requires additional columns and operational actions |
+| Today | PARTIAL — shared Lab default toolbar, surface, list/board rows and detail; no nested legacy controls | ADOPTED for supported list/board, filter, sort and task detail controls | Real task read, annotation authority and source access preserved | Lab fixture has recurring/suggestion grouping and tracking controls without an approved real persistence/source authority; real lifecycle and refresh remain in Filters; page-header/range composition differs |
+| Notifications | PARTIAL — shared Lab surface, tabs, sections and rows | ADOPTED for source/read/clear commands | Existing notification authority preserved | Real search, status and bulk-action toolbar is more prominent than the Lab's single type filter and action row |
+| Reports and Profit Tracker | PARTIAL — shared Lab chart renders governed points when eligible | Existing governed filters, source links and specialist reports retained | Financial definitions and unknown states preserved | Explorer controls and formal reports occupy a different hierarchy; Profit Tracker has no complete approved Lab equivalent |
+| Position, Profiles, Accounts management and Settings | PARTIAL — earlier shared shell/components retained | Earlier verified paths retained | Existing data and permissions retained | Whole-route Lab composition and management dialogs remain to adopt and compare |
+| Calculators and Oddsmatcher | PARTIAL — shared V2 shell | Specialist routes reachable | Existing engines retained | The Lab supplies no complete specialist screen equivalents; shell and accessibility are the current design boundary |
+
+This is an integration checkpoint, not full application Design Acceptance. Existing financial-fixture baseline failures remain separate; saved ledger views and Today persistence still require their documented authority approval.

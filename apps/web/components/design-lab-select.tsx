@@ -6,7 +6,7 @@ import styles from "./design-lab-journey.module.css";
 
 type Option<T extends string> = { value: T; label: string };
 
-/** Lab-scoped single select using the platform's explicit-trigger/listbox pattern. */
+/** Approved Lab single select shared with real-data adapters. */
 export function DesignLabSelect<T extends string>({
   dataPdId, label, onChange, options, value, compact = false, disabled = false,
 }: {

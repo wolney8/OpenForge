@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { DesignLabSelect } from "@/components/design-lab-select";
 import { ModalBoundary } from "@/components/modal-boundary";
 import { DesignLabTaskState } from "@/components/design-lab-task-state";
-import { DesignTodayBoard, DesignTodayDetail, DesignTodayTaskRow, DesignTodayViewToggle } from "@/components/design-today-task-row";
+import { DesignTodayBoard, DesignTodayDetail, DesignTodayFilters, DesignTodayTaskRow, DesignTodayToolbar, DesignTodayViewToggle } from "@/components/design-today-task-row";
 import { buildLabTodayTasks, labClock, labTaskDateLabel, labTaskNeedsUrgentReview, labTaskSourceType, labTaskUrgency, sortLabTodayTasks, summarizeLabToday, type LabTaskUrgency, type LabTodayTask } from "@/lib/design-lab-operations";
 import { labProfiles, type LabAccount, type LabProfileId, type LabScope } from "@/lib/design-lab-fixture";
 import type { LabRecord } from "@/lib/design-lab-connected-data";
@@ -129,8 +129,8 @@ export function DesignLabToday({ scope, records, accounts, extraTasks = [], task
   }
 
   return <div className={styles.today} data-pd-id="lab.today">
-    <div className={styles.toolbar}><div className={styles.summary}><strong>{todayCounts.needsAttention} Needs Attention</strong><span>{todayCounts.routineChecksDue} Routine Checks Due</span><span>{todayCounts.upcoming} Upcoming</span><span>{scope === "all" ? "All Profiles" : profileName(scope)}</span></div><div className={styles.toolbarActions}><DesignTodayViewToggle dataPdId="lab.today.layout" layout={view.layout} onChange={layout => setView({ layout })} /><button aria-expanded={view.filtersOpen} className={styles.toolButton} data-pd-id="lab.today.filter-toggle" onClick={() => setView({ filtersOpen: !view.filtersOpen })} type="button"><span aria-hidden="true" className="material-symbols-outlined">filter_list</span>Filters{activeFilterCount ? ` ${activeFilterCount}` : ""}</button><DesignLabSelect compact dataPdId="lab.today.sort" label="Sort" onChange={sort => setView({ sort })} options={(["Priority","Date","Title"] as const).map(value => ({value,label:value}))} value={view.sort}/></div></div>
-    {view.filtersOpen ? <section aria-label="Task Filters" className={styles.filters} data-pd-id="lab.today.filters">
+    <DesignTodayToolbar dataPdId="lab.today.toolbar" summary={<><strong>{todayCounts.needsAttention} Needs Attention</strong><span>{todayCounts.routineChecksDue} Routine Checks Due</span><span>{todayCounts.upcoming} Upcoming</span><span>{scope === "all" ? "All Profiles" : profileName(scope)}</span></>} actions={<><DesignTodayViewToggle dataPdId="lab.today.layout" layout={view.layout} onChange={layout => setView({ layout })} /><button aria-expanded={view.filtersOpen} className={styles.toolButton} data-pd-id="lab.today.filter-toggle" onClick={() => setView({ filtersOpen: !view.filtersOpen })} type="button"><span aria-hidden="true" className="material-symbols-outlined">filter_list</span>Filters{activeFilterCount ? ` ${activeFilterCount}` : ""}</button><DesignLabSelect compact dataPdId="lab.today.sort" label="Sort" onChange={sort => setView({ sort })} options={(["Priority","Date","Title"] as const).map(value => ({value,label:value}))} value={view.sort}/></>} />
+    {view.filtersOpen ? <DesignTodayFilters dataPdId="lab.today.filters">
       <DesignLabSelect dataPdId="lab.today.filter.profile" label="Profile" onChange={profile => setView({ profile })} options={[{value:"All",label:"All Profiles"},...labProfiles.filter(profile => scope === "all" || scope === profile.id).map(profile => ({value:profile.id,label:profile.name}))]} value={view.profile}/>
       <DesignLabSelect dataPdId="lab.today.filter.type" label="Source Type" onChange={sourceType => setView({sourceType})} options={["All","Sportsbook","Free Bet","Account","Routine","Suggestion"].map(value => ({value:value as LabTodayViewState["sourceType"],label:value}))} value={view.sourceType}/>
       <DesignLabSelect dataPdId="lab.today.filter.urgency" label="Urgency" onChange={urgency => setView({urgency})} options={[{value:"All",label:"All"},...urgencyGroups.map(value => ({value,label:value}))]} value={view.urgency}/>
@@ -138,7 +138,7 @@ export function DesignLabToday({ scope, records, accounts, extraTasks = [], task
       <DesignLabSelect dataPdId="lab.today.filter.provider" label="Bookmaker" onChange={provider => setView({provider})} options={["All",...providers].map(value => ({value,label:value}))} value={view.provider}/>
       <DesignLabSelect dataPdId="lab.today.filter.period" label="Recorded Date Period" onChange={duePeriod => setView({duePeriod})} options={(["All","Today","Next 7 Days","No Date"] as const).map(value => ({value,label:value}))} value={view.duePeriod}/>
       <button className={styles.clearButton} disabled={!activeFilterCount} onClick={() => setView({profile:"All",sourceType:"All",urgency:"All",workState:"All",provider:"All",duePeriod:"All"})} type="button">Clear Filters</button>
-    </section> : null}
+    </DesignTodayFilters> : null}
     <div className={`${styles.content} ${selected && !narrow && view.layout === "List" ? styles.withDetail : ""} ${selected && !narrow && view.layout === "Board" ? styles.boardWithDetail : ""}`}>
       <div className={styles.queue}>
         {view.layout === "List" ? <>
