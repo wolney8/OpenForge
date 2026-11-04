@@ -576,6 +576,39 @@ test("Sportsbook floating and full editor use the integrated V2 surfaces", async
   await page.screenshot({ path: join(evidence, "v2-sportsbook-full-editor-390-dark.png"), fullPage: true });
 });
 
+test("Sportsbook, Free Bet and Casino native editors share the Lab financial card and retain their actions", async ({ page }) => {
+  await mkdir(evidence, { recursive: true });
+  const editors = [
+    { route: "sportsbook-bets", id: "sportsbook", name: "Sportsbook" },
+    { route: "free-bets", id: "free-bets", name: "Free Bet" },
+    { route: "casino-offers", id: "casino-offers", name: "Casino" },
+  ] as const;
+  for (const { width, theme } of [{ width: 1440, theme: "light" }, { width: 390, theme: "dark" }] as const) {
+    await page.setViewportSize({ width, height: 900 });
+    for (const editor of editors) {
+      await page.goto(`${profile}/${editor.route}`);
+      await expect(page.locator(`[data-pd-id="${editor.id}.design-screen"]`)).toBeVisible({ timeout: 45_000 });
+      await setTheme(page, theme);
+      await page.locator(`[data-pd-id="${editor.id}.toolbar.add-row"]`).click();
+      const dialog = page.locator(`[data-pd-id="${editor.id}.editor.dialog"]`);
+      await expect(dialog).toBeVisible();
+      const stage = dialog.locator(".editor-section").first();
+      await expect(stage).toBeVisible();
+      await expect(stage).toHaveCSS("border-radius", "14px");
+      await expect(dialog.locator('[data-pd-id="ledger-editor.tabs"]')).toBeVisible();
+      await expect(dialog.locator(".workflow-editor-footer")).toBeInViewport();
+      const bounds = await dialog.boundingBox();
+      expect(bounds).toBeTruthy();
+      expect(bounds!.x).toBeGreaterThanOrEqual(0);
+      expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width);
+      await noPageOverflow(page);
+      await page.screenshot({ path: join(evidence, `v2-${editor.id}-add-${width}-${theme}.png`), fullPage: true });
+      await dialog.locator(".workflow-editor-cancel-button").click();
+      await expect(dialog).toHaveCount(0);
+    }
+  }
+});
+
 const integratedRoutes = [
   { name: "free-bets", path: `${profile}/free-bets` },
   { name: "casino-offers", path: `${profile}/casino-offers` },
@@ -583,6 +616,8 @@ const integratedRoutes = [
   { name: "cash-adjustments", path: `${profile}/cash-adjustments` },
   { name: "notifications", path: "/notifications" },
   { name: "profiles", path: "/profiles" },
+  { name: "profile-management", path: "/profiles/profile-demo-001/manage" },
+  { name: "onboarding", path: "/profiles/new" },
   { name: "settings", path: "/settings" },
   { name: "profit-tracker", path: `${profile}/profit-tracker` },
   { name: "calculators", path: "/fund-manager/calculators" },
@@ -608,8 +643,26 @@ for (const route of integratedRoutes) {
           await expect(detailedDirectory.locator('table')).toBeVisible();
           await detailedDirectory.locator(':scope > summary').click();
         }
+        if (route.name === "profile-management") {
+          await expect(page.locator('[data-pd-id="profile-management.design-screen"]')).toBeVisible({ timeout: 45_000 });
+          await expect(page.locator('[data-pd-id="profile-management.navigation.tabs"]')).toBeVisible();
+        }
+        if (route.name === "onboarding") {
+          await expect(page.locator('[data-pd-id="founder-onboarding.page"]')).toBeVisible();
+          await expect(page.locator('[data-pd-id="ledger-editor.tabs"]')).toBeVisible();
+        }
         if (route.name === "settings") {
           await expect(page.locator('[data-pd-id="account-catalogue.section"]')).toHaveAttribute("aria-busy", "false", { timeout: 45_000 });
+        }
+        if (route.name === "profit-tracker") {
+          await expect(page).toHaveURL(`${profile}/dashboard`);
+          const performance = page.locator('[data-pd-id="dashboard.selected-range-performance"]');
+          await expect(page.locator('[data-pd-id="dashboard.portfolio-view"]')).toBeVisible({ timeout: 45_000 });
+          await expect(performance).toBeVisible();
+          await expect(performance).toHaveAttribute("data-performance-state", /^(chart|partial|no-activity|unavailable)$/);
+          await expect(performance.getByRole("heading", { name: "Selected Range Performance" })).toBeVisible();
+          await expect(page.locator('[data-pd-id="dashboard.period.1m"]')).toBeVisible();
+          await expect(page.locator('[data-pd-id="dashboard.module-mix"]')).toBeVisible();
         }
         if (route.name === "notifications") {
           await page.locator('[data-pd-id="notifications.history.loading-shell"]').waitFor({ state: "hidden", timeout: 45_000 });
@@ -617,7 +670,7 @@ for (const route of integratedRoutes) {
         await setTheme(page, theme);
         await page.waitForTimeout(400);
         await noPageOverflow(page);
-        await page.screenshot({ path: join(evidence, `v2-${route.name}-${width}-${theme}.png`), fullPage: true });
+        await page.screenshot({ path: join(evidence, `v2-${route.name === "profit-tracker" ? "profit-tracker-dashboard-alias" : route.name}-${width}-${theme}.png`), fullPage: true });
       });
     }
   }
@@ -643,6 +696,32 @@ for (const width of [1440, 390] as const) {
       await setTheme(page, theme);
       await noPageOverflow(page);
       await page.screenshot({ path: join(evidence, `v2-profiles-paired-${width}-${theme}.png`), fullPage: true });
+    });
+  }
+}
+
+for (const width of [1440, 390] as const) {
+  for (const theme of ["light", "dark"] as const) {
+    test(`onboarding ${width} ${theme}: paired Lab and governed V2 setup`, async ({ page }) => {
+      await mkdir(evidence, { recursive: true });
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto("/design-lab");
+      await page.locator('[data-pd-id="design-lab-connected.root"]').waitFor();
+      const cookie = page.getByRole("button", { name: "Understood" });
+      if (await cookie.isVisible()) await cookie.click();
+      if (width < 761) await page.getByRole("button", { name: "Open navigation" }).click();
+      await page.getByRole("button", { name: "See More" }).click();
+      await page.locator('[data-pd-id="lab.nav.profiles"]').click();
+      await page.getByRole("button", { name: "Add Profile · simulation" }).click();
+      await expect(page.locator('[data-pd-id="lab.onboarding"]')).toBeVisible();
+      await setTheme(page, theme);
+      await noPageOverflow(page);
+      await page.screenshot({ path: join(evidence, `lab-onboarding-${width}-${theme}.png`), fullPage: true });
+      await page.goto("/profiles/new");
+      await expect(page.locator('[data-pd-id="founder-onboarding.page"]')).toBeVisible();
+      await setTheme(page, theme);
+      await noPageOverflow(page);
+      await page.screenshot({ path: join(evidence, `v2-onboarding-${width}-${theme}.png`), fullPage: true });
     });
   }
 }
@@ -700,6 +779,7 @@ test("Profile Reports preserve governed metrics in the Lab composition", async (
 test("V2 management and specialist navigation retains the real routes", async ({ page }) => {
   await mkdir(evidence, { recursive: true });
   await page.goto("/profiles");
+  await setTheme(page, "light");
   const directory = page.locator('[data-pd-id="profiles.directory.details"]');
   await directory.locator(':scope > summary').click();
   await directory.getByRole("link", { name: /Manage Subscriber Alpha/ }).click();
@@ -713,6 +793,7 @@ test("V2 management and specialist navigation retains the real routes", async ({
   await page.goto("/settings");
   await expect(page.locator('[data-pd-id="fund-manager-settings.tabs"]')).toBeVisible();
   await page.getByRole("tab", { name: "Lists", exact: true }).click();
+  await expect(page.locator('[data-pd-id="fund-manager-authorities.section"]')).toHaveAttribute("aria-busy", "false", { timeout: 45_000 });
   await page.screenshot({ path: join(evidence, "v2-settings-lists-1440-light.png"), fullPage: true });
   await page.locator('[data-pd-id="ux-v2.launcher.trigger"]').click();
   await page.locator('[data-pd-id="ux-v2.launcher.calculators"]').click();

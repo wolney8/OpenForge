@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type KeyboardEvent } from "react";
 import { ConfirmationDialog } from "@/components/confirmation-dialog";
+import { DesignPageHead, designPageHeadClasses } from "@/components/design-ledger-screen";
+import { DesignManagementSurface } from "@/components/design-management-presentation";
 import { FinancialValue, FinancialValueReplayGroup } from "@/components/financial-value";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { useAuthoritativeSession } from "@/components/session-bootstrap-gate";
@@ -69,7 +71,7 @@ async function responseDetail(response: Response) {
   return body?.detail || `Request failed with status ${response.status}`;
 }
 
-export function FundManagerProfileManagement({ profileId }: { profileId: string }) {
+export function FundManagerProfileManagement({ profileId, visualV2 = false }: { profileId: string; visualV2?: boolean }) {
   const router = useRouter();
   const authoritativeSession = useAuthoritativeSession();
   const [profile, setProfile] = useState<ProfileRecord | null>(null);
@@ -249,7 +251,12 @@ export function FundManagerProfileManagement({ profileId }: { profileId: string 
   return (
     <main className="page-shell stack" data-pd-id="profile-management.page">
       <StatusToast message={message || error} onDismiss={() => { setMessage(""); setError(""); }} />
-      <section className="hero-panel split-hero profile-management-header">
+      {visualV2 ? <DesignPageHead>
+        <div><h1>{profile.display_name}</h1><p>Profile management · {profile.status}</p></div>
+        <div className={designPageHeadClasses.actions}>
+          <Link className="button-link" href={`/profiles/${profileId}/tracker/dashboard`}>Open Profile</Link>
+        </div>
+      </DesignPageHead> : <section className="hero-panel split-hero profile-management-header">
         <div className="stack-tight">
           <span className="eyebrow">Fund Manager Profile Management</span>
           <h1>{profile.display_name}</h1>
@@ -259,9 +266,9 @@ export function FundManagerProfileManagement({ profileId }: { profileId: string 
           <span className="badge">{profile.status}</span>
           <Link className="button-link" href={`/profiles/${profileId}/tracker/dashboard`}>Open Profile</Link>
         </div>
-      </section>
+      </section>}
 
-      <section className="content-panel stack profile-management-shell">
+      <DesignManagementSurface className="profile-management-shell" dataPdId="profile-management.design-screen" enabled={visualV2} legacyClassName="content-panel stack profile-management-shell">
         <div aria-label="Profile management sections" className="analytics-tab-list profile-settings-tab-list" data-pd-id="profile-management.navigation.tabs" role="tablist">
           {sections.map((section) => (
             <button
@@ -367,7 +374,7 @@ export function FundManagerProfileManagement({ profileId }: { profileId: string 
             <button className="icon-button icon-button-destructive icon-text-action" data-pd-id="profile-management.archive" disabled={isSaving} onClick={() => setLifecycleConfirmation("archive")} type="button"><span aria-hidden="true" className="material-symbols-outlined">archive</span><span>Archive Profile</span></button>
           )}
         </section>
-      </section>
+      </DesignManagementSurface>
 
       <ConfirmationDialog
         busy={isSaving}

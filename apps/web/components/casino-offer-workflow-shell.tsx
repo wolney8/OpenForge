@@ -4425,7 +4425,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
         ) : null}
         <form className="form-grid" onSubmit={(event) => void handleSubmit(event)}>
           <LedgerEditorTabPanel activeTabId={safeActiveEditorTabId} tabId="setup">
-          <EditorSection
+          <EditorSection visualV2={visualV2}
             collapsible={false}
             headerAside={
               renderEditorSectionAside("setup")
@@ -4641,7 +4641,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
           </EditorSection>
           </LedgerEditorTabPanel>
           <LedgerEditorTabPanel activeTabId={safeActiveEditorTabId} tabId="campaign">
-          <EditorSection
+          <EditorSection visualV2={visualV2}
             collapsible={false}
             headerAside={renderEditorSectionAside(
               "campaign",
@@ -5006,7 +5006,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
           </LedgerEditorTabPanel>
           <LedgerEditorTabPanel activeTabId={safeActiveEditorTabId} tabId="reward">
           {showsRewardSection ? (
-          <EditorSection
+          <EditorSection visualV2={visualV2}
             collapsible={false}
             headerAside={renderEditorSectionAside(
               "reward",
@@ -5361,7 +5361,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
           ) : null}
           </LedgerEditorTabPanel>
           <LedgerEditorTabPanel activeTabId={safeActiveEditorTabId} tabId="settlement">
-          <EditorSection
+          <EditorSection visualV2={visualV2}
             collapsible={false}
             headerAside={
               renderEditorSectionAside("settlement")
@@ -5680,7 +5680,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
           </LedgerEditorTabPanel>
           {showsAdvancedEditorTab ? (
           <LedgerEditorTabPanel activeTabId={safeActiveEditorTabId} tabId="advanced">
-          <EditorSection
+          <EditorSection visualV2={visualV2}
             collapsible={false}
             headerAside={renderEditorSectionAside("advanced")}
             title="Advanced controls"

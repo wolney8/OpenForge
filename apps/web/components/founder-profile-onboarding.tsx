@@ -1,10 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type MouseEvent as ReactMouseEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { FinancialTextInput } from "@/components/financial-text-input";
+import { DesignPageHead } from "@/components/design-ledger-screen";
+import { DesignManagementSurface } from "@/components/design-management-presentation";
+import { DesignOnboardingFieldRow, DesignOnboardingFooter, DesignOnboardingPanel } from "@/components/design-onboarding-field-row";
 import { FinancialValue, FinancialValueReplayGroup } from "@/components/financial-value";
 import { LedgerEditorTabPanel, LedgerEditorTabRail } from "@/components/ledger-editor-tabs";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
@@ -171,8 +174,9 @@ function isRecentlyIntroduced(value?: string): boolean {
   return Number.isFinite(timestamp) && Date.now() - timestamp <= 30 * 24 * 60 * 60 * 1000;
 }
 
-export function ProfileOnboarding() {
+export function ProfileOnboarding({ visualV2 = false }: { visualV2?: boolean }) {
   const router = useRouter();
+  const headingRef = useRef<HTMLHeadingElement>(null);
   const [stage, setStage] = useState<Stage>("profile");
   const [setupPath, setSetupPath] = useState<SetupPath>("fresh");
   const [isDirty, setIsDirty] = useState(false);
@@ -190,6 +194,8 @@ export function ProfileOnboarding() {
   const [quickActionsState, setQuickActionsState] = useState<"loading" | "ready" | "error">("loading");
   const [selectedQuickActions, setSelectedQuickActions] = useState<Record<string, SelectedQuickAction>>({});
   const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => { if (visualV2) headingRef.current?.focus(); }, [visualV2]);
   const [error, setError] = useState("");
   const [profile, setProfile] = useState({
     profile_relationship: "",
@@ -638,11 +644,11 @@ export function ProfileOnboarding() {
   }
 
   return (
-    <section className="content-panel stack founder-onboarding" data-pd-id="founder-onboarding.page">
-      <header className="stack-tight">
+    <DesignManagementSurface className="founder-onboarding" dataPdId="founder-onboarding.page" enabled={visualV2} legacyClassName="content-panel stack founder-onboarding">
+      {visualV2 ? <DesignPageHead><div><h1 ref={headingRef} tabIndex={-1}>Create Profile</h1><p>One isolated tracker</p></div></DesignPageHead> : <header className="stack-tight">
         <span className="eyebrow">Fund Manager</span>
         <h1>Create Profile</h1>
-      </header>
+      </header>}
 
       <LedgerEditorTabRail
         activeTabId={stage}
@@ -650,6 +656,7 @@ export function ProfileOnboarding() {
         guidedTargetTabId={guidedEntryDismissed ? null : guidedTarget.stage}
         onActiveTabChange={(tabId) => selectStage(tabId as Stage)}
         tabs={onboardingTabs}
+        visualV2={visualV2}
       />
 
       {!guidedEntryDismissed ? (
@@ -671,7 +678,7 @@ export function ProfileOnboarding() {
 
       {stage === "profile" ? (
         <LedgerEditorTabPanel activeTabId={stage} tabId="profile">
-        <section className="analytics-tab-panel stack">
+        <DesignOnboardingPanel className="analytics-tab-panel stack" enabled={visualV2}>
           <section className="content-subpanel stack-tight" data-pd-id="profile-onboarding.setup-path">
             <div><span className="eyebrow">Setup path</span><h2>How should this Profile start?</h2></div>
             <div aria-label="Profile setup path" className="settings-card-grid" role="radiogroup">
@@ -694,39 +701,46 @@ export function ProfileOnboarding() {
             </p>
           </section>
           <div className="form-grid">
-            <label className="field-control" data-guided-field="relationship"><span>Profile relationship</span><select aria-describedby="profile-relationship-help" data-pd-id="profile-onboarding.relationship" onChange={(event) => { setIsDirty(true); setProfile((current) => ({ ...current, profile_relationship: event.target.value, management_fee_percent: event.target.value === "Personal" ? "0.00" : "", investment_fee_percent: event.target.value === "Personal" ? "0.00" : "" })); }} value={profile.profile_relationship}><option value="">Choose relationship</option><option>Personal</option><option>Managed subscriber</option></select></label>
+            <h2 className="field-span-2">Identity and terms</h2>
+            <label className="field-control field-span-2" data-guided-field="relationship"><span>Profile relationship</span><select aria-describedby="profile-relationship-help" data-pd-id="profile-onboarding.relationship" onChange={(event) => { setIsDirty(true); setProfile((current) => ({ ...current, profile_relationship: event.target.value, management_fee_percent: event.target.value === "Personal" ? "0.00" : "", investment_fee_percent: event.target.value === "Personal" ? "0.00" : "" })); }} value={profile.profile_relationship}><option value="">Choose relationship</option><option>Personal</option><option>Managed subscriber</option></select></label>
 
-            <label className={`field-control${guidedTarget.field === "display-name" && !guidedEntryDismissed ? " is-guided-next" : ""}`} data-guided-field="display-name"><span>Display Name</span><input autoComplete="name" autoFocus maxLength={120} onChange={(event) => setProfileValue("display_name", event.target.value)} value={profile.display_name} /></label>
+            <DesignOnboardingFieldRow>
+            <label className={`field-control${guidedTarget.field === "display-name" && !guidedEntryDismissed ? " is-guided-next" : ""}`} data-guided-field="display-name"><span>Display Name</span><input autoComplete="name" autoFocus={!visualV2} maxLength={120} onChange={(event) => setProfileValue("display_name", event.target.value)} value={profile.display_name} /></label>
             <label className={`field-control${guidedTarget.field === "profile-code" && !guidedEntryDismissed ? " is-guided-next" : ""}`} data-guided-field="profile-code"><span>Profile Code</span><input maxLength={32} onChange={(event) => setProfileValue("profile_code", event.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, ""))} placeholder="PROFILE-001" value={profile.profile_code} /></label>
-            {<>
+            </DesignOnboardingFieldRow>
+            <DesignOnboardingFieldRow>
               <label className="field-control"><span>Tracking Start Date</span><input max={todayIsoDate()} onChange={(event) => setProfileValue("tracking_start_date", event.target.value)} type="date" value={profile.tracking_start_date} /></label>
-              <label className="field-control"><span>Active Date Preset</span><select onChange={(event) => setProfileValue("active_date_preset", event.target.value)} value={profile.active_date_preset}><option>This Week</option><option>Week (Mon-Sun)</option><option>Past 7 Days</option><option>This Month</option><option>This Year</option><option>All Dates</option></select></label>
-              <label className="field-control"><span>Iteration Number</span><input inputMode="numeric" min="1" onChange={(event) => setProfileValue("iteration_number", event.target.value.replace(/\D/g, ""))} type="number" value={profile.iteration_number} /></label>
               <label className="field-control"><span>Starting Bankroll</span><FinancialTextInput allowNegative={false} ariaLabel="Starting Bankroll" clearInitialZeroOnFocus dataPdId="profile-onboarding.starting-bankroll" id="profile-onboarding-starting-bankroll" onBlur={() => setProfileValue("starting_bankroll", normalizeTwoDecimals(profile.starting_bankroll))} onChange={(value) => setProfileValue("starting_bankroll", value)} value={profile.starting_bankroll} valueTone={parseAmount(profile.starting_bankroll) > 0 ? "positive" : "neutral"} /></label>
-            </>}
+            </DesignOnboardingFieldRow>
+            <DesignOnboardingFieldRow>
             <label className={`field-control${guidedTarget.field === "management-fee" && !guidedEntryDismissed ? " is-guided-next" : ""}`} data-guided-field="management-fee"><span>Management Fee</span><PercentageTextInput disabled={profile.profile_relationship === "Personal"} ariaLabel="Management Fee" clearInitialValueOnFocus dataPdId="profile-onboarding.management-fee" id="profile-onboarding-management-fee" onChange={(value) => setProfileValue("management_fee_percent", value)} value={profile.management_fee_percent} valueMode="percentage-points" /></label>
             <label className={`field-control${guidedTarget.field === "investment-fee" && !guidedEntryDismissed ? " is-guided-next" : ""}`} data-guided-field="investment-fee"><span>Investment Fee</span><PercentageTextInput disabled={profile.profile_relationship === "Personal"} ariaLabel="Investment Fee" clearInitialValueOnFocus dataPdId="profile-onboarding.investment-fee" id="profile-onboarding-investment-fee" onChange={(value) => setProfileValue("investment_fee_percent", value)} value={profile.investment_fee_percent} valueMode="percentage-points" /></label>
+            </DesignOnboardingFieldRow>
+            <DesignOnboardingFieldRow>
+              <label className="field-control"><span>Active Date Preset</span><select onChange={(event) => setProfileValue("active_date_preset", event.target.value)} value={profile.active_date_preset}><option>This Week</option><option>Week (Mon-Sun)</option><option>Past 7 Days</option><option>This Month</option><option>This Year</option><option>All Dates</option></select></label>
+              <label className="field-control"><span>Iteration Number</span><input inputMode="numeric" min="1" onChange={(event) => setProfileValue("iteration_number", event.target.value.replace(/\D/g, ""))} type="number" value={profile.iteration_number} /></label>
+            </DesignOnboardingFieldRow>
             <label className="field-control"><span>Operating Jurisdiction</span><select disabled value={profile.operating_jurisdiction}><option value="GB">United Kingdom (GB)</option></select></label>
           </div>
           <p className="field-hint" id="profile-relationship-help">{profile.profile_relationship === "Personal" ? "Your own capital and activity. Management and investment fees are 0%. Exchange commission and genuine costs still apply." : "Managed subscriber fees must be entered from the agreed commercial terms. This relationship does not grant login access."}</p>
           {setupPath === "import" ? <p className="field-hint">Target action: create a new empty Profile, then review the workbook. No existing Profile is merged or replaced.</p> : null}
-        </section>
+        </DesignOnboardingPanel>
         </LedgerEditorTabPanel>
       ) : null}
 
       {stage === "modules" ? (
-        <LedgerEditorTabPanel activeTabId={stage} tabId="modules"><section className="analytics-tab-panel stack" data-guided-field="modules">
+        <LedgerEditorTabPanel activeTabId={stage} tabId="modules"><DesignOnboardingPanel className="analytics-tab-panel stack" enabled={visualV2} data-guided-field="modules">
           <h2>Enabled Modules</h2>
           <div className="settings-card-grid">
             {alwaysOnModules.map((module) => <label className="profile-filter-chip is-selected" key={module.id}><input checked disabled type="checkbox" /><span>{module.label}</span><small>Required</small></label>)}
             {optionalModules.map((module) => <label className={`profile-filter-chip${modules[module.id] ? " is-selected" : ""}`} key={module.id}><input checked={modules[module.id]} onChange={(event) => setModuleEnabled(module.id, event.target.checked)} type="checkbox" /><span>{module.label}</span></label>)}
           </div>
           {modules["each-way-extra-places"] ? <label className="field-control"><span>Weekly Extra Place Loss Budget</span><FinancialTextInput allowNegative={false} ariaLabel="Weekly Extra Place Loss Budget" dataPdId="profile-onboarding.extra-place-budget" id="profile-onboarding-extra-place-budget" onBlur={() => { setIsDirty(true); setWeeklyExtraPlaceBudget(normalizeTwoDecimals(weeklyExtraPlaceBudget)); }} onChange={(value) => { setIsDirty(true); setWeeklyExtraPlaceBudget(value); }} value={weeklyExtraPlaceBudget} /></label> : null}
-        </section></LedgerEditorTabPanel>
+        </DesignOnboardingPanel></LedgerEditorTabPanel>
       ) : null}
 
       {stage === "accounts" ? (
-        <LedgerEditorTabPanel activeTabId={stage} tabId="accounts"><section className="analytics-tab-panel stack" data-guided-field="accounts">
+        <LedgerEditorTabPanel activeTabId={stage} tabId="accounts"><DesignOnboardingPanel className="analytics-tab-panel stack" enabled={visualV2} data-guided-field="accounts">
           <h2>Profile Accounts</h2>
           {catalogueState === "ready" ? <p className="field-hint">{catalogue.length} active GB providers from the Fund Manager Account Catalogue.</p> : null}
           <div className="table-toolbar settings-table-toolbar">
@@ -772,11 +786,11 @@ export function ProfileOnboarding() {
             <LedgerPagination ariaLabel="Profile onboarding accounts" currentPage={effectiveAccountPage} onPageChange={setAccountPage} onPageSizeChange={(nextSize) => { setAccountPageSize(nextSize); setAccountPage(1); }} pageCount={accountPageCount} pageSize={accountPageSize} position="bottom" totalRows={sortedCatalogue.length} />
           </> : null}
           {selectedBanks.length ? <label className="field-control"><span>Main Bank Account</span><select onChange={(event) => setProfileValue("main_bank_catalogue_id", event.target.value)} value={profile.main_bank_catalogue_id}><option value="">No main bank selected</option>{selectedBanks.map((bank) => <option key={bank.catalogue_id} value={bank.catalogue_id}>{bank.brand_name}</option>)}</select></label> : null}
-        </section></LedgerEditorTabPanel>
+        </DesignOnboardingPanel></LedgerEditorTabPanel>
       ) : null}
 
       {stage === "quick-actions" ? (
-        <LedgerEditorTabPanel activeTabId={stage} tabId="quick-actions"><section className="analytics-tab-panel stack" data-guided-field="quick-actions">
+        <LedgerEditorTabPanel activeTabId={stage} tabId="quick-actions"><DesignOnboardingPanel className="analytics-tab-panel stack" enabled={visualV2} data-guided-field="quick-actions">
           <h2>Quick Actions</h2>
           <p className="field-hint">Required Fund Manager actions are inherited automatically. Select up to four optional favourites per enabled ledger; defaults can be refined later in Profile Settings.</p>
           {quickActionsState === "loading" ? (
@@ -810,11 +824,11 @@ export function ProfileOnboarding() {
             </div>
           ) : null}
           {quickActionsState === "ready" && !availableQuickActions.length ? <p className="field-hint">No optional Quick Actions are configured for the enabled ledgers. You can create them later in Profile Settings.</p> : null}
-        </section></LedgerEditorTabPanel>
+        </DesignOnboardingPanel></LedgerEditorTabPanel>
       ) : null}
 
       {stage === "review" ? (
-        <LedgerEditorTabPanel activeTabId={stage} tabId="review"><section className="analytics-tab-panel stack" data-guided-field="create-profile">
+        <LedgerEditorTabPanel activeTabId={stage} tabId="review"><DesignOnboardingPanel className="analytics-tab-panel stack" enabled={visualV2} data-guided-field="create-profile">
           <h2>Review Profile</h2>
           <div className="stat-grid founder-onboarding-review-grid">
             <article className="stat-card"><span className="eyebrow">Profile</span><strong>{profile.display_name || "Not set"}</strong><span>{profile.profile_code || "No code"}</span><span>{profile.profile_relationship} · Fees {profile.management_fee_percent}% / {profile.investment_fee_percent}%</span></article>
@@ -827,17 +841,17 @@ export function ProfileOnboarding() {
             </> : null}
           </div>
           <p className="field-hint">{setupPath === "import" ? "The workbook dry run can populate tracking settings, iteration, bankroll, main bank, Profile Accounts, balances and supported ledgers. Profile name and fee terms remain the Fund Manager's explicit choices; effective timestamp, review decisions and final import still require confirmation." : "Provider identity comes from the Fund Manager Account Catalogue. Statuses, balances, restrictions, and preferences belong only to this Profile."}</p>
-        </section></LedgerEditorTabPanel>
+        </DesignOnboardingPanel></LedgerEditorTabPanel>
       ) : null}
 
       {error ? <p className="error-text" role="alert">{error}</p> : null}
-      <footer className="tracker-nav founder-onboarding-actions">
+      <DesignOnboardingFooter className="tracker-nav founder-onboarding-actions" enabled={visualV2}>
         <button className="button-link" disabled={isSaving} onClick={() => void cancelOnboarding()} type="button">Cancel</button>
         <div className="tracker-nav">
           <button className="review-chip review-chip-action-previous" disabled={stage === "profile" || isSaving} onClick={goPrevious} type="button">Previous</button>
           {stage !== "review" ? <button className="review-chip review-chip-action-next" disabled={(setupPath === "fresh" && catalogueState === "error") || isSaving} onClick={goNext} type="button">Next</button> : <button className="modal-primary-button icon-text-action" disabled={isSaving || (setupPath === "fresh" && catalogueState !== "ready") || !stageIsValid("profile")} onClick={() => void createProfile()} type="button">{isSaving ? <span aria-hidden="true" className="button-spinner" /> : <span aria-hidden="true" className="material-symbols-outlined">person_add</span>}<span>{isSaving ? "Creating Profile" : setupPath === "import" ? "Create and import" : "Create Profile"}</span></button>}
         </div>
-      </footer>
-    </section>
+      </DesignOnboardingFooter>
+    </DesignManagementSurface>
   );
 }

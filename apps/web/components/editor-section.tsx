@@ -1,6 +1,7 @@
 "use client";
 
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
+import { DesignFinancialEditorCard } from "@/components/design-financial-editor-card";
 
 type EditorSectionProps = {
   children: ReactNode;
@@ -9,6 +10,7 @@ type EditorSectionProps = {
   headerAside?: ReactNode;
   invalid?: boolean;
   title: string;
+  visualV2?: boolean;
 };
 
 export function EditorSection({
@@ -18,6 +20,7 @@ export function EditorSection({
   headerAside,
   invalid = false,
   title,
+  visualV2 = false,
 }: EditorSectionProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const contentId = useId();
@@ -102,9 +105,11 @@ export function EditorSection({
     };
   }, [isContentOpen]);
 
+  const Surface = visualV2 ? DesignFinancialEditorCard : "section";
+
   return (
-    <section
-      className={`content-subpanel stack field-span-2 editor-section${
+    <Surface
+      className={`${visualV2 ? "" : "content-subpanel stack "}field-span-2 editor-section${
         invalid ? " is-invalid-section" : ""
       }${isContentOpen ? " is-open" : ""}`}
       data-invalid={invalid || undefined}
@@ -148,6 +153,6 @@ export function EditorSection({
       >
         <div className="editor-section-content-inner stack">{children}</div>
       </div>
-    </section>
+    </Surface>
   );
 }

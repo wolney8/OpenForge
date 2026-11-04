@@ -174,7 +174,7 @@ export function FundManagerAuthoritySettings() {
 
   return (
     <>
-      <section className="content-panel stack" data-pd-id="fund-manager-authorities.section">
+      <section aria-busy={isLoading} className="content-panel stack" data-pd-id="fund-manager-authorities.section">
         <div className="sportsbook-page-header"><div><span className="eyebrow">Universal tracker authority</span><h2>Tracker Lists</h2></div></div>
         <section className="stat-strip settings-stat-strip" aria-label="Tracker List summary">
           <article className="stat-card"><span>Active Values</span><strong>{rows.filter((row) => row.status === "Active").length}</strong><small>Available tracker options</small></article>

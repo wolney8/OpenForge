@@ -6,5 +6,5 @@ export default async function ProfileManagementPage({
   params: Promise<{ profileId: string }>;
 }) {
   const { profileId } = await params;
-  return <FundManagerProfileManagement profileId={profileId} />;
+  return <FundManagerProfileManagement profileId={profileId} visualV2={process.env.OPENFORGE_FUND_MANAGER_UX_V2 === "true"} />;
 }

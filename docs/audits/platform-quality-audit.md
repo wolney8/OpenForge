@@ -6452,3 +6452,20 @@ The real Reports route now places the connected Lab chart, a ledger P&L breakdow
 | Today, Notifications, Calculators and Oddsmatcher | Existing CP-127 status retained | Existing CP-127 status retained | Existing authorities and specialist engines retained | No CP-128 change claimed |
 
 The separate Design, Interaction and Integration gates remain open for full application adoption. Saved views and Today tracking persistence still require their documented authority amendments; no financial/API/schema change was made in this tranche.
+
+## CP-129 direct Lab adoption — latest route status, 2026-11-04
+
+The table below is the current CP-117 adoption status; earlier checkpoint tables remain historical evidence. `COMPLETE` in Interaction or Integration does not imply Design Acceptance. Final-source full visual and synthetic regression results are recorded in the CP-129 delivery receipt.
+
+| Route group | Design | Interaction | Integration | Justified difference or open work |
+| --- | --- | --- | --- | --- |
+| Sportsbook, Free Bet, Casino native editors | PARTIAL — Lab financial stage card now shared; CP-126 rail/modal shell retained | PARTIAL — Add, floating handoff, Save, invalid-input retry and correction paths passed synthetic paths; full edit/settlement visual journey remains | COMPLETE — existing governed APIs/calculations passed 22 V2 integration paths | Lab Quick Capture and CP-116 workbenches simplify production fields/lifecycle; complete native header, field and review composition still differs |
+| Six ledger screens | PARTIAL — prior shared shell/grid/mobile detail retained | COMPLETE — navigation, labelled detail, editing and actual 200% zoom passed | COMPLETE — source-backed mutation and reload passed; existing Profile-scoped API retained; seven flag-OFF paths passed | Required operational columns and specialist actions exceed the Lab fixture |
+| Combined and Profile Reports | PARTIAL — CP-128 Lab chart/surfaces/rows retained | PARTIAL — chart/source/filter paths passed visual suite; full specialist report journey remains | COMPLETE — governed reporting paths unchanged; source identity verified | Real formal periods, scope and source controls exceed the Lab sample |
+| Profit Tracker alias | DEFERRED — no separate Lab screen or separate current route | COMPLETE — `/profit-tracker` redirect, dashboard readiness, period and module controls passed | COMPLETE — cumulative real Profile reporting route retained | Redirect has existed since July 2026. A distinct screen would change the established route model; Lab's realised-only chart must not replace its current-value trend |
+| Profiles directory and management | PARTIAL — shared Lab directory list, page head and management surface | PARTIAL — tabs, account section and navigation passed; lifecycle dialogs remain to verify | PARTIAL — permissions, lifecycle and fees unchanged; no management mutation test in CP-129 | Lab has directory and restricted preview, but no full management equivalent; real capabilities remain visible |
+| Profile onboarding | PARTIAL — Lab field rows, stage panel and footer shared; paired initial state captured | PARTIAL — guided steps/validation retained; full creation journey remains to verify | PARTIAL — creation/import/restore authority unchanged; no CP-129 creation mutation test | Real date preset, iteration, catalogue selection and import/restore controls are additional required capabilities |
+| Settings | PARTIAL — shared Lab page head/surface; no complete Lab Settings equivalent | PARTIAL — loaded tabs/navigation passed; dialog commands remain to verify | PARTIAL — reference and recovery authorities unchanged; no CP-129 mutation test | Lab identity menu labels Settings as preview only |
+| Today, Notifications, Calculators, Oddsmatcher | CP-127 statuses retained | CP-127 statuses retained | CP-127 statuses retained | No CP-129 source change |
+
+Saved ledger views and Today tracking persistence remain deferred behind their separate authority proposals. No schema, API, calculation or owner-data change was made for this presentation tranche.

@@ -4274,7 +4274,7 @@ export function FreeBetWorkflowShell({
         <div className="workflow-editor-body">
         <form className="form-grid" onSubmit={(event) => void handleSubmit(event)}>
           <LedgerEditorTabPanel activeTabId={safeActiveEditorTabId} tabId="setup">
-          <EditorSection
+          <EditorSection visualV2={visualV2}
             collapsible={false}
             headerAside={
               renderEditorSectionAside()
@@ -4471,7 +4471,7 @@ export function FreeBetWorkflowShell({
           ) : null}
           </LedgerEditorTabPanel>
           <LedgerEditorTabPanel activeTabId={safeActiveEditorTabId} tabId="matching">
-          <EditorSection
+          <EditorSection visualV2={visualV2}
             collapsible={false}
             headerAside={renderEditorSectionAside(
               !isSettledReadOnly && !calculatorUnlocked ? (
@@ -4855,7 +4855,7 @@ export function FreeBetWorkflowShell({
           </EditorSection>
           </LedgerEditorTabPanel>
           <LedgerEditorTabPanel activeTabId={safeActiveEditorTabId} tabId="settlement">
-          <EditorSection
+          <EditorSection visualV2={visualV2}
             collapsible={false}
             headerAside={
               renderEditorSectionAside()
@@ -4940,7 +4940,7 @@ export function FreeBetWorkflowShell({
             </div>
             </fieldset>
           </EditorSection>
-          <EditorSection
+          <EditorSection visualV2={visualV2}
             collapsible={false}
             title="Result"
           >
@@ -5026,7 +5026,7 @@ export function FreeBetWorkflowShell({
           {selectedRow &&
           (!freeBetTerminalStatuses.has(selectedRow.status) ||
             selectedRow.follow_up_reminder_state === "Active") ? (
-            <EditorSection
+            <EditorSection visualV2={visualV2}
               collapsible={false}
               headerAside={
                 <span
@@ -5199,11 +5199,11 @@ export function FreeBetWorkflowShell({
               </section>
             </EditorSection>
           ) : (
-            <EditorSection collapsible={false} title="Follow-up">
+            <EditorSection visualV2={visualV2} collapsible={false} title="Follow-up">
               <p className="lede">Save the free-bet row before adding a follow-up reminder.</p>
             </EditorSection>
           )}
-          <EditorSection defaultOpen={false} title="Advanced controls">
+          <EditorSection visualV2={visualV2} defaultOpen={false} title="Advanced controls">
             {(activePreviewCalculation?.calculation_notes.length || selectedRow?.calculation_notes.length) ? (
               <section className="stack">
                 <span className="eyebrow">Calculation notes</span>

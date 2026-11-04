@@ -8013,7 +8013,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
           ) : null}
           <form className="form-grid" onSubmit={(event) => void handleSubmit(event)}>
             <LedgerEditorTabPanel activeTabId={safeActiveEditorTabId} tabId="setup">
-            <EditorSection
+            <EditorSection visualV2={visualV2}
               collapsible={false}
               headerAside={
                 renderEditorSectionAside()
@@ -8530,7 +8530,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
             </LedgerEditorTabPanel>
 
             <LedgerEditorTabPanel activeTabId={safeActiveEditorTabId} tabId="matching">
-            <EditorSection
+            <EditorSection visualV2={visualV2}
               collapsible={false}
               headerAside={renderEditorSectionAside(
                 !isSettledReadOnly && !calculatorUnlocked ? (
@@ -10018,7 +10018,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
 
             {showsPlacementSection ? (
               <LedgerEditorTabPanel activeTabId={safeActiveEditorTabId} tabId="placement">
-              <EditorSection
+              <EditorSection visualV2={visualV2}
                 collapsible={false}
                 headerAside={
                   renderEditorSectionAside()
@@ -10320,7 +10320,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
             ) : null}
 
             <LedgerEditorTabPanel activeTabId={safeActiveEditorTabId} tabId="settlement">
-            <EditorSection
+            <EditorSection visualV2={visualV2}
               collapsible={false}
               defaultOpen={Boolean(selectedId)}
               headerAside={renderEditorSectionAside()}
@@ -10549,7 +10549,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                     </label>
                   ) : null}
                 </div>
-                <EditorSection defaultOpen={false} title="Advanced controls">
+                <EditorSection visualV2={visualV2} defaultOpen={false} title="Advanced controls">
                   <div className="form-grid">
                     <label className="field-control field-span-2">
                       <span>Manual override value</span>
@@ -10602,7 +10602,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
             ) : null}
             </LedgerEditorTabPanel>
             <LedgerEditorTabPanel activeTabId={safeActiveEditorTabId} tabId="free_bet">
-              <EditorSection
+              <EditorSection visualV2={visualV2}
                 collapsible={false}
                 defaultOpen
                 headerAside={renderEditorSectionAside()}

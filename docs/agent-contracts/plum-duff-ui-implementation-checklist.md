@@ -2,6 +2,15 @@
 
 Complete this for every feature, bug fix, component, fixture-backed UI, route or page change.
 
+## CP-129 specialist and management continuation — 2026-11-04 / #118
+
+- [x] Compared Lab financial workbench cards and real Sportsbook, Free Bet and Casino native Add editors; shared the actual Lab stage-card component with all three while keeping their required fields, tab contract, Save/correction, modal scroll ownership and legacy flag-OFF tree. Desktop light and mobile dark Add editor geometry/footer paths passed in synthetic Playwright.
+- [x] Profile management, Settings and onboarding now reuse connected Lab page-head/surface, onboarding field-row/panel/footer presentation. The real controls, permissions, fees, catalogue selection, import/restore and lifecycle actions remain in their existing authorities. Paired onboarding at 1440/390 px in both themes and management navigation passed focused Playwright; no page overflow observed.
+- [x] Profit Tracker route semantics inspected: its longstanding `/profit-tracker` redirect goes to the Profile dashboard. The visual test now checks the redirect, dashboard performance readiness, range control and module mix instead of assuming an unrendered Profit Tracker heading. A separate specialist route is not claimed.
+- [x] Web typecheck and lint passed. Lint retains 12 inherited warnings. Incorrect loading-state Settings screenshot was replaced with a populated capture after `aria-busy=false`.
+- [x] Final-source visual suite passed 104/104 after replacing the incorrect Profit Tracker heading assertion with route, readiness, visible content and interaction checks. Web unit suite passed 701/701; typecheck and lint passed with 12 inherited warnings. Independently authenticated synthetic V2/flag-OFF integration, final build and local source-pin verification are recorded in the delivery receipt.
+- [ ] Full Design Acceptance for native specialist interiors, Profit Tracker alias, onboarding and management remains open. Additional real financial and administrative controls, the single-host shell and Lab's limited specialist examples are the documented differences; owner visual judgement and spoken screen-reader review remain unverified.
+
 ## CP-128 Reports and Profiles whole-screen composition — 2026-11-04 / #118
 
 - [x] Compared the connected Lab Reports and Profiles screens with independently authenticated, populated V2 at 1440/390 px in both themes. Reused the actual Lab report chart, report surfaces, source-row treatment, Profile surface and Profile task rows. The real adapters retain authoritative values, Profile links, filters, formal reports, directory actions and incomplete states.
