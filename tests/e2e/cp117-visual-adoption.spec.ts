@@ -166,7 +166,10 @@ for (const route of routes) {
             padding: getComputedStyle(element).padding,
             minimumHeight: getComputedStyle(element).minHeight,
           }));
-          expect(realTodayRowStyle).toEqual(labTodayRowStyle);
+          // CP-133 keeps the Lab row typography and minimum height; the populated real
+          // queue intentionally adds horizontal padding and a separate card boundary.
+          expect({ ...realTodayRowStyle, padding: labTodayRowStyle!.padding }).toEqual(labTodayRowStyle);
+          expect(realTodayRowStyle.padding).toBe("8px");
           const realCollectionStyle = await page.locator('[data-pd-id="tasks.v2.collection"]').evaluate((element) => ({
             className: element.className,
             radius: getComputedStyle(element).borderRadius,

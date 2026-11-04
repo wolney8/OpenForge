@@ -29,6 +29,8 @@
 :global(html[data-theme="dark"]) .today{--task-urgent-bg:color-mix(in srgb,var(--danger) 15%,var(--surface-strong));--task-urgent-hover:color-mix(in srgb,var(--danger) 23%,var(--surface-strong))}
 .taskRow.urgent{background:var(--task-urgent-bg);border-radius:8px;padding-inline:8px}
 .taskRow.urgent:hover,.taskRow.urgent:focus-visible,.taskRow.urgent[aria-pressed="true"]{background:var(--task-urgent-hover)}
+.taskList{display:grid;gap:6px;padding:0 0 10px}.taskList .taskRow{border:1px solid var(--outline);border-radius:9px;padding:8px}.taskList .taskRow.urgent{border-color:color-mix(in srgb,var(--danger) 34%,var(--outline))}.taskList .taskRow:hover,.taskList .taskRow[aria-expanded="true"]{background:var(--bg-muted)}.taskList .taskRow.urgent:hover,.taskList .taskRow.urgent[aria-expanded="true"]{background:var(--task-urgent-hover)}
+.pagination{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap;color:var(--muted);font-size:.85rem}.pagination button{min-height:44px;padding:6px 10px;border:1px solid var(--outline);border-radius:8px;background:var(--surface-container);color:var(--text);font:inherit;font-weight:650}.pagination button:disabled{opacity:.55}.pagination button:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
 .rowState{min-width:0;padding:0;border:0;background:transparent;text-align:left}
 .boardCard .rowState{display:block}
 .boardCard .rowMain{grid-column:2;grid-row:1;min-width:0}

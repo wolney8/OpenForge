@@ -2,6 +2,15 @@
 
 Complete this for every feature, bug fix, component, fixture-backed UI, route or page change.
 
+## CP-133 Today queue, notification triage and Profile choice — 2026-11-04 / #118
+
+- [x] Reused the Lab Today row, collection, detail, filter and notification surface; added V2-only row separation and compact pagination. The real task source, notification persistence and old-shell task ranking remain separate.
+- [x] Read existing authorised Sportsbook and Free Bet ledger APIs for typed lay status, calculated liability, recorded expiry and resolved same-Profile reward links. Unknown amount or failed read never becomes zero or a fabricated link. Historical work remains visible; source changes are labelled for refresh.
+- [x] Notification dropdown shows five ranked entries first, five more per action and at most 20. Unread, actionable and informational counts have separate labels; the two full-page destinations remain distinct. Narrow footer/header containment and keyboard focus were checked.
+- [x] Profile-dependent sidebar items offer an explicit modal chooser populated from the shell's authorised active Profile list; Opportunities retains the Accounts anchor. Escape restores focus, mobile/200% containment passes, and no Profile is selected silently.
+- [x] Final source: paired Lab/V2 full visual suite 126/126; CP-133 populated light/dark desktop/mobile, bounded dropdown, Profile choice/filtered options and actual Chromium 200% zoom pass. Independent integration 22/22 V2 and 9/9 flag-OFF; web unit 706/706, typecheck, build and lint (zero errors, 12 inherited warnings) pass.
+- [ ] Owner operational queue review and spoken screen-reader verification remain open. Confirmed unhedged exposure and bonus lock-in ranking remain unsupported without an authoritative source measure; the UI does not infer them from text.
+
 ## CP-132 header, sidebar and launcher — 2026-11-04 / #118
 
 - [x] Compared connected Lab and real V2 with independent synthetic authentication at 1440, 1024, 800 and 390 px in light/dark; captured matched launcher, sidebar and account-menu states privately.

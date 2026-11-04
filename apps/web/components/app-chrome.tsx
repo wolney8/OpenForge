@@ -600,7 +600,7 @@ function AppChromeContent({
         Skip to content
       </a>
       <div className={`app-frame${uxV2 && !isPublicAuthRoute ? ` ux-v2-frame ${labStyles.frame}${uxV2Collapsed ? ` is-sidebar-collapsed ${labStyles.collapsed}` : ""}` : ""}`} data-ux-shell={uxV2 && !isPublicAuthRoute ? "v2" : "legacy"}>
-        {!isPublicAuthRoute && uxV2 ? <FundManagerUxV2Sidebar profileId={resolvedProfileId} mobileOpen={uxV2MobileOpen} onMobileClose={() => setUxV2MobileOpen(false)} triggerRef={appMenuTriggerRef} /> : null}
+        {!isPublicAuthRoute && uxV2 ? <FundManagerUxV2Sidebar availableProfiles={activeProfiles} profileId={resolvedProfileId} mobileOpen={uxV2MobileOpen} onMobileClose={() => setUxV2MobileOpen(false)} triggerRef={appMenuTriggerRef} /> : null}
         {!isPublicAuthRoute ? <header className={`top-app-bar${uxV2 ? ` ux-v2-top-bar ${labStyles.header}` : ""}`} data-openforge-top-bar="" data-pd-id="app-shell.top-bar">
           <div className={uxV2 ? labStyles.headerLeft : "legacy-header-left"}>
           <div className={`brand-lockup${uxV2 ? ` ${labStyles.headerIdentity}` : ""}`}>

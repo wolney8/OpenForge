@@ -3,6 +3,7 @@ import { redirectExpiredSession } from "./session-inactivity";
 
 export const FUND_MANAGER_NOTIFICATIONS_REFRESH_EVENT =
   "plum-duff:fund-manager-notifications-refresh";
+export const TODAY_ACTIONABLE_NAVIGATION_EVENT = "plum-duff:today-actionable-navigation";
 export const FUND_MANAGER_NOTIFICATIONS_STORAGE_KEY =
   "plum-duff:fund-manager-notifications:v1";
 export const FUND_MANAGER_LOCAL_NOTIFICATIONS_STORAGE_KEY =
@@ -412,7 +413,69 @@ export type DailyTaskView = {
   source: DailyTaskSource;
   confidence: number | null;
   evidence: string;
+  priorityReason: string;
+  attentionRank: number;
+  financialSignificance: number | null;
 };
+
+/** Urgent verified exposure/reward work belongs in Needs Action before its due day. */
+export function isActionableDailyTask(task: DailyTaskView): boolean {
+  return task.dueState === "today" || task.dueState === "overdue" ||
+    (task.dueState === "upcoming" && task.priority === "high");
+}
+
+/** Read-only fields from the existing Profile ledger APIs. Absence is unknown, never zero. */
+export type DailyTaskSourceEvidence = {
+  profile_id: string;
+  sportsbook_bet_id?: string;
+  free_bet_id?: string;
+  status?: string;
+  result?: string;
+  lay_status?: string;
+  match_strategy?: string;
+  calculation_state?: string;
+  calculated_liability_1?: string | null;
+  free_bet_value?: string;
+  expiry_datetime?: string;
+  origin_qual_bet_source_namespace?: string;
+  origin_qual_bet_native_id?: string;
+  origin_qual_bet_resolution_state?: string;
+};
+
+export type DailyTaskSourceIndex = {
+  sportsbook: Map<string, DailyTaskSourceEvidence>;
+  freeBets: Map<string, DailyTaskSourceEvidence>;
+};
+
+export const emptyDailyTaskSourceIndex = (): DailyTaskSourceIndex => ({ sportsbook: new Map(), freeBets: new Map() });
+const sourceKey = (profileId: string, recordId: string) => `${profileId}:${recordId}`;
+
+export async function loadDailyTaskSourceIndex(notifications: FundManagerNotification[]): Promise<DailyTaskSourceIndex> {
+  const index = emptyDailyTaskSourceIndex();
+  const profiles = [...new Set(notifications.filter(item => item.kind === "task" && item.profile_id && item.record_id &&
+    (item.ledger_label === "Sportsbook Bets" || item.ledger_label === "Free Bets")).map(item => item.profile_id))];
+  await Promise.all(profiles.flatMap(profileId => (["sportsbook-bets", "free-bets"] as const).map(async ledger => {
+    try {
+      const response = await fetch(`${apiBaseUrl}/profiles/${encodeURIComponent(profileId)}/${ledger}`, { cache: "no-store", credentials: "include" });
+      if (!response.ok) return;
+      const rows = await response.json() as DailyTaskSourceEvidence[];
+      if (!Array.isArray(rows)) return;
+      const target = ledger === "sportsbook-bets" ? index.sportsbook : index.freeBets;
+      for (const row of rows) {
+        if (row.profile_id !== profileId) continue;
+        const id = ledger === "sportsbook-bets" ? row.sportsbook_bet_id : row.free_bet_id;
+        if (id) target.set(sourceKey(profileId, id), row);
+      }
+    } catch { /* An unavailable read cannot manufacture a priority fact. */ }
+  })));
+  return index;
+}
+
+function knownNonnegativeMoney(value: string | null | undefined): number | null {
+  if (typeof value !== "string" || !/^(?:0|[1-9]\d*)(?:\.\d+)?$/.test(value.trim())) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed <= Number.MAX_SAFE_INTEGER ? parsed : null;
+}
 
 function londonDateKey(value: Date): string {
   return new Intl.DateTimeFormat("en-CA", {
@@ -426,7 +489,9 @@ function londonDateKey(value: Date): string {
 export function deriveDailyTaskView(
   notification: FundManagerNotification,
   viewState: NotificationViewState,
-  now: Date = new Date()
+  now: Date = new Date(),
+  sources: DailyTaskSourceIndex = emptyDailyTaskSourceIndex(),
+  mode: "v2" | "legacy" = "v2"
 ): DailyTaskView {
   const completed =
     notification.task_state === "done" || isNotificationCleared(notification, viewState);
@@ -443,15 +508,73 @@ export function deriveDailyTaskView(
         : dueKey === todayKey
           ? "today"
           : "upcoming";
-  const priority: DailyTaskPriority = completed
-    ? "low"
-    : dueState === "overdue"
-      ? "high"
-      : notification.notification_type === "free_bet_expiry" && dueState === "today"
-        ? "high"
-        : notification.notification_type === "account_review"
-          ? "low"
-          : "medium";
+  if (mode === "legacy") {
+    const priority: DailyTaskPriority = completed ? "low" : dueState === "overdue" ||
+      notification.notification_type === "free_bet_expiry" && dueState === "today" ? "high" :
+      notification.notification_type === "account_review" ? "low" : "medium";
+    return { notification, dueState, dueLabel: completed ? "Completed" : hasDue ? formatNotificationDue(notification.due_at) : "Ready now · no deadline",
+      priority, source: "deterministic", confidence: null, evidence: notification.message,
+      priorityReason: "", attentionRank: priority === "high" ? 0 : priority === "medium" ? 1 : 2, financialSignificance: null };
+  }
+  const source = notification.ledger_label === "Sportsbook Bets"
+    ? sources.sportsbook.get(sourceKey(notification.profile_id, notification.record_id))
+    : notification.ledger_label === "Free Bets"
+      ? sources.freeBets.get(sourceKey(notification.profile_id, notification.record_id)) : undefined;
+  const linkedReward = notification.ledger_label === "Sportsbook Bets" ? [...sources.freeBets.values()].find(reward =>
+    reward.profile_id === notification.profile_id && reward.origin_qual_bet_source_namespace === "sportsbook" &&
+    reward.origin_qual_bet_native_id === notification.record_id && reward.origin_qual_bet_resolution_state === "resolved" &&
+    !["Settled", "Void", "Cancelled"].includes(reward.status ?? "")) : undefined;
+  const dueHours = hasDue ? (parsedDue.getTime() - now.getTime()) / 3_600_000 : Number.POSITIVE_INFINITY;
+  const createdAt = Date.parse(notification.created_at);
+  const oldUnresolved = hasDue ? dueHours < -24 * 14 : Number.isFinite(createdAt) && (now.getTime() - createdAt) > 14 * 24 * 3_600_000;
+  const liability = knownNonnegativeMoney(source?.calculated_liability_1);
+  let attentionRank = 8;
+  let priorityReason = "Routine — Review source record";
+  if (completed) { attentionRank = 10; priorityReason = "Completed in this work list"; }
+  else if ((notification.notification_type === "partial_lay_reminder" && !source) || (source?.status === "Placed" && ["Not Laid", "Part Laid"].includes(source.lay_status ?? ""))) {
+    attentionRank = 0;
+    priorityReason = notification.notification_type === "partial_lay_reminder" ? "High — Partial lay needs review" : "High — Lay matching needs review";
+  } else if (notification.notification_type === "free_bet_expiry" && dueHours <= 48) {
+    attentionRank = 1; priorityReason = "High — Recorded Free Bet expiry approaching";
+  } else if (linkedReward) {
+    attentionRank = 2; priorityReason = "High — Qualifying bet · linked Free Bet awaiting review";
+  } else if (notification.notification_type === "free_bet_expiry" || (notification.notification_type === "free_bet_follow_up_reminder" && dueHours <= 48)) {
+    attentionRank = 3; priorityReason = "Medium — Recorded reward deadline";
+  } else if (notification.notification_type === "free_bet_follow_up_reminder") {
+    attentionRank = 4; priorityReason = "Medium — Free Bet follow-up";
+  } else if (notification.notification_type === "settlement_review") {
+    attentionRank = oldUnresolved ? 7 : 5;
+    priorityReason = oldUnresolved ? "Routine — Historical settlement reconciliation" : "Medium — Settlement pending";
+  } else if (notification.notification_type === "account_review") {
+    attentionRank = 8; priorityReason = "Routine — Account evidence review";
+  } else if (dueState === "overdue" && !oldUnresolved) {
+    attentionRank = 6; priorityReason = "Medium — Recorded deadline overdue";
+  } else if (oldUnresolved) {
+    attentionRank = 9; priorityReason = "Routine — Historical reconciliation";
+  }
+  if (!completed && source && ((notification.notification_type === "settlement_review" && source.status !== "Placed") ||
+      (notification.notification_type === "partial_lay_reminder" && (source.status !== "Placed" || !["Not Laid", "Part Laid"].includes(source.lay_status ?? ""))))) {
+    attentionRank = 9; priorityReason = "Routine — Source changed; refresh task evidence";
+  }
+  if (!completed && attentionRank === 0 && liability !== null && source?.calculated_liability_1) {
+    priorityReason += ` · £${source.calculated_liability_1} calculated lay liability`;
+  }
+  const rewardValue = linkedReward ? knownNonnegativeMoney(linkedReward.free_bet_value) : null;
+  if (!completed && attentionRank === 2 && rewardValue !== null && linkedReward?.free_bet_value) {
+    priorityReason += ` · £${linkedReward.free_bet_value} recorded Free Bet value`;
+  }
+  if (!completed && attentionRank > 2 && source?.calculation_state === "review_required" &&
+      ["Underlay", "Overlay", "Multilay-Underlay"].includes(source.match_strategy ?? "")) {
+    attentionRank = 4; priorityReason = `Medium — ${source.match_strategy} calculation needs review`;
+  }
+  if (!completed && source && notification.notification_type === "free_bet_expiry" &&
+      !["Prospecting", "Available", "Not Yet Awarded"].includes(source.status ?? "")) {
+    attentionRank = 9; priorityReason = "Routine — Reward source changed; refresh task evidence";
+  }
+  if (!completed && attentionRank === 0 && oldUnresolved) {
+    attentionRank = 4; priorityReason = "Medium — Historical lay status needs source review";
+  }
+  const priority: DailyTaskPriority = attentionRank <= 2 ? "high" : attentionRank <= 6 ? "medium" : "low";
   const dueLabel = completed
     ? "Completed"
     : hasDue
@@ -465,27 +588,29 @@ export function deriveDailyTaskView(
     source: "deterministic",
     confidence: null,
     evidence: notification.message,
+    priorityReason,
+    attentionRank,
+    financialSignificance: attentionRank === 0 ? liability : attentionRank === 2 ? rewardValue : null,
   };
 }
-
-const priorityRank: Record<DailyTaskPriority, number> = { high: 0, medium: 1, low: 2 };
 
 export function filterAndSortDailyTasks(
   tasks: DailyTaskView[],
   options: {
-    dueState: DailyTaskDueState;
+    dueState: DailyTaskDueState | "actionable";
     profileId: string;
     bookmaker: string;
     notificationType: string;
     source: DailyTaskSource | "all";
     query: string;
     sort: DailyTaskSort;
+    legacySort?: boolean;
   }
 ): DailyTaskView[] {
   const normalizedQuery = options.query.trim().toLocaleLowerCase();
   const filtered = tasks.filter((task) => {
     const item = task.notification;
-    if (task.dueState !== options.dueState) return false;
+    if (options.dueState === "actionable" ? !isActionableDailyTask(task) : task.dueState !== options.dueState) return false;
     if (options.profileId !== "all" && item.profile_id !== options.profileId) return false;
     if (options.bookmaker !== "all" && item.bookmaker_label !== options.bookmaker) return false;
     if (options.notificationType !== "all" && item.notification_type !== options.notificationType) return false;
@@ -507,8 +632,32 @@ export function filterAndSortDailyTasks(
     const rightDue = Date.parse(b.due_at);
     const dueOrder = (Number.isNaN(leftDue) ? Number.MAX_SAFE_INTEGER : leftDue) -
       (Number.isNaN(rightDue) ? Number.MAX_SAFE_INTEGER : rightDue);
-    if (options.sort === "due") return dueOrder || a.title.localeCompare(b.title);
-    return priorityRank[left.priority] - priorityRank[right.priority] || dueOrder || a.title.localeCompare(b.title);
+    if (options.legacySort) return options.sort === "due" ? dueOrder || a.title.localeCompare(b.title) :
+      left.attentionRank - right.attentionRank || dueOrder || a.title.localeCompare(b.title);
+    if (options.sort === "due") return dueOrder || a.notification_id.localeCompare(b.notification_id);
+    return left.attentionRank - right.attentionRank ||
+      (right.financialSignificance ?? -1) - (left.financialSignificance ?? -1) ||
+      dueOrder || a.notification_id.localeCompare(b.notification_id);
+  });
+}
+
+export function sortNotificationInbox(
+  notifications: FundManagerNotification[],
+  viewState: NotificationViewState,
+  now: Date,
+  sources: DailyTaskSourceIndex = emptyDailyTaskSourceIndex()
+): FundManagerNotification[] {
+  const ranks = new Map(notifications.filter(item => item.kind === "task").map(item => [item.notification_id, deriveDailyTaskView(item, viewState, now, sources)]));
+  return [...notifications].sort((a, b) => {
+    if (a.kind !== b.kind) return a.kind === "task" ? -1 : 1;
+    if (a.kind === "task") {
+      const left = ranks.get(a.notification_id), right = ranks.get(b.notification_id);
+      if (left && right) return left.attentionRank - right.attentionRank ||
+        (right.financialSignificance ?? -1) - (left.financialSignificance ?? -1) ||
+        (Date.parse(a.due_at) || Number.MAX_SAFE_INTEGER) - (Date.parse(b.due_at) || Number.MAX_SAFE_INTEGER) ||
+        a.notification_id.localeCompare(b.notification_id);
+    }
+    return (Date.parse(b.created_at) || 0) - (Date.parse(a.created_at) || 0) || a.notification_id.localeCompare(b.notification_id);
   });
 }
 
@@ -724,7 +873,14 @@ export function formatNotificationDue(value: string): string {
 
 /** Current feed only. Immutable History must never resurrect an obsolete task. */
 export function currentDailyTasks(notifications: FundManagerNotification[]): FundManagerNotification[] {
-  return [...new Map(notifications.filter(item => item.kind === "task" && item.audience === "fund_manager" && item.security_tag === "fund_manager_only").map(item => [item.notification_id, item])).values()];
+  const byAction = new Map<string, FundManagerNotification>();
+  for (const item of notifications) {
+    if (item.kind !== "task" || item.audience !== "fund_manager" || item.security_tag !== "fund_manager_only") continue;
+    const key = item.record_id ? `${item.notification_type}:${item.profile_id}:${item.record_id}` : item.notification_id;
+    const previous = byAction.get(key);
+    if (!previous || item.created_at > previous.created_at || (item.created_at === previous.created_at && item.notification_id > previous.notification_id)) byAction.set(key, item);
+  }
+  return [...byAction.values()];
 }
 
 export function canCompleteNotification(notification: FundManagerNotification): boolean {

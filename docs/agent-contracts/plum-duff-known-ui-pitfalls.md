@@ -1,5 +1,9 @@
 # Plum Duff Known UI Pitfalls
 
+## CP-133 populated operational queue — 2026-11-04 / #118
+
+Sorting the combined Today queue by overdue date first can bury current partial lays and verified expiring rewards beneath old settlement reminders. Keep source-backed action identities distinct, rank verified current risk before historical reconciliation, and display a reason without turning unknown liability into zero. A dropdown that passes DOM row-count checks can still clip its summary, footer or expansion control at 390 px; assert each control's measured bounds and exercise internal scrolling. Regression: `cp133-operational-queue.spec.ts`, `notifications.test.ts`, full Lab/V2 visual suite and flag-OFF runner.
+
 ## CP-132 connected header menu parity — 2026-11-04 / #118
 
 Using a Lab menu row class on a real link does not by itself reproduce the Lab row height: inherited line height and a wrapping description change the whole launcher geometry, especially at 390 px. Reuse the Lab anchored overlay, menu body and row classes, wait for fonts before measuring, and compare the populated menu at 1440/1024/800/390 in both themes. Keep real controls functional: notification count, Tasks, Help, launcher destinations, account identity and independent Back/Lay preference. Regression: `cp132-shell-parity.spec.ts` plus synthetic V2/flag-OFF runner.

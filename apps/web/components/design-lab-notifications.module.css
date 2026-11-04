@@ -6,3 +6,5 @@
 .advancedFilters{padding:0 6px 8px;border-bottom:1px solid var(--outline)}.advancedFilters summary{width:max-content;max-width:100%;padding:8px 0;color:var(--muted);font-size:.875rem;cursor:pointer}.advancedFilters summary:focus-visible{outline:3px solid var(--focus);outline-offset:2px}.advancedFilters .notification-history-toolbar{padding-top:6px}
 
 .rowActions a{display:inline-flex;align-items:center;text-decoration:none}
+.head{flex-wrap:wrap}.head>span{min-width:0;overflow-wrap:anywhere}.footer{flex-wrap:wrap}.footer button{flex:1 1 125px}.rowHead strong{min-width:0;overflow-wrap:anywhere}.rowHead span{flex:none}
+.more{justify-self:center;min-height:44px;padding:7px 12px;border:1px solid var(--outline);border-radius:8px;background:var(--surface-container);color:var(--text);font:inherit;font-weight:650}.more:focus-visible{outline:2px solid var(--focus);outline-offset:2px}.moreHint{margin:4px 8px;color:var(--muted);font-size:.85rem}

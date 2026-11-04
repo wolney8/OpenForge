@@ -8,6 +8,8 @@ export const designNotificationClasses = {
   empty: styles.empty,
   footer: styles.footer,
   list: styles.list,
+  more: styles.more,
+  moreHint: styles.moreHint,
   tabs: styles.tabs,
   typeFilter: styles.typeFilter,
 };

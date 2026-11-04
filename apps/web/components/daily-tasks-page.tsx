@@ -5,20 +5,24 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerPagination } from "@/components/ledger-pagination";
-import { DesignTodayBoard, DesignTodayDetail, DesignTodayFilters, DesignTodayTaskRow, DesignTodayToolbar, DesignTodayViewToggle, designTodayBoardColumnClass, designTodayBoardControlsClass, designTodayBoardDrawerClass, designTodayBoardWithDetailClass, designTodayCollectionHeadingClass, designTodayContentClass, designTodayDetailActionsClass, designTodayDetailPaneClass, designTodayDetailTextClass, designTodayMobileDetailClass, designTodayPropertiesClass, designTodayQueueClass, designTodayRootClass, designTodayTaskCollectionClass, designTodayToolButtonClass, designTodayWithDetailClass } from "@/components/design-today-task-row";
+import { DesignTodayBoard, DesignTodayDetail, DesignTodayFilters, DesignTodayTaskRow, DesignTodayToolbar, DesignTodayViewToggle, designTodayBoardColumnClass, designTodayBoardControlsClass, designTodayBoardDrawerClass, designTodayBoardWithDetailClass, designTodayCollectionHeadingClass, designTodayContentClass, designTodayDetailActionsClass, designTodayDetailPaneClass, designTodayDetailTextClass, designTodayMobileDetailClass, designTodayPaginationClass, designTodayPropertiesClass, designTodayQueueClass, designTodayRootClass, designTodayTaskCollectionClass, designTodayTaskListClass, designTodayToolButtonClass, designTodayWithDetailClass } from "@/components/design-today-task-row";
 import { DesignLabSelect } from "@/components/design-lab-select";
 import { ModalBoundary } from "@/components/modal-boundary";
 import { apiBaseUrl } from "@/lib/api";
 import {
   currentDailyTasks,
   deriveDailyTaskView,
+  emptyDailyTaskSourceIndex,
   dismissNotificationIds,
   emptyNotificationViewState,
   filterAndSortDailyTasks,
+  isActionableDailyTask,
   filterFundManagerNotificationsForViewer,
   FUND_MANAGER_NOTIFICATIONS_REFRESH_EVENT,
   FUND_MANAGER_NOTIFICATIONS_STORAGE_KEY,
+  TODAY_ACTIONABLE_NAVIGATION_EVENT,
   loadPersistedNotificationPreferences,
+  loadDailyTaskSourceIndex,
   loadPersistedNotificationState,
   markNotificationsRead,
   normalizeNotificationViewState,
@@ -28,6 +32,7 @@ import {
   type DailyTaskView,
   type DailyTaskSort,
   type DailyTaskSource,
+  type DailyTaskSourceIndex,
   type FundManagerNotification,
   type NotificationViewState,
 } from "@/lib/notifications";
@@ -55,6 +60,7 @@ function taskTypeLabel(type: string): string {
 }
 
 function priorityLabel(priority: "high" | "medium" | "low"): string {
+  if (priority === "low") return "Routine";
   return priority[0].toUpperCase() + priority.slice(1);
 }
 
@@ -66,6 +72,7 @@ export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
   const [initialViewState] = useState<NotificationViewState>(loadViewState);
   const viewStateRef = useRef<NotificationViewState>(initialViewState);
   const [notifications, setNotifications] = useState<FundManagerNotification[]>([]);
+  const [sourceIndex, setSourceIndex] = useState<DailyTaskSourceIndex>(emptyDailyTaskSourceIndex);
   const [viewState, setViewState] = useState(initialViewState);
   const [now, setNow] = useState(() => new Date());
   const [dueState, setDueState] = useState<DailyTaskDueState>("today");
@@ -98,6 +105,15 @@ export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
     return () => media.removeEventListener("change", update);
   }, []);
   useEffect(() => { if (inspectedTaskId) window.requestAnimationFrame(() => detailHeadingRef.current?.focus({ preventScroll: true })); }, [inspectedTaskId, narrow]);
+  useEffect(() => {
+    const showActionable = () => {
+      setDueState("today"); setQuery(""); setProfileId("all"); setBookmaker("all");
+      setNotificationType("all"); setSource("all"); setSort("priority");
+      setPage(1); setInspectedTaskId(""); setLayout("List"); window.scrollTo({ top: 0 });
+    };
+    window.addEventListener(TODAY_ACTIONABLE_NAVIGATION_EVENT, showActionable);
+    return () => window.removeEventListener(TODAY_ACTIONABLE_NAVIGATION_EVENT, showActionable);
+  }, []);
 
   const applyViewState = useCallback((next: NotificationViewState) => {
     viewStateRef.current = next;
@@ -122,18 +138,21 @@ export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
       ]);
       if (!response.ok || !persistedState || !preferences) throw new Error("Task evidence unavailable");
       const remote = currentDailyTasks(await response.json() as FundManagerNotification[]);
+      const verifiedSources = uxV2 ? await loadDailyTaskSourceIndex(remote) : emptyDailyTaskSourceIndex();
       if (requestVersion !== refreshVersionRef.current) return;
       if (stateRequestVersion === stateRequestVersionRef.current) applyViewState(persistedState);
       setNotifications(filterFundManagerNotificationsForViewer(remote, preferences));
+      setSourceIndex(verifiedSources);
       setLoadFailed(false);
     } catch {
       if (requestVersion !== refreshVersionRef.current) return;
       setNotifications([]);
+      setSourceIndex(emptyDailyTaskSourceIndex());
       setLoadFailed(true);
     } finally {
       if (requestVersion === refreshVersionRef.current) setIsLoading(false);
     }
-  }, [applyViewState]);
+  }, [applyViewState, uxV2]);
 
   useEffect(() => {
     let active = true;
@@ -180,8 +199,8 @@ export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
   };
 
   const taskViews = useMemo(
-    () => notifications.map((item) => deriveDailyTaskView(item, viewState, now)),
-    [notifications, now, viewState]
+    () => notifications.map((item) => deriveDailyTaskView(item, viewState, now, sourceIndex, uxV2 ? "v2" : "legacy")),
+    [notifications, now, sourceIndex, uxV2, viewState]
   );
   const profiles = useMemo(
     () => [...new Map(notifications.map((item) => [item.profile_id, item.profile_name])).entries()]
@@ -200,15 +219,11 @@ export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
     (result, view) => ({ ...result, [view.id]: taskViews.filter((task) => task.dueState === view.id).length }),
     { today: 0, upcoming: 0, overdue: 0, completed: 0 }
   ), [taskViews]);
+  const actionableCount = useMemo(() => taskViews.filter(isActionableDailyTask).length, [taskViews]);
   const activeFilterCount = [query.trim(), profileId !== "all", bookmaker !== "all", notificationType !== "all", source !== "all", dueState !== "today"].filter(Boolean).length;
   const filtered = useMemo(() => {
-    const options = { profileId, bookmaker, notificationType, source, query, sort };
-    const current = filterAndSortDailyTasks(taskViews, { ...options, dueState });
-    // The flagged Today view includes genuinely overdue work before today's work.
-    // The legacy route and the source-derived date semantics remain unchanged.
-    return uxV2 && dueState === "today"
-      ? [...filterAndSortDailyTasks(taskViews, { ...options, dueState: "overdue" }), ...current]
-      : current;
+    const options = { profileId, bookmaker, notificationType, source, query, sort, legacySort: !uxV2 };
+    return filterAndSortDailyTasks(taskViews, { ...options, dueState: uxV2 && dueState === "today" ? "actionable" : dueState });
   }, [bookmaker, dueState, notificationType, profileId, query, sort, source, taskViews, uxV2]);
   const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, pageCount);
@@ -262,7 +277,7 @@ export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
       <DesignTodayTaskRow accessibleName={`Inspect ${item.title} · ${item.profile_name}`} active={inspectedTaskId === item.notification_id}
         board={board} context={<>{item.bookmaker_label || item.ledger_label} · {item.profile_name}</>}
         controls="tasks-v2-inspector" dataPdId={`tasks.v2.row.${item.notification_id}`}
-        date={task.dueLabel} icon={task.priority === "high" ? "priority_high" : "task_alt"}
+        date={task.dueLabel} extraContext={<small>{task.priorityReason}</small>} icon={task.priority === "high" ? "priority_high" : "task_alt"}
         onClick={() => { returnFocusRef.current = taskRowRefs.current.get(item.notification_id) ?? null; setInspectedTaskId(item.notification_id); }}
         ref={(node) => { if (node) taskRowRefs.current.set(item.notification_id, node); else taskRowRefs.current.delete(item.notification_id); }}
         selectionMode="expanded" state={board ? priorityLabel(task.priority) : undefined}
@@ -279,6 +294,7 @@ export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
       <div><dt>Bookmaker / Provider</dt><dd>{inspectedTask.notification.bookmaker_label || inspectedTask.notification.ledger_label}</dd></div>
       <div><dt>Date Context</dt><dd>{inspectedTask.dueLabel}</dd></div>
       <div><dt>Task Type</dt><dd>{taskTypeLabel(inspectedTask.notification.notification_type)}</dd></div>
+      <div><dt>Priority</dt><dd>{inspectedTask.priorityReason}</dd></div>
       <div><dt>Source</dt><dd>{inspectedTask.notification.ledger_label} · {inspectedTask.notification.record_id}</dd></div>
     </dl>
     <p className={designTodayDetailTextClass}>{inspectedTask.evidence}</p>
@@ -308,13 +324,13 @@ export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
         </div>
         <aside className="shell-note stack" aria-label="Daily Task summary">
           <span className="eyebrow">Actionable Now</span>
-          <strong aria-hidden={isLoading}>{isLoading || loadFailed ? "—" : counts.today + counts.overdue}</strong>
+          <strong aria-hidden={isLoading}>{isLoading || loadFailed ? "—" : actionableCount}</strong>
         </aside>
       </section>}
 
       <section aria-label="Daily Tasks" className={uxV2 ? designTodayRootClass : "content-panel stack"} data-pd-id="tasks.workspace">
         {uxV2 ? <>
-          <DesignTodayToolbar dataPdId="tasks.v2.toolbar" summary={<><strong>{isLoading || loadFailed ? "—" : counts.today + counts.overdue} Needs Attention</strong><span>{counts.upcoming} Upcoming</span><span>{counts.completed} Completed</span></>} actions={<>
+          <DesignTodayToolbar dataPdId="tasks.v2.toolbar" summary={<><strong>{isLoading || loadFailed ? "—" : actionableCount} Needs Attention</strong><span>{counts.upcoming} Upcoming</span><span>{counts.completed} Completed</span></>} actions={<>
             <DesignTodayViewToggle dataPdId="tasks.v2.layout-toggle" layout={layout} onChange={(next) => { setLayout(next); setInspectedTaskId(""); }} />
             <button aria-expanded={filtersOpen} className={designTodayToolButtonClass} data-pd-id="tasks.v2.filter-toggle" onClick={() => setFiltersOpen(value => !value)} type="button"><span aria-hidden="true" className="material-symbols-outlined">filter_list</span>Filters{activeFilterCount ? ` ${activeFilterCount}` : ""}</button>
             <DesignLabSelect compact dataPdId="tasks.sort" label="Sort Daily Tasks" onChange={value => changeControls(() => setSort(value))} options={[{ value: "priority", label: "Priority And Due Time" }, { value: "due", label: "Due Time" }, { value: "profile", label: "Profile" }, { value: "bookmaker", label: "Bookmaker" }]} value={sort} />
@@ -326,6 +342,7 @@ export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
             <label className="field-control table-filter-field"><span>Bookmaker</span><select aria-label="Filter Tasks By Bookmaker" onChange={(event) => changeControls(() => setBookmaker(event.target.value))} value={bookmaker}><option value="all">All Bookmakers</option>{bookmakers.map(value => <option key={value}>{value}</option>)}</select></label>
             <label className="field-control table-filter-field"><span>Task Type</span><select aria-label="Filter Tasks By Type" onChange={(event) => changeControls(() => setNotificationType(event.target.value))} value={notificationType}><option value="all">All Task Types</option>{types.map(value => <option key={value} value={value}>{taskTypeLabel(value)}</option>)}</select></label>
             <label className="field-control table-filter-field"><span>Source</span><select aria-label="Filter Tasks By Source" onChange={(event) => changeControls(() => setSource(event.target.value as DailyTaskSource | "all"))} value={source}><option value="all">All Sources</option><option value="deterministic">Deterministic</option><option value="recurring" disabled>Recurring — Not Active</option><option value="ai" disabled>AI — Not Active</option></select></label>
+            <label className="field-control table-filter-field"><span>Tasks per page</span><select aria-label="Tasks per page" data-pd-id="tasks.v2.page-size" onChange={event => changeControls(() => setPageSize(Number(event.target.value)))} value={pageSize}><option value={8}>8</option><option value={16}>16</option><option value={32}>32</option></select></label>
             <button className={designTodayToolButtonClass} disabled={!activeFilterCount} onClick={() => changeControls(() => { setQuery(""); setProfileId("all"); setBookmaker("all"); setNotificationType("all"); setSource("all"); setDueState("today"); })} type="button">Clear Filters</button>
             <button className={designTodayToolButtonClass} data-pd-id="tasks.refresh" disabled={isLoading || isPersistingState} onClick={() => void refresh()} type="button"><span aria-hidden="true" className="material-symbols-outlined">refresh</span>Refresh Tasks</button>
           </DesignTodayFilters> : null}
@@ -378,13 +395,13 @@ export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
         ) : (
           <section aria-label={uxV2 ? "Source Tasks" : undefined} aria-labelledby={uxV2 ? undefined : `daily-task-tab-${dueState}`} id="daily-task-panel" role={uxV2 ? undefined : "tabpanel"}>
             {!uxV2 ? <p aria-live="polite" className="notification-history-count" role="status">{filtered.length} {dueViews.find((view) => view.id === dueState)?.label.toLocaleLowerCase()} task{filtered.length === 1 ? "" : "s"}</p> : null}
-            {!uxV2 || pageCount > 1 ? <LedgerPagination ariaLabel="Daily Tasks" currentPage={currentPage} onPageChange={setPage} onPageSizeChange={(next) => { setPageSize(next); setPage(1); }} pageCount={pageCount} pageSize={pageSize} position="top" totalRows={filtered.length} /> : null}
+            {!uxV2 ? <LedgerPagination ariaLabel="Daily Tasks" currentPage={currentPage} onPageChange={setPage} onPageSizeChange={(next) => { setPageSize(next); setPage(1); }} pageCount={pageCount} pageSize={pageSize} position="top" totalRows={filtered.length} /> : null}
             {uxV2 ? <>
               <div className={`${designTodayContentClass}${inspectedTask && !narrow ? ` ${layout === "Board" ? designTodayBoardWithDetailClass : designTodayWithDetailClass}` : ""}`} data-pd-id="tasks.v2.layout">
                 <div className={designTodayQueueClass}>
                   {layout === "List" ? <section aria-label="Source Tasks" className={designTodayTaskCollectionClass} data-pd-id="tasks.v2.collection">
                     <div className={designTodayCollectionHeadingClass}><h2>{dueState === "today" ? "Needs Action" : dueViews.find(view => view.id === dueState)?.label} <span>{paginated.length}</span></h2></div>
-                    <div aria-label="Tasks" role="list">{paginated.map(task => taskRow(task))}</div>
+                    <div aria-label="Tasks" className={designTodayTaskListClass} role="list">{paginated.map(task => taskRow(task))}</div>
                     {!paginated.length ? <p className="ux-v2-task-empty">No tasks match these controls.</p> : null}
                   </section> : <>
                     <div className={designTodayBoardControlsClass}><span>Board grouped by source priority</span><div>
@@ -429,7 +446,7 @@ export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
                 </tbody>
               </table>
             </div>}
-            <LedgerPagination ariaLabel="Daily Tasks" currentPage={currentPage} onPageChange={setPage} onPageSizeChange={(next) => { setPageSize(next); setPage(1); }} pageCount={pageCount} pageSize={pageSize} position="bottom" totalRows={filtered.length} />
+            {uxV2 ? <nav aria-label="Today pages" className={designTodayPaginationClass} data-pd-id="tasks.v2.pagination"><span aria-live="polite">Showing {filtered.length ? (currentPage - 1) * pageSize + 1 : 0}–{Math.min(currentPage * pageSize, filtered.length)} of {filtered.length}</span><button aria-label="Previous Today page" disabled={currentPage <= 1} onClick={() => { setPage(currentPage - 1); setInspectedTaskId(""); }} type="button">Previous</button><button aria-label="Next Today page" disabled={currentPage >= pageCount} onClick={() => { setPage(currentPage + 1); setInspectedTaskId(""); }} type="button">Next</button></nav> : <LedgerPagination ariaLabel="Daily Tasks" currentPage={currentPage} onPageChange={setPage} onPageSizeChange={(next) => { setPageSize(next); setPage(1); }} pageCount={pageCount} pageSize={pageSize} position="bottom" totalRows={filtered.length} />}
           </section>
         )}
       </section>

@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   defaultFundManagerNotificationPreferences,
   deriveDailyTaskView,
+  emptyDailyTaskSourceIndex,
   currentDailyTasks,
   canCompleteNotification,
   canViewerReceiveNotification,
@@ -22,6 +23,7 @@ import {
   normalizeNotificationViewState,
   persistNotificationState,
   restoreNotificationIds,
+  sortNotificationInbox,
   type FundManagerNotification,
 } from "./notifications";
 
@@ -196,11 +198,67 @@ describe("fund manager notification view state", () => {
     const completed = deriveDailyTaskView(notifications[0], completedState, now);
     const undated = deriveDailyTaskView({ ...notifications[0], notification_id: "UNDATED", due_at: "", notification_type: "account_review" }, emptyNotificationViewState, now);
 
-    expect(today).toMatchObject({ dueState: "today", priority: "medium", source: "deterministic", confidence: null });
+    expect(today).toMatchObject({ dueState: "today", priority: "high", priorityReason: "High — Partial lay needs review", source: "deterministic", confidence: null });
     expect(upcoming.dueState).toBe("upcoming");
     expect(overdue).toMatchObject({ dueState: "overdue", priority: "high" });
     expect(completed.dueState).toBe("completed");
     expect(undated).toMatchObject({ dueState: "today", dueLabel: "Ready now · no deadline", priority: "low" });
+  });
+
+  it("ranks verified lay risk and linked rewards ahead of historical settlement without treating unknown money as zero", () => {
+    const now = new Date("2026-07-23T12:00:00Z");
+    const sources = emptyDailyTaskSourceIndex();
+    sources.sportsbook.set("PROFILE-001:SB-001", { profile_id: "PROFILE-001", sportsbook_bet_id: "SB-001", status: "Placed", lay_status: "Part Laid", calculated_liability_1: "42.50" });
+    sources.sportsbook.set("PROFILE-002:SB-002", { profile_id: "PROFILE-002", sportsbook_bet_id: "SB-002", status: "Placed", lay_status: "Part Laid", calculated_liability_1: null });
+    sources.freeBets.set("PROFILE-001:FB-001", { profile_id: "PROFILE-001", free_bet_id: "FB-001", status: "Available", origin_qual_bet_source_namespace: "sportsbook", origin_qual_bet_native_id: "SB-001", origin_qual_bet_resolution_state: "resolved" });
+    const lay = deriveDailyTaskView(notifications[0], emptyNotificationViewState, now, sources);
+    const unknown = deriveDailyTaskView(notifications[1], emptyNotificationViewState, now, sources);
+    expect(lay).toMatchObject({ priority: "high", financialSignificance: 42.5 });
+    expect(lay.priorityReason).toContain("£42.50 calculated lay liability");
+    expect(unknown.financialSignificance).toBeNull();
+    expect(unknown.priorityReason).not.toContain("£");
+    const settlement = { ...notifications[0], notification_id: "HISTORICAL", notification_type: "settlement_review", record_id: "SB-HISTORICAL", due_at: "2026-06-01T12:00:00Z" };
+    const historical = deriveDailyTaskView(settlement, emptyNotificationViewState, now, sources);
+    expect(historical.priorityReason).toBe("Routine — Historical settlement reconciliation");
+    expect(filterAndSortDailyTasks([historical, unknown, lay], { dueState: "actionable", profileId: "all", bookmaker: "all", notificationType: "all", source: "all", query: "", sort: "priority" }).map(item => item.notification.notification_id)).toEqual(["NOTICE-001", "NOTICE-002", "HISTORICAL"]);
+    expect(sortNotificationInbox([settlement, notifications[1], notifications[0]], emptyNotificationViewState, now, sources).map(item => item.notification_id)).toEqual(["NOTICE-001", "NOTICE-002", "HISTORICAL"]);
+  });
+
+  it("requires a resolved same-Profile reward link and keeps distinct source actions", () => {
+    const now = new Date("2026-07-23T12:00:00Z");
+    const qualifying = { ...notifications[0], notification_id: "QUALIFY", notification_type: "settlement_review", due_at: "" };
+    const sources = emptyDailyTaskSourceIndex();
+    sources.freeBets.set("PROFILE-002:FB-001", { profile_id: "PROFILE-002", free_bet_id: "FB-001", status: "Available", origin_qual_bet_source_namespace: "sportsbook", origin_qual_bet_native_id: "SB-001", origin_qual_bet_resolution_state: "resolved" });
+    expect(deriveDailyTaskView(qualifying, emptyNotificationViewState, now, sources).priorityReason).toBe("Medium — Settlement pending");
+    sources.freeBets.set("PROFILE-001:FB-002", { profile_id: "PROFILE-001", free_bet_id: "FB-002", status: "Available", free_bet_value: "20.00", origin_qual_bet_source_namespace: "sportsbook", origin_qual_bet_native_id: "SB-001", origin_qual_bet_resolution_state: "resolved" });
+    expect(deriveDailyTaskView(qualifying, emptyNotificationViewState, now, sources).priorityReason).toContain("£20.00 recorded Free Bet value");
+    const duplicate = { ...qualifying, notification_id: "QUALIFY-OLD", created_at: "2026-07-20T12:00:00Z" };
+    expect(currentDailyTasks([duplicate, qualifying, notifications[0]]).map(item => item.notification_id)).toEqual(["QUALIFY", "NOTICE-001"]);
+  });
+
+  it("retains the flag-OFF priority rules independently of the V2 source ranking", () => {
+    const now = new Date("2026-07-23T12:00:00Z");
+    const normal = deriveDailyTaskView(notifications[0], emptyNotificationViewState, now, emptyDailyTaskSourceIndex(), "legacy");
+    const overdue = deriveDailyTaskView(notifications[1], emptyNotificationViewState, now, emptyDailyTaskSourceIndex(), "legacy");
+    expect(normal).toMatchObject({ priority: "medium", priorityReason: "", financialSignificance: null });
+    expect(overdue.priority).toBe("high");
+  });
+
+  it("does not keep a stale partial-lay reminder above current exposure after the lay becomes fully matched", () => {
+    const sources = emptyDailyTaskSourceIndex();
+    sources.sportsbook.set("PROFILE-001:SB-001", { profile_id: "PROFILE-001", sportsbook_bet_id: "SB-001", status: "Placed", lay_status: "Fully Laid", calculated_liability_1: "42.50" });
+    const view = deriveDailyTaskView(notifications[0], emptyNotificationViewState, new Date("2026-07-23T12:00:00Z"), sources);
+    expect(view).toMatchObject({ priority: "low", priorityReason: "Routine — Source changed; refresh task evidence", financialSignificance: null });
+  });
+
+  it("keeps an old unresolved lay visible without claiming confirmed live exposure", () => {
+    const sources = emptyDailyTaskSourceIndex();
+    sources.sportsbook.set("PROFILE-001:SB-001", { profile_id: "PROFILE-001", sportsbook_bet_id: "SB-001", status: "Placed", lay_status: "Part Laid", calculated_liability_1: "42.50" });
+    const oldReminder = { ...notifications[0], due_at: "2026-06-01T12:00:00Z" };
+    expect(deriveDailyTaskView(oldReminder, emptyNotificationViewState, new Date("2026-07-23T12:00:00Z"), sources)).toMatchObject({
+      priority: "medium", priorityReason: "Medium — Historical lay status needs source review", financialSignificance: null,
+    });
+    expect(deriveDailyTaskView({ ...oldReminder, due_at: "", created_at: "2026-06-01T12:00:00Z" }, emptyNotificationViewState, new Date("2026-07-23T12:00:00Z"), sources).priorityReason).toBe("Medium — Historical lay status needs source review");
   });
 
   it("filters Daily Tasks by Profile, bookmaker, type, source and search then sorts predictably", () => {

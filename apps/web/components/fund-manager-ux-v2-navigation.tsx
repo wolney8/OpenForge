@@ -10,6 +10,7 @@ import { BrandLogo } from "@/components/brand-logo";
 import labStyles from "@/components/design-lab-connected.module.css";
 import { platformBrand } from "@/lib/brand";
 import { DesignLabHeaderOverlay } from "@/components/design-lab-header-overlay";
+import { ModalBoundary } from "@/components/modal-boundary";
 import { labDestinations } from "@/lib/design-lab-navigation";
 
 const originStorageKey = "plum-duff:ux-v2-source-origin";
@@ -31,26 +32,31 @@ function useShellNavigation() {
   }, [router]);
 }
 
-function NavLink({ item, profileId, pathname, locationHash, onNavigate }: {
+type NavProfile = { profile_id: string; display_name: string; status?: string };
+function NavLink({ item, profileId, pathname, locationHash, onNavigate, onChooseProfile }: {
   item: ShellDestination; profileId: string | null; pathname: string; locationHash: string; onNavigate?: () => void;
+  onChooseProfile: (item: ShellDestination, trigger: HTMLButtonElement) => void;
 }) {
   const navigate = useShellNavigation();
   const href = item.href(profileId);
   const destination = destinationForPath(pathname, locationHash);
   const active = destination?.id === item.id || destination?.parent === item.id;
-  if (!href) return <span aria-disabled="true" className="ux-v2-nav-link is-unavailable" title="Select a Profile to open this destination"><span aria-hidden="true" className="material-symbols-outlined">{visualIcon(item)}</span><span>{item.label}</span></span>;
+  if (!href) return <button aria-haspopup="dialog" aria-label={`${item.label} — choose a Profile`} className="ux-v2-nav-link is-unavailable" data-pd-id={`ux-v2.nav.${item.id}`} onClick={event => onChooseProfile(item, event.currentTarget)} title="Choose a Profile to open this destination" type="button"><span aria-hidden="true" className="material-symbols-outlined">{visualIcon(item)}</span><span>{item.label}</span><span aria-hidden="true" className="material-symbols-outlined">chevron_right</span></button>;
   return <Link aria-current={active ? (destination?.id === item.id ? "page" : "location") : undefined} className={`ux-v2-nav-link${active ? " is-active" : ""}`} data-pd-id={`ux-v2.nav.${item.id}`} href={href} onClick={(event) => void navigate(event, href, onNavigate)} title={item.label}><span aria-hidden="true" className="material-symbols-outlined">{visualIcon(item)}</span><span>{item.label}</span></Link>;
 }
 
-export function FundManagerUxV2Sidebar({ profileId, mobileOpen, onMobileClose, triggerRef }: {
-  profileId: string | null; mobileOpen: boolean; onMobileClose: () => void; triggerRef: React.RefObject<HTMLButtonElement | null>;
+export function FundManagerUxV2Sidebar({ profileId, availableProfiles, mobileOpen, onMobileClose, triggerRef }: {
+  profileId: string | null; availableProfiles: NavProfile[]; mobileOpen: boolean; onMobileClose: () => void; triggerRef: React.RefObject<HTMLButtonElement | null>;
 }) {
   const navigate = useShellNavigation();
+  const router = useRouter();
   const pathname = usePathname() ?? "";
   const [locationHash, setLocationHash] = useState("");
   const [trackerExpanded, setTrackerExpanded] = useState<boolean | null>(null);
   const trackerIsExpanded = trackerExpanded ?? true;
   const [moreExpanded, setMoreExpanded] = useState<boolean | null>(null);
+  const [requestedDestination, setRequestedDestination] = useState<ShellDestination | null>(null);
+  const pickerTriggerRef = useRef<HTMLElement | null>(null);
   const destination = destinationForPath(pathname, locationHash);
   const currentMore = destination?.group === "more" ? destination
     : shellDestinations.find(item => item.group === "more" && item.id === destination?.parent) ?? null;
@@ -65,6 +71,7 @@ export function FundManagerUxV2Sidebar({ profileId, mobileOpen, onMobileClose, t
     document.body.style.overflow = "hidden";
     const frame = requestAnimationFrame(() => sidebarRef.current?.querySelector<HTMLElement>("button")?.focus());
     const onKey = (event: KeyboardEvent) => {
+      if (document.querySelector("dialog[open]")) return;
       if (event.key === "Escape") { event.preventDefault(); onMobileClose(); return; }
       if (event.key !== "Tab") return;
       const nodes = Array.from(sidebarRef.current?.querySelectorAll<HTMLElement>('a[href],button:not([disabled])') ?? []);
@@ -76,23 +83,30 @@ export function FundManagerUxV2Sidebar({ profileId, mobileOpen, onMobileClose, t
     return () => { cancelAnimationFrame(frame); document.body.style.overflow = previousOverflow; window.removeEventListener("keydown", onKey); requestAnimationFrame(() => triggerElement?.focus()); };
   }, [mobileOpen, onMobileClose, triggerRef]);
   const group = (name: ShellDestination["group"]) => shellDestinations.filter((item) => item.group === name);
+  const chooseProfile = (item: ShellDestination, trigger: HTMLButtonElement) => { pickerTriggerRef.current = trigger; setRequestedDestination(item); };
+  const openRequestedDestination = async (selectedId: string) => {
+    const href = requestedDestination?.href(selectedId);
+    if (!href || !(await confirmUnsavedTrackerChanges())) return;
+    setRequestedDestination(null); onMobileClose(); beginRouteTransition(); router.push(href);
+  };
   return <>
     <div className={`ux-v2-sidebar-scrim${mobileOpen ? " is-open" : ""}`} onMouseDown={onMobileClose} />
     <aside aria-label="Fund Manager navigation" className={`ux-v2-sidebar ${labStyles.sidebar}${mobileOpen ? ` is-mobile-open ${labStyles.sidebarOpen}` : ""}`} data-pd-id="ux-v2.sidebar" id="ux-v2-sidebar" ref={sidebarRef}>
       <div className={labStyles.brand}><BrandLogo variant="mark" /><span>{platformBrand.name} <small>Fund Manager</small></span><button aria-label="Close navigation" className={`${labStyles.sidebarClose} ${labStyles.iconButton}`} onClick={onMobileClose} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button></div>
       <div className={labStyles.navGroup}><p>Fund Manager</p>
       <nav aria-label="Primary navigation" className="ux-v2-nav-stack">
-        {group("primary").filter((item) => item.id !== "reports").map((item) => <NavLink item={item} key={item.id} locationHash={locationHash} onNavigate={onMobileClose} pathname={pathname} profileId={profileId} />)}
+        {group("primary").filter((item) => item.id !== "reports").map((item) => <NavLink item={item} key={item.id} locationHash={locationHash} onChooseProfile={chooseProfile} onNavigate={onMobileClose} pathname={pathname} profileId={profileId} />)}
         <div className={`${labStyles.trackerNav}${destination?.group === "tracker" ? ` ${labStyles.navGroupActive}` : ""}`}>
-          {profileId ? <Link className="ux-v2-nav-link" data-pd-id="ux-v2.nav.tracker" href={`/profiles/${encodeURIComponent(profileId)}/tracker/dashboard`} onClick={(event) => void navigate(event, `/profiles/${encodeURIComponent(profileId)}/tracker/dashboard`, onMobileClose)}><span aria-hidden="true" className="material-symbols-outlined">table_chart</span><span>Tracker</span></Link> : <span aria-disabled="true" className="ux-v2-nav-link is-unavailable" title="Select a Profile to open Tracker"><span aria-hidden="true" className="material-symbols-outlined">table_chart</span><span>Tracker</span></span>}
+          {profileId ? <Link className="ux-v2-nav-link" data-pd-id="ux-v2.nav.tracker" href={`/profiles/${encodeURIComponent(profileId)}/tracker/dashboard`} onClick={(event) => void navigate(event, `/profiles/${encodeURIComponent(profileId)}/tracker/dashboard`, onMobileClose)}><span aria-hidden="true" className="material-symbols-outlined">table_chart</span><span>Tracker</span></Link> : <button aria-haspopup="dialog" aria-label="Tracker — choose a Profile" className="ux-v2-nav-link is-unavailable" data-pd-id="ux-v2.nav.tracker" onClick={event => chooseProfile(shellDestinations.find(item => item.id === "profile-operations")!, event.currentTarget)} type="button"><span aria-hidden="true" className="material-symbols-outlined">table_chart</span><span>Tracker</span></button>}
           <button aria-controls="ux-v2-tracker-destinations" aria-expanded={trackerIsExpanded} aria-label={trackerIsExpanded ? "Collapse Tracker" : "Expand Tracker"} className={labStyles.trackerExpand} data-pd-id="ux-v2.nav.tracker-expand" onClick={() => setTrackerExpanded(!trackerIsExpanded)} type="button"><span aria-hidden="true" className="material-symbols-outlined">{trackerIsExpanded ? "expand_less" : "expand_more"}</span></button>
         </div>
-        {trackerIsExpanded ? <div className={labStyles.trackerChildren} id="ux-v2-tracker-destinations">{group("tracker").map((item) => <NavLink item={item} key={item.id} locationHash={locationHash} onNavigate={onMobileClose} pathname={pathname} profileId={profileId} />)}</div> : null}
-        {group("primary").filter((item) => item.id === "reports").map((item) => <NavLink item={item} key={item.id} locationHash={locationHash} onNavigate={onMobileClose} pathname={pathname} profileId={profileId} />)}
+        {trackerIsExpanded ? <div className={labStyles.trackerChildren} id="ux-v2-tracker-destinations">{group("tracker").map((item) => <NavLink item={item} key={item.id} locationHash={locationHash} onChooseProfile={chooseProfile} onNavigate={onMobileClose} pathname={pathname} profileId={profileId} />)}</div> : null}
+        {group("primary").filter((item) => item.id === "reports").map((item) => <NavLink item={item} key={item.id} locationHash={locationHash} onChooseProfile={chooseProfile} onNavigate={onMobileClose} pathname={pathname} profileId={profileId} />)}
       </nav>
       </div>
-      <div className={labStyles.navGroup}><button aria-expanded={moreIsExpanded} className={labStyles.moreButton} data-pd-id="ux-v2.nav.more" onClick={() => setMoreExpanded(!moreIsExpanded)} type="button"><span aria-hidden="true" className="material-symbols-outlined">{moreIsExpanded ? "expand_less" : "expand_more"}</span><span>See More</span></button>{moreIsExpanded ? <nav aria-label="Less frequent destinations">{group("more").map((item) => <NavLink item={item} key={item.id} locationHash={locationHash} onNavigate={onMobileClose} pathname={pathname} profileId={profileId} />)}</nav> : null}</div>
+      <div className={labStyles.navGroup}><button aria-expanded={moreIsExpanded} className={labStyles.moreButton} data-pd-id="ux-v2.nav.more" onClick={() => setMoreExpanded(!moreIsExpanded)} type="button"><span aria-hidden="true" className="material-symbols-outlined">{moreIsExpanded ? "expand_less" : "expand_more"}</span><span>See More</span></button>{moreIsExpanded ? <nav aria-label="Less frequent destinations">{group("more").map((item) => <NavLink item={item} key={item.id} locationHash={locationHash} onChooseProfile={chooseProfile} onNavigate={onMobileClose} pathname={pathname} profileId={profileId} />)}</nav> : null}</div>
     </aside>
+    {requestedDestination ? <ModalBoundary onDismiss={() => setRequestedDestination(null)} returnFocusRef={pickerTriggerRef}><section aria-label={`Choose Profile for ${requestedDestination.label}`} className="ux-v2-profile-picker" data-pd-id="ux-v2.profile-picker" role="dialog"><header><div><small>Profile required</small><h2>Open {requestedDestination.label}</h2><p>Choose an authorised Profile to continue.</p></div><button aria-label="Close Profile chooser" className="modal-close-button" onClick={() => setRequestedDestination(null)} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button></header><div className="ux-v2-profile-picker-list">{availableProfiles.length ? availableProfiles.map(profile => <button data-pd-id={`ux-v2.profile-picker.${profile.profile_id}`} key={profile.profile_id} onClick={() => void openRequestedDestination(profile.profile_id)} type="button">{profile.display_name}<span aria-hidden="true" className="material-symbols-outlined">chevron_right</span></button>) : <p>No authorised active Profiles are available. Open Profiles to review access.</p>}</div><footer><button onClick={() => setRequestedDestination(null)} type="button">Cancel</button></footer></section></ModalBoundary> : null}
   </>;
 }
 
