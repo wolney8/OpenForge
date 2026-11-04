@@ -2,6 +2,14 @@
 
 Complete this for every feature, bug fix, component, fixture-backed UI, route or page change.
 
+## CP-136 Today source history and native financial cards — 2026-11-04 / #118
+
+- [x] Read the UI/accessibility, known-pitfalls and ledger modal contracts plus both local UI review skills; matched the changed sections to the connected Lab financial card and the changed-source history to the existing Lab tracked-history pattern.
+- [x] Kept native Sportsbook, Free Bet and Casino fields, modal focus/overflow, Save, cancellation and correction authorities. The Lab card now retains its own shared surface, border and spacing instead of being flattened by the broad legacy selector.
+- [x] Kept tracked source history in the existing authenticated annotation collection. When no active matching task remains, the saved count and source-history section stay visible; tracking does not resolve the financial source.
+- [x] Final-source desktop/split/mobile light/dark, actual 200% zoom, keyboard/focus and native editor containment: 129/129 visual paths. Independent V2 Save/retry/navigation/tracking integration: 25 passed with five legacy-only phase skips; flag-OFF rollback: 9/9. Web unit 706/706, TypeScript clean, lint zero errors with 12 inherited warnings. The private synthetic evidence index names the paired captures and recordings.
+- [ ] Complete whole-editor Design Acceptance and spoken screen-reader review remain open; the Lab workbench and native governed modal still differ materially.
+
 ## CP-134 eight-task Today and isolated tracking — 2026-11-04 / #118
 
 - [x] V2 Today defaults to eight rows, retains 8/16/32 and compact range navigation. The legacy 16-row default and global ledger pagination are unchanged.

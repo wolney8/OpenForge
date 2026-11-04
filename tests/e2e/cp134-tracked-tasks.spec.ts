@@ -80,6 +80,31 @@ test("CP-134 tracked Today persists through refresh and header navigation", asyn
   await expect(page.locator('[data-pd-id="tasks.v2.collections"]')).toContainText("Tracked Tasks (0)");
 });
 
+test("CP-136 saved tracking remains visible when its source occurrence changes", async ({ page }) => {
+  await page.goto(authURL);
+  await page.goto("/tasks");
+  const first = page.locator('[data-pd-id^="tasks.v2.row."]').first();
+  await expect(first).toBeVisible();
+  const id = (await first.getAttribute("data-pd-id"))!.replace("tasks.v2.row.", "");
+  await page.locator(`[data-pd-id="tasks.v2.track.${id}"]`).click();
+  await expect(page.locator(`[data-pd-id="tasks.v2.track.${id}"]`)).toHaveAttribute("aria-pressed", "true");
+  const changedSource = async (route: import("@playwright/test").Route) => {
+    if (route.request().method() !== "GET") return route.continue();
+    const response = await route.fetch();
+    const rows = await response.json() as Array<{ occurrence_key: string; source_status: string }>;
+    await route.fulfill({ response, json: rows.map(row => row.occurrence_key === id ? { ...row, source_status: "changed" } : row) });
+  };
+  await page.route(/\/fund-manager\/tasks\/annotations$/, changedSource);
+  await page.reload();
+  await page.locator('[data-pd-id="tasks.v2.collections"]').getByRole("button", { name: /Tracked Tasks/ }).click();
+  await expect(page.locator('[data-pd-id="tasks.v2.collections"]')).toContainText("Tracked Tasks (1)");
+  const history = page.locator('[data-pd-id="tasks.v2.tracked-history"]');
+  await expect(history).toHaveAttribute("open", "");
+  await expect(history).toContainText("Source Changed");
+  await page.unroute(/\/fund-manager\/tasks\/annotations$/, changedSource);
+  await history.getByRole("button", { name: /Untrack .* from history/ }).click();
+});
+
 test("CP-134 page-two tracking and bulk controls affect only the visible page", async ({ page }) => {
   const health = await (await page.request.get("/api/healthz")).json();
   expect(health.database_classification).toBe("isolated");

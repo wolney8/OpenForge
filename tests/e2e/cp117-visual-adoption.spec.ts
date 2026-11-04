@@ -604,13 +604,18 @@ test("Sportsbook floating and full editor use the integrated V2 surfaces", async
 });
 
 test("Sportsbook, Free Bet and Casino native editors share the Lab financial card and retain their actions", async ({ page }) => {
+  test.setTimeout(180_000);
   await mkdir(evidence, { recursive: true });
   const editors = [
     { route: "sportsbook-bets", id: "sportsbook", name: "Sportsbook" },
     { route: "free-bets", id: "free-bets", name: "Free Bet" },
     { route: "casino-offers", id: "casino-offers", name: "Casino" },
   ] as const;
-  for (const { width, theme } of [{ width: 1440, theme: "light" }, { width: 390, theme: "dark" }] as const) {
+  for (const { width, theme } of [
+    { width: 1440, theme: "light" }, { width: 1440, theme: "dark" },
+    { width: 800, theme: "light" }, { width: 800, theme: "dark" },
+    { width: 390, theme: "light" }, { width: 390, theme: "dark" },
+  ] as const) {
     await page.setViewportSize({ width, height: 900 });
     for (const editor of editors) {
       await page.goto(`${profile}/${editor.route}`);
@@ -621,7 +626,11 @@ test("Sportsbook, Free Bet and Casino native editors share the Lab financial car
       await expect(dialog).toBeVisible();
       const stage = dialog.locator(".editor-section").first();
       await expect(stage).toBeVisible();
+      await expect(stage).toHaveAttribute("data-pd-financial-card", "true");
       await expect(stage).toHaveCSS("border-radius", "14px");
+      await expect(stage).toHaveCSS("border-top-width", "1px");
+      await expect(stage).toHaveCSS("padding-top", width <= 850 ? "14px" : "18px");
+      expect(await stage.evaluate(element => getComputedStyle(element).backgroundColor)).not.toBe("rgba(0, 0, 0, 0)");
       await expect(dialog.locator('[data-pd-id="ledger-editor.tabs"]')).toBeVisible();
       await expect(dialog.locator(".workflow-editor-footer")).toBeInViewport();
       const bounds = await dialog.boundingBox();

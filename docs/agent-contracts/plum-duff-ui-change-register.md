@@ -1391,6 +1391,12 @@ The owner continues [#118](https://github.com/wolney8/OpenForge/issues/118) unde
 
 `PD-PR-117A-49` now includes the Lab's actual standalone onboarding page, top bar, progress, field and footer components in the real V2 flow. A disposable synthetic Profile passed validation and creation through the existing API; full fresh Account and restore journeys remain to verify. `PD-PR-117A-51` includes a specific flag-OFF onboarding rollback path. These remain open for final route-level acceptance.
 
+## CP-136 specialist editor continuation — 2026-11-04
+
+`PD-PR-117A-46` remains IN PROGRESS. The native Sportsbook, Free Bet and Casino modal sections already render the actual shared Lab financial card, but a broad legacy CSS selector suppressed that card's Lab surface, border and padding. The scoped correction exempts the shared card, preserving the existing native modal, fields and governed commands. Whole-editor Design Acceptance and complete Add/Edit journey evidence remain open; the connected Lab workbench and the native modal parity contract are the references. `PD-PR-117A-51` remains NEEDS VERIFICATION until disposable visual/integration and rollback checks pass on the final source. No financial authority changes are included.
+
+`PD-FIX-511` — Today tracked source-history visibility after an owner-reported refresh disappearance — is COMPLETE under [#118](https://github.com/wolney8/OpenForge/issues/118). The owner subsequently found one saved item under Tracked Tasks; the missing in-page banner is a separate presentation difference. The changed-source history correction keeps the saved-item count visible and opens history when no current task matches, using the existing Today collection and Lab history pattern. Synthetic changed-source persistence, complete 129-path visual, 25-path V2 integration and 9-path rollback checks pass. Owner new-session persistence and whole-page Design Acceptance remain open.
+
 ## CP-130 login recovery and Lab presentation — 2026-11-04
 
 Owner continuation under [#118](https://github.com/wolney8/OpenForge/issues/118). Authentication recovery takes priority over further V2 migration.

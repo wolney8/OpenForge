@@ -1,5 +1,9 @@
 # Project Roadmap — Plum Duff / OpenForge — Doc ID: PR-CODEX-001
 
+## Current CP-136 continuation — 2026-11-04
+
+Verify source-changed tracking history and new-session persistence with independent synthetic authentication. The owner confirmed one Tracked Tasks item after refresh; an in-page banner is still absent in the real V2. Continue native Sportsbook, Free Bet and Casino editor Add/Edit presentation against the shared Lab components and modal contract. Keep Design, Interaction and Integration acceptance separate. Main merge, hosted deployment, financial authority changes, saved views and new task lifecycle rules remain gated.
+
 ## CP-117 continuous adoption — 2026-11-03
 
 Continue from the isolated real V2 candidate and the existing adoption matrix. The Lab direction is provisionally accepted; ordinary implementation increments do not require renewed design permission. Shared presentation now reaches all six ledgers and existing editors. Next: complete governed spreadsheet/editor interaction parity and remaining reporting/Profile presentation, retaining existing financial services. Personal tracking awaits the minimal viewer/Profile annotation API/schema approval; the existing atomic test-fixture/catalogue mismatch needs reconciliation before claiming full financial parity. Keep the flag default OFF, normal-owner isolated and promotion separately gated.

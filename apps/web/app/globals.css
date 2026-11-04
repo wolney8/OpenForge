@@ -17206,7 +17206,7 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
   }
 }
 
-.workflow-editor-modal .editor-section {
+.workflow-editor-modal .editor-section:not([data-pd-financial-card="true"]) {
   border-color: transparent;
   background: transparent;
   box-shadow: none;

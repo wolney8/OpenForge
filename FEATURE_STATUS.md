@@ -1,5 +1,9 @@
 # Feature Status — Plum Duff / OpenForge — Doc ID: FS-CODEX-001
 
+## Current CP-136 — 2026-11-04
+
+Normal Today annotation storage and authenticated API are enabled under the approved separate normal-owner flag. The owner confirmed a Track action, a read-only count confirms its annotation was stored, and the owner saw one item under Tracked Tasks after refresh. The owner did not see an in-page tracked banner; new-session owner persistence is unverified. Eight-task pagination, source-backed task authority and the flag-OFF legacy shell remain. Specialist Sportsbook, Free Bet and Casino editors now render the shared Lab financial-card surface inside the native modal; their whole-workbench Design Acceptance is still partial. Final synthetic visual 129/129, V2 integration 25 passed, flag-OFF 9/9, web unit 706/706 and build pass. [#118](https://github.com/wolney8/OpenForge/issues/118)
+
 ## CP-117 isolated integration milestone — 2026-11-03 12:08 GMT
 
 Sportsbook/Accounts cell selection, arrows/Home/End and Enter/F2/double-click open the existing real editor; saved reload/reopen and rejected-save retry are verified on independent disposable authentication/data. Available in local V2 only; normal source is unchanged. Other ledgers, floating saves, reorder/saved views and full Lab adoption remain partial. No deployment. [#118](https://github.com/wolney8/OpenForge/issues/118) · [Detailed evidence](docs/audits/platform-quality-audit.md#cp-117-real-spreadsheet-interaction-integration--2026-11-03)

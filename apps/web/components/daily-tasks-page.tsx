@@ -97,6 +97,7 @@ export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
   const [collection, setCollection] = useState<"all" | "tracked">("all");
   const [annotations, setAnnotations] = useState<TaskAnnotation[] | null>(null);
   const [trackingPending, setTrackingPending] = useState(false);
+  const [sourceHistoryOpen, setSourceHistoryOpen] = useState<boolean | null>(null);
   const [draftState, setDraftState] = useState<TaskWorkState>("To Do");
   const [draftBlockedReason, setDraftBlockedReason] = useState("");
   const [draftReviewDate, setDraftReviewDate] = useState("");
@@ -267,6 +268,7 @@ export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
   const annotationFor = (task: DailyTaskView) => annotations?.find(item => item.occurrence_key === task.notification.notification_id && item.profile_id === task.notification.profile_id);
   const trackedCount = annotations?.filter(item => item.tracked && item.source_status === "active").length ?? 0;
   const trackedHistory = annotations?.filter(item => item.tracked && item.source_status !== "active") ?? [];
+  const savedTrackedCount = trackedCount + trackedHistory.length;
 
   const saveAnnotations = async (rows: DailyTaskView[], tracked: boolean, override?: { work_state: TaskWorkState; blocked_reason: string | null; review_date: string | null }) => {
     if (!annotations || trackingPending || !rows.length) return;
@@ -416,7 +418,7 @@ export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
         {uxV2 ? <>
           <nav aria-label="Today collections" className={designTodayDetailActionsClass} data-pd-id="tasks.v2.collections">
             <button aria-current={collection === "all" ? "page" : undefined} onClick={() => { setCollection("all"); setDueState("today"); setPage(1); setInspectedTaskId(""); router.replace("/tasks"); }} type="button">All Tasks</button>
-            <button aria-current={collection === "tracked" ? "page" : undefined} disabled={!annotations} onClick={() => { setCollection("tracked"); setDueState("today"); setPage(1); setInspectedTaskId(""); router.replace("/tasks?collection=tracked"); }} type="button">Tracked Tasks{annotations ? ` (${trackedCount})` : ""}</button>
+            <button aria-current={collection === "tracked" ? "page" : undefined} disabled={!annotations} onClick={() => { setCollection("tracked"); setDueState("today"); setPage(1); setInspectedTaskId(""); router.replace("/tasks?collection=tracked"); }} type="button">Tracked Tasks{annotations ? ` (${savedTrackedCount})` : ""}</button>
             {!annotations ? <small>Personal tracking awaits normal API activation.</small> : null}
           </nav>
           <DesignTodayToolbar dataPdId="tasks.v2.toolbar" summary={<><strong>{isLoading || loadFailed ? "—" : actionableCount} Needs Attention</strong><span>{counts.upcoming} Upcoming</span><span>{counts.completed} Completed</span></>} actions={<>
@@ -491,7 +493,7 @@ export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
                   {layout === "List" ? <section aria-label="Source Tasks" className={designTodayTaskCollectionClass} data-pd-id="tasks.v2.collection">
                     <div className={designTodayCollectionHeadingClass}><h2>{collection === "tracked" ? "Tracked Tasks" : dueState === "today" ? "Needs Action" : dueViews.find(view => view.id === dueState)?.label} <span>{paginated.length}</span></h2>{annotations && paginated.length ? <button aria-label={`${paginated.every(task => annotationFor(task)?.tracked) ? "Untrack" : "Track"} all ${paginated.length} tasks on this page only`} className={designTodayBulkTrackClass} data-pd-id="tasks.v2.bulk-track" disabled={trackingPending} onClick={() => void saveAnnotations(paginated, !paginated.every(task => annotationFor(task)?.tracked))} type="button">{paginated.every(task => annotationFor(task)?.tracked) ? "Untrack All" : "Track All"} · This page ({paginated.length})</button> : null}</div>
                     <div aria-label="Tasks" className={designTodayTaskListClass} role="list">{paginated.map(task => taskRow(task))}</div>
-                    {collection === "tracked" && trackedHistory.length ? <details data-pd-id="tasks.v2.tracked-history"><summary>Source history and unavailable tasks ({trackedHistory.length})</summary>{trackedHistory.map(item => <p key={`${item.profile_id}:${item.occurrence_key}`}>{item.title} · {item.source_status === "resolved" ? "Source Resolved" : item.source_status === "changed" ? "Source Changed" : "Source Unavailable"} <button aria-label={`Untrack ${item.title} from history`} disabled={trackingPending} onClick={() => void untrackHistory(item)} type="button">Untrack</button></p>)}</details> : null}
+                    {collection === "tracked" && trackedHistory.length ? <details data-pd-id="tasks.v2.tracked-history" onToggle={event => setSourceHistoryOpen(event.currentTarget.open)} open={sourceHistoryOpen ?? filtered.length === 0}><summary>Source history and unavailable tasks ({trackedHistory.length})</summary>{trackedHistory.map(item => <p key={`${item.profile_id}:${item.occurrence_key}`}>{item.title} · {item.source_status === "resolved" ? "Source Resolved" : item.source_status === "changed" ? "Source Changed" : "Source Unavailable"} <button aria-label={`Untrack ${item.title} from history`} disabled={trackingPending} onClick={() => void untrackHistory(item)} type="button">Untrack</button></p>)}</details> : null}
                     {!paginated.length ? <p className="ux-v2-task-empty">No tasks match these controls.</p> : null}
                   </section> : <>
                     <div className={designTodayBoardControlsClass}><span>Board grouped by source priority</span><div>

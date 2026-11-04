@@ -1,6 +1,6 @@
 # CP-135 normal Today annotation activation contract
 
-Status: **prepared, not activated**. Owner approval is required before changing the normal API checkout, stopping/restarting API 8010, migrating the normal-owner database, or enabling the flag. The local V2 Today queue remains usable with tracking marked pending.
+Status: **approved local activation executed under CP-136 on 2026-11-04**. The following sections preserve the reviewed pre-activation contract and its original evidence. The normal API runs from non-main checkpoint `5da85d6997221c96eb1a66ada7aa719086f911a2` with the separate normal-owner flag enabled. The protected backup and migration verification are held in the private local activation receipt. An owner Track write reached the annotation table and one Tracked Tasks item was visible after refresh; new-session owner persistence and full Design Acceptance remain unverified.
 
 ## Authority and boundaries
 
