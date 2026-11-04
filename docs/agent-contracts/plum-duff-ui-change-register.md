@@ -1390,3 +1390,12 @@ Owner continuation under [#118](https://github.com/wolney8/OpenForge/issues/118)
 The owner continues [#118](https://github.com/wolney8/OpenForge/issues/118) under existing IDs `PD-PR-117A-46–51`: native Sportsbook/Free Bet/Casino editor composition (`46`), Profit Tracker and Reports (`48`), Profile/onboarding/management (`49`), and final-source evidence/rollback (`51`) are IN PROGRESS. The signed-off references are the connected Lab financial workflow cards, report surfaces and management/onboarding components; the native modal contract and governed financial authorities remain binding. The previous Profit Tracker heading assertion is NEEDS VERIFICATION through meaningful route readiness and interaction checks plus the full visual suite. Today/Notifications (`47`) and specialist navigation (`50`) remain preservation checks. No item is complete until its whole route and workflow pass the separate Design, Interaction and Integration gates.
 
 `PD-PR-117A-49` now includes the Lab's actual standalone onboarding page, top bar, progress, field and footer components in the real V2 flow. A disposable synthetic Profile passed validation and creation through the existing API; full fresh Account and restore journeys remain to verify. `PD-PR-117A-51` includes a specific flag-OFF onboarding rollback path. These remain open for final route-level acceptance.
+
+## CP-130 login recovery and Lab presentation — 2026-11-04
+
+Owner continuation under [#118](https://github.com/wolney8/OpenForge/issues/118). Authentication recovery takes priority over further V2 migration.
+
+| ID | Surface and requested outcome | Signed-off equivalent | Status |
+| --- | --- | --- | --- |
+| PD-FIX-511 | Restore the normal Google sign-in callback at localhost:3010; identify the actual `invalid_oauth_state` cause without copying credentials, weakening state checks or changing normal API configuration without approval | Existing OAuth callback and normal session authority | IN PROGRESS — owner error code confirmed; safe browser and HTTP probes validate a fresh state cookie, but the owner's failing browser journey remains unverified |
+| PD-PR-117A-52 | Use the actual Lab auth card/brand/action presentation for the one real login screen, retaining Google, registration, safe return path and public error states | `DesignLabAuth` presentation | NEEDS VERIFICATION — shared auth card is in the feature worktree; focused public-page checks pass, full authenticated sign-in and flag-OFF regression remain open |

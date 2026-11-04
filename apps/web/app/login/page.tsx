@@ -1,7 +1,8 @@
-import { BrandLogo } from "@/components/brand-logo";
-import { GoogleBrandIcon } from "@/components/google-brand-icon";
+import { AuthPresentation } from "@/components/auth-presentation";
+import { RealAuthSignIn } from "@/components/real-auth-sign-in";
 import { normalizePostAuthDestination } from "@/lib/auth-redirect";
 import Link from "next/link";
+import styles from "@/components/design-lab-auth.module.css";
 
 const errorMessages: Record<string, string> = {
   invalid_oauth_state: "Sign-in couldn't be completed. Please try again.",
@@ -15,6 +16,14 @@ const errorMessages: Record<string, string> = {
   session_validation_unavailable: "We couldn't validate your session. Try again or sign in.",
 };
 
+const errorTitles: Record<string, string> = {
+  not_authorized: "Access unavailable",
+  oauth_configuration_unavailable: "Sign-in unavailable",
+  oauth_provider_denied: "Sign-in cancelled",
+  session_expired: "Session expired",
+  session_validation_unavailable: "Session check unavailable",
+};
+
 export default async function LoginPage({
   searchParams,
 }: {
@@ -26,25 +35,23 @@ export default async function LoginPage({
     typeof params.next === "string" ? params.next : undefined
   );
   const signedOut = params.signed_out === "1";
+  const title = error && typeof params.error === "string"
+    ? errorTitles[params.error] ?? "Sign-in failed"
+    : "Welcome back";
 
   return (
-    <main className="page-shell auth-page">
-      <section className="hero-panel stack auth-panel" data-pd-id="auth.login.panel">
-        <BrandLogo className="brand-logo-login" priority />
-        {error ? <p className="error-text" role="alert">{error}</p> : null}
-        {signedOut ? <p className="success-text" role="status">You have signed out.</p> : null}
-        <a
-          className="modal-primary-button auth-google-button"
-          data-pd-id="auth.google.sign-in"
-          href={`/api/auth/google/login?next=${encodeURIComponent(next)}`}
-        >
-          <GoogleBrandIcon />
-          <span>Sign in with Google</span>
-        </a>
-        <Link className="auth-registration-link" data-pd-id="auth.registration" href="/register">
+    <AuthPresentation inspectionId="auth.login.panel" subtitle="Secure sign-in" titleId="auth-login-title">
+        <h1 id="auth-login-title">{title}</h1>
+        <p>{next === "/design-lab" ? "Return to Design Lab after sign-in." : "Return to Plum Duff after sign-in."}</p>
+        <div aria-live="polite" className={styles.status}>
+          {error ? <span role="alert">{error}</span> : signedOut ? <span role="status">You have signed out.</span> : "Use your approved Google account."}
+        </div>
+        <div className={styles.actions}>
+          <RealAuthSignIn next={next} />
+        </div>
+        <Link className={styles.registration} data-pd-id="auth.registration" href="/register">
           Register for an account
         </Link>
-      </section>
-    </main>
+    </AuthPresentation>
   );
 }
