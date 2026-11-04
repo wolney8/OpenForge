@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import sqlite3
+from concurrent.futures import ThreadPoolExecutor
+
 from apps.api.tests.synthetic_setup import seed_synthetic_betting_context
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 
 from openforge_api import task_annotations
@@ -12,6 +15,7 @@ from openforge_api.notifications import FundManagerNotificationResponse
 
 
 def client_and_sources(monkeypatch) -> tuple[TestClient, list[FundManagerNotificationResponse]]:
+    monkeypatch.setattr(settings, "task_annotations_isolated_enabled", True)
     seed_synthetic_betting_context()
     task_annotations.install_isolated_schema()
     settings.auth_owner_emails = "viewer@example.invalid"
@@ -186,3 +190,214 @@ def test_other_viewer_cannot_read_or_mutate_annotations(monkeypatch):
     )
     with connect() as connection:
         assert connection.execute("SELECT COUNT(*) FROM task_annotations").fetchone()[0] == 2
+
+
+def test_viewer_email_is_canonical_across_sessions(monkeypatch):
+    client, _ = client_and_sources(monkeypatch)
+    profile = "profile-demo-001"
+    assert (
+        client.patch(
+            "/fund-manager/tasks/annotations", json={"changes": [change(profile)]}
+        ).status_code
+        == 200
+    )
+    uppercase = create_session_token(
+        subject="uppercase-synthetic-viewer",
+        email="VIEWER@EXAMPLE.INVALID",
+        name="Synthetic Viewer",
+    )
+    client.cookies.set(SESSION_COOKIE_NAME, uppercase)
+    assert client.get("/fund-manager/tasks/annotations").json()[0]["version"] == 1
+    assert (
+        client.patch(
+            "/fund-manager/tasks/annotations",
+            json={"changes": [change(profile, tracked=False, version=1)]},
+        ).json()[0]["version"]
+        == 2
+    )
+    with connect() as connection:
+        rows = connection.execute("SELECT viewer_email FROM task_annotations").fetchall()
+    assert [row[0] for row in rows] == ["viewer@example.invalid"]
+
+
+def test_default_disabled_and_isolated_flag_cannot_authorize_normal(monkeypatch):
+    client, _ = client_and_sources(monkeypatch)
+    client.cookies.clear()
+    assert client.get("/fund-manager/tasks/annotations").status_code == 401
+    monkeypatch.setattr(settings, "task_annotations_isolated_enabled", False)
+    assert client.get("/fund-manager/tasks/annotations").status_code == 503
+    monkeypatch.setattr(settings, "task_annotations_normal_enabled", True)
+    assert (
+        client.patch(
+            "/fund-manager/tasks/annotations",
+            json={"changes": [change("profile-demo-001")]},
+        ).status_code
+        == 503
+    )
+    monkeypatch.setattr(
+        task_annotations,
+        "validate_runtime_contract",
+        lambda _settings: type(
+            "Identity",
+            (),
+            {
+                "database_classification": "normal-owner",
+                "role": "normal-owner",
+                "database_engine": "sqlite",
+            },
+        )(),
+    )
+    monkeypatch.setattr(settings, "task_annotations_normal_enabled", False)
+    with __import__("pytest").raises(HTTPException) as error:
+        task_annotations._require_enabled()
+    assert error.value.status_code == 503
+    monkeypatch.setattr(settings, "task_annotations_normal_enabled", True)
+    task_annotations._require_enabled()
+
+
+def test_competing_version_writes_and_batch_rollback(monkeypatch):
+    client, _ = client_and_sources(monkeypatch)
+    one, two = "profile-demo-001", "profile-demo-002"
+    assert (
+        client.patch(
+            "/fund-manager/tasks/annotations",
+            json={"changes": [change(one), change(two)]},
+        ).status_code
+        == 200
+    )
+
+    def update(state: str):
+        return client.patch(
+            "/fund-manager/tasks/annotations",
+            json={"changes": [change(one, version=1, state=state)]},
+        ).status_code
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        results = sorted(pool.map(update, ["In Progress", "Blocked"]))
+    assert results == [200, 409]
+    rows = {row["profile_id"]: row for row in client.get("/fund-manager/tasks/annotations").json()}
+    assert rows[one]["version"] == 2
+    assert rows[two]["version"] == 1
+    rejected = client.patch(
+        "/fund-manager/tasks/annotations",
+        json={
+            "changes": [
+                change(two, version=1, state="In Progress"),
+                change(one, version=1, tracked=False),
+            ]
+        },
+    )
+    assert rejected.status_code == 409
+    rows = {row["profile_id"]: row for row in client.get("/fund-manager/tasks/annotations").json()}
+    assert rows[two]["version"] == 1
+    assert rows[two]["work_state"] == "To Do"
+
+
+def test_database_failure_rolls_back_earlier_batch_write(monkeypatch):
+    client, _ = client_and_sources(monkeypatch)
+    one, two = "profile-demo-001", "profile-demo-002"
+    assert (
+        client.patch(
+            "/fund-manager/tasks/annotations",
+            json={"changes": [change(one), change(two)]},
+        ).status_code
+        == 200
+    )
+    with connect() as connection:
+        connection.execute(
+            """CREATE TRIGGER reject_second_annotation BEFORE UPDATE ON task_annotations
+               WHEN NEW.profile_id='profile-demo-002'
+               BEGIN SELECT RAISE(ABORT, 'synthetic write rejection'); END"""
+        )
+    with __import__("pytest").raises(sqlite3.IntegrityError):
+        client.patch(
+            "/fund-manager/tasks/annotations",
+            json={
+                "changes": [
+                    change(one, version=1, state="In Progress"),
+                    change(two, version=1, state="Blocked"),
+                ]
+            },
+        )
+    rows = {row["profile_id"]: row for row in client.get("/fund-manager/tasks/annotations").json()}
+    assert rows[one]["version"] == 1
+    assert rows[one]["work_state"] == "To Do"
+
+
+def test_new_session_work_state_and_revoked_profile(monkeypatch):
+    client, _ = client_and_sources(monkeypatch)
+    one, two = "profile-demo-001", "profile-demo-002"
+    assert (
+        client.patch(
+            "/fund-manager/tasks/annotations",
+            json={
+                "changes": [
+                    change(one, state="Blocked", reason="Awaiting synthetic evidence"),
+                    change(two, state="Do Later", review="2026-11-20"),
+                ]
+            },
+        ).status_code
+        == 200
+    )
+    token = create_session_token(
+        subject="synthetic-viewer-new-session",
+        email="viewer@example.invalid",
+        name="Synthetic Viewer",
+    )
+    client.cookies.set(SESSION_COOKIE_NAME, token)
+    states = {
+        row["profile_id"]: row["work_state"]
+        for row in client.get("/fund-manager/tasks/annotations").json()
+    }
+    assert states == {one: "Blocked", two: "Do Later"}
+    monkeypatch.setattr(
+        task_annotations, "notification_profile_scope", lambda _email, active_only: {one}
+    )
+    assert [row["profile_id"] for row in client.get("/fund-manager/tasks/annotations").json()] == [
+        one
+    ]
+    assert (
+        client.patch(
+            "/fund-manager/tasks/annotations",
+            json={"changes": [change(two, tracked=False, version=1)]},
+        ).status_code
+        == 404
+    )
+
+
+def test_profile_deletion_cascades_only_its_annotations(monkeypatch):
+    client, sources = client_and_sources(monkeypatch)
+    from apps.api.tests.synthetic_setup import seed_synthetic_profile
+
+    seed_synthetic_profile(
+        "profile-demo-003", display_name="Subscriber Charlie", profile_code="CHARLIE-003"
+    )
+    sources.append(
+        sources[0].model_copy(
+            update={
+                "profile_id": "profile-demo-003",
+                "notification_id": "review:profile-demo-003:ROW-1:v1",
+            }
+        )
+    )
+    assert (
+        client.patch(
+            "/fund-manager/tasks/annotations",
+            json={"changes": [change("profile-demo-001"), change("profile-demo-003")]},
+        ).status_code
+        == 200
+    )
+    with connect() as connection:
+        connection.execute("DELETE FROM profiles WHERE profile_id=?", ("profile-demo-003",))
+        assert (
+            connection.execute(
+                "SELECT COUNT(*) FROM task_annotations WHERE profile_id=?", ("profile-demo-003",)
+            ).fetchone()[0]
+            == 0
+        )
+        assert (
+            connection.execute(
+                "SELECT COUNT(*) FROM task_annotations WHERE profile_id=?", ("profile-demo-001",)
+            ).fetchone()[0]
+            == 1
+        )

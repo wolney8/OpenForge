@@ -352,6 +352,11 @@ def main() -> int:
         help="Retain the disposable review runtime after tests",
     )
     parser.add_argument("--grep", help="Focused V2 test selection; rollback still runs")
+    parser.add_argument(
+        "--visual",
+        action="store_true",
+        help="Run complete V2 visual suite before rollback",
+    )
     args = parser.parse_args()
 
     def interrupted(*_: object) -> None:
@@ -523,25 +528,47 @@ def main() -> int:
             )
             if result.returncode:
                 return result.returncode
+            if args.visual:
+                result = subprocess.run(
+                    [
+                        "pnpm",
+                        "exec",
+                        "playwright",
+                        "test",
+                        "--config",
+                        "playwright.cp117-visual.config.ts",
+                    ],
+                    cwd=ROOT,
+                    env=browser_env,
+                )
+                if result.returncode:
+                    return result.returncode
             stop(web)
             web = launch("web", legacy=True)
             wait_ready(f"http://127.0.0.1:{args.web_port}/login", web)
             verify_authenticated_route(args.web_port, args.auth_port)
             result = subprocess.run(
-                command + ["--grep", "flag OFF|Notification History|shared settings filters"],
+                command
+                + ["--grep", "flag OFF|Notification History|shared settings filters"],
                 cwd=ROOT,
                 env={**browser_env, "OPENFORGE_CP117_VERIFY_LEGACY": "true"},
             )
             if result.returncode:
                 return result.returncode
             stop(web)
-            web = launch("web")
-            wait_ready(f"http://127.0.0.1:{args.web_port}/login", web)
-            verify_authenticated_route(args.web_port, args.auth_port)
-            print(
-                "V2 and legacy verification passed; independent V2 restored.",
-                flush=True,
-            )
+            if args.keep_running:
+                web = launch("web")
+                wait_ready(f"http://127.0.0.1:{args.web_port}/login", web)
+                verify_authenticated_route(args.web_port, args.auth_port)
+                print(
+                    "V2 and legacy verification passed; independent V2 restored.",
+                    flush=True,
+                )
+            else:
+                print(
+                    "V2 and legacy verification passed; synthetic runtime stopped.",
+                    flush=True,
+                )
         if not args.test or args.keep_running:
             while True:
                 if api.poll() is not None or web.poll() is not None:

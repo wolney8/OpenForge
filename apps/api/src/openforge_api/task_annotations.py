@@ -1,9 +1,4 @@
-"""Isolated candidate for viewer-owned Today annotations.
-
-This router is mounted only by an explicitly isolated synthetic runtime. Its
-schema is installed explicitly by the synthetic fixture runner, never by the
-normal database initializer.
-"""
+"""Viewer-owned Today annotations with explicit runtime and schema activation."""
 
 from __future__ import annotations
 
@@ -28,7 +23,7 @@ ANNOTATION_ROW_SQL = (
     "SELECT annotation.*, profile.display_name AS profile_name "
     "FROM task_annotations annotation JOIN profiles profile "
     "ON profile.profile_id=annotation.profile_id "
-    "WHERE lower(annotation.viewer_email)=lower(?) "
+    "WHERE annotation.viewer_email=? "
     "AND annotation.profile_id=? AND annotation.occurrence_key=?"
 )
 
@@ -79,15 +74,33 @@ class BatchChange(BaseModel):
     changes: list[AnnotationChange] = Field(min_length=1, max_length=32)
 
 
-def _require_isolated() -> None:
+def _require_enabled() -> None:
     identity = validate_runtime_contract(settings)
-    if identity.database_classification != "isolated" or identity.role not in {"candidate", "test"}:
+    isolated = (
+        identity.database_classification == "isolated"
+        and identity.role in {"candidate", "test"}
+        and identity.database_engine == "sqlite"
+        and settings.task_annotations_isolated_enabled
+    )
+    normal = (
+        identity.database_classification == "normal-owner"
+        and identity.role == "normal-owner"
+        and identity.database_engine == "sqlite"
+        and settings.task_annotations_normal_enabled
+    )
+    if not isolated and not normal:
         raise HTTPException(status_code=503, detail="Task tracking is awaiting activation")
 
 
 def install_isolated_schema() -> None:
     """Called only by the independently authenticated synthetic fixture runner."""
-    _require_isolated()
+    identity = validate_runtime_contract(settings)
+    if (
+        identity.database_classification != "isolated"
+        or identity.database_engine != "sqlite"
+        or not settings.task_annotations_isolated_enabled
+    ):
+        raise RuntimeError("Isolated task schema requires an enabled isolated runtime")
     with connect() as connection:
         for statement in SCHEMA.split(";"):
             if statement.strip():
@@ -103,8 +116,7 @@ def _row_payload(row, current: dict[str, FundManagerNotificationResponse]) -> di
         status = "resolved" if source.task_state == "done" else "active"
     else:
         related = any(
-            f"{item.notification_type}:{item.profile_id}:{item.record_id}"
-            == str(row["source_key"])
+            f"{item.notification_type}:{item.profile_id}:{item.record_id}" == str(row["source_key"])
             for item in current.values()
         )
         status = "changed" if related else "unavailable"
@@ -124,11 +136,18 @@ def _row_payload(row, current: dict[str, FundManagerNotificationResponse]) -> di
     }
 
 
+def _viewer(request: Request) -> str:
+    session = require_request_session(request)
+    if session.role != "fund_manager":
+        raise HTTPException(status_code=403, detail="Access unavailable")
+    return session.email.strip().casefold()
+
+
 @router.get("")
 def list_annotations(request: Request) -> list[dict[str, object]]:
-    _require_isolated()
-    session = require_request_session(request)
-    owned = notification_profile_scope(session.email, active_only=True)
+    _require_enabled()
+    viewer = _viewer(request)
+    owned = notification_profile_scope(viewer, active_only=True)
     current = {
         item.notification_id: item
         for item in list_fund_manager_notifications(request)
@@ -139,18 +158,18 @@ def list_annotations(request: Request) -> list[dict[str, object]]:
             "SELECT annotation.*, profile.display_name AS profile_name "
             "FROM task_annotations annotation JOIN profiles profile "
             "ON profile.profile_id=annotation.profile_id "
-            "WHERE lower(annotation.viewer_email)=lower(?) "
+            "WHERE annotation.viewer_email=? "
             "ORDER BY annotation.updated_at DESC, annotation.occurrence_key",
-            (session.email,),
+            (viewer,),
         ).fetchall()
     return [_row_payload(row, current) for row in rows if str(row["profile_id"]) in owned]
 
 
 @router.patch("")
 def patch_annotations(request: Request, payload: BatchChange) -> list[dict[str, object]]:
-    _require_isolated()
-    session = require_request_session(request)
-    owned = notification_profile_scope(session.email, active_only=True)
+    _require_enabled()
+    viewer = _viewer(request)
+    owned = notification_profile_scope(viewer, active_only=True)
     keys = [(change.profile_id, change.occurrence_key) for change in payload.changes]
     if len(set(keys)) != len(keys):
         raise HTTPException(status_code=422, detail="Duplicate task in update")
@@ -167,7 +186,7 @@ def patch_annotations(request: Request, payload: BatchChange) -> list[dict[str, 
         for change in payload.changes:
             row = connection.execute(
                 ANNOTATION_ROW_SQL,
-                (session.email, change.profile_id, change.occurrence_key),
+                (viewer, change.profile_id, change.occurrence_key),
             ).fetchone()
             source = current.get(change.occurrence_key)
             if source is not None and source.profile_id != change.profile_id:
@@ -210,33 +229,54 @@ def patch_annotations(request: Request, payload: BatchChange) -> list[dict[str, 
                 else str(row["source_key"])
             )
             title = source.title if source is not None else str(row["title_snapshot"])
-            connection.execute(
-                """INSERT INTO task_annotations
-                   (viewer_email,profile_id,occurrence_key,source_key,title_snapshot,tracked,
-                    work_state,blocked_reason,review_date,version,updated_at)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?)
-                   ON CONFLICT(viewer_email,profile_id,occurrence_key) DO UPDATE SET
-                    tracked=excluded.tracked,work_state=excluded.work_state,
-                    blocked_reason=excluded.blocked_reason,review_date=excluded.review_date,
-                    version=excluded.version,updated_at=excluded.updated_at""",
-                (
-                    session.email,
-                    change.profile_id,
-                    change.occurrence_key,
-                    source_key,
-                    title,
-                    int(change.tracked),
-                    change.work_state,
-                    change.blocked_reason or None,
-                    change.review_date.isoformat() if change.review_date else None,
-                    (int(row["version"]) if row is not None else 0) + 1,
-                    now,
-                ),
-            )
+            if row is None:
+                result = connection.execute(
+                    """INSERT INTO task_annotations
+                       (viewer_email,profile_id,occurrence_key,source_key,title_snapshot,tracked,
+                        work_state,blocked_reason,review_date,version,updated_at)
+                       VALUES (?,?,?,?,?,?,?,?,?,?,?)
+                       ON CONFLICT(viewer_email,profile_id,occurrence_key) DO NOTHING""",
+                    (
+                        viewer,
+                        change.profile_id,
+                        change.occurrence_key,
+                        source_key,
+                        title,
+                        int(change.tracked),
+                        change.work_state,
+                        change.blocked_reason or None,
+                        change.review_date.isoformat() if change.review_date else None,
+                        1,
+                        now,
+                    ),
+                )
+            else:
+                result = connection.execute(
+                    """UPDATE task_annotations SET source_key=?,title_snapshot=?,tracked=?,
+                       work_state=?,blocked_reason=?,review_date=?,version=version+1,updated_at=?
+                       WHERE viewer_email=? AND profile_id=? AND occurrence_key=? AND version=?""",
+                    (
+                        source_key,
+                        title,
+                        int(change.tracked),
+                        change.work_state,
+                        change.blocked_reason or None,
+                        change.review_date.isoformat() if change.review_date else None,
+                        now,
+                        viewer,
+                        change.profile_id,
+                        change.occurrence_key,
+                        change.expected_version,
+                    ),
+                )
+            if result.rowcount != 1:
+                raise HTTPException(
+                    status_code=409, detail="Task annotation changed; refresh and retry"
+                )
         rows = [
             connection.execute(
                 ANNOTATION_ROW_SQL,
-                (session.email, change.profile_id, change.occurrence_key),
+                (viewer, change.profile_id, change.occurrence_key),
             ).fetchone()
             for change in payload.changes
         ]

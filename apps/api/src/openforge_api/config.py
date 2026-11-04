@@ -44,6 +44,8 @@ class Settings(BaseSettings):
     runtime_api_endpoint: str = ""
     runtime_environment_source: str = ""
     runtime_database_target_explicit: bool = False
+    task_annotations_isolated_enabled: bool = False
+    task_annotations_normal_enabled: bool = False
 
     model_config = SettingsConfigDict(
         env_prefix="OPENFORGE_",

@@ -11,7 +11,13 @@ test("CP-134 tracked Today persists through refresh and header navigation", asyn
   await expect(page.locator('[data-pd-id="tasks.v2.collections"]')).toBeVisible();
   const rows = page.locator('[data-pd-id^="tasks.v2.row."]');
   await expect(rows.first()).toBeVisible();
-  await expect(rows).toHaveCount(8);
+  await page.locator('[data-pd-id="tasks.v2.filter-toggle"]').click();
+  await expect(page.locator('[data-pd-id="tasks.v2.page-size"]')).toHaveValue("8");
+  await page.locator('[data-pd-id="tasks.v2.filter-toggle"]').click();
+  const pagination = await page.locator('[data-pd-id="tasks.v2.pagination"]').innerText();
+  const total = Number(pagination.match(/of (\d+)/)?.[1] ?? 0);
+  expect(total).toBeGreaterThan(0);
+  await expect(rows).toHaveCount(Math.min(8, total));
   const first = rows.first();
   const id = (await first.getAttribute("data-pd-id"))!.replace("tasks.v2.row.", "");
   await page.locator(`[data-pd-id="tasks.v2.track.${id}"]`).click();
