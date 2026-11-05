@@ -57,6 +57,7 @@ import {
   useBookmakerCatalogue,
 } from "@/components/bookmaker-identity";
 import { EditorSection } from "@/components/editor-section";
+import { DesignFinancialWorkbenchAside, DesignFinancialWorkbenchClose, DesignFinancialWorkbenchColumns, DesignFinancialWorkbenchTitle } from "@/components/design-financial-workbench-layout";
 import { EditorValidationBanner } from "@/components/editor-validation-banner";
 import { FinancialValue, FinancialValueReplayRow } from "@/components/financial-value";
 import { FinancialHistoryPanel } from "@/components/financial-history-panel";
@@ -7807,14 +7808,14 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
             ref={editorRef}
             role="dialog"
           >
-            <div className="workflow-panel-header workflow-editor-header" data-pd-id="sportsbook.editor.header">
-              <div className="stack workflow-editor-title-stack">
+            <div className={`workflow-panel-header workflow-editor-header${visualV2 ? " financial-workbench-header" : ""}`} data-pd-id="sportsbook.editor.header">
+              {visualV2 ? <DesignFinancialWorkbenchTitle context={selectedId ? editorHeaderTitle : "Offer first · confirm external placement in its governed stage"} eyebrow="Sportsbook workbench" title={selectedId ? "Edit Sportsbook Bet" : "Add Sportsbook Bet"} /> : <div className="stack workflow-editor-title-stack">
                 <span className="eyebrow">
                   {selectedId ? "Edit sportsbook row" : "Create sportsbook row"}
                 </span>
                 <strong className="workflow-header-title" title={editorHeaderFullTitle}>{editorHeaderTitle}</strong>
-              </div>
-              <section
+              </div>}
+              {!visualV2 ? <section
                 aria-label="Sportsbook editor context"
                 className="editor-compact-summary"
                 data-pd-id="sportsbook.editor.compact-summary"
@@ -7858,9 +7859,9 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                 >
                   {editorLayStatus}
                 </span>
-              </section>
+              </section> : null}
               <div className="tracker-nav workflow-editor-header-actions">
-                <div
+                {!visualV2 ? <div
                   aria-label="Editor tab navigation"
                   className="workflow-editor-header-nav"
                   data-pd-id="sportsbook.editor.tab-actions"
@@ -7890,8 +7891,8 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                   >
                     Next
                   </button>
-                </div>
-                <button
+                </div> : null}
+                {visualV2 ? <DesignFinancialWorkbenchClose label="Close sportsbook editor" onClick={() => void closeEditor()} /> : <button
                   aria-label="Close sportsbook editor"
                   className="workflow-editor-cancel-button"
                   onClick={() => void closeEditor()}
@@ -7899,7 +7900,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                   type="button"
                 >
                   <span aria-hidden="true" className="material-symbols-outlined">close</span>
-                </button>
+                </button>}
               </div>
               <LedgerEditorTabRail
                 activeTabId={safeActiveEditorTabId}
@@ -7953,6 +7954,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
               Show guide
             </button>
           ) : null}
+          <DesignFinancialWorkbenchColumns dataPdId="sportsbook.editor.workbench" enabled={visualV2}>
           <form className="form-grid" onSubmit={(event) => void handleSubmit(event)}>
             <LedgerEditorTabPanel activeTabId={safeActiveEditorTabId} tabId="setup">
             <EditorSection visualV2={visualV2}
@@ -11209,6 +11211,14 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
 	              </div>
 	            </div>
           </form>
+          {visualV2 ? <DesignFinancialWorkbenchAside dataPdId="sportsbook.editor.financial-context" title="Financial Position" facts={[
+            { label: "Bookmaker", value: formState.bookmaker || "Not selected" },
+            { label: "Status", value: formState.status || "Prospecting" },
+            { label: "Strategy", value: editorMatchStrategyLabel || "Standard" },
+            { label: "Lay", value: editorLayStatus },
+            { label: activeDisplayedValueLabel, value: activeDisplayedNumericValue === null ? "Unavailable" : formatFinancialValue(activeDisplayedNumericValue) },
+          ]}><p>Detailed outcomes and actual placement remain in their governed workflow stages.</p></DesignFinancialWorkbenchAside> : null}
+          </DesignFinancialWorkbenchColumns>
             </div>
           </section>
         </div>

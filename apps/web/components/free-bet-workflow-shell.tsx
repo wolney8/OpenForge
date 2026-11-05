@@ -34,6 +34,7 @@ import {
   useBookmakerCatalogue,
 } from "@/components/bookmaker-identity";
 import { EditorSection } from "@/components/editor-section";
+import { DesignFinancialWorkbenchAside, DesignFinancialWorkbenchClose, DesignFinancialWorkbenchColumns, DesignFinancialWorkbenchTitle } from "@/components/design-financial-workbench-layout";
 import { EditorValidationBanner } from "@/components/editor-validation-banner";
 import { FinancialValue, FinancialValueReplayRow } from "@/components/financial-value";
 import { FinancialHistoryPanel } from "@/components/financial-history-panel";
@@ -4057,12 +4058,12 @@ export function FreeBetWorkflowShell({
         ref={editorRef}
         role="dialog"
       >
-        <div className="workflow-panel-header workflow-editor-header" data-pd-id="free-bets.editor.header">
-          <div className="stack workflow-editor-title-stack">
+        <div className={`workflow-panel-header workflow-editor-header${visualV2 ? " financial-workbench-header" : ""}`} data-pd-id="free-bets.editor.header">
+          {visualV2 ? <DesignFinancialWorkbenchTitle context={selectedId ? editorHeaderTitle : "Review the award, then record actual placement and settlement"} eyebrow="Free Bet workbench" title={selectedId ? "Edit Free Bet" : "Add Free Bet"} /> : <div className="stack workflow-editor-title-stack">
             <span className="eyebrow">{selectedId ? "Edit free-bet row" : "Create free-bet row"}</span>
             <strong className="workflow-header-title" title={editorHeaderFullTitle}>{editorHeaderTitle}</strong>
-          </div>
-          <section
+          </div>}
+          {!visualV2 ? <section
             aria-label="Free-bet editor context"
             className="editor-compact-summary"
             data-pd-id="free-bets.editor.compact-summary"
@@ -4100,9 +4101,9 @@ export function FreeBetWorkflowShell({
               {editorLayStatus}
             </span>
             <span className="table-chip">{formState.retention_mode || "SNR"}</span>
-          </section>
+          </section> : null}
           <div className="tracker-nav workflow-editor-header-actions">
-            <div
+            {!visualV2 ? <div
               aria-label="Free-bet editor tab navigation"
               className="workflow-editor-header-nav"
               data-pd-id="free-bets.editor.tab-actions"
@@ -4132,8 +4133,8 @@ export function FreeBetWorkflowShell({
               >
                 Next
               </button>
-            </div>
-            <button
+            </div> : null}
+            {visualV2 ? <DesignFinancialWorkbenchClose disabled={isPersisting} label="Close free-bet editor" onClick={() => void closeEditor()} /> : <button
               aria-label="Close free-bet editor"
               className="workflow-editor-cancel-button"
               disabled={isPersisting}
@@ -4142,7 +4143,7 @@ export function FreeBetWorkflowShell({
               type="button"
             >
               <span aria-hidden="true" className="material-symbols-outlined">close</span>
-            </button>
+            </button>}
           </div>
           <LedgerEditorTabRail
             activeTabId={safeActiveEditorTabId}
@@ -4190,6 +4191,7 @@ export function FreeBetWorkflowShell({
           </button>
         ) : null}
         <div className="workflow-editor-body">
+        <DesignFinancialWorkbenchColumns dataPdId="free-bets.editor.workbench" enabled={visualV2}>
         <form className="form-grid" onSubmit={(event) => void handleSubmit(event)}>
           <LedgerEditorTabPanel activeTabId={safeActiveEditorTabId} tabId="setup">
           <EditorSection visualV2={visualV2}
@@ -5304,6 +5306,14 @@ export function FreeBetWorkflowShell({
             </div>
           </div>
         </form>
+        {visualV2 ? <DesignFinancialWorkbenchAside dataPdId="free-bets.editor.financial-context" title="Source & Financial Meaning" facts={[
+          { label: "Bookmaker", value: formState.bookmaker || "Not selected" },
+          { label: "Status", value: formState.status || "Available" },
+          { label: "Retention", value: formState.retention_mode || "SNR" },
+          { label: "Lay", value: editorLayStatus },
+          { label: activeDisplayedValueLabel, value: activeDisplayedNumericValue === null ? "Unavailable" : formatFinancialValue(activeDisplayedNumericValue) },
+        ]}><p>Qualifying source, award lineage and settlement remain in their governed workflow stages.</p></DesignFinancialWorkbenchAside> : null}
+        </DesignFinancialWorkbenchColumns>
         </div>
       </section>
       </div>

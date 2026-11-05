@@ -537,3 +537,11 @@ Scope: `PD-PR-117A-17–20`, open #118. Sportsbook and Accounts only; full six-l
 - [x] Source-identity filters, URL return context, reset, counts and column restore have focused unit and independent synthetic browser coverage; flag-OFF rollback remains tested.
 - [x] Unknown issue classification is shown as unavailable when required source fields are missing. Partial Profile reads retain their alert and never become complete totals.
 - [ ] In-place combined floating Save, governed cross-Profile KPI composition and whole specialist-editor Lab parity remain open under PD-PR-117A-59, 61 and 62. Owner Design Acceptance and manual screen-reader review remain open.
+
+## CP-139 specialist workbench continuation — 2026-11-05 / #118
+
+- [x] Reused the approved Lab workbench title, close control, two-column composition and financial fact surface directly in the three native Sportsbook, Free Bet and Casino Add/Edit editors. Source-backed facts stay unavailable when unknown; native form fields, stage rules, validation, Save, settlement, correction and audit remain owned by their existing shells. Flag-OFF rendering remains conditional.
+- [x] Independent synthetic browser checks cover empty Add at 1440px light and 390px dark, populated Edit and Settlement at 900px dark, and paired Lab/native Free Bet and Casino captures. Containment, page overflow, source context and native stage visibility pass.
+- [x] Synthetic Sportsbook, Free Bet and Casino journeys each create through the native form, Save through its reviewed authority, reload/reopen, Edit and Save again. Their test records are removed through the existing disposable Profile-owned API after verification; no normal-owner mutation occurs.
+- [x] Final-source visual suite passed 145/145; independent V2 integration passed 61 with five legacy-only phase skips; flag-OFF rollback passed 9/9; web units passed 713/713; typecheck and production build passed; lint had zero errors and 12 inherited warnings. Earlier aborted visual runs remain recorded separately from the clean final run.
+- [ ] Owner Design Acceptance and spoken screen-reader review remain open. Combined floating Save still needs native handler extraction; the existing Profile-owned populated editor is the safe handoff. The governed modal and additional production fields remain material Lab-versus-native design differences.

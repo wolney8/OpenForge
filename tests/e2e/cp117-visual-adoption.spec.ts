@@ -352,6 +352,7 @@ test("six ledgers: shared grid cell rhythm and pinned Actions", async ({ page })
     const cookie = page.getByRole("button", { name: "Understood" });
     if (await cookie.isVisible()) await cookie.click();
     await page.getByRole("button", { name: ledger.lab, exact: true }).first().click();
+    await setTheme(page, "light");
     const labTable = page.locator(`[data-pd-id="lab.ledger-pan.${"labKey" in ledger ? ledger.labKey : ledger.key}"] table`);
     const labCell = await labTable.locator("tbody td").first().evaluate(element => ({
       padding: getComputedStyle(element).padding,
@@ -361,6 +362,7 @@ test("six ledgers: shared grid cell rhythm and pinned Actions", async ({ page })
     const labHeader = await labTable.locator("thead th").first().evaluate(element => ({ padding: getComputedStyle(element).padding, fontSize: getComputedStyle(element).fontSize, lineHeight: getComputedStyle(element).lineHeight, background: getComputedStyle(element).backgroundColor }));
     await page.goto(ledger.path);
     await page.locator(".ledger-loading-overlay").first().waitFor({ state: "hidden", timeout: 45_000 });
+    await setTheme(page, "light");
     const table = page.locator(`[data-pd-id="${ledger.key}.table-scroll"] table`);
     const cell = await table.locator("tbody td").first().evaluate(element => ({
       padding: getComputedStyle(element).padding,
@@ -435,6 +437,7 @@ test("Sportsbook specialist editor uses the approved Lab step presentation", asy
   await page.locator('[data-pd-id="lab.nav.sportsbook"]').click();
   await page.locator('[data-pd-id="lab.add.modal"]').click();
   await expect(page.getByRole("dialog", { name: "Quick Add Sportsbook Bet" })).toBeVisible();
+  await setTheme(page, "light");
   await page.screenshot({ path: join(evidence, "lab-sportsbook-quick-add-1440-light.png") });
   await page.getByRole("button", { name: "Open full workbench" }).click();
   const labStep = page.locator('[aria-label="Bet workbench sections"] button').first();
@@ -443,6 +446,7 @@ test("Sportsbook specialist editor uses the approved Lab step presentation", asy
 
   await page.goto(`${profile}/sportsbook-bets`);
   await page.locator(".ledger-loading-overlay").first().waitFor({ state: "hidden", timeout: 45_000 });
+  await setTheme(page, "light");
   await page.locator('[data-pd-id="sportsbook.toolbar.add-row"]').click();
   const dialog = page.locator('[data-pd-id="sportsbook.editor.dialog"]');
   await expect(dialog).toBeVisible();
@@ -639,7 +643,7 @@ test("Sportsbook, Free Bet and Casino native editors share the Lab financial car
       expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width);
       await noPageOverflow(page);
       await page.screenshot({ path: join(evidence, `v2-${editor.id}-add-${width}-${theme}.png`), fullPage: true });
-      await dialog.locator(".workflow-editor-cancel-button").click();
+      await dialog.getByRole("button", { name: /^Close .* editor$/i }).click();
       await expect(dialog).toHaveCount(0);
     }
   }

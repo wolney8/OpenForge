@@ -274,6 +274,13 @@ html[data-ux-shell="v2"] .workflow-editor-header {
   backdrop-filter: none;
   padding-bottom: .75rem;
 }
+html[data-ux-shell="v2"] .financial-workbench-header {
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "title actions" "tabs tabs";
+  align-items: start;
+  gap: .75rem 1rem;
+}
+html[data-ux-shell="v2"] .financial-workbench-header .workflow-editor-header-actions { align-self: start; }
 html[data-ux-shell="v2"] .workflow-editor-footer {
   background: var(--surface);
   box-shadow: none;

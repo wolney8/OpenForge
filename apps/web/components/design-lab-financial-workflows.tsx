@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { DesignLabSelect } from "./design-lab-select";
 import { DesignFinancialEditorCard } from "./design-financial-editor-card";
+import { DesignFinancialWorkbenchClose, DesignFinancialWorkbenchTitle } from "./design-financial-workbench-layout";
 import { getCasinoOfferTypeDefinition, getCasinoOfferTypeOptions } from "@/lib/casino-offer-types";
 import { calculateSpinsRequired, calculateWagerTarget } from "@/lib/casino-calculations";
 import { formatFinancialValue } from "@/lib/financial-display";
@@ -14,7 +15,7 @@ const money=(value:string)=>Number(value)===0?"£0.00":formatFinancialValue(Numb
 function Field({label,value,onChange,type="text",id,disabled=false}:{label:string;value:string;onChange:(value:string)=>void;type?:"text"|"date";id?:string;disabled?:boolean}){return <label className={styles.field}>{label}<input data-pd-id={id} disabled={disabled} onChange={event=>onChange(event.target.value)} type={type} value={value}/></label>}
 function StageButtons({items,active,onChange}:{items:string[];active:string;onChange:(item:string)=>void}){return <nav aria-label="Workflow Sections" className={styles.stages}>{items.map(item=><button aria-current={active===item?"step":undefined} key={item} onClick={()=>onChange(item)} type="button">{item}</button>)}</nav>}
 function History({items}:{items:string[]}){return <details className={styles.history}><summary>Synthetic Audit History ({items.length})</summary>{items.length?<ol>{items.map((item,index)=><li key={`${index}-${item}`}>{item}</li>)}</ol>:<p>No confirmed actions yet.</p>}</details>}
-function Header({title,subtitle,onClose}:{title:string;subtitle:string;onClose:()=>void}){return <header className={styles.header}><div><span className={styles.labTag}>LAB · Simulation</span><h2>{title}</h2><p>{subtitle}</p></div><button aria-label="Close Financial Workbench" className={styles.close} onClick={onClose} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button></header>}
+function Header({title,subtitle,onClose}:{title:string;subtitle:string;onClose:()=>void}){return <header className={styles.header}><DesignFinancialWorkbenchTitle context={subtitle} eyebrow="LAB · Simulation" title={title}/><DesignFinancialWorkbenchClose label="Close Financial Workbench" onClick={onClose}/></header>}
 
 export function DesignLabFreeBetWorkflow({journey,onJourney,recordId,onClose,onOpenSource,onReport,onDirtyChange}:Common&{journey:LabFreeBetJourney;onJourney:(next:LabFreeBetJourney)=>void;recordId:string|null}){
   const [stage,setStage]=useState("Award Review");
