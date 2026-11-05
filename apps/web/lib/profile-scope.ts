@@ -25,3 +25,21 @@ export function scopedGlobalHref(href: string, profileId: string | null): string
   if (!profileId || !["/", "/tasks", "/reports"].includes(href)) return href;
   return `${href}?scope=${encodeURIComponent(profileId)}`;
 }
+
+/** Accept only the combined ledger's own view state as a return destination. */
+export function safeCombinedLedgerReturn(module: CombinedLedgerModule, requested: string | undefined): string | undefined {
+  if (!requested || requested.length > 600) return undefined;
+  const path = `/tracker/${module}`;
+  if (requested === path) return path;
+  if (!requested.startsWith(`${path}?`)) return undefined;
+  const query = new URLSearchParams(requested.slice(path.length + 1));
+  const allowed = new Set(["profile", "q", "sort", "desc", "page", "size"]);
+  if ([...query.keys()].some(key => !allowed.has(key) || query.getAll(key).length !== 1)) return undefined;
+  const profile = query.get("profile");
+  if (profile && !/^[A-Za-z0-9_-]{1,120}$/.test(profile)) return undefined;
+  const sort = query.get("sort");
+  if (sort && !/^[A-Za-z][A-Za-z0-9_]{0,50}$/.test(sort)) return undefined;
+  if (query.has("desc") && query.get("desc") !== "1") return undefined;
+  for (const key of ["page", "size"]) if (query.has(key) && !/^[0-9]{1,4}$/.test(query.get(key) ?? "")) return undefined;
+  return `${path}?${query.toString()}`;
+}

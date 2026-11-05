@@ -23,6 +23,7 @@ import {
 } from "@/components/bookmaker-identity";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
 import { DesignLedgerSearch } from "@/components/design-ledger-search";
+import { ledgerColumnWidths } from "@/lib/ledger-column-contracts";
 import { DesignLedgerScreen, DesignLedgerToolbar, DesignLedgerToolbarAction, DesignLedgerPrimaryAction, DesignPageHead, DesignLedgerNarrowToggle, DesignLedgerMobileRows, designPageHeadClasses } from "@/components/design-ledger-screen";
 import { DesignLabSelect } from "@/components/design-lab-select";
 import { LedgerViewContext } from "@/components/ledger-view-context";
@@ -339,11 +340,13 @@ export function EachWayExtraPlaceWorkflowShell({
   profileId,
   initialIssueFilter,
   initialRecordId,
+  initialCreate = false,
   visualV2 = false,
 }: {
   profileId: string;
   initialIssueFilter?: string;
   initialRecordId?: string;
+  initialCreate?: boolean;
   visualV2?: boolean;
 }) {
   const baseUrl = `${apiBaseUrl}/profiles/${profileId}/each-way-extra-places`;
@@ -646,6 +649,13 @@ export function EachWayExtraPlaceWorkflowShell({
     next.place_exchange = preferredExchange;
     resetEditor(next, null);
   };
+  const openInitialCreate = useEffectEvent(() => openNew());
+  const initialCreateOpened = useRef(false);
+  useEffect(() => {
+    if (!initialCreate || initialCreateOpened.current || rowsRead?.state !== "ready") return;
+    initialCreateOpened.current = true;
+    openInitialCreate();
+  }, [initialCreate, rowsRead]);
   const openRow = (row: Row, cell?: LedgerCellSession) => {
     const next = newForm();
     (Object.keys(next) as Array<keyof Form>).forEach((key) => {
@@ -1826,12 +1836,7 @@ function ExtraPlaceTable({
     "winLayOdds", "winLayStake", "winLiability", "placeLayOdds", "placeLayStake",
     "placeLiability", "rating", "impliedOdds", "qualLoss", "epProfit", "status", "actions",
   ] as const;
-  const [columnWidths, setColumnWidths] = useState<Record<string, number>>({
-    date: 152, runner: 230, bookmaker: 150, stake: 155, backOdds: 118, terms: 108,
-    placeOdds: 118, winLayOdds: 142, winLayStake: 142, winLiability: 142,
-    placeLayOdds: 142, placeLayStake: 142, placeLiability: 142, rating: 108,
-    impliedOdds: 120, qualLoss: 132, epProfit: 144, status: 180, actions: 116,
-  });
+  const [columnWidths, setColumnWidths] = useState<Record<string, number>>(ledgerColumnWidths["each-way-extra-places"]);
   const visible = (key: (typeof columns)[number]) =>
     !["backOdds", "terms", "placeOdds", "winLayOdds", "winLayStake", "winLiability", "placeLayOdds", "placeLayStake", "placeLiability", "rating", "impliedOdds"].includes(key) ||
     visibleColumns[

@@ -6504,3 +6504,12 @@ Route acceptance: Today presentation NEEDS VERIFICATION, interaction COMPLETE, i
 | Tracked Tasks banner | PARTIAL — Lab tray layout shared; owner visual judgement open | COMPLETE in synthetic paths — expand, compact, hide/show, refresh, untrack and source-history view | COMPLETE for existing authenticated annotation authority; active/history counts are distinct and scope changes do not write annotations | Direct financial resolution remains in the native source workflow. Owner new-sign-in persistence and spoken screen-reader review are unverified. |
 
 The normal API 8010, annotation migration, financial schemas, source records and authentication configuration are unchanged by CP-137. CP-136 editor interior adoption remains queued. Final-source browser and rollback totals are recorded in the current status entry after the consolidated run.
+
+## CP-138 combined-ledger capability correction — 2026-11-05 / #118
+
+| Route group | Design | Interaction | Integration | Remaining exception |
+| --- | --- | --- | --- | --- |
+| All six combined ledgers | PARTIAL — native column contracts and widths, Lab table/mobile shell and existing financial/identity cells shared | PARTIAL — selection, sort, pagination, column chooser and native owner Add/Edit handoff; native inline floating edits and several row shortcuts still require the Profile-owned view | PARTIAL — source-owned financial selectors, composite Profile/record identity, bounded authorised reads and explicit partial failures; all mutations remain native Profile-owned commands | Combined advanced filters, selected range, KPI strips, some specialist status/review visuals and row shortcuts do not yet match the native operational pages. Missing source measures remain unavailable; no zero or substitute calculation is introduced. |
+| CP-137 shell, Position, Today and Tracked Tasks | CP-137 status retained | CP-137 status retained | CP-136 annotation authority retained | Owner new-session annotation persistence and Design Acceptance remain unverified. |
+
+The CP-138 synthetic comparison uses identical records in native and combined views for all required column labels, representative financial cells, explicit owner Add, native record handoff and return-state restoration. Desktop, split-view, mobile and actual Chromium 200% zoom captures are in the existing private CP-117 evidence directory. Final-source suite totals are in the current status entry. No normal API/schema/authentication/financial-source change is included.

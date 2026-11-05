@@ -4,6 +4,8 @@ import { MultiLayActualEditor, type MultiLayExecution, type MultiLayActual } fro
 import { AccountReviewButton } from "@/components/account-review-panel";
 import { ModalBoundary } from "@/components/modal-boundary";
 import { formatApiErrorBody } from "@/lib/api-error";
+import { ledgerColumnContracts, ledgerColumnWidths } from "@/lib/ledger-column-contracts";
+import { compactLedgerLabel, currentFinalValueLabel, displayedCurrentFinalValue, formatSportsbookSettlesDate } from "@/lib/ledger-row-presentation";
 import { isFreeBetLinkedToSportsbook } from "@/lib/free-bet-lineage";
 import { CoreLayPlanner, CoreLayPlannerUpgrade } from "@/components/core-lay-planner";
 import { readLayPlan, type LayPlan } from "@/lib/lay-plan";
@@ -11,7 +13,7 @@ import { getMoneyInputErrors } from "@/lib/decimal-input";
 import { hasNewerFormEdits, reconcileSavedForm } from "@/lib/latest-edit";
 import { isOnlyFieldChange } from "@/lib/field-change";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import type { MouseEvent as ReactMouseEvent, ReactNode, SetStateAction } from "react";
 import { apiBaseUrl } from "@/lib/api";
 import {
@@ -749,19 +751,7 @@ function getDisplayedValueLabel(
   return "Current value";
 }
 
-const sportsbookTableColumns: TableColumn[] = [
-  { key: "date_settled", label: "Settles" },
-  { key: "bookmaker", label: "Bookmaker" },
-  { key: "event_name", label: "Event" },
-  { key: "offer_name", label: "Campaign Tag" },
-  { key: "offer_details", label: "Offer Details" },
-  { key: "match_strategy", label: "Strategy" },
-  { key: "lay_status", label: "Lay Bet" },
-  { key: "back_bet_status", label: "Back Bet" },
-  { key: "displayed_value", label: "Value" },
-  { key: "status", label: "Status" },
-  { key: "actions", label: "Actions" },
-];
+const sportsbookTableColumns: TableColumn[] = ledgerColumnContracts["sportsbook-bets"];
 
 const defaultVisibleSportsbookColumns = new Set<SportsbookColumnKey>([
   "date_settled",
@@ -800,19 +790,7 @@ const emptyTableFilters: SportsbookTableFilterState = {
   max_value: "",
 };
 
-const defaultSportsbookColumnWidths: Record<SportsbookColumnKey, number> = {
-  date_settled: 190,
-  bookmaker: 130,
-  event_name: 220,
-  offer_name: 170,
-  offer_details: 220,
-  match_strategy: 150,
-  lay_status: 120,
-  back_bet_status: 150,
-  displayed_value: 130,
-  status: 135,
-  actions: 190,
-};
+const defaultSportsbookColumnWidths: Record<SportsbookColumnKey, number> = ledgerColumnWidths["sportsbook-bets"] as Record<SportsbookColumnKey, number>;
 
 const sportsbookTableModes: Array<{ value: SportsbookTableMode; label: string }> = [
   { value: "recent", label: "Recent" },
@@ -826,7 +804,7 @@ const sportsbookTableModes: Array<{ value: SportsbookTableMode; label: string }>
 function getDisplayedValueForRow(
   row: Pick<SportsbookRecord, "projected_current_pnl" | "final_net_pnl" | "reporting_value">
 ): string {
-  return getDisplayedValue(null, row);
+  return displayedCurrentFinalValue(row);
 }
 
 function getOfferDetailsTokens(row: Pick<SportsbookRecord, "offer_type" | "fixture_type" | "bet_type">): string[] {
@@ -861,7 +839,7 @@ function formatCurrencyValue(value: number): string {
 function getDisplayedValueLabelForRow(
   row: Pick<SportsbookRecord, "projected_current_pnl" | "final_net_pnl" | "reporting_value">
 ): string {
-  return getDisplayedValueLabel(null, row);
+  return currentFinalValueLabel(row);
 }
 
 function getBetSetupComplete(formState: SportsbookFormState): boolean {
@@ -1006,38 +984,6 @@ function formatEditorSettlesDate(value: string): string {
   return `${weekday} ${day}${ordinalSuffix(day)} ${month}, ${time}`;
 }
 
-function formatTableSettlesDate(value: string, range: { start: Date; end: Date }): string {
-  if (!value.trim()) {
-    return "Unscheduled";
-  }
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return "Unscheduled";
-  }
-
-  const dayName = new Intl.DateTimeFormat("en-GB", { weekday: "long" }).format(date);
-  const day = date.getDate();
-  const time = new Intl.DateTimeFormat("en-GB", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  }).format(date);
-
-  const rangeDurationDays = Math.ceil((range.end.getTime() - range.start.getTime()) / 86_400_000);
-  const includeFullDate =
-    rangeDurationDays > 31 ||
-    date.getFullYear() !== range.start.getFullYear() ||
-    date.getFullYear() !== range.end.getFullYear();
-
-  if (includeFullDate) {
-    const month = new Intl.DateTimeFormat("en-GB", { month: "long" }).format(date);
-    return `${dayName} ${day}${ordinalSuffix(day)} ${month} ${date.getFullYear()} ${time}`;
-  }
-
-  return `${dayName} ${day}${ordinalSuffix(day)} ${time}`;
-}
-
 function getStrategyToneClass(strategy: string): string {
   switch (strategy.trim()) {
     case "Underlay":
@@ -1062,18 +1008,7 @@ function getStrategyToneClass(strategy: string): string {
 }
 
 function getCompactSportsbookLabel(value: string): string {
-  switch (value.trim()) {
-    case "Double Delight / Hat-trick Heaven":
-      return "DDHH";
-    case "Multilay":
-      return "Multi Lay";
-    case "Multilay-Underlay":
-      return "Multi Lay Underlay";
-    case "Back Bet Placed":
-      return "Back Placed";
-    default:
-      return value.trim();
-  }
+  return compactLedgerLabel(value);
 }
 
 function truncateHeaderTitle(value: string, maxLength: number): string {
@@ -3027,7 +2962,7 @@ function makeOfferGroupId(): string {
   return `OFG-${new Date().toISOString().slice(0, 10).replaceAll("-", "")}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
 }
 
-export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialIssueFilter, initialRecordId, feeReviewContext, visualV2 = false }: { profileId: string; initialQuery?: string; initialIssueFilter?: string; initialRecordId?: string; feeReviewContext?: FeeReviewResolutionContext; visualV2?: boolean }) {
+export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialIssueFilter, initialRecordId, initialCreate = false, feeReviewContext, visualV2 = false }: { profileId: string; initialQuery?: string; initialIssueFilter?: string; initialRecordId?: string; initialCreate?: boolean; feeReviewContext?: FeeReviewResolutionContext; visualV2?: boolean }) {
   const { catalogue: bookmakerCatalogue, providerIdsByName } =
     useBookmakerCatalogue(profileId);
   const [guidedAccessMode] = useProfileGuidedAccessMode(profileId);
@@ -5281,7 +5216,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   const filteredRows = useMemo(() => {
     const tableRows: TrackerRow[] = sportsbookFilteredReviewRows.map((row) => ({
       sportsbook_bet_id: row.sportsbook_bet_id,
-      date_settled: formatTableSettlesDate(row.date_settled, placedRange),
+      date_settled: formatSportsbookSettlesDate(row.date_settled, placedRange),
       bookmaker: row.bookmaker,
       offer_text: row.offer_text,
       offer_name: row.offer_name,
@@ -5577,6 +5512,13 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     setStatusMessage("");
     revealEditor({ expandLedger: true });
   }
+  const openInitialCreate = useEffectEvent(() => { void startNewRow(); });
+  const initialCreateOpened = useRef(false);
+  useEffect(() => {
+    if (!initialCreate || isInitialLoading || initialCreateOpened.current) return;
+    initialCreateOpened.current = true;
+    openInitialCreate();
+  }, [initialCreate, isInitialLoading]);
 
   async function closeEditor() {
     if (isPersistingRef.current) return;

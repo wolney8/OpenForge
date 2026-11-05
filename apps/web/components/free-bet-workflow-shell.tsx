@@ -2,6 +2,8 @@
 
 import { ModalBoundary } from "@/components/modal-boundary";
 import { formatApiErrorBody } from "@/lib/api-error";
+import { ledgerColumnContracts, ledgerColumnWidths } from "@/lib/ledger-column-contracts";
+import { compactLedgerLabel, currentFinalValueLabel, displayedCurrentFinalValue, freeBetBackBetStatus } from "@/lib/ledger-row-presentation";
 import { CoreLayPlanner, CoreLayPlannerUpgrade } from "@/components/core-lay-planner";
 import { hasNewerFormEdits, reconcileSavedForm } from "@/lib/latest-edit";
 import { isOnlyFieldChange } from "@/lib/field-change";
@@ -9,7 +11,7 @@ import { isOnlyFieldChange } from "@/lib/field-change";
 import { getFreeBetInputErrors } from "@/lib/free-bet-input";
 
 import type { MouseEvent as ReactMouseEvent, ReactNode, SetStateAction } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState, useTransition } from "react";
 import { apiBaseUrl } from "@/lib/api";
 import {
   fetchJsonAndCache,
@@ -531,7 +533,7 @@ function getFreeBetGuidedEntry({
 function getDisplayedValueForRow(
   row: Pick<FreeBetRecord, "projected_current_pnl" | "final_net_pnl" | "reporting_value">
 ): string {
-  return getDisplayedValue(null, row);
+  return displayedCurrentFinalValue(row);
 }
 
 function getComparableDate(value: string): number | null {
@@ -673,20 +675,7 @@ type FreeBetColumnKey =
   | "status"
   | "actions";
 
-const freeBetTableColumns: TableColumn[] = [
-  { key: "date_settled", label: "Settles" },
-  { key: "expiry_datetime", label: "Expiry" },
-  { key: "bookmaker", label: "Bookmaker" },
-  { key: "offer_name", label: "Campaign Tag" },
-  { key: "event_name", label: "Event" },
-  { key: "offer_details", label: "Offer details" },
-  { key: "match_strategy", label: "Strategy" },
-  { key: "lay_status", label: "Lay Bet" },
-  { key: "back_bet_status", label: "Back Bet" },
-  { key: "displayed_value", label: "Value" },
-  { key: "status", label: "Status" },
-  { key: "actions", label: "Actions" },
-];
+const freeBetTableColumns: TableColumn[] = ledgerColumnContracts["free-bets"];
 
 const defaultVisibleFreeBetColumns = new Set<FreeBetColumnKey>([
   "date_settled",
@@ -713,20 +702,7 @@ const hideableFreeBetColumnKeys = new Set<FreeBetColumnKey>([
   "match_strategy",
 ]);
 
-const defaultFreeBetColumnWidths: Record<FreeBetColumnKey, number> = {
-  date_settled: 190,
-  expiry_datetime: 180,
-  bookmaker: 130,
-  offer_name: 170,
-  event_name: 220,
-  offer_details: 230,
-  match_strategy: 150,
-  lay_status: 145,
-  back_bet_status: 155,
-  displayed_value: 130,
-  status: 205,
-  actions: 170,
-};
+const defaultFreeBetColumnWidths: Record<FreeBetColumnKey, number> = ledgerColumnWidths["free-bets"] as Record<FreeBetColumnKey, number>;
 
 const freeBetTableModes: Array<{ value: FreeBetTableMode; label: string }> = [
   { value: "recent", label: "Recent" },
@@ -771,18 +747,7 @@ function getFreeBetOfferDetailsTokens(
 }
 
 function getCompactLedgerLabel(value: string): string {
-  switch (value.trim()) {
-    case "Double Delight / Hat-trick Heaven":
-      return "DDHH";
-    case "Multilay":
-      return "Multi Lay";
-    case "Multilay-Underlay":
-      return "Multi Lay Underlay";
-    case "Back Bet Placed":
-      return "Back Placed";
-    default:
-      return value.trim();
-  }
+  return compactLedgerLabel(value);
 }
 
 function getFreeBetStrategyToneClass(strategy: string): string {
@@ -811,15 +776,7 @@ function getFreeBetStrategyToneClass(strategy: string): string {
 function getFreeBetBackBetStatusBadge(
   row: Pick<FreeBetRecord, "status" | "result">
 ): { label: string; tone: "muted" | "positive" | "warning" } {
-  if (row.status === "Prospecting" || row.status === "Not Yet Awarded") {
-    return { label: "Not Placed", tone: "muted" };
-  }
-
-  if (row.status === "Available") {
-    return { label: "Awarded", tone: "warning" };
-  }
-
-  return { label: "Back Placed", tone: "positive" };
+  return freeBetBackBetStatus(row);
 }
 
 function isFreeBetExpiryRelevantRow(
@@ -1277,6 +1234,7 @@ export function FreeBetWorkflowShell({
   initialQuery = "",
   initialIssueFilter,
   initialRecordId,
+  initialCreate = false,
   feeReviewContext,
   visualV2 = false,
 }: {
@@ -1285,6 +1243,7 @@ export function FreeBetWorkflowShell({
   initialQuery?: string;
   initialIssueFilter?: string;
   initialRecordId?: string;
+  initialCreate?: boolean;
   feeReviewContext?: FeeReviewResolutionContext;
   visualV2?: boolean;
 }) {
@@ -2678,7 +2637,7 @@ export function FreeBetWorkflowShell({
       lay_status: row.lay_status,
       back_bet_status: getFreeBetBackBetStatusBadge(row).label,
       displayed_value: getDisplayedValueForRow(row),
-      displayed_value_label: getDisplayedValueLabel(null, row),
+      displayed_value_label: currentFinalValueLabel(row),
       status: row.status,
       actions: "Actions",
       offer_type: row.offer_type,
@@ -2812,6 +2771,13 @@ export function FreeBetWorkflowShell({
     setStatusMessage("");
     revealEditor({ expandLedger: true });
   }
+  const openInitialCreate = useEffectEvent(() => { void startNewRow(); });
+  const initialCreateOpened = useRef(false);
+  useEffect(() => {
+    if (!initialCreate || isInitialLoading || initialCreateOpened.current) return;
+    initialCreateOpened.current = true;
+    openInitialCreate();
+  }, [initialCreate, isInitialLoading]);
 
   async function closeEditor() {
     if (isPersistingRef.current) {

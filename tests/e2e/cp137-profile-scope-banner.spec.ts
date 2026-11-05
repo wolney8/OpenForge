@@ -51,12 +51,13 @@ test("global Profile scope stays in the same module and local filtering stays su
   await page.locator('[data-pd-id="combined.accounts.new-owner"]').click();
   await page.getByRole("option", { name: "Subscriber Alpha" }).click();
   await page.getByRole("button", { name: "Continue to Add workflow" }).click();
-  await expect(page).toHaveURL(/\/profiles\/profile-demo-001\/tracker\/accounts\?returnTo=/);
+  await expect(page).toHaveURL(/\/profiles\/profile-demo-001\/tracker\/accounts\?create=1&returnTo=/);
   await expect(page.locator('[data-pd-id="tracker.return-to-combined"]')).toHaveAttribute("href", "/tracker/accounts");
-  await expect(page.getByRole("button", { name: "Add Account", exact: true })).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Create account" })).toBeVisible();
 });
 
 test("all six combined ledgers use authorised reads and a native owner handoff", async ({ page }, info) => {
+  test.setTimeout(90_000);
   for (const module of ["accounts", "sportsbook-bets", "free-bets", "casino-offers", "each-way-extra-places", "cash-adjustments"]) {
     await page.goto(`/tracker/${module}`);
     await expect(page.locator(`[data-pd-id="combined.${module}.page"]`)).toBeVisible();

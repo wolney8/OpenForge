@@ -1407,6 +1407,16 @@ CP-136's `PD-PR-117A-46` specialist editor interior remains in progress and is o
 
 CP-137 verification: synthetic V2 36 passed with five rollback-phase skips, paired visual 140/140, flag-OFF 9/9, unit 706/706, typecheck and lint pass. The combined ledger is a read/navigation adapter: not every native calculated column is reproduced. `PD-PR-117A-54` awaits owner visual Design Acceptance, including the justified absence of the Lab's synthetic Today range control. Owner new-session tracking persistence remains unverified; the existing annotation authority is unchanged.
 
+## CP-138 combined-ledger parity correction — 2026-11-05
+
+| ID | Requested outcome and affected surface | Signed-off equivalent | Status |
+| --- | --- | --- | --- |
+| PD-PR-117A-56 | All Profiles retains each native ledger's required columns, financial meanings, formatting, review indicators and spreadsheet controls | The six Profile-owned V2 ledgers and their shared Lab grid primitives | IN PROGRESS — native columns, widths, source values, mobile detail and keyboard selection shared; inline floating edits, advanced filters and row shortcuts still differ |
+| PD-PR-117A-57 | Combined Add, populated Edit, Save, Cancel and Back retain owner identity and combined filter/search/sort/page context | Existing native Add/Edit/correction commands and guarded navigation | COMPLETE — all six native Add dialogs, Account Save/reload/return, Cancel and retained combined query context pass synthetic browser journeys |
+| PD-PR-117A-58 | Matched native/combined synthetic capability, financial-display, isolation, responsive, zoom and rollback evidence | CP-137 independent runner and V2/legacy acceptance paths | COMPLETE for tested capabilities — six column/Add comparisons, source-value parity, authorised handoff/isolation/partial-read, 900/390px themes, 200% zoom and flag-OFF pass; unresolved capability gaps remain under PD-PR-117A-56 |
+
+This is one correction batch under open [#118](https://github.com/wolney8/OpenForge/issues/118). CP-137 shell and tracking remain accepted; CP-136 whole-editor design work remains queued. No new financial calculation, API, schema or normal-owner mutation authority is included.
+
 `PD-FIX-511` — Today tracked source-history visibility after an owner-reported refresh disappearance — is COMPLETE under [#118](https://github.com/wolney8/OpenForge/issues/118). The owner subsequently found one saved item under Tracked Tasks; the missing in-page banner is a separate presentation difference. The changed-source history correction keeps the saved-item count visible and opens history when no current task matches, using the existing Today collection and Lab history pattern. Synthetic changed-source persistence, complete 129-path visual, 25-path V2 integration and 9-path rollback checks pass. Owner new-session persistence and whole-page Design Acceptance remain open.
 
 ## CP-130 login recovery and Lab presentation — 2026-11-04

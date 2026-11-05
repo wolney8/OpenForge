@@ -1,8 +1,10 @@
 "use client";
 
 import type { MouseEvent as ReactMouseEvent } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState, useTransition } from "react";
 import { apiBaseUrl } from "@/lib/api";
+import { ledgerColumnContracts, ledgerColumnWidths } from "@/lib/ledger-column-contracts";
+import { formatUkLedgerDateTime } from "@/lib/ledger-row-presentation";
 import { isOnlyFieldChange } from "@/lib/field-change";
 import { formatApiErrorBody } from "@/lib/api-error";
 import {
@@ -177,21 +179,7 @@ type CashAdjustmentColumnKey =
   | "calculation_state"
   | "actions";
 
-const cashAdjustmentTableColumns: TableColumn[] = [
-  { key: "cash_adjustment_id", label: "Adjustment ID" },
-  { key: "adjustment_date", label: "Date" },
-  { key: "direction", label: "Direction" },
-  { key: "adjustment_type", label: "Type" },
-  { key: "amount", label: "Amount", align: "end" },
-  { key: "signed_amount", label: "Signed amount", align: "end" },
-  { key: "affects_investment", label: "Investment" },
-  { key: "affects_cash_snapshot", label: "Cash snapshot" },
-  { key: "linked_account", label: "Linked account" },
-  { key: "description", label: "Description" },
-  { key: "week_label", label: "Week label" },
-  { key: "calculation_state", label: "Calc state" },
-  { key: "actions", label: "Actions" },
-];
+const cashAdjustmentTableColumns: TableColumn[] = ledgerColumnContracts["cash-adjustments"];
 
 const defaultVisibleCashAdjustmentColumns = new Set<CashAdjustmentColumnKey>([
   "cash_adjustment_id",
@@ -222,21 +210,7 @@ const hideableCashAdjustmentColumnKeys = new Set<CashAdjustmentColumnKey>([
   "calculation_state",
 ]);
 
-const defaultCashAdjustmentColumnWidths: Record<CashAdjustmentColumnKey, number> = {
-  cash_adjustment_id: 160,
-  adjustment_date: 180,
-  direction: 110,
-  adjustment_type: 140,
-  amount: 120,
-  signed_amount: 135,
-  affects_investment: 120,
-  affects_cash_snapshot: 135,
-  linked_account: 150,
-  description: 220,
-  week_label: 140,
-  calculation_state: 130,
-  actions: 110,
-};
+const defaultCashAdjustmentColumnWidths: Record<CashAdjustmentColumnKey, number> = ledgerColumnWidths["cash-adjustments"] as Record<CashAdjustmentColumnKey, number>;
 
 const positiveDirectionTypes = new Set(["Deposit", "TopUp"]);
 const negativeDirectionTypes = new Set(["Withdrawal", "Deduction", "Subscription"]);
@@ -325,28 +299,6 @@ function toDateTimeInputValue(value: string): string {
 
   const [datePart, timePart = "00:00:00"] = normalized.replace("T", " ").split(" ");
   return `${datePart}T${timePart.slice(0, 5)}`;
-}
-
-function formatUkDateTime(value: string): string {
-  const normalized = value.trim();
-  if (!normalized) {
-    return "";
-  }
-
-  const candidate = normalized.includes("T") ? normalized : normalized.replace(" ", "T");
-  const parsed = new Date(candidate);
-  if (Number.isNaN(parsed.getTime())) {
-    return normalized;
-  }
-
-  return new Intl.DateTimeFormat("en-GB", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).format(parsed);
 }
 
 function formatMoneyValue(value: string | null | undefined): string {
@@ -610,7 +562,7 @@ function sortCashAdjustmentsByDate(rows: CashAdjustmentRecord[]): CashAdjustment
   });
 }
 
-export function CashAdjustmentWorkflowShell({ profileId, initialRecordId, visualV2 = false }: { profileId: string; initialRecordId?: string; visualV2?: boolean }) {
+export function CashAdjustmentWorkflowShell({ profileId, initialRecordId, initialCreate = false, visualV2 = false }: { profileId: string; initialRecordId?: string; initialCreate?: boolean; visualV2?: boolean }) {
   const [guidedAccessMode] = useProfileGuidedAccessMode(profileId);
   const guidedAccessEnabled = isGuidedAccessEnabled(guidedAccessMode);
   const [rows, setRows] = useState<CashAdjustmentRecord[]>([]);
@@ -1104,7 +1056,7 @@ export function CashAdjustmentWorkflowShell({ profileId, initialRecordId, visual
   const filteredRows = useMemo(() => {
     const tableRows: TrackerRow[] = filteredSourceRows.map((row) => ({
       cash_adjustment_id: row.cash_adjustment_id,
-      adjustment_date: formatUkDateTime(row.adjustment_date),
+      adjustment_date: formatUkLedgerDateTime(row.adjustment_date),
       direction: row.direction,
       adjustment_type: row.adjustment_type,
       amount: formatMoneyValue(row.amount),
@@ -1505,6 +1457,13 @@ export function CashAdjustmentWorkflowShell({ profileId, initialRecordId, visual
     revealEditor({ expandLedger: true });
     setStatusMessage("");
   }
+  const openInitialCreate = useEffectEvent(() => { void startNewRow(); });
+  const initialCreateOpened = useRef(false);
+  useEffect(() => {
+    if (!initialCreate || isInitialLoading || initialCreateOpened.current) return;
+    initialCreateOpened.current = true;
+    openInitialCreate();
+  }, [initialCreate, isInitialLoading]);
 
   async function closeEditor() {
     if (isPersistingRef.current) {

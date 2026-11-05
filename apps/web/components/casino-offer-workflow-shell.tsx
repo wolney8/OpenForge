@@ -3,8 +3,10 @@
 import { ModalBoundary } from "@/components/modal-boundary";
 
 import type { MouseEvent as ReactMouseEvent, ReactNode } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState, useTransition } from "react";
 import { apiBaseUrl } from "@/lib/api";
+import { ledgerColumnContracts, ledgerColumnWidths } from "@/lib/ledger-column-contracts";
+import { casinoValueLabel, displayedCasinoValue } from "@/lib/ledger-row-presentation";
 import { isOnlyFieldChange } from "@/lib/field-change";
 import {
   fetchJsonAndCache,
@@ -360,18 +362,7 @@ type CasinoColumnKey =
   | "displayed_value"
   | "actions";
 
-const casinoTableColumns: TableColumn[] = [
-  { key: "date_settling", label: "Settles" },
-  { key: "expiry_datetime", label: "Expiry" },
-  { key: "bookmaker", label: "Bookmaker" },
-  { key: "offer_name", label: "Offer Name" },
-  { key: "game", label: "Game" },
-  { key: "offer_type", label: "Offer type" },
-  { key: "status", label: "Status" },
-  { key: "result", label: "Result" },
-  { key: "displayed_value", label: "Value", align: "end" },
-  { key: "actions", label: "Actions" },
-];
+const casinoTableColumns: TableColumn[] = ledgerColumnContracts["casino-offers"];
 
 const defaultVisibleCasinoColumns = new Set<CasinoColumnKey>([
   "date_settling",
@@ -395,18 +386,7 @@ const hideableCasinoColumnKeys = new Set<CasinoColumnKey>([
   "offer_type",
 ]);
 
-const defaultCasinoColumnWidths: Record<CasinoColumnKey, number> = {
-  date_settling: 190,
-  expiry_datetime: 170,
-  bookmaker: 130,
-  offer_name: 180,
-  game: 180,
-  offer_type: 150,
-  status: 135,
-  result: 135,
-  displayed_value: 130,
-  actions: 110,
-};
+const defaultCasinoColumnWidths: Record<CasinoColumnKey, number> = ledgerColumnWidths["casino-offers"] as Record<CasinoColumnKey, number>;
 
 const casinoOfferTableModes: Array<{ value: CasinoOfferTableMode; label: string }> = [
   { value: "recent", label: "Recent" },
@@ -882,26 +862,12 @@ function applyCasinoOutcomeModalStatusDefaults(
   };
 }
 
-function getDisplayedCasinoValue(row: CasinoOfferRecord | null): string {
-  return row?.resolved_net_pnl ?? row?.final_net_pnl ?? row?.calc_net_pnl ?? "—";
-}
-
-function getDisplayedCasinoValueLabel(row: CasinoOfferRecord | null): string {
-  if (row?.final_net_pnl) {
-    return "Net result";
-  }
-  if (row?.calc_net_pnl) {
-    return "Reference net value";
-  }
-  return "Resolved value";
-}
-
 function getDisplayedCasinoValueForRow(row: CasinoOfferRecord): string {
-  return getDisplayedCasinoValue(row);
+  return displayedCasinoValue(row);
 }
 
 function getDisplayedCasinoValueLabelForRow(row: CasinoOfferRecord): string {
-  return getDisplayedCasinoValueLabel(row);
+  return casinoValueLabel(row);
 }
 
 function getDisplayedCasinoValueForForm(formState: CasinoOfferFormState): string {
@@ -1751,7 +1717,7 @@ function truncateHeaderTitle(value: string, maxLength: number): string {
   return `${value.slice(0, Math.max(0, maxLength - 4)).trimEnd()} ...`;
 }
 
-export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initialIssueFilter, initialRecordId, feeReviewContext, visualV2 = false }: { profileId: string; initialQuery?: string; initialIssueFilter?: string; initialRecordId?: string; feeReviewContext?: FeeReviewResolutionContext; visualV2?: boolean }) {
+export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initialIssueFilter, initialRecordId, initialCreate = false, feeReviewContext, visualV2 = false }: { profileId: string; initialQuery?: string; initialIssueFilter?: string; initialRecordId?: string; initialCreate?: boolean; feeReviewContext?: FeeReviewResolutionContext; visualV2?: boolean }) {
   const { catalogue: bookmakerCatalogue, providerIdsByName } =
     useBookmakerCatalogue(profileId);
   const [guidedAccessMode] = useProfileGuidedAccessMode(profileId);
@@ -3187,6 +3153,13 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
     setStatusMessage("");
     revealEditor({ expandLedger: true });
   }
+  const openInitialCreate = useEffectEvent(() => { void startNewRow(); });
+  const initialCreateOpened = useRef(false);
+  useEffect(() => {
+    if (!initialCreate || isInitialLoading || initialCreateOpened.current) return;
+    initialCreateOpened.current = true;
+    openInitialCreate();
+  }, [initialCreate, isInitialLoading]);
 
   async function startQuickAction(action: LedgerQuickAction) {
     await startNewRow();

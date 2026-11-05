@@ -5,6 +5,7 @@ import { ModalBoundary } from "@/components/modal-boundary";
 import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { apiBaseUrl } from "@/lib/api";
+import { ledgerColumnContracts, ledgerColumnWidths } from "@/lib/ledger-column-contracts";
 import { AccountFinancialSummary, AccountReviewButton } from "@/components/account-review-panel";
 import { AccountProviderIdentity } from "@/components/account-provider-identity";
 import { ProfileOpportunityQueue } from "@/components/profile-opportunity-queue";
@@ -289,20 +290,7 @@ type AccountColumnKey =
 type AccountSortKey = Exclude<AccountColumnKey, "actions">;
 type AccountSort = { key: AccountSortKey; direction: "asc" | "desc" };
 
-const tableColumns: Array<TableColumn & { key: AccountColumnKey }> = [
-  { key: "account_id", label: "Account ID" },
-  { key: "account", label: "Account" },
-  { key: "type", label: "Type" },
-  { key: "status", label: "Status" },
-  { key: "counts_in_cash_total", label: "Counts in cash" },
-  { key: "current_balance", label: "Current balance", align: "end" },
-  { key: "pending_withdrawal_amount", label: "Pending withdrawal", align: "end" },
-  { key: "last_balance_update", label: "Last balance update" },
-  { key: "channel", label: "Channel" },
-  { key: "group_name", label: "Group" },
-  { key: "platform", label: "Platform" },
-  { key: "actions", label: "Actions" },
-];
+const tableColumns: Array<TableColumn & { key: AccountColumnKey }> = ledgerColumnContracts.accounts as Array<TableColumn & { key: AccountColumnKey }>;
 
 const lockedAccountColumns = new Set<AccountColumnKey>([
   "account",
@@ -313,20 +301,7 @@ const lockedAccountColumns = new Set<AccountColumnKey>([
 
 const defaultVisibleAccountColumns = tableColumns.map((column) => column.key);
 
-const defaultAccountColumnWidths: Record<AccountColumnKey, number> = {
-  account_id: 120,
-  account: 170,
-  type: 175,
-  status: 220,
-  counts_in_cash_total: 145,
-  current_balance: 150,
-  pending_withdrawal_amount: 175,
-  last_balance_update: 180,
-  channel: 155,
-  group_name: 165,
-  platform: 160,
-  actions: 110,
-};
+const defaultAccountColumnWidths: Record<AccountColumnKey, number> = ledgerColumnWidths["accounts"] as Record<AccountColumnKey, number>;
 
 const emptyAccountTableFilters: AccountTableFilters = {
   type: "",
@@ -499,7 +474,7 @@ function sortAccountRows(rows: TrackerRow[], sort: AccountSort | null) {
   });
 }
 
-export function AccountsWorkflowShell({ profileId, initialRecordId, initialIssueFilter, visualV2 = false }: { profileId: string; initialRecordId?: string; initialIssueFilter?: string; visualV2?: boolean }) {
+export function AccountsWorkflowShell({ profileId, initialRecordId, initialCreate = false, initialIssueFilter, visualV2 = false }: { profileId: string; initialRecordId?: string; initialCreate?: boolean; initialIssueFilter?: string; visualV2?: boolean }) {
   const initialRecordOpenedRef = useRef("");
   const [rows, setRows] = useState<AccountRecord[]>([]);
   const [bookmakerCatalogue, setBookmakerCatalogue] = useState<BookmakerCatalogueRecord[]>([]);
@@ -1046,6 +1021,13 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialIssue
     revealEditor();
     setStatusMessage("");
   }
+  const openInitialCreate = useEffectEvent(() => { void startNewRow(); });
+  const initialCreateOpened = useRef(false);
+  useEffect(() => {
+    if (!initialCreate || isInitialLoading || initialCreateOpened.current) return;
+    initialCreateOpened.current = true;
+    openInitialCreate();
+  }, [initialCreate, isInitialLoading]);
 
   function handleResetForm() {
     if (selectedRow) {

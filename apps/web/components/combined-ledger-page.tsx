@@ -5,54 +5,27 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DesignLabSelect } from "@/components/design-lab-select";
 import { DesignLedgerSearch } from "@/components/design-ledger-search";
-import { DesignLedgerMobileRows, DesignLedgerNarrowToggle, DesignLedgerScreen, DesignLedgerToolbar, DesignPageHead, type DesignLedgerDetailRow } from "@/components/design-ledger-screen";
+import { DesignLedgerMobileRows, DesignLedgerNarrowToggle, DesignLedgerScreen, DesignLedgerToolbar, DesignLedgerToolbarAction, DesignLedgerPrimaryAction, DesignPageHead, designLedgerClasses, type DesignLedgerDetailRow } from "@/components/design-ledger-screen";
+import { CombinedLedgerCell } from "@/components/combined-ledger-cell";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
 import { apiBaseUrl } from "@/lib/api";
+import { presentLedgerCell, type LedgerSourceRecord } from "@/lib/combined-ledger-source";
+import type { MasterAccountCatalogue, MasterAccountCatalogueRecord } from "@/lib/bookmaker-catalogue";
+import { ledgerColumnContracts, ledgerColumnWidths, ledgerHideableColumns, ledgerSortableColumns } from "@/lib/ledger-column-contracts";
 import type { CombinedLedgerModule } from "@/lib/profile-scope";
 import { trackerModuleDefinitions } from "@/lib/tracker-modules";
 
 type Profile = { profile_id: string; display_name: string; status?: string };
-type SourceRecord = Record<string, unknown>;
-type OwnedRecord = { profileId: string; profileName: string; recordId: string; data: SourceRecord };
+type OwnedRecord = { profileId: string; profileName: string; recordId: string; data: LedgerSourceRecord };
 type OwnedOpportunity = { profileId: string; profileName: string; opportunityKey: string; label: string; bookmaker: string; alreadyCreated: boolean; riskWarnings: string[] };
-type Column = { key: string; label: string; align?: "end" };
-
-const columns: Record<CombinedLedgerModule, Column[]> = {
-  accounts: [
-    { key: "account_id", label: "Account ID" }, { key: "account", label: "Account" }, { key: "type", label: "Type" }, { key: "status", label: "Status" },
-    { key: "counts_in_cash_total", label: "Counts in cash" }, { key: "current_balance", label: "Current balance", align: "end" }, { key: "pending_withdrawal_amount", label: "Pending withdrawal", align: "end" },
-    { key: "last_balance_update", label: "Last balance update" }, { key: "channel", label: "Channel" }, { key: "group_name", label: "Group" }, { key: "platform", label: "Platform" },
-  ],
-  "sportsbook-bets": [
-    { key: "date_settled", label: "Settles" }, { key: "bookmaker", label: "Bookmaker" }, { key: "event_name", label: "Event" }, { key: "offer_name", label: "Campaign Tag" },
-    { key: "offer_type", label: "Offer Type" }, { key: "fixture_type", label: "Fixture Type" }, { key: "bet_type", label: "Bet Type" }, { key: "match_strategy", label: "Strategy" },
-    { key: "lay_status", label: "Lay Bet" }, { key: "back_bet_status", label: "Back Bet" }, { key: "displayed_value", label: "Value", align: "end" }, { key: "status", label: "Status" },
-  ],
-  "free-bets": [
-    { key: "date_settled", label: "Settles" }, { key: "expiry_datetime", label: "Expiry" }, { key: "bookmaker", label: "Bookmaker" }, { key: "offer_name", label: "Campaign Tag" },
-    { key: "event_name", label: "Event" }, { key: "match_strategy", label: "Strategy" }, { key: "lay_status", label: "Lay Bet" }, { key: "back_bet_status", label: "Back Bet" },
-    { key: "displayed_value", label: "Value", align: "end" }, { key: "status", label: "Status" },
-  ],
-  "casino-offers": [
-    { key: "date_settling", label: "Settles" }, { key: "expiry_datetime", label: "Expiry" }, { key: "bookmaker", label: "Bookmaker" }, { key: "offer_name", label: "Offer Name" },
-    { key: "game", label: "Game" }, { key: "offer_type", label: "Offer Type" }, { key: "status", label: "Status" }, { key: "result", label: "Result" }, { key: "displayed_value", label: "Value", align: "end" },
-  ],
-  "each-way-extra-places": [
-    { key: "placed_at", label: "Date / time" }, { key: "runner", label: "Runner" }, { key: "race", label: "Race" }, { key: "bookmaker", label: "Bookmaker" },
-    { key: "each_way_stake", label: "E/W Stake", align: "end" }, { key: "back_odds", label: "Back Odds", align: "end" }, { key: "place_term_numerator", label: "Place terms numerator" },
-    { key: "place_term_denominator", label: "Place terms denominator" }, { key: "status", label: "Status" }, { key: "result", label: "Result" },
-  ],
-  "cash-adjustments": [
-    { key: "cash_adjustment_id", label: "Adjustment ID" }, { key: "adjustment_date", label: "Date" }, { key: "direction", label: "Direction" }, { key: "adjustment_type", label: "Type" },
-    { key: "amount", label: "Amount", align: "end" }, { key: "signed_amount", label: "Signed amount", align: "end" }, { key: "affects_investment", label: "Investment" },
-    { key: "affects_cash_snapshot", label: "Cash snapshot" }, { key: "linked_account", label: "Linked account" }, { key: "description", label: "Description" },
-    { key: "week_label", label: "Week label" }, { key: "calculation_state", label: "Calc state" },
-  ],
-};
 const recordKeys: Record<CombinedLedgerModule, string> = {
   accounts: "account_id", "sportsbook-bets": "sportsbook_bet_id", "free-bets": "free_bet_id", "casino-offers": "casino_offer_id",
   "each-way-extra-places": "each_way_extra_place_id", "cash-adjustments": "cash_adjustment_id",
+};
+const addLabels: Record<CombinedLedgerModule, string> = {
+  accounts: "Add Account", "sportsbook-bets": "Add Sportsbook Bet", "free-bets": "Add Free Bet",
+  "casino-offers": "Add Casino Offer", "each-way-extra-places": "Add Extra Place", "cash-adjustments": "Add Cash Adjustment",
 };
 
 async function readProfilesInBatches<T>(profiles: Profile[], read: (profile: Profile) => Promise<T>): Promise<PromiseSettledResult<T>[]> {
@@ -63,20 +36,7 @@ async function readProfilesInBatches<T>(profiles: Profile[], read: (profile: Pro
   return results;
 }
 
-function field(row: OwnedRecord, key: string): string {
-  if (key === "displayed_value") {
-    // Source-field precedence matches the native ledger; no value is calculated here.
-    const value = "resolved_net_pnl" in row.data || "calc_net_pnl" in row.data
-      ? row.data.resolved_net_pnl ?? row.data.final_net_pnl ?? row.data.calc_net_pnl
-      : row.data.reporting_value ?? row.data.final_net_pnl ?? row.data.projected_current_pnl;
-    return value === null || value === undefined || value === "" ? "Unavailable" : String(value);
-  }
-  const value = row.data[key];
-  if (value === null || value === undefined || value === "") return "—";
-  if (typeof value === "boolean") return value ? "Yes" : "No";
-  if (typeof value === "number" || typeof value === "string") return String(value);
-  return "View in Profile";
-}
+const identity = (row: OwnedRecord) => `${encodeURIComponent(row.profileId)}::${encodeURIComponent(row.recordId)}`;
 
 export function CombinedLedgerPage({ module }: { module: CombinedLedgerModule }) {
   const router = useRouter();
@@ -84,15 +44,18 @@ export function CombinedLedgerPage({ module }: { module: CombinedLedgerModule })
   const localProfile = searchParams.get("profile") ?? "all";
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [rows, setRows] = useState<OwnedRecord[]>([]);
+  const [catalogue, setCatalogue] = useState<MasterAccountCatalogueRecord[]>([]);
   const [failedProfiles, setFailedProfiles] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [filterReset, setFilterReset] = useState(false);
-  const [search, setSearch] = useState("");
-  const [sortKey, setSortKey] = useState("profile_name");
-  const [sortDescending, setSortDescending] = useState(false);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(8);
+  const [search, setSearch] = useState(searchParams.get("q") ?? "");
+  const [sortKey, setSortKey] = useState(searchParams.get("sort") ?? "profile_name");
+  const [sortDescending, setSortDescending] = useState(searchParams.get("desc") === "1");
+  const [page, setPage] = useState(Math.max(1, Number(searchParams.get("page")) || 1));
+  const [pageSize, setPageSize] = useState([8, 16, 32].includes(Number(searchParams.get("size"))) ? Number(searchParams.get("size")) : 8);
+  const [visibleColumnKeys, setVisibleColumnKeys] = useState(() => new Set(ledgerColumnContracts[module].map(column => column.key)));
+  const [columnControlsOpen, setColumnControlsOpen] = useState(false);
   const [mobileDetail, setMobileDetail] = useState(true);
   const [creating, setCreating] = useState(false);
   const [newOwner, setNewOwner] = useState("");
@@ -101,8 +64,41 @@ export function CombinedLedgerPage({ module }: { module: CombinedLedgerModule })
   const [showOpportunities, setShowOpportunities] = useState(false);
   const readId = useRef(0);
   const opportunityReadId = useRef(0);
+  const previousModule = useRef(module);
   const [refreshKey, setRefreshKey] = useState(0);
   const localProfileValid = localProfile === "all" || profiles.some(profile => profile.profile_id === localProfile);
+
+  useEffect(() => {
+    if (previousModule.current === module) return;
+    previousModule.current = module;
+    setVisibleColumnKeys(new Set(ledgerColumnContracts[module].map(column => column.key)));
+    setSortKey("profile_name");
+    setSortDescending(false);
+    setPage(1);
+    setCreating(false);
+    setColumnControlsOpen(false);
+  }, [module]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setSearch(searchParams.get("q") ?? "");
+      setSortKey(searchParams.get("sort") ?? "profile_name");
+      setSortDescending(searchParams.get("desc") === "1");
+      setPage(Math.max(1, Number(searchParams.get("page")) || 1));
+      setPageSize([8, 16, 32].includes(Number(searchParams.get("size"))) ? Number(searchParams.get("size")) : 8);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [searchParams]);
+
+  useEffect(() => {
+    let active = true;
+    void fetch(`${apiBaseUrl}/account-catalogue/source`, { cache: "no-store", credentials: "include" }).then(async response => {
+      if (!response.ok) return;
+      const source = await response.json() as MasterAccountCatalogue;
+      if (active && Array.isArray(source.records)) setCatalogue(source.records);
+    }).catch(() => { /* A failed brand read retains names without inventing catalogue identities. */ });
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => {
     if (!loading && !localProfileValid) {
@@ -133,7 +129,7 @@ export function CombinedLedgerPage({ module }: { module: CombinedLedgerModule })
         const results = await readProfilesInBatches(authorised, async profile => {
           const response = await fetch(`${apiBaseUrl}/profiles/${encodeURIComponent(profile.profile_id)}/${module}`, { cache: "no-store", credentials: "include" });
           if (!response.ok) throw new Error(profile.display_name);
-          const records = await response.json() as SourceRecord[];
+          const records = await response.json() as LedgerSourceRecord[];
           if (!Array.isArray(records)) throw new Error(profile.display_name);
           return records.map(data => {
             const id = data[recordKeys[module]];
@@ -171,41 +167,57 @@ export function CombinedLedgerPage({ module }: { module: CombinedLedgerModule })
     return () => { opportunityReadId.current += 1; };
   }, [module, profiles, refreshKey]);
 
-  const visible = useMemo(() => rows.filter(row => (!localProfileValid || localProfile === "all" || row.profileId === localProfile) && (!search || [row.profileName, row.recordId, ...columns[module].map(column => field(row, column.key))].some(value => value.toLocaleLowerCase().includes(search.toLocaleLowerCase())))).sort((a, b) => {
-    const left = sortKey === "profile_name" ? a.profileName : field(a, sortKey);
-    const right = sortKey === "profile_name" ? b.profileName : field(b, sortKey);
-    const comparison = left.localeCompare(right, undefined, { numeric: true });
+  const nativeColumns = ledgerColumnContracts[module];
+  const tableColumns = nativeColumns.filter(column => visibleColumnKeys.has(column.key));
+  const toggleSort = (key: string) => { if (sortKey === key) setSortDescending(value => !value); else { setSortKey(key); setSortDescending(false); } setPage(1); };
+  const visible = useMemo(() => rows.filter(row => (!localProfileValid || localProfile === "all" || row.profileId === localProfile) && (!search || [row.profileName, row.recordId, ...ledgerColumnContracts[module].filter(column => column.key !== "actions").map(column => presentLedgerCell(module, row.data, column.key).text)].some(value => value.toLocaleLowerCase().includes(search.toLocaleLowerCase())))).sort((a, b) => {
+    const leftCell = sortKey === "profile_name" ? null : presentLedgerCell(module, a.data, sortKey);
+    const rightCell = sortKey === "profile_name" ? null : presentLedgerCell(module, b.data, sortKey);
+    const left = leftCell?.text ?? a.profileName;
+    const right = rightCell?.text ?? b.profileName;
+    const comparison = leftCell?.money != null && rightCell?.money != null
+      ? leftCell.money - rightCell.money
+      : left.localeCompare(right, undefined, { numeric: true });
     return (sortDescending ? -comparison : comparison) || a.profileId.localeCompare(b.profileId) || a.recordId.localeCompare(b.recordId);
   }), [rows, localProfile, localProfileValid, search, module, sortKey, sortDescending]);
   const count = Math.max(1, Math.ceil(visible.length / pageSize));
   const current = Math.min(page, count);
   const paginated = visible.slice((current - 1) * pageSize, current * pageSize);
-  const returnPath = `/tracker/${module}${localProfile !== "all" ? `?profile=${encodeURIComponent(localProfile)}` : ""}`;
+  const returnQuery = new URLSearchParams();
+  if (localProfile !== "all") returnQuery.set("profile", localProfile);
+  if (search) returnQuery.set("q", search);
+  if (sortKey !== "profile_name") returnQuery.set("sort", sortKey);
+  if (sortDescending) returnQuery.set("desc", "1");
+  if (current > 1) returnQuery.set("page", String(current));
+  if (pageSize !== 8) returnQuery.set("size", String(pageSize));
+  const returnPath = `/tracker/${module}${returnQuery.size ? `?${returnQuery.toString()}` : ""}`;
   const rowHref = (row: OwnedRecord) => `/profiles/${encodeURIComponent(row.profileId)}/tracker/${module}?record=${encodeURIComponent(row.recordId)}&returnTo=${encodeURIComponent(returnPath)}`;
   const detailRows: DesignLedgerDetailRow[] = paginated.map(row => ({
-    id: `${row.profileId}:${row.recordId}`, title: field(row, columns[module][1]?.key ?? recordKeys[module]), subtitle: `${row.profileName} · ${row.recordId}`,
-    status: field(row, "status"), fields: columns[module].map(column => ({ key: column.key, label: column.label, value: field(row, column.key) })),
+    id: identity(row), title: presentLedgerCell(module, row.data, nativeColumns[1]?.key ?? recordKeys[module]).text, subtitle: `${row.profileName} · ${row.recordId}`,
+    status: presentLedgerCell(module, row.data, "status").text, fields: nativeColumns.filter(column => column.key !== "actions").map(column => ({ key: column.key, label: column.label, value: presentLedgerCell(module, row.data, column.key).text })),
     onOpen: () => router.push(rowHref(row)),
   }));
-  const setLocalProfile = (value: string) => { setPage(1); router.push(value === "all" ? `/tracker/${module}` : `/tracker/${module}?profile=${encodeURIComponent(value)}`); };
+  const setLocalProfile = (value: string) => { setPage(1); const query = new URLSearchParams(returnQuery); query.delete("page"); if (value === "all") query.delete("profile"); else query.set("profile", value); router.push(`/tracker/${module}${query.size ? `?${query.toString()}` : ""}`); };
   const profileOptions = [{ value: "all", label: "All Profiles" }, ...profiles.map(profile => ({ value: profile.profile_id, label: profile.display_name }))];
   const label = trackerModuleDefinitions[module].title;
 
-  return <main className="page-shell stack" data-pd-id={`combined.${module}.page`}>
+  return <main className="page-shell stack sportsbook-page-shell ledger-v2-page" data-pd-id={`combined.${module}.page`}>
     <DesignPageHead><div><h1>{label}</h1></div></DesignPageHead>
     {module === "accounts" && showOpportunities ? <DesignLedgerScreen dataPdId="combined.opportunities" description="Profile-owned opportunities. Availability and actions remain specific to each Profile." title="Opportunities">
       {opportunityFailures.length ? <p role="alert">Partial read: opportunities for {opportunityFailures.join(", ")} could not be loaded.</p> : null}
       <div className="stack">{opportunities.filter(item => localProfile === "all" || item.profileId === localProfile).map(item => <article className="content-subpanel" key={`${item.profileId}:${item.opportunityKey}`}><strong>{item.label}</strong><p>{item.profileName} · {item.bookmaker} · {item.alreadyCreated ? "Already created" : "Available for review"}</p>{item.riskWarnings.length ? <p>{item.riskWarnings.join(" · ")}</p> : null}<Link href={`/profiles/${encodeURIComponent(item.profileId)}/tracker/accounts#profile-opportunities`}>Open Profile opportunity</Link></article>)}</div>
     </DesignLedgerScreen> : null}
-    <DesignLedgerScreen dataPdId={`combined.${module}.design-screen`} description={<>Authorised records across {profiles.length} Profiles. Each action opens its owning Profile.</>} title={label} actions={<button className="button-link" data-pd-id={`combined.${module}.refresh`} onClick={() => setRefreshKey(value => value + 1)} type="button">Refresh</button>}>
+    <DesignLedgerScreen dataPdId={`combined.${module}.design-screen`} description={<>Authorised records across {profiles.length} Profiles. Each action opens its owning Profile.</>} title={label} actions={<div className={designLedgerClasses.actionRow}><DesignLedgerToolbarAction dataPdId={`combined.${module}.refresh`} onClick={() => setRefreshKey(value => value + 1)}>Refresh</DesignLedgerToolbarAction><DesignLedgerPrimaryAction dataPdId={`combined.${module}.add`} onClick={() => { setCreating(value => !value); setNewOwner(localProfile !== "all" && localProfileValid ? localProfile : ""); }}>{addLabels[module]}</DesignLedgerPrimaryAction></div>}>
       <DesignLedgerToolbar ariaLabel={`${label} controls`} dataPdId={`combined.${module}.toolbar`}>
         <DesignLedgerSearch dataPdId={`combined.${module}.search`} label={`Search ${label}`} onChange={event => { setSearch(event.target.value); setPage(1); }} placeholder="Search This Ledger" value={search} />
         <DesignLabSelect compact dataPdId={`combined.${module}.profile-filter`} label="Filter ledger by Profile" onChange={setLocalProfile} options={profileOptions} value={profileOptions.some(option => option.value === localProfile) ? localProfile : "all"} />
-        <DesignLabSelect compact dataPdId={`combined.${module}.sort`} label="Sort ledger" onChange={setSortKey} options={[{ value: "profile_name", label: "Profile" }, ...columns[module].map(column => ({ value: column.key, label: column.label }))]} value={sortKey} />
+        <DesignLabSelect compact dataPdId={`combined.${module}.sort`} label="Sort ledger" onChange={value => { setSortKey(value); setPage(1); }} options={[{ value: "profile_name", label: "Profile" }, ...nativeColumns.filter(column => column.key !== "actions").map(column => ({ value: column.key, label: column.label }))]} value={sortKey} />
         <button aria-label={sortDescending ? "Sort ascending" : "Sort descending"} className="button-link" data-pd-id={`combined.${module}.sort-direction`} onClick={() => setSortDescending(value => !value)} type="button"><span aria-hidden="true" className="material-symbols-outlined">{sortDescending ? "arrow_downward" : "arrow_upward"}</span></button>
-        <button className="button-link" data-pd-id={`combined.${module}.add`} onClick={() => { setCreating(value => !value); setNewOwner(""); }} type="button">Add {label === "Accounts" ? "Account" : "Record"}</button>
+        <DesignLedgerToolbarAction ariaExpanded={columnControlsOpen} dataPdId={`combined.${module}.columns`} onClick={() => setColumnControlsOpen(value => !value)}>Filters &amp; Columns</DesignLedgerToolbarAction>
+        <DesignLedgerToolbarAction dataPdId={`combined.${module}.restore-columns`} onClick={() => { setVisibleColumnKeys(new Set(nativeColumns.map(column => column.key))); setSearch(""); setPage(1); }}>Restore Default Columns</DesignLedgerToolbarAction>
       </DesignLedgerToolbar>
-      {creating ? <section aria-label={`Add ${label}`} className="content-subpanel stack"><h3>Choose the owning Profile</h3><p>New records use that Profile’s existing Add workflow and financial rules.</p><DesignLabSelect dataPdId={`combined.${module}.new-owner`} label="Owning Profile" onChange={setNewOwner} options={[{ value: "", label: "Choose Profile" }, ...profiles.map(profile => ({ value: profile.profile_id, label: profile.display_name }))]} value={newOwner} /><div><button className="button-link" data-pd-id={`combined.${module}.continue-add`} disabled={!newOwner} onClick={() => router.push(`/profiles/${encodeURIComponent(newOwner)}/tracker/${module}?returnTo=${encodeURIComponent(returnPath)}`)} type="button">Continue to Add workflow</button><button className="button-link" data-pd-id={`combined.${module}.cancel-add`} onClick={() => setCreating(false)} type="button">Cancel</button></div></section> : null}
+      {columnControlsOpen ? <section aria-label={`${label} column controls`} className="content-subpanel"><fieldset><legend>Visible columns</legend>{nativeColumns.filter(column => ledgerHideableColumns[module].has(column.key)).map(column => <label key={column.key}><input checked={visibleColumnKeys.has(column.key)} onChange={event => setVisibleColumnKeys(previous => { const next = new Set(previous); if (event.target.checked) next.add(column.key); else next.delete(column.key); return next; })} type="checkbox" /> {column.label}</label>)}</fieldset></section> : null}
+      {creating ? <section aria-label={`Add ${label}`} className="content-subpanel stack"><h3>Choose the owning Profile</h3><p>New records use that Profile’s existing Add workflow and financial rules.</p><DesignLabSelect dataPdId={`combined.${module}.new-owner`} label="Owning Profile" onChange={setNewOwner} options={[{ value: "", label: "Choose Profile" }, ...profiles.map(profile => ({ value: profile.profile_id, label: profile.display_name }))]} value={newOwner} /><div><button className="button-link" data-pd-id={`combined.${module}.continue-add`} disabled={!newOwner || !profiles.some(profile => profile.profile_id === newOwner)} onClick={() => router.push(`/profiles/${encodeURIComponent(newOwner)}/tracker/${module}?create=1&returnTo=${encodeURIComponent(returnPath)}`)} type="button">Continue to Add workflow</button><button className="button-link" data-pd-id={`combined.${module}.cancel-add`} onClick={() => setCreating(false)} type="button">Cancel</button></div></section> : null}
       {error ? <p role="alert">{error}</p> : null}
       {filterReset ? <p role="status">The ledger Profile filter was reset because that Profile is no longer available.</p> : null}
       {failedProfiles.length ? <p role="alert">Partial read: {failedProfiles.join(", ")} unavailable. Counts below cover loaded Profiles only.</p> : null}
@@ -214,9 +226,9 @@ export function CombinedLedgerPage({ module }: { module: CombinedLedgerModule })
         <DesignLedgerNarrowToggle expanded={mobileDetail} onToggle={() => setMobileDetail(value => !value)} />
         <DesignLedgerMobileRows dataPdId={`combined.${module}.details`} expanded={mobileDetail} rows={detailRows} />
         <LedgerPagination ariaLabel={`${label} combined`} currentPage={current} onPageChange={setPage} onPageSizeChange={size => { setPageSize(size); setPage(1); }} pageCount={count} pageSize={pageSize} position="top" totalRows={visible.length} />
-        <LedgerTableScroll dataPdId={`combined.${module}.table-scroll`} narrowDetail={mobileDetail} visualV2>
-          <table className="data-table"><thead><tr><th scope="col">Profile</th>{columns[module].map(column => <th key={column.key} scope="col">{column.label}</th>)}<th scope="col">Actions</th></tr></thead><tbody>
-            {paginated.map(row => <tr key={`${row.profileId}:${row.recordId}`}><td>{row.profileName}</td>{columns[module].map(column => <td key={column.key} style={{ textAlign: column.align === "end" ? "right" : undefined }}>{field(row, column.key)}</td>)}<td><Link aria-label={`Open ${row.recordId} in ${row.profileName}`} href={rowHref(row)}>Open Record</Link></td></tr>)}
+        <LedgerTableScroll cellNavigation={{ label, onActivate: (rowId, column) => { const row = paginated.find(item => identity(item) === rowId); if (row && column !== "profile_name") router.push(rowHref(row)); } }} dataPdId={`combined.${module}.table-scroll`} narrowDetail={mobileDetail} visualV2>
+          <table className={`data-table ${module === "accounts" ? "accounts-data-table" : module === "each-way-extra-places" ? "extra-place-data-table" : "sportsbook-data-table"}`}><colgroup><col style={{ width: "160px" }} />{tableColumns.map(column => <col key={column.key} style={{ width: `${ledgerColumnWidths[module][column.key]}px` }} />)}</colgroup><thead><tr><th aria-sort={sortKey === "profile_name" ? sortDescending ? "descending" : "ascending" : "none"} scope="col"><div className="table-header-cell"><button className={`table-sort-button${sortKey === "profile_name" ? " is-active" : ""}`} onClick={() => toggleSort("profile_name")} type="button"><span>Profile</span><span aria-hidden="true">{sortKey === "profile_name" ? sortDescending ? "▼" : "▲" : "↕"}</span></button></div></th>{tableColumns.map(column => { const sortable = ledgerSortableColumns[module].has(column.key); const active = sortKey === column.key; return <th aria-sort={sortable ? active ? sortDescending ? "descending" : "ascending" : "none" : undefined} className={column.align === "end" ? "align-end" : undefined} key={column.key} scope="col"><div className="table-header-cell">{sortable ? <button className={`table-sort-button${active ? " is-active" : ""}`} onClick={() => toggleSort(column.key)} type="button"><span>{column.label}</span><span aria-hidden="true">{active ? sortDescending ? "▼" : "▲" : "↕"}</span></button> : <span className="table-header-label">{column.label}</span>}</div></th>; })}</tr></thead><tbody>
+            {paginated.map(row => <tr key={identity(row)}><td data-ledger-column="profile_name" data-ledger-row={identity(row)}>{row.profileName}</td>{tableColumns.map(column => { const cell = presentLedgerCell(module, row.data, column.key); return <td data-ledger-column={column.key} data-ledger-row={identity(row)} key={column.key} style={{ textAlign: column.align === "end" ? "right" : undefined }}>{column.key === "actions" ? <div className="table-action-row"><Link aria-label={`Open ${row.recordId} in ${row.profileName}`} className="icon-button" href={rowHref(row)} title="Open native editor"><span aria-hidden="true" className="material-symbols-outlined">edit</span></Link></div> : <CombinedLedgerCell catalogue={catalogue} cell={cell} column={column.key} module={module} row={row.data} />}</td>; })}</tr>)}
           </tbody></table>
         </LedgerTableScroll>
         <LedgerPagination ariaLabel={`${label} combined`} currentPage={current} onPageChange={setPage} onPageSizeChange={size => { setPageSize(size); setPage(1); }} pageCount={count} pageSize={pageSize} position="bottom" totalRows={visible.length} />

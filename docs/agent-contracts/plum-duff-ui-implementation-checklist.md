@@ -521,3 +521,12 @@ Scope: `PD-PR-117A-17–20`, open #118. Sportsbook and Accounts only; full six-l
 - [x] Web source suite 701/701 and typecheck pass. The unchanged Free Bet render-ref lint error remains in the incoming checkpoint; focused changed-file lint has that one error and ten warnings, without a new CP-125 lint error.
 - [ ] Full Design Acceptance remains open: real operational grid density, Lab mobile labelled details and specialist modal compositions differ. Equivalent Profile/range fixture content and owner visual/spoken screen-reader review remain separate acceptance work.
 - [x] Consolidated synthetic Playwright 21/21 V2 paths (two flag-OFF paths skipped in that run); refreshed paired visual/editor paths 4/4; independent runner then passed V2 navigation 1/1 and flag-OFF rollback 2/2. Final web build passed. Git checkpoint, issue receipt and normal 3010 restoration are recorded in the delivery report.
+
+## CP-138 six combined ledger capability correction — 2026-11-05
+
+- [x] Signed-off equivalents identified: each native Profile-owned ledger's column and width contract, existing source value selector, identity/financial cell, Lab table/mobile shell, native Add/Edit/correction authority and guarded return route.
+- [x] Shared the six required column sequences and widths; combined Profile column adds ownership without replacing a native financial measure. Unknown source values stay unavailable; partial Profile reads are explicit.
+- [x] Explicit owner choice enters each real native Add; existing rows open their owning Profile's populated editor. Search, subordinate Profile, sort, page and page size are carried in a validated return path. Existing unsaved navigation guard remains in the native workflow.
+- [x] Synthetic all-six native/combined column and Add comparison, representative financial cells, native Account Save/reload/return, scope navigation, mobile labelled details, 900px and 390px light/dark geometry, actual Chromium 200% zoom, full V2 visual and flag-OFF rollback checks completed. No normal-owner mutation test used.
+- [x] Web typecheck, 709/709 units, lint with zero errors and 12 inherited warnings, and production build pass. No API, schema, calculation, authentication or annotation authority changed.
+- [ ] Owner Design Acceptance, spoken screen-reader verification, native floating edits directly within combined rows, advanced filters, selected-range controls, KPI strips and specialist row shortcuts remain open. Combined route Design/Interaction/Integration Acceptance stays PARTIAL.
