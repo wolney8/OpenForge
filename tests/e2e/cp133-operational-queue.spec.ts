@@ -123,33 +123,35 @@ for (const [width, mode] of [[1440, "light"], [390, "dark"]] as const) {
   });
 }
 
-test("CP-133 Profile-dependent route requires explicit authorised choice", async ({ page }) => {
+test("CP-137 combined Accounts browsing and explicit header Profile selection", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/");
   const accounts = page.locator('[data-pd-id="ux-v2.nav.accounts"]');
-  await expect(accounts).toHaveAttribute("aria-haspopup", "dialog");
+  await expect(accounts).toHaveAttribute("href", "/tracker/accounts");
   await accounts.click();
-  const chooser = page.locator('[data-pd-id="ux-v2.profile-picker"]');
-  await expect(chooser).toContainText("Choose an authorised Profile");
-  await expect(chooser.getByRole("button", { name: "Subscriber Alpha" })).toBeVisible();
-  await expect(chooser.getByRole("button", { name: "Subscriber Bravo" })).toBeVisible();
+  await expect(page).toHaveURL(/\/tracker\/accounts$/);
+  await expect(page.locator('[data-pd-id="combined.accounts.page"]')).toBeVisible();
+  const scope = page.locator('[data-pd-id="ux-v2.profile-scope"]');
+  await scope.click();
+  await expect(page.getByRole("option", { name: "Subscriber Alpha" })).toBeVisible();
+  await expect(page.getByRole("option", { name: "Subscriber Bravo" })).toBeVisible();
   await page.keyboard.press("Escape");
-  await expect(accounts).toBeFocused();
-  await accounts.click();
-  await chooser.getByRole("button", { name: "Subscriber Bravo" }).click();
+  await expect(scope).toBeFocused();
+  await scope.click();
+  await page.getByRole("option", { name: "Subscriber Bravo" }).click();
   await expect(page).toHaveURL(/\/profiles\/profile-demo-002\/tracker\/accounts$/);
   await expect(page.locator('[data-pd-id="ux-v2.nav.accounts"]')).toHaveAttribute("href", "/profiles/profile-demo-002/tracker/accounts");
 });
 
-test("CP-133 chooser excludes Profiles absent from the authorised list and Opportunities opens Accounts", async ({ page }) => {
+test("CP-137 selector excludes unauthorised Profiles and Opportunities uses Profile Accounts sources", async ({ page }) => {
   await page.route(/\/profiles$/, route => route.fulfill({ status: 200, json: [{ profile_id: profile, display_name: "Subscriber Alpha", status: "Active" }] }));
   await page.goto("/");
   await page.locator('[data-pd-id="ux-v2.nav.opportunities"]').click();
-  const chooser = page.locator('[data-pd-id="ux-v2.profile-picker"]');
-  await expect(chooser.getByRole("button", { name: "Subscriber Alpha" })).toBeVisible();
-  await expect(chooser.getByRole("button", { name: "Subscriber Bravo" })).toHaveCount(0);
-  await chooser.getByRole("button", { name: "Subscriber Alpha" }).click();
-  await expect(page).toHaveURL(/\/profiles\/profile-demo-001\/tracker\/accounts#profile-opportunities$/);
+  await expect(page).toHaveURL(/\/tracker\/accounts#profile-opportunities$/);
+  await expect(page.locator('[data-pd-id="combined.opportunities"]')).toBeVisible();
+  await page.locator('[data-pd-id="ux-v2.profile-scope"]').click();
+  await expect(page.getByRole("option", { name: "Subscriber Alpha" })).toBeVisible();
+  await expect(page.getByRole("option", { name: "Subscriber Bravo" })).toHaveCount(0);
 });
 
 test("CP-133 unread state remains separate from source-backed task state", async ({ page }) => {
@@ -174,7 +176,7 @@ test("CP-133 unread state remains separate from source-backed task state", async
   await expect(page.locator('[data-pd-id="tasks.v2.pagination"]')).toContainText("Showing 1–8 of 27");
 });
 
-test("CP-133 Today and Profile chooser remain contained at actual Chromium 200% zoom", async ({}, info) => {
+test("CP-137 Today and combined Accounts remain contained at actual Chromium 200% zoom", async ({}, info) => {
   const baseURL = String(info.project.use.baseURL);
   const scratch = await mkdtemp(join(tmpdir(), "pd-cp133-zoom-"));
   const extension = join(scratch, "extension");
@@ -200,7 +202,7 @@ test("CP-133 Today and Profile chooser remain contained at actual Chromium 200% 
     await page.screenshot({ path: `${evidence}/today-200-percent.png`, fullPage: true });
     await page.getByRole("button", { name: "Open navigation" }).click();
     await page.locator('[data-pd-id="ux-v2.nav.accounts"]').click();
-    await expect(page.locator('[data-pd-id="ux-v2.profile-picker"]')).toBeVisible();
+    await expect(page.locator('[data-pd-id="combined.accounts.page"]')).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
     await page.keyboard.press("Escape");
   } finally {

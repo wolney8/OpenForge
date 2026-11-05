@@ -1,5 +1,9 @@
 # Feature Status — Plum Duff / OpenForge — Doc ID: FS-CODEX-001
 
+## Current CP-137 — 2026-11-05
+
+V2 Profile scope is route-backed: All Profiles opens combined authorised Accounts and six ledgers, while individual selection stays in the same module. Each aggregate row retains owning Profile identity and opens the native editor; new-record entry requires an explicit Profile choice. The ledger-only filter does not change global scope. Position/Today use the shared Lab page head and relevant controls. The in-page Tracked Tasks banner reads existing persistent annotations, distinguishes active from changed/unavailable history, and supports expanded, compact, hidden and header show-again states. Synthetic final-source V2 integration 36 passed/5 phase skips, visual 140/140, flag-OFF 9/9, web unit 706/706, typecheck and lint pass (12 inherited warnings). Design Acceptance remains pending owner comparison; combined read views do not reproduce every native calculated field. Specialist editor interiors remain the next development priority. [#118](https://github.com/wolney8/OpenForge/issues/118)
+
 ## Current CP-136 — 2026-11-04
 
 Normal Today annotation storage and authenticated API are enabled under the approved separate normal-owner flag. The owner confirmed a Track action, a read-only count confirms its annotation was stored, and the owner saw one item under Tracked Tasks after refresh. The owner did not see an in-page tracked banner; new-session owner persistence is unverified. Eight-task pagination, source-backed task authority and the flag-OFF legacy shell remain. Specialist Sportsbook, Free Bet and Casino editors now render the shared Lab financial-card surface inside the native modal; their whole-workbench Design Acceptance is still partial. Final synthetic visual 129/129, V2 integration 25 passed, flag-OFF 9/9, web unit 706/706 and build pass. [#118](https://github.com/wolney8/OpenForge/issues/118)

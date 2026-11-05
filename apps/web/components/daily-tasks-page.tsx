@@ -8,6 +8,7 @@ import { LedgerPagination } from "@/components/ledger-pagination";
 import { DesignTodayBoard, DesignTodayDetail, DesignTodayFilters, DesignTodayTaskRow, DesignTodayToolbar, DesignTodayViewToggle, designTodayBoardColumnClass, designTodayBoardControlsClass, designTodayBoardDrawerClass, designTodayBoardWithDetailClass, designTodayBulkTrackClass, designTodayCollectionHeadingClass, designTodayContentClass, designTodayDetailActionsClass, designTodayDetailPaneClass, designTodayDetailTextClass, designTodayMobileDetailClass, designTodayPaginationClass, designTodayPropertiesClass, designTodayQueueClass, designTodayRootClass, designTodayStateEditorClass, designTodayTaskCollectionClass, designTodayTaskListClass, designTodayToolButtonClass, designTodayWithDetailClass } from "@/components/design-today-task-row";
 import { DesignLabTaskState } from "@/components/design-lab-task-state";
 import { DesignLabSelect } from "@/components/design-lab-select";
+import { DesignPageHead, designPageHeadClasses } from "@/components/design-ledger-screen";
 import { ModalBoundary } from "@/components/modal-boundary";
 import { apiBaseUrl } from "@/lib/api";
 import {
@@ -69,6 +70,7 @@ function priorityLabel(priority: "high" | "medium" | "low"): string {
 export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const globalProfileScope = searchParams.get("scope");
   const refreshVersionRef = useRef(0);
   const stateRequestVersionRef = useRef(0);
   const stateMutationPendingRef = useRef(false);
@@ -124,20 +126,25 @@ export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
     return () => { active = false; window.removeEventListener(TASK_ANNOTATIONS_REFRESH_EVENT, refreshAnnotations); };
   }, [uxV2]);
   useEffect(() => {
-    if (uxV2 && searchParams.get("collection") === "tracked") {
-      const frame = requestAnimationFrame(() => { setCollection("tracked"); setPage(1); setInspectedTaskId(""); });
-      return () => cancelAnimationFrame(frame);
-    }
+    if (!uxV2) return;
+    const next = searchParams.get("collection") === "tracked" ? "tracked" : "all";
+    const frame = requestAnimationFrame(() => { setCollection(next); setPage(1); setInspectedTaskId(""); });
+    return () => cancelAnimationFrame(frame);
   }, [searchParams, uxV2]);
   useEffect(() => {
+    if (!uxV2) return;
+    const frame = requestAnimationFrame(() => { setProfileId(globalProfileScope ?? "all"); setPage(1); setInspectedTaskId(""); });
+    return () => cancelAnimationFrame(frame);
+  }, [globalProfileScope, uxV2]);
+  useEffect(() => {
     const showActionable = () => {
-      setDueState("today"); setQuery(""); setProfileId("all"); setBookmaker("all");
+      setDueState("today"); setQuery(""); setProfileId(globalProfileScope ?? "all"); setBookmaker("all");
       setNotificationType("all"); setSource("all"); setSort("priority");
       setPage(1); setInspectedTaskId(""); setLayout("List"); setCollection("all"); window.scrollTo({ top: 0 });
     };
     window.addEventListener(TODAY_ACTIONABLE_NAVIGATION_EVENT, showActionable);
     return () => window.removeEventListener(TODAY_ACTIONABLE_NAVIGATION_EVENT, showActionable);
-  }, []);
+  }, [globalProfileScope]);
 
   const applyViewState = useCallback((next: NotificationViewState) => {
     viewStateRef.current = next;
@@ -228,6 +235,7 @@ export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
     () => notifications.map((item) => deriveDailyTaskView(item, viewState, now, sourceIndex, uxV2 ? "v2" : "legacy")),
     [notifications, now, sourceIndex, uxV2, viewState]
   );
+  const scopedTaskViews = useMemo(() => uxV2 && globalProfileScope ? taskViews.filter(task => task.notification.profile_id === globalProfileScope) : taskViews, [globalProfileScope, taskViews, uxV2]);
   const profiles = useMemo(
     () => [...new Map(notifications.map((item) => [item.profile_id, item.profile_name])).entries()]
       .sort((a, b) => a[1].localeCompare(b[1])),
@@ -242,16 +250,16 @@ export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
     [notifications]
   );
   const counts = useMemo(() => dueViews.reduce<Record<DailyTaskDueState, number>>(
-    (result, view) => ({ ...result, [view.id]: taskViews.filter((task) => task.dueState === view.id).length }),
+    (result, view) => ({ ...result, [view.id]: scopedTaskViews.filter((task) => task.dueState === view.id).length }),
     { today: 0, upcoming: 0, overdue: 0, completed: 0 }
-  ), [taskViews]);
-  const actionableCount = useMemo(() => taskViews.filter(isActionableDailyTask).length, [taskViews]);
-  const activeFilterCount = [query.trim(), profileId !== "all", bookmaker !== "all", notificationType !== "all", source !== "all", dueState !== "today"].filter(Boolean).length;
+  ), [scopedTaskViews]);
+  const actionableCount = useMemo(() => scopedTaskViews.filter(isActionableDailyTask).length, [scopedTaskViews]);
+  const activeFilterCount = [query.trim(), !globalProfileScope && profileId !== "all", bookmaker !== "all", notificationType !== "all", source !== "all", dueState !== "today"].filter(Boolean).length;
   const filtered = useMemo(() => {
     const options = { profileId, bookmaker, notificationType, source, query, sort, legacySort: !uxV2 };
-    const rows = filterAndSortDailyTasks(taskViews, { ...options, dueState: uxV2 && collection === "tracked" ? undefined : uxV2 && dueState === "today" ? "actionable" : dueState });
+    const rows = filterAndSortDailyTasks(scopedTaskViews, { ...options, dueState: uxV2 && collection === "tracked" ? undefined : uxV2 && dueState === "today" ? "actionable" : dueState });
     return collection === "tracked" ? rows.filter(task => annotations?.some(item => item.tracked && item.source_status === "active" && item.occurrence_key === task.notification.notification_id)) : rows;
-  }, [annotations, bookmaker, collection, dueState, notificationType, profileId, query, sort, source, taskViews, uxV2]);
+  }, [annotations, bookmaker, collection, dueState, notificationType, profileId, query, sort, source, scopedTaskViews, uxV2]);
   const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, pageCount);
   const paginated = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
@@ -266,8 +274,8 @@ export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
   }, [collection, filtered, pageSize, searchParams, uxV2]);
   const inspectedTask = uxV2 ? paginated.find((task) => task.notification.notification_id === inspectedTaskId) : undefined;
   const annotationFor = (task: DailyTaskView) => annotations?.find(item => item.occurrence_key === task.notification.notification_id && item.profile_id === task.notification.profile_id);
-  const trackedCount = annotations?.filter(item => item.tracked && item.source_status === "active").length ?? 0;
-  const trackedHistory = annotations?.filter(item => item.tracked && item.source_status !== "active") ?? [];
+  const trackedCount = annotations?.filter(item => item.tracked && item.source_status === "active" && (!globalProfileScope || item.profile_id === globalProfileScope)).length ?? 0;
+  const trackedHistory = annotations?.filter(item => item.tracked && item.source_status !== "active" && (!globalProfileScope || item.profile_id === globalProfileScope)) ?? [];
   const savedTrackedCount = trackedCount + trackedHistory.length;
 
   const saveAnnotations = async (rows: DailyTaskView[], tracked: boolean, override?: { work_state: TaskWorkState; blocked_reason: string | null; review_date: string | null }) => {
@@ -382,7 +390,7 @@ export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
       {draftState === "Blocked" ? <label>Blocked Reason<input aria-label={`${inspectedTask.notification.title} blocked reason`} maxLength={500} onChange={event => setDraftBlockedReason(event.target.value)} value={draftBlockedReason} /></label> : null}
       {draftState === "Do Later" ? <label>Review / Resume Date<input aria-label={`${inspectedTask.notification.title} review date`} onChange={event => setDraftReviewDate(event.target.value)} type="date" value={draftReviewDate} /></label> : null}
       <button disabled={trackingPending} onClick={() => { if (draftState === "Do Later" && !draftReviewDate) { setActionError("Choose a review date before saving Do Later."); return; } void saveAnnotations([inspectedTask], annotationFor(inspectedTask)?.tracked ?? false, { work_state: draftState, blocked_reason: draftState === "Blocked" ? draftBlockedReason || null : null, review_date: draftState === "Do Later" ? draftReviewDate || null : null }); }} type="button">Save Work State</button>
-    </div> : <p>Personal tracking awaits normal API activation.</p>}
+    </div> : <p>Tracking is temporarily unavailable. Refresh or sign in again.</p>}
     <div className={designTodayDetailActionsClass}>
       <Link aria-busy={openingId === inspectedTask.notification.notification_id} className="button-link" href={inspectedTask.notification.href}
         onClick={(event) => { event.preventDefault(); endRouteTransition(); void openTask(inspectedTask.notification); }} prefetch={false}>
@@ -398,10 +406,10 @@ export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
 
   return (
     <main className={`page-shell stack daily-tasks-page${uxV2 ? " ux-v2-today" : ""}`} data-pd-id="tasks.page">
-      {uxV2 ? <section className="ux-v2-today-heading" data-pd-id="tasks.page-header">
+      {uxV2 ? <DesignPageHead dataPdId="tasks.page-header">
         <div><h1>Today</h1></div>
-        <Link className="text-link" href="/notifications">Notifications</Link>
-      </section> : <section className="hero-panel split-hero" data-pd-id="tasks.page-header">
+        <div className={designPageHeadClasses.actions}><Link className="text-link" href="/notifications">Notifications</Link></div>
+      </DesignPageHead> : <section className="hero-panel split-hero" data-pd-id="tasks.page-header">
         <div className="stack">
           <span className="eyebrow">Fund Manager</span>
           <h1>Daily Tasks</h1>
@@ -417,24 +425,24 @@ export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
       <section aria-label="Daily Tasks" className={uxV2 ? designTodayRootClass : "content-panel stack"} data-pd-id="tasks.workspace">
         {uxV2 ? <>
           <nav aria-label="Today collections" className={designTodayDetailActionsClass} data-pd-id="tasks.v2.collections">
-            <button aria-current={collection === "all" ? "page" : undefined} onClick={() => { setCollection("all"); setDueState("today"); setPage(1); setInspectedTaskId(""); router.replace("/tasks"); }} type="button">All Tasks</button>
-            <button aria-current={collection === "tracked" ? "page" : undefined} disabled={!annotations} onClick={() => { setCollection("tracked"); setDueState("today"); setPage(1); setInspectedTaskId(""); router.replace("/tasks?collection=tracked"); }} type="button">Tracked Tasks{annotations ? ` (${savedTrackedCount})` : ""}</button>
-            {!annotations ? <small>Personal tracking awaits normal API activation.</small> : null}
+            <button aria-current={collection === "all" ? "page" : undefined} onClick={() => { setCollection("all"); setDueState("today"); setPage(1); setInspectedTaskId(""); router.replace(globalProfileScope ? `/tasks?scope=${encodeURIComponent(globalProfileScope)}` : "/tasks"); }} type="button">All Tasks</button>
+            <button aria-current={collection === "tracked" ? "page" : undefined} disabled={!annotations} onClick={() => { setCollection("tracked"); setDueState("today"); setPage(1); setInspectedTaskId(""); router.replace(globalProfileScope ? `/tasks?scope=${encodeURIComponent(globalProfileScope)}&collection=tracked` : "/tasks?collection=tracked"); }} type="button">Tracked Tasks{annotations ? ` (${savedTrackedCount})` : ""}</button>
+            {!annotations ? <small>Tracking is temporarily unavailable. Refresh or sign in again.</small> : null}
           </nav>
           <DesignTodayToolbar dataPdId="tasks.v2.toolbar" summary={<><strong>{isLoading || loadFailed ? "—" : actionableCount} Needs Attention</strong><span>{counts.upcoming} Upcoming</span><span>{counts.completed} Completed</span></>} actions={<>
             <DesignTodayViewToggle dataPdId="tasks.v2.layout-toggle" layout={layout} onChange={(next) => { setLayout(next); setInspectedTaskId(""); }} />
             <button aria-expanded={filtersOpen} className={designTodayToolButtonClass} data-pd-id="tasks.v2.filter-toggle" onClick={() => setFiltersOpen(value => !value)} type="button"><span aria-hidden="true" className="material-symbols-outlined">filter_list</span>Filters{activeFilterCount ? ` ${activeFilterCount}` : ""}</button>
-            <DesignLabSelect compact dataPdId="tasks.sort" label="Sort Daily Tasks" onChange={value => changeControls(() => setSort(value))} options={[{ value: "priority", label: "Priority And Due Time" }, { value: "due", label: "Due Time" }, { value: "profile", label: "Profile" }, { value: "bookmaker", label: "Bookmaker" }]} value={sort} />
+            <span title="Recommended priority, then due time, with stable source tie-breakers"><DesignLabSelect compact dataPdId="tasks.sort" label="Sort Daily Tasks by priority, then due time" onChange={value => changeControls(() => setSort(value))} options={[{ value: "priority", label: "Priority" }, { value: "due", label: "Due Time" }, { value: "profile", label: "Profile" }, { value: "bookmaker", label: "Bookmaker" }]} value={sort} /></span>
           </>} />
           {filtersOpen ? <DesignTodayFilters dataPdId="tasks.v2.filters">
             <DesignLabSelect dataPdId="tasks.v2.view" label="Task lifecycle view" onChange={value => changeControls(() => setDueState(value))} options={dueViews.map(view => ({ value: view.id, label: view.id === "today" ? "Needs Action" : view.label }))} value={dueState} />
             <label className="field-control table-search-field"><span>Search Tasks</span><input aria-label="Search Daily Tasks" data-pd-id="tasks.search" onChange={(event) => changeControls(() => setQuery(event.target.value))} placeholder="Task, Profile, bookmaker or record" type="search" value={query} /></label>
-            <label className="field-control table-filter-field"><span>Profile</span><select aria-label="Filter Tasks By Profile" onChange={(event) => changeControls(() => setProfileId(event.target.value))} value={profileId}><option value="all">All Authorised Active Profiles</option>{profiles.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></label>
+            {!globalProfileScope ? <label className="field-control table-filter-field"><span>Profile</span><select aria-label="Filter Tasks By Profile" onChange={(event) => changeControls(() => setProfileId(event.target.value))} value={profileId}><option value="all">All Authorised Active Profiles</option>{profiles.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></label> : null}
             <label className="field-control table-filter-field"><span>Bookmaker</span><select aria-label="Filter Tasks By Bookmaker" onChange={(event) => changeControls(() => setBookmaker(event.target.value))} value={bookmaker}><option value="all">All Bookmakers</option>{bookmakers.map(value => <option key={value}>{value}</option>)}</select></label>
             <label className="field-control table-filter-field"><span>Task Type</span><select aria-label="Filter Tasks By Type" onChange={(event) => changeControls(() => setNotificationType(event.target.value))} value={notificationType}><option value="all">All Task Types</option>{types.map(value => <option key={value} value={value}>{taskTypeLabel(value)}</option>)}</select></label>
             <label className="field-control table-filter-field"><span>Source</span><select aria-label="Filter Tasks By Source" onChange={(event) => changeControls(() => setSource(event.target.value as DailyTaskSource | "all"))} value={source}><option value="all">All Sources</option><option value="deterministic">Deterministic</option><option value="recurring" disabled>Recurring — Not Active</option><option value="ai" disabled>AI — Not Active</option></select></label>
             <label className="field-control table-filter-field"><span>Tasks per page</span><select aria-label="Tasks per page" data-pd-id="tasks.v2.page-size" onChange={event => changeControls(() => setPageSize(Number(event.target.value)))} value={pageSize}><option value={8}>8</option><option value={16}>16</option><option value={32}>32</option></select></label>
-            <button className={designTodayToolButtonClass} disabled={!activeFilterCount} onClick={() => changeControls(() => { setQuery(""); setProfileId("all"); setBookmaker("all"); setNotificationType("all"); setSource("all"); setDueState("today"); })} type="button">Clear Filters</button>
+            <button className={designTodayToolButtonClass} disabled={!activeFilterCount} onClick={() => changeControls(() => { setQuery(""); setProfileId(globalProfileScope ?? "all"); setBookmaker("all"); setNotificationType("all"); setSource("all"); setDueState("today"); })} type="button">Clear Filters</button>
             <button className={designTodayToolButtonClass} data-pd-id="tasks.refresh" disabled={isLoading || isPersistingState} onClick={() => void refresh()} type="button"><span aria-hidden="true" className="material-symbols-outlined">refresh</span>Refresh Tasks</button>
           </DesignTodayFilters> : null}
         </> : <>

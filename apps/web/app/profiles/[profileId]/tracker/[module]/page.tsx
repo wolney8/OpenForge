@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { AccountsWorkflowShell } from "@/components/accounts-workflow-shell";
 import { CashAdjustmentWorkflowShell } from "@/components/cash-adjustment-workflow-shell";
@@ -44,6 +45,10 @@ export default async function TrackerModulePage({
   const requestedView = typeof query.view === "string" ? query.view : undefined;
   const requestedSearch = typeof query.search === "string" ? query.search : undefined;
   const requestedRecord = typeof query.record === "string" ? query.record : undefined;
+  const requestedReturn = typeof query.returnTo === "string" ? query.returnTo : undefined;
+  const returnToCombined = requestedReturn && (requestedReturn === `/tracker/${module}` || new RegExp(`^/tracker/${module}\\?profile=[A-Za-z0-9_-]+$`).test(requestedReturn))
+    ? requestedReturn
+    : undefined;
   const requestedRecords = parseFeeReviewRecordIds(
     typeof query.records === "string" ? query.records : undefined
   );
@@ -112,6 +117,7 @@ export default async function TrackerModulePage({
 
   return (
     <main className="page-shell stack">
+      {visualV2 && returnToCombined ? <Link className="button-link" data-pd-id="tracker.return-to-combined" href={returnToCombined}>Back to combined {moduleDefinition.title}</Link> : null}
       {!usesCompactHero ? (
         <section className="hero-panel stack tracker-hero">
           <span className="eyebrow">{profile.profileCode}</span>
@@ -129,9 +135,9 @@ export default async function TrackerModulePage({
       ) : module === "casino-offers" ? (
         <CasinoOfferWorkflowShell feeReviewContext={feeReviewContext} initialIssueFilter={requestedIssue} initialQuery={requestedSearch} initialRecordId={requestedRecord} key={`casino:${requestedRecord ?? requestedIssue ?? (requestedRecords.join(",") || "default")}`} profileId={profile.profileId} visualV2={visualV2} />
       ) : module === "each-way-extra-places" ? (
-        <EachWayExtraPlaceWorkflowShell initialIssueFilter={requestedIssue} key={`extra-place:${requestedIssue ?? "default"}`} profileId={profile.profileId} visualV2={visualV2} />
+        <EachWayExtraPlaceWorkflowShell initialIssueFilter={requestedIssue} initialRecordId={requestedRecord} key={`extra-place:${requestedRecord ?? requestedIssue ?? "default"}`} profileId={profile.profileId} visualV2={visualV2} />
       ) : module === "cash-adjustments" ? (
-        <CashAdjustmentWorkflowShell profileId={profile.profileId} visualV2={visualV2} />
+        <CashAdjustmentWorkflowShell initialRecordId={requestedRecord} key={`cash:${requestedRecord ?? "default"}`} profileId={profile.profileId} visualV2={visualV2} />
       ) : module === "profit-tracker" ? (
         <TrackerSummaryShell profileId={profile.profileId} variant="profit-tracker" visualV2={visualV2} />
       ) : module === "reports" ? (

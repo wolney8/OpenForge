@@ -2,6 +2,15 @@
 
 Complete this for every feature, bug fix, component, fixture-backed UI, route or page change.
 
+## CP-137 Profile scope, page heads and tracked banner — 2026-11-05 / #118
+
+- [x] Read the required UI, accessibility, known-pitfalls and modal contracts and both local UI skills. Reused the connected Lab select, page head, ledger screen, toolbar, mobile detail and tracked-tray presentation with authenticated real-data adapters.
+- [x] Preserved server-owned Profile permissions and native record commands. Combined rows use Profile plus record identity, authorised per-Profile reads in bounded batches, explicit partial failures and one combined filter/sort/count/page. New records require an owner choice; existing rows retain a combined-list return path.
+- [x] Kept global Profile scope in routes, the local ledger filter subordinate, unsaved drafts guarded and stale read responses ignored. Position range, Today task semantics, eight-row default and flag-OFF legacy paths remain intact.
+- [x] Used existing task-annotation reads/writes for expanded, compact and hidden banner states; visibility is a presentation preference, not a tracking mutation. Active and source-history counts remain separate, and the header can restore the banner.
+- [x] Final-source synthetic desktop/split/mobile, light/dark, actual 200% zoom, keyboard/focus and native Add/Edit handoff checks: V2 integration 36 passed/5 phase skips, full visual 140/140, flag-OFF 9/9, web unit 706/706, typecheck and lint zero errors (12 inherited warnings).
+- [ ] Owner visual Design Acceptance, spoken screen-reader review and owner new-sign-in tracking persistence remain unverified. Complete native specialist editor interiors after this scoped review.
+
 ## CP-136 Today source history and native financial cards — 2026-11-04 / #118
 
 - [x] Read the UI/accessibility, known-pitfalls and ledger modal contracts plus both local UI review skills; matched the changed sections to the connected Lab financial card and the changed-source history to the existing Lab tracked-history pattern.

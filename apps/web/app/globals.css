@@ -18597,6 +18597,8 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
 .ux-v2-header-right { min-width: 0; }
 .ux-v2-header-right .global-search { flex: 0 1 clamp(300px,22vw,460px); width: clamp(300px,22vw,460px); min-width: 0; }
 .ux-v2-header-right .global-search-field { min-height: 50px; border-color: var(--outline); border-radius: 999px; background: var(--surface-container); }
+.ux-v2-header-right .global-search-field > input { min-height: 48px; padding-inline: 3rem 1rem; border: 0; border-radius: 999px; background: transparent; }
+.ux-v2-header-right .global-search-leading-icon { z-index: 2; font-size: 1.5rem; }
 .ux-v2-header-right .top-bar-actions { flex: 0 0 auto; display: flex; flex-wrap: nowrap; justify-content: flex-end; gap: 10px; width: auto; }
 .ux-v2-all-profiles { display: flex; align-items: center; justify-content: space-between; min-height: 44px; padding: 0 .75rem; border: 1px solid var(--outline); border-radius: .75rem; color: var(--text); text-decoration: none; }
 .ux-v2-all-profiles:hover { background: var(--surface-strong); }
@@ -18654,11 +18656,12 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
 }
 @media (max-width: 900px) {
   .ux-v2-top-bar, .ux-v2-main { grid-column: 1; }
+  .ux-v2-crumb-row { min-height: 42px; }
   .ux-v2-sidebar.is-mobile-open { display: flex; }
   .ux-v2-sidebar-scrim.is-open { position: fixed; z-index: 74; inset: 0; display: block; background: #0009; }
 }
 @media (max-width: 430px) {
-  .ux-v2-top-bar { gap: .35rem; padding: .55rem; }
+  .ux-v2-top-bar { gap: 6px; padding: 8px 12px; }
   .ux-v2-header-right { gap: .15rem; }
   .ux-v2-header-right .top-bar-actions { gap: 6px; }
   .ux-v2-header-right .fund-manager-role-chip,

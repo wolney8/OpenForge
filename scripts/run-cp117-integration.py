@@ -8,6 +8,7 @@ fixtures and the established runtime/session authorities are used.
 from __future__ import annotations
 
 import argparse
+import errno
 import json
 import os
 from pathlib import Path
@@ -437,10 +438,25 @@ def main() -> int:
                 # This source worktree has one Next dev graph. Never reuse a
                 # stale graph across fixture/flag runs or disturb a running one.
                 graph = ROOT / "apps/web/.next/dev"
+                # The supervised wrapper may exit just before Next releases
+                # its lock. Wait briefly; a persistent owner still fails shut.
+                for _ in range(50):
+                    if not (graph / "lock").exists():
+                        break
+                    time.sleep(0.1)
                 if (graph / "lock").exists():
                     raise RuntimeError("Another Next runtime owns this source worktree")
                 if graph.exists():
-                    shutil.rmtree(graph)
+                    for attempt in range(50):
+                        if (graph / "lock").exists():
+                            raise RuntimeError("Another Next runtime owns this source worktree")
+                        try:
+                            shutil.rmtree(graph)
+                            break
+                        except OSError as error:
+                            if error.errno != errno.ENOTEMPTY or attempt == 49:
+                                raise
+                            time.sleep(0.1)
             command = [
                 str(ROOT / "scripts/run-python.sh"),
                 f"scripts/run-{kind}-runtime.py",

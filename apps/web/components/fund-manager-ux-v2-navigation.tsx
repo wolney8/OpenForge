@@ -13,6 +13,8 @@ import { DesignLabHeaderOverlay } from "@/components/design-lab-header-overlay";
 import { ModalBoundary } from "@/components/modal-boundary";
 import { labDestinations } from "@/lib/design-lab-navigation";
 import { loadTaskAnnotations, TASK_ANNOTATIONS_REFRESH_EVENT, type TaskAnnotation } from "@/lib/task-annotations";
+import { scopedGlobalHref } from "@/lib/profile-scope";
+import { SHOW_TRACKED_TASKS_BANNER_EVENT } from "@/components/tracked-tasks-banner";
 
 const originStorageKey = "plum-duff:ux-v2-source-origin";
 const scrollRestoreKey = "plum-duff:ux-v2-scroll-restore";
@@ -39,7 +41,8 @@ function NavLink({ item, profileId, pathname, locationHash, onNavigate, onChoose
   onChooseProfile: (item: ShellDestination, trigger: HTMLButtonElement) => void;
 }) {
   const navigate = useShellNavigation();
-  const href = item.href(profileId);
+  const rawHref = item.href(profileId);
+  const href = rawHref ? scopedGlobalHref(rawHref, profileId) : null;
   const destination = destinationForPath(pathname, locationHash);
   const active = destination?.id === item.id || destination?.parent === item.id;
   if (!href) return <button aria-haspopup="dialog" aria-label={`${item.label} — choose a Profile`} className="ux-v2-nav-link is-unavailable" data-pd-id={`ux-v2.nav.${item.id}`} onClick={event => onChooseProfile(item, event.currentTarget)} title="Choose a Profile to open this destination" type="button"><span aria-hidden="true" className="material-symbols-outlined">{visualIcon(item)}</span><span>{item.label}</span><span aria-hidden="true" className="material-symbols-outlined">chevron_right</span></button>;
@@ -98,7 +101,7 @@ export function FundManagerUxV2Sidebar({ profileId, availableProfiles, mobileOpe
       <nav aria-label="Primary navigation" className="ux-v2-nav-stack">
         {group("primary").filter((item) => item.id !== "reports").map((item) => <NavLink item={item} key={item.id} locationHash={locationHash} onChooseProfile={chooseProfile} onNavigate={onMobileClose} pathname={pathname} profileId={profileId} />)}
         <div className={`${labStyles.trackerNav}${destination?.group === "tracker" ? ` ${labStyles.navGroupActive}` : ""}`}>
-          {profileId ? <Link className="ux-v2-nav-link" data-pd-id="ux-v2.nav.tracker" href={`/profiles/${encodeURIComponent(profileId)}/tracker/dashboard`} onClick={(event) => void navigate(event, `/profiles/${encodeURIComponent(profileId)}/tracker/dashboard`, onMobileClose)}><span aria-hidden="true" className="material-symbols-outlined">table_chart</span><span>Tracker</span></Link> : <button aria-haspopup="dialog" aria-label="Tracker — choose a Profile" className="ux-v2-nav-link is-unavailable" data-pd-id="ux-v2.nav.tracker" onClick={event => chooseProfile(shellDestinations.find(item => item.id === "profile-operations")!, event.currentTarget)} type="button"><span aria-hidden="true" className="material-symbols-outlined">table_chart</span><span>Tracker</span></button>}
+          {profileId ? <Link className="ux-v2-nav-link" data-pd-id="ux-v2.nav.tracker" href={`/profiles/${encodeURIComponent(profileId)}/tracker/dashboard`} onClick={(event) => void navigate(event, `/profiles/${encodeURIComponent(profileId)}/tracker/dashboard`, onMobileClose)}><span aria-hidden="true" className="material-symbols-outlined">table_chart</span><span>Tracker</span></Link> : <Link className="ux-v2-nav-link" data-pd-id="ux-v2.nav.tracker" href="/tracker/sportsbook-bets" onClick={event => void navigate(event, "/tracker/sportsbook-bets", onMobileClose)}><span aria-hidden="true" className="material-symbols-outlined">table_chart</span><span>Tracker</span></Link>}
           <button aria-controls="ux-v2-tracker-destinations" aria-expanded={trackerIsExpanded} aria-label={trackerIsExpanded ? "Collapse Tracker" : "Expand Tracker"} className={labStyles.trackerExpand} data-pd-id="ux-v2.nav.tracker-expand" onClick={() => setTrackerExpanded(!trackerIsExpanded)} type="button"><span aria-hidden="true" className="material-symbols-outlined">{trackerIsExpanded ? "expand_less" : "expand_more"}</span></button>
         </div>
         {trackerIsExpanded ? <div className={labStyles.trackerChildren} id="ux-v2-tracker-destinations">{group("tracker").map((item) => <NavLink item={item} key={item.id} locationHash={locationHash} onChooseProfile={chooseProfile} onNavigate={onMobileClose} pathname={pathname} profileId={profileId} />)}</div> : null}
@@ -124,7 +127,7 @@ const launcherGroups = [
   ] },
 ] as const;
 
-export function FundManagerUxV2HeaderTasks() {
+export function FundManagerUxV2HeaderTasks({ profileId = null }: { profileId?: string | null }) {
   const navigate = useShellNavigation();
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const [open, setOpen] = useState(false);
@@ -136,12 +139,14 @@ export function FundManagerUxV2HeaderTasks() {
     window.addEventListener(TASK_ANNOTATIONS_REFRESH_EVENT, refresh);
     return () => { active = false; window.removeEventListener(TASK_ANNOTATIONS_REFRESH_EVENT, refresh); };
   }, []);
-  if (!annotations) return <Link aria-label="Open Tasks" className={labStyles.iconButton} data-pd-id="ux-v2.header.tasks" href="/tasks" onClick={(event) => void navigate(event, "/tasks")} title="Tasks"><span aria-hidden="true" className="material-symbols-outlined">task_alt</span></Link>;
-  const active = annotations.filter(item => item.tracked && item.source_status === "active");
+  const allTasksHref = profileId ? `/tasks?scope=${encodeURIComponent(profileId)}` : "/tasks";
+  const trackedTasksHref = profileId ? `${allTasksHref}&collection=tracked` : "/tasks?collection=tracked";
+  if (!annotations) return <Link aria-label="Open Tasks" className={labStyles.iconButton} data-pd-id="ux-v2.header.tasks" href={allTasksHref} onClick={(event) => void navigate(event, allTasksHref)} title="Tasks"><span aria-hidden="true" className="material-symbols-outlined">task_alt</span></Link>;
+  const active = annotations.filter(item => item.tracked && item.source_status === "active" && (!profileId || item.profile_id === profileId));
   const preview = active.slice(0, 5);
   return <div className="app-menu-shell ux-v2-tracked-root">
     <button aria-expanded={open} aria-label={`Tracked Tasks, ${active.length} active`} className={labStyles.iconButton} data-pd-id="ux-v2.header.tasks" onClick={() => setOpen(value => !value)} ref={triggerRef} type="button"><span aria-hidden="true" className="material-symbols-outlined">task_alt</span>{active.length ? <span aria-hidden="true" className={labStyles.notificationCount}>{active.length}</span> : null}</button>
-    {open ? <DesignLabHeaderOverlay anchorRef={triggerRef} label="Tracked Tasks" onClose={() => setOpen(false)} preferredWidth={380}><div className={labStyles.menuBody} data-pd-id="ux-v2.header.tracked-panel"><h2>Tracked Tasks ({active.length})</h2>{preview.length ? <div className={labStyles.trackedPanelRows}>{preview.map(item => { const href = `/tasks?collection=tracked&task=${encodeURIComponent(item.occurrence_key)}`; return <div className={labStyles.trackedRow} key={`${item.profile_id}:${item.occurrence_key}`}><div><Link href={href} onClick={event => void navigate(event, href, () => setOpen(false))}><strong>{item.title}</strong></Link><small>{item.profile_name} · {item.work_state}</small></div></div>; })}</div> : <p className={labStyles.menuEmpty}>No Active Tracked Tasks</p>}{active.length > preview.length ? <p className={labStyles.trackedPreviewCount}>Showing {preview.length} of {active.length} active tasks</p> : null}<Link className={labStyles.menuRow} data-pd-id="ux-v2.header.tracked-view-all" href="/tasks?collection=tracked" onClick={event => void navigate(event, "/tasks?collection=tracked", () => setOpen(false))}><span aria-hidden="true" className="material-symbols-outlined">view_list</span><span>View All Tracked Tasks</span></Link></div></DesignLabHeaderOverlay> : null}
+    {open ? <DesignLabHeaderOverlay anchorRef={triggerRef} label="Tracked Tasks" onClose={() => setOpen(false)} preferredWidth={380}><div className={labStyles.menuBody} data-pd-id="ux-v2.header.tracked-panel"><h2>Tracked Tasks ({active.length})</h2>{preview.length ? <div className={labStyles.trackedPanelRows}>{preview.map(item => { const href = `${trackedTasksHref}&task=${encodeURIComponent(item.occurrence_key)}`; return <div className={labStyles.trackedRow} key={`${item.profile_id}:${item.occurrence_key}`}><div><Link href={href} onClick={event => void navigate(event, href, () => setOpen(false))}><strong>{item.title}</strong></Link><small>{item.profile_name} · {item.work_state}</small></div></div>; })}</div> : <p className={labStyles.menuEmpty}>No Active Tracked Tasks</p>}{active.length > preview.length ? <p className={labStyles.trackedPreviewCount}>Showing {preview.length} of {active.length} active tasks</p> : null}<button className={labStyles.menuRow} data-pd-id="ux-v2.header.tracked-show-banner" onClick={() => { window.dispatchEvent(new Event(SHOW_TRACKED_TASKS_BANNER_EVENT)); setOpen(false); }} type="button"><span aria-hidden="true" className="material-symbols-outlined">visibility</span><span>Show Tracked Tasks Banner</span></button><Link className={labStyles.menuRow} data-pd-id="ux-v2.header.tracked-view-all" href={trackedTasksHref} onClick={event => void navigate(event, trackedTasksHref, () => setOpen(false))}><span aria-hidden="true" className="material-symbols-outlined">view_list</span><span>View All Tracked Tasks</span></Link></div></DesignLabHeaderOverlay> : null}
   </div>;
 }
 
@@ -211,12 +216,12 @@ export function FundManagerUxV2Breadcrumbs({ profileId, profileName }: { profile
   if (pathname === "/") return <nav aria-label="Breadcrumb" className={labStyles.breadcrumb} data-pd-id="ux-v2.breadcrumbs"><span aria-current="page">Position</span></nav>;
   if (!current) return null;
   const tracker = current.group === "tracker";
-  const crumbs: { label: string; href?: string }[] = [{ label: "Position", href: "/" }];
-  if (tracker) crumbs.push({ label: "Tracker", href: profileId ? `/profiles/${encodeURIComponent(profileId)}/tracker/dashboard` : "/profiles" });
+  const crumbs: { label: string; href?: string }[] = [{ label: "Position", href: scopedGlobalHref("/", profileId) }];
+  if (tracker) crumbs.push({ label: "Tracker", href: profileId ? `/profiles/${encodeURIComponent(profileId)}/tracker/dashboard` : "/tracker/sportsbook-bets" });
   else if (current.parent) {
     const parent = shellDestinations.find(item => item.id === current.parent);
     const href = parent?.href(profileId);
-    if (parent && href) crumbs.push({ label: parent.label, href });
+    if (parent && href) crumbs.push({ label: parent.label, href: scopedGlobalHref(href, profileId) });
   }
   else if (profileId && pathname.startsWith("/profiles/")) crumbs.push({ label: "Profiles", href: "/profiles" });
   crumbs.push({ label: current.label });

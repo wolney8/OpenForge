@@ -55,8 +55,10 @@ for (const width of [1024, 1440, 390] as const) {
       await expect(page.locator('[data-pd-id="position.metrics"]')).toBeVisible();
       await page.locator('[data-pd-id="combined-reporting.loading"]').waitFor({ state: "hidden", timeout: 45_000 });
       await expect(page.locator('[data-pd-id="position.metrics"]')).not.toContainText(/Loading|Updating/);
-      await page.locator('.fund-manager-control-slot-range select').selectOption("Last Month");
-      await expect(page.locator('.fund-manager-control-slot-range select')).toHaveValue("Last Month");
+      const selectedRange = page.locator('[data-pd-id="position.selected-range"]');
+      await selectedRange.click();
+      await page.getByRole("option", { name: "Last Month", exact: true }).click();
+      await expect(selectedRange).toContainText("Last Month");
       await page.locator('[data-pd-id="combined-reporting.loading"]').waitFor({ state: "hidden", timeout: 45_000 });
       await theme(page, mode);
       const real = {
@@ -77,6 +79,7 @@ for (const width of [1024, 1440, 390] as const) {
       if (lab.search && real.search) {
         expect(Math.abs(real.search.x - lab.search.x)).toBeLessThanOrEqual(45);
         expect(Math.abs(real.search.y - lab.search.y)).toBeLessThanOrEqual(8);
+        await expect(page.locator('[data-pd-id="global-search.root"] .global-search-leading-icon')).toBeVisible();
       }
       expect(Math.abs(real.breadcrumb.y - lab.breadcrumb.y)).toBeLessThanOrEqual(5);
       expect(Math.abs(real.head.y - lab.head.y)).toBeLessThanOrEqual(12);
@@ -106,7 +109,9 @@ for (const width of [1024, 1440, 390] as const) {
       }
       expect(Math.max(next.y, work.y)).toBeLessThan(profiles.y);
       await expect(page.locator('[data-pd-id="position.metrics"] > div')).toHaveCount(3);
-      await expect(page.locator('[data-pd-id="reports.profile-scope"] > summary')).toHaveAccessibleName(/Profile scope:/);
+      await expect(page.locator('[data-pd-id="ux-v2.profile-scope"]')).toHaveAccessibleName(/Profile: All Profiles/);
+      await expect(page.locator('[data-pd-id="reports.profile-scope"]')).toHaveCount(0);
+      await expect(page.locator('[data-pd-id="position.selected-range"]')).toBeVisible();
 
       const completeness = page.locator('[data-pd-id="position.financial-completeness"]');
       if (await completeness.count()) {

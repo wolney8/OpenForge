@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
+import { Suspense } from "react";
 import styles from "@/components/design-lab-connected.module.css";
+import { TrackedTasksBanner } from "@/components/tracked-tasks-banner";
 
 /** The approved Lab ledger's complete heading, controls and content surface. */
 export function DesignLedgerScreen({ actions, children, dataPdId, description, enabled = true, title }: {
@@ -31,7 +33,7 @@ export function DesignLedgerToolbar({ ariaLabel, children, className = "", dataP
 }
 
 export function DesignPageHead({ children, dataPdId, enabled = true }: { children: ReactNode; dataPdId?: string; enabled?: boolean }) {
-  return enabled ? <div className={styles.pageHead} data-pd-id={dataPdId}>{children}</div> : <>{children}</>;
+  return enabled ? <><div className={styles.pageHead} data-pd-id={dataPdId}>{children}</div><Suspense fallback={null}><TrackedTasksBanner /></Suspense></> : <>{children}</>;
 }
 
 export const designPageHeadClasses = { actions: styles.headActions };

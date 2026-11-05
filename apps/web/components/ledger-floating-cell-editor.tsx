@@ -88,6 +88,9 @@ export function LedgerFloatingCellEditor({ session, ledger, label, dirty, error,
     let suppress = false;
     const outside = (event: PointerEvent) => {
       if (!(event.target instanceof Node) || root.current?.contains(event.target) || session.anchor.contains(event.target) || document.querySelector("dialog[open]")) return;
+      // Scope changes have their own Save/Discard/Cancel guard. Do not turn a
+      // Profile-selector click into an implicit field Save before it can run.
+      if (event.target instanceof Element && event.target.closest('[data-pd-id="ux-v2.profile-scope"],[role="listbox"][aria-label="Profile options"]')) return;
       if (!dirty && !saving.current && !pending) { onCancel(); return; }
       event.preventDefault(); event.stopImmediatePropagation(); suppress = true;
       if (!saving.current && !pending) void commit("outside");

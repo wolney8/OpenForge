@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { ModalBoundary } from "@/components/modal-boundary";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { AppNavigationDrawer } from "@/components/app-navigation-drawer";
 import labStyles from "@/components/design-lab-connected.module.css";
+import { DesignLabSelect } from "@/components/design-lab-select";
 import { FundManagerUxV2Breadcrumbs, FundManagerUxV2HeaderTasks, FundManagerUxV2Help, FundManagerUxV2Launcher, FundManagerUxV2Sidebar } from "@/components/fund-manager-ux-v2-navigation";
 import { BackLayThemeToggle } from "@/components/back-lay-theme-toggle";
 import { BrandLogo } from "@/components/brand-logo";
@@ -45,6 +46,7 @@ import {
 } from "@/lib/recent-profiles";
 import { beginRouteTransition } from "@/lib/shell-loading";
 import { resolveEquivalentProfileRoute } from "@/lib/profile-navigation";
+import { routeForProfileScope } from "@/lib/profile-scope";
 import {
   APP_CONFIRMED_NAVIGATION_EVENT,
   APP_CONFIRMATION_OPEN_EVENT,
@@ -92,7 +94,7 @@ function resolveProfileId(pathname: string): string | null {
 
 function isAuthenticatedApplicationPath(pathname: string): boolean {
   return pathname === "/" ||
-    ["/profiles", "/reports", "/performance", "/notifications", "/tasks", "/settings", "/account", "/fund-manager", "/imports", "/calculator", "/oddsmatcher", "/design-lab"].some(
+    ["/profiles", "/tracker", "/reports", "/performance", "/notifications", "/tasks", "/settings", "/account", "/fund-manager", "/imports", "/calculator", "/oddsmatcher", "/design-lab"].some(
       (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
     );
 }
@@ -146,6 +148,7 @@ function AppChromeContent({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const isPublicAuthRoute =
     pathname === "/login" ||
     pathname === "/register" ||
@@ -170,6 +173,9 @@ function AppChromeContent({
   const [profileSearch, setProfileSearch] = useState("");
   const [selectedCommandProfileId, setSelectedCommandProfileId] = useState<string | null>(null);
   const [activeProfiles, setActiveProfiles] = useState<ProfileHeaderRecord[]>([]);
+  const [profileDirectoryReady, setProfileDirectoryReady] = useState(false);
+  const requestedGlobalScope = searchParams.get("scope");
+  const selectedScopeId = resolvedProfileId ?? (requestedGlobalScope && activeProfiles.some(profile => profile.profile_id === requestedGlobalScope) ? requestedGlobalScope : null);
   const [headerRefreshKey, setHeaderRefreshKey] = useState(0);
   const headerRequestIdRef = useRef(0);
   const unsavedPrompt = useUnsavedChangesPromptController();
@@ -274,7 +280,7 @@ function AppChromeContent({
     const profilesUrl = `${apiBaseUrl}/profiles`;
     const cachedProfiles = readCachedJson<ProfileHeaderRecord[]>(profilesUrl);
     let cachedFrame: number | null = null;
-    if (cachedProfiles) {
+    if (cachedProfiles && !uxV2) {
       cachedFrame = window.requestAnimationFrame(() => {
         if (!isActive) return;
         setActiveProfiles(
@@ -288,9 +294,13 @@ function AppChromeContent({
         setActiveProfiles(
           profiles.filter((item) => (item.status ?? "active").trim().toLowerCase() !== "archived")
         );
+        setProfileDirectoryReady(true);
       })
       .catch(() => {
-        if (isActive) setActiveProfiles([]);
+        if (isActive) {
+          setActiveProfiles([]);
+          setProfileDirectoryReady(false);
+        }
       });
     return () => {
       isActive = false;
@@ -298,7 +308,14 @@ function AppChromeContent({
         window.cancelAnimationFrame(cachedFrame);
       }
     };
-  }, [headerRefreshKey, isPublicAuthRoute]);
+  }, [headerRefreshKey, isPublicAuthRoute, uxV2]);
+
+  useEffect(() => {
+    if (!uxV2 || !profileDirectoryReady || !requestedGlobalScope || activeProfiles.some(profile => profile.profile_id === requestedGlobalScope)) return;
+    const query = new URLSearchParams(searchParams.toString());
+    query.delete("scope");
+    router.replace(`${pathname}${query.size ? `?${query.toString()}` : ""}`);
+  }, [activeProfiles, pathname, profileDirectoryReady, requestedGlobalScope, router, searchParams, uxV2]);
 
   useEffect(() => {
     const refreshHeaderForProfile = (event: Event) => {
@@ -600,7 +617,7 @@ function AppChromeContent({
         Skip to content
       </a>
       <div className={`app-frame${uxV2 && !isPublicAuthRoute ? ` ux-v2-frame ${labStyles.frame}${uxV2Collapsed ? ` is-sidebar-collapsed ${labStyles.collapsed}` : ""}` : ""}`} data-ux-shell={uxV2 && !isPublicAuthRoute ? "v2" : "legacy"}>
-        {!isPublicAuthRoute && uxV2 ? <FundManagerUxV2Sidebar availableProfiles={activeProfiles} profileId={resolvedProfileId} mobileOpen={uxV2MobileOpen} onMobileClose={() => setUxV2MobileOpen(false)} triggerRef={appMenuTriggerRef} /> : null}
+        {!isPublicAuthRoute && uxV2 ? <FundManagerUxV2Sidebar availableProfiles={activeProfiles} profileId={selectedScopeId} mobileOpen={uxV2MobileOpen} onMobileClose={() => setUxV2MobileOpen(false)} triggerRef={appMenuTriggerRef} /> : null}
         {!isPublicAuthRoute ? <header className={`top-app-bar${uxV2 ? ` ux-v2-top-bar ${labStyles.header}` : ""}`} data-openforge-top-bar="" data-pd-id="app-shell.top-bar">
           <div className={uxV2 ? labStyles.headerLeft : "legacy-header-left"}>
           <div className={`brand-lockup${uxV2 ? ` ${labStyles.headerIdentity}` : ""}`}>
@@ -636,7 +653,11 @@ function AppChromeContent({
           </div>
           {!uxV2 ? <GlobalSearch /> : null}
           <div className={`top-bar-profile-context${uxV2 ? ` ${labStyles.profileSelect}` : ""}`}>
-            {!isPublicAuthRoute && isInsideProfile ? (
+            {!isPublicAuthRoute && uxV2 ? <DesignLabSelect compact dataPdId="ux-v2.profile-scope" label="Profile" value={selectedScopeId ?? "all"} options={[{ value: "all", label: "All Profiles" }, ...activeProfiles.map(profile => ({ value: profile.profile_id, label: profile.display_name }))]} onChange={async value => {
+              if (!(await confirmUnsavedTrackerChanges())) return;
+              beginRouteTransition();
+              router.push(routeForProfileScope(pathname ?? "/", value === "all" ? null : value));
+            }} /> : !isPublicAuthRoute && isInsideProfile ? (
               <div className="app-menu-shell profile-summary-menu-shell" ref={trackerMenuRef}>
                 <FinancialValueReplayGroup>
                 <button
@@ -811,10 +832,10 @@ function AppChromeContent({
                   </div>
                 </div>
               </div>
-            ) : uxV2 ? <Link className="ux-v2-all-profiles" href="/profiles">All Profiles<span aria-hidden="true" className="material-symbols-outlined">expand_more</span></Link> : null}
+            ) : null}
           </div>
           </div>
-          {uxV2 ? <div className={`ux-v2-header-right ${labStyles.headerRight}`}><GlobalSearch /><div className="top-bar-actions"><NotificationCentre uxV2 /><FundManagerUxV2HeaderTasks /><FundManagerUxV2Help key={`help-${pathname}`} /><FundManagerUxV2Launcher key={pathname} /><FundManagerIdentityMenu uxV2 /></div></div> : <div className="top-bar-actions"><NotificationCentre /><BackLayThemeToggle /><FundManagerIdentityMenu /><ThemeToggle /></div>}
+          {uxV2 ? <div className={`ux-v2-header-right ${labStyles.headerRight}`}><GlobalSearch /><div className="top-bar-actions"><NotificationCentre uxV2 /><FundManagerUxV2HeaderTasks profileId={selectedScopeId} /><FundManagerUxV2Help key={`help-${pathname}`} /><FundManagerUxV2Launcher key={pathname} /><FundManagerIdentityMenu uxV2 /></div></div> : <div className="top-bar-actions"><NotificationCentre /><BackLayThemeToggle /><FundManagerIdentityMenu /><ThemeToggle /></div>}
           <Suspense fallback={null}><ShellLoadingProgress /></Suspense>
         </header> : null}
         {!isPublicAuthRoute && !uxV2 ? <Suspense fallback={null}>

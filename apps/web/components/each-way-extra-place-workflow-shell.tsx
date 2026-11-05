@@ -1,6 +1,6 @@
 "use client";
 
-import { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type RefObject, useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { FinancialValue, FinancialValueReplayGroup } from "@/components/financial-value";
 import { FinancialReadValue, type FinancialReadState } from "@/components/financial-read-value";
@@ -338,10 +338,12 @@ function isDateWithinRange(
 export function EachWayExtraPlaceWorkflowShell({
   profileId,
   initialIssueFilter,
+  initialRecordId,
   visualV2 = false,
 }: {
   profileId: string;
   initialIssueFilter?: string;
+  initialRecordId?: string;
   visualV2?: boolean;
 }) {
   const baseUrl = `${apiBaseUrl}/profiles/${profileId}/each-way-extra-places`;
@@ -658,6 +660,15 @@ export function EachWayExtraPlaceWorkflowShell({
     });
     resetEditor(next, row, cell);
   };
+  const openInitialRow = useEffectEvent((row: Row) => openRow(row));
+  const initialRowOpened = useRef(false);
+  useEffect(() => {
+    if (!initialRecordId || initialRowOpened.current || rowsRead?.state !== "ready") return;
+    const row = rows.find(item => item.each_way_extra_place_id === initialRecordId);
+    if (!row) return;
+    const timer = window.setTimeout(() => { initialRowOpened.current = true; openInitialRow(row); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [initialRecordId, rows, rowsRead]);
   const close = async () => {
     if (saving || (isDirty && !(await confirmDiscardChanges()))) return;
     setOpen(false);

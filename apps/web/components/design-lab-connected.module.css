@@ -22,7 +22,8 @@
 .entryGrid>.entryFields>fieldset>legend{padding:0;margin:0 0 8px;font-size:1.1rem;font-weight:800}
 .lab{--tracked-surface:#ecebfa;--tracked-border:#9a91c8;--tracked-fg:#343165}
 :global(html[data-theme="dark"]) .lab{--tracked-surface:#27263d;--tracked-border:#6f6999;--tracked-fg:#dcd8ff}
-.activeTaskTray{display:grid;gap:8px;min-width:0;margin:0 0 16px;padding:8px 12px;border:1px solid var(--tracked-border);border-radius:12px;background:var(--tracked-surface);color:var(--tracked-fg)}
+.activeTaskTray{--tracked-surface:#ecebfa;--tracked-border:#9a91c8;--tracked-fg:#343165;display:grid;gap:8px;min-width:0;margin:0 0 16px;padding:8px 12px;border:1px solid var(--tracked-border);border-radius:12px;background:var(--tracked-surface);color:var(--tracked-fg)}
+:global(html[data-theme="dark"]) .activeTaskTray{--tracked-surface:#27263d;--tracked-border:#6f6999;--tracked-fg:#dcd8ff}
 .trackedHeader{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:44px}.trackedHeaderToggle{display:flex;align-items:center;justify-content:space-between;gap:8px;flex:1;min-width:0;min-height:44px;padding:4px 8px;border:0;border-radius:8px;background:transparent;color:var(--tracked-fg);text-align:left}.trackedHeaderToggle:hover{background:color-mix(in srgb,var(--tracked-border) 20%,transparent)}.trackedHeaderToggle>span:first-child{display:grid;min-width:0}.trackedHeader strong,.trackedHeader small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.trackedHeader small{font-size:.8rem}.hideBanner{flex:none}
 .trackedRows{display:grid;grid-auto-rows:max-content;align-content:start;max-height:min(42dvh,420px);overflow-y:auto;overscroll-behavior:contain}
 .trackedRow{display:flex;align-items:center;gap:10px;min-width:0;min-height:64px;padding:8px;border-top:1px solid var(--tracked-border)}
@@ -31,6 +32,7 @@
 .trackedRow small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.8rem}
 .trackedActions{display:flex;align-items:center;gap:5px;flex:none}
 .trackedActions button{min-height:44px;padding:6px 9px;border:1px solid var(--tracked-border);border-radius:8px;background:transparent;color:var(--tracked-fg);font-weight:700}
+.trackedActions a{display:inline-flex;align-items:center;min-height:44px;padding:6px 9px;border:1px solid var(--tracked-border);border-radius:8px;color:var(--tracked-fg);font-weight:700;text-decoration:none}
 .trackedPanelRows{display:grid;min-width:0}
 .trackedPanelRows .trackedRow{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:5px 8px;min-height:96px;padding:9px 8px;border-radius:8px}
 .trackedPanelRows .trackedRow>div:first-child{grid-column:1;min-width:0}

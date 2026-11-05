@@ -610,7 +610,7 @@ function sortCashAdjustmentsByDate(rows: CashAdjustmentRecord[]): CashAdjustment
   });
 }
 
-export function CashAdjustmentWorkflowShell({ profileId, visualV2 = false }: { profileId: string; visualV2?: boolean }) {
+export function CashAdjustmentWorkflowShell({ profileId, initialRecordId, visualV2 = false }: { profileId: string; initialRecordId?: string; visualV2?: boolean }) {
   const [guidedAccessMode] = useProfileGuidedAccessMode(profileId);
   const guidedAccessEnabled = isGuidedAccessEnabled(guidedAccessMode);
   const [rows, setRows] = useState<CashAdjustmentRecord[]>([]);
@@ -851,14 +851,14 @@ export function CashAdjustmentWorkflowShell({ profileId, visualV2 = false }: { p
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
-      void Promise.all([loadRows(), loadAccountAuthorities(), loadTrackerSettings()]).catch((error: Error) => {
+      void Promise.all([loadRows(initialRecordId), loadAccountAuthorities(), loadTrackerSettings()]).catch((error: Error) => {
         setIsInitialLoading(false);
         setErrorMessage(error.message);
       });
     }, 0);
 
     return () => window.clearTimeout(timeoutId);
-  }, [loadAccountAuthorities, loadRows, loadTrackerSettings]);
+  }, [initialRecordId, loadAccountAuthorities, loadRows, loadTrackerSettings]);
 
   const selectedRow = useMemo(
     () => rows.find((row) => row.cash_adjustment_id === selectedId) ?? null,

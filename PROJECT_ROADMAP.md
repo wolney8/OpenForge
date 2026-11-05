@@ -1,5 +1,9 @@
 # Project Roadmap — Plum Duff / OpenForge — Doc ID: PR-CODEX-001
 
+## Current CP-137 continuation — 2026-11-05
+
+Owner review of the CP-137 universal Profile scope, combined ledger browsing, Position/Today page heads and in-page tracked banner follows the clean synthetic 36-path V2, 140-path visual and 9-path flag-OFF checks. Preserve activated normal Today tracking, the eight-task default and all CP-136 specialist editor work. After this bounded navigation review, return to native Sportsbook, Free Bet and Casino editor composition. Saved views, new financial priority rules, main merge and hosted deployment remain separate gates.
+
 ## Current CP-136 continuation — 2026-11-04
 
 Verify source-changed tracking history and new-session persistence with independent synthetic authentication. The owner confirmed one Tracked Tasks item after refresh; an in-page banner is still absent in the real V2. Continue native Sportsbook, Free Bet and Casino editor Add/Edit presentation against the shared Lab components and modal contract. Keep Design, Interaction and Integration acceptance separate. Main merge, hosted deployment, financial authority changes, saved views and new task lifecycle rules remain gated.

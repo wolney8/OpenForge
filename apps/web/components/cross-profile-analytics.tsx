@@ -11,6 +11,7 @@ import { ReportExplorer } from "@/components/report-explorer";
 import { DesignManagementDetail, DesignManagementSurface } from "@/components/design-management-presentation";
 import { DesignPositionMetrics, DesignPositionWorkGrid, DesignPositionSurface, DesignPositionSectionHead, DesignPositionTask, DesignPositionShortcut, designPositionActionClasses } from "@/components/design-position-presentation";
 import { DesignPageHead, designPageHeadClasses } from "@/components/design-ledger-screen";
+import { DesignLabSelect } from "@/components/design-lab-select";
 import { PeriodPnlReport } from "@/components/period-pnl-report";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { usePersistedState } from "@/lib/ledger-ui";
@@ -20,10 +21,11 @@ import {
   type ReportProfileScopeMode,
   type ReportProfileSelection,
 } from "@/lib/report-profile-selection";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { type ComponentProps, useEffect, useMemo, useRef, useState } from "react";
 import { apiBaseUrl } from "@/lib/api";
 import { beginRouteTransition, beginShellLoading, endShellLoading } from "@/lib/shell-loading";
+import { scopedGlobalHref } from "@/lib/profile-scope";
 import { AccessScopeBadge } from "./access-scope-badge";
 import { FinancialValue as PlatformFinancialValue, FinancialValueReplayGroup, FinancialValueReplayRow } from "./financial-value";
 import { JsonRequestError } from "@/lib/client-json-cache";
@@ -394,6 +396,8 @@ export function CrossProfileAnalytics({
   initialDirectoryStatus?: DirectoryStatus;
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const requestedGlobalProfile = searchParams.get("scope");
   const profileRecords = profiles;
   const isReportAnalysisTab = initialTab === "reports" || initialTab === "performance";
   const activeProfileIds = useMemo(
@@ -453,9 +457,11 @@ export function CrossProfileAnalytics({
     [profiles, savedReportProfileIds]
   );
   const selectedProfileIds = useMemo(() => {
+    if (visualV2 && (initialTab === "performance" || initialTab === "reports") && requestedGlobalProfile && activeProfileIds.includes(requestedGlobalProfile)) return [requestedGlobalProfile];
+    if (visualV2 && initialTab === "performance") return activeProfileIds;
     if (!isReportAnalysisTab) return localProfileIds;
     return resolvedReportSelection.selectedIds;
-  }, [isReportAnalysisTab, localProfileIds, resolvedReportSelection.selectedIds]);
+  }, [activeProfileIds, initialTab, isReportAnalysisTab, localProfileIds, requestedGlobalProfile, resolvedReportSelection.selectedIds, visualV2]);
   const setSelectedProfileIds = (
     next: string[] | ((ids: string[]) => string[]),
     scope: ReportProfileScopeMode = "custom",
@@ -764,7 +770,9 @@ export function CrossProfileAnalytics({
   const feeCentreReadState = profileReadState(profileRecords.map((profile) => profile.profileId), "fees");
 
   const reportScopeMode = isReportAnalysisTab ? resolvedReportSelection.scope : "custom";
-  const reportScopeLabel = reportScopeMode === "active"
+  const reportScopeLabel = visualV2 && requestedGlobalProfile && selectedProfileIds.length === 1 && activeProfileIds.includes(requestedGlobalProfile)
+    ? profileRecords.find(profile => profile.profileId === requestedGlobalProfile)?.displayName ?? "Selected Profile"
+    : reportScopeMode === "active"
     ? `${selectedProfileIds.length} Active ${selectedProfileIds.length === 1 ? "Profile" : "Profiles"}`
     : reportScopeMode === "inactive"
       ? `${selectedProfileIds.length} Inactive ${selectedProfileIds.length === 1 ? "Profile" : "Profiles"}`
@@ -1257,7 +1265,7 @@ export function CrossProfileAnalytics({
       <div
         className={`fund-manager-control-bar${activeTab === "profiles" ? " is-directory" : " is-analytics"}${visualV2 && activeTab === "performance" ? ` ${designPageHeadClasses.actions}` : ""}`}
       >
-        {activeTab !== "profiles" && activeTab !== "fees" ? (
+        {activeTab !== "profiles" && activeTab !== "fees" && !(visualV2 && activeTab === "performance") && !(visualV2 && activeTab === "reports" && requestedGlobalProfile) ? (
         <details className="profile-report-picker fund-manager-control-slot-profile" data-pd-id="reports.profile-scope">
         <summary aria-label={visualV2 && activeTab === "performance" ? `Profile scope: ${reportScopeLabel}` : undefined}>
           <span aria-hidden="true" className="material-symbols-outlined">
@@ -1355,7 +1363,7 @@ export function CrossProfileAnalytics({
           </>}
         </fieldset>
         </details>
-        ) : null}
+        ) : visualV2 && activeTab === "reports" && requestedGlobalProfile ? <p data-pd-id="reports.global-profile-scope">Report Profile · {reportScopeLabel}. Select All Profiles in the header to use advanced report selections.</p> : null}
         {activeTab === "profiles" ? (
           <>
         <label className="m3-picker-field fund-manager-control-slot-search">
@@ -1413,7 +1421,7 @@ export function CrossProfileAnalytics({
         ) : null}
         {activeTab !== "fees" ? (
         <div className="compact-report-controls fund-manager-control-slot-range">
-          <label className="m3-picker-field">
+          {visualV2 && activeTab === "performance" ? <DesignLabSelect dataPdId="position.selected-range" label="Selected Range" onChange={value => void changeSelectedRange(value as DatePreset)} options={getDatePresetOptions().map(value => ({ value, label: value }))} value={preset} /> : <label className="m3-picker-field">
             <span className="m3-picker-label">Date range</span>
             <span className="m3-picker-control">
               <span aria-hidden="true" className="material-symbols-outlined">date_range</span>
@@ -1423,7 +1431,7 @@ export function CrossProfileAnalytics({
                 ))}
               </select>
             </span>
-          </label>
+          </label>}
           {preset === "Custom" ? (
             <>
               <label className="m3-picker-field">
@@ -1487,21 +1495,21 @@ export function CrossProfileAnalytics({
           <DesignPositionMetrics dataPdId={activeTab === "reports" ? "reports.metrics" : "position.metrics"} label={activeTab === "reports" ? "Reports metrics" : "Selected position metrics"} items={activeTab === "reports" ? [pnlMetric, liabilityMetric, cashMetric] : [cashMetric, pnlMetric, liabilityMetric]} />
           {activeTab === "performance" ? <><DesignPositionWorkGrid>
             <DesignPositionSurface labelledBy="position-next-actions">
-              <DesignPositionSectionHead id="position-next-actions" title="Next actions" action={<Link className={designPositionActionClasses.link} href="/tasks">All tasks <span aria-hidden="true" className="material-symbols-outlined">arrow_forward</span></Link>} />
+              <DesignPositionSectionHead id="position-next-actions" title="Next actions" action={<Link className={designPositionActionClasses.link} href={scopedGlobalHref("/tasks", requestedGlobalProfile)}>All tasks <span aria-hidden="true" className="material-symbols-outlined">arrow_forward</span></Link>} />
               {combined.profileRows.some((row) => row.overdueBets > 0) ? <DesignPositionTask title="Review overdue Sportsbook positions" description="Source rows remain in the owning Profile." action={<Link className={designPositionActionClasses.secondary} href={buildOperationalLedgerHref(combined.profileRows.find((row) => row.overdueBets > 0)!.profileId, "sportsbook", "all")}>Open Sportsbook</Link>} /> : null}
               {combined.incompleteCashAccountCount > 0 ? <DesignPositionTask title="Confirm current balances" description={`${combined.incompleteCashAccountCount} Account ${combined.incompleteCashAccountCount === 1 ? "balance is" : "balances are"} missing.`} action={<Link className={designPositionActionClasses.primary} href={combined.cashIssues?.find((issue) => issue.profileId)?.profileId ? `/profiles/${combined.cashIssues.find((issue) => issue.profileId)!.profileId}/tracker/accounts?view=issues&issue=needs-attention&source=position` : "/profiles"}>Review Accounts</Link>} /> : null}
               {(trackerRangeActiveProfilesCombined.sportsbookCommittedFinancialIssues?.length ?? 0) > 0 ? <DesignPositionTask title="Complete open Sportsbook calculations" description={`${trackerRangeActiveProfilesCombined.sportsbookCommittedFinancialIssues!.length} placed ${trackerRangeActiveProfilesCombined.sportsbookCommittedFinancialIssues!.length === 1 ? "position needs" : "positions need"} source details before current liability is complete.`} action={<Link className={designPositionActionClasses.secondary} href={selectedProfileIds.length === 1 ? buildOperationalLedgerHref(selectedProfileIds[0], "sportsbook", "all") : "/profiles"}>{selectedProfileIds.length === 1 ? "Open Sportsbook" : "Choose Profile"}</Link>} /> : null}
               {(trackerRangeActiveProfilesCombined.sportsbookHistoricalFinancialIssues?.length ?? 0) > 0 ? <DesignPositionTask title="Review settled Sportsbook P&L" description={`${trackerRangeActiveProfilesCombined.sportsbookHistoricalFinancialIssues!.length} settled ${trackerRangeActiveProfilesCombined.sportsbookHistoricalFinancialIssues!.length === 1 ? "record has" : "records have"} no authoritative P&L.`} action={<Link className={designPositionActionClasses.secondary} href={selectedProfileIds.length === 1 ? buildOperationalLedgerHref(selectedProfileIds[0], "sportsbook", "all") : "/profiles"}>{selectedProfileIds.length === 1 ? "Open Sportsbook" : "Choose Profile"}</Link>} /> : null}
               {(trackerRangeActiveProfilesCombined.freeBetFinancialIssues?.length ?? 0) > 0 ? <DesignPositionTask title="Review Free Bet financial details" description={`${trackerRangeActiveProfilesCombined.freeBetFinancialIssues!.length} Free Bet ${trackerRangeActiveProfilesCombined.freeBetFinancialIssues!.length === 1 ? "record needs" : "records need"} source details.`} action={<Link className={designPositionActionClasses.secondary} href={selectedProfileIds.length === 1 ? buildOperationalLedgerHref(selectedProfileIds[0], "free-bets", "all") : "/profiles"}>{selectedProfileIds.length === 1 ? "Open Free Bets" : "Choose Profile"}</Link>} /> : null}
-              {hasUnresolvedPositionValue && !(trackerRangeActiveProfilesCombined.sportsbookCommittedFinancialIssues?.length || trackerRangeActiveProfilesCombined.sportsbookHistoricalFinancialIssues?.length || trackerRangeActiveProfilesCombined.freeBetFinancialIssues?.length) ? <DesignPositionTask title="Review unavailable financial values" description="Some selected-range results or current liabilities have no complete authoritative value. Profile reports retain the source detail." action={<Link className={designPositionActionClasses.secondary} href="/reports">Review reports</Link>} /> : null}
+              {hasUnresolvedPositionValue && !(trackerRangeActiveProfilesCombined.sportsbookCommittedFinancialIssues?.length || trackerRangeActiveProfilesCombined.sportsbookHistoricalFinancialIssues?.length || trackerRangeActiveProfilesCombined.freeBetFinancialIssues?.length) ? <DesignPositionTask title="Review unavailable financial values" description="Some selected-range results or current liabilities have no complete authoritative value. Profile reports retain the source detail." action={<Link className={designPositionActionClasses.secondary} href={scopedGlobalHref("/reports", requestedGlobalProfile)}>Review reports</Link>} /> : null}
               {!hasUnresolvedPositionValue && !combined.profileRows.some((row) => row.overdueBets > 0) && combined.incompleteCashAccountCount === 0 && !(trackerRangeActiveProfilesCombined.sportsbookCommittedFinancialIssues?.length || trackerRangeActiveProfilesCombined.sportsbookHistoricalFinancialIssues?.length || trackerRangeActiveProfilesCombined.freeBetFinancialIssues?.length) ? <p>No immediate source action is identified for this selection.</p> : null}
             </DesignPositionSurface>
             <DesignPositionSurface labelledBy="position-continue-work">
               <DesignPositionSectionHead id="position-continue-work" title="Continue work" />
               <nav aria-label="Position shortcuts">
                 <DesignPositionShortcut href="/profiles" icon="group" label="Manage Profiles" />
-                <DesignPositionShortcut href="/reports" icon="monitoring" label="Review reports" />
-                <DesignPositionShortcut href="/tasks" icon="task_alt" label="Open Today" />
+                <DesignPositionShortcut href={scopedGlobalHref("/reports", requestedGlobalProfile)} icon="monitoring" label="Review reports" />
+                <DesignPositionShortcut href={scopedGlobalHref("/tasks", requestedGlobalProfile)} icon="task_alt" label="Open Today" />
               </nav>
             </DesignPositionSurface>
           </DesignPositionWorkGrid>

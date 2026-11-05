@@ -9,19 +9,21 @@ export type ShellDestination = {
 
 const profileRoute = (module: string) => (profileId: string | null) =>
   profileId ? `/profiles/${encodeURIComponent(profileId)}/tracker/${module}` : null;
+const combinedRoute = (module: string) => (profileId: string | null) =>
+  profileId ? `/profiles/${encodeURIComponent(profileId)}/tracker/${module}` : `/tracker/${module}`;
 
 // Route names and access are inherited from the existing Fund Manager shell. A null href
 // means a Profile must be selected first; it must never silently pick a default Profile.
 export const shellDestinations: ShellDestination[] = [
   { id: "position", label: "Position", icon: "space_dashboard", group: "primary", href: () => "/" },
   { id: "today", label: "Today", icon: "task_alt", group: "primary", href: () => "/tasks" },
-  { id: "opportunities", label: "Opportunities", icon: "lightbulb", group: "primary", href: profileRoute("accounts#profile-opportunities") },
-  { id: "accounts", label: "Accounts", icon: "account_balance_wallet", group: "primary", href: profileRoute("accounts") },
-  { id: "sportsbook", label: "Sportsbook Bets", icon: "sports_soccer", group: "tracker", href: profileRoute("sportsbook-bets") },
-  { id: "free-bets", label: "Free Bets", icon: "award_star", group: "tracker", href: profileRoute("free-bets") },
-  { id: "casino", label: "Casino Offers", icon: "playing_cards", group: "tracker", href: profileRoute("casino-offers") },
-  { id: "extra-place", label: "Extra Place", icon: "chess_knight", group: "tracker", href: profileRoute("each-way-extra-places") },
-  { id: "cash", label: "Cash Adjustments", icon: "payments", group: "tracker", href: profileRoute("cash-adjustments") },
+  { id: "opportunities", label: "Opportunities", icon: "lightbulb", group: "primary", href: profileId => profileId ? `/profiles/${encodeURIComponent(profileId)}/tracker/accounts#profile-opportunities` : "/tracker/accounts#profile-opportunities" },
+  { id: "accounts", label: "Accounts", icon: "account_balance_wallet", group: "primary", href: combinedRoute("accounts") },
+  { id: "sportsbook", label: "Sportsbook Bets", icon: "sports_soccer", group: "tracker", href: combinedRoute("sportsbook-bets") },
+  { id: "free-bets", label: "Free Bets", icon: "award_star", group: "tracker", href: combinedRoute("free-bets") },
+  { id: "casino", label: "Casino Offers", icon: "playing_cards", group: "tracker", href: combinedRoute("casino-offers") },
+  { id: "extra-place", label: "Extra Place", icon: "chess_knight", group: "tracker", href: combinedRoute("each-way-extra-places") },
+  { id: "cash", label: "Cash Adjustments", icon: "payments", group: "tracker", href: combinedRoute("cash-adjustments") },
   { id: "reports", label: "Reports", icon: "summarize", group: "primary", href: () => "/reports" },
   { id: "profiles", label: "Profiles", icon: "group", group: "more", href: () => "/profiles" },
   { id: "settings", label: "Settings", icon: "settings", group: "more", href: () => "/settings" },
@@ -38,6 +40,7 @@ export const shellDestinations: ShellDestination[] = [
 ];
 
 export function destinationForPath(pathname: string, hash = ""): ShellDestination | null {
+  if (hash === "#profile-opportunities" && pathname === "/tracker/accounts") return shellDestinations.find((item) => item.id === "opportunities") ?? null;
   if (hash === "#profile-opportunities" && /^\/profiles\/[^/]+\/tracker\/accounts$/.test(pathname)) return shellDestinations.find((item) => item.id === "opportunities") ?? null;
   if (pathname === "/") return shellDestinations[0];
   if (pathname === "/tasks") return shellDestinations[1];
@@ -49,6 +52,8 @@ export function destinationForPath(pathname: string, hash = ""): ShellDestinatio
   if (pathname === "/profiles/restore") return shellDestinations.find((item) => item.id === "recovery") ?? null;
   if (pathname === "/settings") return shellDestinations.find((item) => item.id === "settings") ?? null;
   const modulePath = pathname.match(/^\/profiles\/[^/]+\/tracker\/([^/]+)/)?.[1];
+  const combinedModulePath = pathname.match(/^\/tracker\/([^/]+)/)?.[1];
+  if (combinedModulePath) return shellDestinations.find(item => item.group !== "launcher" && item.id !== "opportunities" && item.href(null)?.includes(`/tracker/${combinedModulePath}`)) ?? null;
   if (modulePath) return shellDestinations.find((item) => item.group !== "launcher" && item.id !== "opportunities" && item.href("__profile__")?.includes(`/tracker/${modulePath}`)) ?? null;
   return null;
 }

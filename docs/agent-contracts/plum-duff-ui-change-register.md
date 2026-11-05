@@ -1395,6 +1395,18 @@ The owner continues [#118](https://github.com/wolney8/OpenForge/issues/118) unde
 
 `PD-PR-117A-46` remains IN PROGRESS. The native Sportsbook, Free Bet and Casino modal sections already render the actual shared Lab financial card, but a broad legacy CSS selector suppressed that card's Lab surface, border and padding. The scoped correction exempts the shared card, preserving the existing native modal, fields and governed commands. Whole-editor Design Acceptance and complete Add/Edit journey evidence remain open; the connected Lab workbench and the native modal parity contract are the references. `PD-PR-117A-51` remains NEEDS VERIFICATION until disposable visual/integration and rollback checks pass on the final source. No financial authority changes are included.
 
+## CP-137 navigation, page heads and tracked banner — 2026-11-05
+
+| ID | Requested outcome and affected surface | Signed-off equivalent | Status |
+| --- | --- | --- | --- |
+| PD-PR-117A-53 | Universal authorised Profile scope, combined Accounts and six-ledger browsing, subordinate filter, preserved native owner commands and route history | Design Lab header selector and ledger Profile filter | COMPLETE |
+| PD-PR-117A-54 | Position and Today page-head, breadcrumb and control parity while preserving real reporting and task semantics | Design Lab page head, range and Today toolbar | NEEDS VERIFICATION |
+| PD-PR-117A-55 | In-page expanded/compact/hidden Tracked Tasks banner using existing annotations and source state | Design Lab active task tray | COMPLETE |
+
+CP-136's `PD-PR-117A-46` specialist editor interior remains in progress and is on hold during this scoped navigation group. GitHub #118 covers all three CP-137 items; new financial, API and schema authority is outside this batch.
+
+CP-137 verification: synthetic V2 36 passed with five rollback-phase skips, paired visual 140/140, flag-OFF 9/9, unit 706/706, typecheck and lint pass. The combined ledger is a read/navigation adapter: not every native calculated column is reproduced. `PD-PR-117A-54` awaits owner visual Design Acceptance, including the justified absence of the Lab's synthetic Today range control. Owner new-session tracking persistence remains unverified; the existing annotation authority is unchanged.
+
 `PD-FIX-511` — Today tracked source-history visibility after an owner-reported refresh disappearance — is COMPLETE under [#118](https://github.com/wolney8/OpenForge/issues/118). The owner subsequently found one saved item under Tracked Tasks; the missing in-page banner is a separate presentation difference. The changed-source history correction keeps the saved-item count visible and opens history when no current task matches, using the existing Today collection and Lab history pattern. Synthetic changed-source persistence, complete 129-path visual, 25-path V2 integration and 9-path rollback checks pass. Owner new-session persistence and whole-page Design Acceptance remain open.
 
 ## CP-130 login recovery and Lab presentation — 2026-11-04

@@ -12,7 +12,7 @@ if (new URL(baseURL).port === new URL(authURL).port) throw new Error("Synthetic 
 
 export default defineConfig({
   testDir: "./tests/e2e",
-  testMatch: ["cp117-visual-adoption.spec.ts", "cp131-position-parity.spec.ts", "cp132-shell-parity.spec.ts", "cp133-operational-queue.spec.ts", "cp134-tracked-tasks.spec.ts"],
+  testMatch: ["cp117-visual-adoption.spec.ts", "cp131-position-parity.spec.ts", "cp132-shell-parity.spec.ts", "cp133-operational-queue.spec.ts", "cp134-tracked-tasks.spec.ts", "cp137-profile-scope-banner.spec.ts"],
   workers: 1,
   retries: 0,
   outputDir: "./data/private/evidence/cp117-visual-adoption/playwright",
