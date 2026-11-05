@@ -1417,6 +1417,17 @@ CP-137 verification: synthetic V2 36 passed with five rollback-phase skips, pair
 
 This is one correction batch under open [#118](https://github.com/wolney8/OpenForge/issues/118). CP-137 shell and tracking remain accepted; CP-136 whole-editor design work remains queued. No new financial calculation, API, schema or normal-owner mutation authority is included.
 
+## CP-139 combined interaction and specialist-editor batch — 2026-11-05
+
+| ID | Requested outcome and affected surface | Signed-off equivalent | Status |
+| --- | --- | --- | --- |
+| PD-PR-117A-59 | Combined selection opens supported Profile-owned floating field editing with native validation, Save/retry, focus and scope preservation; protected fields retain governed handoff | CP-121 native ledger floating editors and Profile-owned commands | IN PROGRESS — combined selection and keyboard handoff retain owner identity; in-place Save is still absent. Native full-draft Save/validation is not extracted and must not be duplicated in combined view. |
+| PD-PR-117A-60 | Combined toolbar exposes supported native status, issue and module filters, clear/restore, accurate counts and return context | Native six-ledger toolbars and Lab shared controls | NEEDS VERIFICATION — shared source-field and native-issue rules now drive six combined filter panels; URL return, clear and column restore work. Date/range semantics and some specialist native filters remain open. |
+| PD-PR-117A-61 | Combined KPI/read states and row actions reuse compatible authorities; unknown and partial reads remain explicit | Native ledger KPI strips, operational badges and commands | IN PROGRESS — explicit partial-read and unavailable states remain; cross-Profile money KPI aggregation has no established common authority, so no combined total was fabricated. Specialist actions continue through the Profile-owned editor. |
+| PD-PR-117A-62 | Complete Sportsbook, Free Bet and Casino native editor presentation through supported Lab composition without altering financial authorities | Approved Lab stepper, field, review and modal primitives | NOT STARTED in CP-139 — existing shared Lab financial cards and stepper preserved; whole-editor composition remains the next bounded tranche. |
+
+This batch remains on open [#118](https://github.com/wolney8/OpenForge/issues/118). CP-138 shared columns and Add/return handoffs remain preserved. Authority or specialist-only exceptions stay visible rather than being marked complete.
+
 `PD-FIX-511` — Today tracked source-history visibility after an owner-reported refresh disappearance — is COMPLETE under [#118](https://github.com/wolney8/OpenForge/issues/118). The owner subsequently found one saved item under Tracked Tasks; the missing in-page banner is a separate presentation difference. The changed-source history correction keeps the saved-item count visible and opens history when no current task matches, using the existing Today collection and Lab history pattern. Synthetic changed-source persistence, complete 129-path visual, 25-path V2 integration and 9-path rollback checks pass. Owner new-session persistence and whole-page Design Acceptance remain open.
 
 ## CP-130 login recovery and Lab presentation — 2026-11-04

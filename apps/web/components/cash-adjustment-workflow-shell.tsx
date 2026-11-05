@@ -7,6 +7,7 @@ import { ledgerColumnContracts, ledgerColumnWidths } from "@/lib/ledger-column-c
 import { formatUkLedgerDateTime } from "@/lib/ledger-row-presentation";
 import { isOnlyFieldChange } from "@/lib/field-change";
 import { formatApiErrorBody } from "@/lib/api-error";
+import { getCashAdjustmentIssueBadges } from "@/lib/ledger-operational-issues";
 import {
   fetchJsonAndCache,
   invalidateCachedJson,
@@ -252,19 +253,6 @@ const cashAdjustmentGuidedTabLabels: Record<CashAdjustmentEditorTabId, string> =
   notes: "Notes",
   advanced: "Advanced",
 };
-
-function getCashAdjustmentIssueBadges(
-  row: Pick<CashAdjustmentRecord, "linked_account" | "affects_investment" | "affects_cash_snapshot">
-): Array<{ label: string; tone: "warning" | "danger" }> {
-  const issues: Array<{ label: string; tone: "warning" | "danger" }> = [];
-  if (!row.linked_account.trim()) {
-    issues.push({ label: "No Account", tone: "warning" });
-  }
-  if (!row.affects_investment && !row.affects_cash_snapshot) {
-    issues.push({ label: "No Scope", tone: "warning" });
-  }
-  return issues;
-}
 
 function getCashAdjustmentIssueFilterMatch(
   row: CashAdjustmentRecord,

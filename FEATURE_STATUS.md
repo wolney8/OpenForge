@@ -1,5 +1,9 @@
 # Feature Status — Plum Duff / OpenForge — Doc ID: FS-CODEX-001
 
+## Current CP-139 — 2026-11-05
+
+Combined Accounts and all five financial ledgers now have Lab-select source-field and native-issue filters, clear/restore actions and retained return context. The native issue functions are shared with the combined adapter; unknown classifications are explicit. Synthetic V2 integration passed **47 with five phase skips**, web unit tests **713/713**, and the complete visual suite reached **144 passed/1 failed** on a synthetic preference request connection reset. The isolated rerun passed **1/1**; final flag-OFF rollback passed **9/9**. **Design, Interaction and Integration Acceptance remain partial:** combined floating Save and safe compatible KPI authority are still open, as is complete specialist-editor composition. Profile scope, Today tracking and API 8010 are unchanged. [#118](https://github.com/wolney8/OpenForge/issues/118)
+
 ## Current CP-138 — 2026-11-05
 
 The six combined ledger views now reuse the native required column contracts and widths, shared source-value selectors, and established identity/financial cells. Native Profile-owned Add opens after an explicit owner choice; row handoff and a validated return path preserve local Profile, search, sort, page and page size. Synthetic comparisons cover all six columns/Add paths and representative native financial displays. **Design, Interaction and Integration Acceptance remain partial:** the combined view still uses native editor handoff for supported cell edits and does not yet reproduce every native advanced filter, range, KPI or row shortcut. CP-137 scope and tracked banner, CP-136 annotation authority, and the normal API are unchanged. Specialist whole-editor design remains queued after this correction. [#118](https://github.com/wolney8/OpenForge/issues/118)

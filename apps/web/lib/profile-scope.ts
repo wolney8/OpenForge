@@ -1,3 +1,5 @@
+import { combinedLedgerFilters } from "@/lib/combined-ledger-filters";
+
 export const combinedLedgerModules = ["accounts", "sportsbook-bets", "free-bets", "casino-offers", "each-way-extra-places", "cash-adjustments"] as const;
 export type CombinedLedgerModule = typeof combinedLedgerModules[number];
 
@@ -28,13 +30,13 @@ export function scopedGlobalHref(href: string, profileId: string | null): string
 
 /** Accept only the combined ledger's own view state as a return destination. */
 export function safeCombinedLedgerReturn(module: CombinedLedgerModule, requested: string | undefined): string | undefined {
-  if (!requested || requested.length > 600) return undefined;
+  if (!requested || requested.length > 1400) return undefined;
   const path = `/tracker/${module}`;
   if (requested === path) return path;
   if (!requested.startsWith(`${path}?`)) return undefined;
   const query = new URLSearchParams(requested.slice(path.length + 1));
-  const allowed = new Set(["profile", "q", "sort", "desc", "page", "size"]);
-  if ([...query.keys()].some(key => !allowed.has(key) || query.getAll(key).length !== 1)) return undefined;
+  const allowed = new Set(["profile", "q", "sort", "desc", "page", "size", ...combinedLedgerFilters[module].map(filter => `f_${filter.key}`)]);
+  if ([...query.keys()].some(key => !allowed.has(key) || query.getAll(key).length !== 1 || (query.get(key)?.length ?? 0) > 200)) return undefined;
   const profile = query.get("profile");
   if (profile && !/^[A-Za-z0-9_-]{1,120}$/.test(profile)) return undefined;
   const sort = query.get("sort");

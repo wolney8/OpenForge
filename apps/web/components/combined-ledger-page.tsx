@@ -11,6 +11,7 @@ import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
 import { apiBaseUrl } from "@/lib/api";
 import { presentLedgerCell, type LedgerSourceRecord } from "@/lib/combined-ledger-source";
+import { combinedLedgerFilters, combinedFilterOptions, combinedFilterValue, combinedIssueLabels, matchesCombinedLedgerFilters } from "@/lib/combined-ledger-filters";
 import type { MasterAccountCatalogue, MasterAccountCatalogueRecord } from "@/lib/bookmaker-catalogue";
 import { ledgerColumnContracts, ledgerColumnWidths, ledgerHideableColumns, ledgerSortableColumns } from "@/lib/ledger-column-contracts";
 import type { CombinedLedgerModule } from "@/lib/profile-scope";
@@ -42,6 +43,7 @@ export function CombinedLedgerPage({ module }: { module: CombinedLedgerModule })
   const router = useRouter();
   const searchParams = useSearchParams();
   const localProfile = searchParams.get("profile") ?? "all";
+  const selectedFilters = useMemo(() => Object.fromEntries(combinedLedgerFilters[module].map(filter => [filter.key, searchParams.get(`f_${filter.key}`) ?? ""])), [module, searchParams]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [rows, setRows] = useState<OwnedRecord[]>([]);
   const [catalogue, setCatalogue] = useState<MasterAccountCatalogueRecord[]>([]);
@@ -49,6 +51,7 @@ export function CombinedLedgerPage({ module }: { module: CombinedLedgerModule })
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [filterReset, setFilterReset] = useState(false);
+  const [filterNotice, setFilterNotice] = useState("");
   const [search, setSearch] = useState(searchParams.get("q") ?? "");
   const [sortKey, setSortKey] = useState(searchParams.get("sort") ?? "profile_name");
   const [sortDescending, setSortDescending] = useState(searchParams.get("desc") === "1");
@@ -170,7 +173,7 @@ export function CombinedLedgerPage({ module }: { module: CombinedLedgerModule })
   const nativeColumns = ledgerColumnContracts[module];
   const tableColumns = nativeColumns.filter(column => visibleColumnKeys.has(column.key));
   const toggleSort = (key: string) => { if (sortKey === key) setSortDescending(value => !value); else { setSortKey(key); setSortDescending(false); } setPage(1); };
-  const visible = useMemo(() => rows.filter(row => (!localProfileValid || localProfile === "all" || row.profileId === localProfile) && (!search || [row.profileName, row.recordId, ...ledgerColumnContracts[module].filter(column => column.key !== "actions").map(column => presentLedgerCell(module, row.data, column.key).text)].some(value => value.toLocaleLowerCase().includes(search.toLocaleLowerCase())))).sort((a, b) => {
+  const visible = useMemo(() => rows.filter(row => (!localProfileValid || localProfile === "all" || row.profileId === localProfile) && matchesCombinedLedgerFilters(module, row.data, selectedFilters) && (!search || [row.profileName, row.recordId, ...ledgerColumnContracts[module].filter(column => column.key !== "actions").map(column => presentLedgerCell(module, row.data, column.key).text)].some(value => value.toLocaleLowerCase().includes(search.toLocaleLowerCase())))).sort((a, b) => {
     const leftCell = sortKey === "profile_name" ? null : presentLedgerCell(module, a.data, sortKey);
     const rightCell = sortKey === "profile_name" ? null : presentLedgerCell(module, b.data, sortKey);
     const left = leftCell?.text ?? a.profileName;
@@ -179,7 +182,7 @@ export function CombinedLedgerPage({ module }: { module: CombinedLedgerModule })
       ? leftCell.money - rightCell.money
       : left.localeCompare(right, undefined, { numeric: true });
     return (sortDescending ? -comparison : comparison) || a.profileId.localeCompare(b.profileId) || a.recordId.localeCompare(b.recordId);
-  }), [rows, localProfile, localProfileValid, search, module, sortKey, sortDescending]);
+  }), [rows, localProfile, localProfileValid, search, module, sortKey, sortDescending, selectedFilters]);
   const count = Math.max(1, Math.ceil(visible.length / pageSize));
   const current = Math.min(page, count);
   const paginated = visible.slice((current - 1) * pageSize, current * pageSize);
@@ -190,6 +193,7 @@ export function CombinedLedgerPage({ module }: { module: CombinedLedgerModule })
   if (sortDescending) returnQuery.set("desc", "1");
   if (current > 1) returnQuery.set("page", String(current));
   if (pageSize !== 8) returnQuery.set("size", String(pageSize));
+  for (const filter of combinedLedgerFilters[module]) if (selectedFilters[filter.key]) returnQuery.set(`f_${filter.key}`, selectedFilters[filter.key]);
   const returnPath = `/tracker/${module}${returnQuery.size ? `?${returnQuery.toString()}` : ""}`;
   const rowHref = (row: OwnedRecord) => `/profiles/${encodeURIComponent(row.profileId)}/tracker/${module}?record=${encodeURIComponent(row.recordId)}&returnTo=${encodeURIComponent(returnPath)}`;
   const detailRows: DesignLedgerDetailRow[] = paginated.map(row => ({
@@ -197,7 +201,24 @@ export function CombinedLedgerPage({ module }: { module: CombinedLedgerModule })
     status: presentLedgerCell(module, row.data, "status").text, fields: nativeColumns.filter(column => column.key !== "actions").map(column => ({ key: column.key, label: column.label, value: presentLedgerCell(module, row.data, column.key).text })),
     onOpen: () => router.push(rowHref(row)),
   }));
-  const setLocalProfile = (value: string) => { setPage(1); const query = new URLSearchParams(returnQuery); query.delete("page"); if (value === "all") query.delete("profile"); else query.set("profile", value); router.push(`/tracker/${module}${query.size ? `?${query.toString()}` : ""}`); };
+  const setLocalProfile = (value: string) => {
+    setPage(1);
+    const query = new URLSearchParams(returnQuery);
+    query.delete("page");
+    if (value === "all") query.delete("profile"); else query.set("profile", value);
+    const reset: string[] = [];
+    for (const filter of combinedLedgerFilters[module]) {
+      const selected = query.get(`f_${filter.key}`);
+      if (selected && !rows.some(row => (value === "all" || row.profileId === value) && (filter.key === "issue_type" ? (selected === "All issues" ? (combinedIssueLabels(module, row.data)?.length ?? 0) > 0 : combinedIssueLabels(module, row.data)?.includes(selected)) : combinedFilterValue(module, row.data, filter.key) === selected))) {
+        query.delete(`f_${filter.key}`);
+        reset.push(filter.label);
+      }
+    }
+    setFilterNotice(reset.length ? `Filters unavailable in this Profile were reset: ${reset.join(", ")}.` : "");
+    router.push(`/tracker/${module}${query.size ? `?${query.toString()}` : ""}`);
+  };
+  const setFilter = (key: string, value: string) => { const query = new URLSearchParams(returnQuery); query.delete("page"); if (value) query.set(`f_${key}`, value); else query.delete(`f_${key}`); router.push(`/tracker/${module}${query.size ? `?${query.toString()}` : ""}`); setPage(1); };
+  const clearFilters = () => { const query = new URLSearchParams(returnQuery); for (const filter of combinedLedgerFilters[module]) query.delete(`f_${filter.key}`); query.delete("q"); query.delete("page"); setSearch(""); setPage(1); router.push(`/tracker/${module}${query.size ? `?${query.toString()}` : ""}`); };
   const profileOptions = [{ value: "all", label: "All Profiles" }, ...profiles.map(profile => ({ value: profile.profile_id, label: profile.display_name }))];
   const label = trackerModuleDefinitions[module].title;
 
@@ -214,13 +235,16 @@ export function CombinedLedgerPage({ module }: { module: CombinedLedgerModule })
         <DesignLabSelect compact dataPdId={`combined.${module}.sort`} label="Sort ledger" onChange={value => { setSortKey(value); setPage(1); }} options={[{ value: "profile_name", label: "Profile" }, ...nativeColumns.filter(column => column.key !== "actions").map(column => ({ value: column.key, label: column.label }))]} value={sortKey} />
         <button aria-label={sortDescending ? "Sort ascending" : "Sort descending"} className="button-link" data-pd-id={`combined.${module}.sort-direction`} onClick={() => setSortDescending(value => !value)} type="button"><span aria-hidden="true" className="material-symbols-outlined">{sortDescending ? "arrow_downward" : "arrow_upward"}</span></button>
         <DesignLedgerToolbarAction ariaExpanded={columnControlsOpen} dataPdId={`combined.${module}.columns`} onClick={() => setColumnControlsOpen(value => !value)}>Filters &amp; Columns</DesignLedgerToolbarAction>
-        <DesignLedgerToolbarAction dataPdId={`combined.${module}.restore-columns`} onClick={() => { setVisibleColumnKeys(new Set(nativeColumns.map(column => column.key))); setSearch(""); setPage(1); }}>Restore Default Columns</DesignLedgerToolbarAction>
+        <DesignLedgerToolbarAction dataPdId={`combined.${module}.clear-filters`} onClick={clearFilters}>Clear Filters</DesignLedgerToolbarAction>
+        <DesignLedgerToolbarAction dataPdId={`combined.${module}.restore-columns`} onClick={() => setVisibleColumnKeys(new Set(nativeColumns.map(column => column.key)))}>Restore Default Columns</DesignLedgerToolbarAction>
       </DesignLedgerToolbar>
-      {columnControlsOpen ? <section aria-label={`${label} column controls`} className="content-subpanel"><fieldset><legend>Visible columns</legend>{nativeColumns.filter(column => ledgerHideableColumns[module].has(column.key)).map(column => <label key={column.key}><input checked={visibleColumnKeys.has(column.key)} onChange={event => setVisibleColumnKeys(previous => { const next = new Set(previous); if (event.target.checked) next.add(column.key); else next.delete(column.key); return next; })} type="checkbox" /> {column.label}</label>)}</fieldset></section> : null}
+      {columnControlsOpen ? <section aria-label={`${label} filters and column controls`} className="content-subpanel stack"><fieldset><legend>Filter records</legend><div className="form-grid">{combinedLedgerFilters[module].map(filter => <DesignLabSelect compact dataPdId={`combined.${module}.filter.${filter.key}`} key={filter.key} label={filter.label} onChange={value => setFilter(filter.key, value)} options={[{ value: "", label: `All ${filter.label.toLowerCase()}` }, ...combinedFilterOptions(module, rows.filter(row => localProfile === "all" || row.profileId === localProfile).map(row => row.data), filter.key).map(value => ({ value, label: value }))]} value={selectedFilters[filter.key]} />)}</div></fieldset><fieldset><legend>Visible columns</legend>{nativeColumns.filter(column => ledgerHideableColumns[module].has(column.key)).map(column => <label key={column.key}><input checked={visibleColumnKeys.has(column.key)} onChange={event => setVisibleColumnKeys(previous => { const next = new Set(previous); if (event.target.checked) next.add(column.key); else next.delete(column.key); return next; })} type="checkbox" /> {column.label}</label>)}</fieldset></section> : null}
       {creating ? <section aria-label={`Add ${label}`} className="content-subpanel stack"><h3>Choose the owning Profile</h3><p>New records use that Profile’s existing Add workflow and financial rules.</p><DesignLabSelect dataPdId={`combined.${module}.new-owner`} label="Owning Profile" onChange={setNewOwner} options={[{ value: "", label: "Choose Profile" }, ...profiles.map(profile => ({ value: profile.profile_id, label: profile.display_name }))]} value={newOwner} /><div><button className="button-link" data-pd-id={`combined.${module}.continue-add`} disabled={!newOwner || !profiles.some(profile => profile.profile_id === newOwner)} onClick={() => router.push(`/profiles/${encodeURIComponent(newOwner)}/tracker/${module}?create=1&returnTo=${encodeURIComponent(returnPath)}`)} type="button">Continue to Add workflow</button><button className="button-link" data-pd-id={`combined.${module}.cancel-add`} onClick={() => setCreating(false)} type="button">Cancel</button></div></section> : null}
       {error ? <p role="alert">{error}</p> : null}
       {filterReset ? <p role="status">The ledger Profile filter was reset because that Profile is no longer available.</p> : null}
+      {filterNotice ? <p role="status">{filterNotice}</p> : null}
       {failedProfiles.length ? <p role="alert">Partial read: {failedProfiles.join(", ")} unavailable. Counts below cover loaded Profiles only.</p> : null}
+      {selectedFilters.issue_type && rows.some(row => (localProfile === "all" || row.profileId === localProfile) && combinedIssueLabels(module, row.data) === null) ? <p role="alert">Some loaded records lack the source fields needed for the issue filter. The filtered count excludes those unclassified records.</p> : null}
       {loading ? <p role="status">Loading authorised records…</p> : <>
         <p aria-live="polite">{visible.length} records{localProfile !== "all" ? ` in ${profiles.find(profile => profile.profile_id === localProfile)?.display_name ?? "selected Profile"}` : " across loaded Profiles"}</p>
         <DesignLedgerNarrowToggle expanded={mobileDetail} onToggle={() => setMobileDetail(value => !value)} />

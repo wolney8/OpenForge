@@ -530,3 +530,10 @@ Scope: `PD-PR-117A-17–20`, open #118. Sportsbook and Accounts only; full six-l
 - [x] Synthetic all-six native/combined column and Add comparison, representative financial cells, native Account Save/reload/return, scope navigation, mobile labelled details, 900px and 390px light/dark geometry, actual Chromium 200% zoom, full V2 visual and flag-OFF rollback checks completed. No normal-owner mutation test used.
 - [x] Web typecheck, 709/709 units, lint with zero errors and 12 inherited warnings, and production build pass. No API, schema, calculation, authentication or annotation authority changed.
 - [ ] Owner Design Acceptance, spoken screen-reader verification, native floating edits directly within combined rows, advanced filters, selected-range controls, KPI strips and specialist row shortcuts remain open. Combined route Design/Interaction/Integration Acceptance stays PARTIAL.
+
+## CP-139 combined source filters — 2026-11-05
+
+- [x] Reused the six native source fields, issue badge rules, Lab select controls, combined ledger table and existing Profile-owned handoffs. No financial read or mutation authority changed.
+- [x] Source-identity filters, URL return context, reset, counts and column restore have focused unit and independent synthetic browser coverage; flag-OFF rollback remains tested.
+- [x] Unknown issue classification is shown as unavailable when required source fields are missing. Partial Profile reads retain their alert and never become complete totals.
+- [ ] In-place combined floating Save, governed cross-Profile KPI composition and whole specialist-editor Lab parity remain open under PD-PR-117A-59, 61 and 62. Owner Design Acceptance and manual screen-reader review remain open.

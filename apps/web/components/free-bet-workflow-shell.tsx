@@ -9,6 +9,7 @@ import { hasNewerFormEdits, reconcileSavedForm } from "@/lib/latest-edit";
 import { isOnlyFieldChange } from "@/lib/field-change";
 
 import { getFreeBetInputErrors } from "@/lib/free-bet-input";
+import { getFreeBetIssueBadges, isFreeBetExpiryRelevantRow } from "@/lib/ledger-operational-issues";
 
 import type { MouseEvent as ReactMouseEvent, ReactNode, SetStateAction } from "react";
 import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState, useTransition } from "react";
@@ -777,55 +778,6 @@ function getFreeBetBackBetStatusBadge(
   row: Pick<FreeBetRecord, "status" | "result">
 ): { label: string; tone: "muted" | "positive" | "warning" } {
   return freeBetBackBetStatus(row);
-}
-
-function isFreeBetExpiryRelevantRow(
-  row: Pick<FreeBetRecord, "status" | "result">
-): boolean {
-  return row.status !== "Settled" && freeBetPlaceholderStatuses.has(row.status) && row.result === "Pending";
-}
-
-function getFreeBetIssueBadges(
-  row: Pick<
-    FreeBetRecord,
-    "status" | "result" | "date_settled" | "expiry_datetime" | "is_overdue" | "counts_as_open"
-  >
-): Array<{ label: string; tone: "info" | "orange" | "warning" | "danger" }> {
-  const issues: Array<{ label: string; tone: "info" | "orange" | "warning" | "danger" }> = [];
-  const expiryRelevant = isFreeBetExpiryRelevantRow(row);
-
-  if (row.status === "Prospecting" || row.status === "Not Yet Awarded") {
-    issues.push({ label: "Back Unplaced", tone: "warning" });
-  }
-
-  if (!row.date_settled.trim()) {
-    issues.push({ label: "No Settle Date", tone: "warning" });
-  }
-
-  if (row.status === "Placed" && row.result === "Pending" && row.is_overdue && row.date_settled.trim()) {
-    issues.push({ label: "Outcome Needed", tone: "danger" });
-  }
-
-  if (expiryRelevant) {
-    if (!row.expiry_datetime.trim()) {
-      issues.push({ label: "No Expiry", tone: "info" });
-    } else {
-      const expiryTimestamp = Date.parse(row.expiry_datetime);
-      if (Number.isFinite(expiryTimestamp)) {
-        const hoursUntilExpiry = (expiryTimestamp - Date.now()) / 3_600_000;
-
-        if (hoursUntilExpiry > 0 && hoursUntilExpiry <= 24) {
-          issues.push({ label: "Expiry < 24h", tone: "danger" });
-        } else if (hoursUntilExpiry > 24 && hoursUntilExpiry <= 72) {
-          issues.push({ label: "Expiry < 3d", tone: "warning" });
-        } else if (hoursUntilExpiry > 72 && hoursUntilExpiry <= 168) {
-          issues.push({ label: "Expiry This Week", tone: "orange" });
-        }
-      }
-    }
-  }
-
-  return issues;
 }
 
 function getFreeBetIssueTone(

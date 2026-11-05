@@ -30,6 +30,7 @@ import { LedgerViewContext } from "@/components/ledger-view-context";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
 import { formatApiErrorBody } from "@/lib/api-error";
+import { extraPlaceHasIssue } from "@/lib/ledger-operational-issues";
 import { LedgerFloatingCellEditor, useLedgerCellEditor, type LedgerCellSession } from "@/components/ledger-floating-cell-editor";
 import { ModalBoundary } from "@/components/modal-boundary";
 import { QuickSelectRail, type QuickSelectChoice } from "@/components/quick-select-rail";
@@ -268,23 +269,6 @@ function neutralValue(value: string | null | undefined) {
 function decimalDisplay(value: string | null | undefined) {
   const number = asNumber(value);
   return number === null ? "-" : number.toFixed(2);
-}
-function hasRequiredRowGap(row: Row) {
-  if (row.calculation_provenance === "imported_historical") {
-    return !row.imported_historical_pnl?.trim();
-  }
-  return [
-    row.runner,
-    row.race,
-    row.placed_at,
-    row.bookmaker,
-    row.each_way_stake,
-    row.back_odds,
-    row.win_exchange,
-    row.win_lay_odds,
-    row.place_exchange,
-    row.place_lay_odds,
-  ].some((value) => !value?.trim());
 }
 function getRowIssues(row: Row) {
   if (row.calculation_provenance === "imported_historical") {
@@ -827,11 +811,6 @@ export function EachWayExtraPlaceWorkflowShell({
       ([result]) => result,
     ),
   ];
-  const hasIssue = (row: Row) =>
-    row.calculation_state !== "resolved" ||
-    row.status === "Prospecting" ||
-    hasRequiredRowGap(row) ||
-    (row.status === "Settled" && row.result === "Pending");
   const hasActiveTableControls = Object.entries(tableFilters).some(
     ([key, filter]) =>
       key === "view" ? filter !== "all" : filter !== "" && filter !== "any",
@@ -920,7 +899,7 @@ export function EachWayExtraPlaceWorkflowShell({
       rows.filter(
         (row) =>
           !isDateWithinRange(parseRowDate(row.placed_at), resolvedDateRange) &&
-          hasIssue(row),
+          extraPlaceHasIssue(row),
       ),
     [resolvedDateRange, rows],
   );
@@ -939,7 +918,7 @@ export function EachWayExtraPlaceWorkflowShell({
       return false;
     if (tableFilters.view === "settled" && row.status !== "Settled")
       return false;
-    if (tableFilters.view === "issues" && !hasIssue(row)) return false;
+    if (tableFilters.view === "issues" && !extraPlaceHasIssue(row)) return false;
     if (tableFilters.mode && row.mode !== tableFilters.mode) return false;
     if (tableFilters.bookmaker && row.bookmaker !== tableFilters.bookmaker)
       return false;
@@ -960,7 +939,7 @@ export function EachWayExtraPlaceWorkflowShell({
       return false;
     if (tableFilters.status && row.status !== tableFilters.status) return false;
     if (tableFilters.result && row.result !== tableFilters.result) return false;
-    if (tableFilters.issue_type === "all-issues" && !hasIssue(row))
+    if (tableFilters.issue_type === "all-issues" && !extraPlaceHasIssue(row))
       return false;
     if (
       tableFilters.issue_type === "calculation" &&
@@ -979,7 +958,7 @@ export function EachWayExtraPlaceWorkflowShell({
       filtered.filter(
         (row) =>
           !isDateWithinRange(parseRowDate(row.placed_at), resolvedDateRange) &&
-          hasIssue(row),
+          extraPlaceHasIssue(row),
       ),
     [filtered, resolvedDateRange],
   );
@@ -988,7 +967,7 @@ export function EachWayExtraPlaceWorkflowShell({
       filtered.filter(
         (row) =>
           isDateWithinRange(parseRowDate(row.placed_at), resolvedDateRange) ||
-          !hasIssue(row),
+          !extraPlaceHasIssue(row),
       ),
     [filtered, resolvedDateRange],
   );
@@ -1033,7 +1012,7 @@ export function EachWayExtraPlaceWorkflowShell({
       isOnlyFieldChange(form, pristine, new Set<keyof Form>(["user_notes"])),
   );
   const openCount = rangeRows.filter((row) => row.status === "Placed").length;
-  const issueCount = rangeRows.filter(hasIssue).length;
+  const issueCount = rangeRows.filter(extraPlaceHasIssue).length;
   const settledCount = rangeRows.filter(
     (row) => row.status === "Settled",
   ).length;

@@ -26,6 +26,8 @@ describe("combined ledger native contracts", () => {
 
   it("allows only bounded same-ledger return paths", () => {
     expect(safeCombinedLedgerReturn("accounts", "/tracker/accounts?profile=profile-demo-001&q=Bookmaker+A&page=2&size=16")).toBe("/tracker/accounts?profile=profile-demo-001&q=Bookmaker+A&page=2&size=16");
+    expect(safeCombinedLedgerReturn("sportsbook-bets", "/tracker/sportsbook-bets?f_status=Placed&f_bookmaker=Bookmaker+A")).toBe("/tracker/sportsbook-bets?f_status=Placed&f_bookmaker=Bookmaker+A");
+    expect(safeCombinedLedgerReturn("accounts", "/tracker/accounts?f_bookmaker=Bookmaker+A")).toBeUndefined();
     expect(safeCombinedLedgerReturn("accounts", "//evil.invalid/tracker/accounts")).toBeUndefined();
     expect(safeCombinedLedgerReturn("accounts", "/tracker/accounts?returnTo=%2Fadmin")).toBeUndefined();
     expect(safeCombinedLedgerReturn("accounts", "/tracker/sportsbook-bets")).toBeUndefined();

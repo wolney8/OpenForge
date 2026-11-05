@@ -18,6 +18,7 @@ import { MotionReplayGroup } from "@/components/motion-replay-group";
 import { FinancialTextInput } from "@/components/financial-text-input";
 import { AccountMoneyStatus } from "@/components/account-money-status";
 import { accountMoneyDisplayValue, accountMoneyError, normalizeAccountMoney, sumAccountMoney } from "@/lib/account-money";
+import { accountAttentionReasons } from "@/lib/ledger-operational-issues";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
 import { DesignLedgerSearch } from "@/components/design-ledger-search";
 import { DesignLedgerScreen, DesignLedgerToolbar, DesignLedgerToolbarAction, DesignLedgerPrimaryAction, DesignPageHead, DesignLedgerNarrowToggle, DesignLedgerMobileRows } from "@/components/design-ledger-screen";
@@ -440,21 +441,6 @@ function exchangeCommissionError(value: string): string | undefined {
 async function readApiError(response: Response, fallback: string) {
   const body = await response.json().catch(() => null) as { detail?: string } | null;
   return typeof body?.detail === "string" ? body.detail : fallback;
-}
-
-export function accountAttentionReasons(row: AccountRecord) {
-  const reasons: string[] = [];
-  if (row.counts_in_cash_total && (!row.current_balance.trim() || accountMoneyError(row.current_balance))) {
-    reasons.push("Current Balance needs review");
-  }
-  if (row.pending_withdrawal_amount.trim() && accountMoneyError(row.pending_withdrawal_amount)) {
-    reasons.push("Pending withdrawal needs review");
-  }
-  if (row.lifecycle_status === "Not Signed Up" || row.status === "Not Signed Up") reasons.push("Not signed up");
-  if (row.lifecycle_status === "Pending Sign Up") reasons.push("Sign-up pending");
-  if (row.lifecycle_status === "Verification Pending") reasons.push("Verification pending");
-  if (row.restrictions.length > 0) reasons.push("Account restrictions recorded");
-  return [...new Set(reasons)];
 }
 
 function hasAccountIssue(row: AccountRecord) {
