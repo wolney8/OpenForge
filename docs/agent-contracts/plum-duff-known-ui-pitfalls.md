@@ -1,5 +1,9 @@
 # Plum Duff Known UI Pitfalls
 
+## CP-140 financial editor stage and guide containment — 2026-11-05 / #118
+
+The native editor's scroll body is a grid. Setting the guided-entry banner's V2 `min-height` to zero lets a populated stage compress its instruction to a clipped eyebrow even when the page has no horizontal overflow. Keep the banner's content-sized minimum, compare its actual rectangle on a populated Settlement stage, and retain the modal's internal scroll owner and sticky footer. Regression: `cp139-specialist-workbench.spec.ts` populated stage paths plus 390px and 200% visual checks.
+
 ## CP-133 populated operational queue — 2026-11-04 / #118
 
 Sorting the combined Today queue by overdue date first can bury current partial lays and verified expiring rewards beneath old settlement reminders. Keep source-backed action identities distinct, rank verified current risk before historical reconciliation, and display a reason without turning unknown liability into zero. A dropdown that passes DOM row-count checks can still clip its summary, footer or expansion control at 390 px; assert each control's measured bounds and exercise internal scrolling. Regression: `cp133-operational-queue.spec.ts`, `notifications.test.ts`, full Lab/V2 visual suite and flag-OFF runner.

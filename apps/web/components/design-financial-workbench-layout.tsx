@@ -1,6 +1,10 @@
-import type { ReactNode } from "react";
+import type { ComponentPropsWithoutRef, ReactNode } from "react";
 
+import { DesignFinancialEditorCard } from "@/components/design-financial-editor-card";
 import styles from "@/components/design-lab-financial-workflows.module.css";
+
+/** The Lab's 1180px workbench width, adapted to the governed native dialog. */
+export const financialWorkbenchModalClass = styles.modalFrame;
 
 /** The approved Lab workbench composition, with real ledger content supplied by its native owner. */
 export function DesignFinancialWorkbenchColumns({ children, dataPdId, enabled = true }: { children: ReactNode; dataPdId: string; enabled?: boolean }) {
@@ -32,4 +36,11 @@ export function DesignFinancialWorkbenchTitle({ eyebrow, title, context }: { eye
 
 export function DesignFinancialWorkbenchClose({ label, onClick, disabled = false }: { label: string; onClick: () => void; disabled?: boolean }) {
   return <button aria-label={label} className={styles.close} disabled={disabled} onClick={onClick} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button>;
+}
+
+/** Keep governed outcome content unchanged while using the Lab's financial card surface. */
+export function DesignFinancialOutcomeSurface({ enabled, className = "", ...props }: ComponentPropsWithoutRef<"section"> & { enabled: boolean }) {
+  return enabled
+    ? <DesignFinancialEditorCard {...props} className={`${className} ${styles.reviewSurface}`} />
+    : <section {...props} className={className} />;
 }

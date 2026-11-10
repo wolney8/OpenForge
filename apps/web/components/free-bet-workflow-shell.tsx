@@ -34,7 +34,7 @@ import {
   useBookmakerCatalogue,
 } from "@/components/bookmaker-identity";
 import { EditorSection } from "@/components/editor-section";
-import { DesignFinancialWorkbenchAside, DesignFinancialWorkbenchClose, DesignFinancialWorkbenchColumns, DesignFinancialWorkbenchTitle } from "@/components/design-financial-workbench-layout";
+import { DesignFinancialOutcomeSurface, DesignFinancialWorkbenchAside, DesignFinancialWorkbenchClose, DesignFinancialWorkbenchColumns, DesignFinancialWorkbenchTitle, financialWorkbenchModalClass } from "@/components/design-financial-workbench-layout";
 import { EditorValidationBanner } from "@/components/editor-validation-banner";
 import { FinancialValue, FinancialValueReplayRow } from "@/components/financial-value";
 import { FinancialHistoryPanel } from "@/components/financial-history-panel";
@@ -4052,7 +4052,7 @@ export function FreeBetWorkflowShell({
         aria-label={selectedId ? "Edit free-bet row" : "Create free-bet row"}
         aria-busy={isPersisting}
         aria-modal="true"
-        className="content-panel stack workflow-editor-panel modal-panel workflow-editor-modal"
+        className={`content-panel stack workflow-editor-panel modal-panel workflow-editor-modal${visualV2 ? ` ${financialWorkbenchModalClass}` : ""}`}
         data-pd-id="free-bets.editor.dialog"
         onClick={(event) => event.stopPropagation()}
         ref={editorRef}
@@ -4147,6 +4147,7 @@ export function FreeBetWorkflowShell({
           </div>
           <LedgerEditorTabRail
             activeTabId={safeActiveEditorTabId}
+            financialWorkbench={visualV2}
             ariaLabel="Free-bet editor sections"
             guidedTargetTabId={guidedEntryVisible ? guidedEntryTargetTabId : null}
             onActiveTabChange={(tabId) => activateFreeBetEditorTab(tabId as FreeBetEditorTabId)}
@@ -4915,12 +4916,13 @@ export function FreeBetWorkflowShell({
                   ))}
                 </div>
               ) : null}
-              <section
+              <DesignFinancialOutcomeSurface
                 aria-label={
                   formState.result === "Pending"
                     ? "Free-bet possible outcomes"
                     : "Free-bet final outcome"
                 }
+                enabled={visualV2}
                 className={`settlement-outcome-panel field-span-2${
                   formState.result !== "Pending" || formState.status === "Settled"
                     ? " settlement-outcome-panel-final"
@@ -4939,7 +4941,7 @@ export function FreeBetWorkflowShell({
                     <strong>{getFreeBetResultLabel(formState.result, isNoLayStrategy)}</strong>
                   </div></>
                 )}
-              </section>
+              </DesignFinancialOutcomeSurface>
             </div>
             </fieldset>
           </EditorSection>

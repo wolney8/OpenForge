@@ -2,6 +2,7 @@
 
 import { type KeyboardEvent, type ReactNode } from "react";
 import styles from "@/components/design-lab-connected.module.css";
+import workbenchStyles from "@/components/design-lab-financial-workflows.module.css";
 import {
   getLedgerEditorTabBadgeLabel,
   getLedgerEditorTabStatusLabel,
@@ -16,6 +17,7 @@ type LedgerEditorTabRailProps = {
   onActiveTabChange: (tabId: string) => void;
   tabs: LedgerEditorTabDefinition[];
   visualV2?: boolean;
+  financialWorkbench?: boolean;
 };
 
 export function LedgerEditorTabRail({
@@ -25,6 +27,7 @@ export function LedgerEditorTabRail({
   onActiveTabChange,
   tabs,
   visualV2 = false,
+  financialWorkbench = false,
 }: LedgerEditorTabRailProps) {
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
@@ -40,7 +43,7 @@ export function LedgerEditorTabRail({
   return (
     <div
       aria-label={ariaLabel}
-      className={`ledger-editor-tab-rail${visualV2 ? ` ${styles.stepper}` : ""}`}
+      className={`ledger-editor-tab-rail${visualV2 ? ` ${styles.stepper}` : ""}${financialWorkbench ? ` ${workbenchStyles.stages} ${workbenchStyles.ledgerStageRail}` : ""}`}
       data-pd-id="ledger-editor.tabs"
       onKeyDown={handleKeyDown}
       role="tablist"
@@ -68,6 +71,7 @@ export function LedgerEditorTabRail({
             aria-disabled={isLocked}
             aria-label={getLedgerEditorTabStatusLabel(tab)}
             aria-selected={isActive}
+            aria-current={financialWorkbench && isActive ? "step" : undefined}
             className={`ledger-editor-tab-button ledger-editor-tab-button-${tab.status} ledger-editor-tab-button-${tab.id}${
               isActive ? " is-active" : ""
             }${isGuidedTarget ? " is-guided-target" : ""}`}

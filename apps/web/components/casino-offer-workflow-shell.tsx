@@ -22,7 +22,7 @@ import {
   useBookmakerCatalogue,
 } from "@/components/bookmaker-identity";
 import { EditorSection } from "@/components/editor-section";
-import { DesignFinancialWorkbenchAside, DesignFinancialWorkbenchClose, DesignFinancialWorkbenchColumns, DesignFinancialWorkbenchTitle } from "@/components/design-financial-workbench-layout";
+import { DesignFinancialOutcomeSurface, DesignFinancialWorkbenchAside, DesignFinancialWorkbenchClose, DesignFinancialWorkbenchColumns, DesignFinancialWorkbenchTitle, financialWorkbenchModalClass } from "@/components/design-financial-workbench-layout";
 import { EditorValidationBanner } from "@/components/editor-validation-banner";
 import { FinancialValue, FinancialValueReplayRow } from "@/components/financial-value";
 import { FinancialHistoryPanel } from "@/components/financial-history-panel";
@@ -4254,7 +4254,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
         aria-label={selectedId ? "Edit casino row" : "Create casino row"}
         aria-busy={isPersisting}
         aria-modal="true"
-        className="content-panel stack workflow-editor-panel modal-panel workflow-editor-modal casino-tabbed-editor-modal"
+        className={`content-panel stack workflow-editor-panel modal-panel workflow-editor-modal casino-tabbed-editor-modal${visualV2 ? ` ${financialWorkbenchModalClass}` : ""}`}
         data-pd-id="casino-offers.editor.dialog"
         onClick={(event) => event.stopPropagation()}
         ref={editorRef}
@@ -4345,6 +4345,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
           </div>
           <LedgerEditorTabRail
             activeTabId={safeActiveEditorTabId}
+            financialWorkbench={visualV2}
             ariaLabel="Casino editor sections"
             guidedTargetTabId={guidedEntryVisible ? guidedEntryTargetTabId : null}
             onActiveTabChange={(tabId) => activateCasinoEditorTab(tabId as CasinoEditorTabId)}
@@ -5605,12 +5606,13 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
               Enter 0.00 for break-even or a negative amount for a loss.
             </small>
           </label>
-          <section
+          <DesignFinancialOutcomeSurface
             aria-label={
               formState.result === "Pending"
                 ? "Casino current value"
                 : "Casino final outcome"
             }
+            enabled={visualV2}
             className={`settlement-outcome-panel field-span-2${
               formState.result !== "Pending" || formState.status === "Settled"
                 ? " settlement-outcome-panel-final"
@@ -5641,7 +5643,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
                 <strong>{getCasinoResultLabel(formState.offer_type, formState.result)}</strong>
               </div>
             )}
-          </section>
+          </DesignFinancialOutcomeSurface>
             </div>
             </fieldset>
           </EditorSection>

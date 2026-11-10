@@ -31,7 +31,10 @@ for (const item of cases) for (const [width, theme] of [[1440, "light"], [390, "
     await expect(aside.locator("dt")).toContainText(["Bookmaker"]);
     const boxes = await Promise.all([form.boundingBox(), aside.boundingBox(), dialog.boundingBox()]);
     expect(boxes.every(Boolean)).toBe(true);
-    if (width === 1440) expect(boxes[1]!.x).toBeGreaterThan(boxes[0]!.x + boxes[0]!.width - 2);
+    if (width === 1440) {
+      expect(boxes[1]!.x).toBeGreaterThan(boxes[0]!.x + boxes[0]!.width - 2);
+      expect(boxes[2]!.width).toBeLessThanOrEqual(1181);
+    }
     else expect(boxes[1]!.y).toBeGreaterThan(boxes[0]!.y + boxes[0]!.height - 2);
     expect(boxes[2]!.x).toBeGreaterThanOrEqual(0);
     expect(boxes[2]!.x + boxes[2]!.width).toBeLessThanOrEqual(width + 1);
@@ -65,16 +68,65 @@ for (const item of cases) {
     await expect(context).toBeVisible();
     await expect(context).toContainText("Bookmaker");
     await expect(context).toContainText("Status");
-    await expect(dialog.getByRole("tab").first()).toBeVisible();
+    const stages = dialog.locator('[data-pd-id="ledger-editor.tabs"]');
+    await expect(stages).toHaveClass(/stages/);
+    await expect(dialog.getByRole("tab").first()).toHaveAttribute("aria-current", "step");
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
     await page.screenshot({ path: info.outputPath(`${item.id}-populated-900-dark.png`) });
+    if (item.id !== "casino-offers") {
+      await dialog.getByRole("tab", { name: /Matching/i }).click();
+      await expect(dialog.locator('[data-pd-id="ledger-editor.panel.matching"]')).toBeVisible();
+      await page.screenshot({ path: info.outputPath(`${item.id}-matching-900-dark.png`) });
+    }
     await dialog.getByRole("tab", { name: /Settlement/i }).click();
     await expect(dialog.locator('[data-pd-id="ledger-editor.panel.settlement"]')).toBeVisible();
+    await expect(dialog.getByRole("tab", { name: /Settlement/i })).toHaveAttribute("aria-current", "step");
+    const guide = dialog.locator(`[data-pd-id="${item.id}.guided-entry"]`);
+    if (await guide.isVisible()) {
+      expect((await guide.boundingBox())!.height).toBeGreaterThanOrEqual(70);
+    }
+    const outcome = dialog.locator(`[data-pd-id="${item.id === "sportsbook" ? "sportsbook.settlement.outcomes" : item.id + ".editor.settlement-outcomes"}"]`);
+    if (await outcome.isVisible()) {
+      await expect(outcome).toHaveAttribute("data-pd-financial-card", "true");
+      expect(await outcome.evaluate(element => getComputedStyle(element).backgroundImage)).toBe("none");
+    }
     await page.screenshot({ path: info.outputPath(`${item.id}-settlement-900-dark.png`) });
     await page.keyboard.press("Escape");
     await expect(dialog).toHaveCount(0);
   });
 }
+
+test("Casino governed offer types expose their own conditional stages", async ({ page }, info) => {
+  test.setTimeout(90_000);
+  await page.setViewportSize({ width: 900, height: 900 });
+  await page.addInitScript(() => {
+    localStorage.setItem("pd-required-storage-notice", "acknowledged");
+    localStorage.setItem("openforge-theme", "light");
+  });
+  await page.goto(authURL);
+  await page.goto("/profiles/profile-demo-001/tracker/casino-offers");
+  await expect(page.locator(".ledger-loading-overlay")).toHaveCount(0, { timeout: 45_000 });
+  await page.locator('[data-pd-id="casino-offers.toolbar.add-row"]').click();
+  const dialog = page.getByRole("dialog", { name: "Create casino row" });
+  await expect(dialog).toBeVisible();
+  for (const offer of [
+    { value: "Free Spins", campaign: false, slug: "free-spins" },
+    { value: "Fixed Spins Or Free Play", campaign: false, slug: "fixed-spins" },
+    { value: "Wager To Earn Reward", campaign: true, slug: "wager-reward" },
+    { value: "Deposit And Bonus Wagering", campaign: true, slug: "deposit-bonus" },
+  ]) {
+    await dialog.getByLabel("Offer type").selectOption(offer.value);
+    await expect(dialog.getByRole("tab", { name: /Reward/i })).toHaveCount(1);
+    await expect(dialog.locator('[data-pd-id="ledger-editor.tab.campaign"]')).toHaveCount(offer.campaign ? 1 : 0);
+    await expect(dialog.getByRole("tab", { name: /Settlement/i })).toHaveCount(1);
+    await page.screenshot({ path: info.outputPath(`casino-${offer.slug}-900-light.png`) });
+  }
+  await page.keyboard.press("Escape");
+  const discard = page.getByRole("dialog", { name: "Unsaved tracker changes" });
+  await expect(discard).toBeVisible();
+  await discard.getByRole("button", { name: "Discard changes" }).click();
+  await expect(dialog).toHaveCount(0);
+});
 
 for (const item of [
   { ...cases[1], labNav: "freeBets", labWorkbench: "lab.cp116.free-bet-workbench" },

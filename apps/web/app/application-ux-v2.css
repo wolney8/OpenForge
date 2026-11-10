@@ -295,7 +295,6 @@ html[data-ux-shell="v2"] .ledger-editor-tab-button {
   transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
 }
 html[data-ux-shell="v2"] .guided-entry-banner:not(.guided-entry-banner-review_required) {
-  min-height: 0;
   border-color: var(--outline);
   border-radius: .7rem;
   background: var(--surface-container);

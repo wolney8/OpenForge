@@ -57,7 +57,7 @@ import {
   useBookmakerCatalogue,
 } from "@/components/bookmaker-identity";
 import { EditorSection } from "@/components/editor-section";
-import { DesignFinancialWorkbenchAside, DesignFinancialWorkbenchClose, DesignFinancialWorkbenchColumns, DesignFinancialWorkbenchTitle } from "@/components/design-financial-workbench-layout";
+import { DesignFinancialOutcomeSurface, DesignFinancialWorkbenchAside, DesignFinancialWorkbenchClose, DesignFinancialWorkbenchColumns, DesignFinancialWorkbenchTitle, financialWorkbenchModalClass } from "@/components/design-financial-workbench-layout";
 import { EditorValidationBanner } from "@/components/editor-validation-banner";
 import { FinancialValue, FinancialValueReplayRow } from "@/components/financial-value";
 import { FinancialHistoryPanel } from "@/components/financial-history-panel";
@@ -7802,7 +7802,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
           <section
             aria-label={selectedId ? "Edit sportsbook row" : "Create sportsbook row"}
             aria-modal="true"
-            className="content-panel stack workflow-editor-panel modal-panel workflow-editor-modal sportsbook-tabbed-editor-modal"
+            className={`content-panel stack workflow-editor-panel modal-panel workflow-editor-modal sportsbook-tabbed-editor-modal${visualV2 ? ` ${financialWorkbenchModalClass}` : ""}`}
             data-pd-id="sportsbook.editor.dialog"
             onClick={(event) => event.stopPropagation()}
             ref={editorRef}
@@ -7904,6 +7904,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
               </div>
               <LedgerEditorTabRail
                 activeTabId={safeActiveEditorTabId}
+                financialWorkbench={visualV2}
                 ariaLabel="Sportsbook editor sections"
                 guidedTargetTabId={guidedEntryVisible ? guidedEntryTargetTabId : null}
                 onActiveTabChange={(tabId) => activateEditorTab(tabId as SportsbookEditorTabId)}
@@ -10459,12 +10460,13 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                     </label>
                   ) : null}
                   {isPreviewReady && activePreviewCalculation ? (
-                    <section
+                    <DesignFinancialOutcomeSurface
                       aria-label={
                         settlementHasFinalOutcome
                           ? "Final settlement value"
                           : "Potential settlement outcomes"
                       }
+                      enabled={visualV2}
                       className={`settlement-outcome-panel field-span-2${
                         settlementHasFinalOutcome ? " settlement-outcome-panel-final" : ""
                       }`}
@@ -10484,7 +10486,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                           ...(scenarioBranchLabels.outcome3Label && activePreviewCalculation.scenario_pnl_if_outcome_3_wins !== null ? [{ key: "outcome-3", label: getScenarioBranchText(scenarioBranchLabels.outcome3Label, formState.result), tone: "neutral", total: activePreviewCalculation.scenario_pnl_if_outcome_3_wins }] : []),
                         ] as CalculatorOutcomeScenario[])} summary={<span>Current value <CalculatorOutcomeValueDisplay label="Current value" value={settlementPrimaryValue} /></span>} />
                       )}
-                    </section>
+                    </DesignFinancialOutcomeSurface>
                   ) : null}
                   {settlementReviewRule ? (
                     <label className="field-control field-span-2">

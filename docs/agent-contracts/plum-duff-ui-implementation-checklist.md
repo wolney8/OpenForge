@@ -2,6 +2,14 @@
 
 Complete this for every feature, bug fix, component, fixture-backed UI, route or page change.
 
+## CP-140 three-editor design and finite acceptance — 2026-11-05 / #118
+
+- [x] Compared the three populated native editors with the actual Lab workbench and preserved native Profile-owned draft, form, calculations, Save, settlement, correction and audit authorities. Reused the shared Lab width, stages, card, title, close and columns; retained the justified governed-modal and required-field differences.
+- [x] Corrected the common V2 guide compression without changing the legacy editor. Focused synthetic checks cover desktop/mobile width, populated Matching/Settlement, neutral financial review, visible guide, conditional Casino stages, dirty-cancel guard and existing Add → Save → reload → Edit → Save journeys.
+- [x] Bounded combined-editing review found no small safe shared Save command; the six native shells own linked full drafts, normalization, validation, retry and correction. Kept the Profile-owned handoff and OPEN in-place request. No incompatible cross-Profile money KPI was added.
+- [x] Reconciled the one current route-group Design/Interaction/Integration matrix in `docs/audits/platform-quality-audit.md`; owner visual and manual spoken screen-reader review remain separate from automation.
+- [x] Final-source visual 145/145; V2 integration 62 passed with five legacy-only skips; flag-OFF rollback 9/9; web unit 713/713; typecheck and production build passed; lint zero errors and 12 inherited warnings. Synthetic auth/storage remained independent. Git checkpoint, issue update and 3010 restoration are recorded separately in the delivery receipt.
+
 ## CP-137 Profile scope, page heads and tracked banner — 2026-11-05 / #118
 
 - [x] Read the required UI, accessibility, known-pitfalls and modal contracts and both local UI skills. Reused the connected Lab select, page head, ledger screen, toolbar, mobile detail and tracked-tray presentation with authenticated real-data adapters.
