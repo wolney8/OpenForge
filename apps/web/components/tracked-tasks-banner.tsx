@@ -9,6 +9,7 @@ import { loadTaskAnnotations, patchTaskAnnotations, TASK_ANNOTATIONS_REFRESH_EVE
 
 const visibilityKey = "plum-duff:v2-tracked-banner-visibility";
 export const SHOW_TRACKED_TASKS_BANNER_EVENT = "pd:show-tracked-tasks-banner";
+export const TRACKED_BANNER_VISIBILITY_EVENT = "pd:tracked-banner-visibility";
 type Visibility = "expanded" | "compact" | "hidden";
 
 function initialVisibility(): Visibility {
@@ -17,6 +18,7 @@ function initialVisibility(): Visibility {
     return value === "compact" || value === "hidden" ? value : "expanded";
   } catch { return "expanded"; }
 }
+export function trackedBannerIsHidden(): boolean { return initialVisibility() === "hidden"; }
 
 /** The approved Lab tray with the authenticated annotation store as its data adapter. */
 export function TrackedTasksBanner() {
@@ -35,6 +37,7 @@ export function TrackedTasksBanner() {
   const setBannerVisibility = (next: Visibility) => {
     setVisibility(next);
     try { window.localStorage.setItem(visibilityKey, next); } catch { /* Presentation remains usable without storage. */ }
+    window.dispatchEvent(new Event(TRACKED_BANNER_VISIBILITY_EVENT));
   };
   const refresh = useCallback(async () => {
     if (pathname === "/design-lab" || pathname.startsWith("/design-lab/")) return;

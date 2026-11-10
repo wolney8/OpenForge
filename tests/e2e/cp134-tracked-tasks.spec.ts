@@ -45,24 +45,25 @@ test("CP-134 tracked Today persists through refresh and header navigation", asyn
   await page.locator(`[data-pd-id="tasks.v2.work-state.${id}"]`).click();
   await page.getByRole("option", { name: "Blocked" }).click();
   await page.locator('[data-pd-id="tasks.v2.inspector"] input[aria-label$="blocked reason"]').fill("Awaiting synthetic evidence");
-  await page.getByRole("button", { name: "Save Work State" }).click();
+  await page.locator('[data-pd-id="tasks.v2.inspector"] input[aria-label$="blocked reason"]').blur();
+  await expect(page.locator('[data-pd-id="tasks.v2.work-save-status"]')).toHaveText("Work state saved");
   await expect(page.locator('[data-pd-id="tasks.v2.inspector"]')).toContainText("Blocked");
   await page.reload();
   await rows.first().click();
   await expect(page.locator('[data-pd-id="tasks.v2.inspector"] input[aria-label$="blocked reason"]')).toHaveValue("Awaiting synthetic evidence");
   await page.locator(`[data-pd-id="tasks.v2.work-state.${id}"]`).click();
   await page.getByRole("option", { name: "Do Later" }).click();
-  await page.locator('[data-pd-id="tasks.v2.inspector"] input[type="date"]').fill("2026-11-12");
   const rejectOnce = async (route: import("@playwright/test").Route) => {
     if (route.request().method() === "PATCH") await route.fulfill({ status: 409, json: { detail: "Version conflict" } });
     else await route.continue();
   };
   await page.route(/\/fund-manager\/tasks\/annotations$/, rejectOnce);
-  await page.getByRole("button", { name: "Save Work State" }).click();
+  await page.locator('[data-pd-id="tasks.v2.inspector"] input[type="date"]').fill("2026-11-12");
   await expect(page.locator('[data-pd-id="tasks.v2.inspector"] [role="alert"]')).toContainText("Refresh and retry");
   await expect(page.locator('[data-pd-id="tasks.v2.inspector"] input[type="date"]')).toHaveValue("2026-11-12");
   await page.unroute(/\/fund-manager\/tasks\/annotations$/, rejectOnce);
-  await page.getByRole("button", { name: "Save Work State" }).click();
+  await page.getByRole("button", { name: "Retry Work State" }).click();
+  await expect(page.locator('[data-pd-id="tasks.v2.work-save-status"]')).toHaveText("Work state saved");
   await expect(page.locator('[data-pd-id="tasks.v2.inspector"] input[type="date"]')).toHaveValue("2026-11-12");
   await page.getByRole("button", { name: "Close Task Details" }).click();
   await page.setViewportSize({ width: 390, height: 844 });
@@ -80,6 +81,56 @@ test("CP-134 tracked Today persists through refresh and header navigation", asyn
   await expect(page.locator('[data-pd-id="tasks.v2.collections"]')).toContainText("Tracked Tasks (0)");
 });
 
+test("CP-140B rapid work-state selections serialize and persist the latest acknowledged choice", async ({ page }) => {
+  const health = await (await page.request.get("/api/healthz")).json();
+  expect(health.database_classification).toBe("isolated");
+  await page.goto(authURL);
+  await page.goto("/tasks");
+  const row = page.locator('[data-pd-id^="tasks.v2.row."]').first();
+  await expect(row).toBeVisible();
+  const id = (await row.getAttribute("data-pd-id"))!.replace("tasks.v2.row.", "");
+  await page.locator(`[data-pd-id="tasks.v2.track.${id}"]`).click();
+  await expect(page.locator(`[data-pd-id="tasks.v2.track.${id}"]`)).toHaveAttribute("aria-pressed", "true");
+  await row.click();
+  let delayed = false;
+  await page.route(/\/fund-manager\/tasks\/annotations$/, async route => {
+    if (route.request().method() === "PATCH" && !delayed) {
+      delayed = true;
+      await new Promise(resolve => setTimeout(resolve, 600));
+    }
+    await route.continue();
+  });
+  const selector = page.locator(`[data-pd-id="tasks.v2.work-state.${id}"]`);
+  await selector.click();
+  await page.getByRole("option", { name: "In Progress" }).click();
+  await selector.click();
+  await page.getByRole("option", { name: "Blocked" }).click();
+  await expect(page.locator('[data-pd-id="tasks.v2.work-save-status"]')).toHaveText("Work state saved");
+  await page.reload();
+  await page.locator(`[data-pd-id="tasks.v2.row.${id}"]`).click();
+  await expect(page.locator(`[data-pd-id="tasks.v2.work-state.${id}"]`)).toContainText("Blocked");
+});
+
+test("CP-140B header Untrack returns keyboard focus to the stable collection action", async ({ page }) => {
+  const health = await (await page.request.get("/api/healthz")).json();
+  expect(health.database_classification).toBe("isolated");
+  await page.goto(authURL);
+  await page.goto("/tasks");
+  const row = page.locator('[data-pd-id^="tasks.v2.row."]').first();
+  await expect(row).toBeVisible();
+  const id = (await row.getAttribute("data-pd-id"))!.replace("tasks.v2.row.", "");
+  await page.locator(`[data-pd-id="tasks.v2.track.${id}"]`).click();
+  await expect(page.locator(`[data-pd-id="tasks.v2.track.${id}"]`)).toHaveAttribute("aria-pressed", "true");
+  await page.locator('[data-pd-id="ux-v2.header.tasks"]').click();
+  const panel = page.locator('[data-pd-id="ux-v2.header.tracked-panel"]');
+  const card = panel.locator('[data-pd-id^="tracked-task."]').first();
+  const cardId = await card.getAttribute("data-pd-id");
+  expect(cardId).toBeTruthy();
+  await card.getByRole("button", { name: /^Untrack / }).click();
+  await expect(panel.locator('[data-pd-id="ux-v2.header.tracked-view-all"]')).toBeFocused();
+  await expect(panel.locator(`[data-pd-id="${cardId}"]`)).toHaveCount(0);
+});
+
 test("CP-136 saved tracking remains visible when its source occurrence changes", async ({ page }) => {
   await page.goto(authURL);
   await page.goto("/tasks");
@@ -88,11 +139,14 @@ test("CP-136 saved tracking remains visible when its source occurrence changes",
   const id = (await first.getAttribute("data-pd-id"))!.replace("tasks.v2.row.", "");
   await page.locator(`[data-pd-id="tasks.v2.track.${id}"]`).click();
   await expect(page.locator(`[data-pd-id="tasks.v2.track.${id}"]`)).toHaveAttribute("aria-pressed", "true");
+  const storedResponse = await page.request.get("http://127.0.0.1:8127/fund-manager/tasks/annotations");
+  expect(storedResponse.ok()).toBe(true);
+  const storedRows = await storedResponse.json() as Array<{ occurrence_key: string; source_status: string; tracked: boolean }>;
+  const stored = storedRows.find(row => row.occurrence_key === id && row.tracked);
+  expect(stored).toBeTruthy();
   const changedSource = async (route: import("@playwright/test").Route) => {
     if (route.request().method() !== "GET") return route.continue();
-    const response = await route.fetch();
-    const rows = await response.json() as Array<{ occurrence_key: string; source_status: string }>;
-    await route.fulfill({ response, json: rows.map(row => row.occurrence_key === id ? { ...row, source_status: "changed" } : row) });
+    await route.fulfill({ status: 200, json: [{ ...stored, source_status: "changed" }] });
   };
   await page.route(/\/fund-manager\/tasks\/annotations$/, changedSource);
   await page.reload();

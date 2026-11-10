@@ -16,7 +16,7 @@ import { loadTaskAnnotations, patchTaskAnnotations, TASK_ANNOTATIONS_REFRESH_EVE
 import { TrackedTaskCard } from "@/components/tracked-task-card";
 import { loadTrackedTaskContext, trackedTaskKey, type TrackedTaskContext } from "@/lib/tracked-task-context";
 import { scopedGlobalHref } from "@/lib/profile-scope";
-import { SHOW_TRACKED_TASKS_BANNER_EVENT } from "@/components/tracked-tasks-banner";
+import { SHOW_TRACKED_TASKS_BANNER_EVENT, TRACKED_BANNER_VISIBILITY_EVENT, trackedBannerIsHidden } from "@/components/tracked-tasks-banner";
 
 const originStorageKey = "plum-duff:ux-v2-source-origin";
 const scrollRestoreKey = "plum-duff:ux-v2-scroll-restore";
@@ -137,6 +137,13 @@ export function FundManagerUxV2HeaderTasks({ profileId = null }: { profileId?: s
   const [taskContext, setTaskContext] = useState<Map<string, TrackedTaskContext>>(new Map());
   const [pendingUntrack, setPendingUntrack] = useState("");
   const [untrackError, setUntrackError] = useState("");
+  const [bannerHidden, setBannerHidden] = useState(false);
+  useEffect(() => {
+    const refreshVisibility = () => setBannerHidden(trackedBannerIsHidden());
+    refreshVisibility();
+    window.addEventListener(TRACKED_BANNER_VISIBILITY_EVENT, refreshVisibility);
+    return () => window.removeEventListener(TRACKED_BANNER_VISIBILITY_EVENT, refreshVisibility);
+  }, []);
   useEffect(() => {
     let active = true;
     const refresh = () => void loadTaskAnnotations().then(async rows => {
@@ -157,6 +164,9 @@ export function FundManagerUxV2HeaderTasks({ profileId = null }: { profileId?: s
     const result = await patchTaskAnnotations([{ profile_id: item.profile_id, occurrence_key: item.occurrence_key, tracked: false, work_state: item.work_state, blocked_reason: item.blocked_reason, review_date: item.review_date, expected_version: item.version }]);
     if (result.error) setUntrackError(result.error);
     setPendingUntrack("");
+    if (!result.error) window.requestAnimationFrame(() => {
+      document.querySelector<HTMLElement>('[data-pd-id="ux-v2.header.tracked-view-all"]')?.focus();
+    });
   };
   if (!annotations) return <Link aria-label="Open Tasks" className={labStyles.iconButton} data-pd-id="ux-v2.header.tasks" href={allTasksHref} onClick={(event) => void navigate(event, allTasksHref)} title="Tasks"><span aria-hidden="true" className="material-symbols-outlined">task_alt</span></Link>;
   const active = annotations.filter(item => item.tracked && item.source_status === "active" && (!profileId || item.profile_id === profileId));
@@ -175,7 +185,7 @@ export function FundManagerUxV2HeaderTasks({ profileId = null }: { profileId?: s
         })}</div> : <p className={labStyles.menuEmpty}>No Active Tracked Tasks</p>}
         {active.length > preview.length ? <p className={labStyles.trackedPreviewCount}>Showing {preview.length} of {active.length} active tasks</p> : null}
         {history.length ? <Link className={labStyles.menuRow} href={trackedTasksHref} onClick={event => void navigate(event, trackedTasksHref, () => setOpen(false))}><span aria-hidden="true" className="material-symbols-outlined">history</span><span>Source history and unavailable tasks ({history.length})</span></Link> : null}
-        <button className={labStyles.menuRow} data-pd-id="ux-v2.header.tracked-show-banner" onClick={() => { window.dispatchEvent(new Event(SHOW_TRACKED_TASKS_BANNER_EVENT)); setOpen(false); }} type="button"><span aria-hidden="true" className="material-symbols-outlined">visibility</span><span>Show Tracked Tasks Banner</span></button>
+        {bannerHidden ? <button className={labStyles.menuRow} data-pd-id="ux-v2.header.tracked-show-banner" onClick={() => { window.dispatchEvent(new Event(SHOW_TRACKED_TASKS_BANNER_EVENT)); setOpen(false); }} type="button"><span aria-hidden="true" className="material-symbols-outlined">visibility</span><span>Show Tracked Tasks Banner</span></button> : null}
         <Link className={labStyles.menuRow} data-pd-id="ux-v2.header.tracked-view-all" href={trackedTasksHref} onClick={event => void navigate(event, trackedTasksHref, () => setOpen(false))}><span aria-hidden="true" className="material-symbols-outlined">view_list</span><span>View All Tracked Tasks</span></Link>
       </div>
     </DesignLabHeaderOverlay> : null}

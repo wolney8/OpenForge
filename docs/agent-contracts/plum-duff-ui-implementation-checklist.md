@@ -2,6 +2,15 @@
 
 Complete this for every feature, bug fix, component, fixture-backed UI, route or page change.
 
+## CP-140B Today, tracked-task and notification correction — 2026-11-10 / #118
+
+- [x] Compared the connected Lab tracked row, banner, header overlay, Today inspector and notification popup with the real mount outside `.lab`. Shared presentation now has explicit real and synthetic data/action adapters; the approved Lab composition remains the reference.
+- [x] Verified themed urgent surfaces, a fixed top-right banner work-state slot, styled source actions, an Untrack X, popup action order and View Today footer in actual Chromium screenshots. Checked desktop, split view, mobile, light/dark and 200% zoom through focused and visual paths.
+- [x] Kept queue Track/Untrack when the inspector is closed; moved the selected control into the inspector when open. Personal work-state changes now use acknowledged, serialized versioned PATCH writes with retry and retained drafts. Financial editors retain explicit Save.
+- [x] Restored Needs Action, Recurring Work and Opportunities / Suggestions sections using existing authorised reads. Recurring scheduling has no production authority and is labelled unavailable; advisory opportunities are not presented as confirmed promotions.
+- [x] The initial focused 6/6 failures reproduced the rejected real-page defects before implementation; focused corrections and the synthetic V2 integration run passed on the changed source. No normal API, owner financial record, authentication or migration change was made.
+- [x] Final-source full visual 169/169 and flag-OFF rollback 9/9 passed. Web unit 713/713, typecheck, build and lint also passed. The initial visual runs failed 3 and then 1 cases; stale compact-card assertions, a cold onboarding render, and reused synthetic Profile code were corrected or reproduced on focused reruns before the clean full run. Git checkpoint, issue sync and local 3010 restoration are reported in the delivery receipt. Owner Design Acceptance and manual spoken screen-reader review remain unverified.
+
 ## CP-140 three-editor design and finite acceptance — 2026-11-05 / #118
 
 - [x] Compared the three populated native editors with the actual Lab workbench and preserved native Profile-owned draft, form, calculations, Save, settlement, correction and audit authorities. Reused the shared Lab width, stages, card, title, close and columns; retained the justified governed-modal and required-field differences.

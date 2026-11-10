@@ -26,21 +26,22 @@
 :global(html[data-theme="dark"]) .activeTaskTray{--tracked-surface:#27263d;--tracked-border:#6f6999;--tracked-fg:#dcd8ff}
 .trackedHeader{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:44px}.trackedHeaderToggle{display:flex;align-items:center;justify-content:space-between;gap:8px;flex:1;min-width:0;min-height:44px;padding:4px 8px;border:0;border-radius:8px;background:transparent;color:var(--tracked-fg);text-align:left}.trackedHeaderToggle:hover{background:color-mix(in srgb,var(--tracked-border) 20%,transparent)}.trackedHeaderToggle>span:first-child{display:grid;min-width:0}.trackedHeader strong,.trackedHeader small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.trackedHeader small{font-size:.8rem}.hideBanner{flex:none}
 .trackedRows{display:grid;grid-auto-rows:max-content;align-content:start;max-height:min(42dvh,420px);overflow-y:auto;overscroll-behavior:contain}
-.trackedRow{display:flex;align-items:center;gap:10px;min-width:0;min-height:64px;padding:8px;border-top:1px solid var(--tracked-border)}
-.trackedRow>div:first-child{display:grid;gap:2px;min-width:0;flex:1}
+.trackedRow{--tracked-surface:#ecebfa;--tracked-border:#9a91c8;--tracked-fg:#343165;display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:max-content max-content;align-items:start;gap:8px;min-width:0;min-height:64px;padding:9px 8px;border-top:1px solid var(--tracked-border);color:var(--tracked-fg)}
+:global(html[data-theme="dark"]) .trackedRow{--tracked-surface:#27263d;--tracked-border:#6f6999;--tracked-fg:#dcd8ff}
+.trackedMain{display:grid;grid-column:1;grid-row:1;gap:2px;min-width:0}
+.trackedStatus{grid-column:2;grid-row:1;justify-self:end;align-self:start;white-space:nowrap}
 .trackedRow strong{display:-webkit-box;overflow:hidden;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow-wrap:anywhere;line-height:1.3}
-.trackedRow>div:first-child>a{color:inherit;text-decoration:none}.trackedRow>div:first-child>a:hover{text-decoration:underline}.trackedRow>div:first-child>a:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.trackedMain strong a{color:inherit;text-decoration:none}.trackedMain strong a:hover{text-decoration:underline}.trackedMain strong a:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
 .trackedRow small{overflow-wrap:anywhere;font-size:.8rem;line-height:1.35}
-.trackedActions{display:flex;align-items:center;gap:5px;flex:none}
-.trackedActions button{min-height:44px;padding:6px 9px;border:1px solid var(--tracked-border);border-radius:8px;background:transparent;color:var(--tracked-fg);font-weight:700}
-.trackedActions a{display:inline-flex;align-items:center;min-height:44px;padding:6px 9px;border:1px solid var(--tracked-border);border-radius:8px;color:var(--tracked-fg);font-weight:700;text-decoration:none}
+.trackedActions{display:flex;grid-column:1/-1;grid-row:2;align-items:center;justify-content:flex-end;gap:5px;min-width:0;flex-wrap:wrap}
+.trackedActions button,.trackedActions a{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:6px 9px;border:1px solid var(--tracked-border);border-radius:8px;background:transparent;color:var(--tracked-fg);font:inherit;font-weight:700;text-decoration:none;cursor:pointer}
+.trackedActions button:hover,.trackedActions a:hover{background:color-mix(in srgb,var(--tracked-border) 20%,transparent)}
+.trackedActions button:focus-visible,.trackedActions a:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
 .trackedPanelRows{display:grid;grid-auto-rows:max-content;align-content:start;min-width:0;max-height:min(48dvh,440px);overflow-y:auto;overscroll-behavior:contain}
-.trackedPanelRows .trackedRow{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:max-content max-content;align-content:start;align-items:start;gap:8px;min-height:0;padding:10px 8px;border-radius:8px}
-.trackedPanelRows .trackedRow>div:first-child{grid-column:1;min-width:0}
+.trackedPanelRows .trackedRow{min-height:0;border-radius:8px}
 .trackedPanelRows .trackedRow strong{display:block;overflow:visible;overflow-wrap:anywhere}
 .trackedPanelRows .trackedRow small{white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;line-height:1.3}
-.trackedPanelRows .trackedRow>.trackedActions{grid-column:1;grid-row:2;justify-content:flex-end;margin:0;min-width:0;flex-wrap:wrap}
-.trackedPanelRows .trackedRow>.trackedActions button:first-child{margin-right:auto}
+.trackedPanelRows .trackedRow>.trackedActions{margin:0}
 .trackedPreviewCount{margin:4px 10px;color:var(--muted);font-size:.82rem}
 .trackedUrgent{background:color-mix(in srgb,var(--danger) 13%,var(--tracked-surface));border-radius:8px;padding-inline:8px}
 .trackedUrgent:hover,.trackedUrgent:focus-within{background:color-mix(in srgb,var(--danger) 20%,var(--tracked-surface))}
@@ -49,7 +50,7 @@
 .trackedActions .untrackIcon{display:grid;place-items:center;min-width:44px;width:44px;height:44px;padding:0}
 .untrackIcon :global(.material-symbols-outlined){font-size:20px}
 .trackedCount{background:var(--tracked-fg);color:var(--tracked-surface)}
-@media(max-width:700px){.trackedRow{flex-wrap:wrap}.trackedRow>div:first-child{flex-basis:calc(100% - 100px)}.trackedActions{width:100%;justify-content:flex-end}.trackedRows{max-height:min(30dvh,260px)}}
+@media(max-width:700px){.trackedRow{grid-template-columns:minmax(0,1fr) auto}.trackedRows{max-height:min(30dvh,260px)}}
 .gridEditGate{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px;padding:10px;border:1px solid var(--outline);border-radius:9px;color:var(--text)}.gridEditGate :global(.material-symbols-outlined){color:var(--danger)}.gridEditGate button{margin-left:auto}
 
 /* CP-113 source-point chart: height is scaled from the displayed fixture value. */

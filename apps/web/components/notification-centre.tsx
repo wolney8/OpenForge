@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { DesignNotificationRow, DesignNotificationSection, DesignNotificationSurface, designNotificationClasses } from "@/components/design-notification-presentation";
+import { DesignNotificationPopupActions, DesignNotificationPopupFooter, DesignNotificationRow, DesignNotificationSection, DesignNotificationSurface, designNotificationClasses } from "@/components/design-notification-presentation";
 import labStyles from "@/components/design-lab-connected.module.css";
 import { apiBaseUrl } from "@/lib/api";
 import { redirectExpiredSession } from "@/lib/session-inactivity";
@@ -443,15 +443,14 @@ export function NotificationCentre({ uxV2 = false }: { uxV2?: boolean }) {
         role="dialog"
       >
         {uxV2 ? <DesignNotificationSurface dataPdId="notifications.v2.dropdown" heading="Notifications" headingAction={() => { setIsOpen(false); router.push("/notifications"); }} summary={`${unreadCount} unread · ${actionableCount} actionable · ${informationalCount} info`}>
-          <div className={designNotificationClasses.actions}>
-            <button aria-pressed={activeView === "new"} data-pd-id="notifications.view.new" onClick={() => { setActiveView("new"); setVisibleLimit(5); }} type="button">Priority</button>
-            <button aria-pressed={activeView === "done"} data-pd-id="notifications.view.done" onClick={() => { setActiveView("done"); setVisibleLimit(5); }} type="button">History</button>
-            {unreadCount > 0 ? <button disabled={isPersistingState} onClick={markAllRead} type="button">Mark All Read</button> : null}
-          </div>
+          <DesignNotificationPopupActions dataPdIdPrefix="notifications.view" history={activeView === "done"} markAllRead={unreadCount > 0} markAllReadDisabled={isPersistingState}
+            onHistory={() => { setActiveView("done"); setVisibleLimit(5); }} onMarkAllRead={markAllRead}
+            onPriority={() => { setActiveView("new"); setVisibleLimit(5); }}
+            onViewAll={() => { setIsOpen(false); router.push("/notifications"); }} priority={activeView === "new"} />
           <div aria-busy={isLoading} className={designNotificationClasses.list} data-pd-id="notifications.list">
             <p aria-live="polite" className="visually-hidden" role="status">{completionAnnouncement}</p>
             {actionError ? <div className="notification-action-error" role="alert">{actionError}</div> : null}
-            {isLoading && notifications.length === 0 ? <p role="status">Loading notifications...</p> : loadFailed && notifications.length === 0 ? <p className={designNotificationClasses.empty}>Notifications are temporarily unavailable.</p> : renderedNotifications.length === 0 ? <p className={designNotificationClasses.empty}>{activeView === "new" ? "No priority attention now. Routine work remains in Today." : "No completed notification tasks."}</p> : dropdownCategories.filter(category => category.rows.length).map(category => <DesignNotificationSection key={category.title} title={category.title}>
+            {isLoading && notifications.length === 0 ? <p role="status">Loading notifications...</p> : loadFailed && notifications.length === 0 ? <p className={designNotificationClasses.empty} role="alert">Notifications are temporarily unavailable.</p> : dropdownCategories.map(category => <DesignNotificationSection key={category.title} title={category.title}>
               {category.rows.map(notification => {
                 const isDone = activeView === "done";
                 const isUnread = !isDone && isNotificationUnread(notification, viewState, currentAttentionDate);
@@ -467,9 +466,9 @@ export function NotificationCentre({ uxV2 = false }: { uxV2?: boolean }) {
                     {!isDone && !isConfirmingClear ? <button disabled={isPersistingState} onClick={() => notification.kind === "task" ? setConfirmClearId(notification.notification_id) : void clearNotifications([notification.notification_id])} type="button">Clear</button> : null}
                   </>}
                   confirmation={isConfirmingClear ? <><span>Clear this notification? The source task remains available.</span><button disabled={isPersistingState} onClick={() => setConfirmClearId("")} type="button">Keep</button><button disabled={isPersistingState} onClick={() => void clearNotifications([notification.notification_id])} type="button">{isPersistingState ? "Clearing..." : "Clear Notification"}</button></> : undefined}
-                  context={`${notification.ledger_label} · ${notification.bookmaker_label} · ${notification.profile_name}`}
+                  context={`${notification.bookmaker_label || notification.ledger_label} · ${notification.profile_name}`}
                   dataPdId={`notifications.item.${notification.notification_id}`}
-                  detail={`${priority ? `${priority.priorityReason} · ` : ""}${notification.message} · ${formatNotificationDue(notification.due_at)}`}
+                  detail={`${notification.notification_type.replaceAll("_", " ")} · ${priority?.priority === "high" ? "High priority" : notification.kind === "task" ? "Source review" : "Information"} · ${formatNotificationDue(notification.due_at)}`}
                   key={notification.notification_id}
                   onFocusCapture={event => { if (!isDone && !(event.target instanceof HTMLButtonElement)) markRead(notification); }}
                   onMouseEnter={() => { if (!isDone) scheduleHoverRead(notification); }}
@@ -479,16 +478,12 @@ export function NotificationCentre({ uxV2 = false }: { uxV2?: boolean }) {
                   title={notification.title}
                 />;
               })}
+              {!category.rows.length ? <p className={designNotificationClasses.empty}>{category.title === "System & Results" ? "No recorded system events." : category.title === "History" ? "No notification history." : "No priority attention now. Routine work remains in Today."}</p> : null}
             </DesignNotificationSection>)}
             {visibleLimit < prioritized.length && visibleLimit < 20 ? <button className={designNotificationClasses.more} data-pd-id="notifications.show-more" onClick={() => setVisibleLimit(limit => Math.min(limit + 5, 20))} type="button">Show 5 more</button> : null}
             {prioritized.length > 20 && visibleLimit >= 20 ? <p className={designNotificationClasses.moreHint}>More notifications are available on the full page.</p> : null}
           </div>
-          <div className={designNotificationClasses.footer}>
-            <button data-pd-id="notifications.view-actionable" onClick={() => { setIsOpen(false); if (window.location.pathname === "/tasks") window.dispatchEvent(new Event(TODAY_ACTIONABLE_NAVIGATION_EVENT)); router.push("/tasks?view=actionable"); }} type="button">View all actionable tasks</button>
-            <button data-pd-id="notifications.view-all" onClick={() => { setIsOpen(false); router.push("/notifications"); }} type="button">View all notifications</button>
-            <button disabled={visibleCount === 0 || isPersistingState} onClick={() => void clearNotifications(visibleNotifications.map(notification => notification.notification_id))} type="button">Clear notifications</button>
-            <button onClick={() => { setIsOpen(false); triggerRef.current?.focus(); }} type="button">Close</button>
-          </div>
+          <DesignNotificationPopupFooter dataPdId="notifications.view-actionable" onViewToday={() => { setIsOpen(false); if (window.location.pathname === "/tasks") window.dispatchEvent(new Event(TODAY_ACTIONABLE_NAVIGATION_EVENT)); router.push("/tasks?view=actionable"); }} />
         </DesignNotificationSurface> : <>
         <header className="notification-panel-header">
           <div>

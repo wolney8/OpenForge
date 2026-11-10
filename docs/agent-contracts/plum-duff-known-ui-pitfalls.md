@@ -1,5 +1,9 @@
 # Plum Duff Known UI Pitfalls
 
+## CP-140B tracked overlays and annotation autosave — 2026-11-10 / #118
+
+Tracked-task colour tokens scoped to the Lab page or banner do not reach the real header overlay. Put the themed tokens on the shared card boundary and compare computed urgent backgrounds in the actual overlay, in both themes. Reusing a CSS class alone does not align status, action or X slots; Lab and real must render the same card component with separate source adapters. Work-state PATCH responses can arrive out of order after rapid selections; serialize per task, keep a revisioned intent, and report Saved only for the latest acknowledged intent. A Do Later draft without a valid date must remain visibly unsaved. Regression: `cp140b-corrections.spec.ts`, `cp134-tracked-tasks.spec.ts`, the visual suite and flag-OFF integration.
+
 ## CP-140 financial editor stage and guide containment — 2026-11-05 / #118
 
 The native editor's scroll body is a grid. Setting the guided-entry banner's V2 `min-height` to zero lets a populated stage compress its instruction to a clipped eyebrow even when the page has no horizontal overflow. Keep the banner's content-sized minimum, compare its actual rectangle on a populated Settlement stage, and retain the modal's internal scroll owner and sticky footer. Regression: `cp139-specialist-workbench.spec.ts` populated stage paths plus 390px and 200% visual checks.

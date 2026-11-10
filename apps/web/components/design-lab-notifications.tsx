@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { labTaskDateLabel, type LabTodayTask } from "@/lib/design-lab-operations";
 import { activeLabNotificationEvents, type LabNotificationEvent } from "@/lib/design-lab-notification-policy";
-import { DesignNotificationActions, DesignNotificationRow, DesignNotificationSection, DesignNotificationSurface, DesignNotificationTabs, DesignNotificationTypeFilter, type DesignNotificationView } from "@/components/design-notification-presentation";
+import { DesignNotificationActions, DesignNotificationPopupActions, DesignNotificationPopupFooter, DesignNotificationRow, DesignNotificationSection, DesignNotificationSurface, DesignNotificationTabs, DesignNotificationTypeFilter, type DesignNotificationView } from "@/components/design-notification-presentation";
 import styles from "./design-lab-notifications.module.css";
 
 const notificationTypeLabels: Record<LabNotificationEvent["kind"], string> = {
@@ -47,14 +47,11 @@ export function DesignLabNotifications({ events, liveTasks, scope, read, cleared
   return <DesignNotificationSurface dataPdId="lab.notifications" fullPage={fullPage} heading="Notifications" headingAction={!fullPage ? onViewAll : undefined} summary={`${unread} priority unread`}>
     {fullPage ? <DesignNotificationTabs controlsId="lab-notification-list" dataPdIdPrefix="lab.notifications.tab" onChange={setView} view={view} /> : null}
     {fullPage ? <DesignNotificationTypeFilter dataPdId="lab.notifications.type-filter" onChange={setTypeFilter} options={[{ value: "all", label: "All Types" }, ...([...new Set(scoped.map(event => event.kind))] as LabNotificationEvent["kind"][]).map(kind => ({ value: kind, label: notificationTypeLabels[kind] }))]} value={typeFilter} /> : null}
-    <DesignNotificationActions>
-      {!fullPage ? <>
-      <button aria-pressed={view === "priority"} onClick={() => setView("priority")} type="button">Priority</button>
-      <button aria-pressed={view === "all"} onClick={() => onViewAll ? onViewAll() : setView("all")} type="button">View All Notifications</button>
-      <button aria-pressed={view === "history"} onClick={() => setView("history")} type="button">History</button>
-      </> : null}
-      {visible.some(event => !read.includes(event.id)) ? <button onClick={() => onRead(visible.map(event => event.id))} type="button">Mark All Read</button> : null}
-    </DesignNotificationActions>
+    {fullPage ? <DesignNotificationActions>{visible.some(event => !read.includes(event.id)) ? <button onClick={() => onRead(visible.map(event => event.id))} type="button">Mark All Read</button> : null}</DesignNotificationActions> : <DesignNotificationPopupActions
+      history={view === "history"} markAllRead={visible.some(event => !read.includes(event.id))}
+      onHistory={() => setView("history")} onMarkAllRead={() => onRead(visible.map(event => event.id))}
+      onPriority={() => setView("priority")} onViewAll={() => onViewAll ? onViewAll() : setView("all")} priority={view === "priority"}
+    />}
     {fetchState === "loading" ? <p role="status">Loading simulated notifications…</p> : fetchState === "error" ? <div role="alert"><p>Notifications could not be loaded. Today remains available.</p><button onClick={() => setFetchState("normal")} type="button">Retry</button></div> : <div className={styles.list} id="lab-notification-list" role={fullPage ? "tabpanel" : undefined}>
       {categories.map(category => <DesignNotificationSection key={category.name} title={category.name}>
         {category.rows.map(event => {
@@ -70,6 +67,6 @@ export function DesignLabNotifications({ events, liveTasks, scope, read, cleared
       </DesignNotificationSection>)}
       {!visible.length && view === "history" ? <p className={styles.empty}>No notification history.</p> : !visible.length && view === "priority" ? <p className={styles.empty}>No priority attention now. Routine work remains in Today.</p> : null}
     </div>}
-    <div className={styles.footer}><button onClick={onViewToday} type="button">View Today</button><details><summary>Test States</summary><button onClick={() => { setFetchState("loading"); window.setTimeout(() => setFetchState("normal"), 400); }} type="button">Loading</button><button onClick={() => setFetchState("error")} type="button">Error</button></details></div>
+    <DesignNotificationPopupFooter onViewToday={onViewToday}><details><summary>Test States</summary><button onClick={() => { setFetchState("loading"); window.setTimeout(() => setFetchState("normal"), 400); }} type="button">Loading</button><button onClick={() => setFetchState("error")} type="button">Error</button></details></DesignNotificationPopupFooter>
   </DesignNotificationSurface>;
 }

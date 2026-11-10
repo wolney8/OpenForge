@@ -1,5 +1,9 @@
 # Project Roadmap — Plum Duff / OpenForge — Doc ID: PR-CODEX-001
 
+## Current CP-140B review boundary — 2026-11-10
+
+Review the bounded Today/Tracked Tasks/Notifications correction against the approved Lab. Final-source visual 169/169, synthetic V2 integration 77 passed/five phase skips and flag-OFF rollback 9/9 passed. Recurring scheduling remains unavailable without a production authority. Native Sportsbook, Free Bet and Casino editor styling resumes after this page-level review; no schema, API, authentication or financial authority is included.
+
 ## Current CP-140A continuation — 2026-11-10
 
 Review the CP-140A whole-page correction against the owner’s six private Lab/PD comparisons and paired synthetic screenshots. Shared layout, source-backed tracked presentation, Today/Position, distinct Opportunities and Tracker routes, combined Sportsbook controls and Reports containment have been revised; Design Acceptance remains separate from passing tests. After this bounded review, resume the queued native Sportsbook, Free Bet and Casino editor styling. Keep financial commands, annotations, authentication, API 8010 and normal-owner data unchanged. Main merge, hosted deployment, combined floating Save and new financial authorities remain outside this tranche.

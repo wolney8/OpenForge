@@ -51,6 +51,29 @@ export function DesignNotificationActions({ children }: { children: ReactNode })
   return <div className={styles.actions}>{children}</div>;
 }
 
+export function DesignNotificationPopupActions({ dataPdIdPrefix, history, markAllRead, markAllReadDisabled = false, onHistory, onMarkAllRead, onPriority, onViewAll, priority }: {
+  dataPdIdPrefix?: string;
+  history: boolean;
+  markAllRead: boolean;
+  markAllReadDisabled?: boolean;
+  onHistory: () => void;
+  onMarkAllRead: () => void;
+  onPriority: () => void;
+  onViewAll: () => void;
+  priority: boolean;
+}) {
+  return <DesignNotificationActions>
+    <button aria-pressed={priority} data-pd-id={dataPdIdPrefix ? `${dataPdIdPrefix}.new` : undefined} onClick={onPriority} type="button">Priority</button>
+    <button data-pd-id={dataPdIdPrefix ? `${dataPdIdPrefix}-all` : undefined} onClick={onViewAll} type="button">View All Notifications</button>
+    <button aria-pressed={history} data-pd-id={dataPdIdPrefix ? `${dataPdIdPrefix}.done` : undefined} onClick={onHistory} type="button">History</button>
+    {markAllRead ? <button disabled={markAllReadDisabled} onClick={onMarkAllRead} type="button">Mark All Read</button> : null}
+  </DesignNotificationActions>;
+}
+
+export function DesignNotificationPopupFooter({ children, dataPdId, onViewToday }: { children?: ReactNode; dataPdId?: string; onViewToday: () => void }) {
+  return <div className={styles.footer}><button data-pd-id={dataPdId} onClick={onViewToday} type="button">View Today</button>{children}</div>;
+}
+
 export function DesignNotificationSurface({ ariaLabel, children, dataPdId, fullPage = false, heading, headingAction, legacy = false, summary }: {
   ariaLabel?: string;
   children: ReactNode;

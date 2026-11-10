@@ -19,6 +19,7 @@ import { DesignLabOfferWorkflow, DesignLabPositionTable, type LabTaskWorkState }
 import { DesignLabToday, initialLabTodayView, type LabTodayViewState } from "@/components/design-lab-today";
 import { DesignPositionMetrics, DesignPositionWorkGrid, DesignPositionSurface, DesignPositionSectionHead, DesignPositionTask, DesignPositionShortcut, designPositionActionClasses } from "@/components/design-position-presentation";
 import { DesignLabTaskState } from "@/components/design-lab-task-state";
+import { DesignTrackedTaskRow } from "@/components/design-tracked-task-row";
 import { DesignLabLedgerGrid, defaultLabLedgerView, type LabLedgerView, type LabLedgerRow } from "@/components/design-lab-ledger-grid";
 import { ModalBoundary } from "@/components/modal-boundary";
 import { useTheme } from "@/components/theme-provider";
@@ -424,11 +425,14 @@ export function DesignLabConnected() {
   function trackedTaskRow(item: {task: LabTodayTask; sourceResolved: boolean}, panel: boolean, history = false) {
     const {task, sourceResolved} = item;
     const owner = task.profileId ? labProfiles.find(profile => profile.id === task.profileId)?.name ?? task.profileId : "All Profiles";
-    return <div className={`${styles.trackedRow} ${labTaskNeedsUrgentReview(task) && !sourceResolved ? styles.trackedUrgent : ""}`} data-pd-id={`${panel ? "lab.header-tracked-task" : "lab.tracked-task"}.${task.id}`} key={task.id}>
-      <div><strong>{task.title}</strong><small>{owner} · {sourceResolved ? "Source Resolved" : labTaskDateLabel(task)}</small></div>
-      {sourceResolved && !history ? <span className={styles.resolvedState}><Icon>check_circle</Icon>Source Resolved</span> : <DesignLabTaskState state={labTaskStates[task.id] ?? "To Do"}/>}
-      <div className={styles.trackedActions}>{!task.previewOnly ? <button onClick={() => { setCurrentTrackedTaskId(task.id); if (task.sourceId) openNotificationTask(task); else go("offers"); }} type="button">{sourceResolved ? "View Source" : task.group === "Needs Action" ? "Resolve Source" : "Open Source"}</button> : null}{!sourceResolved && !history && task.group !== "Needs Action" ? <button aria-label={`Mark ${task.title} Done — ${owner}`} className={styles.doneIcon} onClick={() => completeTrackedTask(task)} title="Mark Done" type="button"><Icon>check</Icon></button> : null}<button aria-label={`Untrack ${task.title} — ${owner}`} className={styles.untrackIcon} onClick={event => untrackTask(task.id,event.currentTarget)} title={`Untrack ${task.title} — ${owner}`} type="button"><Icon>close</Icon></button></div>
-    </div>;
+    return <DesignTrackedTaskRow action={!task.previewOnly ? <button onClick={() => { setCurrentTrackedTaskId(task.id); if (task.sourceId) openNotificationTask(task); else go("offers"); }} type="button">{sourceResolved ? "View Source" : task.group === "Needs Action" ? "Resolve Source" : "Open Source"}</button> : null}
+      context={`${owner} · ${sourceResolved ? "Source Resolved" : labTaskDateLabel(task)}`}
+      dataPdId={`${panel ? "lab.header-tracked-task" : "lab.tracked-task"}.${task.id}`}
+      extraAction={!sourceResolved && !history && task.group !== "Needs Action" ? <button aria-label={`Mark ${task.title} Done — ${owner}`} className={styles.doneIcon} onClick={() => completeTrackedTask(task)} title="Mark Done" type="button"><Icon>check</Icon></button> : null}
+      key={task.id} onUntrack={event => untrackTask(task.id,event.currentTarget)}
+      state={sourceResolved && !history ? <span className={styles.resolvedState}><Icon>check_circle</Icon>Source Resolved</span> : <DesignLabTaskState state={labTaskStates[task.id] ?? "To Do"} />}
+      title={task.title} untrackLabel={`Untrack ${task.title} — ${owner}`}
+      urgent={labTaskNeedsUrgentReview(task) && !sourceResolved} variant={panel ? "popup" : "banner"}/>;
   }
 
   if (labAuth !== "authenticated") return <div className={styles.lab} data-pd-id="design-lab-connected.root"><DesignLabAuth destination={sectionName(section)} onRetry={signInSimulation} onScenario={setLabAuth} onSignIn={signInSimulation} state={labAuth}/></div>;

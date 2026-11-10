@@ -4,12 +4,8 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { DesignPageHead } from "@/components/design-ledger-screen";
-import { apiBaseUrl } from "@/lib/api";
+import { loadAuthorizedProfileOpportunities, type OwnedOpportunity } from "@/lib/profile-opportunities";
 import styles from "@/components/design-lab-connected.module.css";
-
-type Profile = { profile_id: string; display_name: string; status?: string };
-type SourceOpportunity = { opportunity_key: string; label: string; bookmaker: string; already_created: boolean; risk_warnings: string[] };
-type OwnedOpportunity = SourceOpportunity & { profileId: string; profileName: string };
 
 export function OpportunitiesPage() {
   const scope = useSearchParams().get("scope");
@@ -22,25 +18,8 @@ export function OpportunitiesPage() {
     const run = async () => {
       setRows([]); setFailed([]); setError(""); setLoading(true);
       try {
-        const response = await fetch(`${apiBaseUrl}/profiles`, { cache: "no-store", credentials: "include" });
-        if (!response.ok) throw new Error("Authorised Profiles could not be loaded.");
-        const profiles = (await response.json() as Profile[]).filter(profile => (profile.status ?? "active").toLowerCase() !== "archived");
-        if (scope && !profiles.some(profile => profile.profile_id === scope)) throw new Error("This Profile is unavailable or access has changed.");
-        const selected = scope ? profiles.filter(profile => profile.profile_id === scope) : profiles;
-        const loaded: OwnedOpportunity[] = [];
-        const failures: string[] = [];
-        for (let index = 0; index < selected.length; index += 4) {
-          const batch = selected.slice(index, index + 4);
-          const results = await Promise.allSettled(batch.map(async profile => {
-            const source = await fetch(`${apiBaseUrl}/fund-manager/common-bet-combos/profile-opportunities/${encodeURIComponent(profile.profile_id)}`, { cache: "no-store", credentials: "include" });
-            if (!source.ok) throw new Error(profile.display_name);
-            const values = await source.json() as SourceOpportunity[];
-            if (!Array.isArray(values)) throw new Error(profile.display_name);
-            return values.map(value => ({ ...value, profileId: profile.profile_id, profileName: profile.display_name }));
-          }));
-          results.forEach((result, offset) => result.status === "fulfilled" ? loaded.push(...result.value) : failures.push(batch[offset].display_name));
-        }
-        if (active) { setRows(loaded); setFailed(failures); }
+        const result = await loadAuthorizedProfileOpportunities(scope);
+        if (active) { setRows(result.rows); setFailed(result.failed); }
       } catch (cause) { if (active) setError(cause instanceof Error ? cause.message : "Opportunities could not be loaded."); }
       finally { if (active) setLoading(false); }
     };

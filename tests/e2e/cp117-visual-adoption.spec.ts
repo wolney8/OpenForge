@@ -192,7 +192,7 @@ for (const route of routes) {
           await board.locator('[data-pd-id^="tasks.v2.row."]').first().click();
           const inspector = page.locator('[data-pd-id="tasks.v2.inspector"]');
           await expect(inspector).toBeVisible();
-          await expect(inspector.getByRole("link", { name: "Open Source" })).toBeVisible();
+          await expect(inspector.getByRole("link", { name: /^Open (Bet|Free Bet|Casino Offer|Extra Place|Cash Adjustment|Account|Profile Settings)$/ })).toBeVisible();
           await noPageOverflow(page);
           await page.screenshot({ path: join(evidence, `v2-today-detail-${width}-${theme}.png`), fullPage: true });
           if (width === 390) {
@@ -247,7 +247,7 @@ test("Today uses the shared Lab toolbar and preserves real lifecycle controls", 
   await page.getByRole("option", { name: "Needs Action · all dates" }).click();
   await page.locator('[data-pd-id^="tasks.v2.row."]').first().click();
   await expect(page.locator('[data-pd-id="tasks.v2.inspector"]')).toBeVisible();
-  await expect(page.locator('[data-pd-id="tasks.v2.inspector"]').getByRole("link", { name: "Open Source" })).toBeVisible();
+  await expect(page.locator('[data-pd-id="tasks.v2.inspector"]').getByRole("link", { name: /^Open (Bet|Free Bet|Casino Offer|Extra Place|Cash Adjustment|Account|Profile Settings)$/ })).toBeVisible();
   await noPageOverflow(page);
   await page.screenshot({ path: join(evidence, "v2-today-detail-1440-light.png"), fullPage: true });
 });
@@ -512,7 +512,7 @@ for (const width of [1440, 390] as const) {
       await expect(realDropdownRow.getByRole("link", { name: "Open Source" })).toHaveAttribute("href", /\S+/);
       await noPageOverflow(page);
       await page.screenshot({ path: join(evidence, `v2-notifications-dropdown-${width}-${theme}.png`), fullPage: true });
-      await realDropdown.getByRole("button", { name: "Close" }).click();
+      await page.keyboard.press("Escape");
       await expect(realDropdown).toBeHidden();
       const realPanel = page.locator('[data-pd-id="notifications.history"]');
       const realRow = realPanel.locator('[data-pd-id^="notifications.history.item."]').first();
@@ -983,7 +983,9 @@ test("real V2 onboarding retains validation and creates an isolated synthetic im
   await setup.getByRole("radio", { name: /Import existing workbook\/data/ }).check();
   await setup.getByRole("combobox", { name: "Profile relationship" }).selectOption("Personal");
   await setup.getByLabel("Display Name").fill("Synthetic CP129 Profile");
-  await setup.getByLabel("Profile Code").fill("CP129-ONBOARD-01");
+  // The disposable visual database can be reused across runs; a fresh synthetic
+  // Profile code keeps this create journey repeatable without deleting fixtures.
+  await setup.getByLabel("Profile Code").fill(`CP129-${Date.now().toString(36).toUpperCase()}`);
   await setup.getByRole("button", { name: "Continue", exact: true }).click();
   await expect(setup.getByRole("heading", { name: "Review Profile" })).toBeVisible();
   await expect(setup.getByText("Synthetic CP129 Profile")).toBeVisible();

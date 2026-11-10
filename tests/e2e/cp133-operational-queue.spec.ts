@@ -64,7 +64,11 @@ for (const [width, mode] of [[1440, "light"], [390, "dark"]] as const) {
     await page.reload();
     await expect(page.locator("html")).toHaveAttribute("data-theme", mode);
     await expect(page.locator('[data-pd-id="tasks.v2.row.SB-PART"]')).toBeVisible();
-    await expect(page.locator('[data-pd-id="tasks.v2.row.SB-PART"]')).toContainText("£42.50 calculated lay liability");
+    await expect(page.locator('[data-pd-id="tasks.v2.row.SB-PART"]')).toContainText("Bookmaker A · Subscriber Alpha");
+    await page.locator('[data-pd-id="tasks.v2.row.SB-PART"]').click();
+    await expect(page.locator('[data-pd-id="tasks.v2.detail"]')).toContainText("£42.50 calculated lay liability");
+    await expect(page.locator('[data-pd-id="tasks.v2.detail"]')).toContainText("Open Bet");
+    await page.getByRole("button", { name: "Close Task Details" }).click();
     const rows = page.locator('[data-pd-id^="tasks.v2.row."]');
     await expect(rows).toHaveCount(8);
     expect(await rows.first().getAttribute("data-pd-id")).toBe("tasks.v2.row.SB-PART");
@@ -94,7 +98,8 @@ for (const [width, mode] of [[1440, "light"], [390, "dark"]] as const) {
     await expect(panel).toBeVisible();
     await expect(panel).toContainText("27 actionable · 4 info");
     await expect(panel.locator('[data-pd-id^="notifications.item."]')).toHaveCount(5);
-    await expect(panel.locator('[data-pd-id="notifications.item.SB-PART"]')).toContainText("£42.50 calculated lay liability");
+    await expect(panel.locator('[data-pd-id="notifications.item.SB-PART"]')).toContainText("High priority");
+    await expect(panel.locator('[data-pd-id="notifications.item.SB-PART"]')).toContainText("Open Source");
     await page.screenshot({ path: `${evidence}/notifications-initial-${width}-${mode}.png`, fullPage: true });
     await panel.locator('[data-pd-id="notifications.show-more"]').click();
     await expect(panel.locator('[data-pd-id^="notifications.item."]')).toHaveCount(10);

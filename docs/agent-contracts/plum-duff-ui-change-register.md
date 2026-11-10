@@ -1,5 +1,20 @@
 # Plum Duff UI Change Register
 
+## CP-140B rejected Today, tracking and notification parity — 2026-11-10 / #118
+
+The owner rejected CP-140A visual and interaction acceptance for these surfaces. The connected Design Lab is the approved presentation reference, with explicit CP-140B amendments for banner status placement, queue Track visibility and personal annotation autosave. The normal API and financial authorities remain unchanged.
+
+| ID | Requested outcome and canonical equivalent | Status |
+| --- | --- | --- |
+| PD-PR-117A-71 | One Lab/real tracked-card presentation, scoped tokens, urgency surface and styled source actions; Lab `trackedTaskRow` | COMPLETE — matched real/Lab computed urgency background in light/dark and actual popup mount. |
+| PD-PR-117A-72 | Canonical expanded/compact banner and five-item popup, top-right banner state, governed action labels, history and hide/show commands; Lab tracked surfaces with owner amendment | COMPLETE — focused geometry, header/history, mobile and 200% zoom passed. |
+| PD-PR-117A-73 | Notification popup action order, compact evidence, sections, five-more/twenty bound and View Today footer; Lab notification popup | COMPLETE — real popup and populated shortlist tests passed. |
+| PD-PR-117A-74 | Today row/inspector Track handoff, source-specific primary action, concise rows and restored queue width; Lab Today with owner amendment | COMPLETE — inspector open/close, one-column row and primary-action tests passed. |
+| PD-PR-117A-75 | Immediate versioned personal work-state persistence, date/reason rules, retry and acknowledgement feedback; existing annotation PATCH | COMPLETE — rapid coalescing, conflict/retry, refresh and new synthetic session passed. |
+| PD-PR-117A-76 | Three real Today sections with truthful recurring/opportunity source states; Lab group composition without synthetic records | COMPLETE for presentation and existing source reads; production recurring scheduling remains BLOCKED by its absent authority. |
+
+Final-source synthetic V2 integration passed 77 with five legacy-only skips, visual 169/169, focused CP-140B 10/10, and flag-OFF rollback 9/9. Owner Design Acceptance and manual spoken screen-reader review remain separate and unverified.
+
 ## CP-117 consolidated six-ledger adoption — 2026-11-03
 
 Owner directs continuous implementation from CP-120 through a consolidated six-ledger candidate, without routine design-review stops. Existing Lab direction is provisionally accepted; Design Acceptance and Integration Acceptance remain distinct. [#118](https://github.com/wolney8/OpenForge/issues/118) stays open. No main merge, deployment, normal financial write or new schema/API authority.

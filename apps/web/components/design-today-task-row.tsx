@@ -27,6 +27,9 @@ export const designTodayToolButtonClass = styles.toolButton;
 export const designTodayBulkTrackClass = styles.bulkTrack;
 export const designTodayTaskWithActionClass = styles.taskWithAction;
 export const designTodayStateEditorClass = styles.stateEditor;
+export const designTodayPrimaryActionClass = styles.primaryAction;
+export const designTodaySuggestionTriggerClass = styles.suggestionTrigger;
+export const designTodayOpportunityClass = styles.opportunityRow;
 
 export function DesignTodayToolbar({ actions, dataPdId, summary }: { actions: ReactNode; dataPdId: string; summary: ReactNode }) {
   return <div className={styles.toolbar} data-pd-id={dataPdId}>
