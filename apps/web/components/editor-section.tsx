@@ -2,6 +2,7 @@
 
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import { DesignFinancialEditorCard } from "@/components/design-financial-editor-card";
+import { financialWorkbenchHeadingClass } from "@/components/design-financial-workbench-layout";
 
 type EditorSectionProps = {
   children: ReactNode;
@@ -127,7 +128,7 @@ export function EditorSection({
           ref={summaryRef}
           type="button"
         >
-          <span className="eyebrow">{title}</span>
+          <span className={visualV2 ? financialWorkbenchHeadingClass : "eyebrow"}>{title}</span>
           <span className="editor-section-summary-end">
             {headerAside ? <span className="editor-section-aside">{headerAside}</span> : null}
             <span
@@ -140,7 +141,7 @@ export function EditorSection({
         </button>
       ) : (
         <div className="section-heading-row editor-section-summary editor-section-summary-static">
-          <span className="eyebrow">{title}</span>
+          <span className={visualV2 ? financialWorkbenchHeadingClass : "eyebrow"}>{title}</span>
           {headerAside ? <span className="editor-section-aside">{headerAside}</span> : null}
         </div>
       )}

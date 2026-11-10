@@ -1,4 +1,7 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, chromium } from "@playwright/test";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 const authURL = process.env.OPENFORGE_CP117_AUTH_URL ?? "http://127.0.0.1:9127/";
 const cases = [
@@ -9,7 +12,7 @@ const cases = [
 
 test.use({ video: "on", trace: "retain-on-failure", screenshot: "only-on-failure" });
 
-for (const item of cases) for (const [width, theme] of [[1440, "light"], [390, "dark"]] as const) {
+for (const item of cases) for (const [width, theme] of [[1440, "light"], [900, "light"], [390, "light"], [390, "dark"]] as const) {
   test(`${item.id} native workbench uses the Lab columns at ${width}px ${theme}`, async ({ page }, info) => {
     test.setTimeout(60_000);
     await page.setViewportSize({ width, height: 900 });
@@ -26,12 +29,29 @@ for (const item of cases) for (const [width, theme] of [[1440, "light"], [390, "
     const columns = dialog.locator(`[data-pd-id="${item.id}.editor.workbench"]`);
     const form = columns.locator("form");
     const aside = columns.locator(`[data-pd-id="${item.id}.editor.financial-context"]`);
+    const header = dialog.locator(`[data-pd-id="${item.id}.editor.header"]`);
+    const footer = dialog.locator(`[data-pd-id="${item.id}.editor.actions"]`);
     await expect(form).toBeVisible();
     await expect(aside).toBeVisible();
+    await expect(header.locator('[data-pd-financial-header="true"]')).toBeVisible();
+    await expect(header.locator('[data-pd-financial-header="true"] button')).toHaveCSS("width", "44px");
+    await expect(form.locator(".editor-section-summary").first()).toHaveCSS("text-transform", "none");
+    await expect(form.locator(".editor-section-summary").first().locator("span").first()).toHaveCSS("font-size", "19.2px");
+    await expect(form.locator(".field-control > input, .field-control > select").first()).toHaveCSS("border-radius", "9px");
+    await expect(footer).toBeVisible();
+    const footerRect = await footer.boundingBox();
+    const bodyRect = await dialog.locator(".workflow-editor-body").boundingBox();
+    expect(footerRect!.x).toBeGreaterThanOrEqual(bodyRect!.x - 2);
+    expect(footerRect!.x + footerRect!.width).toBeLessThanOrEqual(bodyRect!.x + bodyRect!.width + 2);
+    if (item.id === "sportsbook") {
+      const accountAction = dialog.locator('[data-pd-id="account.review.open"]');
+      await expect(accountAction).toBeVisible();
+      expect((await accountAction.boundingBox())!.height).toBeLessThanOrEqual(50);
+    }
     await expect(aside.locator("dt")).toContainText(["Bookmaker"]);
     const boxes = await Promise.all([form.boundingBox(), aside.boundingBox(), dialog.boundingBox()]);
     expect(boxes.every(Boolean)).toBe(true);
-    if (width === 1440) {
+    if (width >= 900) {
       expect(boxes[1]!.x).toBeGreaterThan(boxes[0]!.x + boxes[0]!.width - 2);
       expect(boxes[2]!.width).toBeLessThanOrEqual(1181);
     }
@@ -91,8 +111,91 @@ for (const item of cases) {
       expect(await outcome.evaluate(element => getComputedStyle(element).backgroundImage)).toBe("none");
     }
     await page.screenshot({ path: info.outputPath(`${item.id}-settlement-900-dark.png`) });
+    const lockId = item.id === "casino-offers" ? "casino-offers.editor.settlement.edit-settled-row" : `${item.id}.editor.edit-settled-row`;
+    await dialog.locator(`[data-pd-id="${lockId}"]:visible`).first().click({ timeout: 5_000 });
+    await expect(dialog.locator(`[data-pd-id="${item.id === "casino-offers" ? "casino-offers.editor.settlement.editing-state" : `${item.id}.editor.editing-state`}"]:visible`).first()).toBeVisible();
+    const footer = dialog.locator(`[data-pd-id="${item.id}.editor.actions"]`);
+    expect(await footer.evaluate(element => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(1);
+    await page.screenshot({ path: info.outputPath(`${item.id}-correction-handoff-900-dark.png`) });
     await page.keyboard.press("Escape");
     await expect(dialog).toHaveCount(0);
+  });
+}
+
+for (const item of cases) {
+  test(`${item.id} required draft and unsaved-change guard remain governed`, async ({ page }) => {
+    test.setTimeout(30_000);
+    await page.addInitScript(() => localStorage.setItem("pd-required-storage-notice", "acknowledged"));
+    await page.goto(authURL);
+    await page.goto(`/profiles/profile-demo-001/tracker/${item.route}`);
+    await expect(page.locator(".ledger-loading-overlay")).toHaveCount(0, { timeout: 45_000 });
+    await page.locator(`[data-pd-id="${item.add}"]`).click();
+    const dialog = page.locator(`[data-pd-id="${item.id}.editor.dialog"]`);
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole("button", { name: "Save", exact: true })).toBeDisabled();
+    const field = dialog.getByLabel(item.id === "casino-offers" ? "Offer name" : "Event name", { exact: true });
+    await field.fill(`Synthetic unsaved ${item.id}`);
+    await page.keyboard.press("Escape");
+    const guard = page.getByRole("dialog", { name: "Unsaved tracker changes" });
+    await expect(guard).toBeVisible();
+    await guard.getByRole("button", { name: "Keep editing", exact: true }).click();
+    await expect(field).toHaveValue(`Synthetic unsaved ${item.id}`);
+    await dialog.locator('[data-pd-financial-header="true"] button').click();
+    await expect(guard).toBeVisible();
+    await guard.getByRole("button", { name: "Discard changes", exact: true }).click();
+    await expect(dialog).toHaveCount(0);
+  });
+}
+
+for (const item of cases) {
+  test(`${item.id} governed workbench remains usable at actual Chromium 200% zoom`, async ({}, info) => {
+    test.setTimeout(90_000);
+    const baseURL = process.env.OPENFORGE_CP117_BASE_URL ?? "http://127.0.0.1:3127";
+    const scratch = await mkdtemp(join(tmpdir(), "pd-cp140-workbench-zoom-"));
+    const extension = join(scratch, "extension");
+    await mkdir(extension);
+    await writeFile(join(extension, "manifest.json"), JSON.stringify({ manifest_version: 3, name: "Disposable editor zoom check", version: "1.0", permissions: ["tabs"], background: { service_worker: "background.js" } }));
+    await writeFile(join(extension, "background.js"), "chrome.runtime.onInstalled.addListener(() => {});");
+    const context = await chromium.launchPersistentContext(join(scratch, "profile"), { channel: "chromium", headless: true, viewport: { width: 1440, height: 900 }, args: [`--disable-extensions-except=${extension}`, `--load-extension=${extension}`] });
+    try {
+      const page = await context.newPage();
+      await page.goto(authURL);
+      await page.goto(`${baseURL}/profiles/profile-demo-001/tracker/${item.route}`);
+      await expect(page.locator(".ledger-loading-overlay")).toHaveCount(0, { timeout: 45_000 });
+      await page.locator(`[data-pd-id="${item.add}"]`).click();
+      const dialog = page.locator(`[data-pd-id="${item.id}.editor.dialog"]`);
+      await expect(dialog).toBeVisible();
+      const worker = context.serviceWorkers()[0] ?? await context.waitForEvent("serviceworker");
+      await worker.evaluate(async url => {
+        const tabs = (globalThis as unknown as { chrome: { tabs: { query: (filter: { url: string }) => Promise<Array<{ id: number }>>; setZoom: (id: number, zoom: number) => Promise<void> } } }).chrome.tabs;
+        const matches = await tabs.query({ url: `${url}/*` });
+        await tabs.setZoom(matches[0].id, 2);
+      }, baseURL);
+      await expect.poll(() => page.evaluate(() => innerWidth)).toBe(720);
+      await expect(dialog).toBeVisible();
+      const footer = dialog.locator(`[data-pd-id="${item.id}.editor.actions"]`);
+      await expect(footer).toBeVisible();
+      const rect = await dialog.boundingBox();
+      const footerRect = await footer.boundingBox();
+      expect(rect!.x).toBeGreaterThanOrEqual(0);
+      expect(rect!.x + rect!.width).toBeLessThanOrEqual(721);
+      expect(footerRect!.y).toBeGreaterThanOrEqual(rect!.y - 1);
+      expect(footerRect!.y + footerRect!.height).toBeLessThanOrEqual(rect!.y + rect!.height + 1);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
+      await page.screenshot({ path: info.outputPath(`${item.id}-actual-200-percent.png`) });
+      const field = dialog.locator(".workflow-editor-body .field-control > input:visible").first();
+      await field.scrollIntoViewIfNeeded();
+      await field.focus();
+      await expect(field).toBeFocused();
+      const fieldRect = await field.boundingBox();
+      const bodyRect = await dialog.locator(".workflow-editor-body").boundingBox();
+      expect(fieldRect!.y).toBeGreaterThanOrEqual(bodyRect!.y - 1);
+      expect(fieldRect!.y + fieldRect!.height).toBeLessThanOrEqual(footerRect!.y + 1);
+      await page.screenshot({ path: info.outputPath(`${item.id}-actual-200-percent-field-focus.png`) });
+    } finally {
+      await context.close();
+      await rm(scratch, { recursive: true, force: true });
+    }
   });
 }
 
@@ -145,6 +248,12 @@ for (const item of [
     await page.locator(`[data-pd-id="lab.concept-add.${item.labNav}"]`).click();
     const lab = page.locator(`[data-pd-id="${item.labWorkbench}"]`);
     await expect(lab).toBeVisible();
+    const labHeaderClass = await lab.locator('[data-pd-financial-header="true"]').getAttribute("class");
+    const labTitleStyle = await lab.locator('[data-pd-financial-header="true"] h2').evaluate(element => ({
+      fontSize: getComputedStyle(element).fontSize,
+      lineHeight: getComputedStyle(element).lineHeight,
+      fontWeight: getComputedStyle(element).fontWeight,
+    }));
     const labGrid = lab.locator("div[class*='columns']").first();
     const labGridClass = await labGrid.getAttribute("class");
     await page.screenshot({ path: info.outputPath(`${item.id}-lab-add-1440-light.png`) });
@@ -153,6 +262,13 @@ for (const item of [
     await expect(page.locator(".ledger-loading-overlay")).toHaveCount(0, { timeout: 45_000 });
     await page.locator(`[data-pd-id="${item.add}"]`).click();
     const dialog = page.locator(`[data-pd-id="${item.id}.editor.dialog"]`);
+    const nativeHeader = dialog.locator('[data-pd-financial-header="true"]');
+    await expect(nativeHeader).toHaveAttribute("class", labHeaderClass!);
+    expect(await nativeHeader.locator("h2").evaluate(element => ({
+      fontSize: getComputedStyle(element).fontSize,
+      lineHeight: getComputedStyle(element).lineHeight,
+      fontWeight: getComputedStyle(element).fontWeight,
+    }))).toEqual(labTitleStyle);
     const realGrid = dialog.locator(`[data-pd-id="${item.id}.editor.workbench"]`);
     await expect(realGrid).toBeVisible();
     expect(await realGrid.getAttribute("class")).toBe(labGridClass);
@@ -212,7 +328,21 @@ for (const item of cases) {
       await dialog.getByLabel("Offer name").fill(sourceName);
       await dialog.getByLabel("Offer type").selectOption("Free Spins");
     }
+    let rejectNextSave = true;
+    const saveEndpoint = new RegExp(`/profiles/profile-demo-001/${item.route}$`);
+    const rejectSave = async (route: import("@playwright/test").Route) => {
+      if (rejectNextSave && route.request().method() === "POST") {
+        rejectNextSave = false;
+        await route.fulfill({ status: 503, json: { detail: "Synthetic temporary Save failure" } });
+      } else await route.continue();
+    };
+    await page.route(saveEndpoint, rejectSave);
     await dialog.getByRole("button", { name: "Save", exact: true }).click();
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByLabel(item.id === "casino-offers" ? "Offer name" : "Event name", { exact: true })).toHaveValue(sourceName);
+    await expect(dialog.locator(`[data-pd-id="${item.id}.editor.save-error"]`)).toBeVisible();
+    await dialog.getByRole("button", { name: "Save", exact: true }).click();
+    await page.unroute(saveEndpoint, rejectSave);
     await expect(dialog).toHaveCount(0, { timeout: 30_000 });
     const idKey = item.id === "sportsbook" ? "sportsbook_bet_id" : item.id === "free-bets" ? "free_bet_id" : "casino_offer_id";
     const nameKey = item.id === "casino-offers" ? "offer_name" : "event_name";

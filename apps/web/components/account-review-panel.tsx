@@ -24,12 +24,12 @@ export function AccountFinancialSummary({ account }: { account: AccountAuthority
   </section>;
 }
 
-export function AccountReviewButton({ profileId, accounts, accountName, accountId, children, onConfirmed }: {
-  profileId: string; accounts: AccountAuthorityRecord[]; accountName?: string; accountId?: string; children?: ReactNode; onConfirmed?: () => void;
+export function AccountReviewButton({ profileId, accounts, accountName, accountId, children, onConfirmed, className = "" }: {
+  profileId: string; accounts: AccountAuthorityRecord[]; accountName?: string; accountId?: string; children?: ReactNode; onConfirmed?: () => void; className?: string;
 }) {
   const [open, setOpen] = useState(false);
   const candidates = accounts.filter(a => accountId ? a.account_id === accountId : a.account === accountName);
-  return <><button aria-label={`Review Account ${accountName || candidates[0]?.account || "details"}`} className="button-link" data-pd-id="account.review.open" disabled={!candidates.length} onClick={e => { e.stopPropagation(); setOpen(true); }} type="button">{children || "Review account"}</button>
+  return <><button aria-label={`Review Account ${accountName || candidates[0]?.account || "details"}`} className={`button-link${className ? ` ${className}` : ""}`} data-pd-id="account.review.open" disabled={!candidates.length} onClick={e => { e.stopPropagation(); setOpen(true); }} type="button">{children || "Review account"}</button>
     {open ? <AccountReviewDialog key={`${profileId}:${accountId || accountName}`} accounts={candidates} onClose={() => setOpen(false)} onConfirmed={onConfirmed} profileId={profileId} /> : null}</>;
 }
 

@@ -1,5 +1,15 @@
 # Plum Duff UI Change Register
 
+## CP-140 native financial editor completion — 2026-11-10 / #118
+
+Starting reference: `6a60640d95682db019a79f348bc0b78335b98206`. Approved Lab workbenches are in `design-lab-connected.tsx` (Sportsbook) and `design-lab-financial-workflows.tsx` (Free Bet/Casino); paired synthetic starting captures are private under `data/private/evidence/cp140-editor-before/`. The native modal host and extra governed fields remain required production extensions.
+
+| ID | Requested outcome and canonical equivalent | Status |
+| --- | --- | --- |
+| PD-PR-117A-78 | Complete Sportsbook native workbench chrome, field grouping, footer and populated Add/Edit/review journeys against the Lab bet workbench | NEEDS VERIFICATION — shared Lab header, section typography, input geometry and contained footer render in the native modal; the Account Review control no longer stretches. Synthetic Add/rejected Save/retry/reopen/Edit and settled correction handoff pass; final-source V2 96 passed/5 skips, visual 175/175 and rollback 9/9. Owner Design Acceptance and new correction mutation remain unverified. |
+| PD-PR-117A-79 | Complete Free Bet native workbench presentation and award/matching/placement/settlement journey against the connected Lab Free Bet workbench | NEEDS VERIFICATION — shared header and two-column composition; guided banner scrolls with the governed form at 200% zoom. Synthetic Add/retry/Edit, SNR/SR stages and settled correction handoff pass final-source browser checks. Owner Design Acceptance and new correction mutation remain unverified. |
+| PD-PR-117A-80 | Complete Casino native workbench presentation and offer-type conditional journeys against the connected Lab Casino workbench | NEEDS VERIFICATION — shared header, field, footer and error placement use the native governed form. Four offer-type stages, Add/retry/Edit and settled correction handoff pass final-source browser checks. Owner Design Acceptance and new correction mutation remain unverified. |
+
 ## CP-140B rejected Today, tracking and notification parity — 2026-11-10 / #118
 
 The owner rejected CP-140A visual and interaction acceptance for these surfaces. The connected Design Lab is the approved presentation reference, with explicit CP-140B amendments for banner status placement, queue Track visibility and personal annotation autosave. The normal API and financial authorities remain unchanged.

@@ -34,7 +34,7 @@ import {
   useBookmakerCatalogue,
 } from "@/components/bookmaker-identity";
 import { EditorSection } from "@/components/editor-section";
-import { DesignFinancialOutcomeSurface, DesignFinancialWorkbenchAside, DesignFinancialWorkbenchClose, DesignFinancialWorkbenchColumns, DesignFinancialWorkbenchTitle, financialWorkbenchModalClass } from "@/components/design-financial-workbench-layout";
+import { DesignFinancialOutcomeSurface, DesignFinancialWorkbenchAside, DesignFinancialWorkbenchColumns, DesignFinancialWorkbenchFooter, DesignFinancialWorkbenchHeader, financialWorkbenchHeaderClass, financialWorkbenchModalClass, financialWorkbenchPrimaryActionClass } from "@/components/design-financial-workbench-layout";
 import { EditorValidationBanner } from "@/components/editor-validation-banner";
 import { FinancialValue, FinancialValueReplayRow } from "@/components/financial-value";
 import { FinancialHistoryPanel } from "@/components/financial-history-panel";
@@ -4058,8 +4058,8 @@ export function FreeBetWorkflowShell({
         ref={editorRef}
         role="dialog"
       >
-        <div className={`workflow-panel-header workflow-editor-header${visualV2 ? " financial-workbench-header" : ""}`} data-pd-id="free-bets.editor.header">
-          {visualV2 ? <DesignFinancialWorkbenchTitle context={selectedId ? editorHeaderTitle : "Review the award, then record actual placement and settlement"} eyebrow="Free Bet workbench" title={selectedId ? "Edit Free Bet" : "Add Free Bet"} /> : <div className="stack workflow-editor-title-stack">
+        <div className={`workflow-panel-header workflow-editor-header${visualV2 ? ` ${financialWorkbenchHeaderClass}` : ""}`} data-pd-id="free-bets.editor.header">
+          {visualV2 ? <DesignFinancialWorkbenchHeader context={selectedId ? editorHeaderTitle : "Review the award, then record actual placement and settlement"} eyebrow="Free Bet workbench" title={selectedId ? "Edit Free Bet" : "Add Free Bet"} closeLabel="Close free-bet editor" onClose={() => void closeEditor()} disabled={isPersisting} /> : <div className="stack workflow-editor-title-stack">
             <span className="eyebrow">{selectedId ? "Edit free-bet row" : "Create free-bet row"}</span>
             <strong className="workflow-header-title" title={editorHeaderFullTitle}>{editorHeaderTitle}</strong>
           </div>}
@@ -4102,8 +4102,8 @@ export function FreeBetWorkflowShell({
             </span>
             <span className="table-chip">{formState.retention_mode || "SNR"}</span>
           </section> : null}
-          <div className="tracker-nav workflow-editor-header-actions">
-            {!visualV2 ? <div
+          {!visualV2 ? <div className="tracker-nav workflow-editor-header-actions">
+            <div
               aria-label="Free-bet editor tab navigation"
               className="workflow-editor-header-nav"
               data-pd-id="free-bets.editor.tab-actions"
@@ -4133,8 +4133,8 @@ export function FreeBetWorkflowShell({
               >
                 Next
               </button>
-            </div> : null}
-            {visualV2 ? <DesignFinancialWorkbenchClose disabled={isPersisting} label="Close free-bet editor" onClick={() => void closeEditor()} /> : <button
+            </div>
+            <button
               aria-label="Close free-bet editor"
               className="workflow-editor-cancel-button"
               disabled={isPersisting}
@@ -4143,8 +4143,8 @@ export function FreeBetWorkflowShell({
               type="button"
             >
               <span aria-hidden="true" className="material-symbols-outlined">close</span>
-            </button>}
-          </div>
+            </button>
+          </div> : null}
           <LedgerEditorTabRail
             activeTabId={safeActiveEditorTabId}
             financialWorkbench={visualV2}
@@ -4155,6 +4155,7 @@ export function FreeBetWorkflowShell({
             visualV2={visualV2}
           />
         </div>
+        <div className="workflow-editor-body">
         {guidedEntryVisible ? (
           <section
             aria-label="Free-bet guided entry"
@@ -4191,7 +4192,6 @@ export function FreeBetWorkflowShell({
             Show guide
           </button>
         ) : null}
-        <div className="workflow-editor-body">
         <DesignFinancialWorkbenchColumns dataPdId="free-bets.editor.workbench" enabled={visualV2}>
         <form className="form-grid" onSubmit={(event) => void handleSubmit(event)}>
           <LedgerEditorTabPanel activeTabId={safeActiveEditorTabId} tabId="setup">
@@ -5197,7 +5197,7 @@ export function FreeBetWorkflowShell({
             />
           ) : null}
           </LedgerEditorTabPanel>
-          <div className="field-span-2 workflow-editor-footer" data-pd-id="free-bets.editor.actions">
+          <DesignFinancialWorkbenchFooter className="field-span-2 workflow-editor-footer" data-pd-id="free-bets.editor.actions" enabled={visualV2}>
             {errorMessage ? (
               <p className="field-validation-text" data-pd-id="free-bets.editor.save-error" role="alert">
                 {errorMessage}
@@ -5235,7 +5235,7 @@ export function FreeBetWorkflowShell({
               ) : (
                 <>
                   <button
-                    className="review-chip review-chip-copy"
+                    className={`review-chip${visualV2 ? ` ${financialWorkbenchPrimaryActionClass}` : " review-chip-copy"}`}
                     disabled={
                       isPending ||
                       isPersisting ||
@@ -5306,7 +5306,7 @@ export function FreeBetWorkflowShell({
                 Next
               </button>
             </div>
-          </div>
+          </DesignFinancialWorkbenchFooter>
         </form>
         {visualV2 ? <DesignFinancialWorkbenchAside dataPdId="free-bets.editor.financial-context" title="Source & Financial Meaning" facts={[
           { label: "Bookmaker", value: formState.bookmaker || "Not selected" },

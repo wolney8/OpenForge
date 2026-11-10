@@ -22,7 +22,7 @@ import {
   useBookmakerCatalogue,
 } from "@/components/bookmaker-identity";
 import { EditorSection } from "@/components/editor-section";
-import { DesignFinancialOutcomeSurface, DesignFinancialWorkbenchAside, DesignFinancialWorkbenchClose, DesignFinancialWorkbenchColumns, DesignFinancialWorkbenchTitle, financialWorkbenchModalClass } from "@/components/design-financial-workbench-layout";
+import { DesignFinancialOutcomeSurface, DesignFinancialWorkbenchAside, DesignFinancialWorkbenchColumns, DesignFinancialWorkbenchFooter, DesignFinancialWorkbenchHeader, financialWorkbenchHeaderClass, financialWorkbenchModalClass, financialWorkbenchPrimaryActionClass } from "@/components/design-financial-workbench-layout";
 import { EditorValidationBanner } from "@/components/editor-validation-banner";
 import { FinancialValue, FinancialValueReplayRow } from "@/components/financial-value";
 import { FinancialHistoryPanel } from "@/components/financial-history-panel";
@@ -3757,7 +3757,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
         {!tableCollapsed ? (
           <>
             <LedgerQuickActions ledgerType="Casino" onSelect={startQuickAction} profileId={profileId} />
-            {errorMessage ? (
+            {errorMessage && (!workflowVisible || !visualV2) ? (
               <p className="error-text" role="alert">
                 {errorMessage}
               </p>
@@ -4260,8 +4260,8 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
         ref={editorRef}
         role="dialog"
       >
-        <div className={`workflow-panel-header workflow-editor-header${visualV2 ? " financial-workbench-header" : ""}`} data-pd-id="casino-offers.editor.header">
-          {visualV2 ? <DesignFinancialWorkbenchTitle context={selectedId ? editorHeaderTitle : "Offer setup · record wagering, reward and settlement separately"} eyebrow="Casino workbench" title={selectedId ? "Edit Casino Offer" : "Add Casino Offer"} /> : <div className="stack workflow-editor-title-stack">
+        <div className={`workflow-panel-header workflow-editor-header${visualV2 ? ` ${financialWorkbenchHeaderClass}` : ""}`} data-pd-id="casino-offers.editor.header">
+          {visualV2 ? <DesignFinancialWorkbenchHeader context={selectedId ? editorHeaderTitle : "Offer setup · record wagering, reward and settlement separately"} eyebrow="Casino workbench" title={selectedId ? "Edit Casino Offer" : "Add Casino Offer"} closeLabel="Close casino editor" onClose={() => void closeEditor()} disabled={isPersisting} /> : <div className="stack workflow-editor-title-stack">
             <span className="eyebrow">{selectedId ? "Edit casino row" : "Create casino row"}</span>
             <strong className="workflow-header-title" title={editorHeaderFullTitle}>{editorHeaderTitle}</strong>
           </div>}
@@ -4300,8 +4300,8 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
             </span>
             <span className="table-chip table-chip-muted">{formState.game || "Game unknown"}</span>
           </section> : null}
-          <div className="tracker-nav workflow-editor-header-actions">
-            {!visualV2 ? <div
+          {!visualV2 ? <div className="tracker-nav workflow-editor-header-actions">
+            <div
               aria-label="Casino editor tab navigation"
               className="workflow-editor-header-nav"
               data-pd-id="casino-offers.editor.tab-actions"
@@ -4331,8 +4331,8 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
               >
                 Next
               </button>
-            </div> : null}
-            {visualV2 ? <DesignFinancialWorkbenchClose disabled={isPersisting} label="Close casino editor" onClick={() => void closeEditor()} /> : <button
+            </div>
+            <button
               aria-label="Close casino editor"
               className="workflow-editor-cancel-button"
               disabled={isPersisting}
@@ -4341,8 +4341,8 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
               type="button"
             >
               <span aria-hidden="true" className="material-symbols-outlined">close</span>
-            </button>}
-          </div>
+            </button>
+          </div> : null}
           <LedgerEditorTabRail
             activeTabId={safeActiveEditorTabId}
             financialWorkbench={visualV2}
@@ -4353,6 +4353,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
             visualV2={visualV2}
           />
         </div>
+        <div className="workflow-editor-body">
         {guidedEntryVisible ? (
           <section
             aria-label="Casino guided entry"
@@ -4389,7 +4390,6 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
             Show guide
           </button>
         ) : null}
-        <div className="workflow-editor-body">
         {initialRecordId === selectedId && !hasResolvedCasinoValue ? (
           <EditorValidationBanner
             dismissKey={`casino-fee-review-final-value:${selectedId ?? "unknown"}`}
@@ -5700,7 +5700,8 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
           </EditorSection>
           </LedgerEditorTabPanel>
           ) : null}
-          <div className="field-span-2 workflow-editor-footer" data-pd-id="casino-offers.editor.actions">
+          <DesignFinancialWorkbenchFooter className="field-span-2 workflow-editor-footer" data-pd-id="casino-offers.editor.actions" enabled={visualV2}>
+            {visualV2 && errorMessage ? <p className="field-validation-text" data-pd-id="casino-offers.editor.save-error" role="alert">{errorMessage}</p> : null}
             {selectedId && settledDeleteGuardRowId === selectedId ? (
               <LedgerSettledDeleteGuard
                 disabled={isPersisting}
@@ -5743,7 +5744,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
               ) : (
                 <>
                   <button
-                    className="review-chip review-chip-copy"
+                    className={`review-chip${visualV2 ? ` ${financialWorkbenchPrimaryActionClass}` : " review-chip-copy"}`}
                     disabled={isPending || isPersisting || !isDirty}
                     type="submit"
                   >
@@ -5808,7 +5809,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
                 Next
               </button>
             </div>
-          </div>
+          </DesignFinancialWorkbenchFooter>
         </form>
         {visualV2 ? <DesignFinancialWorkbenchAside dataPdId="casino-offers.editor.financial-context" title="Financial Position" facts={[
           { label: "Bookmaker", value: formState.bookmaker || "Not selected" },
