@@ -132,6 +132,8 @@ export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
   const [workSaveError, setWorkSaveError] = useState("");
   const workQueuesRef = useRef(new Map<string, WorkQueue>());
   const annotationsRef = useRef<TaskAnnotation[] | null>(null);
+  const annotationsWriteEpochRef = useRef(0);
+  const annotationsReadIdRef = useRef(0);
   const activeTaskIdRef = useRef("");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
@@ -168,7 +170,14 @@ export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
     let active = true;
     const refreshAnnotations = () => {
       if ([...workQueuesRef.current.values()].some(queue => queue.running)) return;
-      void loadTaskAnnotations().then(rows => { if (active && ![...workQueuesRef.current.values()].some(queue => queue.running)) setAnnotations(rows); });
+      const readId = ++annotationsReadIdRef.current;
+      const writeEpoch = annotationsWriteEpochRef.current;
+      void loadTaskAnnotations().then(rows => {
+        if (active && readId === annotationsReadIdRef.current && writeEpoch === annotationsWriteEpochRef.current && ![...workQueuesRef.current.values()].some(queue => queue.running)) {
+          annotationsRef.current = rows;
+          setAnnotations(rows);
+        }
+      });
     };
     refreshAnnotations();
     window.addEventListener(TASK_ANNOTATIONS_REFRESH_EVENT, refreshAnnotations);
@@ -324,11 +333,18 @@ export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
   const inspectedTask = uxV2 ? paginated.find((task) => task.notification.notification_id === inspectedTaskId) : undefined;
   const annotationFor = (task: DailyTaskView) => annotations?.find(item => item.occurrence_key === task.notification.notification_id && item.profile_id === task.notification.profile_id);
   const workKey = (task: DailyTaskView) => `${task.notification.profile_id}:${task.notification.notification_id}`;
+  const mergeAcknowledgedAnnotations = (rows: TaskAnnotation[]) => {
+    const next = [...(annotationsRef.current ?? annotations ?? []).filter(item => !rows.some(row => row.profile_id === item.profile_id && row.occurrence_key === item.occurrence_key)), ...rows];
+    annotationsWriteEpochRef.current += 1;
+    annotationsRef.current = next;
+    setAnnotations(next);
+  };
   const flushWorkQueue = async (key: string) => {
     const queue = workQueuesRef.current.get(key);
     if (!queue || queue.running) return;
     queue.running = true;
     setTrackingPending(true);
+    let completedRevision: number | null = null;
     while (true) {
       const revision = queue.revision;
       const intent = queue.desired;
@@ -352,13 +368,15 @@ export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
         break;
       }
       queue.lastRow = saved;
-      setAnnotations(previous => [...(previous ?? []).filter(row => row.profile_id !== saved.profile_id || row.occurrence_key !== saved.occurrence_key), saved]);
+      mergeAcknowledgedAnnotations([saved]);
       if (queue.revision === revision) {
         if (activeTaskIdRef.current === task.notification.notification_id) { setWorkSaveStatus("saved"); setWorkSaveError(""); }
+        completedRevision = revision;
         break;
       }
     }
     queue.running = false;
+    if (completedRevision !== null && queue.revision === completedRevision && workQueuesRef.current.get(key) === queue) workQueuesRef.current.delete(key);
     if (![...workQueuesRef.current.values()].some(item => item.running)) setTrackingPending(false);
   };
   const queueWorkSave = (task: DailyTaskView, desired: WorkIntent) => {
@@ -366,6 +384,7 @@ export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
     const current = workQueuesRef.current.get(key);
     const row = annotationsRef.current?.find(item => item.profile_id === task.notification.profile_id && item.occurrence_key === task.notification.notification_id) ?? null;
     const queue = current ?? { task, desired, revision: 0, running: false, lastRow: row };
+    if (current && !current.running) queue.lastRow = row;
     queue.task = task;
     queue.desired = desired;
     queue.revision += 1;
@@ -380,6 +399,8 @@ export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
     setWorkSaveStatus("saving");
     const latest = await loadTaskAnnotations();
     if (!latest) { setWorkSaveStatus("failed"); setWorkSaveError("Work state could not be reloaded. Retry."); return; }
+    annotationsWriteEpochRef.current += 1;
+    annotationsRef.current = latest;
     setAnnotations(latest);
     queue.lastRow = latest.find(row => row.profile_id === task.notification.profile_id && row.occurrence_key === task.notification.notification_id) ?? null;
     void flushWorkQueue(workKey(task));
@@ -401,7 +422,7 @@ export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
     });
     const result = await patchTaskAnnotations(changes);
     if (result.error) setActionError(result.error);
-    else if (result.rows) setAnnotations(previous => [...(previous ?? []).filter(item => !result.rows!.some(row => row.occurrence_key === item.occurrence_key && row.profile_id === item.profile_id)), ...result.rows!]);
+    else if (result.rows) mergeAcknowledgedAnnotations(result.rows);
     setTrackingPending(false);
   };
   const untrackHistory = async (item: TaskAnnotation) => {
@@ -411,7 +432,7 @@ export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
       work_state: item.work_state, blocked_reason: item.blocked_reason, review_date: item.review_date,
       expected_version: item.version }]);
     if (result.error) setActionError(result.error);
-    else if (result.rows) setAnnotations(previous => [...(previous ?? []).filter(row => row.occurrence_key !== item.occurrence_key || row.profile_id !== item.profile_id), ...result.rows!]);
+    else if (result.rows) mergeAcknowledgedAnnotations(result.rows);
     setTrackingPending(false);
   };
   const inspectTask = (task: DailyTaskView) => {

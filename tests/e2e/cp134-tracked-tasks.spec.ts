@@ -1,6 +1,28 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 const authURL = process.env.OPENFORGE_CP117_AUTH_URL ?? "http://127.0.0.1:9127/";
+
+async function storedAnnotation(page: Page, id: string) {
+  const response = await page.request.get("http://127.0.0.1:8127/fund-manager/tasks/annotations");
+  expect(response.ok()).toBe(true);
+  const rows = await response.json() as Array<{ occurrence_key: string; profile_id: string; tracked: boolean; work_state: string; version: number }>;
+  const item = rows.find(value => value.occurrence_key === id);
+  expect(item).toBeTruthy();
+  return item!;
+}
+
+async function chooseWorkState(page: Page, id: string, state: "To Do" | "In Progress" | "Blocked") {
+  await page.locator(`[data-pd-id="tasks.v2.work-state.${id}"]`).click();
+  await page.getByRole("option", { name: state, exact: true }).click();
+  await expect(page.locator('[data-pd-id="tasks.v2.work-save-status"]')).toHaveText("Work state saved");
+}
+
+async function ensureRowTracking(page: Page, id: string, tracked: boolean) {
+  const control = page.locator(`[data-pd-id="tasks.v2.track.${id}"]`);
+  await expect(control).toBeVisible();
+  if (await control.getAttribute("aria-pressed") !== String(tracked)) await control.click();
+  await expect(control).toHaveAttribute("aria-pressed", String(tracked));
+}
 
 test("CP-134 tracked Today persists through refresh and header navigation", async ({ page }) => {
   const health = await (await page.request.get("/api/healthz")).json();
@@ -81,6 +103,114 @@ test("CP-134 tracked Today persists through refresh and header navigation", asyn
   await expect(page.locator('[data-pd-id="tasks.v2.collections"]')).toContainText("Tracked Tasks (0)");
 });
 
+test("CP-140B autosave uses the acknowledged Untrack version and membership without reload", async ({ page }) => {
+  const health = await (await page.request.get("/api/healthz")).json();
+  expect(health.database_classification).toBe("isolated");
+  expect(health.database_identity).toBe("cp117-integration-synthetic");
+  await page.goto(authURL);
+  await page.goto("/tasks");
+  const row = page.locator('[data-pd-id^="tasks.v2.row."]').first();
+  await expect(row).toBeVisible();
+  const id = (await row.getAttribute("data-pd-id"))!.replace("tasks.v2.row.", "");
+  await page.locator(`[data-pd-id="tasks.v2.track.${id}"]`).click();
+  await expect(page.locator(`[data-pd-id="tasks.v2.track.${id}"]`)).toHaveAttribute("aria-pressed", "true");
+  await row.click();
+  const selector = page.locator(`[data-pd-id="tasks.v2.work-state.${id}"]`);
+  await selector.click();
+  await page.getByRole("option", { name: "In Progress" }).click();
+  await expect(page.locator('[data-pd-id="tasks.v2.work-save-status"]')).toHaveText("Work state saved");
+  const stored = async () => {
+    const response = await page.request.get("http://127.0.0.1:8127/fund-manager/tasks/annotations");
+    expect(response.ok()).toBe(true);
+    const rows = await response.json() as Array<{ occurrence_key: string; tracked: boolean; work_state: string; version: number }>;
+    const item = rows.find(value => value.occurrence_key === id);
+    expect(item).toBeTruthy();
+    return item!;
+  };
+  const savedState = await stored();
+  expect(savedState).toMatchObject({ tracked: true, work_state: "In Progress" });
+  await page.getByRole("button", { name: "Untrack", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Track Task" })).toBeVisible();
+  const untracked = await stored();
+  expect(untracked).toMatchObject({ tracked: false, work_state: "In Progress", version: savedState.version + 1 });
+  await selector.click();
+  await page.getByRole("option", { name: "Blocked" }).click();
+  await expect(page.locator('[data-pd-id="tasks.v2.work-save-status"]')).toHaveText("Work state saved");
+  await expect(page.getByRole("button", { name: "Retry Work State" })).toHaveCount(0);
+  const afterSave = await stored();
+  expect(afterSave).toMatchObject({ tracked: false, work_state: "Blocked", version: untracked.version + 1 });
+  await page.reload();
+  await page.locator(`[data-pd-id="tasks.v2.row.${id}"]`).click();
+  await expect(page.locator(`[data-pd-id="tasks.v2.work-state.${id}"]`)).toContainText("Blocked");
+  await expect(page.getByRole("button", { name: "Track Task" })).toBeVisible();
+});
+
+test("CP-140B autosave retains tracked membership after an untracked state Save and Track", async ({ page }) => {
+  const health = await (await page.request.get("/api/healthz")).json();
+  expect(health.database_classification).toBe("isolated");
+  await page.goto(authURL);
+  await page.goto("/tasks");
+  const row = page.locator('[data-pd-id^="tasks.v2.row."]').first();
+  await expect(row).toBeVisible();
+  const id = (await row.getAttribute("data-pd-id"))!.replace("tasks.v2.row.", "");
+  await ensureRowTracking(page, id, false);
+  await row.click();
+  const selector = page.locator(`[data-pd-id="tasks.v2.work-state.${id}"]`);
+  const firstState = (await selector.innerText()).includes("In Progress") ? "Blocked" : "In Progress";
+  await chooseWorkState(page, id, firstState);
+  const untracked = await storedAnnotation(page, id);
+  expect(untracked).toMatchObject({ tracked: false, work_state: firstState });
+  await page.getByRole("button", { name: "Track Task" }).click();
+  await expect(page.getByRole("button", { name: "Untrack", exact: true })).toBeVisible();
+  const tracked = await storedAnnotation(page, id);
+  expect(tracked).toMatchObject({ tracked: true, work_state: firstState, version: untracked.version + 1 });
+  const finalState = firstState === "In Progress" ? "Blocked" : "In Progress";
+  await chooseWorkState(page, id, finalState);
+  await expect(page.getByRole("button", { name: "Retry Work State" })).toHaveCount(0);
+  expect(await storedAnnotation(page, id)).toMatchObject({ tracked: true, work_state: finalState, version: tracked.version + 1 });
+  await page.reload();
+  await page.locator(`[data-pd-id="tasks.v2.row.${id}"]`).click();
+  await expect(page.locator(`[data-pd-id="tasks.v2.work-state.${id}"]`)).toContainText(finalState);
+  await expect(page.getByRole("button", { name: "Untrack", exact: true })).toBeVisible();
+});
+
+for (const surface of ["header", "banner"] as const) {
+  test(`CP-140B ${surface} Untrack is acknowledged before inspector autosave`, async ({ page }) => {
+    const health = await (await page.request.get("/api/healthz")).json();
+    expect(health.database_classification).toBe("isolated");
+    await page.goto(authURL);
+    await page.goto("/tasks");
+    const row = page.locator('[data-pd-id^="tasks.v2.row."]').first();
+    await expect(row).toBeVisible();
+    const id = (await row.getAttribute("data-pd-id"))!.replace("tasks.v2.row.", "");
+    await ensureRowTracking(page, id, true);
+    await row.click();
+    const selector = page.locator(`[data-pd-id="tasks.v2.work-state.${id}"]`);
+    const firstState = (await selector.innerText()).includes("In Progress") ? "Blocked" : "In Progress";
+    await chooseWorkState(page, id, firstState);
+    const savedState = await storedAnnotation(page, id);
+    expect(savedState.tracked).toBe(true);
+    if (surface === "header") {
+      await page.locator('[data-pd-id="ux-v2.header.tasks"]').click();
+      await page.locator('[data-pd-id="ux-v2.header.tracked-panel"]').locator(`[data-pd-id="tracked-task.${savedState.profile_id}.${id}"]`).getByRole("button", { name: /^Untrack / }).click();
+      await page.keyboard.press("Escape");
+    } else {
+      await page.locator('[data-pd-id="v2.active-task"]').locator(`[data-pd-id="tracked-task.${savedState.profile_id}.${id}"]`).getByRole("button", { name: /^Untrack / }).click();
+    }
+    await expect(page.getByRole("button", { name: "Track Task" })).toBeVisible();
+    const untracked = await storedAnnotation(page, id);
+    expect(untracked).toMatchObject({ tracked: false, work_state: firstState, version: savedState.version + 1 });
+    const finalState = firstState === "In Progress" ? "Blocked" : "In Progress";
+    await chooseWorkState(page, id, finalState);
+    await expect(page.getByRole("button", { name: "Retry Work State" })).toHaveCount(0);
+    expect(await storedAnnotation(page, id)).toMatchObject({ tracked: false, work_state: finalState, version: untracked.version + 1 });
+    await page.reload();
+    await page.locator(`[data-pd-id="tasks.v2.row.${id}"]`).click();
+    await expect(page.locator(`[data-pd-id="tasks.v2.work-state.${id}"]`)).toContainText(finalState);
+    await expect(page.getByRole("button", { name: "Track Task" })).toBeVisible();
+  });
+}
+
 test("CP-140B rapid work-state selections serialize and persist the latest acknowledged choice", async ({ page }) => {
   const health = await (await page.request.get("/api/healthz")).json();
   expect(health.database_classification).toBe("isolated");
@@ -109,6 +239,87 @@ test("CP-140B rapid work-state selections serialize and persist the latest ackno
   await page.reload();
   await page.locator(`[data-pd-id="tasks.v2.row.${id}"]`).click();
   await expect(page.locator(`[data-pd-id="tasks.v2.work-state.${id}"]`)).toContainText("Blocked");
+});
+
+test("CP-140B genuine concurrent annotation version conflict retains input and retries", async ({ page }) => {
+  const health = await (await page.request.get("/api/healthz")).json();
+  expect(health.database_classification).toBe("isolated");
+  await page.goto(authURL);
+  await page.goto("/tasks");
+  const row = page.locator('[data-pd-id^="tasks.v2.row."]').first();
+  await expect(row).toBeVisible();
+  const id = (await row.getAttribute("data-pd-id"))!.replace("tasks.v2.row.", "");
+  await ensureRowTracking(page, id, true);
+  await row.click();
+  const selector = page.locator(`[data-pd-id="tasks.v2.work-state.${id}"]`);
+  const firstState = (await selector.innerText()).includes("In Progress") ? "Blocked" : "In Progress";
+  await chooseWorkState(page, id, firstState);
+  const beforeConflict = await storedAnnotation(page, id);
+  const secondContext = await page.context().browser()!.newContext();
+  try {
+    const secondPage = await secondContext.newPage();
+    await secondPage.goto(authURL);
+    const external = await secondPage.request.patch("http://127.0.0.1:8127/fund-manager/tasks/annotations", { data: { changes: [{
+      profile_id: beforeConflict.profile_id, occurrence_key: id, tracked: true, work_state: "To Do",
+      blocked_reason: null, review_date: null, expected_version: beforeConflict.version,
+    }] } });
+    expect(external.status()).toBe(200);
+    expect(await storedAnnotation(page, id)).toMatchObject({ tracked: true, work_state: "To Do", version: beforeConflict.version + 1 });
+    const intended = firstState === "In Progress" ? "Blocked" : "In Progress";
+    await selector.click();
+    await page.getByRole("option", { name: intended, exact: true }).click();
+    await expect(page.locator('[data-pd-id="tasks.v2.work-save-status"]')).toHaveText("Work state was not saved.");
+    await expect(page.getByRole("button", { name: "Retry Work State" })).toBeVisible();
+    await expect(selector).toContainText(intended);
+    await page.getByRole("button", { name: "Retry Work State" }).click();
+    await expect(page.locator('[data-pd-id="tasks.v2.work-save-status"]')).toHaveText("Work state saved");
+    expect(await storedAnnotation(page, id)).toMatchObject({ tracked: true, work_state: intended, version: beforeConflict.version + 2 });
+    await page.reload();
+    await page.locator(`[data-pd-id="tasks.v2.row.${id}"]`).click();
+    await expect(page.locator(`[data-pd-id="tasks.v2.work-state.${id}"]`)).toContainText(intended);
+    await expect(page.getByRole("button", { name: "Untrack", exact: true })).toBeVisible();
+  } finally { await secondContext.close(); }
+});
+
+test("CP-140B delayed annotation read cannot replace a later acknowledged work state", async ({ page }) => {
+  const health = await (await page.request.get("/api/healthz")).json();
+  expect(health.database_classification).toBe("isolated");
+  await page.goto(authURL);
+  await page.goto("/tasks");
+  const row = page.locator('[data-pd-id^="tasks.v2.row."]').first();
+  await expect(row).toBeVisible();
+  const id = (await row.getAttribute("data-pd-id"))!.replace("tasks.v2.row.", "");
+  await ensureRowTracking(page, id, true);
+  await row.click();
+  const selector = page.locator(`[data-pd-id="tasks.v2.work-state.${id}"]`);
+  const firstState = (await selector.innerText()).includes("In Progress") ? "Blocked" : "In Progress";
+  await chooseWorkState(page, id, firstState);
+  const snapshotResponse = await page.request.get("http://127.0.0.1:8127/fund-manager/tasks/annotations");
+  expect(snapshotResponse.ok()).toBe(true);
+  const staleRows = await snapshotResponse.json();
+  let intercept = true;
+  let held = 0;
+  let fulfilled = 0;
+  let release!: () => void;
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  const delayedRead = async (route: import("@playwright/test").Route) => {
+    if (route.request().method() !== "GET" || !intercept) return route.continue();
+    held += 1;
+    await gate;
+    await route.fulfill({ status: 200, json: staleRows });
+    fulfilled += 1;
+  };
+  await page.route(/\/fund-manager\/tasks\/annotations$/, delayedRead);
+  await page.evaluate(() => window.dispatchEvent(new Event("pd:task-annotations-refresh")));
+  await expect.poll(() => held).toBeGreaterThan(0);
+  intercept = false;
+  const intended = firstState === "In Progress" ? "Blocked" : "In Progress";
+  await chooseWorkState(page, id, intended);
+  release();
+  await expect.poll(() => fulfilled).toBeGreaterThan(0);
+  await expect(page.locator('[data-pd-id="tasks.v2.inspector"] dt').filter({ hasText: "Work State" }).locator("..").locator("dd")).toContainText(intended);
+  expect(await storedAnnotation(page, id)).toMatchObject({ tracked: true, work_state: intended });
+  await page.unroute(/\/fund-manager\/tasks\/annotations$/, delayedRead);
 });
 
 test("CP-140B header Untrack returns keyboard focus to the stable collection action", async ({ page }) => {

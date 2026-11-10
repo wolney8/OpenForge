@@ -12,6 +12,7 @@ The owner rejected CP-140A visual and interaction acceptance for these surfaces.
 | PD-PR-117A-74 | Today row/inspector Track handoff, source-specific primary action, concise rows and restored queue width; Lab Today with owner amendment | COMPLETE — inspector open/close, one-column row and primary-action tests passed. |
 | PD-PR-117A-75 | Immediate versioned personal work-state persistence, date/reason rules, retry and acknowledgement feedback; existing annotation PATCH | COMPLETE — rapid coalescing, conflict/retry, refresh and new synthetic session passed. |
 | PD-PR-117A-76 | Three real Today sections with truthful recurring/opportunity source states; Lab group composition without synthetic records | COMPLETE for presentation and existing source reads; production recurring scheduling remains BLOCKED by its absent authority. |
+| PD-PR-117A-77 | Reconcile completed personal work-state autosave queues with subsequently acknowledged Track/Untrack writes; preserve version and membership together | COMPLETE — pre-fix isolated browser reproduction failed 1/1; fixed queue retirement/idle rebase passed tracked, untracked, header and banner sequences without Retry, plus real conflict/retry and delayed-read checks. Final V2 84 passed/five phase skips, flag-OFF 9/9 and focused visual 10/10. |
 
 Final-source synthetic V2 integration passed 77 with five legacy-only skips, visual 169/169, focused CP-140B 10/10, and flag-OFF rollback 9/9. Owner Design Acceptance and manual spoken screen-reader review remain separate and unverified.
 
