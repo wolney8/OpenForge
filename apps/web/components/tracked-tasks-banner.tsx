@@ -1,16 +1,15 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import styles from "@/components/design-lab-connected.module.css";
-import { apiBaseUrl } from "@/lib/api";
+import { TrackedTaskCard } from "@/components/tracked-task-card";
+import { loadTrackedTaskContext, trackedTaskKey, type TrackedTaskContext } from "@/lib/tracked-task-context";
 import { loadTaskAnnotations, patchTaskAnnotations, TASK_ANNOTATIONS_REFRESH_EVENT, type TaskAnnotation } from "@/lib/task-annotations";
 
 const visibilityKey = "plum-duff:v2-tracked-banner-visibility";
 export const SHOW_TRACKED_TASKS_BANNER_EVENT = "pd:show-tracked-tasks-banner";
 type Visibility = "expanded" | "compact" | "hidden";
-type SourceLink = { profileId: string; occurrenceKey: string; href: string };
 
 function initialVisibility(): Visibility {
   try {
@@ -27,7 +26,7 @@ export function TrackedTasksBanner() {
   const requestedScope = routeProfileId ?? searchParams.get("scope");
   const [visibility, setVisibility] = useState<Visibility>("expanded");
   const [annotations, setAnnotations] = useState<TaskAnnotation[] | null>(null);
-  const [sourceLinks, setSourceLinks] = useState<SourceLink[]>([]);
+  const [taskContext, setTaskContext] = useState<Map<string, TrackedTaskContext>>(new Map());
   const [error, setError] = useState("");
   const [pending, setPending] = useState("");
   const requestId = useRef(0);
@@ -40,19 +39,13 @@ export function TrackedTasksBanner() {
   const refresh = useCallback(async () => {
     if (pathname === "/design-lab" || pathname.startsWith("/design-lab/")) return;
     const current = ++requestId.current;
-    const [rows, response] = await Promise.all([
-      loadTaskAnnotations(),
-      fetch(`${apiBaseUrl}/fund-manager/notifications`, { cache: "no-store", credentials: "include" }).catch(() => null),
-    ]);
+    const rows = await loadTaskAnnotations();
     if (current !== requestId.current) return;
     if (rows === null) { setError("Tracked Tasks could not be loaded. Retry when your session is available."); return; }
     setAnnotations(rows);
     setError("");
-    if (response?.ok) {
-      const notifications = await response.json() as Array<{ profile_id: string; notification_id: string; href: string }>;
-      if (current !== requestId.current) return;
-      setSourceLinks(notifications.filter(item => item.href?.startsWith("/") && !item.href.startsWith("//")).map(item => ({ profileId: item.profile_id, occurrenceKey: item.notification_id, href: item.href })));
-    }
+    try { const contexts = await loadTrackedTaskContext(rows); if (current === requestId.current) setTaskContext(contexts); }
+    catch { if (current === requestId.current) setTaskContext(new Map()); }
   }, [pathname]);
   useEffect(() => {
     const timer = window.setTimeout(() => void refresh(), 0);
@@ -79,14 +72,7 @@ export function TrackedTasksBanner() {
   };
   const renderRow = (item: TaskAnnotation) => {
     const key = `${item.profile_id}:${item.occurrence_key}`;
-    const source = item.source_status === "active" ? sourceLinks.find(link => link.profileId === item.profile_id && link.occurrenceKey === item.occurrence_key) : null;
-    return <div className={styles.trackedRow} data-pd-id={`tracked-banner.row.${key}`} key={key}>
-      <div><strong>{item.title}</strong><small>{item.profile_name} · {item.work_state}{item.source_status !== "active" ? ` · Source ${item.source_status}` : ""}{item.work_state === "Blocked" && item.blocked_reason ? ` · ${item.blocked_reason}` : ""}</small></div>
-      <div className={styles.trackedActions}>
-        {source ? <Link href={source.href}>Open Source</Link> : <Link href={`/tasks?${requestedScope ? `scope=${encodeURIComponent(requestedScope)}&` : ""}collection=tracked&task=${encodeURIComponent(item.occurrence_key)}`}>View Task</Link>}
-        <button aria-label={`Untrack ${item.title} — ${item.profile_name}`} disabled={pending === key} onClick={() => void untrack(item)} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button>
-      </div>
-    </div>;
+    return <TrackedTaskCard context={taskContext.get(trackedTaskKey(item.profile_id, item.occurrence_key))} item={item} key={key} onUntrack={() => void untrack(item)} pending={pending === key} taskHref={`/tasks?${requestedScope ? `scope=${encodeURIComponent(requestedScope)}&` : ""}collection=tracked&task=${encodeURIComponent(item.occurrence_key)}`} />;
   };
 
   return <section aria-label="Tracked Tasks" className={styles.activeTaskTray} data-pd-id="v2.active-task">

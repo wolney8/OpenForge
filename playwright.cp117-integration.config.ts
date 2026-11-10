@@ -15,7 +15,7 @@ export default defineConfig({
   testDir: "./tests/e2e",
   testMatch: process.env.OPENFORGE_CP117_VERIFY_LEGACY === "true"
     ? ["cp117-spreadsheet.spec.ts", "cp117-six-ledger.spec.ts", "notification-history-layout.spec.ts"]
-    : ["cp117-spreadsheet.spec.ts", "cp117-six-ledger.spec.ts", "cp134-tracked-tasks.spec.ts", "cp137-profile-scope-banner.spec.ts", "cp138-combined-ledger-parity.spec.ts", "cp139-combined-filters.spec.ts", "cp139-specialist-workbench.spec.ts"],
+    : ["cp117-spreadsheet.spec.ts", "cp117-six-ledger.spec.ts", "cp134-tracked-tasks.spec.ts", "cp137-profile-scope-banner.spec.ts", "cp138-combined-ledger-parity.spec.ts", "cp139-combined-filters.spec.ts", "cp139-specialist-workbench.spec.ts", "cp140a-page-adoption.spec.ts"],
   workers: 1,
   retries: 0,
   outputDir: process.env.OPENFORGE_CP117_VERIFY_LEGACY === "true"

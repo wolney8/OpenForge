@@ -17,6 +17,7 @@ export function routeForProfileScope(pathname: string, profileId: string | null)
     : `/tracker/${ledgerModule}`;
   if (scopedModule === "reports" || pathname === "/reports") return profileId ? `/reports?scope=${encodeURIComponent(profileId)}` : "/reports";
   if (pathname === "/tasks") return profileId ? `/tasks?scope=${encodeURIComponent(profileId)}` : "/tasks";
+  if (pathname === "/tracker" || pathname === "/opportunities") return profileId ? `${pathname}?scope=${encodeURIComponent(profileId)}` : pathname;
   if (pathname === "/") return profileId ? `/?scope=${encodeURIComponent(profileId)}` : "/";
   if (scopedModule === "dashboard") return profileId ? `/profiles/${encodeURIComponent(profileId)}/tracker/dashboard` : "/";
   if (scopedModule === "settings") return profileId ? `/profiles/${encodeURIComponent(profileId)}/tracker/settings` : "/settings";
@@ -24,7 +25,7 @@ export function routeForProfileScope(pathname: string, profileId: string | null)
 }
 
 export function scopedGlobalHref(href: string, profileId: string | null): string {
-  if (!profileId || !["/", "/tasks", "/reports"].includes(href)) return href;
+  if (!profileId || !["/", "/tasks", "/reports", "/tracker", "/opportunities"].includes(href)) return href;
   return `${href}?scope=${encodeURIComponent(profileId)}`;
 }
 

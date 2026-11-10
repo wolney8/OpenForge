@@ -111,7 +111,7 @@ export function FundManagerDashboardLoader({
 
   return (
     <main className="page-shell stack">
-      {!(visualV2 && pageKind === "dashboard") ? <section className={`hero-panel split-hero${visualV2 ? " v2-position-heading" : ""}`}>
+      {!(visualV2 && (pageKind === "dashboard" || pageKind === "reports")) ? <section className={`hero-panel split-hero${visualV2 ? " v2-position-heading" : ""}`}>
         <div className="stack">
           <h1>{pageTitle}</h1>
         </div>

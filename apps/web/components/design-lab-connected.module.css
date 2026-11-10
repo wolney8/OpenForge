@@ -29,16 +29,17 @@
 .trackedRow{display:flex;align-items:center;gap:10px;min-width:0;min-height:64px;padding:8px;border-top:1px solid var(--tracked-border)}
 .trackedRow>div:first-child{display:grid;gap:2px;min-width:0;flex:1}
 .trackedRow strong{display:-webkit-box;overflow:hidden;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow-wrap:anywhere;line-height:1.3}
-.trackedRow small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.8rem}
+.trackedRow>div:first-child>a{color:inherit;text-decoration:none}.trackedRow>div:first-child>a:hover{text-decoration:underline}.trackedRow>div:first-child>a:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.trackedRow small{overflow-wrap:anywhere;font-size:.8rem;line-height:1.35}
 .trackedActions{display:flex;align-items:center;gap:5px;flex:none}
 .trackedActions button{min-height:44px;padding:6px 9px;border:1px solid var(--tracked-border);border-radius:8px;background:transparent;color:var(--tracked-fg);font-weight:700}
 .trackedActions a{display:inline-flex;align-items:center;min-height:44px;padding:6px 9px;border:1px solid var(--tracked-border);border-radius:8px;color:var(--tracked-fg);font-weight:700;text-decoration:none}
-.trackedPanelRows{display:grid;min-width:0}
-.trackedPanelRows .trackedRow{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:5px 8px;min-height:96px;padding:9px 8px;border-radius:8px}
+.trackedPanelRows{display:grid;grid-auto-rows:max-content;align-content:start;min-width:0;max-height:min(48dvh,440px);overflow-y:auto;overscroll-behavior:contain}
+.trackedPanelRows .trackedRow{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:max-content max-content;align-content:start;align-items:start;gap:8px;min-height:0;padding:10px 8px;border-radius:8px}
 .trackedPanelRows .trackedRow>div:first-child{grid-column:1;min-width:0}
 .trackedPanelRows .trackedRow strong{display:block;overflow:visible;overflow-wrap:anywhere}
 .trackedPanelRows .trackedRow small{white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;line-height:1.3}
-.trackedPanelRows .trackedRow>.trackedActions{grid-column:1/-1;justify-content:flex-end;margin:0}
+.trackedPanelRows .trackedRow>.trackedActions{grid-column:1;grid-row:2;justify-content:flex-end;margin:0;min-width:0;flex-wrap:wrap}
 .trackedPanelRows .trackedRow>.trackedActions button:first-child{margin-right:auto}
 .trackedPreviewCount{margin:4px 10px;color:var(--muted);font-size:.82rem}
 .trackedUrgent{background:color-mix(in srgb,var(--danger) 13%,var(--tracked-surface));border-radius:8px;padding-inline:8px}

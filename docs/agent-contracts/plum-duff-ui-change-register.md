@@ -1417,6 +1417,23 @@ CP-137 verification: synthetic V2 36 passed with five rollback-phase skips, pair
 
 This is one correction batch under open [#118](https://github.com/wolney8/OpenForge/issues/118). CP-137 shell and tracking remain accepted; CP-136 whole-editor design work remains queued. No new financial calculation, API, schema or normal-owner mutation authority is included.
 
+## CP-140A screenshot-grounded whole-page correction batch — 2026-11-10 / #118
+
+The owner supplied six PD-left/Lab-right Split View screenshots during this tranche. They are private review input and are not committed. Synthetic matched captures verify geometry and interactions; owner visual sign-off remains separate.
+
+| ID | Area and requested behaviour | Signed-off equivalent | Status |
+| --- | --- | --- | --- |
+| PD-PR-117A-63 | Shared Profile selector, breadcrumb, page head, gutters and vertical rhythm at desktop/Split View/mobile | Approved Lab shell and page-head composition | NEEDS VERIFICATION — shared gutters and page head corrected; 390px clipping fixed at the responsive boundary; owner visual acceptance remains open. |
+| PD-PR-117A-64 | Populated tracked banner/header preview and Today Track action placement, source-safe actions and history | Lab tracked task cards and real annotation/source commands | NEEDS VERIFICATION — shared task card, in-row Track, governed Open Source/View Task and saved-history link implemented; owner populated-state comparison remains open. |
+| PD-PR-117A-65 | Honest Today heading date control without hiding unresolved active work | Lab Selected Range presentation; real task-date authority | COMPLETE — Task date view uses recorded task-date states and keeps Needs Action across all dates by default. |
+| PD-PR-117A-66 | Position Continue Work destinations match Lab operational direction using real authorised routes | Lab Position shortcut group | COMPLETE — Sportsbook, Reports and Free Bets shortcuts retain scope and open authorised work. |
+| PD-PR-117A-67 | Distinct Opportunities route for authorised individual/All Profiles browsing | Lab Opportunities composition; existing Profile opportunity reads/actions | NEEDS VERIFICATION — independent authenticated route and Profile-owned handoff work; synthetic visual fixture has no recorded opportunities, so populated parity remains open. |
+| PD-PR-117A-68 | Distinct Tracker ledger-selection overview and separate group label/chevron actions | Lab Tracker overview and sidebar group | NEEDS VERIFICATION — scoped five-ledger overview and independent chevron pass; the Lab overview's Selected Range control is not duplicated where the overview has no range-governed data. |
+| PD-PR-117A-69 | Full combined Sportsbook control hierarchy and density without reduced columns or commands | Lab ledger page; CP-138 native column contract | NEEDS VERIFICATION — primary toolbar is grouped using the shared disclosure and native financial columns remain; dense production table and native editor handoff are still visible exceptions. |
+| PD-PR-117A-70 | Reports whole-page Split View containment, hierarchy, governed KPIs/charts/drilldowns | Lab Reports page and established real report authority | NEEDS VERIFICATION — duplicate heading and clipped controls corrected; incomplete source issues retain a compact disclosure before KPIs. Advanced Profile selection, formal reports and unavailable chart series remain governed exceptions. |
+
+The items awaiting owner visual comparison and the explicit production-only exceptions remain open on [#118](https://github.com/wolney8/OpenForge/issues/118). Automated whole-page comparison does not constitute owner Design Acceptance.
+
 ## CP-139 combined interaction and specialist-editor batch — 2026-11-05
 
 | ID | Requested outcome and affected surface | Signed-off equivalent | Status |

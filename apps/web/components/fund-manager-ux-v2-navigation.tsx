@@ -12,7 +12,9 @@ import { platformBrand } from "@/lib/brand";
 import { DesignLabHeaderOverlay } from "@/components/design-lab-header-overlay";
 import { ModalBoundary } from "@/components/modal-boundary";
 import { labDestinations } from "@/lib/design-lab-navigation";
-import { loadTaskAnnotations, TASK_ANNOTATIONS_REFRESH_EVENT, type TaskAnnotation } from "@/lib/task-annotations";
+import { loadTaskAnnotations, patchTaskAnnotations, TASK_ANNOTATIONS_REFRESH_EVENT, type TaskAnnotation } from "@/lib/task-annotations";
+import { TrackedTaskCard } from "@/components/tracked-task-card";
+import { loadTrackedTaskContext, trackedTaskKey, type TrackedTaskContext } from "@/lib/tracked-task-context";
 import { scopedGlobalHref } from "@/lib/profile-scope";
 import { SHOW_TRACKED_TASKS_BANNER_EVENT } from "@/components/tracked-tasks-banner";
 
@@ -101,7 +103,7 @@ export function FundManagerUxV2Sidebar({ profileId, availableProfiles, mobileOpe
       <nav aria-label="Primary navigation" className="ux-v2-nav-stack">
         {group("primary").filter((item) => item.id !== "reports").map((item) => <NavLink item={item} key={item.id} locationHash={locationHash} onChooseProfile={chooseProfile} onNavigate={onMobileClose} pathname={pathname} profileId={profileId} />)}
         <div className={`${labStyles.trackerNav}${destination?.group === "tracker" ? ` ${labStyles.navGroupActive}` : ""}`}>
-          {profileId ? <Link className="ux-v2-nav-link" data-pd-id="ux-v2.nav.tracker" href={`/profiles/${encodeURIComponent(profileId)}/tracker/dashboard`} onClick={(event) => void navigate(event, `/profiles/${encodeURIComponent(profileId)}/tracker/dashboard`, onMobileClose)}><span aria-hidden="true" className="material-symbols-outlined">table_chart</span><span>Tracker</span></Link> : <Link className="ux-v2-nav-link" data-pd-id="ux-v2.nav.tracker" href="/tracker/sportsbook-bets" onClick={event => void navigate(event, "/tracker/sportsbook-bets", onMobileClose)}><span aria-hidden="true" className="material-symbols-outlined">table_chart</span><span>Tracker</span></Link>}
+          <Link aria-current={pathname === "/tracker" ? "page" : undefined} className="ux-v2-nav-link" data-pd-id="ux-v2.nav.tracker" href={scopedGlobalHref("/tracker", profileId)} onClick={event => void navigate(event, scopedGlobalHref("/tracker", profileId), onMobileClose)}><span aria-hidden="true" className="material-symbols-outlined">table_chart</span><span>Tracker</span></Link>
           <button aria-controls="ux-v2-tracker-destinations" aria-expanded={trackerIsExpanded} aria-label={trackerIsExpanded ? "Collapse Tracker" : "Expand Tracker"} className={labStyles.trackerExpand} data-pd-id="ux-v2.nav.tracker-expand" onClick={() => setTrackerExpanded(!trackerIsExpanded)} type="button"><span aria-hidden="true" className="material-symbols-outlined">{trackerIsExpanded ? "expand_less" : "expand_more"}</span></button>
         </div>
         {trackerIsExpanded ? <div className={labStyles.trackerChildren} id="ux-v2-tracker-destinations">{group("tracker").map((item) => <NavLink item={item} key={item.id} locationHash={locationHash} onChooseProfile={chooseProfile} onNavigate={onMobileClose} pathname={pathname} profileId={profileId} />)}</div> : null}
@@ -132,21 +134,51 @@ export function FundManagerUxV2HeaderTasks({ profileId = null }: { profileId?: s
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const [open, setOpen] = useState(false);
   const [annotations, setAnnotations] = useState<TaskAnnotation[] | null>(null);
+  const [taskContext, setTaskContext] = useState<Map<string, TrackedTaskContext>>(new Map());
+  const [pendingUntrack, setPendingUntrack] = useState("");
+  const [untrackError, setUntrackError] = useState("");
   useEffect(() => {
     let active = true;
-    const refresh = () => void loadTaskAnnotations().then(rows => { if (active) setAnnotations(rows); });
+    const refresh = () => void loadTaskAnnotations().then(async rows => {
+      if (!active) return;
+      setAnnotations(rows);
+      if (rows) try { const contexts = await loadTrackedTaskContext(rows); if (active) setTaskContext(contexts); } catch { if (active) setTaskContext(new Map()); }
+    });
     refresh();
     window.addEventListener(TASK_ANNOTATIONS_REFRESH_EVENT, refresh);
     return () => { active = false; window.removeEventListener(TASK_ANNOTATIONS_REFRESH_EVENT, refresh); };
   }, []);
   const allTasksHref = profileId ? `/tasks?scope=${encodeURIComponent(profileId)}` : "/tasks";
   const trackedTasksHref = profileId ? `${allTasksHref}&collection=tracked` : "/tasks?collection=tracked";
+  const untrack = async (item: TaskAnnotation) => {
+    if (pendingUntrack) return;
+    setPendingUntrack(trackedTaskKey(item.profile_id, item.occurrence_key));
+    setUntrackError("");
+    const result = await patchTaskAnnotations([{ profile_id: item.profile_id, occurrence_key: item.occurrence_key, tracked: false, work_state: item.work_state, blocked_reason: item.blocked_reason, review_date: item.review_date, expected_version: item.version }]);
+    if (result.error) setUntrackError(result.error);
+    setPendingUntrack("");
+  };
   if (!annotations) return <Link aria-label="Open Tasks" className={labStyles.iconButton} data-pd-id="ux-v2.header.tasks" href={allTasksHref} onClick={(event) => void navigate(event, allTasksHref)} title="Tasks"><span aria-hidden="true" className="material-symbols-outlined">task_alt</span></Link>;
   const active = annotations.filter(item => item.tracked && item.source_status === "active" && (!profileId || item.profile_id === profileId));
+  const history = annotations.filter(item => item.tracked && item.source_status !== "active" && (!profileId || item.profile_id === profileId));
   const preview = active.slice(0, 5);
   return <div className="app-menu-shell ux-v2-tracked-root">
     <button aria-expanded={open} aria-label={`Tracked Tasks, ${active.length} active`} className={labStyles.iconButton} data-pd-id="ux-v2.header.tasks" onClick={() => setOpen(value => !value)} ref={triggerRef} type="button"><span aria-hidden="true" className="material-symbols-outlined">task_alt</span>{active.length ? <span aria-hidden="true" className={labStyles.notificationCount}>{active.length}</span> : null}</button>
-    {open ? <DesignLabHeaderOverlay anchorRef={triggerRef} label="Tracked Tasks" onClose={() => setOpen(false)} preferredWidth={380}><div className={labStyles.menuBody} data-pd-id="ux-v2.header.tracked-panel"><h2>Tracked Tasks ({active.length})</h2>{preview.length ? <div className={labStyles.trackedPanelRows}>{preview.map(item => { const href = `${trackedTasksHref}&task=${encodeURIComponent(item.occurrence_key)}`; return <div className={labStyles.trackedRow} key={`${item.profile_id}:${item.occurrence_key}`}><div><Link href={href} onClick={event => void navigate(event, href, () => setOpen(false))}><strong>{item.title}</strong></Link><small>{item.profile_name} · {item.work_state}</small></div></div>; })}</div> : <p className={labStyles.menuEmpty}>No Active Tracked Tasks</p>}{active.length > preview.length ? <p className={labStyles.trackedPreviewCount}>Showing {preview.length} of {active.length} active tasks</p> : null}<button className={labStyles.menuRow} data-pd-id="ux-v2.header.tracked-show-banner" onClick={() => { window.dispatchEvent(new Event(SHOW_TRACKED_TASKS_BANNER_EVENT)); setOpen(false); }} type="button"><span aria-hidden="true" className="material-symbols-outlined">visibility</span><span>Show Tracked Tasks Banner</span></button><Link className={labStyles.menuRow} data-pd-id="ux-v2.header.tracked-view-all" href={trackedTasksHref} onClick={event => void navigate(event, trackedTasksHref, () => setOpen(false))}><span aria-hidden="true" className="material-symbols-outlined">view_list</span><span>View All Tracked Tasks</span></Link></div></DesignLabHeaderOverlay> : null}
+    {open ? <DesignLabHeaderOverlay anchorRef={triggerRef} label="Tracked Tasks" onClose={() => setOpen(false)} preferredWidth={380}>
+      <div className={labStyles.menuBody} data-pd-id="ux-v2.header.tracked-panel">
+        <h2>Tracked Tasks ({active.length})</h2>
+        {untrackError ? <p role="alert">{untrackError}</p> : null}
+        {preview.length ? <div className={labStyles.trackedPanelRows}>{preview.map(item => {
+          const href = `${trackedTasksHref}&task=${encodeURIComponent(item.occurrence_key)}`;
+          const key = trackedTaskKey(item.profile_id, item.occurrence_key);
+          return <TrackedTaskCard context={taskContext.get(key)} item={item} key={key} onNavigate={(event, target) => void navigate(event, target, () => setOpen(false))} onUntrack={() => void untrack(item)} pending={pendingUntrack === key} taskHref={href} />;
+        })}</div> : <p className={labStyles.menuEmpty}>No Active Tracked Tasks</p>}
+        {active.length > preview.length ? <p className={labStyles.trackedPreviewCount}>Showing {preview.length} of {active.length} active tasks</p> : null}
+        {history.length ? <Link className={labStyles.menuRow} href={trackedTasksHref} onClick={event => void navigate(event, trackedTasksHref, () => setOpen(false))}><span aria-hidden="true" className="material-symbols-outlined">history</span><span>Source history and unavailable tasks ({history.length})</span></Link> : null}
+        <button className={labStyles.menuRow} data-pd-id="ux-v2.header.tracked-show-banner" onClick={() => { window.dispatchEvent(new Event(SHOW_TRACKED_TASKS_BANNER_EVENT)); setOpen(false); }} type="button"><span aria-hidden="true" className="material-symbols-outlined">visibility</span><span>Show Tracked Tasks Banner</span></button>
+        <Link className={labStyles.menuRow} data-pd-id="ux-v2.header.tracked-view-all" href={trackedTasksHref} onClick={event => void navigate(event, trackedTasksHref, () => setOpen(false))}><span aria-hidden="true" className="material-symbols-outlined">view_list</span><span>View All Tracked Tasks</span></Link>
+      </div>
+    </DesignLabHeaderOverlay> : null}
   </div>;
 }
 
@@ -217,7 +249,7 @@ export function FundManagerUxV2Breadcrumbs({ profileId, profileName }: { profile
   if (!current) return null;
   const tracker = current.group === "tracker";
   const crumbs: { label: string; href?: string }[] = [{ label: "Position", href: scopedGlobalHref("/", profileId) }];
-  if (tracker) crumbs.push({ label: "Tracker", href: profileId ? `/profiles/${encodeURIComponent(profileId)}/tracker/dashboard` : "/tracker/sportsbook-bets" });
+  if (tracker) crumbs.push({ label: "Tracker", href: scopedGlobalHref("/tracker", profileId) });
   else if (current.parent) {
     const parent = shellDestinations.find(item => item.id === current.parent);
     const href = parent?.href(profileId);

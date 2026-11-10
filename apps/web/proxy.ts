@@ -52,6 +52,7 @@ export const config = {
     "/reports/:path*",
     "/notifications/:path*",
     "/oddsmatcher",
+    "/opportunities",
     "/design-lab/:path*",
     "/tasks/:path*",
     "/settings/:path*",

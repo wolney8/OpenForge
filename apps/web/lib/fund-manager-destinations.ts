@@ -17,7 +17,7 @@ const combinedRoute = (module: string) => (profileId: string | null) =>
 export const shellDestinations: ShellDestination[] = [
   { id: "position", label: "Position", icon: "space_dashboard", group: "primary", href: () => "/" },
   { id: "today", label: "Today", icon: "task_alt", group: "primary", href: () => "/tasks" },
-  { id: "opportunities", label: "Opportunities", icon: "lightbulb", group: "primary", href: profileId => profileId ? `/profiles/${encodeURIComponent(profileId)}/tracker/accounts#profile-opportunities` : "/tracker/accounts#profile-opportunities" },
+  { id: "opportunities", label: "Opportunities", icon: "lightbulb", group: "primary", href: profileId => profileId ? `/opportunities?scope=${encodeURIComponent(profileId)}` : "/opportunities" },
   { id: "accounts", label: "Accounts", icon: "account_balance_wallet", group: "primary", href: combinedRoute("accounts") },
   { id: "sportsbook", label: "Sportsbook Bets", icon: "sports_soccer", group: "tracker", href: combinedRoute("sportsbook-bets") },
   { id: "free-bets", label: "Free Bets", icon: "award_star", group: "tracker", href: combinedRoute("free-bets") },
@@ -40,6 +40,8 @@ export const shellDestinations: ShellDestination[] = [
 ];
 
 export function destinationForPath(pathname: string, hash = ""): ShellDestination | null {
+  if (pathname === "/opportunities") return shellDestinations.find((item) => item.id === "opportunities") ?? null;
+  if (pathname === "/tracker") return { id: "tracker", label: "Tracker", icon: "table_chart", group: "primary", href: () => "/tracker" };
   if (hash === "#profile-opportunities" && pathname === "/tracker/accounts") return shellDestinations.find((item) => item.id === "opportunities") ?? null;
   if (hash === "#profile-opportunities" && /^\/profiles\/[^/]+\/tracker\/accounts$/.test(pathname)) return shellDestinations.find((item) => item.id === "opportunities") ?? null;
   if (pathname === "/") return shellDestinations[0];

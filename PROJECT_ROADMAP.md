@@ -1,5 +1,9 @@
 # Project Roadmap — Plum Duff / OpenForge — Doc ID: PR-CODEX-001
 
+## Current CP-140A continuation — 2026-11-10
+
+Review the CP-140A whole-page correction against the owner’s six private Lab/PD comparisons and paired synthetic screenshots. Shared layout, source-backed tracked presentation, Today/Position, distinct Opportunities and Tracker routes, combined Sportsbook controls and Reports containment have been revised; Design Acceptance remains separate from passing tests. After this bounded review, resume the queued native Sportsbook, Free Bet and Casino editor styling. Keep financial commands, annotations, authentication, API 8010 and normal-owner data unchanged. Main merge, hosted deployment, combined floating Save and new financial authorities remain outside this tranche.
+
 ## Current CP-137 continuation — 2026-11-05
 
 Owner review of the CP-137 universal Profile scope, combined ledger browsing, Position/Today page heads and in-page tracked banner follows the clean synthetic 36-path V2, 140-path visual and 9-path flag-OFF checks. Preserve activated normal Today tracking, the eight-task default and all CP-136 specialist editor work. After this bounded navigation review, return to native Sportsbook, Free Bet and Casino editor composition. Saved views, new financial priority rules, main merge and hosted deployment remain separate gates.

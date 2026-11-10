@@ -36,7 +36,7 @@ html[data-ux-shell="v2"], html[data-ux-shell="v2"] body { background: var(--bg);
 
 .ux-v2-frame .ux-v2-top-bar .app-navigation-drawer-trigger { display: inline-flex; }
 .ux-v2-main > .page-shell { width: 100%; max-width: 1500px; }
-.ux-v2-main > .ux-v2-crumb-row { width: calc(100% - 2rem); max-width: none; }
+.ux-v2-main > .ux-v2-crumb-row { box-sizing: border-box; width: 100%; max-width: none; min-height: 42px; margin: 0 0 0; padding: 7px clamp(16px,2.5vw,32px); }
 .ux-v2-main :is(.hero-panel, .content-panel, .route-card) {
   border-radius: var(--shape-large);
   backdrop-filter: none;
@@ -155,18 +155,23 @@ html[data-ux-shell="v2"] .ux-v2-main .is-progress-replaying::after { display: no
 .ux-v2-main .v2-position-heading .profile-dashboard-hero-summary { display: none; }
 .ux-v2-main .v2-position-analytics { padding: 0; background: transparent; border: 0; gap: 1rem; }
 .ux-v2-main .v2-position-analytics > .workflow-panel-header { display: none; }
-.ux-v2-main .v2-position-analytics [data-pd-id="position.page-head"] { min-width: 0; }
-.ux-v2-main .v2-position-analytics [data-pd-id="position.page-head"] > div:first-child { flex: 1 1 220px; min-width: 0; }
-.ux-v2-main .v2-position-analytics [data-pd-id="position.page-head"] .fund-manager-control-bar.is-analytics { display: flex; flex-direction: row; flex: 0 1 auto; flex-wrap: wrap; align-items: end; justify-content: flex-end; gap: 12px; width: auto; min-width: 0; max-width: 100%; padding: 0; border: 0; border-radius: 0; background: transparent; }
-.ux-v2-main .v2-position-analytics [data-pd-id="position.page-head"] .fund-manager-control-slot-profile,
-.ux-v2-main .v2-position-analytics [data-pd-id="position.page-head"] .fund-manager-control-slot-range { flex: 0 1 190px; width: 190px; max-width: 100%; }
-.ux-v2-main .v2-position-analytics [data-pd-id="position.page-head"] .compact-report-controls { display: block; }
-.ux-v2-main .v2-position-analytics [data-pd-id="position.page-head"] .profile-report-picker summary { gap: 6px; padding-inline: 10px; }
-.ux-v2-main .v2-position-analytics [data-pd-id="position.page-head"] .profile-picker-count { min-height: 24px; padding-inline: 5px; }
+.ux-v2-main .v2-reports-financial-review > .account-money-status-list { padding: .75rem; border-top: 1px solid var(--outline); }
+.ux-v2-main .v2-position-analytics [data-pd-id$=".page-head"] { min-width: 0; flex-wrap: wrap; }
+.ux-v2-main .v2-position-analytics [data-pd-id$=".page-head"] > div:first-child { flex: 1 1 220px; min-width: 0; }
+.ux-v2-main .v2-position-analytics [data-pd-id$=".page-head"] .fund-manager-control-bar.is-analytics { display: flex; flex-direction: row; flex: 1 1 190px; flex-wrap: wrap; align-items: end; justify-content: flex-end; gap: 12px; width: auto; min-width: 0; max-width: 100%; padding: 0; border: 0; border-radius: 0; background: transparent; }
+.ux-v2-main .v2-position-analytics [data-pd-id$=".page-head"] .fund-manager-control-slot-profile,
+.ux-v2-main .v2-position-analytics [data-pd-id$=".page-head"] .fund-manager-control-slot-range { flex: 1 1 190px; width: 190px; max-width: 100%; }
+.ux-v2-main .v2-position-analytics [data-pd-id$=".page-head"] .compact-report-controls { display: block; }
+.ux-v2-main .v2-position-analytics [data-pd-id$=".page-head"] .profile-report-picker summary { gap: 6px; padding-inline: 10px; }
+.ux-v2-main .v2-position-analytics [data-pd-id$=".page-head"] .profile-picker-count { min-height: 24px; padding-inline: 5px; }
 @media(max-width:750px){
-  .ux-v2-main .v2-position-analytics [data-pd-id="position.page-head"] { flex-wrap: nowrap; }
-  .ux-v2-main .v2-position-analytics [data-pd-id="position.page-head"] > div:first-child { flex: none; width: 100%; }
-  .ux-v2-main .v2-position-analytics [data-pd-id="position.page-head"] .fund-manager-control-bar.is-analytics { flex: none; width: 100%; justify-content: flex-start; }
+  .ux-v2-main .v2-position-analytics [data-pd-id$=".page-head"] > div:first-child { flex: 1 1 100%; }
+  .ux-v2-main .v2-position-analytics [data-pd-id$=".page-head"] .fund-manager-control-bar.is-analytics { flex: 1 1 100%; justify-content: flex-start; }
+}
+@media(max-width:700px){
+  .ux-v2-main .v2-position-analytics [data-pd-id$=".page-head"] { flex-wrap: nowrap; }
+  .ux-v2-main .v2-position-analytics [data-pd-id$=".page-head"] > div:first-child,
+  .ux-v2-main .v2-position-analytics [data-pd-id$=".page-head"] .fund-manager-control-bar.is-analytics { flex: 0 1 auto; width: 100%; }
 }
 @media(max-width:600px){
   .ux-v2-main .v2-position-analytics [data-pd-id="position.page-head"] .fund-manager-control-slot-profile,

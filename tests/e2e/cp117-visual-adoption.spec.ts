@@ -10,6 +10,8 @@ const routes = [
   { name: "position", lab: "Position", path: "/", heading: "Position" },
   { name: "today", lab: "Today", path: "/tasks", heading: "Today" },
   { name: "reports", lab: "Reports", path: "/reports", heading: "Reports" },
+  { name: "tracker", lab: "Tracker", path: "/tracker", heading: "Tracker" },
+  { name: "opportunities", lab: "Opportunities", path: "/opportunities", heading: "Opportunities" },
   { name: "accounts", lab: "Accounts", path: `${profile}/accounts`, heading: "Accounts" },
   { name: "sportsbook", lab: "Sportsbook Bets", path: `${profile}/sportsbook-bets`, heading: "Sportsbook Bets" },
 ] as const;
@@ -44,7 +46,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 for (const route of routes) {
-  for (const width of [1440, 390] as const) {
+  for (const width of [1440, 900, 390] as const) {
     for (const theme of ["light", "dark"] as const) {
       test(`${route.name} ${width} ${theme}: Lab versus integrated V2`, async ({ page }) => {
         await mkdir(evidence, { recursive: true });
@@ -54,7 +56,7 @@ for (const route of routes) {
         const cookie = page.getByRole("button", { name: "Understood" });
         if (await cookie.isVisible()) await cookie.click();
         if (route.lab !== "Position") {
-          if (width < 761) await page.getByRole("button", { name: "Open navigation" }).click();
+          if (await page.getByRole("button", { name: "Open navigation" }).isVisible()) await page.getByRole("button", { name: "Open navigation" }).click();
           await page.getByRole("button", { name: route.lab, exact: true }).first().click();
         }
         if (route.name === "reports") {
@@ -101,10 +103,11 @@ for (const route of routes) {
           await expect(page.locator(`[data-pd-id="${route.name}.metrics"]`)).not.toContainText(/Loading|Updating/, { timeout: 45_000 });
           await page.locator('[data-pd-id="combined-reporting.loading"]').waitFor({ state: "hidden" });
           if (route.name === "reports") {
-            const range = page.getByRole("combobox", { name: "Date range" });
-            originalReportRange = await range.inputValue();
-            await range.selectOption("This Year");
-            await expect(range).toHaveValue("This Year");
+            const range = page.getByRole("combobox", { name: "Selected Range" });
+            originalReportRange = (await range.locator("span").first().innerText()).trim();
+            await range.click();
+            await page.getByRole("option", { name: "This Year" }).click();
+            await expect(range).toContainText("This Year");
             const explorer = page.locator('[data-pd-id="reports.explorer"]');
             const advanced = explorer.locator('[data-pd-id="reports.explorer.advanced"] > summary');
             await advanced.click();
@@ -120,6 +123,9 @@ for (const route of routes) {
           await page.locator(".ledger-loading-overlay").first().waitFor({ state: "hidden" });
         } else if (route.name === "today") {
           await page.locator('[data-pd-id="tasks.loading-shell"]').waitFor({ state: "hidden", timeout: 45_000 });
+        } else if (route.name === "opportunities") {
+          await page.getByText("Loading authorised opportunities…").waitFor({ state: "hidden", timeout: 45_000 });
+          await expect(page.locator('[data-pd-id="opportunities.source-list"]')).toContainText(/No recorded opportunities|Open Profile opportunity|Partial read:/);
         }
         await setTheme(page, theme);
         await noPageOverflow(page);
@@ -147,7 +153,8 @@ for (const route of routes) {
           });
           expect(cashPresentation.valueSize).toBeGreaterThanOrEqual(28);
           expect(cashPresentation.valueColor).not.toBe(cashPresentation.labelColor);
-          await expect(page.locator(".v2-position-table tbody tr")).toHaveCount(2);
+          const authorisedProfiles = await (await page.request.get("/api/profiles")).json() as Array<{ status: string }>;
+          await expect(page.locator(".v2-position-table tbody tr")).toHaveCount(authorisedProfiles.filter(profile => profile.status.toLowerCase() === "active").length);
           await page.locator(".v2-position-detail > summary").click();
           await expect(page.locator('[data-pd-id="reports.profile-performance"]')).toBeVisible();
         }
@@ -156,7 +163,7 @@ for (const route of routes) {
           await page.getByText("Formal reports and source records", { exact: true }).click();
           const source = page.locator('[data-pd-id="reports.period-pnl.records"]');
           if (await source.count()) await expect(source).toHaveCSS("position", "static");
-          if (originalReportRange) await page.getByRole("combobox", { name: "Date range" }).selectOption(originalReportRange);
+          if (originalReportRange) { await page.getByRole("combobox", { name: "Selected Range" }).click(); await page.getByRole("option", { name: originalReportRange, exact: true }).click(); }
         }
         if (route.name === "today") {
           const realTodayRowStyle = await page.locator('[data-pd-id^="tasks.v2.row."]:not([class*="urgent"])').first().evaluate((element) => ({
@@ -233,11 +240,11 @@ test("Today uses the shared Lab toolbar and preserves real lifecycle controls", 
   await expect(page.locator('[data-pd-id="tasks.v2.collection"]')).toContainText("No tasks match these controls.");
   await filters.getByRole("button", { name: "Clear Filters" }).click();
   await expect(page.locator('[data-pd-id^="tasks.v2.row."]').first()).toBeVisible();
-  await page.getByRole("combobox", { name: /^Task lifecycle view/ }).click();
+  await page.getByRole("combobox", { name: "Task date view" }).click();
   await page.getByRole("option", { name: "Completed" }).click();
   await expect(page.locator('[data-pd-id="tasks.v2.collection"] h2')).toContainText("Completed");
-  await page.getByRole("combobox", { name: /^Task lifecycle view/ }).click();
-  await page.getByRole("option", { name: "Needs Action" }).click();
+  await page.getByRole("combobox", { name: "Task date view" }).click();
+  await page.getByRole("option", { name: "Needs Action · all dates" }).click();
   await page.locator('[data-pd-id^="tasks.v2.row."]').first().click();
   await expect(page.locator('[data-pd-id="tasks.v2.inspector"]')).toBeVisible();
   await expect(page.locator('[data-pd-id="tasks.v2.inspector"]').getByRole("link", { name: "Open Source" })).toBeVisible();

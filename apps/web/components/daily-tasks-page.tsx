@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerPagination } from "@/components/ledger-pagination";
-import { DesignTodayBoard, DesignTodayDetail, DesignTodayFilters, DesignTodayTaskRow, DesignTodayToolbar, DesignTodayViewToggle, designTodayBoardColumnClass, designTodayBoardControlsClass, designTodayBoardDrawerClass, designTodayBoardWithDetailClass, designTodayBulkTrackClass, designTodayCollectionHeadingClass, designTodayContentClass, designTodayDetailActionsClass, designTodayDetailPaneClass, designTodayDetailTextClass, designTodayMobileDetailClass, designTodayPaginationClass, designTodayPropertiesClass, designTodayQueueClass, designTodayRootClass, designTodayStateEditorClass, designTodayTaskCollectionClass, designTodayTaskListClass, designTodayToolButtonClass, designTodayWithDetailClass } from "@/components/design-today-task-row";
+import { DesignTodayBoard, DesignTodayDetail, DesignTodayFilters, DesignTodayTaskRow, DesignTodayToolbar, DesignTodayViewToggle, designTodayBoardColumnClass, designTodayBoardControlsClass, designTodayBoardDrawerClass, designTodayBoardWithDetailClass, designTodayBulkTrackClass, designTodayCollectionHeadingClass, designTodayContentClass, designTodayDetailActionsClass, designTodayDetailPaneClass, designTodayDetailTextClass, designTodayMobileDetailClass, designTodayPaginationClass, designTodayPropertiesClass, designTodayQueueClass, designTodayRootClass, designTodayStateEditorClass, designTodayTaskCollectionClass, designTodayTaskListClass, designTodayTaskWithActionClass, designTodayToolButtonClass, designTodayWithDetailClass } from "@/components/design-today-task-row";
 import { DesignLabTaskState } from "@/components/design-lab-task-state";
 import { DesignLabSelect } from "@/components/design-lab-select";
 import { DesignPageHead, designPageHeadClasses } from "@/components/design-ledger-screen";
@@ -357,7 +357,7 @@ export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
   const taskRow = (task: DailyTaskView, board = false) => {
     const item = task.notification;
     const annotation = annotationFor(task);
-    return <div data-pd-id={`tasks.item.${item.notification_id}`} key={item.notification_id} role="listitem">
+    return <div className={designTodayTaskWithActionClass} data-pd-id={`tasks.item.${item.notification_id}`} key={item.notification_id} role="listitem">
       <DesignTodayTaskRow accessibleName={`Inspect ${item.title} · ${item.profile_name}`} active={inspectedTaskId === item.notification_id}
         board={board} context={<>{item.bookmaker_label || item.ledger_label} · {item.profile_name}</>}
         controls="tasks-v2-inspector" dataPdId={`tasks.v2.row.${item.notification_id}`}
@@ -408,7 +408,12 @@ export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
     <main className={`page-shell stack daily-tasks-page${uxV2 ? " ux-v2-today" : ""}`} data-pd-id="tasks.page">
       {uxV2 ? <DesignPageHead dataPdId="tasks.page-header">
         <div><h1>Today</h1></div>
-        <div className={designPageHeadClasses.actions}><Link className="text-link" href="/notifications">Notifications</Link></div>
+        <div className={designPageHeadClasses.actions}>
+          <span title="Needs Action retains unresolved urgent work regardless of its recorded date; other views use source task dates.">
+            <DesignLabSelect dataPdId="tasks.v2.date-view" label="Task date view" onChange={value => changeControls(() => setDueState(value as DailyTaskDueState))} options={dueViews.map(view => ({ value: view.id, label: view.id === "today" ? "Needs Action · all dates" : view.label }))} value={dueState} />
+          </span>
+          <Link className="text-link" href="/notifications">Notifications</Link>
+        </div>
       </DesignPageHead> : <section className="hero-panel split-hero" data-pd-id="tasks.page-header">
         <div className="stack">
           <span className="eyebrow">Fund Manager</span>
@@ -435,7 +440,6 @@ export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
             <span title="Recommended priority, then due time, with stable source tie-breakers"><DesignLabSelect compact dataPdId="tasks.sort" label="Sort Daily Tasks by priority, then due time" onChange={value => changeControls(() => setSort(value))} options={[{ value: "priority", label: "Priority" }, { value: "due", label: "Due Time" }, { value: "profile", label: "Profile" }, { value: "bookmaker", label: "Bookmaker" }]} value={sort} /></span>
           </>} />
           {filtersOpen ? <DesignTodayFilters dataPdId="tasks.v2.filters">
-            <DesignLabSelect dataPdId="tasks.v2.view" label="Task lifecycle view" onChange={value => changeControls(() => setDueState(value))} options={dueViews.map(view => ({ value: view.id, label: view.id === "today" ? "Needs Action" : view.label }))} value={dueState} />
             <label className="field-control table-search-field"><span>Search Tasks</span><input aria-label="Search Daily Tasks" data-pd-id="tasks.search" onChange={(event) => changeControls(() => setQuery(event.target.value))} placeholder="Task, Profile, bookmaker or record" type="search" value={query} /></label>
             {!globalProfileScope ? <label className="field-control table-filter-field"><span>Profile</span><select aria-label="Filter Tasks By Profile" onChange={(event) => changeControls(() => setProfileId(event.target.value))} value={profileId}><option value="all">All Authorised Active Profiles</option>{profiles.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></label> : null}
             <label className="field-control table-filter-field"><span>Bookmaker</span><select aria-label="Filter Tasks By Bookmaker" onChange={(event) => changeControls(() => setBookmaker(event.target.value))} value={bookmaker}><option value="all">All Bookmakers</option>{bookmakers.map(value => <option key={value}>{value}</option>)}</select></label>

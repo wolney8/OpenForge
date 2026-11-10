@@ -101,6 +101,9 @@ test("CP-136 saved tracking remains visible when its source occurrence changes",
   const history = page.locator('[data-pd-id="tasks.v2.tracked-history"]');
   await expect(history).toHaveAttribute("open", "");
   await expect(history).toContainText("Source Changed");
+  await page.locator('[data-pd-id="ux-v2.header.tasks"]').click();
+  await expect(page.locator('[data-pd-id="ux-v2.header.tracked-panel"]')).toContainText("Source history and unavailable tasks (1)");
+  await page.locator('[data-pd-id="ux-v2.header.tasks"]').click();
   await page.unroute(/\/fund-manager\/tasks\/annotations$/, changedSource);
   await history.getByRole("button", { name: /Untrack .* from history/ }).click();
 });

@@ -61,7 +61,7 @@ test("all six combined ledgers use authorised reads and a native owner handoff",
   for (const module of ["accounts", "sportsbook-bets", "free-bets", "casino-offers", "each-way-extra-places", "cash-adjustments"]) {
     await page.goto(`/tracker/${module}`);
     await expect(page.locator(`[data-pd-id="combined.${module}.page"]`)).toBeVisible();
-    if (module === "sportsbook-bets") await expect(page.getByRole("navigation", { name: "Breadcrumb" }).getByRole("link", { name: "Tracker" })).toHaveAttribute("href", "/tracker/sportsbook-bets");
+    if (module === "sportsbook-bets") await expect(page.getByRole("navigation", { name: "Breadcrumb" }).getByRole("link", { name: "Tracker" })).toHaveAttribute("href", "/tracker");
     const table = page.locator(`[data-pd-id="combined.${module}.table-scroll"]`);
     await expect(table).toBeVisible();
     await expect(page.getByText(/Partial read:/)).toHaveCount(0);
@@ -151,7 +151,7 @@ test("tracked banner survives refresh, hides independently and returns from head
   await expect(page.locator('[data-pd-id="tasks.v2.collections"]')).toContainText("Tracked Tasks (0)");
 });
 
-test("populated banner is bounded and Profile scope changes its view without changing annotations", async ({ page }) => {
+test("populated banner is bounded and Profile scope changes its view without changing annotations", async ({ page }, info) => {
   const rows = Array.from({ length: 13 }, (_, index) => ({
     profile_id: index < 8 ? "profile-demo-001" : "profile-demo-002",
     profile_name: index < 8 ? "Subscriber Alpha" : "Subscriber Bravo",
@@ -163,11 +163,33 @@ test("populated banner is bounded and Profile scope changes its view without cha
   await page.goto("/tasks");
   const banner = page.locator('[data-pd-id="v2.active-task"]');
   await expect(banner).toContainText("Tracked Tasks (12 active · 1 history)");
-  await banner.getByText("Source history and unavailable tasks (1)").click();
-  await expect(banner).toContainText("Source changed");
+  await page.locator('[data-pd-id="tasks.loading-shell"]').waitFor({ state: "hidden" });
   const tray = banner.locator('[class*="trackedRows"]');
   expect(await tray.evaluate(node => node.clientHeight)).toBeLessThanOrEqual(420);
   expect(await tray.evaluate(node => node.scrollHeight)).toBeGreaterThan(await tray.evaluate(node => node.clientHeight));
+  await dismissCookieNotice(page);
+  await tray.evaluate(node => { node.scrollTop = 0; });
+  await page.screenshot({ path: info.outputPath("tracked-banner-13-items.png"), fullPage: true });
+  await banner.getByText("Source history and unavailable tasks (1)").click();
+  await expect(banner).toContainText("Source changed");
+  await tray.evaluate(node => { node.scrollTop = node.scrollHeight; });
+  await page.screenshot({ path: info.outputPath("tracked-history-13-items.png"), fullPage: true });
+  await page.locator('[data-pd-id="ux-v2.header.tasks"]').click();
+  await expect(page.locator('[data-pd-id="ux-v2.header.tracked-view-all"]')).toBeVisible();
+  const previewGeometry = await page.locator('[class*="trackedPanelRows"] [data-pd-id^="tracked-task."]').evaluateAll(nodes => nodes.map(node => {
+    const row = node.getBoundingClientRect();
+    const actions = node.querySelector('[class*="trackedActions"]')?.getBoundingClientRect();
+    return { top: row.top, bottom: row.bottom, actionsTop: actions?.top, actionsBottom: actions?.bottom };
+  }));
+  expect(previewGeometry).toHaveLength(5);
+  for (let index = 0; index < previewGeometry.length; index += 1) {
+    const row = previewGeometry[index];
+    expect(row.actionsTop).toBeGreaterThanOrEqual(row.top);
+    expect(row.actionsBottom).toBeLessThanOrEqual(row.bottom);
+    if (index > 0) expect(row.top).toBeGreaterThanOrEqual(previewGeometry[index - 1].bottom);
+  }
+  await page.screenshot({ path: info.outputPath("tracked-header-preview-13-items.png") });
+  await page.locator('[data-pd-id="ux-v2.header.tasks"]').click();
   await page.locator('[data-pd-id="ux-v2.profile-scope"]').click();
   await page.getByRole("option", { name: "Subscriber Alpha" }).click();
   await expect(page).toHaveURL(/\/tasks\?scope=profile-demo-001/);

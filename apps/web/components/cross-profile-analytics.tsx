@@ -1254,16 +1254,20 @@ export function CrossProfileAnalytics({
       pdId="free-bet-money.incomplete"
     />
   </>;
+  const financialIssueCount = (trackerRangeActiveProfilesCombined.cashIssues?.length ?? 0)
+    + (trackerRangeActiveProfilesCombined.sportsbookCommittedFinancialIssues?.length ?? 0)
+    + (trackerRangeActiveProfilesCombined.sportsbookHistoricalFinancialIssues?.length ?? 0)
+    + (trackerRangeActiveProfilesCombined.freeBetFinancialIssues?.length ?? 0);
 
   return (
     <section
       className={`content-panel stack cross-profile-analytics${visualV2 ? " v2-position-analytics" : ""}${visualV2 && (activeTab === "performance" || activeTab === "reports") ? " has-position-overview" : ""}`}
       aria-labelledby="combined-analytics-title"
     >
-      <DesignPageHead dataPdId="position.page-head" enabled={visualV2 && activeTab === "performance"}>
-      {visualV2 && activeTab === "performance" ? <div><h1 id="combined-analytics-title">Position</h1><p>Position, tasks and the next decision.</p></div> : null}
+      <DesignPageHead dataPdId={activeTab === "reports" ? "reports.page-head" : "position.page-head"} enabled={visualV2 && (activeTab === "performance" || activeTab === "reports")}>
+      {visualV2 && (activeTab === "performance" || activeTab === "reports") ? <div><h1 id="combined-analytics-title">{activeTab === "reports" ? "Reports" : "Position"}</h1>{activeTab === "performance" ? <p>Position, tasks and the next decision.</p> : null}</div> : null}
       <div
-        className={`fund-manager-control-bar${activeTab === "profiles" ? " is-directory" : " is-analytics"}${visualV2 && activeTab === "performance" ? ` ${designPageHeadClasses.actions}` : ""}`}
+        className={`fund-manager-control-bar${activeTab === "profiles" ? " is-directory" : " is-analytics"}${visualV2 && (activeTab === "performance" || activeTab === "reports") ? ` ${designPageHeadClasses.actions}` : ""}`}
       >
         {activeTab !== "profiles" && activeTab !== "fees" && !(visualV2 && activeTab === "performance") && !(visualV2 && activeTab === "reports" && requestedGlobalProfile) ? (
         <details className="profile-report-picker fund-manager-control-slot-profile" data-pd-id="reports.profile-scope">
@@ -1421,7 +1425,7 @@ export function CrossProfileAnalytics({
         ) : null}
         {activeTab !== "fees" ? (
         <div className="compact-report-controls fund-manager-control-slot-range">
-          {visualV2 && activeTab === "performance" ? <DesignLabSelect dataPdId="position.selected-range" label="Selected Range" onChange={value => void changeSelectedRange(value as DatePreset)} options={getDatePresetOptions().map(value => ({ value, label: value }))} value={preset} /> : <label className="m3-picker-field">
+          {visualV2 && (activeTab === "performance" || activeTab === "reports") ? <DesignLabSelect dataPdId={activeTab === "reports" ? "reports.selected-range" : "position.selected-range"} label="Selected Range" onChange={value => void changeSelectedRange(value as DatePreset)} options={getDatePresetOptions().map(value => ({ value, label: value }))} value={preset} /> : <label className="m3-picker-field">
             <span className="m3-picker-label">Date range</span>
             <span className="m3-picker-control">
               <span aria-hidden="true" className="material-symbols-outlined">date_range</span>
@@ -1458,7 +1462,7 @@ export function CrossProfileAnalytics({
         <div className="stack-tight">
           <span className="eyebrow">Portfolio control</span>
           <div className="section-heading-row">
-            <h2 id={visualV2 && activeTab === "performance" ? undefined : "combined-analytics-title"}>
+            <h2 id={visualV2 && (activeTab === "performance" || activeTab === "reports") ? undefined : "combined-analytics-title"}>
               {activeTab === "profiles" ? "Profile management" : "Combined analytics"}
             </h2>
             <AccessScopeBadge />
@@ -1475,7 +1479,12 @@ export function CrossProfileAnalytics({
           <LedgerLoadingIndicator label="Loading combined profile reporting" />
         </section>
       ) : null}
-      {!isLoading && !(visualV2 && activeTab === "performance") ? financialCompleteness : null}
+      {!isLoading && !(visualV2 && activeTab === "performance") ? visualV2 && activeTab === "reports" && financialIssueCount > 0 ? (
+        <details className="account-money-status account-money-status-warning v2-reports-financial-review" data-pd-id="reports.financial-review">
+          <summary><span aria-hidden="true" className="material-symbols-outlined">warning</span><span>Financial data needs review · {financialIssueCount} open {financialIssueCount === 1 ? "item" : "items"}</span><span className="account-money-status-action">View issues</span></summary>
+          <div className="account-money-status-list">{financialCompleteness}</div>
+        </details>
+      ) : financialCompleteness : null}
 
       {failures.filter((failure) => selectedProfileIds.includes(failure.profileId)).length > 0 ? (
         <div className="validation-message" role="alert">
@@ -1507,9 +1516,9 @@ export function CrossProfileAnalytics({
             <DesignPositionSurface labelledBy="position-continue-work">
               <DesignPositionSectionHead id="position-continue-work" title="Continue work" />
               <nav aria-label="Position shortcuts">
-                <DesignPositionShortcut href="/profiles" icon="group" label="Manage Profiles" />
-                <DesignPositionShortcut href={scopedGlobalHref("/reports", requestedGlobalProfile)} icon="monitoring" label="Review reports" />
-                <DesignPositionShortcut href={scopedGlobalHref("/tasks", requestedGlobalProfile)} icon="task_alt" label="Open Today" />
+                <DesignPositionShortcut href={requestedGlobalProfile ? `/profiles/${encodeURIComponent(requestedGlobalProfile)}/tracker/sportsbook-bets` : "/tracker/sportsbook-bets"} icon="sports_soccer" label="Record and settle a bet" />
+                <DesignPositionShortcut href={scopedGlobalHref("/reports", requestedGlobalProfile)} icon="monitoring" label="Review performance" />
+                <DesignPositionShortcut href={requestedGlobalProfile ? `/profiles/${encodeURIComponent(requestedGlobalProfile)}/tracker/free-bets` : "/tracker/free-bets"} icon="redeem" label="Inspect linked Free Bets" />
               </nav>
             </DesignPositionSurface>
           </DesignPositionWorkGrid>

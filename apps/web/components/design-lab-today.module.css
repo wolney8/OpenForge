@@ -30,6 +30,10 @@
 .taskRow.urgent{background:var(--task-urgent-bg);border-radius:8px;padding-inline:8px}
 .taskRow.urgent:hover,.taskRow.urgent:focus-visible,.taskRow.urgent[aria-pressed="true"]{background:var(--task-urgent-hover)}
 .taskList{display:grid;gap:6px;padding:0 0 10px}.taskList .taskRow{border:1px solid var(--outline);border-radius:9px;padding:8px}.taskList .taskRow.urgent{border-color:color-mix(in srgb,var(--danger) 34%,var(--outline))}.taskList .taskRow:hover,.taskList .taskRow[aria-expanded="true"]{background:var(--bg-muted)}.taskList .taskRow.urgent:hover,.taskList .taskRow.urgent[aria-expanded="true"]{background:var(--task-urgent-hover)}
+.taskWithAction{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px;min-width:0;border:1px solid var(--outline);border-radius:9px;padding:0 8px 0 0;background:var(--surface-strong)}
+.taskWithAction .taskRow{min-width:0;border:0!important;border-radius:8px}.taskWithAction .bulkTrack{min-width:70px;min-height:44px}.taskWithAction:focus-within{outline:2px solid var(--focus);outline-offset:2px}
+.boardColumn .taskWithAction{grid-template-columns:minmax(0,1fr);gap:0;margin-bottom:7px;padding:0 7px 7px}.boardColumn .taskWithAction .boardCard{margin-bottom:0;border:0}.boardColumn .taskWithAction .bulkTrack{justify-self:end}
+@media(max-width:700px){.taskWithAction{grid-template-columns:minmax(0,1fr);padding:0 8px 8px}.taskWithAction .bulkTrack{justify-self:end}}
 .pagination{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap;color:var(--muted);font-size:.85rem}.pagination button{min-height:44px;padding:6px 10px;border:1px solid var(--outline);border-radius:8px;background:var(--surface-container);color:var(--text);font:inherit;font-weight:650}.pagination button:disabled{opacity:.55}.pagination button:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
 .rowState{min-width:0;padding:0;border:0;background:transparent;text-align:left}
 .boardCard .rowState{display:block}

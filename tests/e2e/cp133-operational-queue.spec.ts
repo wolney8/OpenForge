@@ -147,8 +147,8 @@ test("CP-137 selector excludes unauthorised Profiles and Opportunities uses Prof
   await page.route(/\/profiles$/, route => route.fulfill({ status: 200, json: [{ profile_id: profile, display_name: "Subscriber Alpha", status: "Active" }] }));
   await page.goto("/");
   await page.locator('[data-pd-id="ux-v2.nav.opportunities"]').click();
-  await expect(page).toHaveURL(/\/tracker\/accounts#profile-opportunities$/);
-  await expect(page.locator('[data-pd-id="combined.opportunities"]')).toBeVisible();
+  await expect(page).toHaveURL(/\/opportunities$/);
+  await expect(page.locator('[data-pd-id="opportunities.page"]')).toBeVisible();
   await page.locator('[data-pd-id="ux-v2.profile-scope"]').click();
   await expect(page.getByRole("option", { name: "Subscriber Alpha" })).toBeVisible();
   await expect(page.getByRole("option", { name: "Subscriber Bravo" })).toHaveCount(0);
@@ -205,6 +205,13 @@ test("CP-137 Today and combined Accounts remain contained at actual Chromium 200
     await expect(page.locator('[data-pd-id="combined.accounts.page"]')).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
     await page.keyboard.press("Escape");
+    for (const route of ["/", "/reports", "/tracker", "/opportunities"]) {
+      await page.goto(`${baseURL}${route}`);
+      await expect(page.locator("main h1").first()).toBeVisible();
+      if (route === "/opportunities") await expect(page.locator('[data-pd-id="opportunities.source-list"]')).toContainText(/No recorded opportunities|Open Profile opportunity|Partial read:/);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth), `${route} overflow at actual 200% zoom`).toBeLessThanOrEqual(1);
+      await page.screenshot({ path: `${evidence}/${route === "/" ? "position" : route.slice(1)}-200-percent.png`, fullPage: true });
+    }
   } finally {
     await context.close();
     await rm(scratch, { recursive: true, force: true });
