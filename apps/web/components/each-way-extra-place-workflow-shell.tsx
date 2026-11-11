@@ -26,6 +26,7 @@ import { DesignLedgerSearch } from "@/components/design-ledger-search";
 import { ledgerColumnWidths } from "@/lib/ledger-column-contracts";
 import { DesignLedgerScreen, DesignLedgerToolbar, DesignLedgerToolbarAction, DesignLedgerPrimaryAction, DesignLedgerPagination, DesignPageHead, DesignLedgerNarrowToggle, DesignLedgerMobileRows, designPageHeadClasses } from "@/components/design-ledger-screen";
 import { DesignLabSelect } from "@/components/design-lab-select";
+import { ledgerRangeAnchor } from "@/lib/ledger-range-anchor";
 import { DesignLedgerRowActions } from "@/components/design-ledger-row-actions";
 import { LedgerViewContext } from "@/components/ledger-view-context";
 import { LedgerPagination } from "@/components/ledger-pagination";
@@ -308,11 +309,6 @@ function resultChoices(
     result,
     result === "Void/NR" ? "Void / NR" : result,
   ]);
-}
-function parseRowDate(value: string | null | undefined) {
-  if (!value) return null;
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 function isDateWithinRange(
   value: Date | null,
@@ -888,7 +884,7 @@ export function EachWayExtraPlaceWorkflowShell({
   const rangeRows = useMemo(
     () =>
       rows.filter((row) =>
-        isDateWithinRange(parseRowDate(row.placed_at), resolvedDateRange),
+        isDateWithinRange(ledgerRangeAnchor("each-way-extra-places", row), resolvedDateRange),
       ),
     [resolvedDateRange, rows],
   );
@@ -900,7 +896,7 @@ export function EachWayExtraPlaceWorkflowShell({
     () =>
       rows.filter(
         (row) =>
-          !isDateWithinRange(parseRowDate(row.placed_at), resolvedDateRange) &&
+          !isDateWithinRange(ledgerRangeAnchor("each-way-extra-places", row), resolvedDateRange) &&
           extraPlaceHasIssue(row),
       ),
     [resolvedDateRange, rows],
@@ -959,7 +955,7 @@ export function EachWayExtraPlaceWorkflowShell({
     () =>
       filtered.filter(
         (row) =>
-          !isDateWithinRange(parseRowDate(row.placed_at), resolvedDateRange) &&
+          !isDateWithinRange(ledgerRangeAnchor("each-way-extra-places", row), resolvedDateRange) &&
           extraPlaceHasIssue(row),
       ),
     [filtered, resolvedDateRange],
@@ -968,7 +964,7 @@ export function EachWayExtraPlaceWorkflowShell({
     () =>
       filtered.filter(
         (row) =>
-          isDateWithinRange(parseRowDate(row.placed_at), resolvedDateRange) ||
+          isDateWithinRange(ledgerRangeAnchor("each-way-extra-places", row), resolvedDateRange) ||
           !extraPlaceHasIssue(row),
       ),
     [filtered, resolvedDateRange],
@@ -1030,7 +1026,7 @@ export function EachWayExtraPlaceWorkflowShell({
     ? rangeRows.reduce((total, row) => total + (asNumber(row.qualifying_loss) ?? 0), 0)
     : Number.NaN, [rangeRows]);
   const weeklyQualifyingLoss = useMemo(() => {
-    const weeklyRows = rows.filter((row) => isDateWithinRange(parseRowDate(row.placed_at), weeklyBudgetRange));
+    const weeklyRows = rows.filter((row) => isDateWithinRange(ledgerRangeAnchor("each-way-extra-places", row), weeklyBudgetRange));
     return weeklyRows.every((row) => asNumber(row.qualifying_loss) !== null)
       ? weeklyRows.reduce((total, row) => total + (asNumber(row.qualifying_loss) ?? 0), 0)
       : Number.NaN;

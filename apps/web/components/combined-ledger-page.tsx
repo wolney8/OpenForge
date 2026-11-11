@@ -12,7 +12,7 @@ import { LedgerFloatingCellEditor, useLedgerCellEditor } from "@/components/ledg
 import { designFloatingCellInputClass } from "@/components/design-lab-floating-cell-editor";
 import { TrackerRangeCard } from "@/components/tracker-range-card";
 import { apiBaseUrl } from "@/lib/api";
-import { isWithinSportsbookRange, sportsbookRangeAnchor } from "@/lib/sportsbook-range-anchor";
+import { isWithinLedgerRange, ledgerRangeAnchor } from "@/lib/ledger-range-anchor";
 import { resolveDateRange, type DatePreset } from "@/lib/tracker-summary";
 import { saveFundManagerSelectedRange } from "@/lib/tracker-settings-client";
 import { commitOwnedScalar, ownedScalarField } from "@/lib/ledger-scalar-command";
@@ -58,6 +58,7 @@ export function CombinedLedgerPage({ module }: { module: CombinedLedgerModule })
   const [failedProfiles, setFailedProfiles] = useState<string[]>([]);
   const [rangeSettings, setRangeSettings] = useState<Map<string, ProfileRangeSettings>>(new Map());
   const [rangePreset, setRangePreset] = useState<DatePreset | null>(null);
+  const [rangeLoading, setRangeLoading] = useState(module !== "accounts");
   const [rangeCustom, setRangeCustom] = useState<{ start: string | null; end: string | null }>({ start: null, end: null });
   const [rangeError, setRangeError] = useState("");
   const [rangeSaving, setRangeSaving] = useState(false);
@@ -128,14 +129,15 @@ export function CombinedLedgerPage({ module }: { module: CombinedLedgerModule })
   }, []);
 
   useEffect(() => {
-    if (module !== "sportsbook-bets") return;
+    if (module === "accounts") return;
     let active = true;
+    const timer = window.setTimeout(() => { if (active) { setRangeLoading(true); setRangePreset(null); } }, 0);
     void fetch(`${apiBaseUrl}/fund-manager/preferences/selected-range`, { cache: "no-store", credentials: "include" }).then(async response => {
       if (!response.ok) throw new Error("Selected Range could not be loaded; combined rows are unfiltered by date.");
       const value = await response.json() as { selected_range_preset: DatePreset; selected_range_custom_start: string | null; selected_range_custom_end: string | null };
       if (active) { setRangePreset(value.selected_range_preset); setRangeCustom({ start: value.selected_range_custom_start, end: value.selected_range_custom_end }); setRangeError(""); }
-    }).catch(error => { if (active) setRangeError(error instanceof Error ? error.message : "Selected Range is unavailable; combined rows are unfiltered by date."); });
-    return () => { active = false; };
+    }).catch(error => { if (active) setRangeError(error instanceof Error ? error.message : "Selected Range is unavailable; combined rows are unfiltered by date."); }).finally(() => { if (active) setRangeLoading(false); });
+    return () => { active = false; window.clearTimeout(timer); };
   }, [module]);
 
   useEffect(() => {
@@ -170,7 +172,7 @@ export function CombinedLedgerPage({ module }: { module: CombinedLedgerModule })
           const records = await response.json() as LedgerSourceRecord[];
           if (!Array.isArray(records)) throw new Error(profile.display_name);
           let settings: ProfileRangeSettings | null = null;
-          if (module === "sportsbook-bets") {
+          if (module !== "accounts") {
             const settingsResponse = await fetch(`${apiBaseUrl}/profiles/${encodeURIComponent(profile.profile_id)}/tracker-settings`, { cache: "no-store", credentials: "include" });
             if (!settingsResponse.ok) throw new Error(profile.display_name);
             settings = await settingsResponse.json() as ProfileRangeSettings;
@@ -215,7 +217,20 @@ export function CombinedLedgerPage({ module }: { module: CombinedLedgerModule })
   const nativeColumns = ledgerColumnContracts[module];
   const tableColumns = nativeColumns.filter(column => visibleColumnKeys.has(column.key));
   const toggleSort = (key: string) => { if (sortKey === key) setSortDescending(value => !value); else { setSortKey(key); setSortDescending(false); } setPage(1); };
-  const visible = useMemo(() => rows.filter(row => (!localProfileValid || localProfile === "all" || row.profileId === localProfile) && (module !== "sportsbook-bets" || !rangePreset || (() => { const settings = rangeSettings.get(row.profileId); return settings ? isWithinSportsbookRange(sportsbookRangeAnchor(row.data), resolveDateRange({ preset: rangePreset, customStart: settings.custom_start_date, customEnd: settings.custom_end_date, rangeBackDays: settings.range_back_days, rangeForwardDays: settings.range_forward_days })) : false; })()) && matchesCombinedLedgerFilters(module, row.data, selectedFilters) && (!search || [row.profileName, row.recordId, ...ledgerColumnContracts[module].filter(column => column.key !== "actions").map(column => presentLedgerCell(module, row.data, column.key).text)].some(value => value.toLocaleLowerCase().includes(search.toLocaleLowerCase())))).sort((a, b) => {
+  const visible = useMemo(() => rows.filter(row => {
+    if (localProfileValid && localProfile !== "all" && row.profileId !== localProfile) return false;
+    if (module !== "accounts" && rangePreset) {
+      const settings = rangeSettings.get(row.profileId);
+      if (!settings) return false;
+      const range = resolveDateRange({ preset: rangePreset, customStart: settings.custom_start_date, customEnd: settings.custom_end_date, rangeBackDays: settings.range_back_days, rangeForwardDays: settings.range_forward_days });
+      const inRange = isWithinLedgerRange(ledgerRangeAnchor(module, row.data), range);
+      const retainedIssue = module === "each-way-extra-places" && (combinedIssueLabels(module, row.data)?.length ?? 0) > 0;
+      if (!inRange && !retainedIssue) return false;
+    }
+    if (!matchesCombinedLedgerFilters(module, row.data, selectedFilters)) return false;
+    const searchable = [row.profileName, row.recordId, ...ledgerColumnContracts[module].filter(column => column.key !== "actions").map(column => presentLedgerCell(module, row.data, column.key).text)];
+    return !search || searchable.some(value => value.toLocaleLowerCase().includes(search.toLocaleLowerCase()));
+  }).sort((a, b) => {
     const leftCell = sortKey === "profile_name" ? null : presentLedgerCell(module, a.data, sortKey);
     const rightCell = sortKey === "profile_name" ? null : presentLedgerCell(module, b.data, sortKey);
     const left = leftCell?.text ?? a.profileName;
@@ -298,8 +313,8 @@ export function CombinedLedgerPage({ module }: { module: CombinedLedgerModule })
   };
 
   return <main className="page-shell stack sportsbook-page-shell ledger-v2-page" data-pd-id={`combined.${module}.page`}>
-    <DesignPageHead><div><h1>{label}</h1></div>{module === "sportsbook-bets" && rangePreset ? <TrackerRangeCard activePreset={rangePreset} isSaving={rangeSaving} onPresetChange={preset => void changeRange(preset)} rangeContext="Each Profile's existing Sportsbook date-range settings apply" visualV2 /> : null}</DesignPageHead>
-    {module === "sportsbook-bets" && rangeError ? <p role="alert">{rangeError}</p> : null}
+    <DesignPageHead><div><h1>{label}</h1></div>{module !== "accounts" && rangePreset ? <TrackerRangeCard activePreset={rangePreset} isSaving={rangeSaving} onPresetChange={preset => void changeRange(preset)} rangeContext={{ "sportsbook-bets": "Settled date, then creation date; each Profile's custom window applies.", "free-bets": "Settled date, then recorded expiry, then creation date; each Profile's custom window applies.", "casino-offers": "Settlement date, then start date, then expiry; each Profile's custom window applies.", "each-way-extra-places": "Placement date; unresolved issues outside the range remain visible.", "cash-adjustments": "Adjustment date; each Profile's custom window applies." }[module]} visualV2 /> : null}</DesignPageHead>
+    {module !== "accounts" && rangeError ? <p role="alert">{rangeError}</p> : null}
     {module === "accounts" && showOpportunities ? <DesignLedgerScreen dataPdId="combined.opportunities" description="Profile-owned opportunities. Availability and actions remain specific to each Profile." title="Opportunities">
       {opportunityFailures.length ? <p role="alert">Partial read: opportunities for {opportunityFailures.join(", ")} could not be loaded.</p> : null}
       <div className="stack">{opportunities.filter(item => localProfile === "all" || item.profileId === localProfile).map(item => <article className="content-subpanel" key={`${item.profileId}:${item.opportunityKey}`}><strong>{item.label}</strong><p>{item.profileName} · {item.bookmaker} · {item.alreadyCreated ? "Already created" : "Available for review"}</p>{item.riskWarnings.length ? <p>{item.riskWarnings.join(" · ")}</p> : null}<Link href={`/profiles/${encodeURIComponent(item.profileId)}/tracker/accounts#profile-opportunities`}>Open Profile opportunity</Link></article>)}</div>
@@ -324,7 +339,7 @@ export function CombinedLedgerPage({ module }: { module: CombinedLedgerModule })
       {filterNotice ? <p role="status">{filterNotice}</p> : null}
       {failedProfiles.length ? <p role="alert">Partial read: {failedProfiles.join(", ")} unavailable. Counts below cover loaded Profiles only.</p> : null}
       {selectedFilters.issue_type && rows.some(row => (localProfile === "all" || row.profileId === localProfile) && combinedIssueLabels(module, row.data) === null) ? <p role="alert">Some loaded records lack the source fields needed for the issue filter. The filtered count excludes those unclassified records.</p> : null}
-      {loading ? <p role="status">Loading authorised records…</p> : <>
+      {loading || rangeLoading && module !== "accounts" ? <p role="status">Loading authorised records and selected range…</p> : <>
         <p aria-live="polite">{visible.length} records{localProfile !== "all" ? ` in ${profiles.find(profile => profile.profile_id === localProfile)?.display_name ?? "selected Profile"}` : " across loaded Profiles"}</p>
         <DesignLedgerNarrowToggle expanded={mobileDetail} onToggle={() => setMobileDetail(value => !value)} />
         <DesignLedgerMobileRows dataPdId={`combined.${module}.details`} expanded={mobileDetail} rows={detailRows} />

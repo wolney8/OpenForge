@@ -28,6 +28,7 @@ import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
 import { DesignLedgerSearch } from "@/components/design-ledger-search";
 import { DesignLedgerScreen, DesignLedgerToolbar, DesignLedgerToolbarAction, DesignLedgerPrimaryAction, DesignLedgerPagination, DesignPageHead, DesignLedgerNarrowToggle, DesignLedgerMobileRows, designPageHeadClasses } from "@/components/design-ledger-screen";
 import { DesignLabSelect } from "@/components/design-lab-select";
+import { ledgerRangeAnchor } from "@/lib/ledger-range-anchor";
 import { DesignLedgerRowActions } from "@/components/design-ledger-row-actions";
 import { LedgerViewContext } from "@/components/ledger-view-context";
 import { LedgerPagination } from "@/components/ledger-pagination";
@@ -303,16 +304,6 @@ function formatMoneyValue(value: string | null | undefined): string {
   }
 
   return formatFinancialValue(numeric);
-}
-
-function parseDateValue(value: string | null | undefined): Date | null {
-  const normalized = value?.trim();
-  if (!normalized) {
-    return null;
-  }
-
-  const parsed = new Date(normalized);
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
 function isDateWithinResolvedRange(
@@ -1010,7 +1001,7 @@ export function CashAdjustmentWorkflowShell({ profileId, initialRecordId, initia
 
   const filteredSourceRows = useMemo(() => {
     return sortedReviewRows.filter((row) => {
-      if (!isDateWithinResolvedRange(parseDateValue(row.adjustment_date), resolvedDateRange)) {
+      if (!isDateWithinResolvedRange(ledgerRangeAnchor("cash-adjustments", row), resolvedDateRange)) {
         return false;
       }
       if (tableFilters.direction && row.direction !== tableFilters.direction) {
@@ -1355,7 +1346,7 @@ export function CashAdjustmentWorkflowShell({ profileId, initialRecordId, initia
 
   const quickView = useMemo(() => {
     const rangeRows = rows.filter((row) =>
-      isDateWithinResolvedRange(parseDateValue(row.adjustment_date), resolvedDateRange)
+      isDateWithinResolvedRange(ledgerRangeAnchor("cash-adjustments", row), resolvedDateRange)
     );
     const withdrawals = rangeRows.filter((row) => row.adjustment_type === "Withdrawal");
     const costs = rangeRows.filter((row) => costAdjustmentTypes.has(row.adjustment_type));

@@ -48,6 +48,7 @@ import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
 import { DesignLedgerSearch } from "@/components/design-ledger-search";
 import { DesignLedgerScreen, DesignLedgerToolbar, DesignLedgerToolbarAction, DesignLedgerPrimaryAction, DesignLedgerPagination, DesignPageHead, DesignLedgerNarrowToggle, DesignLedgerMobileRows, designPageHeadClasses } from "@/components/design-ledger-screen";
 import { DesignLabSelect } from "@/components/design-lab-select";
+import { ledgerRangeAnchor } from "@/lib/ledger-range-anchor";
 import { DesignLedgerRowActions } from "@/components/design-ledger-row-actions";
 import { LedgerViewContext } from "@/components/ledger-view-context";
 import { LedgerPagination } from "@/components/ledger-pagination";
@@ -576,29 +577,11 @@ function getFreeBetResultLabel(result: string, isNoLayStrategy: boolean): string
   return result;
 }
 
-function parseDateValue(value: string): Date | null {
-  if (!value.trim()) {
-    return null;
-  }
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
-}
-
 function isDateWithinResolvedRange(value: Date | null, range: { start: Date; end: Date }): boolean {
   if (!value) {
     return false;
   }
   return value >= range.start && value <= range.end;
-}
-
-function getFreeBetRangeAnchor(
-  row: Pick<FreeBetRecord, "date_settled" | "expiry_datetime" | "created_at">
-): Date | null {
-  return (
-    parseDateValue(row.date_settled) ??
-    parseDateValue(row.expiry_datetime) ??
-    parseDateValue(row.created_at)
-  );
 }
 
 function getFreeBetResultOptions(strategy: string): string[] {
@@ -2523,7 +2506,7 @@ export function FreeBetWorkflowShell({
       if (
         !initialIssueFilter &&
         !feeReviewContext &&
-        !isDateWithinResolvedRange(getFreeBetRangeAnchor(row), resolvedDateRange)
+        !isDateWithinResolvedRange(ledgerRangeAnchor("free-bets", row), resolvedDateRange)
       ) {
         return false;
       }
@@ -2610,7 +2593,7 @@ export function FreeBetWorkflowShell({
     const rangeRows = initialIssueFilter
       ? rows
       : rows.filter((row) =>
-          isDateWithinResolvedRange(getFreeBetRangeAnchor(row), resolvedDateRange)
+          isDateWithinResolvedRange(ledgerRangeAnchor("free-bets", row), resolvedDateRange)
         );
     const totalReportingValue = rangeRows.reduce(
       (sum, row) => sum + freeBetDisplayValue(row),

@@ -34,6 +34,7 @@ import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
 import { DesignLedgerSearch } from "@/components/design-ledger-search";
 import { DesignLedgerScreen, DesignLedgerToolbar, DesignLedgerToolbarAction, DesignLedgerPrimaryAction, DesignLedgerPagination, DesignPageHead, DesignLedgerNarrowToggle, DesignLedgerMobileRows, designPageHeadClasses, designLedgerClasses } from "@/components/design-ledger-screen";
 import { DesignLabSelect } from "@/components/design-lab-select";
+import { ledgerRangeAnchor } from "@/lib/ledger-range-anchor";
 import { DesignLedgerRowActions } from "@/components/design-ledger-row-actions";
 import { LedgerViewContext } from "@/components/ledger-view-context";
 import { LedgerPagination } from "@/components/ledger-pagination";
@@ -1119,16 +1120,6 @@ function getComparableDate(value: string): number | null {
   return Number.isFinite(timestamp) ? timestamp : null;
 }
 
-function parseDateValue(value: string | null | undefined): Date | null {
-  const normalized = value?.trim();
-  if (!normalized) {
-    return null;
-  }
-
-  const parsed = new Date(normalized);
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
-}
-
 function isDateWithinResolvedRange(
   candidate: Date | null,
   resolvedRange: ReturnType<typeof resolveDateRange>
@@ -1138,14 +1129,6 @@ function isDateWithinResolvedRange(
   }
 
   return candidate >= resolvedRange.start && candidate <= resolvedRange.end;
-}
-
-function getCasinoRangeAnchor(row: CasinoOfferRecord): Date | null {
-  return (
-    parseDateValue(row.date_settling) ??
-    parseDateValue(row.date_started) ??
-    parseDateValue(row.expiry_datetime)
-  );
 }
 
 function getCasinoCampaignHeading(offerType: string): string {
@@ -2552,7 +2535,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
     const rangeRows = initialIssueFilter
       ? rows
       : rows.filter((row) =>
-          isDateWithinResolvedRange(getCasinoRangeAnchor(row), resolvedDateRange)
+          isDateWithinResolvedRange(ledgerRangeAnchor("casino-offers", row), resolvedDateRange)
         );
     const rewardLedRows = rangeRows.filter((row) => casinoOfferTypeUsesTab(row.offer_type, "reward"));
     const wageringRows = rangeRows.filter((row) => casinoOfferTypeUsesTab(row.offer_type, "campaign"));
@@ -3057,7 +3040,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
       if (
         !initialIssueFilter &&
         !feeReviewContext &&
-        !isDateWithinResolvedRange(getCasinoRangeAnchor(row), resolvedDateRange)
+        !isDateWithinResolvedRange(ledgerRangeAnchor("casino-offers", row), resolvedDateRange)
       ) {
         return false;
       }
