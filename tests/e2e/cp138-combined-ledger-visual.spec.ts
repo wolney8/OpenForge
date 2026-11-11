@@ -8,6 +8,11 @@ test.use({ video: "on", trace: "retain-on-failure", screenshot: "only-on-failure
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem("pd-required-storage-notice", "acknowledged"));
   await page.goto(authURL);
+  await expect.poll(async () => {
+    const response = await page.request.get("/api/auth/session");
+    if (!response.ok()) return "unavailable";
+    return (await response.json() as { email?: string }).email;
+  }).toBe("demo@example.invalid");
 });
 
 for (const width of [900, 390] as const) for (const theme of ["light", "dark"] as const) {
@@ -38,8 +43,11 @@ for (const width of [900, 390] as const) for (const theme of ["light", "dark"] a
     await page.goto("/tracker/sportsbook-bets");
     const combined = page.locator('[data-pd-id="combined.sportsbook-bets.table-scroll"]');
     await expect(combined.locator("tbody tr").first()).toHaveCount(1);
-    if (width === 390) await expect(page.locator('[data-pd-id="combined.sportsbook-bets.details"] article').first()).toBeVisible();
-    else await expect(combined.locator("tbody tr").first()).toBeVisible();
+    await expect(combined.locator("tbody tr").first()).toBeVisible();
+    if (width === 390) {
+      await page.getByRole("button", { name: "Show Labelled Details" }).click();
+      await expect(page.locator('[data-pd-id="combined.sportsbook-bets.details"] article').first()).toBeVisible();
+    }
     await setTheme();
     const combinedStyle = await combined.locator('tbody td[data-ledger-column="bookmaker"]').first().evaluate(node => ({ padding: getComputedStyle(node).padding, fontSize: getComputedStyle(node).fontSize, lineHeight: getComputedStyle(node).lineHeight }));
     expect(combinedStyle).toEqual(nativeStyle);
@@ -66,6 +74,7 @@ test("actual Chromium 200% zoom retains combined details, full table and Actions
     const worker = context.serviceWorkers()[0] ?? await context.waitForEvent("serviceworker");
     await worker.evaluate(async url => { const tabs = (globalThis as unknown as { chrome: { tabs: { query: (filter: { url: string }) => Promise<Array<{ id: number }>>; setZoom: (id: number, zoom: number) => Promise<void> } } }).chrome.tabs; const matches = await tabs.query({ url: `${url}/*` }); await tabs.setZoom(matches[0].id, 2); }, baseURL);
     await expect.poll(() => page.evaluate(() => innerWidth)).toBe(390);
+    await page.getByRole("button", { name: "Show Labelled Details" }).click();
     await expect(page.locator('[data-pd-id="combined.sportsbook-bets.details"] article').first()).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
     await page.getByRole("button", { name: "Show Full Table" }).click();

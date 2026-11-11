@@ -7187,7 +7187,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
         aria-busy={isInitialLoading}
         className={visualV2 ? "stack sportsbook-page-shell ledger-v2-page" : "content-panel stack sportsbook-page-shell"}
       >
-        {visualV2 ? <DesignPageHead><div><h1>Sportsbook Bets</h1></div><div className={designPageHeadClasses.actions}><TrackerRangeCard activePreset={trackerSettings?.active_date_preset ?? "Week (Mon-Sun)"} isActionView={Boolean(initialIssueFilter)} isSaving={isTrackerRangeSaving} onPresetChange={(preset) => void updateTrackerDatePreset(preset)} rangeDetail={quickViewRangeDetail} rangeContext={quickViewRangeContext} visualV2 /></div></DesignPageHead> : <div className="sportsbook-page-header"><h1 className="sportsbook-page-title">Sportsbook Bets</h1></div>}
+        {visualV2 ? <DesignPageHead><div><h1>Sportsbook Bets</h1></div><div className={designPageHeadClasses.actions}><TrackerRangeCard activePreset={trackerSettings?.active_date_preset ?? "Week (Mon-Sun)"} isActionView={Boolean(initialIssueFilter)} isReady={Boolean(trackerSettings)} isSaving={isTrackerRangeSaving} onPresetChange={(preset) => void updateTrackerDatePreset(preset)} rangeDetail={quickViewRangeDetail} rangeContext={quickViewRangeContext} visualV2 /></div></DesignPageHead> : <div className="sportsbook-page-header"><h1 className="sportsbook-page-title">Sportsbook Bets</h1></div>}
         {isInitialLoading ? (
           <LedgerLoadingIndicator label="Loading sportsbook ledger" />
         ) : null}
@@ -7212,8 +7212,8 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
             </button>
             {hasActiveTableControls ? <button aria-label="Clear active sportsbook filters and hidden-column states" className="table-filter-clear" onClick={() => { clearTableFilters(); setVisibleColumnKeys(new Set(defaultVisibleSportsbookColumns)); }} type="button">×</button> : null}
           </div>}
+          {visualV2 ? <><DesignLedgerToolbarAction dataPdId="sportsbook.toolbar.columns" onClick={() => { setFilterDialogView("columns"); setIsFilterModalOpen(true); }}>Columns</DesignLedgerToolbarAction><DesignLedgerToolbarAction dataPdId="sportsbook.toolbar.restore-columns" onClick={() => { setVisibleColumnKeys(new Set(defaultVisibleSportsbookColumns)); setColumnWidths(defaultSportsbookColumnWidths); }}>Restore Default Columns</DesignLedgerToolbarAction></> : null}
         </DesignLedgerToolbar>
-        {visualV2 ? <DesignLedgerToolbar ariaLabel="Sportsbook column controls"><DesignLedgerToolbarAction dataPdId="sportsbook.toolbar.columns" onClick={() => { setFilterDialogView("columns"); setIsFilterModalOpen(true); }}>Columns</DesignLedgerToolbarAction><DesignLedgerToolbarAction dataPdId="sportsbook.toolbar.restore-columns" onClick={() => { setVisibleColumnKeys(new Set(defaultVisibleSportsbookColumns)); setColumnWidths(defaultSportsbookColumnWidths); }}>Restore Default Columns</DesignLedgerToolbarAction></DesignLedgerToolbar> : null}
         <LedgerQuickActions
           ledgerType="Sportsbook"
           onSelect={async (action: LedgerQuickAction) => {

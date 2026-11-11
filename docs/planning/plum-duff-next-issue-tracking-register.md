@@ -2,7 +2,7 @@
 
 ## Current CP-117 rejected Today/ledger parity — 2026-11-11
 
-`PD-PR-117A-90–96` in the [current UI change register](../agent-contracts/plum-duff-ui-change-register.md#cp-117-rejected-today-and-ledger-parity--2026-11-11--118) preserve each owner-rejected Today, opportunity, ledger, Quick Capture, scalar-edit and evidence requirement under open [#118](https://github.com/wolney8/OpenForge/issues/118). Focused branch-only corrections are in progress. Opportunity source-resolution is tested with disposable storage, but normal API activation is a separate explicit gate; recurring scheduling, saved views, new combined KPIs and the Sportsbook fixed-stage decision remain separate. No request is closed by a shared component import or synthetic screenshot.
+`PD-PR-117A-90–96` in the [current UI change register](../agent-contracts/plum-duff-ui-change-register.md#cp-117-rejected-today-and-ledger-parity--2026-11-11--118) preserve each owner-rejected Today, opportunity, ledger, Quick Capture, scalar-edit and evidence requirement under open [#118](https://github.com/wolney8/OpenForge/issues/118). The six-module Lab/native/combined comparison and disposable scalar preflight are now evidenced, with lifecycle-coupled/composite handoffs still open. Opportunity source-resolution is tested with disposable storage, but normal API activation is a separate explicit gate; recurring scheduling, saved views, new combined KPIs and the Sportsbook fixed-stage decision remain separate. No request is closed by a shared component import or synthetic screenshot.
 
 ## CP-117 integrated adoption — 2026-11-03
 

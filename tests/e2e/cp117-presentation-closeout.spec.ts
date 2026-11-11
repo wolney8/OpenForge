@@ -90,14 +90,12 @@ for (const module of ["sportsbook-bets", "free-bets", "casino-offers", "each-way
     await page.setViewportSize({ width: 900, height: 900 });
     await page.goto(`${profile}/${module}`);
     const toolbar = page.getByRole("toolbar", { name: /ledger controls|Extra Place controls/ });
-    const columnToolbar = page.getByRole("toolbar", { name: /column controls$/i });
     await expect(toolbar).toBeVisible({ timeout: 45_000 });
     await expect(toolbar.getByRole("button", { name: "Filters", exact: true })).toBeVisible();
-    await expect(toolbar.getByRole("button", { name: "Columns", exact: true })).toHaveCount(0);
-    await expect(columnToolbar.getByRole("button", { name: "Columns", exact: true })).toBeVisible();
-    await expect(columnToolbar.getByRole("button", { name: "Restore Default Columns", exact: true })).toBeVisible();
+    await expect(toolbar.getByRole("button", { name: "Columns", exact: true })).toBeVisible();
+    await expect(toolbar.getByRole("button", { name: "Restore Default Columns", exact: true })).toBeVisible();
     await expect(toolbar).not.toHaveClass(/sportsbook-review-bar/);
-    await columnToolbar.getByRole("button", { name: "Columns", exact: true }).click();
+    await toolbar.getByRole("button", { name: "Columns", exact: true }).click();
     const dialog = page.getByRole("dialog", { name: /column controls/ });
     await expect(dialog.getByText("Visible columns")).toBeVisible();
     await expect(dialog.getByText("Filter records", { exact: true })).toHaveCount(0);
@@ -116,7 +114,7 @@ test("combined ledgers keep owned rows with separate filters, columns and one pa
     await expect(toolbar).toBeVisible({ timeout: 45_000 });
     await toolbar.getByRole("button", { name: "Filters", exact: true }).click();
     await expect(page.locator(`[data-pd-id="combined.${module}.sort"]`)).toBeVisible();
-    await page.locator(`[data-pd-id="combined.${module}.secondary-toolbar"]`).getByRole("button", { name: "Columns", exact: true }).click();
+    await toolbar.getByRole("button", { name: "Columns", exact: true }).click();
     await expect(page.locator(`[data-pd-id="combined.${module}.control-panel"]`)).toContainText("Visible columns");
     await expect(page.locator(`[data-pd-id="combined.${module}.pagination.top"]`)).toBeVisible({ timeout: 45_000 });
     await expect(page.locator(`[data-pd-id="combined.${module}.table-scroll"] thead th`).last()).toHaveText("Actions");
@@ -175,12 +173,19 @@ test("Reports advanced controls and ledger filters remain usable at actual Chrom
     await page.goto(`${baseURL}${profile}/sportsbook-bets`);
     const toolbar = page.getByRole("toolbar", { name: /ledger controls/ });
     await expect(toolbar.getByRole("button", { name: "Filters", exact: true })).toBeVisible({ timeout: 45_000 });
-    await page.getByRole("toolbar", { name: "Sportsbook column controls" }).getByRole("button", { name: "Columns", exact: true }).click();
+    await toolbar.getByRole("button", { name: "Columns", exact: true }).click();
     await expect(page.getByRole("dialog", { name: /column controls/ })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
+    // The ledger rows can finish before its range settings. Wait for the
+    // authoritative settings read before choosing a new preset; otherwise a
+    // click on the temporary Week fallback is ignored while settings is null.
     await page.goto(`${baseURL}${profile}/free-bets`);
+    const settingsResponse = await page.request.get(`${baseURL}/api/profiles/profile-demo-001/tracker-settings`);
+    expect(settingsResponse.ok()).toBe(true);
+    const loadedPreset = String((await settingsResponse.json()).active_date_preset);
     await expect(page.locator(".ledger-loading-overlay")).toHaveCount(0, { timeout: 45_000 });
     const freeBetRange = page.locator('[data-pd-id="tracker.range-card.select"]');
+    await expect(freeBetRange).toContainText(loadedPreset);
     await freeBetRange.click();
     await page.getByRole("option", { name: "All Dates", exact: true }).click();
     await expect(freeBetRange).toContainText("All Dates");
@@ -197,4 +202,20 @@ test("Reports advanced controls and ledger filters remain usable at actual Chrom
     await context.close();
     await rm(scratch, { recursive: true, force: true });
   }
+});
+
+test("a native ledger range waits for its authoritative setting before accepting a change", async ({ page }) => {
+  let release: () => void = () => {};
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  await page.route(/\/profiles\/profile-demo-001\/tracker-settings$/, async route => {
+    await gate;
+    await route.continue();
+  });
+  await page.goto(`${profile}/free-bets`);
+  const range = page.locator('[data-pd-id="tracker.range-card.select"]');
+  await expect(range).toBeDisabled();
+  await expect(page.getByText("Loading selected range...")).toBeVisible();
+  release();
+  await expect(range).toBeEnabled();
+  await expect(page.getByText("Loading selected range...")).toHaveCount(0);
 });

@@ -3408,7 +3408,7 @@ export function FreeBetWorkflowShell({
         aria-busy={isInitialLoading}
         className={visualV2 ? "stack sportsbook-page-shell ledger-v2-page" : "content-panel stack sportsbook-page-shell"}
       >
-        {visualV2 ? <DesignPageHead><div><h1>Free Bets</h1></div><div className={designPageHeadClasses.actions}><TrackerRangeCard activePreset={trackerSettings?.active_date_preset ?? "Week (Mon-Sun)"} isActionView={Boolean(initialIssueFilter)} isSaving={isTrackerRangeSaving} onPresetChange={(preset) => void updateTrackerDatePreset(preset)} rangeDetail={quickViewRangeDetail} rangeContext={quickViewRangeContext} visualV2 /></div></DesignPageHead> : <div className="sportsbook-page-header"><h1 className="sportsbook-page-title">Free Bets</h1></div>}
+        {visualV2 ? <DesignPageHead><div><h1>Free Bets</h1></div><div className={designPageHeadClasses.actions}><TrackerRangeCard activePreset={trackerSettings?.active_date_preset ?? "Week (Mon-Sun)"} isActionView={Boolean(initialIssueFilter)} isReady={Boolean(trackerSettings)} isSaving={isTrackerRangeSaving} onPresetChange={(preset) => void updateTrackerDatePreset(preset)} rangeDetail={quickViewRangeDetail} rangeContext={quickViewRangeContext} visualV2 /></div></DesignPageHead> : <div className="sportsbook-page-header"><h1 className="sportsbook-page-title">Free Bets</h1></div>}
         {isInitialLoading ? (
           <LedgerLoadingIndicator label="Loading free-bet ledger" />
         ) : null}
@@ -3471,8 +3471,8 @@ export function FreeBetWorkflowShell({
               </button>
             ) : null}
           </div>}
+          {visualV2 ? <><DesignLedgerToolbarAction dataPdId="free-bets.toolbar.columns" onClick={() => { setFilterDialogView("columns"); setIsFilterModalOpen(true); }}>Columns</DesignLedgerToolbarAction><DesignLedgerToolbarAction dataPdId="free-bets.toolbar.restore-columns" onClick={() => { setVisibleColumnKeys(new Set(defaultVisibleFreeBetColumns)); setColumnWidths(defaultFreeBetColumnWidths); }}>Restore Default Columns</DesignLedgerToolbarAction></> : null}
         </DesignLedgerToolbar>
-        {visualV2 ? <DesignLedgerToolbar ariaLabel="Free Bet column controls"><DesignLedgerToolbarAction dataPdId="free-bets.toolbar.columns" onClick={() => { setFilterDialogView("columns"); setIsFilterModalOpen(true); }}>Columns</DesignLedgerToolbarAction><DesignLedgerToolbarAction dataPdId="free-bets.toolbar.restore-columns" onClick={() => { setVisibleColumnKeys(new Set(defaultVisibleFreeBetColumns)); setColumnWidths(defaultFreeBetColumnWidths); }}>Restore Default Columns</DesignLedgerToolbarAction></DesignLedgerToolbar> : null}
         <LedgerQuickActions
           ledgerType="Free Bets"
           onSelect={async (action: LedgerQuickAction) => {

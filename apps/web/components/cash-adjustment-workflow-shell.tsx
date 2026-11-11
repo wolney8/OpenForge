@@ -1794,7 +1794,7 @@ export function CashAdjustmentWorkflowShell({ profileId, initialRecordId, initia
         aria-busy={isInitialLoading}
         className={visualV2 ? "stack sportsbook-page-shell ledger-v2-page" : "content-panel stack sportsbook-page-shell"}
       >
-        {visualV2 ? <DesignPageHead><div><h1>Cash Adjustments</h1></div><div className={designPageHeadClasses.actions}><TrackerRangeCard activePreset={trackerSettings?.active_date_preset ?? "Week (Mon-Sun)"} isSaving={isTrackerRangeSaving} onPresetChange={(preset) => void updateTrackerDatePreset(preset)} rangeDetail={quickViewRangeDetail} rangeContext={quickViewRangeContext} visualV2 /></div></DesignPageHead> : <div className="sportsbook-page-header">
+        {visualV2 ? <DesignPageHead><div><h1>Cash Adjustments</h1></div><div className={designPageHeadClasses.actions}><TrackerRangeCard activePreset={trackerSettings?.active_date_preset ?? "Week (Mon-Sun)"} isReady={Boolean(trackerSettings)} isSaving={isTrackerRangeSaving} onPresetChange={(preset) => void updateTrackerDatePreset(preset)} rangeDetail={quickViewRangeDetail} rangeContext={quickViewRangeContext} visualV2 /></div></DesignPageHead> : <div className="sportsbook-page-header">
           <h1 className="sportsbook-page-title">Cash Adjustments</h1>
         </div>}
         {isInitialLoading ? (
@@ -1813,8 +1813,8 @@ export function CashAdjustmentWorkflowShell({ profileId, initialRecordId, initia
             <button aria-label="Open cash-adjustment filter and column controls" className={`icon-button table-filter-button${hasActiveTableControls ? " has-active-table-controls" : ""}`} onClick={() => setIsFilterModalOpen(true)} title="Filter and columns" type="button"><svg aria-hidden="true" className="table-filter-icon" fill="none" viewBox="0 0 24 24"><path d="M4 6h16l-6.5 7.3v4.9l-3 1.8v-6.7L4 6Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" /></svg>{hasActiveTableControls ? <span aria-label={`${activeTableControlCount} active table controls`} className="table-filter-badge">{activeTableControlCount > 9 ? "9+" : activeTableControlCount}</span> : null}</button>
             {hasActiveTableControls ? <button aria-label="Clear active cash-adjustment filters and hidden-column states" className="table-filter-clear" onClick={() => { clearTableFilters(); setVisibleColumnKeys(new Set(defaultVisibleCashAdjustmentColumns)); }} type="button">×</button> : null}
           </div> : null}
+          {visualV2 ? <><DesignLedgerToolbarAction dataPdId="cash-adjustments.toolbar.columns" onClick={() => { setFilterDialogView("columns"); setIsFilterModalOpen(true); }}>Columns</DesignLedgerToolbarAction><DesignLedgerToolbarAction dataPdId="cash-adjustments.toolbar.restore-columns" onClick={() => { setVisibleColumnKeys(new Set(defaultVisibleCashAdjustmentColumns)); setColumnWidths(defaultCashAdjustmentColumnWidths); }}>Restore Default Columns</DesignLedgerToolbarAction></> : null}
         </DesignLedgerToolbar>
-        {visualV2 ? <DesignLedgerToolbar ariaLabel="Cash Adjustment column controls"><DesignLedgerToolbarAction dataPdId="cash-adjustments.toolbar.columns" onClick={() => { setFilterDialogView("columns"); setIsFilterModalOpen(true); }}>Columns</DesignLedgerToolbarAction><DesignLedgerToolbarAction dataPdId="cash-adjustments.toolbar.restore-columns" onClick={() => { setVisibleColumnKeys(new Set(defaultVisibleCashAdjustmentColumns)); setColumnWidths(defaultCashAdjustmentColumnWidths); }}>Restore Default Columns</DesignLedgerToolbarAction></DesignLedgerToolbar> : null}
         <LedgerQuickActions
           ledgerType="Cash Adjustments"
           onSelect={async (action: LedgerQuickAction) => {

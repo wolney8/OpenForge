@@ -73,7 +73,7 @@ export function CombinedLedgerPage({ module }: { module: CombinedLedgerModule })
   const [pageSize, setPageSize] = useState([8, 16, 32].includes(Number(searchParams.get("size"))) ? Number(searchParams.get("size")) : 8);
   const [visibleColumnKeys, setVisibleColumnKeys] = useState(() => new Set(ledgerColumnContracts[module].map(column => column.key)));
   const [controlView, setControlView] = useState<"filters" | "columns" | null>(null);
-  const [mobileDetail, setMobileDetail] = useState(true);
+  const [mobileDetail, setMobileDetail] = useState(false);
   const [creating, setCreating] = useState(false);
   const [createMode, setCreateMode] = useState<"quick" | "full">("full");
   const [newOwner, setNewOwner] = useState("");
@@ -90,6 +90,7 @@ export function CombinedLedgerPage({ module }: { module: CombinedLedgerModule })
   const [cellError, setCellError] = useState("");
   const [cellPending, setCellPending] = useState(false);
   const cellSaving = useRef(false);
+  const cashScalarOperation = useRef<{ row: string; column: string; value: string; key: string } | null>(null);
   const confirmDiscardCell = useUnsavedChangesGuard(Boolean(activeCell && cellDraft !== activeCell.original), {
     message: "Discard the unsaved ledger field change?",
     onDiscard: () => { cellEditor.close(); setActiveCell(null); setCellDraft(""); setCellError(""); },
@@ -257,6 +258,7 @@ export function CombinedLedgerPage({ module }: { module: CombinedLedgerModule })
     if (column === "profile_name") return;
     const field = ownedScalarField(module, column, row.data);
     if (!field) { router.push(rowHref(row)); return; }
+    cashScalarOperation.current = null;
     const original = String(row.data[column] ?? "");
     setActiveCell({ row, column, original, label: field.label });
     setCellDraft(original); setCellError("");
@@ -266,8 +268,13 @@ export function CombinedLedgerPage({ module }: { module: CombinedLedgerModule })
     if (!activeCell || cellSaving.current) return false;
     cellSaving.current = true; setCellPending(true); setCellError("");
     try {
-      const confirmed = await commitOwnedScalar({ module, profileId: activeCell.row.profileId, recordId: activeCell.row.recordId, column: activeCell.column, expected: activeCell.original, value: cellDraft });
+      const operationRow = identity(activeCell.row);
+      if (module === "cash-adjustments" && (!cashScalarOperation.current || cashScalarOperation.current.row !== operationRow || cashScalarOperation.current.column !== activeCell.column || cashScalarOperation.current.value !== cellDraft)) {
+        cashScalarOperation.current = { row: operationRow, column: activeCell.column, value: cellDraft, key: crypto.randomUUID() };
+      }
+      const confirmed = await commitOwnedScalar({ module, profileId: activeCell.row.profileId, recordId: activeCell.row.recordId, column: activeCell.column, expected: activeCell.original, value: cellDraft, operationId: cashScalarOperation.current?.key });
       setRows(current => current.map(row => identity(row) === identity(activeCell.row) ? { ...row, data: confirmed } : row));
+      cashScalarOperation.current = null;
       cellEditor.close(); setActiveCell(null); setCellDraft("");
       return true;
     } catch (cause) {
@@ -300,7 +307,7 @@ export function CombinedLedgerPage({ module }: { module: CombinedLedgerModule })
   const setFilter = (key: string, value: string) => { const query = new URLSearchParams(returnQuery); query.delete("page"); if (value) query.set(`f_${key}`, value); else query.delete(`f_${key}`); router.push(`/tracker/${module}${query.size ? `?${query.toString()}` : ""}`); setPage(1); };
   const clearFilters = () => { const query = new URLSearchParams(returnQuery); for (const filter of combinedLedgerFilters[module]) query.delete(`f_${filter.key}`); query.delete("q"); query.delete("page"); setSearch(""); setPage(1); router.push(`/tracker/${module}${query.size ? `?${query.toString()}` : ""}`); };
   const profileOptions = [{ value: "all", label: "All Profiles" }, ...profiles.map(profile => ({ value: profile.profile_id, label: profile.display_name }))];
-  const label = trackerModuleDefinitions[module].title;
+  const label = module === "each-way-extra-places" ? "Extra Place" : trackerModuleDefinitions[module].title;
   const statusFilter = combinedLedgerFilters[module].find(filter => filter.key === "status" || module === "cash-adjustments" && filter.key === "calculation_state");
   const chooseOwnerForAdd = (mode: "quick" | "full") => { setCreating(true); setCreateMode(mode); setNewOwner(localProfile !== "all" && localProfileValid ? localProfile : ""); };
   const changeRange = async (preset: DatePreset) => {
@@ -319,16 +326,15 @@ export function CombinedLedgerPage({ module }: { module: CombinedLedgerModule })
       {opportunityFailures.length ? <p role="alert">Partial read: opportunities for {opportunityFailures.join(", ")} could not be loaded.</p> : null}
       <div className="stack">{opportunities.filter(item => localProfile === "all" || item.profileId === localProfile).map(item => <article className="content-subpanel" key={`${item.profileId}:${item.opportunityKey}`}><strong>{item.label}</strong><p>{item.profileName} · {item.bookmaker} · {item.alreadyCreated ? "Already created" : "Available for review"}</p>{item.riskWarnings.length ? <p>{item.riskWarnings.join(" · ")}</p> : null}<Link href={`/profiles/${encodeURIComponent(item.profileId)}/tracker/accounts#profile-opportunities`}>Open Profile opportunity</Link></article>)}</div>
     </DesignLedgerScreen> : null}
-    <DesignLedgerScreen dataPdId={`combined.${module}.design-screen`} description={<>Authorised records across {profiles.length} Profiles. Each action opens its owning Profile.</>} title={label} actions={<div className={designLedgerClasses.actionRow}><DesignLedgerToolbarAction dataPdId={`combined.${module}.refresh`} onClick={() => setRefreshKey(value => value + 1)}>Refresh</DesignLedgerToolbarAction>{module === "sportsbook-bets" ? <DesignLedgerToolbarAction dataPdId={`combined.${module}.quick-capture`} onClick={() => chooseOwnerForAdd("quick")}>Quick Capture</DesignLedgerToolbarAction> : null}<DesignLedgerPrimaryAction dataPdId={`combined.${module}.add`} onClick={() => chooseOwnerForAdd("full")}>{module === "sportsbook-bets" ? "Open Bet Workbench" : addLabels[module]}</DesignLedgerPrimaryAction></div>}>
+    <DesignLedgerScreen dataPdId={`combined.${module}.design-screen`} description={`${visible.length} of ${rows.length} rows · ${localProfile === "all" ? `${profiles.length} authorised Profiles` : profiles.find(profile => profile.profile_id === localProfile)?.display_name ?? "Selected Profile"} · ${search || Object.values(selectedFilters).some(Boolean) ? "Filters active" : "No filters"}`} title={label} actions={<div className={designLedgerClasses.actionRow}>{module === "sportsbook-bets" ? <DesignLedgerToolbarAction dataPdId={`combined.${module}.quick-capture`} onClick={() => chooseOwnerForAdd("quick")}>Quick Capture</DesignLedgerToolbarAction> : null}<DesignLedgerPrimaryAction dataPdId={`combined.${module}.add`} onClick={() => chooseOwnerForAdd("full")}>{module === "sportsbook-bets" ? "Open Bet Workbench" : addLabels[module]}</DesignLedgerPrimaryAction></div>}>
       <DesignLedgerToolbar ariaLabel={`${label} controls`} dataPdId={`combined.${module}.toolbar`}>
         <DesignLedgerSearch dataPdId={`combined.${module}.search`} label={`Search ${label}`} onChange={event => { setSearch(event.target.value); setPage(1); }} placeholder="Search This Ledger" value={search} />
         {statusFilter ? <DesignLabSelect compact dataPdId={`combined.${module}.status-filter`} label={statusFilter.key === "status" ? "Status Filter" : "Calculation state"} onChange={value => setFilter(statusFilter.key, value)} options={[{ value: "", label: statusFilter.key === "status" ? "All statuses" : "All states" }, ...combinedFilterOptions(module, rows.filter(row => localProfile === "all" || row.profileId === localProfile).map(row => row.data), statusFilter.key).map(value => ({ value, label: value }))]} value={selectedFilters[statusFilter.key] ?? ""} /> : null}
         <DesignLabSelect compact dataPdId={`combined.${module}.profile-filter`} label="Filter ledger by Profile" onChange={setLocalProfile} options={profileOptions} value={profileOptions.some(option => option.value === localProfile) ? localProfile : "all"} />
         <DesignLedgerToolbarAction ariaExpanded={controlView === "filters"} dataPdId={`combined.${module}.filters`} onClick={() => setControlView(value => value === "filters" ? null : "filters")}>Filters</DesignLedgerToolbarAction>
-      </DesignLedgerToolbar>
-      <DesignLedgerToolbar ariaLabel={`${label} column controls`} dataPdId={`combined.${module}.secondary-toolbar`}>
         <DesignLedgerToolbarAction ariaExpanded={controlView === "columns"} dataPdId={`combined.${module}.columns`} onClick={() => setControlView(value => value === "columns" ? null : "columns")}>Columns</DesignLedgerToolbarAction>
         <DesignLedgerToolbarAction dataPdId={`combined.${module}.restore-columns`} onClick={() => setVisibleColumnKeys(new Set(nativeColumns.map(column => column.key)))}>Restore Default Columns</DesignLedgerToolbarAction>
+        <DesignLedgerToolbarAction dataPdId={`combined.${module}.refresh`} onClick={() => setRefreshKey(value => value + 1)}>Refresh</DesignLedgerToolbarAction>
       </DesignLedgerToolbar>
       {controlView ? <section aria-label={`${label} ${controlView}`} className="content-subpanel stack" data-pd-id={`combined.${module}.control-panel`}>
         {controlView === "filters" ? <><h3>Filter and sort records</h3><div className="form-grid">{combinedLedgerFilters[module].filter(filter => filter.key !== statusFilter?.key).map(filter => <DesignLabSelect compact dataPdId={`combined.${module}.filter.${filter.key}`} key={filter.key} label={filter.label} onChange={value => setFilter(filter.key, value)} options={[{ value: "", label: `All ${filter.label.toLowerCase()}` }, ...combinedFilterOptions(module, rows.filter(row => localProfile === "all" || row.profileId === localProfile).map(row => row.data), filter.key).map(value => ({ value, label: value }))]} value={selectedFilters[filter.key]} />)}<DesignLabSelect compact dataPdId={`combined.${module}.sort`} label="Sort ledger" onChange={value => { setSortKey(value); setPage(1); }} options={[{ value: "profile_name", label: "Profile" }, ...nativeColumns.filter(column => column.key !== "actions").map(column => ({ value: column.key, label: column.label }))]} value={sortKey} /></div><div className={designLedgerClasses.actionRow}><button aria-label={sortDescending ? "Sort ascending" : "Sort descending"} className="button-link" data-pd-id={`combined.${module}.sort-direction`} onClick={() => setSortDescending(value => !value)} type="button"><span aria-hidden="true" className="material-symbols-outlined">{sortDescending ? "arrow_downward" : "arrow_upward"}</span>{sortDescending ? "Descending" : "Ascending"}</button><DesignLedgerToolbarAction dataPdId={`combined.${module}.clear-filters`} onClick={clearFilters}>Clear Filters</DesignLedgerToolbarAction></div></> : <><h3>Visible columns</h3><div className="review-chip-row">{nativeColumns.filter(column => ledgerHideableColumns[module].has(column.key)).map(column => <label className="review-chip" key={column.key}><input checked={visibleColumnKeys.has(column.key)} onChange={event => setVisibleColumnKeys(previous => { const next = new Set(previous); if (event.target.checked) next.add(column.key); else next.delete(column.key); return next; })} type="checkbox" /> {column.label}</label>)}</div></>}

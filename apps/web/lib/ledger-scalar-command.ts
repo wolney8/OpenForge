@@ -3,6 +3,7 @@ import { formatApiErrorBody } from "@/lib/api-error";
 import type { LedgerSourceRecord } from "@/lib/combined-ledger-source";
 import type { CombinedLedgerModule } from "@/lib/profile-scope";
 import { canCasinoInlineScalarEdit } from "@/components/casino-offer-workflow-shell";
+import { getFreeBetInputErrors } from "@/lib/free-bet-input";
 
 type ScalarField = { key: string; label: string; maxLength: number; required?: boolean };
 
@@ -40,6 +41,17 @@ export function ownedScalarField(module: CombinedLedgerModule, column: string, r
   const status = String(record.status ?? "");
   if (module === "sportsbook-bets" && ["Settled", "Void", "Cancelled", "Free Bet Awarded"].includes(status)) return null;
   if ((module === "free-bets" || module === "casino-offers") && status === "Settled") return null;
+  // The native Free Bet Save also validates award, placement and commission
+  // dependencies. Keep those lifecycle rows in the populated native editor.
+  if (module === "free-bets" && (
+    !["Prospecting", "Available", "Not Yet Awarded"].includes(status) ||
+    String(record.result ?? "Pending") !== "Pending" ||
+    !["offer_type", "event_name", "bookmaker"].every(key => String(record[key] ?? "").trim()) ||
+    Object.keys(getFreeBetInputErrors(record)).length > 0
+  )) return null;
+  // Native Sportsbook inline Save serializes conditional multi-lay state;
+  // a one-field full-record PUT cannot attest that linked draft preparation.
+  if (module === "sportsbook-bets" && ["Multilay", "Multilay-Underlay"].includes(String(record.match_strategy ?? ""))) return null;
   if (module === "casino-offers" && !canCasinoInlineScalarEdit(record as Parameters<typeof canCasinoInlineScalarEdit>[0])) return null;
   if (module === "cash-adjustments" && (["Management Fee Withdrawal", "Investment Fee Withdrawal"].includes(String(record.adjustment_type ?? "")) || String(record.calculation_state ?? "").toLowerCase() === "resolved")) return null;
   return field;
@@ -50,13 +62,14 @@ export function ownedScalarField(module: CombinedLedgerModule, column: string, r
  * A fresh read checks identity and field staleness before writing one allowlisted
  * scalar. The API retains validation, audit, correction and permission authority.
  */
-export async function commitOwnedScalar({ module, profileId, recordId, column, expected, value }: {
+export async function commitOwnedScalar({ module, profileId, recordId, column, expected, value, operationId }: {
   module: CombinedLedgerModule;
   profileId: string;
   recordId: string;
   column: string;
   expected: string;
   value: string;
+  operationId?: string;
 }): Promise<LedgerSourceRecord> {
   const identityKey = recordKeys[module];
   if (!identityKey || !fields[module]?.[column]) throw new Error("This field requires the native editor.");
@@ -74,7 +87,10 @@ export async function commitOwnedScalar({ module, profileId, recordId, column, e
   if (String(current[column] ?? "") === value) return current;
   if (String(current[column] ?? "") !== expected) throw new Error("This field changed elsewhere. Reload the ledger and review its current value.");
   const saved = await fetch(endpoint, {
-    method: "PUT", credentials: "include", headers: { "Content-Type": "application/json" },
+    method: "PUT", credentials: "include", headers: {
+      "Content-Type": "application/json",
+      ...(module === "cash-adjustments" ? { "Idempotency-Key": operationId ?? crypto.randomUUID() } : {}),
+    },
     body: JSON.stringify({ ...current, [column]: value }),
   });
   if (!saved.ok) throw new Error(formatApiErrorBody(await saved.text(), "The field was not saved."));

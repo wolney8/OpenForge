@@ -67,6 +67,7 @@ test("mobile details preserve all fields and spreadsheet selection reaches nativ
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/tracker/sportsbook-bets");
   const details = page.locator('[data-pd-id="combined.sportsbook-bets.details"]');
+  await page.getByRole("button", { name: "Show Labelled Details" }).click();
   await expect(details.locator("article").first()).toBeVisible();
   await expect(details.locator("article").first().getByText("Lay Bet")).toBeVisible();
   await expect(details.locator("article").first().getByText("Back Bet")).toBeVisible();

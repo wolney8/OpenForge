@@ -948,17 +948,24 @@ for (const { width, theme } of [{ width: 1440, theme: "light" }, { width: 390, t
       await page.goto(ledger.path);
       await page.locator(".ledger-loading-overlay").first().waitFor({ state: "hidden", timeout: 45_000 });
       const realRange = page.locator('[data-pd-id="tracker.range-card.select"]');
-      if (await realRange.count() && !await realRange.getByText("This Year", { exact: true }).count()) {
-        await realRange.click();
-        await page.getByRole("option", { name: "This Year", exact: true }).click();
+      if (await realRange.count()) {
+        await expect(realRange).toBeEnabled({ timeout: 45_000 });
+        if (!await realRange.getByText("This Year", { exact: true }).count()) {
+          await realRange.click();
+          await page.getByRole("option", { name: "This Year", exact: true }).click();
+        }
       }
       if (ledger.key === "extra-place") await expect(page.getByRole("region", { name: "Extra Place quick view" })).toHaveAttribute("aria-busy", "false", { timeout: 45_000 });
       await setTheme(page, theme);
       const realSurface = page.locator(`[data-pd-id="${ledger.key}.design-screen"]`);
       await expect(realSurface).toBeVisible();
-      await expect(realSurface.getByRole("toolbar").first()).toBeVisible();
+      const toolbar = realSurface.getByRole("toolbar").first();
+      await expect(toolbar).toBeVisible();
       if (ledger.key === "accounts") await expect(realSurface.locator('[data-pd-id="accounts.toolbar.columns"]')).toBeVisible();
-      else await expect(realSurface.getByRole("toolbar").nth(1)).toBeVisible();
+      else {
+        await expect(toolbar.getByRole("button", { name: "Columns", exact: true })).toBeVisible();
+        await expect(toolbar.getByRole("button", { name: "Restore Default Columns", exact: true })).toBeVisible();
+      }
       await expect(realSurface.locator("table").first()).toBeVisible();
       await expect(realSurface.locator("tbody tr").first()).toBeAttached({ timeout: 45_000 });
       await expect(page.locator(".ledger-loading-overlay")).toHaveCount(0, { timeout: 45_000 });

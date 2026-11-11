@@ -257,6 +257,8 @@ test("combined ledger mobile details and full spreadsheet remain available", asy
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/tracker/sportsbook-bets");
   const details = page.locator('[data-pd-id="combined.sportsbook-bets.details"]');
+  await expect(page.locator('[data-pd-id="combined.sportsbook-bets.table-scroll"]')).toBeVisible();
+  await page.getByRole("button", { name: "Show Labelled Details" }).click();
   await expect(details.locator("article").first()).toBeVisible();
   await expect(details.locator("dt").first()).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);

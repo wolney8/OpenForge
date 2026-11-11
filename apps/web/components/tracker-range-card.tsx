@@ -6,6 +6,7 @@ import { DesignLabSelect } from "@/components/design-lab-select";
 type TrackerRangeCardProps = {
   activePreset: string;
   isActionView?: boolean;
+  isReady?: boolean;
   isSaving?: boolean;
   onPresetChange: (preset: DatePreset) => void;
   rangeDetail?: string;
@@ -16,6 +17,7 @@ type TrackerRangeCardProps = {
 export function TrackerRangeCard({
   activePreset,
   isActionView = false,
+  isReady = true,
   isSaving = false,
   onPresetChange,
   rangeDetail,
@@ -23,8 +25,8 @@ export function TrackerRangeCard({
   visualV2 = false,
 }: TrackerRangeCardProps) {
   if (visualV2) return <div data-pd-id="tracker.range-card" title={rangeDetail ?? rangeContext}>
-    {isActionView ? <span>Action View · All Dates</span> : <DesignLabSelect compact={false} dataPdId="tracker.range-card.select" disabled={isSaving} label="Selected Range" onChange={onPresetChange} options={getDatePresetOptions().map(value => ({ value, label: value }))} value={activePreset as DatePreset} />}
-    {isSaving ? <span role="status">Saving range...</span> : null}
+    {isActionView ? <span>Action View · All Dates</span> : <DesignLabSelect compact={false} dataPdId="tracker.range-card.select" disabled={!isReady || isSaving} label="Selected Range" onChange={onPresetChange} options={getDatePresetOptions().map(value => ({ value, label: value }))} value={activePreset as DatePreset} />}
+    {!isReady ? <span role="status">Loading selected range...</span> : isSaving ? <span role="status">Saving range...</span> : null}
   </div>;
   return (
     <article

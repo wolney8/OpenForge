@@ -84,3 +84,45 @@ test("combined dated ledgers use their native date anchors for Selected Range", 
     selectedRange = "All Dates";
   }
 });
+
+test("owned and combined views agree on custom range precedence, invalid dates and refresh", async ({ page }) => {
+  test.setTimeout(150_000);
+  const owner = "profile-demo-001";
+  const dated = [
+    ["sportsbook-bets", "sportsbook_bet_id", "date_settled", "created_at", "sportsbook"],
+    ["free-bets", "free_bet_id", "date_settled", "expiry_datetime", "free-bets"],
+    ["casino-offers", "casino_offer_id", "date_settling", "date_started", "casino-offers"],
+    ["each-way-extra-places", "each_way_extra_place_id", "placed_at", "", "extra-place"],
+    ["cash-adjustments", "cash_adjustment_id", "adjustment_date", "", "cash-adjustments"],
+  ] as const;
+  await page.route(/\/fund-manager\/preferences\/selected-range$/, route => route.fulfill({ status: 200, json: {
+    selected_range_preset: "Custom", selected_range_custom_start: "2026-10-12", selected_range_custom_end: "2026-10-14",
+  } }));
+  await page.route(`**/profiles/${owner}/tracker-settings`, route => route.fulfill({ status: 200, json: {
+    active_date_preset: "Custom", custom_start_date: "2026-10-12", custom_end_date: "2026-10-14", range_back_days: 0, range_forward_days: 0,
+  } }));
+  for (const [module, idKey, primary, fallback, nativeKey] of dated) {
+    const source = (await (await page.request.get(`/api/profiles/${owner}/${module}`)).json() as Array<Record<string, unknown>>)[0];
+    expect(source, module).toBeTruthy();
+    const fixtures = [
+      { ...source, [idKey]: `CUSTOM-${module}-IN`, [primary]: "2026-10-13T12:00:00Z", ...(fallback ? { [fallback]: "2020-01-02T12:00:00Z" } : {}) },
+      { ...source, [idKey]: `CUSTOM-${module}-OUT`, [primary]: "2020-01-02T12:00:00Z", ...(fallback ? { [fallback]: "2026-10-13T12:00:00Z" } : {}) },
+      { ...source, [idKey]: `CUSTOM-${module}-UNKNOWN`, [primary]: "invalid-date", ...(fallback ? { [fallback]: "invalid-date" } : {}) },
+    ];
+    await page.route(`**/profiles/${owner}/${module}`, route => route.fulfill({ status: 200, json: fixtures }));
+    const visibleIds = async (kind: "owned" | "combined") => {
+      const key = kind === "owned" ? nativeKey : `combined.${module}`;
+      const rows = page.locator(`[data-pd-id="${key}.table-scroll"] tbody tr`);
+      await expect(rows.first()).toBeVisible();
+      return rows.locator('td[data-ledger-row]').evaluateAll(cells => [...new Set(cells.map(cell => cell.getAttribute("data-ledger-row")?.split(":").at(-1)))].filter(Boolean).sort());
+    };
+    await page.goto(`/profiles/${owner}/tracker/${module}`);
+    const owned = await visibleIds("owned");
+    await page.goto(`/tracker/${module}?profile=${owner}`);
+    const combined = await visibleIds("combined");
+    expect(combined, module).toEqual(owned);
+    await page.reload();
+    expect(await visibleIds("combined"), `${module} after refresh`).toEqual(owned);
+    await page.unroute(`**/profiles/${owner}/${module}`);
+  }
+});
