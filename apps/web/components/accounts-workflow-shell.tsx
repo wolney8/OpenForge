@@ -8,6 +8,7 @@ import { apiBaseUrl } from "@/lib/api";
 import { ledgerColumnContracts, ledgerColumnWidths } from "@/lib/ledger-column-contracts";
 import { AccountFinancialSummary, AccountReviewButton } from "@/components/account-review-panel";
 import { AccountProviderIdentity } from "@/components/account-provider-identity";
+import { designManagementClasses } from "@/components/design-management-presentation";
 import { ProfileOpportunityQueue } from "@/components/profile-opportunity-queue";
 import { ConfirmationDialog } from "@/components/confirmation-dialog";
 import { FinancialValue, FinancialValueReplayRow } from "@/components/financial-value";
@@ -1613,7 +1614,7 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialCreat
             <div className="modal-backdrop" onMouseDown={(event) => {
               if (event.target === event.currentTarget) void closeEditor();
             }}>
-      <section aria-label={selectedId ? "Edit account" : "Create account"} aria-modal="true" className="content-panel stack workflow-editor-panel modal-panel workflow-editor-modal accounts-editor-modal" onMouseDown={(event) => event.stopPropagation()} ref={editorRef} role="dialog" tabIndex={-1}>
+      <section aria-label={selectedId ? "Edit account" : "Create account"} aria-modal="true" className={`content-panel stack workflow-editor-panel modal-panel workflow-editor-modal accounts-editor-modal${visualV2 ? ` ${designManagementClasses.management}` : ""}`} onMouseDown={(event) => event.stopPropagation()} ref={editorRef} role="dialog" tabIndex={-1}>
         <div className="workflow-panel-header">
           <div className="stack">
             <span className="eyebrow">{selectedId ? "Edit account" : "Create account"}</span>

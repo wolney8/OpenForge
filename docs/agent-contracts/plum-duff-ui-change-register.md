@@ -1,5 +1,16 @@
 # Plum Duff UI Change Register
 
+## CP-117 management screen completion — 2026-11-11 / #118
+
+The connected Lab Profiles directory, onboarding frame and Accounts ledger are the approved equivalents. Profile details, balance controls and Settings extend the same presentation for existing production commands. The Sportsbook conditional-stage decision remains open under PD-PR-117A-78.
+
+| ID | Requested outcome and signed-off equivalent | Status |
+| --- | --- | --- |
+| PD-PR-117A-81 | Profiles directory and detail hierarchy, populated management controls and responsive navigation; Lab Profiles list and shared management surface | NEEDS VERIFICATION — shared Lab page/list composition and governed detail/analytics disclosures pass synthetic navigation and paired desktop/mobile captures; owner Design Acceptance outstanding. |
+| PD-PR-117A-82 | Existing creation/import/restore presentation and validation without changing commands; Lab onboarding frame, progress, fields and footer | NEEDS VERIFICATION — Lab frame/field styling and existing setup paths pass scoped synthetic visual and creation checks; import/restore remain production extensions and owner Design Acceptance is outstanding. |
+| PD-PR-117A-83 | Accounts management and balance/review dialogs retain actions and restrictions in the Lab ledger design | IN PROGRESS — native Add editor styling, validation and cancel pass; existing governed balance/review commands remain. Profile-owned ledger status-chip/pagination toolbar differs structurally from Lab and needs matching-scope adoption; owner Design Acceptance outstanding. |
+| PD-PR-117A-84 | Fund Manager and Profile Settings/reference controls remain navigable and contained at narrow widths; shared management surfaces and Lab design tokens | NEEDS VERIFICATION — shared management tabs and field treatment pass 390px, both themes and actual Chromium 200% zoom; full Lab equivalent is absent, so production controls remain a documented design-system extension. |
+
 ## CP-140 native financial editor completion — 2026-11-10 / #118
 
 Starting reference: `6a60640d95682db019a79f348bc0b78335b98206`. Approved Lab workbenches are in `design-lab-connected.tsx` (Sportsbook) and `design-lab-financial-workflows.tsx` (Free Bet/Casino); paired synthetic starting captures are private under `data/private/evidence/cp140-editor-before/`. The native modal host and extra governed fields remain required production extensions.

@@ -1622,6 +1622,10 @@ display/editing; successor metadata never rewrites or auto-selects a replacement
 - Save actions produce success, explicit validation or an actionable failure; they never appear to
   do nothing, and failed saves preserve the owner's edits.
 
+## Shared management tabs must own their actual V2 geometry
+
+The older V2 `.profile-settings-tab-list` rule forced a single scrolling line and square-ended tabs over the shared management presentation. Exclude the canonical `data-pd-management-tabs` component from that legacy rule. Check computed wrapping, pill radius and horizontal containment in its real Settings/Profile contexts at 900px, 390px and actual Chromium 200% zoom. The focused regression is `tests/e2e/cp117-management-adoption.spec.ts`.
+
 ## Pinned table cells must retain their positioning rule
 
 A later generic `td[tabindex]{position:relative}` rule can override a sticky Actions cell while its

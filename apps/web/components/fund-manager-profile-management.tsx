@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, type KeyboardEvent } from "react";
 import { ConfirmationDialog } from "@/components/confirmation-dialog";
 import { DesignPageHead, designPageHeadClasses } from "@/components/design-ledger-screen";
-import { DesignManagementSurface } from "@/components/design-management-presentation";
+import { DesignManagementSurface, DesignManagementTabs, designManagementClasses } from "@/components/design-management-presentation";
 import { FinancialValue, FinancialValueReplayGroup } from "@/components/financial-value";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { useAuthoritativeSession } from "@/components/session-bootstrap-gate";
@@ -268,8 +268,8 @@ export function FundManagerProfileManagement({ profileId, visualV2 = false }: { 
         </div>
       </section>}
 
-      <DesignManagementSurface className="profile-management-shell" dataPdId="profile-management.design-screen" enabled={visualV2} legacyClassName="content-panel stack profile-management-shell">
-        <div aria-label="Profile management sections" className="analytics-tab-list profile-settings-tab-list" data-pd-id="profile-management.navigation.tabs" role="tablist">
+      <DesignManagementSurface className={`profile-management-shell ${designManagementClasses.management}`} dataPdId="profile-management.design-screen" enabled={visualV2} legacyClassName="content-panel stack profile-management-shell">
+        <DesignManagementTabs dataPdId="profile-management.navigation.tabs" enabled={visualV2} label="Profile management sections">
           {sections.map((section) => (
             <button
               aria-controls={`profile-management-panel-${section.id}`}
@@ -286,7 +286,7 @@ export function FundManagerProfileManagement({ profileId, visualV2 = false }: { 
               {section.label}
             </button>
           ))}
-        </div>
+        </DesignManagementTabs>
 
         <section aria-labelledby="profile-management-tab-overview" className="analytics-tab-panel stack" hidden={activeSection !== "overview"} id="profile-management-panel-overview" role="tabpanel">
           <div className="section-heading-row"><div><span className="eyebrow">Profile</span><h2>Overview</h2></div></div>

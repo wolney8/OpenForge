@@ -8,7 +8,7 @@ import { CurrentAccountCash } from "@/components/current-account-cash";
 
 import Link from "next/link";
 import { ReportExplorer } from "@/components/report-explorer";
-import { DesignManagementDetail, DesignManagementSurface } from "@/components/design-management-presentation";
+import { DesignManagementDetail, DesignManagementSurface, designManagementClasses } from "@/components/design-management-presentation";
 import { DesignPositionMetrics, DesignPositionWorkGrid, DesignPositionSurface, DesignPositionSectionHead, DesignPositionTask, DesignPositionShortcut, designPositionActionClasses } from "@/components/design-position-presentation";
 import { DesignPageHead, designPageHeadClasses } from "@/components/design-ledger-screen";
 import { DesignLabSelect } from "@/components/design-lab-select";
@@ -1258,14 +1258,22 @@ export function CrossProfileAnalytics({
     + (trackerRangeActiveProfilesCombined.sportsbookCommittedFinancialIssues?.length ?? 0)
     + (trackerRangeActiveProfilesCombined.sportsbookHistoricalFinancialIssues?.length ?? 0)
     + (trackerRangeActiveProfilesCombined.freeBetFinancialIssues?.length ?? 0);
+  const analyticsNavigation = <DesignManagementDetail dataPdId="profiles.analytics.navigation" enabled={visualV2 && activeTab === "profiles"} label="Profile analytics and reports">
+    <div aria-label="Fund Manager profile and analytics sections" className="analytics-tab-list" data-pd-id="profiles.navigation.tabs" role="tablist">
+      {analyticsTabs.map((tab) => <button aria-controls={`analytics-panel-${tab.id}`} aria-selected={activeTab === tab.id} className={`analytics-tab${activeTab === tab.id ? " is-active" : ""}`} data-pd-id={`profiles.navigation.${tab.id}`} id={`analytics-tab-${tab.id}`} key={tab.id} onClick={() => selectTab(tab.id)} onKeyDown={(event) => handleTabKeyDown(event, tab.id)} role="tab" tabIndex={activeTab === tab.id ? 0 : -1} type="button">{tab.label}</button>)}
+    </div>
+  </DesignManagementDetail>;
 
   return (
     <section
       className={`content-panel stack cross-profile-analytics${visualV2 ? " v2-position-analytics" : ""}${visualV2 && (activeTab === "performance" || activeTab === "reports") ? " has-position-overview" : ""}`}
-      aria-labelledby="combined-analytics-title"
+      aria-label={visualV2 && activeTab === "profiles" ? "Profile management" : undefined}
+      aria-labelledby={visualV2 && activeTab === "profiles" ? undefined : "combined-analytics-title"}
     >
-      <DesignPageHead dataPdId={activeTab === "reports" ? "reports.page-head" : "position.page-head"} enabled={visualV2 && (activeTab === "performance" || activeTab === "reports")}>
-      {visualV2 && (activeTab === "performance" || activeTab === "reports") ? <div><h1 id="combined-analytics-title">{activeTab === "reports" ? "Reports" : "Position"}</h1>{activeTab === "performance" ? <p>Position, tasks and the next decision.</p> : null}</div> : null}
+      <DesignPageHead dataPdId={activeTab === "reports" ? "reports.page-head" : activeTab === "profiles" ? "profiles.page-head" : "position.page-head"} enabled={visualV2 && (activeTab === "performance" || activeTab === "reports" || activeTab === "profiles")}>
+      {visualV2 && (activeTab === "performance" || activeTab === "reports" || activeTab === "profiles") ? <div><h1 id="combined-analytics-title">{activeTab === "reports" ? "Reports" : activeTab === "profiles" ? "Profiles" : "Position"}</h1>{activeTab === "performance" ? <p>Position, tasks and the next decision.</p> : null}</div> : null}
+      {visualV2 && activeTab === "profiles" ? <div className={designPageHeadClasses.actions}><DesignLabSelect dataPdId="profiles.selected-range" label="Selected Range" onChange={value => void changeSelectedRange(value as DatePreset)} options={getDatePresetOptions().map(value => ({ value, label: value }))} value={preset} /></div> : null}
+      <DesignManagementDetail className={designManagementClasses.headDetail} dataPdId="profiles.directory.filters" enabled={visualV2 && activeTab === "profiles"} label="Directory filters and reporting range">
       <div
         className={`fund-manager-control-bar${activeTab === "profiles" ? " is-directory" : " is-analytics"}${visualV2 && (activeTab === "performance" || activeTab === "reports") ? ` ${designPageHeadClasses.actions}` : ""}`}
       >
@@ -1423,7 +1431,7 @@ export function CrossProfileAnalytics({
             </span>
           </label>
         ) : null}
-        {activeTab !== "fees" ? (
+        {activeTab !== "fees" && !(visualV2 && activeTab === "profiles") ? (
         <div className="compact-report-controls fund-manager-control-slot-range">
           {visualV2 && (activeTab === "performance" || activeTab === "reports") ? <DesignLabSelect dataPdId={activeTab === "reports" ? "reports.selected-range" : "position.selected-range"} label="Selected Range" onChange={value => void changeSelectedRange(value as DatePreset)} options={getDatePresetOptions().map(value => ({ value, label: value }))} value={preset} /> : <label className="m3-picker-field">
             <span className="m3-picker-label">Date range</span>
@@ -1457,8 +1465,9 @@ export function CrossProfileAnalytics({
         </div>
         ) : null}
       </div>
+      </DesignManagementDetail>
       </DesignPageHead>
-      <div className="workflow-panel-header">
+      {visualV2 && activeTab === "profiles" ? null : <div className="workflow-panel-header">
         <div className="stack-tight">
           <span className="eyebrow">Portfolio control</span>
           <div className="section-heading-row">
@@ -1468,7 +1477,7 @@ export function CrossProfileAnalytics({
             <AccessScopeBadge />
           </div>
         </div>
-      </div>
+      </div>}
 
       {reportingIsLoading ? (
         <section
@@ -1534,30 +1543,7 @@ export function CrossProfileAnalytics({
         </section>
       ) : null}
 
-      <div
-        aria-label="Fund Manager profile and analytics sections"
-        className="analytics-tab-list"
-        data-pd-id="profiles.navigation.tabs"
-        role="tablist"
-      >
-        {analyticsTabs.map((tab) => (
-          <button
-            aria-controls={`analytics-panel-${tab.id}`}
-            aria-selected={activeTab === tab.id}
-            className={`analytics-tab${activeTab === tab.id ? " is-active" : ""}`}
-            data-pd-id={`profiles.navigation.${tab.id}`}
-            id={`analytics-tab-${tab.id}`}
-            key={tab.id}
-            onClick={() => selectTab(tab.id)}
-            onKeyDown={(event) => handleTabKeyDown(event, tab.id)}
-            role="tab"
-            tabIndex={activeTab === tab.id ? 0 : -1}
-            type="button"
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      {visualV2 && activeTab === "profiles" ? null : analyticsNavigation}
 
       {!isLoading || activeTab === "fees" || activeTab === "exposure" ? (
         <>
@@ -1891,24 +1877,24 @@ export function CrossProfileAnalytics({
 
       {activeTab === "profiles" ? (
       <section
-        aria-labelledby="analytics-tab-profiles"
+        aria-labelledby={visualV2 ? "profile-directory-title" : "analytics-tab-profiles"}
         className={`analytics-tab-panel stack profile-directory${visualV2 ? "" : " content-subpanel"}`}
         data-pd-id="profiles.directory.panel"
         id="analytics-panel-profiles"
-        role="tabpanel"
+        role={visualV2 ? "region" : "tabpanel"}
       >
         {!visualV2 ? profileOverview : null}
         <DesignManagementSurface dataPdId="profiles.design-screen" enabled={visualV2}>
-        <div className="section-heading-row">
+        <div className={`section-heading-row${visualV2 ? ` ${designManagementClasses.directoryHead}` : ""}`}>
           <div>
-            <span className="eyebrow">Profile management</span>
+            {!visualV2 ? <span className="eyebrow">Profile management</span> : null}
             <h2 id="profile-directory-title">Profiles</h2>
-            <p className="muted-text">Gross P&amp;L range: {formatHumanDisplayDate(resolvedRange.start.toISOString())} to {formatHumanDisplayDate(resolvedRange.end.toISOString())}.</p>
+            {!visualV2 ? <p className="muted-text">Gross P&amp;L range: {formatHumanDisplayDate(resolvedRange.start.toISOString())} to {formatHumanDisplayDate(resolvedRange.end.toISOString())}.</p> : null}
           </div>
-          <div className="tracker-nav profile-directory-heading-actions">
-            <span className="profile-picker-count">{directoryProfiles.length} shown</span>
+          <div className={visualV2 ? `profile-directory-heading-actions ${designPageHeadClasses.actions}` : "tracker-nav profile-directory-heading-actions"}>
+            {!visualV2 ? <span className="profile-picker-count">{directoryProfiles.length} shown</span> : null}
             <Link
-              className="modal-primary-button button-link"
+              className={visualV2 ? designManagementClasses.primaryAction : "modal-primary-button button-link"}
               data-pd-id="profiles.add-profile"
               href="/profiles/new"
             >
@@ -1916,7 +1902,7 @@ export function CrossProfileAnalytics({
               Add Profile
             </Link>
             <button
-              className="button-link"
+              className={visualV2 ? designManagementClasses.secondaryAction : "button-link"}
               data-pd-id="profiles.opportunity.add"
               onClick={() => setOpportunityDialogOpen(true)}
               type="button"
@@ -1931,6 +1917,7 @@ export function CrossProfileAnalytics({
           {!visibleDirectoryProfiles.length?<p>{directoryStatus === "Archived" ? "No archived Profiles" : directoryStatus === "Active" ? "No active Profiles" : "No Profiles match these controls"}</p>:null}
         </div> : null}
         <DesignManagementDetail dataPdId="profiles.directory.details" enabled={visualV2} label="Detailed Profile data and actions">
+        {visualV2 ? <p className="muted-text">Gross P&amp;L range: {formatHumanDisplayDate(resolvedRange.start.toISOString())} to {formatHumanDisplayDate(resolvedRange.end.toISOString())}. {directoryProfiles.length} Profiles match the directory controls.</p> : null}
         <LedgerPagination ariaLabel="Profile Directory" currentPage={Math.min(directoryPage,directoryPageCount)} onPageChange={setDirectoryPage} onPageSizeChange={(size)=>{setDirectoryPageSize(size);setDirectoryPage(1);}} pageCount={directoryPageCount} pageSize={directoryPageSize} position="top" totalRows={directoryProfiles.length}/>
         <div className="table-shell">
           <table className="profile-action-table">
@@ -2068,9 +2055,10 @@ export function CrossProfileAnalytics({
         <LedgerPagination ariaLabel="Profile Directory" currentPage={Math.min(directoryPage,directoryPageCount)} onPageChange={setDirectoryPage} onPageSizeChange={(size)=>{setDirectoryPageSize(size);setDirectoryPage(1);}} pageCount={directoryPageCount} pageSize={directoryPageSize} position="bottom" totalRows={directoryProfiles.length}/>
         </DesignManagementDetail>
         </DesignManagementSurface>
-        {visualV2 ? profileOverview : null}
+        {visualV2 ? <DesignManagementDetail dataPdId="profiles.performance-history" enabled label="Profile performance and balance history">{profileOverview}</DesignManagementDetail> : null}
       </section>
       ) : null}
+      {visualV2 && activeTab === "profiles" ? analyticsNavigation : null}
 
       {feeReportQueue ? (
         <FeeReportReviewQueueDialog
@@ -2116,12 +2104,12 @@ export function CrossProfileAnalytics({
       >
         {detailProfile ? (
           <div className="profile-details-drawer-content stack">
-            <div className="section-heading-row">
+            <div className={`section-heading-row${visualV2 ? ` ${designManagementClasses.directoryHead}` : ""}`}>
               <div>
                 <span className="eyebrow">Profile Summary</span>
                 <h2>{detailProfile.displayName}</h2>
               </div>
-              <button aria-label="Close profile details" className="dialog-close-button" onClick={() => detailDialogRef.current?.close()} type="button">
+              <button aria-label="Close profile details" className={visualV2 ? "modal-close-button" : "dialog-close-button"} onClick={() => detailDialogRef.current?.close()} type="button">
                 <span aria-hidden="true" className="material-symbols-outlined">close</span>
               </button>
             </div>

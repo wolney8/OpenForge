@@ -2,6 +2,14 @@
 
 Complete this for every feature, bug fix, component, fixture-backed UI, route or page change.
 
+## CP-117 management screen completion — 2026-11-11 / #118
+
+- [x] Compared populated Lab Profiles/onboarding/Accounts with real routes at 900px dark and retained private before/after captures. The Lab has no full Profile Management or Settings equivalent; their extra production controls remain explicit extensions.
+- [x] Reused the Lab page head, selected-range selector, surface and primary action on the real Profile directory; retained filters, analytics, financial history, details and Add Opportunity in labelled controls. Profile details now keep the close action beside the title.
+- [x] Reused Lab onboarding field geometry and shared management field/tab presentation in Profile Management, Fund Manager Settings, Profile Settings and the Account editor. The old V2 tab strip excludes the canonical management tabs.
+- [x] Focused synthetic journeys cover directory filters/detail/navigation, onboarding validation, Account Add/Cancel, Profile Save rejection/retry/reload, management keyboard tabs, 900/390px containment and actual Chromium 200% zoom.
+- [ ] Owner Design Acceptance and spoken screen-reader verification remain separate; fixed Sportsbook stage navigation awaits the owner's workflow decision.
+
 ## CP-140B Today, tracked-task and notification correction — 2026-11-10 / #118
 
 - [x] Compared the connected Lab tracked row, banner, header overlay, Today inspector and notification popup with the real mount outside `.lab`. Shared presentation now has explicit real and synthetic data/action adapters; the approved Lab composition remains the reference.

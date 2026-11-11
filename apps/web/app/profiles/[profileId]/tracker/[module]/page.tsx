@@ -143,7 +143,7 @@ export default async function TrackerModulePage({
       ) : module === "reports" ? (
         <TrackerSummaryShell profileId={profile.profileId} variant="reports" visualV2={visualV2} />
       ) : module === "settings" ? (
-        <ProfileSettingsShell profileId={profile.profileId} />
+        <ProfileSettingsShell profileId={profile.profileId} visualV2={visualV2} />
       ) : hasTable ? (
         <TrackerModuleTable
           addLabel={moduleDefinition.addLabel!}

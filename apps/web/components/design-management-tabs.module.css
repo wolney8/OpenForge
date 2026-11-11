@@ -1,0 +1,64 @@
+.tabs.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  overflow: visible;
+}
+
+.tabs.tabs > button {
+  flex: 0 1 auto;
+  min-height: 44px;
+  padding: 7px 13px;
+  border: 1px solid var(--outline);
+  border-radius: 999px;
+  background: var(--surface-strong);
+  color: var(--text);
+  font-weight: 650;
+  white-space: normal;
+  text-align: center;
+}
+
+.tabs.tabs > button[aria-selected="true"] {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  color: var(--primary-strong);
+}
+
+.tabs.tabs > button:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.management :global(.field-control > span:not(.sr-only)) {
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 650;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.management :global(.field-control > input:not([type=checkbox])),
+.management :global(.field-control > select) {
+  min-height: 46px;
+  border-color: var(--outline-strong);
+  border-radius: 10px;
+  background-color: var(--surface-container);
+}
+
+.directoryHead.directoryHead {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.headDetail.headDetail {
+  flex: 1 0 100%;
+}

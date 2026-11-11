@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { KeyboardEvent, useEffect, useState } from "react";
 
+import { DesignPageHead, designPageHeadClasses } from "@/components/design-ledger-screen";
+import { DesignManagementSurface, DesignManagementTabs, designManagementClasses } from "@/components/design-management-presentation";
 import { ExchangeCommissionSettings } from "@/components/exchange-commission-settings";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LookupValueSettings } from "@/components/lookup-value-settings";
@@ -29,7 +31,7 @@ function isSettingsSection(value: string): value is SettingsSection {
   return settingsSections.some((section) => section.id === value);
 }
 
-export function ProfileSettingsShell({ profileId }: { profileId: string }) {
+export function ProfileSettingsShell({ profileId, visualV2 = false }: { profileId: string; visualV2?: boolean }) {
   const authoritativeSession = useAuthoritativeSession();
   const [activeSection, setActiveSection] = useState<SettingsSection>("general");
   const [profileName, setProfileName] = useState(profileId);
@@ -105,11 +107,13 @@ export function ProfileSettingsShell({ profileId }: { profileId: string }) {
 
   return (
     <section className="stack profile-settings-shell">
-      <section
-        aria-busy={isProfileLoading}
-        className="content-panel stack sportsbook-page-shell"
-      >
-        <div className="sportsbook-page-header">
+      {visualV2 ? <DesignPageHead>
+        <div><h1>Settings for {profileName} Profile</h1></div>
+        {canManageProfile ? <div className={designPageHeadClasses.actions}><Link className="button-link" data-pd-id="profile-settings.manage-profile" href={`/profiles/${profileId}/manage`}>Manage Profile</Link></div> : null}
+      </DesignPageHead> : null}
+      <DesignManagementSurface className={designManagementClasses.management} dataPdId="profile-settings.design-screen" enabled={visualV2} legacyClassName="content-panel stack sportsbook-page-shell">
+        <div aria-busy={isProfileLoading} className="stack">
+        {!visualV2 ? <div className="sportsbook-page-header">
           <h1 className="sportsbook-page-title">Settings for {profileName} Profile</h1>
           {canManageProfile ? (
             <Link
@@ -121,19 +125,14 @@ export function ProfileSettingsShell({ profileId }: { profileId: string }) {
               <span>Manage Profile</span>
             </Link>
           ) : null}
-        </div>
+        </div> : null}
         {isProfileLoading ? (
           <LedgerLoadingIndicator
             dataPdId="profile-settings.loading"
             label="Loading Profile Settings"
           />
         ) : null}
-        <div
-          aria-label="Profile settings sections"
-          className="analytics-tab-list profile-settings-tab-list"
-          data-pd-id="profile-settings.navigation.tabs"
-          role="tablist"
-        >
+        <DesignManagementTabs dataPdId="profile-settings.navigation.tabs" enabled={visualV2} label="Profile settings sections">
           {settingsSections.map((section) => (
             <button
               aria-controls={`profile-settings-panel-${section.id}`}
@@ -151,7 +150,7 @@ export function ProfileSettingsShell({ profileId }: { profileId: string }) {
               {section.label}
             </button>
           ))}
-        </div>
+        </DesignManagementTabs>
 
         <section
           aria-labelledby="profile-settings-tab-general"
@@ -197,7 +196,8 @@ export function ProfileSettingsShell({ profileId }: { profileId: string }) {
         <section aria-labelledby="profile-settings-tab-subscriber" className="analytics-tab-panel" hidden={activeSection !== "subscriber"} id="profile-settings-panel-subscriber" role="tabpanel">
           <ProfileSubscriberSettings />
         </section>
-      </section>
+        </div>
+      </DesignManagementSurface>
     </section>
   );
 }

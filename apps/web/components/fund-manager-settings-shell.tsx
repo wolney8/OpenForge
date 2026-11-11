@@ -4,7 +4,7 @@ import { useEffect, useState, type KeyboardEvent } from "react";
 
 import { CommonBetComboSettings } from "@/components/common-bet-combo-settings";
 import { DesignPageHead } from "@/components/design-ledger-screen";
-import { DesignManagementSurface } from "@/components/design-management-presentation";
+import { DesignManagementSurface, DesignManagementTabs, designManagementClasses } from "@/components/design-management-presentation";
 import { DatabaseBackupSettings } from "@/components/database-backup-settings";
 import { FundManagerAuthoritySettings } from "@/components/fund-manager-authority-settings";
 import { FundManagerNotificationSettings } from "@/components/fund-manager-notification-settings";
@@ -61,10 +61,10 @@ export function FundManagerSettingsShell({ visualV2 = false }: { visualV2?: bool
   return (
     <main className="page-shell stack" data-pd-id="fund-manager-settings.page">
       {visualV2 ? <DesignPageHead><div><h1>Settings</h1></div></DesignPageHead> : <section className="hero-panel stack"><span className="eyebrow">Fund Manager</span><h1>Settings</h1></section>}
-      <DesignManagementSurface dataPdId="fund-manager-settings.design-screen" enabled={visualV2}>
-      <div aria-label="Fund Manager settings sections" className="analytics-tab-list profile-settings-tab-list" data-pd-id="fund-manager-settings.tabs" role="tablist">
+      <DesignManagementSurface className={designManagementClasses.management} dataPdId="fund-manager-settings.design-screen" enabled={visualV2}>
+      <DesignManagementTabs dataPdId="fund-manager-settings.tabs" enabled={visualV2} label="Fund Manager settings sections">
         {sections.map((section) => <button aria-controls={`fund-manager-settings-panel-${section.id}`} aria-selected={activeSection === section.id} className={`analytics-tab${activeSection === section.id ? " is-active" : ""}`} id={`fund-manager-settings-tab-${section.id}`} key={section.id} onClick={() => selectSection(section.id)} onKeyDown={(event) => onTabKeyDown(event, section.id)} role="tab" tabIndex={activeSection === section.id ? 0 : -1} type="button">{section.label}</button>)}
-      </div>
+      </DesignManagementTabs>
       {sections.map((section) => <section aria-labelledby={`fund-manager-settings-tab-${section.id}`} className="analytics-tab-panel" hidden={activeSection !== section.id} id={`fund-manager-settings-panel-${section.id}`} key={section.id} role="tabpanel">{section.component}</section>)}
       </DesignManagementSurface>
     </main>

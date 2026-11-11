@@ -329,7 +329,7 @@ html[data-ux-shell="v2"] .guided-entry-banner::after { display: none; }
 }
 .ux-v2-main .profile-directory > .stat-strip > .stat-card + .stat-card { border-left: 1px solid var(--outline); }
 .ux-v2-main .profile-directory > .table-shell { border: 1px solid var(--outline); border-radius: .85rem; background: var(--surface); }
-.ux-v2-main .profile-settings-tab-list {
+.ux-v2-main .profile-settings-tab-list:not([data-pd-management-tabs]) {
   display: flex;
   flex-wrap: nowrap;
   gap: .2rem;
@@ -339,7 +339,7 @@ html[data-ux-shell="v2"] .guided-entry-banner::after { display: none; }
   background: transparent;
   padding: 0;
 }
-.ux-v2-main .profile-settings-tab-list > .analytics-tab {
+.ux-v2-main .profile-settings-tab-list:not([data-pd-management-tabs]) > .analytics-tab {
   flex: 0 0 auto;
   border-radius: .65rem .65rem 0 0;
   padding-inline: .9rem;

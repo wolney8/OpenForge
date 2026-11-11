@@ -682,8 +682,11 @@ for (const route of integratedRoutes) {
           await expect(page.locator('[data-pd-id="profiles.directory.panel"]')).toBeVisible({ timeout: 45_000 });
           await expect(page.locator('[data-pd-id="profiles.directory.panel"] .stat-strip')).not.toContainText(/Loading|Updating/, { timeout: 45_000 });
           const directoryTop = await page.locator('[data-pd-id="profiles.design-screen"]').evaluate(element => element.getBoundingClientRect().top);
+          const performanceDetail = page.locator('[data-pd-id="profiles.performance-history"]');
+          await performanceDetail.locator(':scope > summary').click();
           const overviewTop = await page.locator('[data-pd-id="profiles.workload"]').evaluate(element => element.getBoundingClientRect().top);
           expect(directoryTop).toBeLessThan(overviewTop);
+          await performanceDetail.locator(':scope > summary').click();
           await expect(page.locator('[data-pd-id="profiles.design-list"] a').first()).toHaveAttribute("href", /\/profiles\/[^/]+\/tracker\/dashboard/);
           const detailedDirectory = page.locator('[data-pd-id="profiles.directory.details"]');
           await detailedDirectory.locator(':scope > summary').click();
