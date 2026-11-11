@@ -178,6 +178,21 @@ test("Reports advanced controls and ledger filters remain usable at actual Chrom
     await page.getByRole("toolbar", { name: "Sportsbook column controls" }).getByRole("button", { name: "Columns", exact: true }).click();
     await expect(page.getByRole("dialog", { name: /column controls/ })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
+    await page.goto(`${baseURL}${profile}/free-bets`);
+    await expect(page.locator(".ledger-loading-overlay")).toHaveCount(0, { timeout: 45_000 });
+    const freeBetRange = page.locator('[data-pd-id="tracker.range-card.select"]');
+    await freeBetRange.click();
+    await page.getByRole("option", { name: "All Dates", exact: true }).click();
+    await expect(freeBetRange).toContainText("All Dates");
+    const row = page.locator('tr:has(td[data-ledger-row="CP117-FB-001"])');
+    await row.getByRole("button", { name: /More actions for/ }).click();
+    const actions = page.getByRole("dialog", { name: /Actions for/ });
+    await expect(actions.getByRole("button", { name: "Review settlement" })).toBeVisible();
+    const box = await actions.boundingBox();
+    expect(box).not.toBeNull();
+    expect(box!.x).toBeGreaterThanOrEqual(0);
+    expect(box!.x + box!.width).toBeLessThanOrEqual(720);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
   } finally {
     await context.close();
     await rm(scratch, { recursive: true, force: true });

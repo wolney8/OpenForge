@@ -139,6 +139,45 @@ test("native Sportsbook keeps governed row commands behind a compact action surf
   await expect(page.getByRole("dialog", { name: "Edit sportsbook row" })).toBeVisible();
 });
 
+for (const item of [
+  { module: "free-bets", rowId: "CP117-FB-001", secondary: "Review settlement" },
+  { module: "casino-offers", rowId: "CP117-CAS-001", secondary: "Review settlement" },
+  { module: "each-way-extra-places", rowId: "CP117-EP-001", secondary: "Delete Extra Place row" },
+  { module: "cash-adjustments", rowId: "CA-SEED-001", secondary: "Delete cash-adjustment row" },
+]) {
+  test(`${item.module} uses the Lab row action and preserves its governed secondary command`, async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.emulateMedia({ colorScheme: "light" });
+    await page.addInitScript(() => localStorage.setItem("openforge-theme", "light"));
+    await page.goto(`/profiles/${profile}/tracker/${item.module}`);
+    await expect(page.locator(".ledger-loading-overlay")).toHaveCount(0, { timeout: 45_000 });
+    const row = page.locator(`tr:has(td[data-ledger-row="${item.rowId}"])`).first();
+    await expect(row).toBeVisible();
+    const actions = row.locator("td").last();
+    await expect(actions.getByRole("button")).toHaveCount(2);
+    expect(await actions.evaluate(element => getComputedStyle(element).backgroundColor)).toMatch(/^rgb\(/);
+    if (item.module === "free-bets") {
+      await page.screenshot({ path: "data/private/evidence/cp117-rejected-parity/free-bets-actions-after-1440-light.png", fullPage: true });
+    }
+    await actions.getByRole("button", { name: /More actions for/ }).click();
+    const dialog = page.getByRole("dialog", { name: /Actions for/ });
+    await expect(dialog.getByRole("button", { name: item.secondary })).toBeVisible();
+    if (item.module === "free-bets" || item.module === "casino-offers") {
+      await dialog.getByRole("button", { name: item.secondary }).click();
+      await expect(page.getByRole("dialog", { name: item.module === "free-bets" ? "Update free-bet outcome" : "Update casino outcome" })).toBeVisible();
+      return;
+    }
+    if (item.module === "each-way-extra-places") {
+      await dialog.getByRole("button", { name: item.secondary }).click();
+      await expect(page.getByRole("dialog", { name: "Confirm Extra Place deletion" })).toBeVisible();
+      return;
+    }
+    await dialog.getByRole("button", { name: "Close row actions" }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(actions.getByRole("button", { name: /More actions for/ })).toBeFocused();
+  });
+}
+
 test("native Event Name uses the compact Lab scalar input", async ({ page }) => {
   await page.goto(ledger);
   const cell = page.locator('td[data-ledger-row="CP117-CELL-001"][data-ledger-column="event_name"]');

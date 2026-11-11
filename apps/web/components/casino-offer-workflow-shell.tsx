@@ -34,6 +34,7 @@ import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
 import { DesignLedgerSearch } from "@/components/design-ledger-search";
 import { DesignLedgerScreen, DesignLedgerToolbar, DesignLedgerToolbarAction, DesignLedgerPrimaryAction, DesignLedgerPagination, DesignPageHead, DesignLedgerNarrowToggle, DesignLedgerMobileRows, designPageHeadClasses, designLedgerClasses } from "@/components/design-ledger-screen";
 import { DesignLabSelect } from "@/components/design-lab-select";
+import { DesignLedgerRowActions } from "@/components/design-ledger-row-actions";
 import { LedgerViewContext } from "@/components/ledger-view-context";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerQuickActions, type LedgerQuickAction } from "@/components/ledger-quick-actions";
@@ -3620,6 +3621,10 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
     }
 
     if (column.key === "actions" && sourceRow) {
+      if (visualV2) return <DesignLedgerRowActions label={sourceRow.casino_offer_id} onOpen={() => void selectRow(sourceRow.casino_offer_id)} secondary={[
+        { label: "Review settlement", onClick: () => setOutcomeModalState({ rowId: sourceRow.casino_offer_id, status: sourceRow.status, result: sourceRow.result, date_settling: toDateTimeLocalValue(sourceRow.date_settling), final_net_pnl: sourceRow.final_net_pnl }) },
+        { label: "Delete casino-offer row", onClick: () => void handleDeleteSelectedRow(sourceRow.casino_offer_id), destructive: true },
+      ]} />;
       return (
         <div
           className="table-action-row"

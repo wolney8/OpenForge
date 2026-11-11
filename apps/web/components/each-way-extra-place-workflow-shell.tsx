@@ -26,6 +26,7 @@ import { DesignLedgerSearch } from "@/components/design-ledger-search";
 import { ledgerColumnWidths } from "@/lib/ledger-column-contracts";
 import { DesignLedgerScreen, DesignLedgerToolbar, DesignLedgerToolbarAction, DesignLedgerPrimaryAction, DesignLedgerPagination, DesignPageHead, DesignLedgerNarrowToggle, DesignLedgerMobileRows, designPageHeadClasses } from "@/components/design-ledger-screen";
 import { DesignLabSelect } from "@/components/design-lab-select";
+import { DesignLedgerRowActions } from "@/components/design-ledger-row-actions";
 import { LedgerViewContext } from "@/components/ledger-view-context";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
@@ -1920,6 +1921,7 @@ function ExtraPlaceTable({
               )}
               providerIdsByName={providerIdsByName}
               row={row}
+              visualV2={visualV2}
               visibleColumns={visibleColumns}
             />
           ))}
@@ -1944,6 +1946,7 @@ function LedgerRow({
   outsideTrackerRange,
   providerIdsByName,
   row,
+  visualV2,
   visibleColumns,
   onDelete,
   onEdit,
@@ -1954,6 +1957,7 @@ function LedgerRow({
   outsideTrackerRange: boolean;
   providerIdsByName: Record<string, string>;
   row: Row;
+  visualV2: boolean;
   visibleColumns: ExtraPlaceVisibleColumns;
   onDelete: () => void;
   onEdit: () => void;
@@ -2063,7 +2067,10 @@ function LedgerRow({
       <td {...cell("epProfit")}><EpProfit row={row} /></td>
       <td {...cell("status")}><StatusDisplay outsideTrackerRange={outsideTrackerRange} raceReady={raceReady} row={row} /></td>
       <td>
-        <div
+        {visualV2 ? <DesignLedgerRowActions label={row.runner || row.each_way_extra_place_id} onOpen={onEdit} secondary={[
+          ...outcomes.map(([result, label]) => ({ label: `Record result: ${label}`, onClick: () => onResult(result) })),
+          { label: "Delete Extra Place row", onClick: onDelete, destructive: true },
+        ]} /> : <div
           className="table-action-row extra-place-table-actions"
           onClick={(event) => event.stopPropagation()}
         >
@@ -2078,7 +2085,7 @@ function LedgerRow({
               delete
             </span>
           </button>
-        </div>
+        </div>}
       </td>
     </tr>
     </FinancialValueReplayGroup>

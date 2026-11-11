@@ -28,6 +28,7 @@ import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
 import { DesignLedgerSearch } from "@/components/design-ledger-search";
 import { DesignLedgerScreen, DesignLedgerToolbar, DesignLedgerToolbarAction, DesignLedgerPrimaryAction, DesignLedgerPagination, DesignPageHead, DesignLedgerNarrowToggle, DesignLedgerMobileRows, designPageHeadClasses } from "@/components/design-ledger-screen";
 import { DesignLabSelect } from "@/components/design-lab-select";
+import { DesignLedgerRowActions } from "@/components/design-ledger-row-actions";
 import { LedgerViewContext } from "@/components/ledger-view-context";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
@@ -1738,6 +1739,10 @@ export function CashAdjustmentWorkflowShell({ profileId, initialRecordId, initia
     }
 
     if (column.key === "actions" && sourceRow) {
+      if (visualV2) {
+        const locked = lockedFeeWithdrawalTypes.has(sourceRow.adjustment_type);
+        return <DesignLedgerRowActions label={sourceRow.cash_adjustment_id} onOpen={() => void selectRow(sourceRow.cash_adjustment_id)} openDisabled={locked} openHint={locked ? "Confirmed fee withdrawals are managed from monthly fee review" : undefined} secondary={[{ label: "Delete cash-adjustment row", onClick: () => void handleDeleteSelectedRow(sourceRow.cash_adjustment_id), disabled: locked, destructive: true }]} />;
+      }
       return (
         <div
           className="table-action-row"

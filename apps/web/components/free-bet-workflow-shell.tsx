@@ -48,6 +48,7 @@ import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
 import { DesignLedgerSearch } from "@/components/design-ledger-search";
 import { DesignLedgerScreen, DesignLedgerToolbar, DesignLedgerToolbarAction, DesignLedgerPrimaryAction, DesignLedgerPagination, DesignPageHead, DesignLedgerNarrowToggle, DesignLedgerMobileRows, designPageHeadClasses } from "@/components/design-ledger-screen";
 import { DesignLabSelect } from "@/components/design-lab-select";
+import { DesignLedgerRowActions } from "@/components/design-ledger-row-actions";
 import { LedgerViewContext } from "@/components/ledger-view-context";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
@@ -3314,6 +3315,10 @@ export function FreeBetWorkflowShell({
     }
 
     if (column.key === "actions" && sourceRow) {
+      if (visualV2) return <DesignLedgerRowActions label={sourceRow.free_bet_id} onOpen={() => void selectRow(sourceRow.free_bet_id)} secondary={[
+        { label: "Review settlement", onClick: () => setOutcomeModalState({ rowId: sourceRow.free_bet_id, status: sourceRow.status, result: sourceRow.result, date_settled: toDateTimeLocalValue(sourceRow.date_settled) }) },
+        { label: "Delete free-bet row", onClick: () => void handleDeleteSelectedRow(sourceRow.free_bet_id), destructive: true },
+      ]} />;
       return (
         <div
           className="table-action-row"
