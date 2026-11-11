@@ -47,6 +47,7 @@ export default async function TrackerModulePage({
   const requestedSearch = typeof query.search === "string" ? query.search : undefined;
   const requestedRecord = typeof query.record === "string" ? query.record : undefined;
   const requestedCreate = query.create === "1";
+  const requestedQuickCapture = query.entry === "quick";
   const requestedReturn = typeof query.returnTo === "string" ? query.returnTo : undefined;
   const returnToCombined = isCombinedLedgerModule(module) ? safeCombinedLedgerReturn(module, requestedReturn) : undefined;
   const requestedRecords = parseFeeReviewRecordIds(
@@ -129,7 +130,7 @@ export default async function TrackerModulePage({
       {module === "accounts" ? (
         <AccountsWorkflowShell profileId={profile.profileId} initialRecordId={requestedRecord} initialCreate={requestedCreate && Boolean(returnToCombined)} initialIssueFilter={requestedIssue} visualV2={visualV2} />
       ) : module === "sportsbook-bets" ? (
-        <SportsbookWorkflowShell feeReviewContext={feeReviewContext} initialIssueFilter={requestedIssue} initialQuery={requestedSearch} initialRecordId={requestedRecord} initialCreate={requestedCreate && Boolean(returnToCombined)} key={`sportsbook:${requestedRecord ?? requestedIssue ?? (requestedRecords.join(",") || "default")}`} profileId={profile.profileId} visualV2={visualV2} />
+        <SportsbookWorkflowShell feeReviewContext={feeReviewContext} initialIssueFilter={requestedIssue} initialQuery={requestedSearch} initialRecordId={requestedRecord} initialCreate={requestedCreate && Boolean(returnToCombined)} initialCreateMode={requestedQuickCapture ? "quick" : "full"} key={`sportsbook:${requestedRecord ?? requestedIssue ?? (requestedRecords.join(",") || "default")}`} profileId={profile.profileId} visualV2={visualV2} />
       ) : module === "free-bets" ? (
         <FreeBetWorkflowShell feeReviewContext={feeReviewContext} initialIssueFilter={requestedIssue} initialQuery={requestedSearch} initialRecordId={requestedRecord} initialCreate={requestedCreate && Boolean(returnToCombined)} initialTableMode={requestedView} key={`free-bets:${requestedRecord ?? requestedIssue ?? (requestedRecords.join(",") || requestedView || "default")}`} profileId={profile.profileId} visualV2={visualV2} />
       ) : module === "casino-offers" ? (

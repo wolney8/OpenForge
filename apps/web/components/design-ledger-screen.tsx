@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Suspense } from "react";
+import Link from "next/link";
 import styles from "@/components/design-lab-connected.module.css";
 import { DesignLabSelect } from "@/components/design-lab-select";
 import { ledgerPageSizeOptions } from "@/components/ledger-pagination";
@@ -62,7 +63,14 @@ export function DesignPageHead({ children, dataPdId, enabled = true }: { childre
 }
 
 export const designPageHeadClasses = { actions: styles.headActions };
-export const designLedgerClasses = { actionRow: styles.actionRow };
+export const designLedgerClasses = { actionRow: styles.actionRow, urgentRow: styles.gridUrgentRow, warningRow: styles.gridWarningRow, urgencyCue: styles.gridUrgencyCue };
+
+/** The Lab's minimal row action, shared by synthetic rows and Profile-owned records. */
+export function DesignLedgerRowAction({ label, href, onClick }: { label: string; href?: string; onClick?: () => void }) {
+  const content = <span aria-hidden="true" className="material-symbols-outlined">open_in_new</span>;
+  return href ? <Link aria-label={label} className={styles.tableAction} href={href} title={label}>{content}</Link>
+    : <button aria-label={label} className={styles.tableAction} onClick={onClick} type="button">{content}</button>;
+}
 
 export type DesignLedgerDetailRow = {
   id: string;

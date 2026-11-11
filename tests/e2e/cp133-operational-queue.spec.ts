@@ -82,10 +82,9 @@ for (const [width, mode] of [[1440, "light"], [390, "dark"]] as const) {
     await expect(page.locator('[data-pd-id="tasks.v2.pagination"]')).toContainText("Showing 1–27 of 27");
     await page.locator('[data-pd-id="tasks.v2.page-size"]').selectOption("8");
     await page.locator('[data-pd-id="tasks.v2.filter-toggle"]').click();
-    const gap = await rows.first().evaluate(element => {
-      const next = element.closest('[role="listitem"]')?.nextElementSibling?.querySelector("button");
-      return next ? next.getBoundingClientRect().top - element.getBoundingClientRect().bottom : 0;
-    });
+    const firstBounds = await rows.first().boundingBox();
+    const secondBounds = await rows.nth(1).boundingBox();
+    const gap = firstBounds && secondBounds ? secondBounds.y - (firstBounds.y + firstBounds.height) : 0;
     expect(gap).toBeGreaterThanOrEqual(5);
     if (width <= 700) await page.getByRole("button", { name: "Open navigation" }).click();
     await page.screenshot({ path: `${evidence}/today-${width}-${mode}.png`, fullPage: true });
@@ -213,7 +212,7 @@ test("CP-137 Today and combined Accounts remain contained at actual Chromium 200
     for (const route of ["/", "/reports", "/tracker", "/opportunities"]) {
       await page.goto(`${baseURL}${route}`);
       await expect(page.locator("main h1").first()).toBeVisible();
-      if (route === "/opportunities") await expect(page.locator('[data-pd-id="opportunities.source-list"]')).toContainText(/No recorded opportunities|Open Profile opportunity|Partial read:/);
+      if (route === "/opportunities") await expect(page.locator('[data-pd-id="opportunities.source-list"]')).toContainText(/No recorded opportunities|Advisory; current availability unverified|Partial read:/);
       expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth), `${route} overflow at actual 200% zoom`).toBeLessThanOrEqual(1);
       await page.screenshot({ path: `${evidence}/${route === "/" ? "position" : route.slice(1)}-200-percent.png`, fullPage: true });
     }

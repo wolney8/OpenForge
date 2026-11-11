@@ -74,6 +74,17 @@ export function combinedIssueLabels(module: CombinedLedgerModule, row: LedgerSou
   return extraPlaceHasIssue(row as unknown as Parameters<typeof extraPlaceHasIssue>[0]) ? ["All issues"] : [];
 }
 
+/** Reuse the native Sportsbook source review severity; never infer it from row text. */
+export function combinedIssueTone(module: CombinedLedgerModule, row: LedgerSourceRecord, now = Date.now()): "danger" | "warning" | null {
+  if (module === "sportsbook-bets") {
+    if (!hasStringFields(row, ["status", "result", "date_settled", "partial_lay_reminder_state"]) || typeof row.is_overdue !== "boolean") return null;
+    const issues = getSportsbookIssueBadges(row as unknown as Parameters<typeof getSportsbookIssueBadges>[0], now);
+    return issues.some(issue => issue.tone === "danger") ? "danger" : issues.length ? "warning" : null;
+  }
+  const labels = combinedIssueLabels(module, row, now);
+  return labels?.length ? "warning" : null;
+}
+
 export function combinedFilterValue(module: CombinedLedgerModule, row: LedgerSourceRecord, key: string): string {
   if (key === "back_bet_status") return presentLedgerCell(module, row, key).text;
   const value = row[key];

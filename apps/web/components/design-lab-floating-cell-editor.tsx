@@ -4,6 +4,8 @@ import { createPortal } from "react-dom";
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import styles from "./design-lab-connected.module.css";
 
+export const designFloatingCellInputClass = styles.floatingCellInput;
+
 export function DesignLabFloatingCellEditor({ anchor, label, value, originalValue, onChange, onCommit, onCancel, error, choices, inputType = "text", multiline, children, onAdvance }: {
   anchor: HTMLElement | null;
   label: string;

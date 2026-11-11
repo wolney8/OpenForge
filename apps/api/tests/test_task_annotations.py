@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 
 from openforge_api import task_annotations
 from openforge_api.auth import SESSION_COOKIE_NAME, create_session_token
+from openforge_api.common_bet_combos import ProfileOpportunityResponse
 from openforge_api.config import settings
 from openforge_api.db import connect
 from openforge_api.notifications import FundManagerNotificationResponse
@@ -54,7 +55,45 @@ def client_and_sources(monkeypatch) -> tuple[TestClient, list[FundManagerNotific
     monkeypatch.setattr(
         task_annotations, "list_fund_manager_notifications", lambda _request: sources
     )
+    monkeypatch.setattr(task_annotations, "_profile_opportunities", lambda _profile_id: [])
     return client, sources
+
+
+def test_authorised_advisory_opportunity_tracks_without_creating_financial_source(monkeypatch):
+    client, _ = client_and_sources(monkeypatch)
+    profile = "profile-demo-001"
+    opportunity = ProfileOpportunityResponse(
+        opportunity_key="DEMO-OPP-001", source="quick_action", ledger_type="Sportsbook",
+        label="Review Demo Offer", bookmaker="Bookmaker A", recurrence="One Off",
+        kind="Reload", period_key="one-off", already_created=False,
+        target_record_id="", risk_warnings=[], defaults={},
+    )
+    current = [opportunity]
+    monkeypatch.setattr(
+        task_annotations,
+        "_profile_opportunities",
+        lambda profile_id: current if profile_id == profile else [],
+    )
+    occurrence = f"profile-opportunity:{profile}:DEMO-OPP-001:one-off"
+    payload = {"changes": [{"profile_id": profile, "occurrence_key": occurrence,
+                           "tracked": True, "work_state": "To Do", "expected_version": 0}]}
+    first = client.patch("/fund-manager/tasks/annotations", json=payload)
+    assert first.status_code == 200
+    assert first.json()[0]["source_status"] == "active"
+    assert first.json()[0]["profile_name"] == "Subscriber Alpha"
+    assert client.get("/fund-manager/tasks/annotations").json()[0]["tracked"] is True
+    opportunity.already_created = True
+    assert client.get("/fund-manager/tasks/annotations").json()[0]["source_status"] == "resolved"
+    opportunity.already_created = False
+    opportunity.period_key = "next-period"
+    assert client.get("/fund-manager/tasks/annotations").json()[0]["source_status"] == "changed"
+    current.clear()
+    assert client.get("/fund-manager/tasks/annotations").json()[0]["source_status"] == "unavailable"
+    foreign = client.patch(
+        "/fund-manager/tasks/annotations",
+        json={"changes": [{**payload["changes"][0], "profile_id": "foreign-profile"}]},
+    )
+    assert foreign.status_code == 404
 
 
 def change(profile: str, *, tracked=True, version=0, state="To Do", reason=None, review=None):

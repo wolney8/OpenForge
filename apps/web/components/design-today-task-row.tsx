@@ -2,6 +2,7 @@ import { forwardRef, type HTMLAttributes, type ReactNode, type Ref } from "react
 import styles from "@/components/design-lab-today.module.css";
 
 export const designTodayTaskCollectionClass = styles.collection;
+export const designTodayPriorityGroupClass = styles.priorityGroup;
 export const designTodayTaskListClass = styles.taskList;
 export const designTodayPaginationClass = styles.pagination;
 export const designTodayContentClass = styles.content;

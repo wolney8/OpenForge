@@ -2482,7 +2482,9 @@ html[data-theme="dark"] .notification-count-badge {
 
 .ux-v2-main .ledger-table-scroll-wrap .data-table:is(.sportsbook-data-table, .accounts-data-table, .extra-place-data-table) > tbody > tr > td:last-child:not([colspan]) {
   z-index: 2;
-  background: inherit;
+  /* Sticky cells need their own opaque surface so adjacent financial columns
+     cannot show through while the wide table scrolls underneath. */
+  background: var(--ledger-sticky-action-bg, var(--surface-container));
 }
 
 /* The real ledger keeps its existing API, columns and controls. The V2 shell
@@ -8903,6 +8905,7 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
 /* Keep no-issue rows distinct without competing with stronger warning/danger states. */
 .data-table.sportsbook-data-table tbody tr:not(.row-state-issue-warning):not(.row-state-issue-caution):not(.row-state-issue-info):not(.row-state-issue-danger),
 .data-table.extra-place-data-table tbody tr:not(.row-state-issue-warning):not(.row-state-issue-caution):not(.row-state-issue-info):not(.row-state-issue-danger):not(.extra-place-row-result-due) {
+  --ledger-sticky-action-bg: var(--bet-ledger-row-surface);
   background: var(--bet-ledger-row-surface);
 }
 
@@ -8912,14 +8915,17 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
 }
 
 .data-table tbody tr.row-state-issue-warning {
+  --ledger-sticky-action-bg: color-mix(in srgb, var(--surface-strong) 94%, var(--warning) 4%);
   background: color-mix(in srgb, var(--surface-strong) 94%, var(--warning) 4%);
 }
 
 .data-table tbody tr.row-state-issue-caution {
+  --ledger-sticky-action-bg: color-mix(in srgb, var(--surface-strong) 94%, #d8872e 4%);
   background: color-mix(in srgb, var(--surface-strong) 94%, #d8872e 4%);
 }
 
 .data-table tbody tr.row-state-issue-info {
+  --ledger-sticky-action-bg: color-mix(in srgb, var(--surface-strong) 94%, #6f8aa6 4%);
   background: color-mix(in srgb, var(--surface-strong) 94%, #6f8aa6 4%);
 }
 
@@ -8957,6 +8963,7 @@ html[data-theme="dark"] .table-chip-strategy-multilay-underlay {
 }
 
 .data-table tbody tr.row-state-issue-danger {
+  --ledger-sticky-action-bg: color-mix(in srgb, var(--surface-strong) 94%, var(--danger) 4%);
   background: color-mix(in srgb, var(--surface-strong) 94%, var(--danger) 4%);
 }
 
@@ -13042,7 +13049,10 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 
 .extra-place-loadouts {
   align-items: center;
+  flex-wrap: wrap;
   gap: 0.55rem;
+  max-width: 100%;
+  min-width: 0;
   overflow: visible;
   position: relative;
   z-index: 1;
@@ -13051,6 +13061,8 @@ html[data-theme="dark"] .calculator-match-rating-pill-arp {
 
 .extra-place-loadouts .review-chip {
   flex: 0 0 auto;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .extra-place-editor-modal .form-grid,
@@ -18714,6 +18726,12 @@ html[data-ux-shell="v2"] td[data-ledger-column]:focus-visible {
 .ledger-floating-cell-editor .table-action-row { flex-wrap: wrap; }
 .ledger-floating-fields, .ledger-floating-cell-editor .table-action-row, .ledger-floating-cell-editor .workflow-panel-header { flex-shrink: 0; }
 .ledger-floating-cell-editor .error-text { min-height: 0; overflow: auto; overflow-wrap: anywhere; }
+
+/* The native scalar editor shares the Lab input and surface; these wrappers only
+   preserve the existing asynchronous native Save command and disabled fieldset. */
+.ledger-floating-compact form, .ledger-floating-compact label { display: block; min-width: 0; margin: 0; }
+.ledger-floating-compact-fields { min-width: 0; margin: 0; padding: 0; border: 0; }
+.ledger-floating-compact-fields:disabled { opacity: .7; }
 
 .ledger-floating-cell-editor .modal-primary-button:not(:disabled) {
   border-color: var(--action-positive-border);

@@ -416,7 +416,46 @@ export type DailyTaskView = {
   priorityReason: string;
   attentionRank: number;
   financialSignificance: number | null;
+  dateContext?: TaskDateContext;
 };
+
+export type TaskDateGroup = "Past Recorded Date" | "Immediate Review" | "Date Today" | "Upcoming" | "No Recorded Date";
+export type TaskDateContext = { label: string; exact: string; group: Exclude<TaskDateGroup, "Immediate Review">; kind: "event" | "expiry" | "check" | "unknown"; clarification: string };
+export const taskDateGroupOrder: readonly TaskDateGroup[] = ["Past Recorded Date", "Immediate Review", "Date Today", "Upcoming", "No Recorded Date"];
+
+/** The feed mixes source dates and reminder times. Never label a reminder as an event deadline. */
+export function presentTaskDateContext(notification: FundManagerNotification, now: Date): TaskDateContext {
+  const kind = notification.notification_type === "free_bet_expiry" ? "expiry"
+    : notification.notification_type === "settlement_review" ? "event"
+    : ["partial_lay_reminder", "free_bet_follow_up_reminder"].includes(notification.notification_type) ? "check"
+    : notification.notification_type === "profile_opportunity_reminder" && notification.settles_at ? "expiry" : "unknown";
+  const raw = notification.notification_type === "profile_opportunity_reminder" ? notification.settles_at : notification.due_at;
+  const parsed = raw && kind !== "unknown" ? new Date(raw) : null;
+  if (!parsed || Number.isNaN(parsed.getTime())) return { label: "No recorded date", exact: "No recorded source date", group: "No Recorded Date", kind: "unknown", clarification: "No source date is recorded for this task." };
+  const day = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "Europe/London" }).format(parsed);
+  const exact = new Intl.DateTimeFormat("en-GB", { dateStyle: "full", timeStyle: "short", timeZone: "Europe/London" }).format(parsed);
+  const dateKey = londonDateKey(parsed), todayKey = londonDateKey(now);
+  const group = dateKey < todayKey ? "Past Recorded Date" : dateKey === todayKey ? "Date Today" : "Upcoming";
+  const label = kind === "event" ? `${dateKey < todayKey ? "Event passed" : "Event"} ${day}`
+    : kind === "expiry" ? `${dateKey < todayKey ? "Expired" : "Expires"} ${day}` : `Expected check ${day}`;
+  const clarification = kind === "event" ? "Recorded event date; no settlement deadline is inferred."
+    : kind === "check" ? "Recorded reminder time; it does not establish an event or settlement deadline."
+    : notification.notification_type === "profile_opportunity_reminder" ? "Recorded opportunity expiry; current promotion availability is unverified." : "Recorded reward expiry.";
+  return { label, exact, group, kind, clarification };
+}
+
+export function taskDateGroup(task: DailyTaskView): TaskDateGroup {
+  if (task.notification.notification_type === "partial_lay_reminder" && task.attentionRank <= 2) return "Immediate Review";
+  return task.dateContext?.group ?? "No Recorded Date";
+}
+
+/** Priority determines which group leads; approved Lab order breaks equal-rank ties. */
+export function orderedTaskGroups(tasks: DailyTaskView[]): TaskDateGroup[] {
+  return taskDateGroupOrder.filter(group => tasks.some(task => taskDateGroup(task) === group)).sort((a, b) =>
+    Math.min(...tasks.filter(task => taskDateGroup(task) === a).map(task => task.attentionRank)) -
+    Math.min(...tasks.filter(task => taskDateGroup(task) === b).map(task => task.attentionRank)) ||
+    taskDateGroupOrder.indexOf(a) - taskDateGroupOrder.indexOf(b));
+}
 
 /** Urgent verified exposure/reward work belongs in Needs Action before its due day. */
 export function isActionableDailyTask(task: DailyTaskView): boolean {
@@ -508,6 +547,7 @@ export function deriveDailyTaskView(
         : dueKey === todayKey
           ? "today"
           : "upcoming";
+  const dateContext = presentTaskDateContext(notification, now);
   if (mode === "legacy") {
     const priority: DailyTaskPriority = completed ? "low" : dueState === "overdue" ||
       notification.notification_type === "free_bet_expiry" && dueState === "today" ? "high" :
@@ -575,11 +615,7 @@ export function deriveDailyTaskView(
     attentionRank = 4; priorityReason = "Medium — Historical lay status needs source review";
   }
   const priority: DailyTaskPriority = attentionRank <= 2 ? "high" : attentionRank <= 6 ? "medium" : "low";
-  const dueLabel = completed
-    ? "Completed"
-    : hasDue
-      ? formatNotificationDue(notification.due_at)
-      : "Ready now · no deadline";
+  const dueLabel = completed ? "Completed" : dateContext.label;
   return {
     notification,
     dueState,
@@ -591,6 +627,7 @@ export function deriveDailyTaskView(
     priorityReason,
     attentionRank,
     financialSignificance: attentionRank === 0 ? liability : attentionRank === 2 ? rewardValue : null,
+    dateContext,
   };
 }
 

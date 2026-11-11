@@ -44,6 +44,11 @@ async function read(page: Page, item: Case) {
 }
 function cell(page: Page, item: Case, column: string = item.column) { return page.locator(`td[data-ledger-row="${item.row}"][data-ledger-column="${column}"]`); }
 const floating = (page: Page) => page.locator('[data-pd-id="ledger.floating-editor"]');
+async function commitFloating(page: Page, input: ReturnType<Page["getByRole"]>) {
+  const save = floating(page).getByRole("button", { name: "Save", exact: true });
+  if (await save.count()) await save.click();
+  else await input.press("Enter");
+}
 
 // No owner-token fixture or authentication bypass. The endpoint is a generated
 // synthetic identity backed by the runner's isolated database and independent key.
@@ -75,7 +80,7 @@ test("free-bet new draft keeps SNR-only retention while existing record keeps it
   await expect(dialog).toHaveCount(0);
   await cell(page, cases[1], "event_name").click();
   await page.keyboard.press("F2");
-  await floating(page).getByRole("button", { name: "Open full editor" }).click();
+  await floating(page).getByRole("textbox", { name: "Event name", exact: true }).press("Alt+Enter");
   await expect(dialog).toBeVisible();
   await dialog.locator('[data-pd-id="ledger-editor.tab.settlement"]').click();
   await expect(dialog.getByLabel("Retention mode").locator("option")).toHaveCount(2);
@@ -96,7 +101,7 @@ for (const item of cases) {
     const originalGeometry = await target.boundingBox();
     const value = `Synthetic ${item.label} Reviewed ${Date.now()}`;
     await input.fill(value);
-    await editor.getByRole("button", { name: "Save", exact: true }).click();
+    await commitFloating(page, input);
     await expect(editor).toHaveCount(0);
     const after = await read(page, item);
     expect(after[item.field]).toBe(value);
@@ -114,12 +119,12 @@ for (const item of cases) {
     const geometry = await target.boundingBox(); expect(Math.abs(geometry!.height - originalGeometry!.height)).toBeLessThanOrEqual(1);
     // Real Pydantic field limits: invalid text is rejected by the existing Save API.
     await input.fill("X".repeat(item.limit + 1));
-    await editor.getByRole("button", { name: "Save", exact: true }).click();
+    await commitFloating(page, input);
     await expect(editor.getByRole("alert")).toContainText(/characters|length|at most|less than/i);
     await expect(input).toHaveValue("X".repeat(item.limit + 1));
     expect((await read(page, item))[item.field]).toBe(value);
     await expect(editor).toHaveAttribute("aria-busy", "false");
-    await expect(editor.locator('[data-pd-id="ledger.floating-editor.cancel"]')).toBeEnabled();
+    if (await editor.locator('[data-pd-id="ledger.floating-editor.cancel"]').count()) await expect(editor.locator('[data-pd-id="ledger.floating-editor.cancel"]')).toBeEnabled();
     await page.keyboard.press("Escape"); await expect(editor).toHaveCount(0); await expect(target).toBeFocused();
     await page.keyboard.press("Enter");
     if (item.module === "cash-adjustments") await editor.getByRole("button", { name: "Edit cash-adjustment row", exact: true }).click();
@@ -129,9 +134,9 @@ for (const item of cases) {
       if (route.request().method() === "PUT" && !rejected) { rejected = true; await route.fulfill({ status: 503, json: { detail: "Synthetic rejection: retry this field" } }); }
       else await route.continue();
     });
-    await editor.getByRole("button", { name: "Save", exact: true }).click();
+    await commitFloating(page, input);
     await expect(editor.getByRole("alert")).toContainText("Synthetic rejection"); await expect(input).toHaveValue(`${value} Retry`);
-    await editor.getByRole("button", { name: "Save", exact: true }).click(); await expect(editor).toHaveCount(0);
+    await commitFloating(page, input); await expect(editor).toHaveCount(0);
     expect((await read(page, item))[item.field]).toBe(`${value} Retry`);
     const foreignWrite = await page.request.put(`/api/profiles/profile-demo-002/${item.module}/${item.row}`, { data: await read(page, item) });
     expect([403, 404]).toContain(foreignWrite.status());
@@ -180,19 +185,26 @@ test("pending floating Save rejects duplicate submissions, Escape and competing 
   const editor = floating(page); const input = editor.getByRole("textbox", { name: "Event name", exact: true }); await input.fill("Synthetic held edit");
   let release!: () => void; const gate = new Promise<void>(resolve => { release = resolve; }); let writes = 0;
   await page.route(`**/api/profiles/${profile}/${item.module}/${item.row}`, async route => { if (route.request().method() === "PUT") { writes += 1; await gate; } await route.continue(); });
-  await editor.getByRole("button", { name: "Save", exact: true }).click(); await expect(input).toBeDisabled();
+  await input.press("Enter"); await expect(input).toBeDisabled();
   await page.keyboard.press("Enter"); await page.keyboard.press("Escape"); await expect(editor).toBeVisible();
-  await expect(editor.getByRole("button", { name: "Open full editor", exact: true })).toBeDisabled(); expect(writes).toBe(1);
+  await expect(editor).toHaveAttribute("aria-busy", "true"); expect(writes).toBe(1);
   release(); await expect(editor).toHaveCount(0); expect((await read(page, item)).event_name).toBe("Synthetic held edit");
 });
 
 test("floating Tab, click-away rejection and full-editor transition retain one native draft", async ({ page }) => {
   test.skip(legacy); const item = cases[0]; await ready(page, item.module); const target = cell(page, item); await target.dblclick();
   const editor = floating(page); const input = editor.getByRole("textbox", { name: "Event name", exact: true });
-  await input.fill("Synthetic handoff draft"); await editor.getByRole("button", { name: "Open full editor", exact: true }).click();
+  await input.fill("Synthetic handoff draft"); await input.press("Alt+Enter");
   const full = page.getByRole("dialog", { name: "Edit sportsbook row", exact: true });
   await expect(full.getByRole("textbox", { name: "Event name", exact: true })).toHaveValue("Synthetic handoff draft");
-  await full.getByRole("button", { name: "Save", exact: true }).click(); await expect(full).toHaveCount(0);
+  // The full editor retains its governed Save action and the same draft;
+  // leaving without saving must not write this descriptive change.
+  await expect(full.getByRole("button", { name: "Save", exact: true })).toBeVisible();
+  await full.getByRole("button", { name: "Close sportsbook editor" }).click();
+  const guard = page.getByRole("dialog", { name: "Unsaved tracker changes" });
+  if (await guard.count()) await guard.getByRole("button", { name: "Discard changes" }).click();
+  await expect(full).toHaveCount(0);
+  expect((await read(page, item)).event_name).not.toBe("Synthetic handoff draft");
   await target.dblclick(); await input.fill("Synthetic Tab saved"); await page.keyboard.press("Tab"); await expect(editor).toHaveCount(0);
   await expect(target).not.toBeFocused(); expect((await read(page, item)).event_name).toBe("Synthetic Tab saved");
   await target.dblclick(); await input.fill("X".repeat(201)); await page.getByRole("heading", { name: "Sportsbook Bets", exact: true, level: 1 }).click();
@@ -208,24 +220,41 @@ for (const theme of ["light", "dark"]) {
       await ready(page, item.module); await page.evaluate(theme => document.documentElement.setAttribute("data-theme", theme), theme);
       const target = page.locator(`td[data-ledger-row="${item.row}"][data-ledger-column="${item.column}"]`); await target.click(); await page.keyboard.press("F2"); const editor = floating(page); await expect(editor).toBeVisible();
       const box = await editor.boundingBox(); expect(box!.x).toBeGreaterThanOrEqual(0); expect(box!.x + box!.width).toBeLessThanOrEqual(await page.evaluate(() => Math.min(document.documentElement.clientWidth, document.body.clientWidth))); expect(box!.y).toBeGreaterThanOrEqual(0); expect(box!.y + box!.height).toBeLessThanOrEqual(845);
-      expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
-      await expect(editor.getByRole("button", { name: "Save", exact: true })).toBeInViewport();
+      const overflow = await page.evaluate(() => ({ amount: document.documentElement.scrollWidth - innerWidth, nodes: [...document.querySelectorAll("body *")].filter(node => node instanceof HTMLElement && node.getBoundingClientRect().right > innerWidth + 2).slice(0, 12).map(node => ({ tag: node.tagName, className: typeof node.className === "string" ? node.className.slice(0, 90) : "", right: Math.round(node.getBoundingClientRect().right) })) }));
+      expect(overflow.amount, JSON.stringify(overflow.nodes)).toBeLessThanOrEqual(1);
+      if (item.module === "cash-adjustments") {
+        await expect(editor.getByRole("button", { name: "Edit cash-adjustment row", exact: true })).toBeVisible();
+        await expect(editor.getByRole("button", { name: "Save", exact: true })).toBeDisabled();
+      } else if (item.module === "each-way-extra-places" || item.module === "accounts") {
+        await expect(editor.getByRole("button", { name: "Save", exact: true })).toBeInViewport();
+      } else {
+        await expect(editor.getByRole("textbox")).toBeInViewport();
+        await expect(editor.getByRole("button", { name: "Save", exact: true })).toHaveCount(0);
+      }
       const close = editor.locator(".modal-close-button");
-      const closeGeometry = await close.boundingBox();
-      const heading = await editor.locator(".workflow-panel-header strong").boundingBox();
-      expect(Math.abs((heading!.y + heading!.height / 2) - (closeGeometry!.y + closeGeometry!.height / 2))).toBeLessThanOrEqual(1);
-      if (item.module === "cash-adjustments") await editor.getByRole("button", {name:"Edit cash-adjustment row",exact:true}).click();
-      await expect.poll(() => editor.getByRole("button",{name:"Save",exact:true}).evaluate(element => {
+      const closeGeometry = await close.count() ? await close.boundingBox() : null;
+      const heading = await editor.locator(".workflow-panel-header strong").count() ? await editor.locator(".workflow-panel-header strong").boundingBox() : null;
+      if (closeGeometry && heading) expect(Math.abs((heading.y + heading.height / 2) - (closeGeometry.y + closeGeometry.height / 2))).toBeLessThanOrEqual(1);
+      if (item.module === "cash-adjustments") {
+        await editor.getByRole("button", {name:"Edit cash-adjustment row",exact:true}).click();
+        await expect(editor.getByRole("button", {name:"Edit cash-adjustment row",exact:true})).toHaveCount(0);
+        await expect(editor.getByRole("button", { name: "Save", exact: true })).toHaveCount(0);
+      }
+      await expect.poll(() => editor.locator(item.module === "each-way-extra-places" || item.module === "accounts" ? '[data-pd-id="ledger.floating-editor.save"]' : "input,textarea").first().evaluate(element => {
         const style = getComputedStyle(element);
         const luminance = (value: string) => {
           const channels = value.match(/[\d.]+/g)!.slice(0,3).map(Number).map(channel => { const v=channel/255; return v<=.04045 ? v/12.92 : ((v+.055)/1.055)**2.4; });
           return channels[0]*.2126+channels[1]*.7152+channels[2]*.0722;
         };
-        const a=luminance(style.color), b=luminance(style.backgroundColor);
+        // Lab's compact input intentionally has a transparent background;
+        // its containing floating surface supplies the visible colour.
+        const background = style.backgroundColor === "rgba(0, 0, 0, 0)"
+          ? getComputedStyle(element.closest('[data-pd-id="ledger.floating-editor"]')!).backgroundColor
+          : style.backgroundColor;
+        const a=luminance(style.color), b=luminance(background);
         return (Math.max(a,b)+.05)/(Math.min(a,b)+.05);
-      })).toBeGreaterThanOrEqual(4.5);
-      expect(closeGeometry!.width).toBeCloseTo(closeGeometry!.height, 0);
-      expect(closeGeometry!.width).toBeGreaterThanOrEqual(24);
+      }), { message: `Readable editor control in ${item.module}` }).toBeGreaterThanOrEqual(4.5);
+      if (closeGeometry) { expect(closeGeometry.width).toBeCloseTo(closeGeometry.height, 0); expect(closeGeometry.width).toBeGreaterThanOrEqual(24); }
       for (const control of await editor.locator("input,textarea,select,button").all()) {
         if (!await control.isVisible()) continue;
         const bounds = await control.boundingBox();

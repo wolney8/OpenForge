@@ -107,7 +107,7 @@ test("Sportsbook cell handoff saves through the real API and retains a failed dr
   const before = await (await page.request.get(endpoint)).json();
   const cell = page.locator('td[data-ledger-row="CP117-CELL-001"][data-ledger-column="event_name"]');
   await cell.click(); await page.keyboard.press("Enter");
-  await page.getByRole("button", { name: "Open full editor", exact: true }).click();
+  await page.locator('[data-pd-id="ledger.floating-editor"]').getByRole("textbox", { name: "Event name", exact: true }).press("Alt+Enter");
   const editor = page.getByRole("dialog", { name: "Edit sportsbook row", exact: true });
   const input = editor.getByRole("textbox", { name: "Event name", exact: true });
   const next = before.event_name.endsWith("Reviewed") ? "Synthetic cell review 1" : "Synthetic cell review 1 Reviewed";
@@ -128,7 +128,7 @@ test("Sportsbook cell handoff saves through the real API and retains a failed dr
   for (const key of ["profile_id", "status", "result", "back_stake", "back_odds", "lay_odds_1", "lay_commission_1", "exchange_name", "manual_override_value", "projected_current_pnl"]) expect(after[key]).toBe(before[key]);
   await page.reload(); await ready(page, "sportsbook-bets");
   await cell.click(); await page.keyboard.press("Enter");
-  await page.getByRole("button", { name: "Open full editor", exact: true }).click();
+  await page.locator('[data-pd-id="ledger.floating-editor"]').getByRole("textbox", { name: "Event name", exact: true }).press("Alt+Enter");
   await expect(input).toHaveValue(next);
   await page.keyboard.press("Escape");
   expect((await page.request.get('/api/profiles/profile-demo-002/sportsbook-bets/CP117-CELL-001')).status()).toBe(404);
@@ -264,7 +264,8 @@ test("actual Chromium 200% zoom keeps selected cells and native editors reachabl
       expect(floatingBounds!.x).toBeGreaterThanOrEqual(0);
       expect(floatingBounds!.x + floatingBounds!.width).toBeLessThanOrEqual(721);
       expect(floatingBounds!.y + floatingBounds!.height).toBeLessThanOrEqual(501);
-      await expect(floating.getByRole("button", {name:"Save",exact:true})).toBeInViewport();
+      if (module === "accounts") await expect(floating.getByRole("button", {name:"Save",exact:true})).toBeInViewport();
+      else { await expect(floating.getByRole("textbox", { name: "Event name", exact: true })).toBeInViewport(); await expect(floating.getByRole("button", {name:"Save",exact:true})).toHaveCount(0); }
       await page.keyboard.press("Escape"); await expect(supportedCell).toBeFocused();
     }
   } finally { await context.close(); await rm(scratch, { recursive: true, force: true }); }

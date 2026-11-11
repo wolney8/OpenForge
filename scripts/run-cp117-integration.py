@@ -85,6 +85,7 @@ def fixture_environment(
             "OPENFORGE_FUND_MANAGER_UX_V2": "true",
             "OPENFORGE_DESIGN_LAB_ENABLED": "true",
             "OPENFORGE_TASK_ANNOTATIONS_ISOLATED_ENABLED": "true",
+            "NEXT_PUBLIC_OPENFORGE_OPPORTUNITY_TASK_ANNOTATIONS_ENABLED": "true",
             "UVICORN_ACCESS_LOG": "false",
             "NEXT_TELEMETRY_DISABLED": "1",
             "PYTHONDONTWRITEBYTECODE": "1",
@@ -137,6 +138,7 @@ def seed_and_issue_session(env: dict[str, str]) -> str:
         create_each_way_extra_place,
         create_casino_offer,
         create_free_bet,
+        create_profile_quick_action,
     )
     from openforge_api.casino_offers import CasinoOfferPayload
     from openforge_api.each_way_extra_places import EachWayExtraPlacePayload
@@ -151,6 +153,20 @@ def seed_and_issue_session(env: dict[str, str]) -> str:
         )
     seed_committed_test_database()
     seed_synthetic_betting_context()
+    for profile_id in ("profile-demo-001", "profile-demo-002"):
+        create_profile_quick_action(profile_id, {
+            "ledger_type": "Sportsbook",
+            "label": f"Demo advisory opportunity for {profile_id}",
+            "enabled_fields": ["offer_name"],
+            "defaults": {
+                "bookmaker": "Bookmaker A",
+                "opportunityEnabled": "true",
+                "opportunityKind": "Reload",
+                "opportunityRecurrence": "One Off",
+                "opportunityReminderEnabled": "false",
+            },
+            "enabled": True,
+        })
     from openforge_api.task_annotations import install_isolated_schema
 
     install_isolated_schema()

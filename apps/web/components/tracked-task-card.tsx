@@ -20,11 +20,11 @@ export function TrackedTaskCard({ item, context, taskHref, onUntrack, pending = 
   const sourceState = item.source_status === "resolved" ? "Source resolved" : item.source_status === "changed" ? "Source changed · review task history" : item.source_status === "unavailable" ? "Source unavailable · review task history" : null;
   return <DesignTrackedTaskRow
     action={<Link href={actionHref} onClick={onNavigate ? event => onNavigate(event, actionHref) : undefined}>{actionLabel}</Link>}
-    context={<>{item.profile_name}{context?.task.notification.bookmaker_label ? ` · ${context.task.notification.bookmaker_label}` : ""}{active && context?.task.dueLabel ? ` · ${context.task.dueLabel}` : ""}</>}
+    context={<>{item.profile_name}{context?.task?.notification.bookmaker_label || context?.bookmakerLabel ? ` · ${context.task?.notification.bookmaker_label || context.bookmakerLabel}` : ""}{active && context?.task?.dueLabel ? ` · ${context.task.dueLabel}` : ""}</>}
     dataPdId={`tracked-task.${item.profile_id}.${item.occurrence_key}`}
-    details={sourceState ? <small>{sourceState}</small> : active && context?.task.priority === "high" ? <small>High priority · source review</small> : null}
+    details={sourceState ? <small>{sourceState}</small> : active && context?.task?.priority === "high" ? <small>High priority · source review</small> : null}
     onUntrack={event => onUntrack?.(event)} pending={pending} state={<DesignLabTaskState state={item.work_state} />}
     title={<Link href={taskHref} onClick={onNavigate ? event => onNavigate(event, taskHref) : undefined}>{item.title}</Link>}
-    untrackLabel={`Untrack ${item.title} — ${item.profile_name}`} urgent={active && context?.task.priority === "high"} variant={onNavigate ? "popup" : "banner"}
+    untrackLabel={`Untrack ${item.title} — ${item.profile_name}`} urgent={active && context?.task?.priority === "high"} variant={onNavigate ? "popup" : "banner"}
   />;
 }

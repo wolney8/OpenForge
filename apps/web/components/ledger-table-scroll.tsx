@@ -301,7 +301,7 @@ export function LedgerTableScroll({
   };
 
   const controls =
-    typeof document !== "undefined" && arrowAnchor && scrollState.hasOverflow
+    !visualV2 && typeof document !== "undefined" && arrowAnchor && scrollState.hasOverflow
       ? createPortal(
           <div
             aria-label="Table horizontal navigation"
@@ -338,6 +338,10 @@ export function LedgerTableScroll({
   return (
     <div className={`ledger-table-scroll-wrap ${narrowDetail ? styles.tableHiddenForDetail : ""} ${className}`.trim()} ref={wrapperRef}>
       {cellNavigation ? <span className="sr-only" id={instructionsId}>Use arrow keys, Home or End to select a cell. Press Enter or F2, or double-click, to open the existing {cellNavigation.label} editor. Escape clears cell selection.</span> : null}
+      {visualV2 ? <div aria-label="Table horizontal navigation" className={styles.actionRow} data-pd-id={`${dataPdId}.scroll-controls`}>
+        <button aria-label="Scroll table left" className={styles.secondaryButton} data-pd-id={`${dataPdId}.scroll-left`} disabled={!scrollState.left} onClick={() => scroll(-1)} type="button"><span aria-hidden="true" className="material-symbols-outlined">chevron_left</span></button>
+        <button aria-label="Scroll table right" className={styles.secondaryButton} data-pd-id={`${dataPdId}.scroll-right`} disabled={!scrollState.right} onClick={() => scroll(1)} type="button"><span aria-hidden="true" className="material-symbols-outlined">chevron_right</span></button>
+      </div> : null}
       <div className={`table-scroll${visualV2 ? ` ${styles.tableScroll}` : ""}`} data-pd-id={dataPdId} ref={ref}>
         {children}
       </div>

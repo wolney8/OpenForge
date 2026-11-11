@@ -90,11 +90,14 @@ for (const module of ["sportsbook-bets", "free-bets", "casino-offers", "each-way
     await page.setViewportSize({ width: 900, height: 900 });
     await page.goto(`${profile}/${module}`);
     const toolbar = page.getByRole("toolbar", { name: /ledger controls|Extra Place controls/ });
+    const columnToolbar = page.getByRole("toolbar", { name: /column controls$/i });
     await expect(toolbar).toBeVisible({ timeout: 45_000 });
     await expect(toolbar.getByRole("button", { name: "Filters", exact: true })).toBeVisible();
-    await expect(toolbar.getByRole("button", { name: "Columns", exact: true })).toBeVisible();
+    await expect(toolbar.getByRole("button", { name: "Columns", exact: true })).toHaveCount(0);
+    await expect(columnToolbar.getByRole("button", { name: "Columns", exact: true })).toBeVisible();
+    await expect(columnToolbar.getByRole("button", { name: "Restore Default Columns", exact: true })).toBeVisible();
     await expect(toolbar).not.toHaveClass(/sportsbook-review-bar/);
-    await toolbar.getByRole("button", { name: "Columns", exact: true }).click();
+    await columnToolbar.getByRole("button", { name: "Columns", exact: true }).click();
     const dialog = page.getByRole("dialog", { name: /column controls/ });
     await expect(dialog.getByText("Visible columns")).toBeVisible();
     await expect(dialog.getByText("Filter records", { exact: true })).toHaveCount(0);
@@ -113,7 +116,7 @@ test("combined ledgers keep owned rows with separate filters, columns and one pa
     await expect(toolbar).toBeVisible({ timeout: 45_000 });
     await toolbar.getByRole("button", { name: "Filters", exact: true }).click();
     await expect(page.locator(`[data-pd-id="combined.${module}.sort"]`)).toBeVisible();
-    await toolbar.getByRole("button", { name: "Columns", exact: true }).click();
+    await page.locator(`[data-pd-id="combined.${module}.secondary-toolbar"]`).getByRole("button", { name: "Columns", exact: true }).click();
     await expect(page.locator(`[data-pd-id="combined.${module}.control-panel"]`)).toContainText("Visible columns");
     await expect(page.locator(`[data-pd-id="combined.${module}.pagination.top"]`)).toBeVisible({ timeout: 45_000 });
     await expect(page.locator(`[data-pd-id="combined.${module}.table-scroll"] thead th`).last()).toHaveText("Actions");
@@ -172,7 +175,7 @@ test("Reports advanced controls and ledger filters remain usable at actual Chrom
     await page.goto(`${baseURL}${profile}/sportsbook-bets`);
     const toolbar = page.getByRole("toolbar", { name: /ledger controls/ });
     await expect(toolbar.getByRole("button", { name: "Filters", exact: true })).toBeVisible({ timeout: 45_000 });
-    await toolbar.getByRole("button", { name: "Columns", exact: true }).click();
+    await page.getByRole("toolbar", { name: "Sportsbook column controls" }).getByRole("button", { name: "Columns", exact: true }).click();
     await expect(page.getByRole("dialog", { name: /column controls/ })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
   } finally {

@@ -39,6 +39,7 @@ import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerQuickActions, type LedgerQuickAction } from "@/components/ledger-quick-actions";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
 import { LedgerFloatingCellEditor, useLedgerCellEditor, type LedgerCellSession } from "@/components/ledger-floating-cell-editor";
+import { designFloatingCellInputClass } from "@/components/design-lab-floating-cell-editor";
 
 import { CasinoFreeSpinsQuickAdd, type CasinoFreeSpinsQuickAddValues, type CasinoQuickAddLoadout } from "@/components/casino-free-spins-quick-add";
 import { LedgerSettledDeleteGuard } from "@/components/ledger-settled-delete-guard";
@@ -1718,6 +1719,46 @@ function truncateHeaderTitle(value: string, maxLength: number): string {
   return `${value.slice(0, Math.max(0, maxLength - 4)).trimEnd()} ...`;
 }
 
+function buildPersistForm(nextFormState: CasinoOfferFormState): CasinoOfferFormState {
+  const capabilities = getCasinoOfferCapabilities(nextFormState.offer_type);
+  const rewardTarget = getDerivedRewardWagerTarget(nextFormState);
+  const requiredSpins = getDerivedRequiredSpins(nextFormState);
+  const rewardRequiredSpins =
+    capabilities.hasRewardWagering && rewardTarget
+      ? calculateSpinsRequired({
+          wagerTarget: rewardTarget,
+          spinStake: nextFormState.spin_stake,
+        }).actionableSpins
+      : null;
+  return {
+    ...nextFormState,
+    date_settling: nextFormState.date_started,
+    wagering_base: casinoOfferTypeUsesFieldGroup(nextFormState.offer_type, "wagering")
+      ? getStoredCasinoWagerBase(nextFormState)
+      : nextFormState.wagering_base,
+    required_spins: requiredSpins || nextFormState.required_spins,
+    reward_type: getStoredCasinoRewardType(nextFormState),
+    reward_wager_multiplier: capabilities.hasRewardWagering
+      ? nextFormState.wager_multiplier
+      : nextFormState.reward_wager_multiplier,
+    reward_wager_target: rewardTarget || nextFormState.reward_wager_target,
+    reward_required_spins:
+      rewardRequiredSpins === null ? nextFormState.reward_required_spins : String(rewardRequiredSpins),
+    expected_reward_cash_value: casinoOfferTypeUsesFieldGroup(nextFormState.offer_type, "rewardValue")
+      ? nextFormState.free_spins_value
+      : nextFormState.expected_reward_cash_value,
+  };
+}
+
+/** Native Save preparation is the single authority for scalar eligibility. */
+export function canCasinoInlineScalarEdit(record: CasinoOfferRecord): boolean {
+  if (record.status === "Settled") return false;
+  const draft = recordToForm(record);
+  const prepared = buildPersistForm(draft);
+  return (Object.keys(draft) as (keyof CasinoOfferFormState)[])
+    .every((key) => prepared[key] === draft[key]);
+}
+
 export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initialIssueFilter, initialRecordId, initialCreate = false, feeReviewContext, visualV2 = false }: { profileId: string; initialQuery?: string; initialIssueFilter?: string; initialRecordId?: string; initialCreate?: boolean; feeReviewContext?: FeeReviewResolutionContext; visualV2?: boolean }) {
   const { catalogue: bookmakerCatalogue, providerIdsByName } =
     useBookmakerCatalogue(profileId);
@@ -3108,11 +3149,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
     }
     // A descriptive edit must not silently normalize legacy financial/date fields.
     // Compare the native Save preparation with the native draft; otherwise hand off.
-    const draft = recordToForm(record);
-    const prepared = buildPersistForm(draft);
-    const preservesOtherFields = (Object.keys(draft) as (keyof CasinoOfferFormState)[])
-      .every((key) => prepared[key] === draft[key]);
-    if (options?.cell && record.status !== "Settled" && preservesOtherFields) cellEditor.start(options.cell.column, options.cell.anchor);
+    if (options?.cell && canCasinoInlineScalarEdit(record)) cellEditor.start(options.cell.column, options.cell.anchor);
     else cellEditor.close();
     setSelectedId(rowId);
     setActiveEditorTabId("setup");
@@ -3262,37 +3299,6 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
     setActiveMoneyKeypadField(null);
     setMoneyKeypadPrimedField(null);
     setStatusMessage("");
-  }
-
-  function buildPersistForm(nextFormState: CasinoOfferFormState): CasinoOfferFormState {
-    const capabilities = getCasinoOfferCapabilities(nextFormState.offer_type);
-    const rewardTarget = getDerivedRewardWagerTarget(nextFormState);
-    const requiredSpins = getDerivedRequiredSpins(nextFormState);
-    const rewardRequiredSpins =
-      capabilities.hasRewardWagering && rewardTarget
-        ? calculateSpinsRequired({
-            wagerTarget: rewardTarget,
-            spinStake: nextFormState.spin_stake,
-          }).actionableSpins
-        : null;
-    return {
-      ...nextFormState,
-      date_settling: nextFormState.date_started,
-      wagering_base: casinoOfferTypeUsesFieldGroup(nextFormState.offer_type, "wagering")
-        ? getStoredCasinoWagerBase(nextFormState)
-        : nextFormState.wagering_base,
-      required_spins: requiredSpins || nextFormState.required_spins,
-      reward_type: getStoredCasinoRewardType(nextFormState),
-      reward_wager_multiplier: capabilities.hasRewardWagering
-        ? nextFormState.wager_multiplier
-        : nextFormState.reward_wager_multiplier,
-      reward_wager_target: rewardTarget || nextFormState.reward_wager_target,
-      reward_required_spins:
-        rewardRequiredSpins === null ? nextFormState.reward_required_spins : String(rewardRequiredSpins),
-      expected_reward_cash_value: casinoOfferTypeUsesFieldGroup(nextFormState.offer_type, "rewardValue")
-        ? nextFormState.free_spins_value
-        : nextFormState.expected_reward_cash_value,
-    };
   }
 
   function canPersistForm(nextFormState: CasinoOfferFormState): boolean {
@@ -3749,13 +3755,12 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
           {visualV2 ? <>
             <DesignLabSelect compact dataPdId="casino-offers.toolbar.status-filter" label="Status Filter" onChange={status => updateTableFilter("status", status)} options={[{ value: "", label: "All statuses" }, ...casinoFilterOptions.statuses.map(value => ({ value, label: value }))]} value={tableFilters.status} />
             <DesignLedgerToolbarAction dataPdId="casino-offers.toolbar.filter" onClick={() => { setFilterDialogView("filters"); setIsFilterModalOpen(true); }}>Filters</DesignLedgerToolbarAction>
-            <DesignLedgerToolbarAction dataPdId="casino-offers.toolbar.columns" onClick={() => { setFilterDialogView("columns"); setIsFilterModalOpen(true); }}>Columns</DesignLedgerToolbarAction>
-            <DesignLedgerToolbarAction dataPdId="casino-offers.toolbar.restore-columns" onClick={() => { setVisibleColumnKeys(new Set(defaultVisibleCasinoColumns)); setColumnWidths(defaultCasinoColumnWidths); }}>Restore Default Columns</DesignLedgerToolbarAction>
           </> : <div className="table-filter-button-wrap">
             <button aria-label="Open casino-offer filter and column controls" className={`icon-button table-filter-button${hasActiveTableControls ? " has-active-table-controls" : ""}`} onClick={() => setIsFilterModalOpen(true)} title="Filter and columns" type="button"><svg aria-hidden="true" className="table-filter-icon" fill="none" viewBox="0 0 24 24"><path d="M4 6h16l-6.5 7.3v4.9l-3 1.8v-6.7L4 6Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" /></svg>{hasActiveTableControls ? <span aria-label={`${activeTableControlCount} active table controls`} className="table-filter-badge">{activeTableControlCount > 9 ? "9+" : activeTableControlCount}</span> : null}</button>
             {hasActiveTableControls ? <button aria-label="Clear active casino-offer filters and hidden-column states" className="table-filter-clear" onClick={() => { clearTableFilters(); setVisibleColumnKeys(new Set(defaultVisibleCasinoColumns)); }} type="button">×</button> : null}
           </div>}
         </DesignLedgerToolbar>
+        {visualV2 ? <DesignLedgerToolbar ariaLabel="Casino column controls"><DesignLedgerToolbarAction dataPdId="casino-offers.toolbar.columns" onClick={() => { setFilterDialogView("columns"); setIsFilterModalOpen(true); }}>Columns</DesignLedgerToolbarAction><DesignLedgerToolbarAction dataPdId="casino-offers.toolbar.restore-columns" onClick={() => { setVisibleColumnKeys(new Set(defaultVisibleCasinoColumns)); setColumnWidths(defaultCasinoColumnWidths); }}>Restore Default Columns</DesignLedgerToolbarAction></DesignLedgerToolbar> : null}
         {!tableCollapsed ? (
           <>
             <LedgerQuickActions ledgerType="Casino" onSelect={startQuickAction} profileId={profileId} />
@@ -4255,8 +4260,8 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
         </div>
       ) : null}
 
-      {workflowVisible && cellEditor.session && inlineField ? <LedgerFloatingCellEditor session={cellEditor.session} ledger="Casino Offers" label={inlineField.label} dirty={isDirty} pending={isPersisting} error={errorMessage || statusMessage} onSave={async () => { const saved = await persistForm(formState); if (saved) cellEditor.close(); return saved; }} onCancel={() => { handleResetForm(); setWorkflowVisible(false); setSelectedId(null); selectedIdRef.current = null; cellEditor.close(); }} onReview={() => { cellEditor.close(); revealEditor(); }}>
-        <label className="field-control"><span>{inlineField.label}</span><input data-pd-id={`casino-offers.cell-editor.${inlineField.key}`} aria-label={inlineField.label} value={formState[inlineField.key]} onChange={event => { setErrorMessage(""); setFormState(current => ({ ...current, [inlineField.key]: event.target.value })); }} type="text" /></label>
+      {workflowVisible && cellEditor.session && inlineField ? <LedgerFloatingCellEditor compact session={cellEditor.session} ledger="Casino Offers" label={inlineField.label} dirty={isDirty} pending={isPersisting} error={errorMessage || statusMessage} onSave={async () => { const saved = await persistForm(formState); if (saved) cellEditor.close(); return saved; }} onCancel={() => { handleResetForm(); setWorkflowVisible(false); setSelectedId(null); selectedIdRef.current = null; cellEditor.close(); }} onReview={() => { cellEditor.close(); revealEditor(); }}>
+        <label><span className="sr-only">{inlineField.label}</span><input className={designFloatingCellInputClass} data-pd-id={`casino-offers.cell-editor.${inlineField.key}`} aria-label={inlineField.label} value={formState[inlineField.key]} onChange={event => { setErrorMessage(""); setFormState(current => ({ ...current, [inlineField.key]: event.target.value })); }} type="text" /></label>
       </LedgerFloatingCellEditor> : null}
       {workflowVisible && !cellEditor.active ? (
         <ModalBoundary onDismiss={() => void closeEditor()}>

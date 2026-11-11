@@ -14,6 +14,7 @@ export function SportsbookWorkflowShell({
   initialIssueFilter,
   initialRecordId,
   initialCreate,
+  initialCreateMode,
   feeReviewContext,
   visualV2 = false,
 }: {
@@ -22,6 +23,7 @@ export function SportsbookWorkflowShell({
   initialIssueFilter?: string;
   initialRecordId?: string;
   initialCreate?: boolean;
+  initialCreateMode?: "quick" | "full";
   feeReviewContext?: FeeReviewResolutionContext;
   visualV2?: boolean;
 }) {
@@ -29,5 +31,5 @@ export function SportsbookWorkflowShell({
     return <LegacySportsbookWorkflowShell profileId={profileId} />;
   }
 
-  return <WorkflowFirstSportsbookWorkflowShell feeReviewContext={feeReviewContext} initialIssueFilter={initialIssueFilter} initialQuery={initialQuery} initialRecordId={initialRecordId} initialCreate={initialCreate} profileId={profileId} visualV2={visualV2} />;
+  return <WorkflowFirstSportsbookWorkflowShell feeReviewContext={feeReviewContext} initialIssueFilter={initialIssueFilter} initialQuery={initialQuery} initialRecordId={initialRecordId} initialCreate={initialCreate} initialCreateMode={initialCreateMode} profileId={profileId} visualV2={visualV2} />;
 }

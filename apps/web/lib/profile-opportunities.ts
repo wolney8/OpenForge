@@ -1,8 +1,14 @@
 import { apiBaseUrl } from "@/lib/api";
 
 type Profile = { profile_id: string; display_name: string; status?: string };
-type SourceOpportunity = { opportunity_key: string; label: string; bookmaker: string; already_created: boolean; risk_warnings: string[] };
+type SourceOpportunity = { opportunity_key: string; period_key?: string; label: string; bookmaker: string; already_created: boolean; risk_warnings: string[] };
 export type OwnedOpportunity = SourceOpportunity & { profileId: string; profileName: string };
+
+/** Exact occurrence identity reviewed by the annotation source resolver. Missing period is unsupported. */
+export function opportunityAnnotationOccurrence(item: OwnedOpportunity, includeCreated = false): string | null {
+  if (!item.profileId || !item.opportunity_key || !item.period_key || item.already_created && !includeCreated) return null;
+  return `profile-opportunity:${item.profileId}:${item.opportunity_key}:${item.period_key}`;
+}
 
 /** Bounded authorised reads; a failed Profile is reported rather than counted as empty. */
 export async function loadAuthorizedProfileOpportunities(scope: string | null): Promise<{ rows: OwnedOpportunity[]; failed: string[] }> {

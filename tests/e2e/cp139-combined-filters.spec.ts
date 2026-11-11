@@ -11,8 +11,7 @@ test("Sportsbook source status filter retains scope and native return context", 
   const table = page.locator('[data-pd-id="combined.sportsbook-bets.table-scroll"]');
   await expect(table.locator("tbody tr").first()).toBeVisible();
   const status = (await table.locator('tbody tr td[data-ledger-column="status"]').first().innerText()).trim();
-  await page.locator('[data-pd-id="combined.sportsbook-bets.filters"]').click();
-  await page.locator('[data-pd-id="combined.sportsbook-bets.filter.status"]').click();
+  await page.locator('[data-pd-id="combined.sportsbook-bets.status-filter"]').click();
   await page.getByRole("option", { name: status, exact: true }).click();
   await expect(page).toHaveURL(/f_status=/);
   for (const cell of await table.locator('tbody tr td[data-ledger-column="status"]').all()) await expect(cell).toContainText(status);
@@ -23,7 +22,7 @@ test("Sportsbook source status filter retains scope and native return context", 
   await page.getByRole("button", { name: "Close sportsbook editor" }).click();
   await back.click();
   await page.locator('[data-pd-id="combined.sportsbook-bets.filters"]').click();
-  await expect(page.locator('[data-pd-id="combined.sportsbook-bets.filter.status"]')).toContainText(status);
+  await expect(page.locator('[data-pd-id="combined.sportsbook-bets.status-filter"]')).toContainText(status);
   await page.locator('[data-pd-id="combined.sportsbook-bets.clear-filters"]').click();
   await expect(page).not.toHaveURL(/f_status=/);
   await expect(page).toHaveURL(/profile=profile-demo-001/);
@@ -37,7 +36,7 @@ test("all six combined ledgers expose their existing source-field filter control
     await page.goto(`/tracker/${ledger}`);
     await expect(page.locator(`[data-pd-id="combined.${ledger}.table-scroll"]`)).toBeVisible();
     await page.locator(`[data-pd-id="combined.${ledger}.filters"]`).click();
-    await expect(page.locator(`[data-pd-id="combined.${ledger}.filter.${field}"]`)).toBeVisible();
+    await expect(page.locator(`[data-pd-id="combined.${ledger}.${field === "status" || field === "calculation_state" ? "status-filter" : `filter.${field}`}"]`)).toBeVisible();
     await expect(page.locator(`[data-pd-id="combined.${ledger}.filter.issue_type"]`)).toBeVisible();
   }
 });

@@ -32,6 +32,7 @@ import { LedgerViewContext } from "@/components/ledger-view-context";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
 import { LedgerFloatingCellEditor, useLedgerCellEditor, type LedgerCellSession } from "@/components/ledger-floating-cell-editor";
+import { designFloatingCellInputClass } from "@/components/design-lab-floating-cell-editor";
 
 import { LedgerQuickActions, type LedgerQuickAction } from "@/components/ledger-quick-actions";
 import { LedgerEditorTabPanel, LedgerEditorTabRail } from "@/components/ledger-editor-tabs";
@@ -1811,14 +1812,13 @@ export function CashAdjustmentWorkflowShell({ profileId, initialRecordId, initia
           {visualV2 ? <>
             <DesignLabSelect dataPdId="cash-adjustments.toolbar.status" label="Calculation state" value={tableFilters.calculation_state} options={[{ value: "", label: "All states" }, ...cashAdjustmentFilterOptions.calculationStates.map(value => ({ value, label: value }))]} onChange={value => updateTableFilter("calculation_state", value)} compact />
             <DesignLedgerToolbarAction dataPdId="cash-adjustments.toolbar.filter" onClick={() => { setFilterDialogView("filters"); setIsFilterModalOpen(true); }}>Filters</DesignLedgerToolbarAction>
-            <DesignLedgerToolbarAction dataPdId="cash-adjustments.toolbar.columns" onClick={() => { setFilterDialogView("columns"); setIsFilterModalOpen(true); }}>Columns</DesignLedgerToolbarAction>
-            <DesignLedgerToolbarAction dataPdId="cash-adjustments.toolbar.restore-columns" onClick={() => { setVisibleColumnKeys(new Set(defaultVisibleCashAdjustmentColumns)); setColumnWidths(defaultCashAdjustmentColumnWidths); }}>Restore Default Columns</DesignLedgerToolbarAction>
           </> : null}
           {!visualV2 ? <div className="table-filter-button-wrap">
             <button aria-label="Open cash-adjustment filter and column controls" className={`icon-button table-filter-button${hasActiveTableControls ? " has-active-table-controls" : ""}`} onClick={() => setIsFilterModalOpen(true)} title="Filter and columns" type="button"><svg aria-hidden="true" className="table-filter-icon" fill="none" viewBox="0 0 24 24"><path d="M4 6h16l-6.5 7.3v4.9l-3 1.8v-6.7L4 6Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" /></svg>{hasActiveTableControls ? <span aria-label={`${activeTableControlCount} active table controls`} className="table-filter-badge">{activeTableControlCount > 9 ? "9+" : activeTableControlCount}</span> : null}</button>
             {hasActiveTableControls ? <button aria-label="Clear active cash-adjustment filters and hidden-column states" className="table-filter-clear" onClick={() => { clearTableFilters(); setVisibleColumnKeys(new Set(defaultVisibleCashAdjustmentColumns)); }} type="button">×</button> : null}
           </div> : null}
         </DesignLedgerToolbar>
+        {visualV2 ? <DesignLedgerToolbar ariaLabel="Cash Adjustment column controls"><DesignLedgerToolbarAction dataPdId="cash-adjustments.toolbar.columns" onClick={() => { setFilterDialogView("columns"); setIsFilterModalOpen(true); }}>Columns</DesignLedgerToolbarAction><DesignLedgerToolbarAction dataPdId="cash-adjustments.toolbar.restore-columns" onClick={() => { setVisibleColumnKeys(new Set(defaultVisibleCashAdjustmentColumns)); setColumnWidths(defaultCashAdjustmentColumnWidths); }}>Restore Default Columns</DesignLedgerToolbarAction></DesignLedgerToolbar> : null}
         <LedgerQuickActions
           ledgerType="Cash Adjustments"
           onSelect={async (action: LedgerQuickAction) => {
@@ -2195,8 +2195,8 @@ export function CashAdjustmentWorkflowShell({ profileId, initialRecordId, initia
         </div>
       ) : null}
 
-      {workflowVisible && cellEditor.session && inlineField ? <LedgerFloatingCellEditor session={cellEditor.session} ledger="Cash Adjustments" label={inlineField.label} readOnly={isResolvedReadOnly} enableEditingLabel="Edit cash-adjustment row" onEnableEditing={() => setResolvedEditEnabled(true)} dirty={isDirty} pending={isPersisting} error={errorMessage || statusMessage} onSave={async () => { const saved = await persistForm(formState); if (saved) cellEditor.close(); return saved; }} onCancel={() => { handleResetForm(); setWorkflowVisible(false); setSelectedId(null); workflowVisibleRef.current = false; selectedIdRef.current = null; cellEditor.close(); }} onReview={() => { cellEditor.close(); revealEditor(); }}>
-        <label className="field-control"><span>{inlineField.label}</span><textarea data-pd-id="cash-adjustments.cell-editor.description" aria-label={inlineField.label} value={formState[inlineField.key]} onChange={event => { setErrorMessage(""); setFormState(current => ({ ...current, [inlineField.key]: event.target.value })); }} rows={3} /></label>
+      {workflowVisible && cellEditor.session && inlineField ? <LedgerFloatingCellEditor compact={!isResolvedReadOnly} session={cellEditor.session} ledger="Cash Adjustments" label={inlineField.label} readOnly={isResolvedReadOnly} enableEditingLabel="Edit cash-adjustment row" onEnableEditing={() => setResolvedEditEnabled(true)} dirty={isDirty} pending={isPersisting} error={errorMessage || statusMessage} onSave={async () => { const saved = await persistForm(formState); if (saved) cellEditor.close(); return saved; }} onCancel={() => { handleResetForm(); setWorkflowVisible(false); setSelectedId(null); workflowVisibleRef.current = false; selectedIdRef.current = null; cellEditor.close(); }} onReview={() => { cellEditor.close(); revealEditor(); }}>
+        <label><span className="sr-only">{inlineField.label}</span><textarea className={designFloatingCellInputClass} data-pd-id="cash-adjustments.cell-editor.description" aria-label={inlineField.label} value={formState[inlineField.key]} onChange={event => { setErrorMessage(""); setFormState(current => ({ ...current, [inlineField.key]: event.target.value })); }} rows={3} /></label>
       </LedgerFloatingCellEditor> : null}
       {workflowVisible && !cellEditor.active ? (
         <ModalBoundary onDismiss={() => void closeEditor()}>

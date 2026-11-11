@@ -1,13 +1,14 @@
 "use client";
 
-import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { DesignPageHead } from "@/components/design-ledger-screen";
+import { DesignTodayTaskRow, designTodayTaskListClass } from "@/components/design-today-task-row";
 import { loadAuthorizedProfileOpportunities, type OwnedOpportunity } from "@/lib/profile-opportunities";
 import styles from "@/components/design-lab-connected.module.css";
 
 export function OpportunitiesPage() {
+  const router = useRouter();
   const scope = useSearchParams().get("scope");
   const [rows, setRows] = useState<OwnedOpportunity[]>([]);
   const [failed, setFailed] = useState<string[]>([]);
@@ -36,10 +37,10 @@ export function OpportunitiesPage() {
       {error ? <p role="alert">{error}</p> : null}
       {failed.length ? <p role="alert">Partial read: {failed.join(", ")} unavailable. Only loaded Profiles are shown.</p> : null}
       {!loading && !error && !rows.length ? <p>No recorded opportunities are available for this scope.</p> : null}
-      {rows.map(item => <article className={styles.task} key={`${item.profileId}:${item.opportunity_key}`}>
-        <div><strong>{item.label}</strong><p>{item.profileName} · {item.bookmaker} · {item.already_created ? "Already created" : "Available for review"}</p>{item.risk_warnings?.length ? <p>{item.risk_warnings.join(" · ")}</p> : null}</div>
-        <Link className={styles.secondaryButton} href={`/profiles/${encodeURIComponent(item.profileId)}/tracker/accounts#profile-opportunities`}>Open Profile opportunity</Link>
-      </article>)}
+      <div className={designTodayTaskListClass} role="list">{rows.map(item => <div key={`${item.profileId}:${item.opportunity_key}`} role="listitem">
+        <DesignTodayTaskRow accessibleName={`Inspect ${item.label} · ${item.profileName}`} active={false} context={<>{item.bookmaker} · {item.profileName} · Advisory; current availability unverified{item.already_created ? " · Prospect exists" : ""}</>} dataPdId={`opportunities.item.${item.profileId}.${item.opportunity_key}`} icon="lightbulb" onClick={() => router.push(`/profiles/${encodeURIComponent(item.profileId)}/tracker/accounts#profile-opportunities`)} selectionMode="expanded" title={item.label} />
+        {item.risk_warnings?.length ? <details><summary>{item.risk_warnings.length} recorded restrictions</summary><ul>{item.risk_warnings.map(warning => <li key={warning}>{warning}</li>)}</ul></details> : null}
+      </div>)}</div>
     </section>
   </main>;
 }

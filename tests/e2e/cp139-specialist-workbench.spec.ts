@@ -416,7 +416,8 @@ for (const item of cases) {
     await page.keyboard.press("F2");
     const floating = page.locator('[data-pd-id="ledger.floating-editor"]');
     await expect(floating).toBeVisible();
-    await floating.getByRole("button", { name: "Open full editor" }).click();
+    await expect(floating.getByRole("button", { name: "Open full editor" })).toHaveCount(0);
+    await floating.getByRole("textbox").press("Alt+Enter");
     const edit = page.getByRole("dialog", { name: item.editName, exact: true });
     await expect(edit).toBeVisible();
     const input = edit.getByLabel(item.id === "casino-offers" ? "Offer name" : "Event name", { exact: true });

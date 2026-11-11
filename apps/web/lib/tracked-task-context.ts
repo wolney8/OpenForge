@@ -1,8 +1,9 @@
 import { apiBaseUrl } from "@/lib/api";
 import { deriveDailyTaskView, emptyNotificationViewState, loadDailyTaskSourceIndex, type DailyTaskView, type FundManagerNotification } from "@/lib/notifications";
+import { loadAuthorizedProfileOpportunities, opportunityAnnotationOccurrence } from "@/lib/profile-opportunities";
 import type { TaskAnnotation } from "@/lib/task-annotations";
 
-export type TrackedTaskContext = { href: string; task: DailyTaskView };
+export type TrackedTaskContext = { href: string; task?: DailyTaskView; bookmakerLabel?: string };
 export const trackedTaskKey = (profileId: string, occurrenceKey: string) => `${profileId}:${occurrenceKey}`;
 
 /** Reuse Today's source-verified ranking; a missing source read supplies no inferred urgency. */
@@ -14,8 +15,18 @@ export async function loadTrackedTaskContext(annotations: TaskAnnotation[]): Pro
   const tracked = new Set(annotations.filter(item => item.tracked).map(item => trackedTaskKey(item.profile_id, item.occurrence_key)));
   const matching = notifications.filter(item => tracked.has(trackedTaskKey(item.profile_id, item.notification_id)));
   const sources = await loadDailyTaskSourceIndex(matching);
-  return new Map(matching.map(item => [trackedTaskKey(item.profile_id, item.notification_id), {
+  const context = new Map<string, TrackedTaskContext>(matching.map(item => [trackedTaskKey(item.profile_id, item.notification_id), {
     href: item.href?.startsWith("/") && !item.href.startsWith("//") ? item.href : "",
     task: deriveDailyTaskView(item, emptyNotificationViewState, new Date(), sources),
-  }]));
+  }] satisfies [string, TrackedTaskContext]));
+  if (annotations.some(item => item.tracked && item.occurrence_key.startsWith("profile-opportunity:") && !context.has(trackedTaskKey(item.profile_id, item.occurrence_key)))) {
+    const opportunities = await loadAuthorizedProfileOpportunities(null);
+    for (const item of opportunities.rows) {
+      const occurrence = opportunityAnnotationOccurrence(item, true);
+      if (occurrence && tracked.has(trackedTaskKey(item.profileId, occurrence))) context.set(trackedTaskKey(item.profileId, occurrence), {
+        href: `/profiles/${encodeURIComponent(item.profileId)}/tracker/accounts#profile-opportunities`, bookmakerLabel: item.bookmaker,
+      });
+    }
+  }
+  return context;
 }

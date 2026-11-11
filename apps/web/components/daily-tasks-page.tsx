@@ -5,7 +5,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerPagination } from "@/components/ledger-pagination";
-import { DesignTodayBoard, DesignTodayDetail, DesignTodayFilters, DesignTodayTaskRow, DesignTodayToolbar, DesignTodayViewToggle, designTodayBoardColumnClass, designTodayBoardControlsClass, designTodayBoardDrawerClass, designTodayBoardWithDetailClass, designTodayBulkTrackClass, designTodayCollectionHeadingClass, designTodayContentClass, designTodayDetailActionsClass, designTodayDetailPaneClass, designTodayDetailTextClass, designTodayMobileDetailClass, designTodayOpportunityClass, designTodayPaginationClass, designTodayPrimaryActionClass, designTodayPropertiesClass, designTodayQueueClass, designTodayRootClass, designTodayStateEditorClass, designTodaySuggestionTriggerClass, designTodayTaskCollectionClass, designTodayTaskListClass, designTodayTaskWithActionClass, designTodayToolButtonClass, designTodayWithDetailClass } from "@/components/design-today-task-row";
+import { DesignTodayBoard, DesignTodayDetail, DesignTodayFilters, DesignTodayTaskRow, DesignTodayToolbar, DesignTodayViewToggle, designTodayBoardColumnClass, designTodayBoardControlsClass, designTodayBoardDrawerClass, designTodayBoardWithDetailClass, designTodayBulkTrackClass, designTodayCollectionHeadingClass, designTodayContentClass, designTodayDetailActionsClass, designTodayDetailPaneClass, designTodayDetailTextClass, designTodayMobileDetailClass, designTodayPaginationClass, designTodayPrimaryActionClass, designTodayPriorityGroupClass, designTodayPropertiesClass, designTodayQueueClass, designTodayRootClass, designTodayStateEditorClass, designTodaySuggestionTriggerClass, designTodayTaskCollectionClass, designTodayTaskListClass, designTodayTaskWithActionClass, designTodayToolButtonClass, designTodayWithDetailClass } from "@/components/design-today-task-row";
+import { BookmakerIdentity } from "@/components/bookmaker-identity";
+import type { MasterAccountCatalogue, MasterAccountCatalogueRecord } from "@/lib/bookmaker-catalogue";
 import { DesignLabTaskState } from "@/components/design-lab-task-state";
 import { DesignLabSelect } from "@/components/design-lab-select";
 import { DesignPageHead, designPageHeadClasses } from "@/components/design-ledger-screen";
@@ -26,6 +28,8 @@ import {
   loadPersistedNotificationPreferences,
   loadDailyTaskSourceIndex,
   loadPersistedNotificationState,
+  orderedTaskGroups,
+  taskDateGroup,
   markNotificationsRead,
   normalizeNotificationViewState,
   persistNotificationState,
@@ -39,7 +43,7 @@ import {
   type NotificationViewState,
 } from "@/lib/notifications";
 import { beginRouteTransition, endRouteTransition } from "@/lib/shell-loading";
-import { loadAuthorizedProfileOpportunities, type OwnedOpportunity } from "@/lib/profile-opportunities";
+import { loadAuthorizedProfileOpportunities, opportunityAnnotationOccurrence, type OwnedOpportunity } from "@/lib/profile-opportunities";
 import { loadTaskAnnotations, patchTaskAnnotations, TASK_ANNOTATIONS_REFRESH_EVENT, type TaskAnnotation, type TaskAnnotationChange, type TaskWorkState } from "@/lib/task-annotations";
 
 const dueViews: { id: DailyTaskDueState; label: string }[] = [
@@ -91,6 +95,7 @@ function sourceIcon(ledger: string): string {
 
 type WorkIntent = { work_state: TaskWorkState; blocked_reason: string | null; review_date: string | null };
 type WorkQueue = { task: DailyTaskView; desired: WorkIntent; revision: number; running: boolean; lastRow: TaskAnnotation | null };
+const opportunityAnnotationExtensionEnabled = process.env.NEXT_PUBLIC_OPENFORGE_OPPORTUNITY_TASK_ANNOTATIONS_ENABLED === "true";
 
 export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
   const router = useRouter();
@@ -103,6 +108,7 @@ export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
   const viewStateRef = useRef<NotificationViewState>(initialViewState);
   const [notifications, setNotifications] = useState<FundManagerNotification[]>([]);
   const [sourceIndex, setSourceIndex] = useState<DailyTaskSourceIndex>(emptyDailyTaskSourceIndex);
+  const [bookmakerCatalogue, setBookmakerCatalogue] = useState<MasterAccountCatalogueRecord[]>([]);
   const [viewState, setViewState] = useState(initialViewState);
   const [now, setNow] = useState(() => new Date());
   const [dueState, setDueState] = useState<DailyTaskDueState>("today");
@@ -137,6 +143,7 @@ export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
   const activeTaskIdRef = useRef("");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
+  const [opportunityLimit, setOpportunityLimit] = useState(5);
   const [opportunityState, setOpportunityState] = useState<{ status: "loading" | "ready" | "error"; rows: OwnedOpportunity[]; failed: string[]; error: string }>({ status: "loading", rows: [], failed: [], error: "" });
   const [narrow, setNarrow] = useState(false);
   const taskRowRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
@@ -165,6 +172,15 @@ export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
     }, 0);
     return () => { active = false; clearTimeout(timer); };
   }, [globalProfileScope, uxV2]);
+  useEffect(() => {
+    if (!uxV2) return;
+    let active = true;
+    void fetch(`${apiBaseUrl}/account-catalogue/source`, { cache: "no-store", credentials: "include" })
+      .then(async response => response.ok ? (await response.json() as MasterAccountCatalogue).records : [])
+      .then(records => { if (active) setBookmakerCatalogue(records); })
+      .catch(() => { if (active) setBookmakerCatalogue([]); });
+    return () => { active = false; };
+  }, [uxV2]);
   useEffect(() => {
     if (!uxV2) return;
     let active = true;
@@ -321,6 +337,13 @@ export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
   const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, pageCount);
   const paginated = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const pageDateGroups = sort === "priority" ? orderedTaskGroups(paginated) : [];
+  const matchedOpportunities = opportunityState.rows.map(item => ({ item, task: scopedTaskViews.find(task => task.notification.notification_type === "profile_opportunity_reminder" && task.notification.profile_id === item.profileId && task.notification.record_id === item.opportunity_key) })).filter(entry => entry.task);
+  const opportunityTargets = opportunityState.rows.flatMap(item => {
+    const task = matchedOpportunities.find(entry => entry.item.profileId === item.profileId && entry.item.opportunity_key === item.opportunity_key)?.task;
+    const occurrenceKey = task?.notification.notification_id ?? (opportunityAnnotationExtensionEnabled ? opportunityAnnotationOccurrence(item) : null);
+    return occurrenceKey ? [{ item, occurrenceKey }] : [];
+  });
   useEffect(() => {
     const target = searchParams.get("task");
     if (!uxV2 || collection !== "tracked" || !target) return;
@@ -330,7 +353,7 @@ export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
       return () => cancelAnimationFrame(frame);
     }
   }, [collection, filtered, pageSize, searchParams, uxV2]);
-  const inspectedTask = uxV2 ? paginated.find((task) => task.notification.notification_id === inspectedTaskId) : undefined;
+  const inspectedTask = uxV2 ? paginated.find((task) => task.notification.notification_id === inspectedTaskId) ?? matchedOpportunities.find(entry => entry.task?.notification.notification_id === inspectedTaskId)?.task : undefined;
   const annotationFor = (task: DailyTaskView) => annotations?.find(item => item.occurrence_key === task.notification.notification_id && item.profile_id === task.notification.profile_id);
   const workKey = (task: DailyTaskView) => `${task.notification.profile_id}:${task.notification.notification_id}`;
   const mergeAcknowledgedAnnotations = (rows: TaskAnnotation[]) => {
@@ -409,22 +432,29 @@ export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
   const trackedHistory = annotations?.filter(item => item.tracked && item.source_status !== "active" && (!globalProfileScope || item.profile_id === globalProfileScope)) ?? [];
   const savedTrackedCount = trackedCount + trackedHistory.length;
 
-  const saveAnnotations = async (rows: DailyTaskView[], tracked: boolean, override?: { work_state: TaskWorkState; blocked_reason: string | null; review_date: string | null }) => {
-    if (!annotations || trackingPending || !rows.length) return;
+  const saveAnnotationTargets = async (targets: Array<{ profileId: string; occurrenceKey: string }>, tracked: boolean, override?: { work_state: TaskWorkState; blocked_reason: string | null; review_date: string | null }) => {
+    if (!annotations || trackingPending || !targets.length) return;
     setTrackingPending(true); setActionError("");
-    const changes: TaskAnnotationChange[] = rows.map(task => {
-      const item = annotationFor(task);
-      return { profile_id: task.notification.profile_id, occurrence_key: task.notification.notification_id,
-        tracked, work_state: override?.work_state ?? item?.work_state ?? "To Do",
-        blocked_reason: override ? override.blocked_reason : item?.blocked_reason ?? null,
-        review_date: override ? override.review_date : item?.review_date ?? null,
-        expected_version: item?.version ?? 0 };
-    });
-    const result = await patchTaskAnnotations(changes);
-    if (result.error) setActionError(result.error);
-    else if (result.rows) mergeAcknowledgedAnnotations(result.rows);
+    const distinct = [...new Map(targets.map(target => [`${target.profileId}:${target.occurrenceKey}`, target])).values()];
+    let acknowledged = 0;
+    for (let offset = 0; offset < distinct.length; offset += 32) {
+      const batch: TaskAnnotationChange[] = distinct.slice(offset, offset + 32).map(target => {
+        const item = annotationsRef.current?.find(row => row.profile_id === target.profileId && row.occurrence_key === target.occurrenceKey);
+        return { profile_id: target.profileId, occurrence_key: target.occurrenceKey,
+          tracked, work_state: override?.work_state ?? item?.work_state ?? "To Do",
+          blocked_reason: override ? override.blocked_reason : item?.blocked_reason ?? null,
+          review_date: override ? override.review_date : item?.review_date ?? null,
+          expected_version: item?.version ?? 0 };
+      });
+      const result = await patchTaskAnnotations(batch);
+      if (result.error || !result.rows) { setActionError(`${acknowledged} of ${distinct.length} task changes confirmed. ${result.error ?? "Refresh and retry the remaining tasks."}`); break; }
+      mergeAcknowledgedAnnotations(result.rows);
+      acknowledged += result.rows.length;
+    }
     setTrackingPending(false);
   };
+  const saveAnnotations = (rows: DailyTaskView[], tracked: boolean, override?: { work_state: TaskWorkState; blocked_reason: string | null; review_date: string | null }) =>
+    saveAnnotationTargets(rows.map(task => ({ profileId: task.notification.profile_id, occurrenceKey: task.notification.notification_id })), tracked, override);
   const untrackHistory = async (item: TaskAnnotation) => {
     if (trackingPending) return;
     setTrackingPending(true); setActionError("");
@@ -495,7 +525,7 @@ export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
       <DesignTodayTaskRow accessibleName={`Inspect ${item.title} · ${item.profile_name}`} active={inspectedTaskId === item.notification_id}
         board={board} context={<>{item.bookmaker_label || item.ledger_label} · {item.profile_name}</>}
         controls="tasks-v2-inspector" dataPdId={`tasks.v2.row.${item.notification_id}`}
-        date={task.dueLabel} icon={sourceIcon(item.ledger_label)}
+        date={task.dueLabel} dateTime={task.dateContext?.kind !== "unknown" ? item.notification_type === "profile_opportunity_reminder" ? item.settles_at : item.due_at : undefined} icon={sourceIcon(item.ledger_label)}
         onClick={() => inspectTask(task)}
         ref={(node) => { if (node) taskRowRefs.current.set(item.notification_id, node); else taskRowRefs.current.delete(item.notification_id); }}
         selectionMode="expanded" state={annotation?.tracked ? <DesignLabTaskState state={annotation.work_state} /> : board ? priorityLabel(task.priority) : undefined}
@@ -510,8 +540,9 @@ export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
     urgent={inspectedTask.priority === "high"}>
     <dl className={designTodayPropertiesClass}>
       <div><dt>Profile</dt><dd>{inspectedTask.notification.profile_name}</dd></div>
-      <div><dt>Bookmaker / Provider</dt><dd>{inspectedTask.notification.bookmaker_label || inspectedTask.notification.ledger_label}</dd></div>
-      <div><dt>Date Context</dt><dd>{inspectedTask.dueLabel}</dd></div>
+      <div><dt>Bookmaker / Provider</dt><dd><BookmakerIdentity bookmaker={inspectedTask.notification.bookmaker_label || inspectedTask.notification.ledger_label} catalogue={bookmakerCatalogue} mode="Brand badge" /></dd></div>
+      <div><dt>Date Context</dt><dd>{inspectedTask.dueLabel}{inspectedTask.dateContext ? <small title={inspectedTask.dateContext.exact}>{inspectedTask.dateContext.clarification} {inspectedTask.dateContext.kind !== "unknown" ? inspectedTask.dateContext.exact : ""}</small> : null}</dd></div>
+      {(() => { const source = inspectedTask.notification.ledger_label === "Sportsbook Bets" ? sourceIndex.sportsbook.get(`${inspectedTask.notification.profile_id}:${inspectedTask.notification.record_id}`) : inspectedTask.notification.ledger_label === "Free Bets" ? sourceIndex.freeBets.get(`${inspectedTask.notification.profile_id}:${inspectedTask.notification.record_id}`) : undefined; return source ? <><div><dt>Recorded Status</dt><dd><span className={`table-chip${["Placed", "Settled"].includes(source.status ?? "") ? ` table-chip-status-${source.status!.toLowerCase()}` : ""}`}>{source.status || "Not recorded"}</span></dd></div><div><dt>Recorded Result</dt><dd>{source.result || "Not recorded"}</dd></div>{inspectedTask.notification.notification_type === "settlement_review" ? <div><dt>Settlement</dt><dd>Not yet recorded</dd></div> : null}</> : null; })()}
       <div><dt>Task Type</dt><dd>{taskTypeLabel(inspectedTask.notification.notification_type)}</dd></div>
       <div><dt>Priority</dt><dd>{inspectedTask.priorityReason}</dd></div>
       {annotations ? <div><dt>Work State</dt><dd><DesignLabTaskState state={annotationFor(inspectedTask)?.work_state ?? "To Do"} /></dd></div> : null}
@@ -643,7 +674,7 @@ export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
                 <div className={designTodayQueueClass}>
                   {layout === "List" ? <section aria-label={collection === "tracked" ? "Tracked Tasks" : "Needs Action"} className={designTodayTaskCollectionClass} data-pd-id="tasks.v2.collection">
                     <div className={designTodayCollectionHeadingClass}><h2>{collection === "tracked" ? "Tracked Tasks" : dueState === "today" ? "Needs Action" : dueViews.find(view => view.id === dueState)?.label} <span>{paginated.length}</span></h2>{annotations && paginated.length ? <button aria-label={`${paginated.every(task => annotationFor(task)?.tracked) ? "Untrack" : "Track"} all ${paginated.length} tasks on this page only`} className={designTodayBulkTrackClass} data-pd-id="tasks.v2.bulk-track" disabled={trackingPending} onClick={() => void saveAnnotations(paginated, !paginated.every(task => annotationFor(task)?.tracked))} type="button">{paginated.every(task => annotationFor(task)?.tracked) ? "Untrack All" : "Track All"} · This page ({paginated.length})</button> : null}</div>
-                    <div aria-label="Tasks" className={designTodayTaskListClass} role="list">{paginated.map(task => taskRow(task))}</div>
+                    <div aria-label="Tasks" className={designTodayTaskListClass} role="list">{pageDateGroups.length ? pageDateGroups.map(group => <section aria-label={group} className={designTodayPriorityGroupClass} data-pd-id={`tasks.v2.date-group.${group.toLowerCase().replaceAll(" ", "-")}`} key={group}><h3>{group}</h3>{paginated.filter(task => taskDateGroup(task) === group).map(task => taskRow(task))}</section>) : paginated.map(task => taskRow(task))}</div>
                     {collection === "tracked" && trackedHistory.length ? <details data-pd-id="tasks.v2.tracked-history" onToggle={event => setSourceHistoryOpen(event.currentTarget.open)} open={sourceHistoryOpen ?? filtered.length === 0}><summary>Source history and unavailable tasks ({trackedHistory.length})</summary>{trackedHistory.map(item => <p key={`${item.profile_id}:${item.occurrence_key}`}>{item.title} · {item.source_status === "resolved" ? "Source Resolved" : item.source_status === "changed" ? "Source Changed" : "Source Unavailable"} <button aria-label={`Untrack ${item.title} from history`} disabled={trackingPending} onClick={() => void untrackHistory(item)} type="button">Untrack</button></p>)}</details> : null}
                     {!paginated.length ? <p className="ux-v2-task-empty">No tasks match these controls.</p> : null}
                   </section> : <>
@@ -667,13 +698,15 @@ export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
                       <p className="ux-v2-task-empty">Recurring scheduling is not connected. Configured routines require a separate production scheduling authority.</p>
                     </section>
                     <section aria-label="Opportunities / Suggestions" className={designTodayTaskCollectionClass} data-pd-id="tasks.v2.suggestions">
-                      <div className={designTodayCollectionHeadingClass}><button aria-expanded={suggestionsOpen} className={designTodaySuggestionTriggerClass} onClick={() => setSuggestionsOpen(value => !value)} type="button"><span aria-hidden="true" className="material-symbols-outlined">{suggestionsOpen ? "expand_less" : "expand_more"}</span>Opportunities / Suggestions <small>{opportunityState.status === "ready" && !opportunityState.failed.length ? opportunityState.rows.length : "Source status"}</small></button></div>
+                      <div className={designTodayCollectionHeadingClass}><button aria-expanded={suggestionsOpen} className={designTodaySuggestionTriggerClass} onClick={() => setSuggestionsOpen(value => !value)} type="button"><span aria-hidden="true" className="material-symbols-outlined">{suggestionsOpen ? "expand_less" : "expand_more"}</span>Opportunities / Suggestions <small>{opportunityState.status === "ready" && !opportunityState.failed.length ? opportunityState.rows.length : "Source status"}</small></button>{annotations && opportunityTargets.length ? <button aria-label={`Track all ${opportunityTargets.length} source-backed opportunities in this scope`} className={designTodayBulkTrackClass} disabled={trackingPending} onClick={() => void saveAnnotationTargets(opportunityTargets.map(target => ({ profileId: target.item.profileId, occurrenceKey: target.occurrenceKey })), true)} type="button">Track All · {opportunityTargets.length} source-backed</button> : null}</div>
                       {suggestionsOpen ? <div>
                         {opportunityState.status === "loading" ? <p role="status">Loading Profile opportunities…</p> : null}
                         {opportunityState.status === "error" ? <p role="alert">{opportunityState.error}</p> : null}
                         {opportunityState.failed.length ? <p role="alert">Partial read: {opportunityState.failed.join(", ")} unavailable. Loaded Profiles only.</p> : null}
                         {opportunityState.status === "ready" && !opportunityState.rows.length && !opportunityState.failed.length ? <p className="ux-v2-task-empty">No recorded Profile opportunities in this scope.</p> : null}
-                        {opportunityState.rows.map(item => <div className={designTodayOpportunityClass} key={`${item.profileId}:${item.opportunity_key}`}><strong>{item.label}</strong><small>{item.profileName} · {item.bookmaker} · Advisory; current availability is unverified.</small><Link href={`/profiles/${encodeURIComponent(item.profileId)}/tracker/accounts#profile-opportunities`}>Review Profile opportunity</Link></div>)}
+                        {opportunityState.rows.slice(0, opportunityLimit).map(item => { const task = matchedOpportunities.find(entry => entry.item.profileId === item.profileId && entry.item.opportunity_key === item.opportunity_key)?.task; const target = opportunityTargets.find(entry => entry.item.profileId === item.profileId && entry.item.opportunity_key === item.opportunity_key); const annotation = target ? annotations?.find(row => row.profile_id === item.profileId && row.occurrence_key === target.occurrenceKey) : null; return <div className={designTodayTaskWithActionClass} key={`${item.profileId}:${item.opportunity_key}`}><DesignTodayTaskRow accessibleName={`Inspect ${item.label} · ${item.profileName}`} active={inspectedTaskId === task?.notification.notification_id} context={<>{item.bookmaker} · {item.profileName} · Advisory; availability unverified</>} dataPdId={`opportunities.item.${item.profileId}.${item.opportunity_key}`} icon="lightbulb" onClick={() => task ? inspectTask(task) : router.push(`/profiles/${encodeURIComponent(item.profileId)}/tracker/accounts#profile-opportunities`)} ref={node => { if (node && task) taskRowRefs.current.set(task.notification.notification_id, node); }} selectionMode="expanded" title={item.label} />{target && annotations ? <button aria-label={`${annotation?.tracked ? "Untrack" : "Track"} ${item.label} · ${item.profileName}`} aria-pressed={Boolean(annotation?.tracked)} className={designTodayBulkTrackClass} disabled={trackingPending || annotation?.source_status === "resolved"} onClick={() => void saveAnnotationTargets([{ profileId: item.profileId, occurrenceKey: target.occurrenceKey }], !annotation?.tracked)} type="button">{annotation?.tracked ? "Untrack" : "Track"}</button> : null}</div>; })}
+                        {opportunityState.rows.length > opportunityLimit ? <button className={designTodayToolButtonClass} onClick={() => setOpportunityLimit(limit => Math.min(limit + 5, opportunityState.rows.length))} type="button">Show 5 more</button> : null}
+                        {opportunityState.rows.length ? <Link href="/opportunities">View All Opportunities ({opportunityState.rows.length})</Link> : null}
                       </div> : null}
                     </section>
                   </> : null}

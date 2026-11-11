@@ -2,6 +2,16 @@
 
 Complete this for every feature, bug fix, component, fixture-backed UI, route or page change.
 
+## CP-117 rejected Today and ledger parity — 2026-11-11 / #118
+
+- [x] Registered PD-PR-117A-90–96 against the connected Lab before correction. Kept the approved Lab composition and the production financial, permission and annotation authorities distinct.
+- [x] Rendered source-derived Today eyebrow groups on one eight-item page, typed London date context and canonical provider/status evidence; retained inspector-open Track behaviour. Checked missing and unknown source dates in focused units.
+- [x] Reused the Lab suggestion row on Today and Opportunities. Isolated opportunity annotations use authorised Profile occurrence identities, existing versioned storage and bounded batch writes. The normal activation flag remains OFF pending separate API approval.
+- [x] Added distinct unsaved Sportsbook Quick Capture and governed workbench entry, primary status and secondary column controls, above-grid scroll actions and source-backed row review treatment without changing financial calculations.
+- [x] Reused the Lab compact scalar input for supported native and combined cells. Existing Profile-owned GET/PUT, correction gates, stale-field check and confirmed-save behaviour remain; protected/composite fields keep governed handoff.
+- [x] Captured 900px dark and 390px light actual Lab/real Today and Sportsbook pairs, with private recordings, responsive/focus/overflow checks and source/permission assertions. Relevant pre-fix failures are retained in the test evidence.
+- [x] Final-source visual 212/212, V2 integration 98 passed/5 expected skips, flag-OFF 9/9, web units 718/718, typecheck and build passed. Lint: zero errors and 12 inherited warnings. Non-Sportsbook row-action presentation remains an open correction; owner visual sign-off and manual spoken screen-reader review remain separate.
+
 ## CP-117 remaining presentation batch — 2026-11-11 / #118
 
 - [x] Scoped PD-PR-117A-86–89 against the approved connected Lab and preserved the starting candidate. Matched Position, Today, Reports and Sportsbook shell geometry at 900px; the existing shared gutters needed evidence, not a new offset.

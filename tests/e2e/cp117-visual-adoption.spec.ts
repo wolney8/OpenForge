@@ -125,7 +125,12 @@ for (const route of routes) {
           await page.locator('[data-pd-id="tasks.loading-shell"]').waitFor({ state: "hidden", timeout: 45_000 });
         } else if (route.name === "opportunities") {
           await page.getByText("Loading authorised opportunities…").waitFor({ state: "hidden", timeout: 45_000 });
-          await expect(page.locator('[data-pd-id="opportunities.source-list"]')).toContainText(/No recorded opportunities|Open Profile opportunity|Partial read:/);
+          const opportunities = page.locator('[data-pd-id="opportunities.source-list"]');
+          await expect(opportunities).toContainText(/No recorded opportunities|Advisory; current availability unverified|Partial read:/);
+          if (await opportunities.getByRole("listitem").count()) {
+            await expect(opportunities.getByRole("listitem").first()).toContainText("lightbulb");
+            await expect(opportunities.getByRole("listitem").first()).toContainText("chevron_right");
+          }
         }
         await setTheme(page, theme);
         await noPageOverflow(page);
@@ -599,7 +604,8 @@ test("Sportsbook floating and full editor use the integrated V2 surfaces", async
   await expect(floating).toBeVisible();
   await noPageOverflow(page);
   await page.screenshot({ path: join(evidence, "v2-sportsbook-floating-1440-light.png"), fullPage: true });
-  await floating.getByRole("button", { name: "Open full editor" }).click();
+  await expect(floating.getByRole("button", { name: "Open full editor" })).toHaveCount(0);
+  await floating.getByRole("textbox").press("Alt+Enter");
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
   await noPageOverflow(page);
@@ -950,7 +956,9 @@ for (const { width, theme } of [{ width: 1440, theme: "light" }, { width: 390, t
       await setTheme(page, theme);
       const realSurface = page.locator(`[data-pd-id="${ledger.key}.design-screen"]`);
       await expect(realSurface).toBeVisible();
-      await expect(realSurface.getByRole("toolbar")).toBeVisible();
+      await expect(realSurface.getByRole("toolbar").first()).toBeVisible();
+      if (ledger.key === "accounts") await expect(realSurface.locator('[data-pd-id="accounts.toolbar.columns"]')).toBeVisible();
+      else await expect(realSurface.getByRole("toolbar").nth(1)).toBeVisible();
       await expect(realSurface.locator("table").first()).toBeVisible();
       await expect(realSurface.locator("tbody tr").first()).toBeAttached({ timeout: 45_000 });
       await expect(page.locator(".ledger-loading-overlay")).toHaveCount(0, { timeout: 45_000 });

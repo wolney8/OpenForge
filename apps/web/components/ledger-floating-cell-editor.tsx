@@ -18,7 +18,7 @@ export function useLedgerCellEditor() {
   };
 }
 
-export function LedgerFloatingCellEditor({ session, ledger, label, dirty, error, pending = false, children, onSave, onCancel, onReview, readOnly = false, onEnableEditing, enableEditingLabel }: {
+export function LedgerFloatingCellEditor({ session, ledger, label, dirty, error, pending = false, children, onSave, onCancel, onReview, readOnly = false, onEnableEditing, enableEditingLabel, compact = false }: {
   session: LedgerCellSession;
   ledger: string;
   label: string;
@@ -32,6 +32,7 @@ export function LedgerFloatingCellEditor({ session, ledger, label, dirty, error,
   readOnly?: boolean;
   onEnableEditing?: () => void;
   enableEditingLabel?: string;
+  compact?: boolean;
 }) {
   const root = useRef<HTMLDivElement>(null);
   const saving = useRef(false);
@@ -71,7 +72,7 @@ export function LedgerFloatingCellEditor({ session, ledger, label, dirty, error,
     const update = () => {
       const cell = session.anchor.getBoundingClientRect();
       const viewportWidth = Math.min(document.documentElement.clientWidth, document.body.clientWidth);
-      const width = Math.min(viewportWidth - 16, Math.max(360, Math.min(cell.width, 520)));
+      const width = Math.min(viewportWidth - 16, compact ? Math.max(260, Math.min(cell.width, 400)) : Math.max(360, Math.min(cell.width, 520)));
       const height = Math.min(root.current?.offsetHeight ?? 240, window.innerHeight - 16);
       setPosition({ left: Math.max(8, Math.min(cell.left, viewportWidth - width - 8)), top: Math.max(8, Math.min(cell.top, window.innerHeight - height - 8)), width, maxHeight: window.innerHeight - 16 });
     };
@@ -79,7 +80,7 @@ export function LedgerFloatingCellEditor({ session, ledger, label, dirty, error,
     const observer = new ResizeObserver(update); if (root.current) observer.observe(root.current);
     window.addEventListener("resize", update); window.addEventListener("scroll", update, true);
     return () => { observer.disconnect(); window.removeEventListener("resize", update); window.removeEventListener("scroll", update, true); };
-  }, [session.anchor]);
+  }, [session.anchor, compact]);
   useEffect(() => {
     const target = root.current?.querySelector<HTMLElement>('input:not(:disabled),textarea:not(:disabled),select:not(:disabled),button[data-initial-focus]');
     target?.focus(); if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) target.select();
@@ -101,21 +102,21 @@ export function LedgerFloatingCellEditor({ session, ledger, label, dirty, error,
     return () => { document.removeEventListener("pointerdown", outside, true); document.removeEventListener("click", click, true); document.removeEventListener("pointerup", release, true); };
   });
   const message = error ? formatApiErrorBody(error, "Unable to save this field.") : unconfirmed;
-  return createPortal(<div aria-label={`Edit ${ledger} ${label}`} aria-busy={blocked} aria-describedby={instructionsId} className={`${styles.floatingCellEditor} content-subpanel stack-tight ledger-floating-cell-editor`} data-pd-id="ledger.floating-editor" ref={root} role="group" style={position} onKeyDown={event => {
+  return createPortal(<div aria-label={`Edit ${ledger} ${label}`} aria-busy={blocked} aria-describedby={instructionsId} className={`${styles.floatingCellEditor}${compact ? " ledger-floating-compact" : " content-subpanel stack-tight ledger-floating-cell-editor"}`} data-pd-id="ledger.floating-editor" ref={root} role="group" style={position} onKeyDown={event => {
     if (event.defaultPrevented) return;
     if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); cancel(); }
-    if (event.altKey && event.key === "Enter" && !blocked) { event.preventDefault(); session.anchor.focus({ preventScroll: true }); onReview(); }
+    if (event.altKey && event.key === "Enter" && !blocked) { event.preventDefault(); session.anchor.focus({ preventScroll: true }); onReview(); return; }
     const plainField = event.target instanceof Element && event.target.matches('input:not([role="combobox"]),textarea');
     if (plainField && event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void commit(); }
     if (plainField && event.key === "Tab") { event.preventDefault(); void commit(event.shiftKey ? "previous" : "next"); }
   }}>
-    <div className="workflow-panel-header"><strong>{label}</strong><button data-pd-id="ledger.floating-editor.cancel" aria-label={`Cancel ${ledger} ${label} edit`} className="modal-close-button" disabled={blocked} onClick={cancel} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button></div>
+    {!compact ? <div className="workflow-panel-header"><strong>{label}</strong><button data-pd-id="ledger.floating-editor.cancel" aria-label={`Cancel ${ledger} ${label} edit`} className="modal-close-button" disabled={blocked} onClick={cancel} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button></div> : null}
     {readOnly ? <p className="muted" role="status">Read-only row. Choose Edit to enable this field.</p> : null}
     <form onChange={() => setUnconfirmed("")} onSubmit={event => { event.preventDefault(); void commit(); }}>
-      <fieldset data-pd-id="ledger.floating-editor.fields" aria-describedby={message ? errorId : undefined} className="ledger-floating-fields" disabled={blocked || readOnly}>{children}</fieldset>
-      {message ? <p className="error-text" id={errorId} role="alert">{message}</p> : null}
-      <div className="table-action-row"><button data-pd-id="ledger.floating-editor.full" aria-keyshortcuts="Alt+Enter" className="review-chip" disabled={blocked} onClick={() => { session.anchor.focus({ preventScroll: true }); onReview(); }} type="button">Open full editor</button>{readOnly && onEnableEditing ? <button data-pd-id="ledger.floating-editor.enable" aria-label={enableEditingLabel ?? `Edit ${ledger} row`} className="review-chip" data-initial-focus disabled={blocked} onClick={() => { onEnableEditing(); requestAnimationFrame(() => root.current?.querySelector<HTMLElement>("input,textarea,select")?.focus()); }} type="button">Edit</button> : null}<button data-pd-id="ledger.floating-editor.save" className="modal-primary-button" disabled={blocked || readOnly} type="submit">{blocked ? <><span aria-hidden="true" className="button-spinner"/>Saving</> : "Save"}</button></div>
+      <fieldset data-pd-id="ledger.floating-editor.fields" aria-describedby={message ? errorId : undefined} className={compact ? "ledger-floating-compact-fields" : "ledger-floating-fields"} disabled={blocked || readOnly}>{children}</fieldset>
+      {message ? <p className={compact ? styles.floatingCellError : "error-text"} id={errorId} role="alert">{message}</p> : null}
+      {compact ? <span className="sr-only" role="status">{blocked ? "Saving field…" : ""}</span> : <div className="table-action-row"><button data-pd-id="ledger.floating-editor.full" aria-keyshortcuts="Alt+Enter" className="review-chip" disabled={blocked} onClick={() => { session.anchor.focus({ preventScroll: true }); onReview(); }} type="button">Open full editor</button>{readOnly && onEnableEditing ? <button data-pd-id="ledger.floating-editor.enable" aria-label={enableEditingLabel ?? `Edit ${ledger} row`} className="review-chip" data-initial-focus disabled={blocked} onClick={() => { onEnableEditing(); requestAnimationFrame(() => root.current?.querySelector<HTMLElement>("input,textarea,select")?.focus()); }} type="button">Edit</button> : null}<button data-pd-id="ledger.floating-editor.save" className="modal-primary-button" disabled={blocked || readOnly} type="submit">{blocked ? <><span aria-hidden="true" className="button-spinner"/>Saving</> : "Save"}</button></div>}
     </form>
-    <span className="sr-only" id={instructionsId}>Save commits this field. Escape cancels after nested choices close. In text fields, Enter saves and Tab saves and moves between cells. Alt+Enter opens the full editor with this draft.</span>
+    <span className="sr-only" id={instructionsId}>{compact ? "Enter commits this field; Tab commits and moves after a confirmed Save; Escape cancels. Alt+Enter opens the full editor with this draft." : "Save commits this field. Escape cancels after nested choices close. In text fields, Enter saves and Tab saves and moves between cells. Alt+Enter opens the full editor with this draft."}</span>
   </div>, document.body);
 }

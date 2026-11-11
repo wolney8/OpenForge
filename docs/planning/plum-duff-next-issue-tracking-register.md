@@ -1,5 +1,9 @@
 # Plum Duff Next Issue Tracking Register
 
+## Current CP-117 rejected Today/ledger parity — 2026-11-11
+
+`PD-PR-117A-90–96` in the [current UI change register](../agent-contracts/plum-duff-ui-change-register.md#cp-117-rejected-today-and-ledger-parity--2026-11-11--118) preserve each owner-rejected Today, opportunity, ledger, Quick Capture, scalar-edit and evidence requirement under open [#118](https://github.com/wolney8/OpenForge/issues/118). Focused branch-only corrections are in progress. Opportunity source-resolution is tested with disposable storage, but normal API activation is a separate explicit gate; recurring scheduling, saved views, new combined KPIs and the Sportsbook fixed-stage decision remain separate. No request is closed by a shared component import or synthetic screenshot.
+
 ## CP-117 integrated adoption — 2026-11-03
 
 `PD-PR-117A-01–16` in the [UI change register](../agent-contracts/plum-duff-ui-change-register.md#cp-117-design-lab-adoption--2026-11-03) retain the owner's discovery, reversible integration, full-module parity, isolated Lab review instance, real-ledger presentation, Playwright recording and owner-promotion gates. [GitHub issue #118](https://github.com/wolney8/OpenForge/issues/118) tracks the live adoption scope; [#114](https://github.com/wolney8/OpenForge/issues/114) retains the earlier platform audit. The existing Wave 1 shell is the real baseline; lab-only task state, notification triage and financial editing do not become production authorities by copying their UI. Issue #118 is verified; the checkpoint receipt records the current subitem sync state.

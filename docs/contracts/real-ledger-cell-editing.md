@@ -4,7 +4,7 @@
 
 ## Authority
 
-This is a presentation adapter to existing loaded native record drafts, typed controls, validation and Save commands. It creates no financial calculation, mutation engine, API or schema. Existing Add/Edit and protected correction paths remain authoritative. The V2 flag defaults OFF; OFF retains native row interaction.
+Native cell editing uses loaded record drafts, typed controls, validation and Save commands. Combined-scope scalar editing rereads the exact Profile-owned record, checks the allowlist and field staleness, then submits that full record through the existing Profile-owned PUT and API validation; it does not add a generic PATCH or cross-Profile write authority. Casino eligibility reuses the native Save-preparation gate so a descriptive edit cannot normalize other legacy fields. Existing Add/Edit and protected correction paths remain authoritative. The V2 flag defaults OFF; OFF retains native row interaction.
 
 ## Field map
 
@@ -23,7 +23,7 @@ The map is an allowlist, never a generic permission inferred from a field lookin
 
 Single click selects; arrows/Home/End move within the shared semantic table. Enter/F2/double-click opens a supported floating field or the existing populated specialist editor. All source/Profile identities remain from the native selected record, not cell text. Full editor transition retains the same draft.
 
-The floating editor uses shared semantic surfaces/actions and native labelled fields. Enter/Save submits the existing command once. Pending disables input and conflicting actions before awaiting the response; later edits cannot be silently acknowledged as part of an earlier snapshot. Failed and invalid saves retain draft and accurate native errors. Escape/Cancel reverts the local native draft. Tab saves then moves using the shared cell navigator. Changed click-away attempts Save and blocks competing actions until the result is known; it never dismisses a rejected draft.
+Editable scalar fields use the approved Lab anchored input, without a visible title, close action, Save button or full-editor footer. Its accessible field name and keyboard instructions remain available. Enter, Tab or Shift+Tab and changed click-away submit the existing native command once and await acknowledgement; Tab moves only after success. Pending disables input and conflicting actions. Failed and invalid saves retain the same draft and accurate native errors. Escape cancels an unsaved edit. Composite selectors, multi-field controls, protected rows and correction gates retain their governed populated editor or specialist control. Financial forms continue to require their explicit Save/confirmation action.
 
 The table stays mounted and geometrically stable. Only the floating presentation is active; it does not also mount or focus-trap a hidden full modal. Resize/scroll keeps the editor within the viewport; nested controls preserve their own Escape/selection ownership. Focus returns to the connected cell. Native row actions, pan suppression and text selection stay intact.
 
@@ -55,6 +55,4 @@ Default disposable review URLs are web `http://127.0.0.1:3127`, API `http://127.
 
 ### Presentation comparison receipt
 
-The approved Lab floating surface is the anchor/border/shadow equivalent. Native `field-control`/`SearchableCombobox`, `workflow-panel-header`, `modal-close-button` and modal Save geometry remain the field/header/action equivalents. This compact header intentionally stays one horizontal row at narrow widths; its close action must remain aligned with the heading. Position clamps against the document/body usable client width, excluding the vertical scrollbar and reserved scrollbar gutter. Async field/error/footer scroll ownership is local to the floating editor. Scalar-field Tab saves/moves; the bounded Account selector retains its existing nested keyboard behaviour.
-
-Save reuses the green `--action-positive-*` surface tokens. The floating Save uses `--bg` as its dark-theme on-container foreground because the existing bright-green/white pairing would miss AA; enabled Save text contrast is asserted in both themes. This bounded exception changes no other application action. Disabled states retain the native disabled presentation. Full-editor transition retains the exact native draft and row/Profile identity.
+The previous labelled popup with a visible Save and full-editor footer is superseded for scalar fields. Sportsbook Event Name is the reference case. The actual Lab input class and anchored surface geometry are used in the real portal; a native form/fieldset remains underneath to preserve asynchronous validation, pending and Save authority. Error text appears inside that same compact surface. Position clamps against the usable viewport width. The bounded Account selector and two-field Extra Place editor remain composite controls. Protected fields still open their governed review/correction workflow. Full-editor transition retains the exact native draft and row/Profile identity.

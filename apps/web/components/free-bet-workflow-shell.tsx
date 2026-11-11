@@ -52,6 +52,7 @@ import { LedgerViewContext } from "@/components/ledger-view-context";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
 import { LedgerFloatingCellEditor, useLedgerCellEditor, type LedgerCellSession } from "@/components/ledger-floating-cell-editor";
+import { designFloatingCellInputClass } from "@/components/design-lab-floating-cell-editor";
 
 import { LedgerQuickActions, type LedgerQuickAction } from "@/components/ledger-quick-actions";
 import { LedgerSettledDeleteGuard } from "@/components/ledger-settled-delete-guard";
@@ -3437,8 +3438,6 @@ export function FreeBetWorkflowShell({
           {visualV2 ? <>
             <DesignLabSelect compact dataPdId="free-bets.toolbar.status-filter" label="Status Filter" onChange={status => updateTableFilter("status", status)} options={[{ value: "", label: "All statuses" }, ...freeBetFilterOptions.statuses.map(value => ({ value, label: value }))]} value={tableFilters.status} />
             <DesignLedgerToolbarAction dataPdId="free-bets.toolbar.filter" onClick={() => { setFilterDialogView("filters"); setIsFilterModalOpen(true); }}>Filters</DesignLedgerToolbarAction>
-            <DesignLedgerToolbarAction dataPdId="free-bets.toolbar.columns" onClick={() => { setFilterDialogView("columns"); setIsFilterModalOpen(true); }}>Columns</DesignLedgerToolbarAction>
-            <DesignLedgerToolbarAction dataPdId="free-bets.toolbar.restore-columns" onClick={() => { setVisibleColumnKeys(new Set(defaultVisibleFreeBetColumns)); setColumnWidths(defaultFreeBetColumnWidths); }}>Restore Default Columns</DesignLedgerToolbarAction>
           </> : <div className="table-filter-button-wrap">
             <button
               aria-label="Open free-bet filter and column controls"
@@ -3485,6 +3484,7 @@ export function FreeBetWorkflowShell({
             ) : null}
           </div>}
         </DesignLedgerToolbar>
+        {visualV2 ? <DesignLedgerToolbar ariaLabel="Free Bet column controls"><DesignLedgerToolbarAction dataPdId="free-bets.toolbar.columns" onClick={() => { setFilterDialogView("columns"); setIsFilterModalOpen(true); }}>Columns</DesignLedgerToolbarAction><DesignLedgerToolbarAction dataPdId="free-bets.toolbar.restore-columns" onClick={() => { setVisibleColumnKeys(new Set(defaultVisibleFreeBetColumns)); setColumnWidths(defaultFreeBetColumnWidths); }}>Restore Default Columns</DesignLedgerToolbarAction></DesignLedgerToolbar> : null}
         <LedgerQuickActions
           ledgerType="Free Bets"
           onSelect={async (action: LedgerQuickAction) => {
@@ -4053,8 +4053,8 @@ export function FreeBetWorkflowShell({
         </div>
       ) : null}
 
-      {workflowVisible && cellEditor.session && inlineField ? <LedgerFloatingCellEditor session={cellEditor.session} ledger="Free Bets" label={inlineField.label} dirty={isDirty} pending={isPersisting} error={errorMessage || statusMessage} onSave={async () => { const saved = await persistForm(formStateRef.current); if (saved) cellEditor.close(); return saved; }} onCancel={() => { handleResetForm(); setWorkflowVisible(false); setSelectedId(null); workflowVisibleRef.current = false; selectedIdRef.current = null; cellEditor.close(); }} onReview={() => { cellEditor.close(); revealEditor(); }}>
-        <label className="field-control"><span>{inlineField.label}</span><input data-pd-id={`free-bets.cell-editor.${inlineField.key}`} aria-label={inlineField.label} value={formState[inlineField.key]} onChange={event => { setErrorMessage(""); setFormState(current => ({ ...current, [inlineField.key]: event.target.value })); }} type="text" /></label>
+      {workflowVisible && cellEditor.session && inlineField ? <LedgerFloatingCellEditor compact session={cellEditor.session} ledger="Free Bets" label={inlineField.label} dirty={isDirty} pending={isPersisting} error={errorMessage || statusMessage} onSave={async () => { const saved = await persistForm(formStateRef.current); if (saved) cellEditor.close(); return saved; }} onCancel={() => { handleResetForm(); setWorkflowVisible(false); setSelectedId(null); workflowVisibleRef.current = false; selectedIdRef.current = null; cellEditor.close(); }} onReview={() => { cellEditor.close(); revealEditor(); }}>
+        <label><span className="sr-only">{inlineField.label}</span><input className={designFloatingCellInputClass} data-pd-id={`free-bets.cell-editor.${inlineField.key}`} aria-label={inlineField.label} value={formState[inlineField.key]} onChange={event => { setErrorMessage(""); setFormState(current => ({ ...current, [inlineField.key]: event.target.value })); }} type="text" /></label>
       </LedgerFloatingCellEditor> : null}
       {workflowVisible && !cellEditor.active ? (
         <ModalBoundary onDismiss={() => void closeEditor()}>

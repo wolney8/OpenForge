@@ -22,6 +22,9 @@ import {
   normalizeFundManagerNotificationPreferences,
   normalizeNotificationViewState,
   persistNotificationState,
+  presentTaskDateContext,
+  orderedTaskGroups,
+  taskDateGroup,
   restoreNotificationIds,
   sortNotificationInbox,
   type FundManagerNotification,
@@ -71,6 +74,25 @@ const notifications: FundManagerNotification[] = [
     tone: "danger",
   },
 ];
+
+describe("source-backed Today date presentation", () => {
+  const now = new Date("2026-11-02T12:00:00Z");
+  it("keeps event, reward expiry and reminder dates distinct in London time", () => {
+    expect(presentTaskDateContext({ ...notifications[0], notification_type: "settlement_review", due_at: "2026-11-01T23:30:00Z" }, now)).toMatchObject({ label: "Event passed 1 Nov", kind: "event", group: "Past Recorded Date" });
+    expect(presentTaskDateContext({ ...notifications[0], notification_type: "free_bet_expiry", due_at: "2026-11-03T12:00:00Z" }, now)).toMatchObject({ label: "Expires 3 Nov", kind: "expiry", group: "Upcoming" });
+    expect(presentTaskDateContext({ ...notifications[0], notification_type: "partial_lay_reminder", due_at: "2026-11-02T13:00:00Z" }, now)).toMatchObject({ label: "Expected check 2 Nov", kind: "check", group: "Date Today" });
+  });
+  it("does not turn an opportunity reminder into a confirmed expiry", () => {
+    const context = presentTaskDateContext({ ...notifications[0], notification_type: "profile_opportunity_reminder", due_at: "2026-11-02T12:00:00Z", settles_at: "" }, now);
+    expect(context).toMatchObject({ label: "No recorded date", kind: "unknown", group: "No Recorded Date" });
+  });
+  it("lets verified task priority lead date groups without adding duplicate rows", () => {
+    const past = { attentionRank: 8, notification: notifications[0], dateContext: { group: "Past Recorded Date" } } as unknown as ReturnType<typeof deriveDailyTaskView>;
+    const immediate = { attentionRank: 0, notification: { ...notifications[1], notification_type: "partial_lay_reminder" }, dateContext: { group: "Upcoming" } } as unknown as ReturnType<typeof deriveDailyTaskView>;
+    expect(taskDateGroup(immediate)).toBe("Immediate Review");
+    expect(orderedTaskGroups([past, immediate])).toEqual(["Immediate Review", "Past Recorded Date"]);
+  });
+});
 
 describe("fund manager notification view state", () => {
   afterEach(() => {
@@ -202,7 +224,7 @@ describe("fund manager notification view state", () => {
     expect(upcoming.dueState).toBe("upcoming");
     expect(overdue).toMatchObject({ dueState: "overdue", priority: "high" });
     expect(completed.dueState).toBe("completed");
-    expect(undated).toMatchObject({ dueState: "today", dueLabel: "Ready now · no deadline", priority: "low" });
+    expect(undated).toMatchObject({ dueState: "today", dueLabel: "No recorded date", priority: "low" });
   });
 
   it("ranks verified lay risk and linked rewards ahead of historical settlement without treating unknown money as zero", () => {

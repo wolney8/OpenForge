@@ -58,6 +58,10 @@ test("global Profile scope stays in the same module and local filtering stays su
 
 test("all six combined ledgers use authorised reads and a native owner handoff", async ({ page }, info) => {
   test.setTimeout(90_000);
+  const selectedRange = await page.request.put("/api/fund-manager/preferences/selected-range", { data: {
+    selected_range_preset: "All Dates", selected_range_custom_start: null, selected_range_custom_end: null,
+  } });
+  expect(selectedRange.status()).toBe(200);
   for (const module of ["accounts", "sportsbook-bets", "free-bets", "casino-offers", "each-way-extra-places", "cash-adjustments"]) {
     await page.goto(`/tracker/${module}`);
     await expect(page.locator(`[data-pd-id="combined.${module}.page"]`)).toBeVisible();
@@ -246,6 +250,10 @@ test("a delayed combined read cannot appear after switching global Profile", asy
 });
 
 test("combined ledger mobile details and full spreadsheet remain available", async ({ page }) => {
+  const selectedRange = await page.request.put("/api/fund-manager/preferences/selected-range", { data: {
+    selected_range_preset: "All Dates", selected_range_custom_start: null, selected_range_custom_end: null,
+  } });
+  expect(selectedRange.status()).toBe(200);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/tracker/sportsbook-bets");
   const details = page.locator('[data-pd-id="combined.sportsbook-bets.details"]');
