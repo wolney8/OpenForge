@@ -37,6 +37,7 @@ export const shellDestinations: ShellDestination[] = [
   { id: "profile-reports", label: "Profile Reports", icon: "summarize", group: "context", parent: "reports", href: profileRoute("reports") },
   { id: "profit-tracker", label: "Profit Tracker", icon: "monitoring", group: "context", parent: "reports", href: profileRoute("profit-tracker") },
   { id: "profile-settings", label: "Profile Settings", icon: "settings", group: "context", parent: "settings", href: profileRoute("settings") },
+  { id: "notifications", label: "Notifications", icon: "notifications", group: "context", href: () => "/notifications" },
 ];
 
 export function destinationForPath(pathname: string, hash = ""): ShellDestination | null {
@@ -46,6 +47,7 @@ export function destinationForPath(pathname: string, hash = ""): ShellDestinatio
   if (hash === "#profile-opportunities" && /^\/profiles\/[^/]+\/tracker\/accounts$/.test(pathname)) return shellDestinations.find((item) => item.id === "opportunities") ?? null;
   if (pathname === "/") return shellDestinations[0];
   if (pathname === "/tasks") return shellDestinations[1];
+  if (pathname === "/notifications") return shellDestinations.find((item) => item.id === "notifications") ?? null;
   if (pathname === "/reports") return shellDestinations.find((item) => item.id === "reports") ?? null;
   if (pathname === "/profiles") return shellDestinations.find((item) => item.id === "profiles") ?? null;
   if (pathname === "/oddsmatcher") return shellDestinations.find((item) => item.id === "oddsmatcher") ?? null;

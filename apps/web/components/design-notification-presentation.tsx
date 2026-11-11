@@ -4,8 +4,10 @@ import styles from "@/components/design-lab-notifications.module.css";
 export const designNotificationClasses = {
   advancedFilters: styles.advancedFilters,
   actions: styles.actions,
+  categoryEmpty: styles.categoryEmpty,
   confirm: styles.confirm,
   empty: styles.empty,
+  evidence: styles.evidence,
   footer: styles.footer,
   list: styles.list,
   more: styles.more,
@@ -110,7 +112,7 @@ export function DesignNotificationRow({ actions, confirmation, context, dataPdId
   return <div className={styles.row} data-pd-id={dataPdId} data-severity={severity} onFocusCapture={onFocusCapture} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}>
     <div className={styles.rowHead}><strong>{title}</strong><span>{status}</span></div>
     <small>{context}</small>
-    <p>{detail}</p>
+    <div className={styles.rowDetail}>{detail}</div>
     <div className={styles.rowActions}>{actions}</div>
     {confirmation ? <div className={styles.confirm}>{confirmation}</div> : null}
   </div>;

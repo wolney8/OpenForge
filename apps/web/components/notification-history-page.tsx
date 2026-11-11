@@ -63,6 +63,7 @@ export function NotificationHistoryPage({ daily = false, visualV2 = false }: { d
   const [presentationView, setPresentationView] = useState<DesignNotificationView>("all");
   const [isLoading, setIsLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
+  const [historyUnavailable, setHistoryUnavailable] = useState(false);
   const [isPersistingState, setIsPersistingState] = useState(false);
   const [actionError, setActionError] = useState("");
   const [now, setNow] = useState(() => new Date());
@@ -88,12 +89,21 @@ export function NotificationHistoryPage({ daily = false, visualV2 = false }: { d
         ]);
         if (!currentResponse.ok) throw new Error("Unable to load notifications");
         if (daily && (!persistedState || !persistedPreferences)) throw new Error("Task state unavailable");
-        const historyResponse = daily ? currentResponse : await fetch(`${apiBaseUrl}/fund-manager/notifications/history`, {
-          cache: "no-store",
-          credentials: "include",
-        });
-        if (!historyResponse.ok) throw new Error("Unable to load notification history");
-        const remote = (await historyResponse.json()) as FundManagerNotification[];
+        let remote: FundManagerNotification[];
+        let missingHistory = false;
+        if (daily) remote = await currentResponse.json() as FundManagerNotification[];
+        else {
+          try {
+            const historyResponse = await fetch(`${apiBaseUrl}/fund-manager/notifications/history`, {
+              cache: "no-store", credentials: "include",
+            });
+            if (!historyResponse.ok) throw new Error("Unable to load notification history");
+            remote = await historyResponse.json() as FundManagerNotification[];
+          } catch {
+            remote = await currentResponse.json() as FundManagerNotification[];
+            missingHistory = true;
+          }
+        }
         if (!active || requestVersion !== refreshVersionRef.current) return;
         if (
           persistedState &&
@@ -108,6 +118,7 @@ export function NotificationHistoryPage({ daily = false, visualV2 = false }: { d
             persistedPreferences ?? loadFundManagerNotificationPreferences()
           )
         );
+        setHistoryUnavailable(missingHistory);
         setLoadFailed(false);
       } catch {
         if (!active || requestVersion !== refreshVersionRef.current) return;
@@ -116,6 +127,7 @@ export function NotificationHistoryPage({ daily = false, visualV2 = false }: { d
           loadFundManagerNotificationPreferences()
         );
         setNotifications(daily ? [] : local);
+        setHistoryUnavailable(!daily);
         setLoadFailed(daily || local.length === 0);
       } finally {
         if (active && requestVersion === refreshVersionRef.current) setIsLoading(false);
@@ -267,11 +279,12 @@ export function NotificationHistoryPage({ daily = false, visualV2 = false }: { d
       actions={<>
         <Link href={notification.href} onClick={() => markRead([notification])}>Open Source</Link>
         {unread ? <button disabled={isPersistingState} onClick={() => markRead([notification])} type="button">Mark Read</button> : null}
-        {!cleared ? <button disabled={isPersistingState} onClick={() => clear([notification])} type="button">Clear</button> : null}
+        {!cleared ? <button disabled={isPersistingState} onClick={() => setConfirmClearId(notification.notification_id)} type="button">Clear</button> : null}
       </>}
+      confirmation={confirmClearId === notification.notification_id ? <><span>Clear this notification? Its financial source remains unchanged.</span><button disabled={isPersistingState} onClick={() => setConfirmClearId("")} type="button">Keep</button><button disabled={isPersistingState} onClick={() => clear([notification])} type="button">Clear Notification</button></> : undefined}
       context={<>{notification.profile_name} · {notification.bookmaker_label || notification.ledger_label}</>}
       dataPdId={`notifications.history.item.${notification.record_id}`}
-      detail={<>{notificationTypeLabel(notification.notification_type)} · {formatNotificationDue(notification.due_at)} · {notification.message}</>}
+      detail={<>{notificationTypeLabel(notification.notification_type)} · {formatNotificationDue(notification.due_at)}{notification.message ? <details className={designNotificationClasses.evidence}><summary>View recorded detail</summary><span>{notification.message}</span></details> : null}</>}
       key={notification.notification_id}
       severity={notification.tone === "danger" || notification.tone === "warning" ? "urgent" : "review"}
       status={cleared ? "Cleared" : unread ? "Unread" : "Read"}
@@ -328,6 +341,8 @@ export function NotificationHistoryPage({ daily = false, visualV2 = false }: { d
         {actionError ? (
           <div className="notification-action-error" role="alert">{actionError}</div>
         ) : null}
+        {visualV2 && historyUnavailable ? <p role="alert" data-pd-id="notifications.history.partial-read">Historical notifications are unavailable. Current notifications remain visible; history and cleared counts are incomplete.</p> : null}
+        {visualV2 && presentationView === "history" && !historyUnavailable ? <p className="notification-history-count" data-pd-id="notifications.history.source-limit">History contains source notifications retained by the feed. Cleared notifications may no longer be returned; clearing does not resolve their financial sources.</p> : null}
         {isLoading ? (
           <section
             aria-busy="true"
@@ -344,17 +359,17 @@ export function NotificationHistoryPage({ daily = false, visualV2 = false }: { d
         ) : (
           <>
             <p aria-live="polite" className="notification-history-count" role="status">
-              {visibleNotifications.length} {daily ? "current task" : "retained notification"}{visibleNotifications.length === 1 ? "" : "s"} · {unread.length} unread
+              {visibleNotifications.length} {daily ? "current task" : historyUnavailable ? "currently available notification" : "retained notification"}{visibleNotifications.length === 1 ? "" : "s"} · {unread.length} unread
             </p>
             {visibleNotifications.length === 0 ? (
-              <div className="notification-empty-state" role="status">{daily ? "No current tasks match these filters." : "No retained notifications match these filters."}</div>
+              <div className="notification-empty-state" role="status">{daily ? "No current tasks match these filters." : historyUnavailable && (presentationView === "history" || status === "cleared") ? "History is unavailable; no complete result can be shown." : "No retained notifications match these filters."}</div>
             ) : (
               <div className={visualV2 ? designNotificationClasses.list : "notification-history-list"} data-pd-id="notifications.history.list" id="notification-history-list" role={visualV2 ? "tabpanel" : undefined}>
                 {visualV2 ? <>
                   {presentationView === "history" ? <DesignNotificationSection title="History">{visibleNotifications.map(renderV2Notification)}</DesignNotificationSection> : <>
                     <DesignNotificationSection title="Action Required">{visibleNotifications.filter(notification => notification.kind === "task" && notification.task_state === "new").map(renderV2Notification)}</DesignNotificationSection>
                     <DesignNotificationSection title="Other Source Events">{visibleNotifications.filter(notification => notification.kind === "task" && notification.task_state !== "new").map(renderV2Notification)}</DesignNotificationSection>
-                    <DesignNotificationSection title="System & Results">{visibleNotifications.filter(notification => notification.kind === "information").map(renderV2Notification)}</DesignNotificationSection>
+                    <DesignNotificationSection title="System & Results">{visibleNotifications.filter(notification => notification.kind === "information").map(renderV2Notification)}{!visibleNotifications.some(notification => notification.kind === "information") ? <p className={designNotificationClasses.categoryEmpty}>No recorded system events.</p> : null}</DesignNotificationSection>
                   </>}
                 </> : visibleNotifications.map((notification) => {
                   const isCleared = isNotificationCleared(notification, viewState);

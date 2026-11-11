@@ -24,7 +24,7 @@ import {
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
 import { DesignLedgerSearch } from "@/components/design-ledger-search";
 import { ledgerColumnWidths } from "@/lib/ledger-column-contracts";
-import { DesignLedgerScreen, DesignLedgerToolbar, DesignLedgerToolbarAction, DesignLedgerPrimaryAction, DesignPageHead, DesignLedgerNarrowToggle, DesignLedgerMobileRows, designPageHeadClasses } from "@/components/design-ledger-screen";
+import { DesignLedgerScreen, DesignLedgerToolbar, DesignLedgerToolbarAction, DesignLedgerPrimaryAction, DesignLedgerPagination, DesignPageHead, DesignLedgerNarrowToggle, DesignLedgerMobileRows, designPageHeadClasses } from "@/components/design-ledger-screen";
 import { DesignLabSelect } from "@/components/design-lab-select";
 import { LedgerViewContext } from "@/components/ledger-view-context";
 import { LedgerPagination } from "@/components/ledger-pagination";
@@ -351,6 +351,7 @@ export function EachWayExtraPlaceWorkflowShell({
   const [mobileDetail, setMobileDetail] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [filterDialogView, setFilterDialogView] = useState<"filters" | "columns">("filters");
   const [tableFilters, setTableFilters] = useState<ExtraPlaceTableFilters>(() => ({
     ...emptyTableFilters,
     ...(initialIssueFilter && ["all-issues", "calculation", "outcome-needed"].includes(initialIssueFilter)
@@ -1108,9 +1109,9 @@ export function EachWayExtraPlaceWorkflowShell({
       {visualV2 ? <DesignPageHead><div><h1>Extra Places</h1></div><div className={designPageHeadClasses.actions}><TrackerRangeCard activePreset={activeDatePreset} isSaving={savingRange} onPresetChange={(preset) => void updateTrackerRange(preset)} rangeContext={rangeContext} rangeDetail={rangeDetail} visualV2 /></div></DesignPageHead> : <div className="tracker-toolbar"><div className="stack"><span className="eyebrow">Horse racing</span><h1>Extra Places</h1></div></div>}
       {!visualV2 ? quickViewPanel : null}
       <DesignLedgerScreen actions={visualV2 ? <DesignLedgerPrimaryAction dataPdId="extra-place.toolbar.add-row" onClick={openNew}>Add Extra Place</DesignLedgerPrimaryAction> : null} dataPdId="extra-place.design-screen" description={`${pageableRows.length} of ${tableRows.length} rows · ${activeTableControlCount ? `${activeTableControlCount} active table controls` : query.trim() ? "Search active" : "No filters"} · Current Profile`} enabled={visualV2} title="Extra Places">
-      <DesignLedgerToolbar ariaLabel="Extra Place controls" className="sportsbook-review-bar" enabled={visualV2}>
+      <DesignLedgerToolbar ariaLabel="Extra Place controls" className={visualV2 ? "" : "sportsbook-review-bar"} enabled={visualV2}>
         <DesignLedgerSearch dataPdId="extra-place.toolbar.search" label="Search Extra Place rows" onChange={event => { setQuery(event.target.value); setCurrentPage(1); }} placeholder="Search Extra Place rows" value={query} />
-        {visualV2 ? <><DesignLabSelect dataPdId="extra-place.toolbar.view" label="View" value={tableFilters.view} options={[{ value: "recent", label: "Recent" }, { value: "issues", label: "Issues" }, { value: "all", label: "All" }]} onChange={value => { setTableFilters(current => ({ ...current, view: value as ExtraPlaceTableFilters["view"] })); setCurrentPage(1); }} compact /><DesignLedgerToolbarAction dataPdId="extra-place.toolbar.filter" onClick={() => setIsFilterModalOpen(true)}>Filters &amp; Columns</DesignLedgerToolbarAction><DesignLedgerToolbarAction dataPdId="extra-place.toolbar.restore-columns" onClick={() => setVisibleColumns(defaultVisibleColumns)}>Restore Default Columns</DesignLedgerToolbarAction></> : null}
+        {visualV2 ? <><DesignLabSelect dataPdId="extra-place.toolbar.view" label="View" value={tableFilters.view} options={[{ value: "recent", label: "Recent" }, { value: "issues", label: "Issues" }, { value: "all", label: "All" }]} onChange={value => { setTableFilters(current => ({ ...current, view: value as ExtraPlaceTableFilters["view"] })); setCurrentPage(1); }} compact /><DesignLedgerToolbarAction dataPdId="extra-place.toolbar.filter" onClick={() => { setFilterDialogView("filters"); setIsFilterModalOpen(true); }}>Filters</DesignLedgerToolbarAction><DesignLedgerToolbarAction dataPdId="extra-place.toolbar.columns" onClick={() => { setFilterDialogView("columns"); setIsFilterModalOpen(true); }}>Columns</DesignLedgerToolbarAction><DesignLedgerToolbarAction dataPdId="extra-place.toolbar.restore-columns" onClick={() => setVisibleColumns(defaultVisibleColumns)}>Restore Default Columns</DesignLedgerToolbarAction></> : null}
         {!visualV2 ? <div className="extra-place-toolbar-actions">
           <LedgerAddRowButton label="Add Extra Place row" onClick={openNew} />
           <span className="table-filter-button-wrap">
@@ -1207,8 +1208,17 @@ export function EachWayExtraPlaceWorkflowShell({
           <EachWayColourSchemeToggle onChange={setTableTheme} value={tableTheme} />
         </div>
       </div>
-      <LedgerViewContext ledger="extra-place" activeControls={Object.entries(tableFilters).filter(([key, value]) => Boolean(value) && !(key === "view" && value === "recent")).length} searchActive={query.trim().length > 0} totalRows={tableRows.length} visibleRows={pageableRows.length} />
-      <LedgerPagination
+      {!visualV2 ? <LedgerViewContext ledger="extra-place" activeControls={Object.entries(tableFilters).filter(([key, value]) => Boolean(value) && !(key === "view" && value === "recent")).length} searchActive={query.trim().length > 0} totalRows={tableRows.length} visibleRows={pageableRows.length} /> : null}
+      {visualV2 ? <DesignLedgerPagination
+        currentPage={effectivePage}
+        dataPdId="extra-place.pagination.top"
+        label="Extra Place"
+        onPageChange={setCurrentPage}
+        onPageSizeChange={(nextPageSize) => { setPageSize(nextPageSize); setCurrentPage(1); }}
+        pageCount={pageCount}
+        pageSize={pageSize}
+        totalRows={pageableRows.length}
+      /> : <LedgerPagination
         ariaLabel="Extra Place pagination"
         currentPage={effectivePage}
         onPageChange={setCurrentPage}
@@ -1220,7 +1230,7 @@ export function EachWayExtraPlaceWorkflowShell({
         pageSize={pageSize}
         position="top"
         totalRows={pageableRows.length}
-      />
+      />}
       {visualV2 ? <DesignLedgerNarrowToggle expanded={mobileDetail} onToggle={() => setMobileDetail(value => !value)} /> : null}
       <ExtraPlaceTable
         bookmakerCatalogue={bookmakerCatalogue}
@@ -1263,7 +1273,7 @@ export function EachWayExtraPlaceWorkflowShell({
           { key: "status", label: "Status", value: row.status || "—" },
         ],
       }))} /> : null}
-      <LedgerPagination
+      {!visualV2 ? <LedgerPagination
         ariaLabel="Extra Place pagination"
         currentPage={effectivePage}
         onPageChange={setCurrentPage}
@@ -1275,7 +1285,7 @@ export function EachWayExtraPlaceWorkflowShell({
         pageSize={pageSize}
         position="bottom"
         totalRows={pageableRows.length}
-      />
+      /> : null}
       </DesignLedgerScreen>
       {visualV2 ? quickViewPanel : null}
       {open && cellEditor.session ? <LedgerFloatingCellEditor session={cellEditor.session} ledger="Extra Place" label="Runner / Race" dirty={isDirty} pending={saving} error={typeof error === "string" ? error : JSON.stringify(error)} onSave={async () => { const saved = await save(); if (saved) cellEditor.close(); return saved; }} onCancel={() => { setForm(pristine); setOpen(false); cellEditor.close(); }} onReview={() => cellEditor.close()}>
@@ -1558,6 +1568,8 @@ export function EachWayExtraPlaceWorkflowShell({
             <ExtraPlaceFilterDialog
               dialogRef={filterDialogRef}
               filters={tableFilters}
+              view={filterDialogView}
+              visualV2={visualV2}
               onChange={(key, next) => {
                 setTableFilters((current) => ({ ...current, [key]: next }));
                 setCurrentPage(1);
@@ -1603,6 +1615,8 @@ function Stat({
 function ExtraPlaceFilterDialog({
   dialogRef,
   filters,
+  view,
+  visualV2,
   onChange,
   onClear,
   onClose,
@@ -1612,6 +1626,8 @@ function ExtraPlaceFilterDialog({
 }: {
   dialogRef: RefObject<HTMLElement | null>;
   filters: ExtraPlaceTableFilters;
+  view: "filters" | "columns";
+  visualV2: boolean;
   onChange: <TKey extends keyof ExtraPlaceTableFilters>(
     key: TKey,
     value: ExtraPlaceTableFilters[TKey],
@@ -1645,7 +1661,7 @@ function ExtraPlaceFilterDialog({
   return (
     <div className="modal-backdrop modal-backdrop-elevated" onClick={onClose}>
       <section
-        aria-label="Extra Place filter controls"
+        aria-label={visualV2 && view === "columns" ? "Extra Place column controls" : "Extra Place filter controls"}
         aria-modal="true"
         className="modal-panel stack extra-place-filter-dialog"
         data-pd-id="extra-place.filter.dialog"
@@ -1664,10 +1680,10 @@ function ExtraPlaceFilterDialog({
         <div className="workflow-panel-header">
           <div className="stack">
             <span className="eyebrow">Table controls</span>
-            <strong>Filter Extra Place rows</strong>
+            <strong>{visualV2 && view === "columns" ? "Extra Place columns" : "Filter Extra Place rows"}</strong>
           </div>
           <button
-            aria-label="Close Extra Place filter controls"
+            aria-label={visualV2 && view === "columns" ? "Close Extra Place column controls" : "Close Extra Place filter controls"}
             className="modal-close-button"
             data-initial-focus
             onClick={onClose}
@@ -1678,7 +1694,7 @@ function ExtraPlaceFilterDialog({
             </span>
           </button>
         </div>
-        <div className="form-grid">
+        {(!visualV2 || view === "filters") ? <div className="form-grid">
           <ChoiceField
             label="View"
             onChange={(next) =>
@@ -1739,8 +1755,8 @@ function ExtraPlaceFilterDialog({
             options={["any", "all-issues", "calculation", "outcome-needed"]}
             value={filters.issue_type}
           />
-        </div>
-        <section
+        </div> : null}
+        {(!visualV2 || view === "columns") ? <section
           aria-label="Visible columns"
           className="extra-place-filter-columns"
         >
@@ -1762,9 +1778,9 @@ function ExtraPlaceFilterDialog({
             Date/time, runner/race, bookmaker, E/W stake, qualifying loss, Extra
             Place profit and actions always remain visible.
           </small>
-        </section>
+        </section> : null}
         <div className="modal-sticky-footer">
-          <button
+          {(!visualV2 || view === "filters") ? <button
             aria-label="Clear Extra Place filters"
             className="modal-close-button filter-dialog-clear-button"
             onClick={onClear}
@@ -1772,7 +1788,7 @@ function ExtraPlaceFilterDialog({
             type="button"
           >
             <span aria-hidden="true" className="material-symbols-outlined">close</span>
-          </button>
+          </button> : null}
           <button
             className="modal-primary-button"
             onClick={onClose}

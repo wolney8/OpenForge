@@ -46,7 +46,7 @@ import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerPnlCard, type LedgerReadState } from "@/components/ledger-pnl-card";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
 import { DesignLedgerSearch } from "@/components/design-ledger-search";
-import { DesignLedgerScreen, DesignLedgerToolbar, DesignLedgerToolbarAction, DesignLedgerPrimaryAction, DesignPageHead, DesignLedgerNarrowToggle, DesignLedgerMobileRows, designPageHeadClasses } from "@/components/design-ledger-screen";
+import { DesignLedgerScreen, DesignLedgerToolbar, DesignLedgerToolbarAction, DesignLedgerPrimaryAction, DesignLedgerPagination, DesignPageHead, DesignLedgerNarrowToggle, DesignLedgerMobileRows, designPageHeadClasses } from "@/components/design-ledger-screen";
 import { DesignLabSelect } from "@/components/design-lab-select";
 import { LedgerViewContext } from "@/components/ledger-view-context";
 import { LedgerPagination } from "@/components/ledger-pagination";
@@ -1221,6 +1221,7 @@ export function FreeBetWorkflowShell({
     false
   );
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [filterDialogView, setFilterDialogView] = useState<"filters" | "columns">("filters");
   const [visibleColumnKeys, setVisibleColumnKeys] = useState<Set<FreeBetColumnKey>>(
     () => new Set(defaultVisibleFreeBetColumns)
   );
@@ -3430,12 +3431,13 @@ export function FreeBetWorkflowShell({
           </p>
         ) : null}
         <DesignLedgerScreen actions={visualV2 ? <DesignLedgerPrimaryAction dataPdId="free-bets.toolbar.add-row" onClick={() => void startNewRow()}>Add Free Bet</DesignLedgerPrimaryAction> : null} dataPdId="free-bets.design-screen" description={`${filteredRows.length} of ${rows.length} rows · ${activeTableControlCount ? `${activeTableControlCount} active table controls` : query.trim() ? "Search active" : "No filters"} · Current Profile`} enabled={visualV2} title="Free Bets">
-        <DesignLedgerToolbar ariaLabel="Free-bet ledger controls" className="sportsbook-review-bar" enabled={visualV2}>
+        <DesignLedgerToolbar ariaLabel="Free-bet ledger controls" className={visualV2 ? "" : "sportsbook-review-bar"} enabled={visualV2}>
           <DesignLedgerSearch dataPdId="free-bets.toolbar.search" label="Search free-bet rows" onChange={event => { setQuery(event.target.value); setCurrentPage(1); }} placeholder="Search free-bet rows" value={query} />
           {!visualV2 ? <LedgerAddRowButton label="Add free-bet row" onClick={() => void startNewRow()} /> : null}
           {visualV2 ? <>
             <DesignLabSelect compact dataPdId="free-bets.toolbar.status-filter" label="Status Filter" onChange={status => updateTableFilter("status", status)} options={[{ value: "", label: "All statuses" }, ...freeBetFilterOptions.statuses.map(value => ({ value, label: value }))]} value={tableFilters.status} />
-            <DesignLedgerToolbarAction dataPdId="free-bets.toolbar.filter" onClick={() => setIsFilterModalOpen(true)}>Filters &amp; Columns</DesignLedgerToolbarAction>
+            <DesignLedgerToolbarAction dataPdId="free-bets.toolbar.filter" onClick={() => { setFilterDialogView("filters"); setIsFilterModalOpen(true); }}>Filters</DesignLedgerToolbarAction>
+            <DesignLedgerToolbarAction dataPdId="free-bets.toolbar.columns" onClick={() => { setFilterDialogView("columns"); setIsFilterModalOpen(true); }}>Columns</DesignLedgerToolbarAction>
             <DesignLedgerToolbarAction dataPdId="free-bets.toolbar.restore-columns" onClick={() => { setVisibleColumnKeys(new Set(defaultVisibleFreeBetColumns)); setColumnWidths(defaultFreeBetColumnWidths); }}>Restore Default Columns</DesignLedgerToolbarAction>
           </> : <div className="table-filter-button-wrap">
             <button
@@ -3505,8 +3507,17 @@ export function FreeBetWorkflowShell({
         {!tableCollapsed ? (
           <>
             {errorMessage ? <p className="error-text" role="alert">{errorMessage}</p> : null}
-            <LedgerViewContext ledger="free-bets" activeControls={activeTableControlCount} searchActive={query.trim().length > 0} totalRows={rows.length} visibleRows={filteredRows.length} />
-            <LedgerPagination
+            {!visualV2 ? <LedgerViewContext ledger="free-bets" activeControls={activeTableControlCount} searchActive={query.trim().length > 0} totalRows={rows.length} visibleRows={filteredRows.length} /> : null}
+            {visualV2 ? <DesignLedgerPagination
+              currentPage={effectivePage}
+              dataPdId="free-bets.pagination.top"
+              label="Free Bets"
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(nextPageSize) => { setPageSize(nextPageSize); setCurrentPage(1); }}
+              pageCount={pageCount}
+              pageSize={pageSize}
+              totalRows={filteredRows.length}
+            /> : <LedgerPagination
               ariaLabel="Free Bet pagination"
               currentPage={effectivePage}
               onPageChange={setCurrentPage}
@@ -3518,7 +3529,7 @@ export function FreeBetWorkflowShell({
               pageSize={pageSize}
               position="top"
               totalRows={filteredRows.length}
-            />
+            />}
             {visualV2 ? <DesignLedgerNarrowToggle expanded={mobileDetail} onToggle={() => setMobileDetail(value => !value)} /> : null}
             <LedgerTableScroll dataPdId="free-bets.table-scroll" visualV2={visualV2} narrowDetail={visualV2 && mobileDetail} cellNavigation={{ label: "Free Bets", onActivate: (rowId, column, anchor) => void selectRow(rowId, { cell: column in inlineCellFields ? { column, anchor } : undefined }) }}>
               <table className="data-table sportsbook-data-table">
@@ -3669,7 +3680,7 @@ export function FreeBetWorkflowShell({
               const rowId = String(row.free_bet_id ?? "");
               return { id: rowId, title: String(row.event_name ?? "").trim() || rowId, status: String(row.status ?? ""), subtitle: String(row.offer_name ?? "").trim(), fields: freeBetTableColumns.filter(column => column.key !== "actions").map(column => ({ key: column.key, label: column.label, value: renderTableCell(row, column) })), onOpen: () => void selectRow(rowId) };
             })} /> : null}
-            <LedgerPagination
+            {!visualV2 ? <LedgerPagination
               ariaLabel="Free Bet pagination"
               currentPage={effectivePage}
               onPageChange={setCurrentPage}
@@ -3681,7 +3692,7 @@ export function FreeBetWorkflowShell({
               pageSize={pageSize}
               position="bottom"
               totalRows={filteredRows.length}
-            />
+            /> : null}
           </>
         ) : null}
         </DesignLedgerScreen>
@@ -3690,7 +3701,7 @@ export function FreeBetWorkflowShell({
       {isFilterModalOpen ? (
         <div className="modal-backdrop" onClick={() => setIsFilterModalOpen(false)}>
           <section
-            aria-label="Free-bet filter controls"
+            aria-label={visualV2 && filterDialogView === "columns" ? "Free Bet column controls" : "Free Bet filter controls"}
             aria-modal="true"
             className="modal-panel stack"
             onClick={(event) => event.stopPropagation()}
@@ -3699,10 +3710,10 @@ export function FreeBetWorkflowShell({
             <div className="workflow-panel-header">
               <div className="stack">
                 <span className="eyebrow">Table controls</span>
-                <strong>Filter free-bet rows</strong>
+                <strong>{visualV2 && filterDialogView === "columns" ? "Free Bet columns" : "Filter free-bet rows"}</strong>
               </div>
               <button
-                aria-label="Close free-bet filter controls"
+                aria-label={visualV2 && filterDialogView === "columns" ? "Close Free Bet column controls" : "Close free-bet filter controls"}
                 className="modal-close-button"
                 onClick={() => setIsFilterModalOpen(false)}
                 type="button"
@@ -3710,7 +3721,7 @@ export function FreeBetWorkflowShell({
                 ×
               </button>
             </div>
-            <div className="form-grid">
+            {(!visualV2 || filterDialogView === "filters") ? <div className="form-grid">
               <label className="field-control">
                 <span>View</span>
                 <select
@@ -3889,8 +3900,8 @@ export function FreeBetWorkflowShell({
                   value={tableFilters.max_value}
                 />
               </label>
-            </div>
-            <section className="stack">
+            </div> : null}
+            {(!visualV2 || filterDialogView === "columns") ? <section className="stack">
               <strong>Visible columns</strong>
               <div className="review-chip-row">
                 {freeBetTableColumns.map((column) => {
@@ -3921,18 +3932,18 @@ export function FreeBetWorkflowShell({
                   );
                 })}
               </div>
-            </section>
+            </section> : null}
             <div className="tracker-nav">
-              <button
+              {(!visualV2 || filterDialogView === "filters") ? <button
                 className="button-link"
                 onClick={() => {
                   clearTableFilters();
-                  setVisibleColumnKeys(new Set(defaultVisibleFreeBetColumns));
+                  if (!visualV2) setVisibleColumnKeys(new Set(defaultVisibleFreeBetColumns));
                 }}
                 type="button"
               >
                 Clear filters
-              </button>
+              </button> : null}
               <button className="modal-primary-button" onClick={() => setIsFilterModalOpen(false)} type="button">
                 Done
               </button>

@@ -67,7 +67,7 @@ import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerPnlCard, type LedgerReadState } from "@/components/ledger-pnl-card";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
 import { DesignLedgerSearch } from "@/components/design-ledger-search";
-import { DesignLedgerScreen, DesignLedgerToolbar, DesignLedgerToolbarAction, DesignLedgerPrimaryAction, DesignPageHead, DesignLedgerNarrowToggle, DesignLedgerMobileRows, designPageHeadClasses } from "@/components/design-ledger-screen";
+import { DesignLedgerScreen, DesignLedgerToolbar, DesignLedgerToolbarAction, DesignLedgerPrimaryAction, DesignLedgerPagination, DesignPageHead, DesignLedgerNarrowToggle, DesignLedgerMobileRows, designPageHeadClasses } from "@/components/design-ledger-screen";
 import { DesignLabSelect } from "@/components/design-lab-select";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerViewContext } from "@/components/ledger-view-context";
@@ -3061,6 +3061,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     }
   }, [initialIssueFilter, setTableFilters]);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [filterDialogView, setFilterDialogView] = useState<"filters" | "columns">("filters");
   const [visibleColumnKeys, setVisibleColumnKeys] = useState<Set<SportsbookColumnKey>>(
     () => new Set(defaultVisibleSportsbookColumns)
   );
@@ -7207,12 +7208,13 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
           enabled={visualV2}
           title="Sportsbook Bets"
         >
-        <DesignLedgerToolbar ariaLabel="Sportsbook ledger controls" className="sportsbook-review-bar" enabled={visualV2}>
+        <DesignLedgerToolbar ariaLabel="Sportsbook ledger controls" className={visualV2 ? "" : "sportsbook-review-bar"} enabled={visualV2}>
           <DesignLedgerSearch dataPdId="sportsbook.toolbar.search" label="Search sportsbook rows" onChange={event => { setQuery(event.target.value); setCurrentPage(1); }} placeholder="Search sportsbook rows" value={query} />
           {!visualV2 ? <LedgerAddRowButton label="Add sportsbook row" onClick={() => void startNewRow()} /> : null}
           {visualV2 ? <>
             <DesignLabSelect compact dataPdId="sportsbook.toolbar.status-filter" label="Status Filter" onChange={status => updateTableFilter("status", status)} options={[{ value: "", label: "All statuses" }, ...sportsbookFilterOptions.statuses.map(value => ({ value, label: value }))]} value={tableFilters.status} />
-            <DesignLedgerToolbarAction dataPdId="sportsbook.toolbar.filter" onClick={() => setIsFilterModalOpen(true)}>Filters &amp; Columns</DesignLedgerToolbarAction>
+            <DesignLedgerToolbarAction dataPdId="sportsbook.toolbar.filter" onClick={() => { setFilterDialogView("filters"); setIsFilterModalOpen(true); }}>Filters</DesignLedgerToolbarAction>
+            <DesignLedgerToolbarAction dataPdId="sportsbook.toolbar.columns" onClick={() => { setFilterDialogView("columns"); setIsFilterModalOpen(true); }}>Columns</DesignLedgerToolbarAction>
             <DesignLedgerToolbarAction dataPdId="sportsbook.toolbar.restore-columns" onClick={() => { setVisibleColumnKeys(new Set(defaultVisibleSportsbookColumns)); setColumnWidths(defaultSportsbookColumnWidths); }}>Restore Default Columns</DesignLedgerToolbarAction>
           </> : <div className="table-filter-button-wrap">
             <button aria-label="Open sportsbook filter and column controls" className={`icon-button table-filter-button${hasActiveTableControls ? " has-active-table-controls" : ""}`} onClick={() => setIsFilterModalOpen(true)} title="Filter and columns" type="button">
@@ -7252,14 +7254,23 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
         ) : null}
         {!tableCollapsed ? (
           <>
-            <LedgerViewContext
+            {!visualV2 ? <LedgerViewContext
               activeControls={activeTableControlCount}
               ledger="sportsbook"
               searchActive={query.trim().length > 0}
               totalRows={rows.length}
               visibleRows={filteredRows.length}
-            />
-            <LedgerPagination
+            /> : null}
+            {visualV2 ? <DesignLedgerPagination
+              currentPage={effectivePage}
+              dataPdId="sportsbook.pagination.top"
+              label="Sportsbook"
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(nextPageSize) => { setPageSize(nextPageSize); setCurrentPage(1); }}
+              pageCount={pageCount}
+              pageSize={pageSize}
+              totalRows={filteredRows.length}
+            /> : <LedgerPagination
               ariaLabel="Sportsbook pagination"
               currentPage={effectivePage}
               onPageChange={setCurrentPage}
@@ -7271,7 +7282,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
               pageSize={pageSize}
               position="top"
               totalRows={filteredRows.length}
-            />
+            />}
             {visualV2 ? <DesignLedgerNarrowToggle expanded={mobileDetail} onToggle={() => setMobileDetail(value => !value)} /> : null}
             <LedgerTableScroll dataPdId="sportsbook.table-scroll" visualV2={visualV2} narrowDetail={visualV2 && mobileDetail} cellNavigation={{ label: "Sportsbook", onActivate: (rowId, column, anchor) => void selectRow(rowId, { cell: column in inlineCellFields ? { column, anchor } : undefined }) }}>
               <table className="data-table sportsbook-data-table">
@@ -7428,7 +7439,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
               const rowId = String(row.sportsbook_bet_id ?? "");
               return { id: rowId, title: String(row.event_name ?? "").trim() || rowId, status: String(row.status ?? ""), subtitle: String(row.offer_name ?? "").trim(), fields: sportsbookTableColumns.filter(column => column.key !== "actions").map(column => ({ key: column.key, label: column.label, value: renderTableCell(row, column) })), onOpen: () => void selectRow(rowId) };
             })} /> : null}
-            <LedgerPagination
+            {!visualV2 ? <LedgerPagination
               ariaLabel="Sportsbook pagination"
               currentPage={effectivePage}
               onPageChange={setCurrentPage}
@@ -7440,7 +7451,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
               pageSize={pageSize}
               position="bottom"
               totalRows={filteredRows.length}
-            />
+            /> : null}
           </>
         ) : null}
         </DesignLedgerScreen>
@@ -7450,7 +7461,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       {isFilterModalOpen ? (
         <div className="modal-backdrop" onClick={() => setIsFilterModalOpen(false)}>
           <section
-            aria-label="Sportsbook filter controls"
+            aria-label={visualV2 && filterDialogView === "columns" ? "Sportsbook column controls" : "Sportsbook filter controls"}
             aria-modal="true"
             className="modal-panel stack"
             onClick={(event) => event.stopPropagation()}
@@ -7459,10 +7470,10 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
             <div className="workflow-panel-header">
               <div className="stack">
                 <span className="eyebrow">Table controls</span>
-                <strong>Filter sportsbook rows</strong>
+                <strong>{visualV2 && filterDialogView === "columns" ? "Sportsbook columns" : "Filter sportsbook rows"}</strong>
               </div>
               <button
-                aria-label="Close sportsbook filter controls"
+                aria-label={visualV2 && filterDialogView === "columns" ? "Close Sportsbook column controls" : "Close sportsbook filter controls"}
                 className="modal-close-button"
                 onClick={() => setIsFilterModalOpen(false)}
                 type="button"
@@ -7470,7 +7481,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                 ×
               </button>
             </div>
-            <div className="form-grid">
+            {(!visualV2 || filterDialogView === "filters") ? <div className="form-grid">
               <label className="field-control">
                 <span>View</span>
                 <select
@@ -7638,8 +7649,8 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                   value={tableFilters.max_value}
                 />
               </label>
-            </div>
-            <section className="stack">
+            </div> : null}
+            {(!visualV2 || filterDialogView === "columns") ? <section className="stack">
               <strong>Visible columns</strong>
               <div className="review-chip-row">
                 {sportsbookTableColumns.map((column) => {
@@ -7670,11 +7681,11 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                   );
                 })}
               </div>
-            </section>
+            </section> : null}
             <div className="tracker-nav">
-              <button className="button-link" onClick={clearTableFilters} type="button">
+              {(!visualV2 || filterDialogView === "filters") ? <button className="button-link" onClick={clearTableFilters} type="button">
                 Clear filters
-              </button>
+              </button> : null}
               <button className="modal-primary-button" onClick={() => setIsFilterModalOpen(false)} type="button">
                 Done
               </button>

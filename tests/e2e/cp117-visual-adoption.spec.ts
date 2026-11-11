@@ -717,6 +717,11 @@ for (const route of integratedRoutes) {
         if (route.name === "notifications") {
           await page.locator('[data-pd-id="notifications.history.loading-shell"]').waitFor({ state: "hidden", timeout: 45_000 });
         }
+        if (["free-bets", "casino-offers", "extra-place", "cash-adjustments"].includes(route.name)) {
+          const key = route.name;
+          await expect(page.locator(`[data-pd-id="${key}.table-scroll"] tbody tr`).first()).toBeAttached({ timeout: 45_000 });
+          await expect(page.locator(".ledger-loading-overlay")).toHaveCount(0, { timeout: 45_000 });
+        }
         await setTheme(page, theme);
         await page.waitForTimeout(400);
         await noPageOverflow(page);
@@ -947,6 +952,8 @@ for (const { width, theme } of [{ width: 1440, theme: "light" }, { width: 390, t
       await expect(realSurface).toBeVisible();
       await expect(realSurface.getByRole("toolbar")).toBeVisible();
       await expect(realSurface.locator("table").first()).toBeVisible();
+      await expect(realSurface.locator("tbody tr").first()).toBeAttached({ timeout: 45_000 });
+      await expect(page.locator(".ledger-loading-overlay")).toHaveCount(0, { timeout: 45_000 });
       expect(await realSurface.evaluate(element => element.className)).toBe(labClass);
       await noPageOverflow(page);
       await page.screenshot({ path: join(evidence, `v2-${ledger.key}-screen-${width}-${theme}.png`), fullPage: true });

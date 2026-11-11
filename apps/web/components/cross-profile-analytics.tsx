@@ -8,6 +8,7 @@ import { CurrentAccountCash } from "@/components/current-account-cash";
 
 import Link from "next/link";
 import { ReportExplorer } from "@/components/report-explorer";
+import { DesignReportAdvanced } from "@/components/design-report-presentation";
 import { DesignManagementDetail, DesignManagementSurface, designManagementClasses } from "@/components/design-management-presentation";
 import { DesignPositionMetrics, DesignPositionWorkGrid, DesignPositionSurface, DesignPositionSectionHead, DesignPositionTask, DesignPositionShortcut, designPositionActionClasses } from "@/components/design-position-presentation";
 import { DesignPageHead, designPageHeadClasses } from "@/components/design-ledger-screen";
@@ -1283,7 +1284,7 @@ export function CrossProfileAnalytics({
           <span aria-hidden="true" className="material-symbols-outlined">
             group
           </span>
-          <span>{isReportAnalysisTab && !(visualV2 && activeTab === "performance") ? "Profile Scope" : "Profiles"}</span>
+          <span>{visualV2 && activeTab === "reports" ? "Report Profiles" : isReportAnalysisTab && !(visualV2 && activeTab === "performance") ? "Profile Scope" : "Profiles"}</span>
           <span className="profile-picker-count">{isReportAnalysisTab ? visualV2 && activeTab === "performance" ? reportScopeLabel.replace(/ Profiles$/, "") : reportScopeLabel : `${selectedProfileIds.length} of ${profileRecords.length}`}</span>
         </summary>
         <fieldset>
@@ -1835,8 +1836,7 @@ export function CrossProfileAnalytics({
           >
           {visualV2 ? <ReportExplorer contextKey="combined-reports" state={selectedReadState} scopeLabel={reportScopeLabel} summaryFirst
             scopes={profileRecords.filter((profile) => selectedProfileIds.includes(profile.profileId)).flatMap((profile) => { const dataset = datasets.get(profile.profileId); return dataset ? [{ profileId: profile.profileId, label: profile.displayName, dataset }] : []; })} /> : null}
-          <details className="v2-position-detail" open={!visualV2}>
-            {visualV2 ? <summary>Formal reports and source records</summary> : null}
+          <DesignReportAdvanced dataPdId="reports.formal.advanced" enabled={visualV2} summary="Formal reports and source records">
           <PeriodPnlReport rows={formalCombined.weeklyReports} contextKey="combined"
             scopeLabel={reportScopeLabel}
             scopes={profileRecords.filter((profile) => selectedProfileIds.includes(profile.profileId))
@@ -1869,7 +1869,7 @@ export function CrossProfileAnalytics({
             rows={formalCombined.yearlyReports}
             title="Combined Yearly Reports"
           />
-          </details>
+          </DesignReportAdvanced>
           </section>
           ) : null}
         </>

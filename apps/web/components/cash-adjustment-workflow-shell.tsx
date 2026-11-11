@@ -26,7 +26,7 @@ import { EditorValidationBanner } from "@/components/editor-validation-banner";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
 import { DesignLedgerSearch } from "@/components/design-ledger-search";
-import { DesignLedgerScreen, DesignLedgerToolbar, DesignLedgerToolbarAction, DesignLedgerPrimaryAction, DesignPageHead, DesignLedgerNarrowToggle, DesignLedgerMobileRows, designPageHeadClasses } from "@/components/design-ledger-screen";
+import { DesignLedgerScreen, DesignLedgerToolbar, DesignLedgerToolbarAction, DesignLedgerPrimaryAction, DesignLedgerPagination, DesignPageHead, DesignLedgerNarrowToggle, DesignLedgerMobileRows, designPageHeadClasses } from "@/components/design-ledger-screen";
 import { DesignLabSelect } from "@/components/design-lab-select";
 import { LedgerViewContext } from "@/components/ledger-view-context";
 import { LedgerPagination } from "@/components/ledger-pagination";
@@ -571,6 +571,7 @@ export function CashAdjustmentWorkflowShell({ profileId, initialRecordId, initia
     false
   );
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [filterDialogView, setFilterDialogView] = useState<"filters" | "columns">("filters");
   const [visibleColumnKeys, setVisibleColumnKeys] = useState<Set<CashAdjustmentColumnKey>>(
     () => new Set(defaultVisibleCashAdjustmentColumns)
   );
@@ -1804,12 +1805,13 @@ export function CashAdjustmentWorkflowShell({ profileId, initialRecordId, initia
         ) : null}
         {!visualV2 ? quickViewPanel : null}
         <DesignLedgerScreen actions={visualV2 ? <DesignLedgerPrimaryAction dataPdId="cash-adjustments.toolbar.add-row" onClick={() => void startNewRow()}>Add Cash Adjustment</DesignLedgerPrimaryAction> : null} dataPdId="cash-adjustments.design-screen" description={`${filteredRows.length} of ${rows.length} rows · ${activeTableControlCount ? `${activeTableControlCount} active table controls` : query.trim() ? "Search active" : "No filters"} · Current Profile`} enabled={visualV2} title="Cash Adjustments">
-        <DesignLedgerToolbar ariaLabel="Cash-adjustment ledger controls" className="sportsbook-review-bar" enabled={visualV2}>
+        <DesignLedgerToolbar ariaLabel="Cash-adjustment ledger controls" className={visualV2 ? "" : "sportsbook-review-bar"} enabled={visualV2}>
           <DesignLedgerSearch dataPdId="cash-adjustments.toolbar.search" label="Search cash-adjustment rows" onChange={event => { setQuery(event.target.value); setCurrentPage(1); }} placeholder="Search cash-adjustment rows" value={query} />
           {!visualV2 ? <LedgerAddRowButton label="Add cash adjustment" onClick={() => void startNewRow()} /> : null}
           {visualV2 ? <>
             <DesignLabSelect dataPdId="cash-adjustments.toolbar.status" label="Calculation state" value={tableFilters.calculation_state} options={[{ value: "", label: "All states" }, ...cashAdjustmentFilterOptions.calculationStates.map(value => ({ value, label: value }))]} onChange={value => updateTableFilter("calculation_state", value)} compact />
-            <DesignLedgerToolbarAction dataPdId="cash-adjustments.toolbar.filter" onClick={() => setIsFilterModalOpen(true)}>Filters &amp; Columns</DesignLedgerToolbarAction>
+            <DesignLedgerToolbarAction dataPdId="cash-adjustments.toolbar.filter" onClick={() => { setFilterDialogView("filters"); setIsFilterModalOpen(true); }}>Filters</DesignLedgerToolbarAction>
+            <DesignLedgerToolbarAction dataPdId="cash-adjustments.toolbar.columns" onClick={() => { setFilterDialogView("columns"); setIsFilterModalOpen(true); }}>Columns</DesignLedgerToolbarAction>
             <DesignLedgerToolbarAction dataPdId="cash-adjustments.toolbar.restore-columns" onClick={() => { setVisibleColumnKeys(new Set(defaultVisibleCashAdjustmentColumns)); setColumnWidths(defaultCashAdjustmentColumnWidths); }}>Restore Default Columns</DesignLedgerToolbarAction>
           </> : null}
           {!visualV2 ? <div className="table-filter-button-wrap">
@@ -1836,8 +1838,17 @@ export function CashAdjustmentWorkflowShell({ profileId, initialRecordId, initia
         />
         {!tableCollapsed ? (
           <>
-            <LedgerViewContext ledger="cash-adjustments" activeControls={activeTableControlCount} searchActive={query.trim().length > 0} totalRows={rows.length} visibleRows={filteredRows.length} />
-            <LedgerPagination
+            {!visualV2 ? <LedgerViewContext ledger="cash-adjustments" activeControls={activeTableControlCount} searchActive={query.trim().length > 0} totalRows={rows.length} visibleRows={filteredRows.length} /> : null}
+            {visualV2 ? <DesignLedgerPagination
+              currentPage={effectivePage}
+              dataPdId="cash-adjustments.pagination.top"
+              label="Cash Adjustments"
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(nextPageSize) => { setPageSize(nextPageSize); setCurrentPage(1); }}
+              pageCount={pageCount}
+              pageSize={pageSize}
+              totalRows={filteredRows.length}
+            /> : <LedgerPagination
               ariaLabel="Cash Adjustment pagination"
               currentPage={effectivePage}
               onPageChange={setCurrentPage}
@@ -1849,7 +1860,7 @@ export function CashAdjustmentWorkflowShell({ profileId, initialRecordId, initia
               pageSize={pageSize}
               position="top"
               totalRows={filteredRows.length}
-            />
+            />}
             {visualV2 ? <DesignLedgerNarrowToggle expanded={mobileDetail} onToggle={() => setMobileDetail(value => !value)} /> : null}
             <LedgerTableScroll dataPdId="cash-adjustments.table-scroll" visualV2={visualV2} narrowDetail={visualV2 && mobileDetail} cellNavigation={{ label: "Cash Adjustments", onActivate: (rowId, column, anchor) => void selectRow(rowId, { cell: column in inlineCellFields ? { column, anchor } : undefined }) }}>
               <table className="data-table sportsbook-data-table">
@@ -1980,7 +1991,7 @@ export function CashAdjustmentWorkflowShell({ profileId, initialRecordId, initia
               const rowId = String(row.cash_adjustment_id ?? "");
               return { id: rowId, title: String(row.description ?? "").trim() || rowId, status: String(row.status ?? ""), subtitle: String(row.adjustment_type ?? "").trim(), fields: cashAdjustmentTableColumns.filter(column => column.key !== "actions").map(column => ({ key: column.key, label: column.label, value: renderTableCell(row, column) })), onOpen: () => void selectRow(rowId) };
             })} /> : null}
-            <LedgerPagination
+            {!visualV2 ? <LedgerPagination
               ariaLabel="Cash Adjustment pagination"
               currentPage={effectivePage}
               onPageChange={setCurrentPage}
@@ -1992,7 +2003,7 @@ export function CashAdjustmentWorkflowShell({ profileId, initialRecordId, initia
               pageSize={pageSize}
               position="bottom"
               totalRows={filteredRows.length}
-            />
+            /> : null}
           </>
         ) : null}
         </DesignLedgerScreen>
@@ -2001,7 +2012,7 @@ export function CashAdjustmentWorkflowShell({ profileId, initialRecordId, initia
       {isFilterModalOpen ? (
         <div className="modal-backdrop" onClick={() => setIsFilterModalOpen(false)}>
           <section
-            aria-label="Cash-adjustment filter controls"
+            aria-label={visualV2 && filterDialogView === "columns" ? "Cash Adjustment column controls" : "Cash Adjustment filter controls"}
             aria-modal="true"
             className="modal-panel stack"
             onClick={(event) => event.stopPropagation()}
@@ -2010,10 +2021,10 @@ export function CashAdjustmentWorkflowShell({ profileId, initialRecordId, initia
             <div className="workflow-panel-header">
               <div className="stack">
                 <span className="eyebrow">Table controls</span>
-                <strong>Filter cash-adjustment rows</strong>
+                <strong>{visualV2 && filterDialogView === "columns" ? "Cash Adjustment columns" : "Filter cash-adjustment rows"}</strong>
               </div>
               <button
-                aria-label="Close cash-adjustment filter controls"
+                aria-label={visualV2 && filterDialogView === "columns" ? "Close Cash Adjustment column controls" : "Close cash-adjustment filter controls"}
                 className="modal-close-button"
                 onClick={() => setIsFilterModalOpen(false)}
                 type="button"
@@ -2021,7 +2032,7 @@ export function CashAdjustmentWorkflowShell({ profileId, initialRecordId, initia
                 ×
               </button>
             </div>
-            <div className="form-grid">
+            {(!visualV2 || filterDialogView === "filters") ? <div className="form-grid">
               <label className="field-control">
                 <span>View</span>
                 <select
@@ -2134,8 +2145,8 @@ export function CashAdjustmentWorkflowShell({ profileId, initialRecordId, initia
                   value={tableFilters.max_value}
                 />
               </label>
-            </div>
-            <section className="stack">
+            </div> : null}
+            {(!visualV2 || filterDialogView === "columns") ? <section className="stack">
               <strong>Visible columns</strong>
               <div className="review-chip-row">
                 {cashAdjustmentTableColumns.map((column) => {
@@ -2164,18 +2175,18 @@ export function CashAdjustmentWorkflowShell({ profileId, initialRecordId, initia
                   );
                 })}
               </div>
-            </section>
+            </section> : null}
             <div className="tracker-nav">
-              <button
+              {(!visualV2 || filterDialogView === "filters") ? <button
                 className="button-link"
                 onClick={() => {
                   clearTableFilters();
-                  setVisibleColumnKeys(new Set(defaultVisibleCashAdjustmentColumns));
+                  if (!visualV2) setVisibleColumnKeys(new Set(defaultVisibleCashAdjustmentColumns));
                 }}
                 type="button"
               >
                 Clear filters
-              </button>
+              </button> : null}
               <button className="modal-primary-button" onClick={() => setIsFilterModalOpen(false)} type="button">
                 Done
               </button>

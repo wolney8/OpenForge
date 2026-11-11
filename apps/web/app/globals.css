@@ -4683,6 +4683,29 @@ html[data-theme="dark"] .notification-count-badge {
   width: 100%;
 }
 
+/* Reports keeps the governed multi-Profile picker as a secondary control next
+   to the Lab range, without reintroducing the legacy analytics grid. */
+[data-pd-id="reports.page-head"] .fund-manager-control-bar.is-analytics {
+  display: flex;
+  align-items: end;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 0;
+  background: transparent;
+}
+[data-pd-id="reports.page-head"] .fund-manager-control-slot-range { order: 0; flex: 0 1 190px; }
+[data-pd-id="reports.page-head"] .fund-manager-control-slot-profile { order: 1; flex: 0 1 auto; width: auto; }
+[data-pd-id="reports.page-head"] .profile-report-picker summary {
+  width: auto;
+  min-height: 44px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--primary);
+}
+[data-pd-id="reports.page-head"] .profile-report-picker fieldset { left: auto; right: 0; max-width: calc(100vw - 32px); }
+
 .fund-manager-control-bar .compact-report-controls {
   display: grid;
   min-width: 0;

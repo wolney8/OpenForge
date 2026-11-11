@@ -2,6 +2,14 @@
 
 Complete this for every feature, bug fix, component, fixture-backed UI, route or page change.
 
+## CP-117 remaining presentation batch — 2026-11-11 / #118
+
+- [x] Scoped PD-PR-117A-86–89 against the approved connected Lab and preserved the starting candidate. Matched Position, Today, Reports and Sportsbook shell geometry at 900px; the existing shared gutters needed evidence, not a new offset.
+- [x] Inspected full Notifications at its actual real-page mount. Restored the missing breadcrumb, retained the shared Lab tabs/rows/sections, collapsed long evidence into reachable detail, confirmed row Clear, and labelled partial or unavailable history truthfully. The real feed has no governed selected-range semantics; its Today navigation remains an explicit functional exception.
+- [x] Reused shared Lab toolbar and pager primitives for five non-Accounts Profile-owned ledgers and six combined scopes. Removed the legacy native review-grid class only from V2; Filters, Columns, compact paging, required native columns, owned row actions and legacy flag-OFF paths remain.
+- [x] Kept Reports' governed Profile and formal-report controls in secondary shared Lab surfaces beside the existing selected range. Focused 900/390px open-control and actual Chromium 200% checks passed without page overflow.
+- [x] Final-source visual 200/200, full V2 integration 97 passed/five flag-OFF-only skips, rollback 9/9, web units 713/713, typecheck, production build and changed-source lint passed. The first V2 run failed two old combined-filter test clicks; final rerun used the separate Filters action and retained their source/return assertions. Local source pin is checked at delivery. Owner Design Acceptance and spoken screen-reader review remain unverified.
+
 ## CP-117 Accounts toolbar correction — 2026-11-11 / #118
 
 - [x] Captured the approved Lab and native Profile-owned Accounts screen before correction at 1440px light, 900px dark and 390px dark. Compared full heading, toolbar, results and table rather than an isolated button.
