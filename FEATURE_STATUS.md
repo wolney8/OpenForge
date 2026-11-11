@@ -1,5 +1,9 @@
 # Feature Status — Plum Duff / OpenForge — Doc ID: FS-CODEX-001
 
+## CP-140 Sportsbook comparison closure — 2026-11-11
+
+Sportsbook now has a focused populated Lab/native comparison across offer/setup, requirements, matching, placement and review/settlement at 900px/dark (1/1 passed). The current [acceptance matrix](docs/audits/platform-quality-audit.md#cp-140b-current-cp-117-acceptance-matrix--2026-11-10--118) keeps the fixed-versus-conditional stage navigation decision open. Sportsbook, Free Bet and Casino implementation candidates are ready for owner review; no owner Design Acceptance or new correction-mutation proof is inferred. [#118](https://github.com/wolney8/OpenForge/issues/118)
+
 ## Current CP-140 editor candidate — 2026-11-10
 
 The Sportsbook, Free Bet and Casino native V2 financial editors share the Lab workbench header, field/card styling and contained footer. Their production modal lifecycle, additional required fields, calculation, Save and correction authorities remain native. Three synthetic Add/rejected Save/retry/reload/populated Edit/Save recordings and paired Lab/native captures are in `data/private/evidence/cp140-editor-candidate/`. Final-source V2 integration 96 passed/five legacy-only skips, visual 175/175, flag-OFF 9/9, web unit 713/713, typecheck and build passed. Design Acceptance and manual screen-reader review remain open; correction mutation was not newly validated. Combined in-place floating Save and compatible combined financial KPIs remain separate open work. [#118](https://github.com/wolney8/OpenForge/issues/118)

@@ -277,6 +277,62 @@ for (const item of [
   });
 }
 
+test("Sportsbook populated Lab and native workbenches expose their complete governed stages", async ({ page }, info) => {
+  test.setTimeout(120_000);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.addInitScript(() => {
+    localStorage.setItem("pd-required-storage-notice", "acknowledged");
+    localStorage.setItem("openforge-theme", "dark");
+  });
+  await page.goto(authURL);
+  await page.goto("/design-lab");
+  await page.locator('[data-pd-id="lab.nav.sportsbook"]').click();
+  await page.locator('tr[data-lab-row-id="LAB-SB-001"] button[aria-label^="Open "]').click();
+  await page.getByRole("button", { name: "Edit Bet", exact: true }).click();
+  const lab = page.locator('[data-pd-id="lab.entry.page"]');
+  const labStages = lab.getByRole("navigation", { name: "Bet workbench sections" });
+  await expect(lab).toBeVisible();
+  await expect(labStages.getByRole("button")).toHaveCount(5);
+  await page.setViewportSize({ width: 900, height: 900 });
+  for (const [stage, slug] of [["Offer", "offer"], ["Requirements", "requirements"], ["Matching", "matching"], ["Placement", "placement"], ["Finish / Review", "review"]] as const) {
+    await labStages.getByRole("button", { name: new RegExp(stage, "i") }).click();
+    await expect(lab.getByRole("group", { name: new RegExp(stage, "i") })).toBeVisible();
+    await page.screenshot({ path: info.outputPath(`sportsbook-lab-populated-${slug}-900-dark.png`), fullPage: true });
+  }
+
+  const range = await page.request.put("/api/fund-manager/preferences/selected-range", { data: {
+    selected_range_preset: "All Dates", selected_range_custom_start: null, selected_range_custom_end: null,
+  } });
+  expect(range.status()).toBe(200);
+  await page.goto("/profiles/profile-demo-001/tracker/sportsbook-bets");
+  await expect(page.locator(".ledger-loading-overlay")).toHaveCount(0, { timeout: 45_000 });
+  await page.locator('td[data-ledger-row="SB-SEED-001"][data-ledger-column="event_name"]').dblclick();
+  const native = page.getByRole("dialog", { name: "Edit sportsbook row", exact: true });
+  await expect(native).toBeVisible();
+  await expect(native).toHaveCSS("opacity", "1");
+  await page.waitForTimeout(350);
+  await expect(native.getByRole("tab", { name: /Bet Setup/i })).toBeVisible();
+  await expect(native.getByRole("tab", { name: /Matching/i })).toBeVisible();
+  await expect(native.getByRole("tab", { name: /Settlement/i })).toBeVisible();
+  await page.screenshot({ path: info.outputPath("sportsbook-native-populated-setup-900-dark.png") });
+  const nativeBody = native.locator(".workflow-editor-body");
+  await nativeBody.evaluate(element => { element.scrollTop = element.scrollHeight; });
+  await page.screenshot({ path: info.outputPath("sportsbook-native-populated-setup-end-900-dark.png") });
+  await native.getByRole("tab", { name: /Matching/i }).click();
+  await expect(native.locator('[data-pd-id="ledger-editor.panel.matching"]')).toBeVisible();
+  await page.screenshot({ path: info.outputPath("sportsbook-native-populated-matching-900-dark.png") });
+  await nativeBody.evaluate(element => { element.scrollTop = element.scrollHeight; });
+  await page.screenshot({ path: info.outputPath("sportsbook-native-populated-matching-end-900-dark.png") });
+  await native.getByRole("tab", { name: /Settlement/i }).click();
+  await expect(native.locator('[data-pd-id="ledger-editor.panel.settlement"]')).toBeVisible();
+  await page.screenshot({ path: info.outputPath("sportsbook-native-populated-settlement-900-dark.png") });
+  await nativeBody.evaluate(element => { element.scrollTop = element.scrollHeight; });
+  await page.screenshot({ path: info.outputPath("sportsbook-native-populated-settlement-end-900-dark.png") });
+  await native.locator('[data-pd-id="sportsbook.editor.edit-settled-row"]:visible').first().click();
+  await expect(native.locator('[data-pd-id="sportsbook.editor.editing-state"]:visible').first()).toBeVisible();
+  await page.screenshot({ path: info.outputPath("sportsbook-native-populated-correction-900-dark.png") });
+});
+
 for (const item of cases) {
   test(`${item.id} native Add, Save, reopen and Edit keep the source record`, async ({ page }) => {
     test.setTimeout(120_000);
