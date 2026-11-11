@@ -9,7 +9,7 @@ type LedgerPaginationProps = {
   position: "top" | "bottom";
 };
 
-const pageSizeOptions = [8, 16, 32];
+export const ledgerPageSizeOptions = [8, 16, 32] as const;
 
 export function LedgerPagination({
   ariaLabel,
@@ -36,7 +36,7 @@ export function LedgerPagination({
           onChange={(event) => onPageSizeChange(Number(event.target.value))}
           value={pageSize}
         >
-          {pageSizeOptions.map((option) => (
+          {ledgerPageSizeOptions.map((option) => (
             <option key={option} value={option}>
               {option}
             </option>

@@ -102,6 +102,112 @@ test("Accounts keeps its native Add dialog and governed fields", async ({ page }
   await expect(editor).toHaveCount(0);
 });
 
+test("Profile Accounts uses the Lab toolbar hierarchy with compact governed paging", async ({ page }) => {
+  await page.setViewportSize({ width: 900, height: 900 });
+  await page.goto(`${profile}/tracker/accounts`);
+  const screen = page.locator('[data-pd-id="accounts.design-screen"]');
+  await expect(screen).toBeVisible({ timeout: 45_000 });
+  const toolbar = page.locator('[data-pd-id="accounts.table-toolbar"]');
+  await expect(toolbar).toBeVisible({ timeout: 45_000 });
+  await expect(toolbar.locator('[data-pd-id="accounts.toolbar.search"]')).toBeVisible();
+  await expect(toolbar.locator('[data-pd-id="accounts.toolbar.status"]')).toBeVisible();
+  await expect(toolbar.locator('[data-pd-id="accounts.toolbar.filter"]')).toHaveText("Filters");
+  await expect(toolbar.locator('[data-pd-id="accounts.toolbar.columns"]')).toHaveText("Columns");
+  await expect(screen.locator('[data-pd-id="accounts.table-loadouts"]')).toHaveCount(0);
+  await expect(screen.locator('[data-pd-id="accounts.pagination.top"]')).toContainText(/Showing \d+–\d+ of \d+/);
+  await expect(screen.locator('[data-pd-id="accounts.pagination.bottom"]')).toHaveCount(0);
+  for (const width of [900, 390] as const) {
+    await page.setViewportSize({ width, height: 900 });
+    const pager = page.locator('[data-pd-id="accounts.pagination.top"]');
+    const select = (await pager.locator('[data-pd-id="accounts.pagination.top.page-size"]').boundingBox())!;
+    const previous = (await pager.getByRole("button", { name: "Previous" }).boundingBox())!;
+    const overlap = select.x < previous.x + previous.width && previous.x < select.x + select.width && select.y < previous.y + previous.height && previous.y < select.y + select.height;
+    expect(overlap, `Page size overlaps Previous at ${width}px`).toBe(false);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
+  }
+});
+
+test("Accounts paging and status filters operate on one bounded read", async ({ page }) => {
+  const response = await page.request.get(`/api/profiles/profile-demo-001/accounts`);
+  expect(response.ok(), await response.text()).toBe(true);
+  const records = await response.json() as Array<Record<string, unknown>>;
+  expect(records.length).toBeGreaterThan(0);
+  const rows = Array.from({ length: 17 }, (_, index) => ({
+    ...records[0],
+    account_id: `SYN-ACCOUNT-${String(index + 1).padStart(2, "0")}`,
+    account: `Synthetic Account ${index + 1}`,
+    catalogue_id: "",
+    status: index < 13 ? "Active" : "Limited",
+    lifecycle_status: index < 13 ? "Active" : "Limited",
+  }));
+  await page.route(/\/profiles\/profile-demo-001\/accounts(?:\?.*)?$/, async route => {
+    if (route.request().method() === "GET") await route.fulfill({ status: 200, json: rows });
+    else await route.continue();
+  });
+  await page.goto(`${profile}/tracker/accounts`);
+  const pager = page.locator('[data-pd-id="accounts.pagination.top"]');
+  await expect(pager).toContainText("Showing 1–8 of 17", { timeout: 45_000 });
+  await pager.getByRole("button", { name: "Next" }).click();
+  await expect(pager).toContainText("Showing 9–16 of 17");
+  await page.locator('[data-pd-id="accounts.toolbar.status"]').click();
+  await page.getByRole("option", { name: "Limited" }).click();
+  await expect(pager).toContainText("Showing 1–4 of 4 · Page 1 of 1");
+  await page.locator('[data-pd-id="accounts.toolbar.clear-filters"]').click();
+  await expect(pager).toContainText("Showing 1–8 of 17");
+  await pager.locator('[data-pd-id="accounts.pagination.top.page-size"]').click();
+  await page.getByRole("option", { name: "16 rows" }).click();
+  await expect(pager).toContainText("Showing 1–16 of 17");
+});
+
+test("Accounts keeps search, secondary review filters, columns and owned-row handoff", async ({ page }) => {
+  const response = await page.request.get(`/api/profiles/profile-demo-001/accounts`);
+  expect(response.ok(), await response.text()).toBe(true);
+  const records = await response.json() as Array<{ account_id: string; account: string }>;
+  expect(records.length).toBeGreaterThan(0);
+  await page.goto(`${profile}/tracker/accounts`);
+  await expect(page.locator('[data-pd-id="accounts.table-toolbar"]')).toBeVisible({ timeout: 45_000 });
+  const search = page.getByRole("searchbox", { name: "Search accounts" });
+  await search.fill(records[0].account_id);
+  const pager = page.locator('[data-pd-id="accounts.pagination.top"]');
+  await expect(pager).toContainText("Showing 1–1 of 1");
+  await page.locator('[data-pd-id="accounts.toolbar.filter"]').click();
+  const filters = page.getByRole("dialog", { name: "Filter accounts" });
+  await expect(filters.getByRole("combobox", { name: "View" })).toBeVisible();
+  await expect(filters.getByRole("combobox", { name: "Issues" })).toBeVisible();
+  await filters.getByRole("button", { name: "Done" }).click();
+  const row = page.locator('[data-pd-id="accounts.table-scroll"] tbody tr').filter({ hasText: records[0].account_id });
+  await row.getByRole("button", { name: /^(Edit|Review attention for) / }).click();
+  await expect(page.getByRole("dialog", { name: "Edit account" })).toBeVisible();
+  await page.getByRole("button", { name: "Close account editor" }).click();
+  await expect(page.getByRole("dialog", { name: "Edit account" })).toHaveCount(0);
+  await page.locator('[data-pd-id="accounts.toolbar.clear-filters"]').click();
+  await expect(search).toHaveValue("");
+  await page.locator('[data-pd-id="accounts.toolbar.columns"]').click();
+  const columns = page.getByRole("dialog", { name: "Account columns" });
+  await columns.getByRole("button", { name: "Hide Channel" }).click();
+  await columns.getByRole("button", { name: "Done" }).click();
+  await expect(page.locator('[data-pd-id="accounts.table-scroll"] th').filter({ hasText: "Channel" })).toHaveCount(0);
+  await page.locator('[data-pd-id="accounts.toolbar.restore-columns"]').click();
+  await expect(page.locator('[data-pd-id="accounts.table-scroll"] th').filter({ hasText: "Channel" })).toHaveCount(1);
+  await search.fill("No matching synthetic Account");
+  await expect(pager).toContainText("Showing 0–0 of 0");
+  await expect(page.getByText("No account rows match the current filter.").first()).toBeVisible();
+});
+
+test("Accounts read failure does not present an empty result as complete", async ({ page }) => {
+  await page.route(/\/profiles\/profile-demo-001\/accounts(?:\?.*)?$/, async route => {
+    if (route.request().method() === "GET") await route.fulfill({ status: 503, json: { detail: "Synthetic read failure" } });
+    else await route.continue();
+  });
+  await page.goto(`${profile}/tracker/accounts`);
+  await expect(page.locator('[data-pd-id="accounts.read-error"]')).toBeVisible({ timeout: 45_000 });
+  await expect(page.locator('[data-pd-id="accounts.design-screen"]')).toContainText("Account rows unavailable");
+  await expect(page.locator('[data-pd-id="accounts.pagination.top"]')).toHaveCount(0);
+  await page.unroute(/\/profiles\/profile-demo-001\/accounts(?:\?.*)?$/);
+  await page.getByRole("button", { name: "Retry Accounts read" }).click();
+  await expect(page.locator('[data-pd-id="accounts.pagination.top"]')).toBeVisible({ timeout: 45_000 });
+});
+
 test("Profile overview preserves input after rejected Save and persists on retry", async ({ page }) => {
   await page.goto(`${profile}/manage`);
   const name = page.getByRole("textbox", { name: "Display name" });
@@ -169,6 +275,13 @@ test("management tabs remain usable at actual Chromium 200% zoom", async ({}, in
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
     await page.goto(`${baseURL}/settings`);
     await expect(page.getByRole("tab", { name: "Quick Actions" })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
+    await page.goto(`${baseURL}${profile}/tracker/accounts`);
+    const pager = page.locator('[data-pd-id="accounts.pagination.top"]');
+    await expect(pager).toBeVisible({ timeout: 45_000 });
+    const size = (await pager.locator('[data-pd-id="accounts.pagination.top.page-size"]').boundingBox())!;
+    const previous = (await pager.getByRole("button", { name: "Previous" }).boundingBox())!;
+    expect(size.x < previous.x + previous.width && previous.x < size.x + size.width && size.y < previous.y + previous.height && previous.y < size.y + size.height).toBe(false);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
   } finally {
     await context.close();

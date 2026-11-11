@@ -2,6 +2,13 @@
 
 Complete this for every feature, bug fix, component, fixture-backed UI, route or page change.
 
+## CP-117 Accounts toolbar correction — 2026-11-11 / #118
+
+- [x] Captured the approved Lab and native Profile-owned Accounts screen before correction at 1440px light, 900px dark and 390px dark. Compared full heading, toolbar, results and table rather than an isolated button.
+- [x] Reused the Lab ledger toolbar/select/action presentation and native Account filtering, sorting, page-size and Profile-owned commands. Kept the legacy status chips and duplicate pager only behind the V2 flag-OFF path; V2 review modes remain in Filters and column controls in Columns.
+- [x] Checked populated, filtered-empty, read-failure/retry and responsive Accounts states. Focused Playwright covers status/search, page clamping, 8/16 choices, column reset, row editor handoff, Add/Cancel, 900/390 containment, both themes and Chromium 200% zoom; the combined Accounts consumer and other shared-ledger screens are covered by the final visual/integration runs.
+- [ ] Owner Design Acceptance, manual spoken screen-reader review and mutation testing of balance/import/restore commands are separate. Sportsbook five-stage navigation remains an explicit owner decision.
+
 ## CP-117 management screen completion — 2026-11-11 / #118
 
 - [x] Compared populated Lab Profiles/onboarding/Accounts with real routes at 900px dark and retained private before/after captures. The Lab has no full Profile Management or Settings equivalent; their extra production controls remain explicit extensions.

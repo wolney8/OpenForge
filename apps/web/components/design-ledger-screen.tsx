@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import { Suspense } from "react";
 import styles from "@/components/design-lab-connected.module.css";
+import { DesignLabSelect } from "@/components/design-lab-select";
+import { ledgerPageSizeOptions } from "@/components/ledger-pagination";
 import { TrackedTasksBanner } from "@/components/tracked-tasks-banner";
 
 /** The approved Lab ledger's complete heading, controls and content surface. */
@@ -30,6 +32,29 @@ export function DesignLedgerToolbar({ ariaLabel, children, className = "", dataP
   enabled?: boolean;
 }) {
   return <div aria-label={ariaLabel} className={`${enabled ? styles.toolbar : ""} ${className}`.trim()} data-pd-id={dataPdId} role={ariaLabel ? "toolbar" : undefined}>{children}</div>;
+}
+
+/** Compact pagination extension for governed ledgers; Lab control geometry, native page authority. */
+export function DesignLedgerPagination({ currentPage, dataPdId, label, onPageChange, onPageSizeChange, pageCount, pageSize, totalRows }: {
+  currentPage: number;
+  dataPdId: string;
+  label: string;
+  onPageChange: (page: number) => void;
+  onPageSizeChange: (size: number) => void;
+  pageCount: number;
+  pageSize: number;
+  totalRows: number;
+}) {
+  const start = totalRows ? (currentPage - 1) * pageSize + 1 : 0;
+  const end = Math.min(totalRows, currentPage * pageSize);
+  return <div aria-label={`${label} pagination`} className={`${styles.toolbar} ${styles.ledgerPagination}`} data-pd-id={dataPdId}>
+    <span aria-live="polite" className={styles.tableNote}>Showing {start}–{end} of {totalRows} · Page {currentPage} of {pageCount}</span>
+    <DesignLabSelect compact dataPdId={`${dataPdId}.page-size`} label={`${label} rows per page`} onChange={value => onPageSizeChange(Number(value))} options={ledgerPageSizeOptions.map(size => ({ value: String(size), label: `${size} rows` }))} value={String(pageSize)} />
+    <div className={styles.ledgerPaginationActions}>
+      <button className={styles.secondaryButton} disabled={currentPage <= 1} onClick={() => onPageChange(Math.max(1, currentPage - 1))} type="button">Previous</button>
+      <button className={styles.secondaryButton} disabled={currentPage >= pageCount} onClick={() => onPageChange(Math.min(pageCount, currentPage + 1))} type="button">Next</button>
+    </div>
+  </div>;
 }
 
 export function DesignPageHead({ children, dataPdId, enabled = true }: { children: ReactNode; dataPdId?: string; enabled?: boolean }) {
