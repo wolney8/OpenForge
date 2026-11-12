@@ -5,6 +5,7 @@ import type { CombinedLedgerModule } from "@/lib/profile-scope";
 import { canCasinoInlineScalarEdit } from "@/components/casino-offer-workflow-shell";
 import { getFreeBetInputErrors } from "@/lib/free-bet-input";
 import { normalizeAccountAccessChannels } from "@/lib/account-access-channels";
+import { fromDateTimeLocalValue } from "@/lib/date-format";
 
 type ScalarField = { key: string; label: string; maxLength: number; required?: boolean };
 
@@ -17,10 +18,12 @@ const fields: Partial<Record<CombinedLedgerModule, Record<string, ScalarField>>>
   "free-bets": {
     event_name: { key: "event_name", label: "Event name", maxLength: 200 },
     offer_name: { key: "offer_name", label: "Campaign Tag", maxLength: 200 },
+    expiry_datetime: { key: "expiry_datetime", label: "Expiry", maxLength: 60 },
   },
   "casino-offers": {
     offer_name: { key: "offer_name", label: "Offer name", maxLength: 400, required: true },
     game: { key: "game", label: "Game", maxLength: 200 },
+    expiry_datetime: { key: "expiry_datetime", label: "Expiry", maxLength: 60 },
   },
   "each-way-extra-places": {
     runner: { key: "runner", label: "Runner", maxLength: 240 },
@@ -124,18 +127,19 @@ export async function commitOwnedScalar({ module, profileId, recordId, column, e
   if (!ownedScalarField(module, column, current)) throw new Error("This row now requires its native review or correction workflow.");
   // A previous PUT may have succeeded while its response was lost. The fresh
   // authoritative read confirms that result without producing a second audit write.
-  if (String(current[column] ?? "") === value) return current;
+  const preparedValue = column === "expiry_datetime" ? fromDateTimeLocalValue(value) : value;
+  if (String(current[column] ?? "") === preparedValue) return current;
   if (String(current[column] ?? "") !== expected) throw new Error("This field changed elsewhere. Reload the ledger and review its current value.");
   const saved = await fetch(endpoint, {
     method: "PUT", credentials: "include", headers: {
       "Content-Type": "application/json",
       ...(module === "cash-adjustments" ? { "Idempotency-Key": operationId ?? crypto.randomUUID() } : {}),
     },
-    body: JSON.stringify({ ...current, [column]: value }),
+    body: JSON.stringify({ ...current, [column]: preparedValue }),
   });
   if (!saved.ok) throw new Error(formatApiErrorBody(await saved.text(), "The field was not saved."));
   const confirmed = await saved.json() as LedgerSourceRecord;
-  if (confirmed.profile_id !== profileId || confirmed[identityKey] !== recordId || confirmed[column] !== value) throw new Error("The save response did not confirm this field. Reload the record before retrying.");
+  if (confirmed.profile_id !== profileId || confirmed[identityKey] !== recordId || confirmed[column] !== preparedValue) throw new Error("The save response did not confirm this field. Reload the record before retrying.");
   return confirmed;
 }
 

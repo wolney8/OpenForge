@@ -12,11 +12,13 @@ export type LedgerEditorTabDefinition = {
 
 export function getSettlementTabAttentionState({
   activeStatuses = ["Placed", "Started", "In Progress"],
+  dateMeaning,
   result,
   settlementDate,
   status,
 }: {
   activeStatuses?: string[];
+  dateMeaning: "recorded_event" | "recorded_deadline";
   result?: string | null;
   settlementDate?: string | null;
   status?: string | null;
@@ -24,6 +26,7 @@ export function getSettlementTabAttentionState({
   const normalizedStatus = status?.trim();
   const normalizedResult = result?.trim();
   if (
+    dateMeaning !== "recorded_deadline" ||
     !normalizedStatus ||
     !activeStatuses.includes(normalizedStatus) ||
     normalizedStatus === "Settled" ||

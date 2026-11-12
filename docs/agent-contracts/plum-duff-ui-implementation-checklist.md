@@ -2,6 +2,16 @@
 
 Complete this for every feature, bug fix, component, fixture-backed UI, route or page change.
 
+## CP-117 typed cell editing — 2026-11-12 / #118
+
+- [x] Registered PD-PR-117A-104/105, inspected native field/state gates and retained the approved Lab floating editor and Profile-owned Save authority.
+- [x] Reproduced absent enum, datetime and numeric controls in three failing synthetic browser journeys before the correction; preserved protected/correction paths.
+- [x] Verified eligible Extra Place bookmaker, date/time and stake, plus Free Bet/Casino expiry, through owned and combined controls with persisted disposable records. Checked invalid values, rejected Save/retry, stale source value, foreign Profile and unchanged unrelated financial fields.
+- [x] Compared the rendered Lab/native/combined date control at 900px and 390px in light/dark. The compact surface resolves its theme tokens in the real portal; broader ledger page differences remain separately open.
+- [x] Prevented recorded Sportsbook/Free Bet event dates from appearing as settlement deadlines; stage entry tests cover incomplete, placed and protected lifecycle states.
+- [x] Final-source V2 138 passed/five expected skips; visual 223/223; flag-OFF rollback 9/9; web units 747/747; typecheck and changed-file lint zero errors. The first V2 run had one introduced synthetic-fixture count failure; the isolated Profile correction passed the affected two-test sequence and the complete rerun.
+- [x] Production build passed. The feature checkpoint, normal-web source pin and local 3010 health are recorded in the private current evidence index after source custody is finalized.
+
 ## CP-117 rejected Today and ledger parity — 2026-11-11 / #118
 
 - [x] Registered PD-PR-117A-90–96 against the connected Lab before correction. Kept the approved Lab composition and the production financial, permission and annotation authorities distinct.

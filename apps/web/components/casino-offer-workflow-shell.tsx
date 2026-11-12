@@ -109,7 +109,7 @@ import {
   dedupeOptions,
 } from "@/lib/workbook-options";
 
-const inlineCellFields = {"offer_name": {"key": "offer_name", "label": "Offer name"}, "game": {"key": "game", "label": "Game"}} as const;
+const inlineCellFields = {"offer_name": {"key": "offer_name", "label": "Offer name"}, "game": {"key": "game", "label": "Game"}, "expiry_datetime": {"key": "expiry_datetime", "label": "Expiry"}} as const;
 
 type CasinoOfferRecord = {
   casino_offer_id: string;
@@ -4251,7 +4251,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
       ) : null}
 
       {workflowVisible && cellEditor.session && inlineField ? <LedgerFloatingCellEditor compact session={cellEditor.session} ledger="Casino Offers" label={inlineField.label} dirty={isDirty} pending={isPersisting} error={errorMessage || statusMessage} onSave={async () => { const saved = await persistForm(formState); if (saved) cellEditor.close(); return saved; }} onCancel={() => { handleResetForm(); setWorkflowVisible(false); setSelectedId(null); selectedIdRef.current = null; cellEditor.close(); }} onReview={() => { cellEditor.close(); revealEditor(); }}>
-        <label><span className="sr-only">{inlineField.label}</span><input className={designFloatingCellInputClass} data-pd-id={`casino-offers.cell-editor.${inlineField.key}`} aria-label={inlineField.label} value={formState[inlineField.key]} onChange={event => { setErrorMessage(""); setFormState(current => ({ ...current, [inlineField.key]: event.target.value })); }} type="text" /></label>
+        <label><span className="sr-only">{inlineField.label}</span><input className={designFloatingCellInputClass} data-pd-id={`casino-offers.cell-editor.${inlineField.key}`} aria-label={inlineField.label} value={formState[inlineField.key]} onChange={event => { setErrorMessage(""); setFormState(current => ({ ...current, [inlineField.key]: event.target.value })); }} type={inlineField.key === "expiry_datetime" ? "datetime-local" : "text"} /></label>
       </LedgerFloatingCellEditor> : null}
       {workflowVisible && !cellEditor.active ? (
         <ModalBoundary onDismiss={() => void closeEditor()}>

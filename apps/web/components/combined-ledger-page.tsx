@@ -19,12 +19,15 @@ import { resolveDateRange, type DatePreset } from "@/lib/tracker-summary";
 import { saveFundManagerSelectedRange } from "@/lib/tracker-settings-client";
 import { commitOwnedAccessChannels, commitOwnedRunnerRace, commitOwnedScalar, ownedAccessChannelsEditable, ownedScalarField } from "@/lib/ledger-scalar-command";
 import { accountAccessChannelOptions } from "@/lib/account-access-channels";
+import { commitOwnedExtraPlaceTyped, extraPlaceBookmakerOptions, extraPlaceTypedCellEligibility, extraPlaceTypedSourceKey, type ExtraPlaceTypedColumn } from "@/lib/extra-place-typed-cell";
+import type { AccountAuthorityRecord } from "@/lib/account-authorities";
+import { toDateTimeLocalValue } from "@/lib/date-format";
 import { useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
 import { presentLedgerCell, type LedgerSourceRecord } from "@/lib/combined-ledger-source";
 import { combinedLedgerFilters, combinedFilterOptions, combinedFilterValue, combinedIssueLabels, combinedIssueTone, matchesCombinedLedgerFilters } from "@/lib/combined-ledger-filters";
 import type { MasterAccountCatalogue, MasterAccountCatalogueRecord } from "@/lib/bookmaker-catalogue";
 import { ledgerColumnContracts, ledgerColumnWidths, ledgerHideableColumns, ledgerSortableColumns, ledgerV2ActionColumnWidth } from "@/lib/ledger-column-contracts";
-import { ledgerCellCapability, ledgerCellReviewReason } from "@/lib/ledger-cell-capabilities";
+import { ledgerCellCapability, ledgerCellDecision } from "@/lib/ledger-cell-capabilities";
 import type { CombinedLedgerModule } from "@/lib/profile-scope";
 import { trackerModuleDefinitions } from "@/lib/tracker-modules";
 
@@ -89,7 +92,7 @@ export function CombinedLedgerPage({ module }: { module: CombinedLedgerModule })
   const previousModule = useRef(module);
   const [refreshKey, setRefreshKey] = useState(0);
   const cellEditor = useLedgerCellEditor();
-  const [activeCell, setActiveCell] = useState<{ row: OwnedRecord; column: string; original: string; originalRace?: string; originalChannels?: string[]; label: string } | null>(null);
+  const [activeCell, setActiveCell] = useState<{ row: OwnedRecord; column: string; original: string; sourceOriginal?: string; bookmakerOptions?: string[]; originalRace?: string; originalChannels?: string[]; label: string } | null>(null);
   const [cellDraft, setCellDraft] = useState("");
   const [raceDraft, setRaceDraft] = useState("");
   const [channelDraft, setChannelDraft] = useState<string[]>([]);
@@ -99,6 +102,7 @@ export function CombinedLedgerPage({ module }: { module: CombinedLedgerModule })
   const [selectedRowIdentity, setSelectedRowIdentity] = useState<string | null>(null);
   const [protectedCell, setProtectedCell] = useState<{ row: OwnedRecord; column: string } | null>(null);
   const cellSaving = useRef(false);
+  const cellActivationRequest = useRef(0);
   const cashScalarOperation = useRef<{ row: string; column: string; value: string; key: string } | null>(null);
   const activeCellDirty = Boolean(activeCell && (cellDraft !== activeCell.original || activeCell.originalRace !== undefined && raceDraft !== activeCell.originalRace || activeCell.originalChannels !== undefined && JSON.stringify(channelDraft) !== JSON.stringify(activeCell.originalChannels)));
   const confirmDiscardCell = useUnsavedChangesGuard(activeCellDirty, {
@@ -272,17 +276,31 @@ export function CombinedLedgerPage({ module }: { module: CombinedLedgerModule })
   for (const filter of combinedLedgerFilters[module]) if (selectedFilters[filter.key]) returnQuery.set(`f_${filter.key}`, selectedFilters[filter.key]);
   const returnPath = `/tracker/${module}${returnQuery.size ? `?${returnQuery.toString()}` : ""}`;
   const rowHref = (row: OwnedRecord) => `/profiles/${encodeURIComponent(row.profileId)}/tracker/${module}?record=${encodeURIComponent(row.recordId)}&returnTo=${encodeURIComponent(returnPath)}`;
-  const activateCell = (row: OwnedRecord, column: string, anchor: HTMLElement) => {
+  const activateCell = async (row: OwnedRecord, column: string, anchor: HTMLElement) => {
+    const request = ++cellActivationRequest.current;
+    setError("");
     const capability = ledgerCellCapability(module, column);
     const field = ownedScalarField(module, column, row.data);
     const runnerRace = module === "each-way-extra-places" && column === "runner" && capability.authority === "native-composite";
     const accountChannels = module === "accounts" && column === "channel" && Array.isArray(row.data.access_channels) && ownedAccessChannelsEditable(row.data);
-    if (!accountChannels && ((!runnerRace && capability.authority !== "scalar") || !field)) { setProtectedCell({ row, column }); return; }
+    const typedExtraPlace = module === "each-way-extra-places" && (["date", "bookmaker", "stake"] as string[]).includes(column) && !extraPlaceTypedCellEligibility(row.data, column);
+    const typedExpiry = (module === "free-bets" || module === "casino-offers") && column === "expiry_datetime" && Boolean(field);
+    if (!accountChannels && !typedExtraPlace && !typedExpiry && ((!runnerRace && capability.authority !== "scalar") || !field)) { setProtectedCell({ row, column }); return; }
+    let bookmakerOptions: string[] | undefined;
+    if (typedExtraPlace && column === "bookmaker") {
+      try {
+        const response = await fetch(`${apiBaseUrl}/profiles/${encodeURIComponent(row.profileId)}/accounts`, { cache: "no-store", credentials: "include" });
+        if (!response.ok) throw new Error("Authorised bookmaker options could not be loaded.");
+        bookmakerOptions = extraPlaceBookmakerOptions(await response.json() as AccountAuthorityRecord[], row.data);
+      } catch (cause) { if (request === cellActivationRequest.current) setError(cause instanceof Error ? cause.message : "Authorised bookmaker options could not be loaded."); return; }
+      if (request !== cellActivationRequest.current || !anchor.isConnected) return;
+    }
     setProtectedCell(null);
     cashScalarOperation.current = null;
-    const original = String(row.data[column] ?? "");
+    const sourceOriginal = typedExtraPlace ? String(row.data[extraPlaceTypedSourceKey(column as ExtraPlaceTypedColumn)] ?? "") : typedExpiry ? String(row.data[column] ?? "") : undefined;
+    const original = typedExtraPlace ? column === "date" ? toDateTimeLocalValue(sourceOriginal ?? "") : sourceOriginal ?? "" : typedExpiry ? toDateTimeLocalValue(sourceOriginal ?? "") : String(row.data[column] ?? "");
     const originalChannels = accountChannels && Array.isArray(row.data.access_channels) ? row.data.access_channels as string[] : undefined;
-    setActiveCell({ row, column, original, originalRace: runnerRace ? String(row.data.race ?? "") : undefined, originalChannels, label: accountChannels ? "Access channels" : runnerRace ? "Runner / Race" : field!.label });
+    setActiveCell({ row, column, original, sourceOriginal, bookmakerOptions, originalRace: runnerRace ? String(row.data.race ?? "") : undefined, originalChannels, label: accountChannels ? "Access channels" : runnerRace ? "Runner / Race" : typedExtraPlace ? { date: "Date / time", bookmaker: "Bookmaker", stake: "E/W Stake" }[column]! : field!.label });
     setCellDraft(original); setRaceDraft(runnerRace ? String(row.data.race ?? "") : ""); setChannelDraft(originalChannels ?? []); setChannelMode("CLOSED"); setCellError("");
     cellEditor.start(column, anchor);
   };
@@ -294,11 +312,13 @@ export function CombinedLedgerPage({ module }: { module: CombinedLedgerModule })
       if (module === "cash-adjustments" && (!cashScalarOperation.current || cashScalarOperation.current.row !== operationRow || cashScalarOperation.current.column !== activeCell.column || cashScalarOperation.current.value !== cellDraft)) {
         cashScalarOperation.current = { row: operationRow, column: activeCell.column, value: cellDraft, key: crypto.randomUUID() };
       }
-      const confirmed = activeCell.originalChannels !== undefined
+      const confirmed = module === "each-way-extra-places" && activeCell.sourceOriginal !== undefined
+        ? await commitOwnedExtraPlaceTyped({ profileId: activeCell.row.profileId, recordId: activeCell.row.recordId, column: activeCell.column as ExtraPlaceTypedColumn, expected: activeCell.sourceOriginal, value: cellDraft, bookmakerOptions: activeCell.bookmakerOptions })
+        : activeCell.originalChannels !== undefined
         ? await commitOwnedAccessChannels({ profileId: activeCell.row.profileId, recordId: activeCell.row.recordId, expected: activeCell.originalChannels, values: channelDraft })
         : activeCell.originalRace !== undefined
           ? await commitOwnedRunnerRace({ profileId: activeCell.row.profileId, recordId: activeCell.row.recordId, expectedRunner: activeCell.original, expectedRace: activeCell.originalRace, runner: cellDraft, race: raceDraft })
-          : await commitOwnedScalar({ module, profileId: activeCell.row.profileId, recordId: activeCell.row.recordId, column: activeCell.column, expected: activeCell.original, value: cellDraft, operationId: cashScalarOperation.current?.key });
+          : await commitOwnedScalar({ module, profileId: activeCell.row.profileId, recordId: activeCell.row.recordId, column: activeCell.column, expected: activeCell.sourceOriginal ?? activeCell.original, value: cellDraft, operationId: cashScalarOperation.current?.key });
       setRows(current => current.map(row => identity(row) === identity(activeCell.row) ? { ...row, data: confirmed } : row));
       cashScalarOperation.current = null;
       cellEditor.close(); setActiveCell(null); setCellDraft(""); setRaceDraft(""); setChannelDraft([]); setChannelMode("CLOSED");
@@ -385,12 +405,12 @@ export function CombinedLedgerPage({ module }: { module: CombinedLedgerModule })
             {paginated.map(row => { const issueTone = combinedIssueTone(module, row.data); const issueLabels = issueTone ? combinedIssueLabels(module, row.data) : null; return <tr className={[identity(row) === selectedRowIdentity ? "is-selected-row" : "", issueTone === "danger" ? designLedgerClasses.urgentRow : issueTone === "warning" ? designLedgerClasses.warningRow : ""].filter(Boolean).join(" ") || undefined} key={identity(row)}><td data-ledger-column="profile_name" data-ledger-row={identity(row)}>{row.profileName}{issueTone === "danger" && issueLabels?.length ? <small className={designLedgerClasses.urgencyCue}>{issueLabels[0]}</small> : null}</td>{tableColumns.map(column => { const cell = presentLedgerCell(module, row.data, column.key); return <td data-ledger-column={column.key} data-ledger-row={identity(row)} key={column.key} style={{ textAlign: column.align === "end" ? "right" : undefined }}>{column.key === "actions" ? <div className="table-action-row"><DesignLedgerRowAction href={rowHref(row)} label={`Open ${row.recordId} in ${row.profileName}`} /></div> : <CombinedLedgerCell catalogue={catalogue} cell={cell} column={column.key} module={module} row={row.data} />}</td>; })}</tr>; })}
           </tbody></table>
         </LedgerTableScroll>
-        {protectedCell ? <div className="field-hint" data-pd-id={`combined.${module}.protected-cell`} role="status">{protectedCell.column === "profile_name" ? "Profile" : nativeColumns.find(column => column.key === protectedCell.column)?.label ?? protectedCell.column}: {ledgerCellReviewReason(ledgerCellCapability(module, protectedCell.column))} <button className="button-link" onClick={() => router.push(rowHref(protectedCell.row))} type="button">Open record for review</button></div> : null}
+        {protectedCell ? <div className="field-hint" data-pd-id={`combined.${module}.protected-cell`} role="status">{protectedCell.column === "profile_name" ? "Profile" : nativeColumns.find(column => column.key === protectedCell.column)?.label ?? protectedCell.column}: {ledgerCellDecision(module, protectedCell.column, protectedCell.row.data, false).reason} <button className="button-link" onClick={() => router.push(rowHref(protectedCell.row))} type="button">Open record for review</button></div> : null}
       </>}
     </DesignLedgerScreen>
     {activeCell && cellEditor.session ? <LedgerFloatingCellEditor compact commitOnTab={activeCell.originalRace === undefined && activeCell.originalChannels === undefined} session={cellEditor.session} ledger={label} label={activeCell.label} dirty={activeCellDirty} pending={cellPending} error={cellError} onSave={saveCell} onCancel={() => { cellEditor.close(); setActiveCell(null); setCellDraft(""); setRaceDraft(""); setChannelDraft([]); setChannelMode("CLOSED"); setCellError(""); }} onReview={() => { if (activeCellDirty) { setCellError("Save or cancel this draft before opening the native editor."); return; } cellEditor.close(); setActiveCell(null); router.push(rowHref(activeCell.row)); }}>
       {activeCell.originalChannels !== undefined ? <><SearchableCombobox dataPdId="combined.accounts.cell-editor.channel" id="combined-account-cell-channels" label="Access channels" mode={channelMode} onChange={values => { setChannelDraft(values); setCellError(""); }} onModeChange={setChannelMode} options={accountAccessChannelOptions} values={channelDraft} /><button className={labStyles.secondaryButton} type="submit">Apply access channels</button></> : <>
-        <label><span className={activeCell.originalRace === undefined ? "sr-only" : undefined}>{activeCell.originalRace === undefined ? activeCell.label : "Runner"}</span><input aria-label={activeCell.originalRace === undefined ? activeCell.label : "Runner"} className={designFloatingCellInputClass} data-pd-id={`combined.${module}.cell-editor.${activeCell.column}`} onChange={event => { setCellDraft(event.target.value); setCellError(""); }} type="text" value={cellDraft} /></label>
+        {activeCell.bookmakerOptions ? <select aria-label={activeCell.label} className={designFloatingCellInputClass} data-pd-id={`combined.${module}.cell-editor.${activeCell.column}`} onChange={event => { setCellDraft(event.target.value); setCellError(""); }} value={cellDraft}>{activeCell.bookmakerOptions.map(option => <option key={option} value={option}>{option}</option>)}</select> : <label><span className={activeCell.originalRace === undefined ? "sr-only" : undefined}>{activeCell.originalRace === undefined ? activeCell.label : "Runner"}</span><input aria-label={activeCell.originalRace === undefined ? activeCell.label : "Runner"} className={designFloatingCellInputClass} data-pd-id={`combined.${module}.cell-editor.${activeCell.column}`} inputMode={activeCell.column === "stake" ? "decimal" : undefined} onChange={event => { setCellDraft(event.target.value); setCellError(""); }} pattern={activeCell.column === "stake" ? "[0-9]+(\\.[0-9]+)?" : undefined} title={activeCell.column === "stake" ? "Enter a non-negative decimal stake" : undefined} type={activeCell.column === "date" || activeCell.column === "expiry_datetime" ? "datetime-local" : "text"} value={cellDraft} /></label>}
         {activeCell.originalRace !== undefined ? <><label><span>Race</span><input aria-label="Race" className={designFloatingCellInputClass} data-pd-id={`combined.${module}.cell-editor.race`} onChange={event => { setRaceDraft(event.target.value); setCellError(""); }} type="text" value={raceDraft} /></label><button className={labStyles.secondaryButton} type="submit">Apply Runner / Race</button></> : null}
       </>}
     </LedgerFloatingCellEditor> : null}

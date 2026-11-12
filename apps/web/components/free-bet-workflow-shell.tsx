@@ -119,7 +119,7 @@ import {
   normalizeSportsbookBetType,
 } from "@/lib/workbook-options";
 
-const inlineCellFields = {"event_name": {"key": "event_name", "label": "Event name"}, "offer_name": {"key": "offer_name", "label": "Campaign Tag"}} as const;
+const inlineCellFields = {"event_name": {"key": "event_name", "label": "Event name"}, "offer_name": {"key": "offer_name", "label": "Campaign Tag"}, "expiry_datetime": {"key": "expiry_datetime", "label": "Expiry"}} as const;
 
 const commonFixtureQuickPicks = ["Football", "Horse Racing", "Golf", "Tennis"];
 
@@ -1769,6 +1769,7 @@ export function FreeBetWorkflowShell({
         id: "settlement",
         label: "Settlement",
         attentionState: getSettlementTabAttentionState({
+          dateMeaning: "recorded_event",
           activeStatuses: ["Placed"],
           result: formState.result,
           settlementDate: formState.date_settled,
@@ -4051,7 +4052,7 @@ export function FreeBetWorkflowShell({
       ) : null}
 
       {workflowVisible && cellEditor.session && inlineField ? <LedgerFloatingCellEditor compact session={cellEditor.session} ledger="Free Bets" label={inlineField.label} dirty={isDirty} pending={isPersisting} error={errorMessage || statusMessage} onSave={async () => { const saved = await persistForm(formStateRef.current); if (saved) cellEditor.close(); return saved; }} onCancel={() => { handleResetForm(); setWorkflowVisible(false); setSelectedId(null); workflowVisibleRef.current = false; selectedIdRef.current = null; cellEditor.close(); }} onReview={() => { cellEditor.close(); revealEditor(); }}>
-        <label><span className="sr-only">{inlineField.label}</span><input className={designFloatingCellInputClass} data-pd-id={`free-bets.cell-editor.${inlineField.key}`} aria-label={inlineField.label} value={formState[inlineField.key]} onChange={event => { setErrorMessage(""); setFormState(current => ({ ...current, [inlineField.key]: event.target.value })); }} type="text" /></label>
+        <label><span className="sr-only">{inlineField.label}</span><input className={designFloatingCellInputClass} data-pd-id={`free-bets.cell-editor.${inlineField.key}`} aria-label={inlineField.label} value={formState[inlineField.key]} onChange={event => { setErrorMessage(""); setFormState(current => ({ ...current, [inlineField.key]: event.target.value })); }} type={inlineField.key === "expiry_datetime" ? "datetime-local" : "text"} /></label>
       </LedgerFloatingCellEditor> : null}
       {workflowVisible && !cellEditor.active ? (
         <ModalBoundary onDismiss={() => void closeEditor()}>

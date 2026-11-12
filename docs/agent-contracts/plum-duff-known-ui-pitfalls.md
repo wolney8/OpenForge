@@ -1,5 +1,9 @@
 # Plum Duff Known UI Pitfalls
 
+## CP-117 typed cells and recorded event dates — 2026-11-12 / #118
+
+The column's display type does not grant editability: check the current row's lifecycle, Profile authority, native account options and coupled fields before opening a compact control. A bookmaker choice in Extra Place also changes its associated bookmaker account; recheck both against current authorised Accounts before the native full-record Save. Failed or stale field writes must retain the draft. A recorded event date is not a settlement deadline: do not show settlement urgency unless the source supplies an actual deadline with that meaning. Regression: `cp117-typed-cell-editing.spec.ts`, `ledger-cell-capabilities.test.ts`, `ledger-workbench-entry.test.ts`, and `ledger-editor-tabs.test.ts`.
+
 ## CP-117 compact pinned row actions — 2026-11-12 / #118
 
 An imported row-action component can still inherit `.table-action-row`'s legacy 157px minimum width outside its module scope. At 390px, a 112px sticky Actions cell then clips the vertical menu trigger even though Playwright reports the button as visible. Use the shared V2 action-group boundary with sufficient selector specificity, and assert both button rectangles end within the actual cell after horizontal scroll. Preserve the legacy width under flag OFF. Regression: `cp117-table-workbench-contract.spec.ts` and the six-ledger whole-page comparison.

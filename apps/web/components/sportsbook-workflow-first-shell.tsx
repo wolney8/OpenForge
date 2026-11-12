@@ -4011,6 +4011,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
         id: "settlement",
         label: "Settlement",
         attentionState: getSettlementTabAttentionState({
+          dateMeaning: "recorded_event",
           result: formState.result,
           settlementDate: formState.date_settled,
           status: formState.status,

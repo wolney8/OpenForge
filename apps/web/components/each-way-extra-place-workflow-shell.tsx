@@ -36,6 +36,7 @@ import { extraPlaceWorkbenchEntry } from "@/lib/ledger-workbench-entry";
 import { formatApiErrorBody } from "@/lib/api-error";
 import { extraPlaceHasIssue } from "@/lib/ledger-operational-issues";
 import { LedgerFloatingCellEditor, useLedgerCellEditor, type LedgerCellSession } from "@/components/ledger-floating-cell-editor";
+import { designFloatingCellInputClass } from "@/components/design-lab-floating-cell-editor";
 import labStyles from "@/components/design-lab-connected.module.css";
 import { ModalBoundary } from "@/components/modal-boundary";
 import { QuickSelectRail, type QuickSelectChoice } from "@/components/quick-select-rail";
@@ -52,6 +53,8 @@ import {
 } from "@/lib/bookmaker-catalogue";
 import { getMatchRatingPillTone } from "@/lib/ledger-calculator";
 import { getRaceDateSuggestions } from "@/lib/race-date-suggestion";
+import { extraPlaceBookmakerOptions, extraPlaceTypedCellEligibility } from "@/lib/extra-place-typed-cell";
+import { toDateTimeLocalValue } from "@/lib/date-format";
 import { formatLedgerDateTime } from "@/lib/ledger-date-display";
 import { parseExtraPlaceRacePaste } from "@/lib/extra-place-race-paste";
 import { getExtraPlaceRaceReadyState } from "@/lib/extra-place-race-ready";
@@ -1302,10 +1305,12 @@ export function EachWayExtraPlaceWorkflowShell({
       /> : null}
       </DesignLedgerScreen>
       {visualV2 ? quickViewPanel : null}
-      {open && cellEditor.session ? <LedgerFloatingCellEditor compact commitOnTab={false} session={cellEditor.session} ledger="Extra Place" label="Runner / Race" dirty={isDirty} pending={saving} error={typeof error === "string" ? error : JSON.stringify(error)} onSave={async () => { const saved = await save(); if (saved) cellEditor.close(); return saved; }} onCancel={() => { setForm(pristine); setOpen(false); cellEditor.close(); }} onReview={() => cellEditor.close()}>
-        <label className="field-control"><span>Runner</span><input data-pd-id="extra-place.cell-editor.runner" aria-label="Runner" value={form.runner} onChange={event => { setError(""); update("runner", event.target.value); }} /></label>
-        <label className="field-control"><span>Race</span><input data-pd-id="extra-place.cell-editor.race" aria-label="Race" value={form.race} onChange={event => { setError(""); update("race", event.target.value); }} /></label>
-        <button className={labStyles.secondaryButton} type="submit">Apply Runner / Race</button>
+      {open && cellEditor.session ? <LedgerFloatingCellEditor compact commitOnTab={cellEditor.session.column !== "runner"} session={cellEditor.session} ledger="Extra Place" label={{ date: "Date / time", bookmaker: "Bookmaker", stake: "E/W Stake" }[cellEditor.session.column] ?? "Runner / Race"} dirty={isDirty} pending={saving} error={typeof error === "string" ? error : JSON.stringify(error)} onSave={async () => { const saved = await save(); if (saved) cellEditor.close(); return saved; }} onCancel={() => { setForm(pristine); setOpen(false); cellEditor.close(); }} onReview={() => cellEditor.close()}>
+        {cellEditor.session.column === "runner" ? <>
+          <label className="field-control"><span>Runner</span><input data-pd-id="extra-place.cell-editor.runner" aria-label="Runner" value={form.runner} onChange={event => { setError(""); update("runner", event.target.value); }} /></label>
+          <label className="field-control"><span>Race</span><input data-pd-id="extra-place.cell-editor.race" aria-label="Race" value={form.race} onChange={event => { setError(""); update("race", event.target.value); }} /></label>
+          <button className={labStyles.secondaryButton} type="submit">Apply Runner / Race</button>
+        </> : cellEditor.session.column === "date" ? <input aria-label="Date / time" className={designFloatingCellInputClass} data-pd-id="extra-place.cell-editor.date" onChange={event => { setError(""); update("placed_at", event.target.value); }} type="datetime-local" value={toDateTimeLocalValue(form.placed_at)} /> : cellEditor.session.column === "bookmaker" ? <select aria-label="Bookmaker" className={designFloatingCellInputClass} data-pd-id="extra-place.cell-editor.bookmaker" onChange={event => { setError(""); update("bookmaker", event.target.value); update("bookmaker_account", event.target.value); }} value={form.bookmaker}>{extraPlaceBookmakerOptions(accountAuthorities, form).map(option => <option key={option} value={option}>{option}</option>)}</select> : cellEditor.session.column === "stake" ? <input aria-label="E/W Stake" className={designFloatingCellInputClass} data-pd-id="extra-place.cell-editor.stake" inputMode="decimal" onChange={event => { setError(""); setForm(current => ({ ...current, each_way_stake: event.target.value })); }} pattern="[0-9]+(\\.[0-9]+)?" title="Enter a non-negative decimal stake" type="text" value={form.each_way_stake} /> : null}
       </LedgerFloatingCellEditor> : null}
       {typeof document !== "undefined" && open && !cellEditor.active
         ? createPortal(
@@ -1878,7 +1883,7 @@ function ExtraPlaceTable({
     window.addEventListener("mouseup", stop);
   };
   return (
-    <LedgerTableScroll dataPdId="extra-place.table-scroll" visualV2={visualV2} narrowDetail={narrowDetail} cellNavigation={{ label: "Extra Place", onSelect, onActivate: (rowId, column, anchor) => { const row = rows.find(item => item.each_way_extra_place_id === rowId); if (!row) return; if (column === "runner") { onEdit(row, { column, anchor }); return; } return { reason: ledgerCellReviewReason(ledgerCellCapability("each-way-extra-places", column)), onReview: () => onEdit(row) }; } }}>
+    <LedgerTableScroll dataPdId="extra-place.table-scroll" visualV2={visualV2} narrowDetail={narrowDetail} cellNavigation={{ label: "Extra Place", onSelect, onActivate: (rowId, column, anchor) => { const row = rows.find(item => item.each_way_extra_place_id === rowId); if (!row) return; if (column === "runner" || (["date", "bookmaker", "stake"] as string[]).includes(column) && !extraPlaceTypedCellEligibility(row, column)) { onEdit(row, { column, anchor }); return; } return { reason: (["date", "bookmaker", "stake"] as string[]).includes(column) ? extraPlaceTypedCellEligibility(row, column)! : ledgerCellReviewReason(ledgerCellCapability("each-way-extra-places", column)), onReview: () => onEdit(row) }; } }}>
       <table className="data-table extra-place-data-table">
         <colgroup>
           {activeColumns.map((key) => <col key={key} style={{ width: `${columnWidths[key]}px` }} />)}

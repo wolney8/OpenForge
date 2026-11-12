@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   getFirstInvalidLedgerEditorTab,
+  getSettlementTabAttentionState,
   getLedgerEditorTabBadgeLabel,
   getLedgerEditorTabStatusLabel,
   getNextLedgerEditorTabId,
@@ -43,5 +44,14 @@ describe("ledger editor tab helpers", () => {
 
     expect(getNextLedgerEditorTabId(tabsWithLockedBridge, "settlement", "next")).toBe("setup");
     expect(getNextLedgerEditorTabId(tabsWithLockedBridge, "setup", "previous")).toBe("settlement");
+  });
+
+  it("does not turn an event date into a settlement deadline", () => {
+    const past = new Date(Date.now() - 86_400_000).toISOString();
+    const future = new Date(Date.now() + 86_400_000).toISOString();
+    for (const settlementDate of [past, future]) expect(getSettlementTabAttentionState({ dateMeaning: "recorded_event", status: "Placed", result: "Pending", settlementDate })).toBeUndefined();
+    expect(getSettlementTabAttentionState({ dateMeaning: "recorded_deadline", status: "Placed", result: "Pending", settlementDate: past })).toBe("overdue_settlement");
+    expect(getSettlementTabAttentionState({ dateMeaning: "recorded_deadline", status: "Placed", result: "Pending", settlementDate: future })).toBe("pending_settlement");
+    expect(getSettlementTabAttentionState({ dateMeaning: "recorded_deadline", status: "Settled", result: "Win", settlementDate: past })).toBeUndefined();
   });
 });

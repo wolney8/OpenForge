@@ -107,7 +107,7 @@ export function LedgerFloatingCellEditor({ session, ledger, label, dirty, error,
     if (event.defaultPrevented) return;
     if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); cancel(); }
     if (event.altKey && event.key === "Enter" && !blocked) { event.preventDefault(); session.anchor.focus({ preventScroll: true }); onReview(); return; }
-    const plainField = event.target instanceof Element && event.target.matches('input:not([role="combobox"]),textarea');
+    const plainField = event.target instanceof Element && event.target.matches('input:not([role="combobox"]),textarea,select');
     if (plainField && event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void commit(); }
     if (plainField && event.key === "Tab" && commitOnTab) { event.preventDefault(); void commit(event.shiftKey ? "previous" : "next"); }
   }}>
