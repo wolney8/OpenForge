@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DesignLabSelect } from "@/components/design-lab-select";
 import { DesignLedgerSearch } from "@/components/design-ledger-search";
-import { DesignLedgerMobileRows, DesignLedgerNarrowToggle, DesignLedgerScreen, DesignLedgerToolbar, DesignLedgerToolbarAction, DesignLedgerPrimaryAction, DesignLedgerPagination, DesignLedgerRowAction, DesignPageHead, designLedgerClasses, type DesignLedgerDetailRow } from "@/components/design-ledger-screen";
+import { DesignLedgerMobileRows, DesignLedgerNarrowToggle, DesignLedgerScreen, DesignLedgerToolbar, DesignLedgerToolbarAction, DesignLedgerPrimaryAction, DesignLedgerPagination, DesignLedgerRowAction, DesignPageHead, designLedgerClasses, designPageHeadClasses, type DesignLedgerDetailRow } from "@/components/design-ledger-screen";
 import { CombinedLedgerCell } from "@/components/combined-ledger-cell";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
 import { LedgerFloatingCellEditor, useLedgerCellEditor } from "@/components/ledger-floating-cell-editor";
@@ -320,7 +320,7 @@ export function CombinedLedgerPage({ module }: { module: CombinedLedgerModule })
   };
 
   return <main className="page-shell stack sportsbook-page-shell ledger-v2-page" data-pd-id={`combined.${module}.page`}>
-    <DesignPageHead><div><h1>{label}</h1></div>{module !== "accounts" && rangePreset ? <TrackerRangeCard activePreset={rangePreset} isSaving={rangeSaving} onPresetChange={preset => void changeRange(preset)} rangeContext={{ "sportsbook-bets": "Settled date, then creation date; each Profile's custom window applies.", "free-bets": "Settled date, then recorded expiry, then creation date; each Profile's custom window applies.", "casino-offers": "Settlement date, then start date, then expiry; each Profile's custom window applies.", "each-way-extra-places": "Placement date; unresolved issues outside the range remain visible.", "cash-adjustments": "Adjustment date; each Profile's custom window applies." }[module]} visualV2 /> : null}</DesignPageHead>
+    <DesignPageHead><div><h1>{label}</h1></div>{module !== "accounts" && rangePreset ? <div className={designPageHeadClasses.actions}><TrackerRangeCard activePreset={rangePreset} isSaving={rangeSaving} onPresetChange={preset => void changeRange(preset)} rangeContext={{ "sportsbook-bets": "Settled date, then creation date; each Profile's custom window applies.", "free-bets": "Settled date, then recorded expiry, then creation date; each Profile's custom window applies.", "casino-offers": "Settlement date, then start date, then expiry; each Profile's custom window applies.", "each-way-extra-places": "Placement date; unresolved issues outside the range remain visible.", "cash-adjustments": "Adjustment date; each Profile's custom window applies." }[module]} visualV2 /></div> : null}</DesignPageHead>
     {module !== "accounts" && rangeError ? <p role="alert">{rangeError}</p> : null}
     {module === "accounts" && showOpportunities ? <DesignLedgerScreen dataPdId="combined.opportunities" description="Profile-owned opportunities. Availability and actions remain specific to each Profile." title="Opportunities">
       {opportunityFailures.length ? <p role="alert">Partial read: opportunities for {opportunityFailures.join(", ")} could not be loaded.</p> : null}

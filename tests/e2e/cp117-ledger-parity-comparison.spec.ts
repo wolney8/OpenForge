@@ -72,6 +72,9 @@ for (const width of [900, 390] as const) for (const theme of ["light", "dark"] a
       await page.goto(`/profiles/profile-demo-001/tracker/${module.path}`);
       await expect(page.locator(".ledger-loading-overlay")).toHaveCount(0, { timeout: 45_000 });
       await expect(page.locator(`[data-pd-id="${module.native}.table-scroll"] tbody tr`).first()).toBeVisible();
+      if (module.path !== "accounts") await expect(page.locator('[data-pd-id="tracker.range-card.select"]')).toBeEnabled({ timeout: 45_000 });
+      if (module.path === "each-way-extra-places") await expect(page.getByRole("region", { name: "Extra Place quick view" })).toHaveAttribute("aria-busy", "false", { timeout: 45_000 });
+      if (module.path === "accounts") await expect(page.locator('[data-pd-id="accounts.table-scroll"] tbody tr').first().getByRole("button", { name: /^(Edit|Review attention for) / }).locator('.material-symbols-outlined')).toHaveText("open_in_new");
       await themePage();
       await expect(page.getByRole("heading", { name: module.heading, exact: true }).first()).toBeVisible();
       await page.screenshot({ path: join(evidence, `v2-owned-${module.path}-whole-${width}-${theme}.png`), fullPage: true });
@@ -84,6 +87,10 @@ for (const width of [900, 390] as const) for (const theme of ["light", "dark"] a
       await expect(page.locator(`[data-pd-id="combined.${module.path}.filters"]`)).toBeVisible();
       await expect(page.locator(`[data-pd-id="combined.${module.path}.columns"]`)).toBeVisible();
       await expect(combined.locator("thead th").last()).toHaveCSS("position", "sticky");
+      if (width === 390 && module.path !== "accounts") {
+        const range = page.locator('[data-pd-id="tracker.range-card.select"]');
+        expect((await range.boundingBox())?.width ?? 0).toBeGreaterThan(220);
+      }
       await page.screenshot({ path: join(evidence, `v2-combined-${module.path}-whole-${width}-${theme}.png`), fullPage: true });
       if (width === 390) {
         await expect(combined.locator("tbody tr").first()).toBeVisible();

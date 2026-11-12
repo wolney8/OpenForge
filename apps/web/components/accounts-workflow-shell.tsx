@@ -22,7 +22,7 @@ import { accountMoneyDisplayValue, accountMoneyError, normalizeAccountMoney, sum
 import { accountAttentionReasons } from "@/lib/ledger-operational-issues";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
 import { DesignLedgerSearch } from "@/components/design-ledger-search";
-import { DesignLedgerScreen, DesignLedgerToolbar, DesignLedgerToolbarAction, DesignLedgerPrimaryAction, DesignLedgerPagination, DesignPageHead, DesignLedgerNarrowToggle, DesignLedgerMobileRows } from "@/components/design-ledger-screen";
+import { DesignLedgerScreen, DesignLedgerToolbar, DesignLedgerToolbarAction, DesignLedgerPrimaryAction, DesignLedgerPagination, DesignPageHead, DesignLedgerNarrowToggle, DesignLedgerMobileRows, DesignLedgerRowAction } from "@/components/design-ledger-screen";
 import { DesignLabSelect } from "@/components/design-lab-select";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerPagination } from "@/components/ledger-pagination";
@@ -1458,6 +1458,7 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialCreat
                               data-pd-id={column.key !== "actions" ? `accounts.cell.${rowId}.${column.key}` : undefined}
                               className={`${column.align === "end" ? "align-end" : ""}${column.key === "account_id" ? " accounts-id-cell" : ""}`.trim() || undefined}
                               key={column.key}
+                              onClick={column.key === "actions" ? event => event.stopPropagation() : undefined}
                             >
                               {column.key === "account" ? (
                                 <span className="table-cell-stack accounts-provider-cell"><AccountProviderIdentity fallbackName={String(row.account ?? "")} provider={provider} /></span>
@@ -1478,6 +1479,7 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialCreat
                               ) : column.key === "current_balance" || column.key === "pending_withdrawal_amount" ? (
                                 <span className="table-chip accounts-financial-chip"><FinancialValue value={accountMoneyDisplayValue(String(row[column.key] ?? ""))} /></span>
                               ) : column.key === "actions" ? (
+                                visualV2 ? <DesignLedgerRowAction label={`${accountRecord && hasAccountIssue(accountRecord) ? "Review attention for" : "Edit"} ${String(row.account ?? "account")}`} onClick={() => void selectRow(rowId)} /> :
                                 <button
                                   aria-label={`${accountRecord && hasAccountIssue(accountRecord) ? "Review attention for" : "Edit"} ${String(row.account ?? "account")}`}
                                   className="icon-button"

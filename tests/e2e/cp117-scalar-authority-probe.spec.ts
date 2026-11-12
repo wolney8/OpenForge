@@ -53,6 +53,41 @@ test("combined resolved Cash Description retains the native explicit Edit gate",
   await expect(native.getByRole("button", { name: "Edit cash-adjustment row" })).toBeVisible();
 });
 
+test("a persisted synthetic Cash row remains resolved and uses the governed combined Edit handoff", async ({ page }) => {
+  const health = await (await page.request.get("/api/healthz")).json();
+  expect(health.database_classification).toBe("isolated");
+  expect(health.database_identity).toBe("cp117-integration-synthetic");
+  await page.goto(process.env.OPENFORGE_CP117_AUTH_URL ?? "http://127.0.0.1:9127/");
+  const seed = await (await page.request.get("/api/profiles/profile-demo-001/cash-adjustments/CA-SEED-001")).json() as Record<string, unknown>;
+  const id = `CP117-CASH-PERSIST-${crypto.randomUUID()}`;
+  const payload = {
+    cash_adjustment_id: id,
+    adjustment_date: seed.adjustment_date,
+    direction: seed.direction,
+    amount: seed.amount,
+    adjustment_type: seed.adjustment_type,
+    affects_investment: seed.affects_investment,
+    affects_cash_snapshot: seed.affects_cash_snapshot,
+    linked_account: seed.linked_account,
+    description: "Synthetic persisted Cash gate probe",
+  };
+  const created = await page.request.post("/api/profiles/profile-demo-001/cash-adjustments", { data: payload, headers: { "Idempotency-Key": crypto.randomUUID() } });
+  expect(created.status(), await created.text()).toBe(201);
+  expect((await created.json()).calculation_state).toBe("resolved");
+  const invalid = await page.request.post("/api/profiles/profile-demo-001/cash-adjustments", { data: { ...payload, cash_adjustment_id: `${id}-INVALID`, amount: "" } });
+  expect(invalid.status()).toBe(422);
+  expect((await (await page.request.get(`/api/profiles/profile-demo-001/cash-adjustments/${id}`)).json()).calculation_state).toBe("resolved");
+  expect((await page.request.put("/api/fund-manager/preferences/selected-range", { data: {
+    selected_range_preset: "All Dates", selected_range_custom_start: null, selected_range_custom_end: null,
+  } })).status()).toBe(200);
+  await page.goto(`/tracker/cash-adjustments?q=${id}`);
+  const cell = page.locator('td[data-ledger-column="description"]').first();
+  await expect(cell).toContainText(payload.description);
+  await cell.dblclick();
+  await expect(page.locator('[data-pd-id="combined.cash-adjustments.cell-editor.description"]')).toHaveCount(0);
+  await expect(page.getByRole("dialog", { name: "Edit cash adjustment" })).toBeVisible();
+});
+
 test("eligible combined Cash Description retries with one audited operation identity", async ({ page }) => {
   const health = await (await page.request.get("/api/healthz")).json();
   expect(health.database_classification).toBe("isolated");
