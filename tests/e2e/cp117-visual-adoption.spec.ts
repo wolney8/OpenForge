@@ -341,6 +341,11 @@ for (const theme of ["light", "dark"] as const) {
       await expect(page.getByRole("dialog").first()).toBeVisible();
       await page.screenshot({ path: join(evidence, `v2-${ledger.key}-editor-390-${theme}.png`), fullPage: true });
       await page.keyboard.press("Escape");
+      const unsavedGuard = page.getByRole("dialog", { name: "Unsaved tracker changes" });
+      if (await unsavedGuard.isVisible()) {
+        await expect(page.getByRole("dialog", { name: /Edit |Create / })).toHaveCount(1);
+        await unsavedGuard.getByRole("button", { name: "Discard changes" }).click();
+      }
       await expect(page.getByRole("dialog")).toHaveCount(0);
       await screen.getByRole("button", { name: "Show Full Table" }).click();
       await expect(table).toBeVisible();

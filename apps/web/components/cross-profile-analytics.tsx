@@ -15,6 +15,7 @@ import { DesignPageHead, designPageHeadClasses } from "@/components/design-ledge
 import { DesignLabSelect } from "@/components/design-lab-select";
 import { PeriodPnlReport } from "@/components/period-pnl-report";
 import { LedgerPagination } from "@/components/ledger-pagination";
+import { LedgerTableScroll, ReadOnlyTableRegion } from "@/components/ledger-table-scroll";
 import { usePersistedState } from "@/lib/ledger-ui";
 import {
   profileIdsForReportScope,
@@ -1534,9 +1535,9 @@ export function CrossProfileAnalytics({
           </DesignPositionWorkGrid>
           <DesignPositionSurface labelledBy="position-profile-heading" dataPdId="position.profile-table">
             <DesignPositionSectionHead id="position-profile-heading" title="Profiles · financial position" action={<span>{reportScopeLabel} · {preset}</span>} />
-            <div className="table-shell v2-position-table"><table><thead><tr><th scope="col">Profile</th><th scope="col">Selected range P&amp;L</th><th scope="col">Current / projected</th><th scope="col">Current liability</th><th scope="col">Fees earned</th><th scope="col">Available to withdraw</th><th scope="col">Cash readiness</th><th scope="col">Report</th></tr></thead><tbody>
+            <LedgerTableScroll className="table-shell v2-position-table" dataPdId="position.financial-table-scroll" mode="read-only" visualV2><table><thead><tr><th scope="col">Profile</th><th scope="col">Selected range P&amp;L</th><th scope="col">Current / projected</th><th scope="col">Current liability</th><th scope="col">Fees earned</th><th scope="col">Available to withdraw</th><th scope="col">Cash readiness</th><th scope="col">Report</th></tr></thead><tbody>
               {combined.profileRows.map((row) => <tr key={row.profileId}><th scope="row"><strong>{row.displayName}</strong><small>{row.profileCode}</small></th><td><FinancialAggregateReadValue aggregate={row.grossBettingPnlAggregate} label={`${row.displayName} profit and loss`} state={profileReadState([row.profileId])} subject="profit and loss" /></td><td><FinancialReadValue state={profileReadState([row.profileId])} subject="open current value" value={row.openCurrentValue} animate={false} /></td><td><FinancialReadValue state={profileReadState([row.profileId])} subject="current liability" value={row.currentLiability} animate={false} /></td><td><FinancialReadValue state={profileReadState([row.profileId], "fees")} subject="fees earned" value={feePositionByProfile.get(row.profileId)?.feesEarned ?? Number.NaN} animate={false} /></td><td><FinancialReadValue state={profileReadState([row.profileId], "fees")} subject="available fees" value={feePositionByProfile.get(row.profileId)?.availableToWithdraw ?? Number.NaN} animate={false} /></td><td><FinancialReadValue state={profileReadState([row.profileId])} subject="Account cash" value={row.cashSnapshot} animate={false} /></td><td><Link href={`/profiles/${row.profileId}/tracker/reports`}>View report</Link></td></tr>)}
-            </tbody></table></div>
+            </tbody></table></LedgerTableScroll>
             <p className="field-hint">Known and unknown values retain their source readiness. Fees and withdrawal detail remain in Fees; open source records remain in the Profile tracker.</p>
           </DesignPositionSurface>
           {!isLoading && (trackerRangeActiveProfilesCombined.cashIssues?.length || trackerRangeActiveProfilesCombined.sportsbookCommittedFinancialIssues?.length || trackerRangeActiveProfilesCombined.sportsbookHistoricalFinancialIssues?.length || trackerRangeActiveProfilesCombined.freeBetFinancialIssues?.length) ? <details className="v2-position-detail" data-pd-id="position.financial-completeness"><summary>Financial completeness · review source issues</summary><div className="v2-position-completeness-content">{financialCompleteness}</div></details> : null}
@@ -1839,6 +1840,7 @@ export function CrossProfileAnalytics({
           <DesignReportAdvanced dataPdId="reports.formal.advanced" enabled={visualV2} summary="Formal reports and source records">
           <PeriodPnlReport rows={formalCombined.weeklyReports} contextKey="combined"
             scopeLabel={reportScopeLabel}
+            visualV2={visualV2}
             scopes={profileRecords.filter((profile) => selectedProfileIds.includes(profile.profileId))
               .flatMap((profile) => {
                 const dataset = datasets.get(profile.profileId);
@@ -1919,7 +1921,7 @@ export function CrossProfileAnalytics({
         <DesignManagementDetail dataPdId="profiles.directory.details" enabled={visualV2} label="Detailed Profile data and actions">
         {visualV2 ? <p className="muted-text">Gross P&amp;L range: {formatHumanDisplayDate(resolvedRange.start.toISOString())} to {formatHumanDisplayDate(resolvedRange.end.toISOString())}. {directoryProfiles.length} Profiles match the directory controls.</p> : null}
         <LedgerPagination ariaLabel="Profile Directory" currentPage={Math.min(directoryPage,directoryPageCount)} onPageChange={setDirectoryPage} onPageSizeChange={(size)=>{setDirectoryPageSize(size);setDirectoryPage(1);}} pageCount={directoryPageCount} pageSize={directoryPageSize} position="top" totalRows={directoryProfiles.length}/>
-        <div className="table-shell">
+        <ReadOnlyTableRegion dataPdId="profiles.directory.table-scroll" visualV2={visualV2}>
           <table className="profile-action-table">
             <thead>
               <tr>
@@ -2051,7 +2053,7 @@ export function CrossProfileAnalytics({
               })}
             </tbody>
           </table>
-        </div>
+        </ReadOnlyTableRegion>
         <LedgerPagination ariaLabel="Profile Directory" currentPage={Math.min(directoryPage,directoryPageCount)} onPageChange={setDirectoryPage} onPageSizeChange={(size)=>{setDirectoryPageSize(size);setDirectoryPage(1);}} pageCount={directoryPageCount} pageSize={directoryPageSize} position="bottom" totalRows={directoryProfiles.length}/>
         </DesignManagementDetail>
         </DesignManagementSurface>

@@ -22,13 +22,16 @@ import { accountMoneyDisplayValue, accountMoneyError, normalizeAccountMoney, sum
 import { accountAttentionReasons } from "@/lib/ledger-operational-issues";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
 import { DesignLedgerSearch } from "@/components/design-ledger-search";
-import { DesignLedgerScreen, DesignLedgerToolbar, DesignLedgerToolbarAction, DesignLedgerPrimaryAction, DesignLedgerPagination, DesignPageHead, DesignLedgerNarrowToggle, DesignLedgerMobileRows, DesignLedgerRowAction } from "@/components/design-ledger-screen";
+import { DesignLedgerScreen, DesignLedgerToolbar, DesignLedgerToolbarAction, DesignLedgerPrimaryAction, DesignLedgerPagination, DesignPageHead, DesignLedgerNarrowToggle, DesignLedgerMobileRows, DesignLedgerRowAction, designLedgerClasses } from "@/components/design-ledger-screen";
 import { DesignLabSelect } from "@/components/design-lab-select";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerViewContext } from "@/components/ledger-view-context";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
+import { ledgerCellCapability, ledgerCellReviewReason } from "@/lib/ledger-cell-capabilities";
+import { accountAccessChannelOptions } from "@/lib/account-access-channels";
 import { LedgerFloatingCellEditor, useLedgerCellEditor, type LedgerCellSession } from "@/components/ledger-floating-cell-editor";
+import labStyles from "@/components/design-lab-connected.module.css";
 
 import { MaterialDateField, MaterialDateTimeField } from "@/components/material-date-time-field";
 import { StatusToast } from "@/components/status-toast";
@@ -64,6 +67,7 @@ import {
 } from "@/lib/bookmaker-catalogue";
 
 const inlineCellFields = {"channel": {"key": "channel", "label": "Access channels"}} as const;
+const canEditAccessChannels = (record: { catalogue_id?: string | null; type?: string; signup_offer_status?: string } | null | undefined) => Boolean(record?.catalogue_id) && record?.type !== "Exchange" && record?.signup_offer_status !== "Yes";
 
 type AccountRecord = {
   account_id: string;
@@ -477,6 +481,7 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialCreat
     channels: [],
   });
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedGridRowId, setSelectedGridRowId] = useState<string | null>(null);
   const [workflowVisible, setWorkflowVisible] = useState(false);
   const cellEditor = useLedgerCellEditor();
   const inlineField = cellEditor.session ? inlineCellFields[cellEditor.session.column as keyof typeof inlineCellFields] : undefined;
@@ -930,6 +935,12 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialCreat
     () => paginateTrackerRows(filteredRows, effectivePage, pageSize),
     [effectivePage, filteredRows, pageSize]
   );
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      if (selectedGridRowId && !pagedRows.some(row => row.account_id === selectedGridRowId)) setSelectedGridRowId(null);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [pagedRows, selectedGridRowId]);
 
   async function selectRow(rowId: string, cell?: LedgerCellSession) {
     if (rowId !== selectedId && isDirty && !(await confirmDiscardChanges())) {
@@ -1284,7 +1295,7 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialCreat
         {!visualV2 ? quickViewPanel : null}
         {summaryReadState === "ready" ? <AccountMoneyStatus issues={accountQuickView.moneyIssues} /> : null}
         {!visualV2 ? opportunityQueue : null}
-        <DesignLedgerScreen actions={visualV2 ? <DesignLedgerPrimaryAction dataPdId="accounts.toolbar.add-row" onClick={startNewRow}>Add Account</DesignLedgerPrimaryAction> : null} dataPdId="accounts.design-screen" description={visualV2 && summaryReadState !== "ready" ? `${summaryReadState === "error" ? "Account rows unavailable" : "Loading Account rows"} · Current Profile` : `${filteredRows.length} of ${resolvedRows.length} rows · ${visibleFilterCount ? `${visibleFilterCount} active filter${visibleFilterCount === 1 ? "" : "s"}` : "No filters"} · Current Profile`} enabled={visualV2} title="Accounts">
+        <DesignLedgerScreen actions={visualV2 ? <div className={designLedgerClasses.actionRow}><DesignLedgerToolbarAction dataPdId="accounts.toolbar.open-selected" disabled={!selectedGridRowId || !pagedRows.some(row => row.account_id === selectedGridRowId)} onClick={() => { if (selectedGridRowId) void selectRow(selectedGridRowId); }}>Open Account Workbench</DesignLedgerToolbarAction><DesignLedgerPrimaryAction dataPdId="accounts.toolbar.add-row" onClick={startNewRow}>Add Account</DesignLedgerPrimaryAction></div> : null} dataPdId="accounts.design-screen" description={visualV2 && summaryReadState !== "ready" ? `${summaryReadState === "error" ? "Account rows unavailable" : "Loading Account rows"} · Current Profile` : `${filteredRows.length} of ${resolvedRows.length} rows · ${visibleFilterCount ? `${visibleFilterCount} active filter${visibleFilterCount === 1 ? "" : "s"}` : "No filters"} · Current Profile`} enabled={visualV2} title="Accounts">
         <>
             <DesignLedgerToolbar
               ariaLabel="Accounts controls"
@@ -1392,7 +1403,7 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialCreat
               position="top"
               totalRows={filteredRows.length}
             />}
-            <LedgerTableScroll dataPdId="accounts.table-scroll" visualV2={visualV2} narrowDetail={visualV2 && mobileDetail} cellNavigation={{ label: "Accounts", onActivate: (rowId, column, anchor) => { const record = resolvedRows.find(row => row.account_id === rowId); const supported = column in inlineCellFields && record?.catalogue_id && record.type !== "Exchange" && record.signup_offer_status !== "Yes"; void selectRow(rowId, supported ? { column, anchor } : undefined); } }}>
+            <LedgerTableScroll dataPdId="accounts.table-scroll" visualV2={visualV2} narrowDetail={visualV2 && mobileDetail} cellNavigation={{ label: "Accounts", onSelect: setSelectedGridRowId, onActivate: (rowId, column, anchor) => { const record = resolvedRows.find(row => row.account_id === rowId); if (column in inlineCellFields && canEditAccessChannels(record)) { void selectRow(rowId, { column, anchor }); return; } return { reason: ledgerCellReviewReason(ledgerCellCapability("accounts", column)), onReview: () => void selectRow(rowId) }; } }}>
               <table className="data-table accounts-data-table">
                 <colgroup>
                   {visibleTableColumns.map((column) => (
@@ -1447,14 +1458,15 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialCreat
                       });
                       return (
                         <FinancialValueReplayRow
-                          className={selectedId === rowId ? "is-selected-row" : undefined}
+                          className={selectedId === rowId || selectedGridRowId === rowId ? "is-selected-row" : undefined}
                           key={rowId}
-                          onClick={() => void selectRow(rowId)}
+                          onClick={visualV2 ? undefined : () => void selectRow(rowId)}
                         >
                           {visibleTableColumns.map((column) => (
                             <td
                               data-ledger-row={column.key !== "actions" ? rowId : undefined}
                               data-ledger-column={column.key !== "actions" ? column.key : undefined}
+                              data-ledger-editable={column.key === "channel" ? String(canEditAccessChannels(accountRecord)) : undefined}
                               data-pd-id={column.key !== "actions" ? `accounts.cell.${rowId}.${column.key}` : undefined}
                               className={`${column.align === "end" ? "align-end" : ""}${column.key === "account_id" ? " accounts-id-cell" : ""}`.trim() || undefined}
                               key={column.key}
@@ -1628,8 +1640,9 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialCreat
           )
         : null}
 
-      {workflowVisible && cellEditor.session && inlineField ? <LedgerFloatingCellEditor session={cellEditor.session} ledger="Accounts" label={inlineField.label} dirty={isDirty} pending={isSaving || isArchiving} error={errorMessage || statusMessage} onSave={async () => { const saved = await handleSubmit(); if (saved) cellEditor.close(); return saved; }} onCancel={() => { handleResetForm(); setWorkflowVisible(false); setSelectedId(null); cellEditor.close(); }} onReview={() => { cellEditor.close(); revealEditor(); }}>
-        <SearchableCombobox dataPdId="accounts.cell.access-channels" id="account-cell-access-channels" label="Access channels" mode={accessChannelMode} onChange={(accessChannels) => { setErrorMessage(""); setFormState(current => ({ ...current, access_channels: accessChannels, channel: accessChannels.join(", ") || "Unknown" })); }} onModeChange={setAccessChannelMode} options={["Online", "Mobile", "Retail", "Unknown"].map(value => ({ id: value, name: value }))} values={formState.access_channels} />
+      {workflowVisible && cellEditor.session && inlineField ? <LedgerFloatingCellEditor compact commitOnTab={false} session={cellEditor.session} ledger="Accounts" label={inlineField.label} dirty={isDirty} pending={isSaving || isArchiving} error={errorMessage || statusMessage} onSave={async () => { const saved = await handleSubmit(); if (saved) cellEditor.close(); return saved; }} onCancel={() => { handleResetForm(); setWorkflowVisible(false); setSelectedId(null); cellEditor.close(); }} onReview={() => { cellEditor.close(); revealEditor(); }}>
+        <SearchableCombobox dataPdId="accounts.cell.access-channels" id="account-cell-access-channels" label="Access channels" mode={accessChannelMode} onChange={(accessChannels) => { setErrorMessage(""); setFormState(current => ({ ...current, access_channels: accessChannels, channel: accessChannels.join(", ") || "Unknown" })); }} onModeChange={setAccessChannelMode} options={accountAccessChannelOptions} values={formState.access_channels} />
+        <button className={labStyles.secondaryButton} type="submit">Apply access channels</button>
       </LedgerFloatingCellEditor> : null}
       {workflowVisible && !cellEditor.active && typeof document !== "undefined"
         ? createPortal(
@@ -1742,7 +1755,7 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialCreat
                 channel: accessChannels.join(", ") || "Unknown",
               }))}
               onModeChange={setAccessChannelMode}
-              options={["Online", "Mobile", "Retail", "Unknown"].map((value) => ({ id: value, name: value }))}
+              options={accountAccessChannelOptions}
               values={formState.access_channels}
             />
           </div>

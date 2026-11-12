@@ -178,7 +178,8 @@ html[data-ux-shell="v2"] .ux-v2-main .is-progress-replaying::after { display: no
   .ux-v2-main .v2-position-analytics [data-pd-id="position.page-head"] .fund-manager-control-slot-range { flex: 1 1 150px; width: auto; }
 }
 .ux-v2-main .v2-position-analytics.has-position-overview .analytics-tab-list { order: 3; margin-top: .5rem; }
-.ux-v2-main .v2-position-overview { min-width: 0; }
+.ux-v2-main .v2-position-overview { display: grid; gap: 1rem; min-width: 0; }
+.ux-v2-main .v2-position-completeness-content { display: grid; gap: .75rem; }
 .ux-v2-main [data-pd-id="position.profile-table"] { margin-top: 1rem; }
 .ux-v2-main [data-pd-id="position.profile-table"] .field-hint { margin: .85rem 0 0; }
 .ux-v2-main .v2-position-table { max-width: 100%; overflow-x: auto; }

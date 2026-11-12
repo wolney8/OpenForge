@@ -76,17 +76,26 @@ for (const module of ["sportsbook-bets", "accounts"] as const) {
     await expect(cell).toBeFocused();
     await page.keyboard.press("F2");
     const editor = page.getByRole("dialog", { name: module === "accounts" ? "Edit account" : "Edit sportsbook row", exact: true });
+    const review = page.locator(module === "accounts" ? '[data-pd-id="accounts.table-scroll.protected-cell"]' : '[data-pd-id="sportsbook.protected-cell"]');
+    await expect(review).toBeVisible();
+    const reviewAction = review.getByRole("button", { name: /Open .* for review/ });
+    await reviewAction.click();
     await expect(editor).toBeVisible();
     await page.keyboard.press("Escape");
     await expect(editor).toHaveCount(0);
-    await expect(cell).toBeFocused();
+    if (module === "accounts") await expect(reviewAction).toBeFocused();
+    else await expect(cell).toBeFocused();
     const restored = await cell.boundingBox();
     expect(Math.abs(bounds!.height - restored!.height)).toBeLessThanOrEqual(1);
     await cell.dblclick();
+    await expect(review).toBeVisible();
+    await reviewAction.click();
     await expect(editor).toBeVisible();
     await page.keyboard.press("Escape");
     await expect(editor).toHaveCount(0);
-    await expect(cell).toBeFocused();
+    if (module === "accounts") await expect(reviewAction).toBeFocused();
+    else await expect(cell).toBeFocused();
+    await cell.focus();
     await page.keyboard.press("Home");
     await expect(viewport.locator('tbody td[data-ledger-column][tabindex="0"]')).toBeFocused();
     await page.keyboard.press("End");
@@ -109,6 +118,7 @@ test("Sportsbook cell handoff saves through the real API and retains a failed dr
   await cell.click(); await page.keyboard.press("Enter");
   await page.locator('[data-pd-id="ledger.floating-editor"]').getByRole("textbox", { name: "Event name", exact: true }).press("Alt+Enter");
   const editor = page.getByRole("dialog", { name: "Edit sportsbook row", exact: true });
+  await editor.getByRole("tab", { name: /Bet Setup/ }).click();
   const input = editor.getByRole("textbox", { name: "Event name", exact: true });
   const next = before.event_name.endsWith("Reviewed") ? "Synthetic cell review 1" : "Synthetic cell review 1 Reviewed";
   await expect(input).toHaveValue(before.event_name);
@@ -129,6 +139,7 @@ test("Sportsbook cell handoff saves through the real API and retains a failed dr
   await page.reload(); await ready(page, "sportsbook-bets");
   await cell.click(); await page.keyboard.press("Enter");
   await page.locator('[data-pd-id="ledger.floating-editor"]').getByRole("textbox", { name: "Event name", exact: true }).press("Alt+Enter");
+  await editor.getByRole("tab", { name: /Bet Setup/ }).click();
   await expect(input).toHaveValue(next);
   await page.keyboard.press("Escape");
   expect((await page.request.get('/api/profiles/profile-demo-002/sportsbook-bets/CP117-CELL-001')).status()).toBe(404);
@@ -150,6 +161,9 @@ test("Accounts cell handoff persists notes without changing balances or identity
   }
   const cell = page.locator('td[data-ledger-row="ACC-BOOK-A"][data-ledger-column="account_id"]');
   await cell.click(); await page.keyboard.press("Enter");
+  const review = page.locator('[data-pd-id="accounts.table-scroll.protected-cell"]');
+  await expect(review).toBeVisible();
+  await review.getByRole("button", { name: "Open record for review" }).click();
   const editor = page.getByRole("dialog", { name: "Edit account", exact: true });
   const notes = editor.getByRole("textbox", { name: "Notes", exact: true }).last();
   const next = before.notes === "Synthetic cell review saved" ? "Synthetic cell review saved again" : "Synthetic cell review saved";
@@ -160,7 +174,9 @@ test("Accounts cell handoff persists notes without changing balances or identity
   expect(after.notes).toBe(next);
   for (const key of ["profile_id", "account_id", "account", "catalogue_id", "current_balance", "pending_withdrawal_amount", "status"]) expect(after[key]).toBe(before[key]);
   await page.reload(); await ready(page, "accounts");
-  await cell.dblclick(); await expect(notes).toHaveValue(next);
+  await cell.dblclick(); await expect(review).toBeVisible();
+  await review.getByRole("button", { name: "Open record for review" }).click();
+  await expect(notes).toHaveValue(next);
   await page.keyboard.press("Escape");
 });
 
@@ -242,29 +258,52 @@ test("actual Chromium 200% zoom keeps selected cells and native editors reachabl
     }, baseURL);
     await expect.poll(() => page.evaluate(() => innerWidth)).toBe(720);
     for (const module of ["sportsbook-bets", "accounts"] as const) {
+      if (module === "accounts") {
+        // The committed synthetic import predates Account Catalogue links.
+        // Compact Access Channels is governed by that existing native gate.
+        const endpoint = "/api/profiles/profile-demo-001/accounts/ACC-BOOK-A";
+        const account = await (await page.request.get(endpoint)).json();
+        if (!account.catalogue_id) {
+          const prepared = await page.request.put(endpoint, { data: { ...account, catalogue_id: "BOOKMAKER-DEMO-001" } });
+          expect(prepared.status()).toBe(200);
+        }
+      }
       await page.goto(`${baseURL}${profile}${module}`);
       await expect(page.locator(".ledger-loading-overlay")).toHaveCount(0);
       const range = page.getByRole("combobox", { name: "Change tracker date range" });
       if (await range.count()) await range.selectOption({ label: "All Dates" });
-      const cell = page.locator('td[data-ledger-column]').first();
-      await cell.click(); await page.keyboard.press("Enter");
-      const editor = page.getByRole("dialog", { name: module === "accounts" ? "Edit account" : "Edit sportsbook row", exact: true });
-      await expect(editor).toBeVisible();
-      const rect = await editor.boundingBox();
-      expect(rect!.x).toBeGreaterThanOrEqual(0); expect(rect!.x + rect!.width).toBeLessThanOrEqual(721);
-      expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
-      await page.keyboard.press("Escape"); await expect(cell).toBeFocused();
+      if (module === "sportsbook-bets") {
+        const cell = page.locator('td[data-ledger-column]').first();
+        await cell.click(); await page.keyboard.press("Enter");
+        const editor = page.getByRole("dialog", { name: "Edit sportsbook row", exact: true });
+        const review = page.locator('[data-pd-id="sportsbook.protected-cell"]');
+        await expect(review).toBeVisible();
+        await review.getByRole("button", { name: /Open .* for review/ }).click();
+        await expect(editor).toBeVisible();
+        const rect = await editor.boundingBox();
+        expect(rect!.x).toBeGreaterThanOrEqual(0); expect(rect!.x + rect!.width).toBeLessThanOrEqual(721);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
+        await page.keyboard.press("Escape"); await expect(cell).toBeFocused();
+      }
       const supportedCell = page.locator(module === "accounts"
         ? 'td[data-ledger-row="ACC-BOOK-A"][data-ledger-column="channel"]'
         : 'td[data-ledger-row="CP117-CELL-001"][data-ledger-column="event_name"]');
+      await supportedCell.scrollIntoViewIfNeeded();
+      const hit = await supportedCell.evaluate(cell => {
+        const rect = cell.getBoundingClientRect();
+        return document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2)?.closest("td") === cell;
+      });
+      expect(hit, `${module} compact cell is unobscured at 200%`).toBe(true);
       await supportedCell.dblclick();
       const floating = page.locator('[data-pd-id="ledger.floating-editor"]');
-      await expect(floating).toBeVisible();
+      const activation = await page.evaluate(() => ({ path: location.pathname, protected: document.querySelector('[data-pd-id="accounts.table-scroll.protected-cell"]')?.textContent?.trim(), dialog: Boolean(document.querySelector('[data-pd-id="accounts.editor.dialog"]')) }));
+      const owner = module === "accounts" ? await (await page.request.get("/api/profiles/profile-demo-001/accounts/ACC-BOOK-A")).json() : null;
+      await expect(floating, `${module} compact editor: ${JSON.stringify({ ...activation, account: owner ? { catalogue_id: owner.catalogue_id, type: owner.type, signup_offer_status: owner.signup_offer_status } : null })}`).toBeVisible();
       const floatingBounds = await floating.boundingBox();
       expect(floatingBounds!.x).toBeGreaterThanOrEqual(0);
       expect(floatingBounds!.x + floatingBounds!.width).toBeLessThanOrEqual(721);
       expect(floatingBounds!.y + floatingBounds!.height).toBeLessThanOrEqual(501);
-      if (module === "accounts") await expect(floating.getByRole("button", {name:"Save",exact:true})).toBeInViewport();
+      if (module === "accounts") await expect(floating.getByRole("button", {name:"Apply access channels",exact:true})).toBeInViewport();
       else { await expect(floating.getByRole("textbox", { name: "Event name", exact: true })).toBeInViewport(); await expect(floating.getByRole("button", {name:"Save",exact:true})).toHaveCount(0); }
       await page.keyboard.press("Escape"); await expect(supportedCell).toBeFocused();
     }

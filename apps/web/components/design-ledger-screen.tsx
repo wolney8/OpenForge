@@ -98,13 +98,15 @@ export function DesignLedgerMobileRows({ expanded, rows, dataPdId, onRowOpen }: 
   </div>;
 }
 
-export function DesignLedgerToolbarAction({ ariaExpanded, children, dataPdId, onClick }: {
+export function DesignLedgerToolbarAction({ ariaExpanded, children, dataPdId, disabled = false, onClick, title }: {
   ariaExpanded?: boolean;
   children: ReactNode;
   dataPdId?: string;
+  disabled?: boolean;
   onClick: () => void;
+  title?: string;
 }) {
-  return <button aria-expanded={ariaExpanded} className={styles.secondaryButton} data-pd-id={dataPdId} onClick={onClick} type="button">{children}</button>;
+  return <button aria-expanded={ariaExpanded} className={styles.secondaryButton} data-pd-id={dataPdId} disabled={disabled} onClick={onClick} title={title} type="button">{children}</button>;
 }
 
 export function DesignLedgerPrimaryAction({ children, dataPdId, onClick }: {

@@ -48,6 +48,9 @@ test("combined resolved Cash Description retains the native explicit Edit gate",
   await expect(cell).toBeVisible();
   await cell.dblclick();
   await expect(page.locator('[data-pd-id="combined.cash-adjustments.cell-editor.description"]')).toHaveCount(0);
+  const review = page.locator('[data-pd-id="combined.cash-adjustments.protected-cell"]');
+  await expect(review).toContainText(/governed|correction|editor/i);
+  await review.getByRole("button", { name: "Open record for review" }).click();
   const native = page.getByRole("dialog", { name: "Edit cash adjustment" });
   await expect(native).toBeVisible();
   await expect(native.getByRole("button", { name: "Edit cash-adjustment row" })).toBeVisible();
@@ -85,6 +88,7 @@ test("a persisted synthetic Cash row remains resolved and uses the governed comb
   await expect(cell).toContainText(payload.description);
   await cell.dblclick();
   await expect(page.locator('[data-pd-id="combined.cash-adjustments.cell-editor.description"]')).toHaveCount(0);
+  await page.locator('[data-pd-id="combined.cash-adjustments.protected-cell"]').getByRole("button", { name: "Open record for review" }).click();
   await expect(page.getByRole("dialog", { name: "Edit cash adjustment" })).toBeVisible();
 });
 

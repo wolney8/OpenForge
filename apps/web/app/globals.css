@@ -18733,6 +18733,8 @@ html[data-ux-shell="v2"] td[data-ledger-column]:focus-visible {
 .ledger-floating-compact form, .ledger-floating-compact label { display: block; min-width: 0; margin: 0; }
 .ledger-floating-compact-fields { min-width: 0; margin: 0; padding: 0; border: 0; }
 .ledger-floating-compact-fields:disabled { opacity: .7; }
+.ledger-floating-compact-fields:has(> label + label), .ledger-floating-compact-fields:has(.pd-combobox-field) { display: grid; gap: 8px; padding: 8px; }
+.ledger-floating-compact-fields:has(> label + label) > button, .ledger-floating-compact-fields:has(.pd-combobox-field) > button { justify-self: end; }
 
 .ledger-floating-cell-editor .modal-primary-button:not(:disabled) {
   border-color: var(--action-positive-border);

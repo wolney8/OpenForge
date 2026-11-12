@@ -1,5 +1,9 @@
 # Plum Duff Next Issue Tracking Register
 
+## Current CP-117 table and workbench interaction contract — 2026-11-12
+
+`PD-PR-117A-97–103` in the [current UI change register](../agent-contracts/plum-duff-ui-change-register.md#cp-117-owner-table-and-workbench-interaction-correction--2026-11-12--118) retain the owner's opportunity controls and capture, read-only and editable table navigation, typed cell authority, deliberate single workbench, lifecycle entry and anchored row-menu requests under open [#118](https://github.com/wolney8/OpenForge/issues/118). Normal opportunity Track All remains separately gated by the exact API activation request in the existing annotation contract. Protected financial fields keep their governed workflows; their handoff is not counted as compact inline editing. Owner Design Acceptance remains open.
+
 ## Current CP-117 rejected Today/ledger parity — 2026-11-11
 
 `PD-PR-117A-90–96` in the [current UI change register](../agent-contracts/plum-duff-ui-change-register.md#cp-117-rejected-today-and-ledger-parity--2026-11-11--118) preserve each owner-rejected Today, opportunity, ledger, Quick Capture, scalar-edit and evidence requirement under open [#118](https://github.com/wolney8/OpenForge/issues/118). The six-module Lab/native/combined comparison and disposable scalar preflight are now evidenced, with lifecycle-coupled/composite handoffs still open. Opportunity source-resolution is tested with disposable storage, but normal API activation is a separate explicit gate; recurring scheduling, saved views, new combined KPIs and the Sportsbook fixed-stage decision remain separate. No request is closed by a shared component import or synthetic screenshot.

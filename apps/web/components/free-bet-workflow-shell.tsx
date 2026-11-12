@@ -2,7 +2,7 @@
 
 import { ModalBoundary } from "@/components/modal-boundary";
 import { formatApiErrorBody } from "@/lib/api-error";
-import { ledgerColumnContracts, ledgerColumnWidths } from "@/lib/ledger-column-contracts";
+import { ledgerColumnContracts, ledgerColumnWidths, ledgerV2ActionColumnWidth } from "@/lib/ledger-column-contracts";
 import { compactLedgerLabel, currentFinalValueLabel, displayedCurrentFinalValue, freeBetBackBetStatus } from "@/lib/ledger-row-presentation";
 import { CoreLayPlanner, CoreLayPlannerUpgrade } from "@/components/core-lay-planner";
 import { hasNewerFormEdits, reconcileSavedForm } from "@/lib/latest-edit";
@@ -46,13 +46,14 @@ import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerPnlCard, type LedgerReadState } from "@/components/ledger-pnl-card";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
 import { DesignLedgerSearch } from "@/components/design-ledger-search";
-import { DesignLedgerScreen, DesignLedgerToolbar, DesignLedgerToolbarAction, DesignLedgerPrimaryAction, DesignLedgerPagination, DesignPageHead, DesignLedgerNarrowToggle, DesignLedgerMobileRows, designPageHeadClasses } from "@/components/design-ledger-screen";
+import { DesignLedgerScreen, DesignLedgerToolbar, DesignLedgerToolbarAction, DesignLedgerPrimaryAction, DesignLedgerPagination, DesignPageHead, DesignLedgerNarrowToggle, DesignLedgerMobileRows, designPageHeadClasses, designLedgerClasses } from "@/components/design-ledger-screen";
 import { DesignLabSelect } from "@/components/design-lab-select";
 import { ledgerRangeAnchor } from "@/lib/ledger-range-anchor";
 import { DesignLedgerRowActions } from "@/components/design-ledger-row-actions";
 import { LedgerViewContext } from "@/components/ledger-view-context";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
+import { ledgerCellCapability, ledgerCellReviewReason } from "@/lib/ledger-cell-capabilities";
 import { LedgerFloatingCellEditor, useLedgerCellEditor, type LedgerCellSession } from "@/components/ledger-floating-cell-editor";
 import { designFloatingCellInputClass } from "@/components/design-lab-floating-cell-editor";
 
@@ -91,6 +92,7 @@ import {
 } from "@/lib/ledger-calculator";
 import type { TableColumn } from "@/lib/tracker-modules";
 import { getSettlementTabAttentionState, type LedgerEditorTabDefinition } from "@/lib/ledger-editor-tabs";
+import { freeBetWorkbenchEntry } from "@/lib/ledger-workbench-entry";
 import { saveTrackerDatePreset } from "@/lib/tracker-settings-client";
 import {
   formatDisplayDate,
@@ -1198,6 +1200,7 @@ export function FreeBetWorkflowShell({
   const [isTrackerRangeSaving, setIsTrackerRangeSaving] = useState(false);
   const [lookupValues, setLookupValues] = useState<LookupValueRecord[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedGridRowId, setSelectedGridRowId] = useState<string | null>(null);
   const [workflowVisible, setWorkflowVisible] = useState(false);
   const cellEditor = useLedgerCellEditor();
   const inlineField = cellEditor.session ? inlineCellFields[cellEditor.session.column as keyof typeof inlineCellFields] : undefined;
@@ -2629,6 +2632,12 @@ export function FreeBetWorkflowShell({
     () => paginateTrackerRows(filteredRows, effectivePage, pageSize),
     [effectivePage, filteredRows, pageSize]
   );
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      if (selectedGridRowId && !pagedRows.some(row => row.free_bet_id === selectedGridRowId)) setSelectedGridRowId(null);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [pagedRows, selectedGridRowId]);
   const editorHeaderFullTitle = useMemo(() => {
     const offerText = formState.offer_text.trim();
     if (offerText) {
@@ -2658,7 +2667,6 @@ export function FreeBetWorkflowShell({
     if (options?.cell && record.status !== "Settled") cellEditor.start(options.cell.column, options.cell.anchor); else cellEditor.close();
     setSelectedId(rowId);
     selectedIdRef.current = rowId;
-    setActiveEditorTabId("setup");
     setFreeBetLayWorkflowModeOverride(null);
     setFreeBetCustomSliderMin("");
     setFreeBetCustomSliderMax("");
@@ -2669,6 +2677,7 @@ export function FreeBetWorkflowShell({
     setIsNewCoreIntent(false);
     setPreviewCalculation(null);
     const nextFormState = recordToForm(record);
+    setActiveEditorTabId(freeBetWorkbenchEntry({ status: record.status, result: record.result, layStatus: record.lay_status, setupComplete: Boolean(nextFormState.offer_type.trim() && nextFormState.event_name.trim() && nextFormState.bookmaker.trim()) }));
     setFormState(nextFormState);
     setPristineFormState(nextFormState);
     setErrorMessage("");
@@ -3419,7 +3428,7 @@ export function FreeBetWorkflowShell({
               `${row.free_bet_id}: ${row.calculation_notes.join("; ")}`).join(" · ")}
           </p>
         ) : null}
-        <DesignLedgerScreen actions={visualV2 ? <DesignLedgerPrimaryAction dataPdId="free-bets.toolbar.add-row" onClick={() => void startNewRow()}>Add Free Bet</DesignLedgerPrimaryAction> : null} dataPdId="free-bets.design-screen" description={`${filteredRows.length} of ${rows.length} rows · ${activeTableControlCount ? `${activeTableControlCount} active table controls` : query.trim() ? "Search active" : "No filters"} · Current Profile`} enabled={visualV2} title="Free Bets">
+        <DesignLedgerScreen actions={visualV2 ? <div className={designLedgerClasses.actionRow}><DesignLedgerToolbarAction dataPdId="free-bets.toolbar.open-selected" disabled={!selectedGridRowId || !pagedRows.some(row => row.free_bet_id === selectedGridRowId)} onClick={() => { if (selectedGridRowId) void selectRow(selectedGridRowId); }}>Open Free Bet Workbench</DesignLedgerToolbarAction><DesignLedgerPrimaryAction dataPdId="free-bets.toolbar.add-row" onClick={() => void startNewRow()}>Add Free Bet</DesignLedgerPrimaryAction></div> : null} dataPdId="free-bets.design-screen" description={`${filteredRows.length} of ${rows.length} rows · ${activeTableControlCount ? `${activeTableControlCount} active table controls` : query.trim() ? "Search active" : "No filters"} · Current Profile`} enabled={visualV2} title="Free Bets">
         <DesignLedgerToolbar ariaLabel="Free-bet ledger controls" className={visualV2 ? "" : "sportsbook-review-bar"} enabled={visualV2}>
           <DesignLedgerSearch dataPdId="free-bets.toolbar.search" label="Search free-bet rows" onChange={event => { setQuery(event.target.value); setCurrentPage(1); }} placeholder="Search free-bet rows" value={query} />
           {!visualV2 ? <LedgerAddRowButton label="Add free-bet row" onClick={() => void startNewRow()} /> : null}
@@ -3519,12 +3528,12 @@ export function FreeBetWorkflowShell({
               totalRows={filteredRows.length}
             />}
             {visualV2 ? <DesignLedgerNarrowToggle expanded={mobileDetail} onToggle={() => setMobileDetail(value => !value)} /> : null}
-            <LedgerTableScroll dataPdId="free-bets.table-scroll" visualV2={visualV2} narrowDetail={visualV2 && mobileDetail} cellNavigation={{ label: "Free Bets", onActivate: (rowId, column, anchor) => void selectRow(rowId, { cell: column in inlineCellFields ? { column, anchor } : undefined }) }}>
+            <LedgerTableScroll dataPdId="free-bets.table-scroll" visualV2={visualV2} narrowDetail={visualV2 && mobileDetail} cellNavigation={{ label: "Free Bets", onSelect: setSelectedGridRowId, onActivate: (rowId, column, anchor) => { const record = rows.find(row => row.free_bet_id === rowId); const scalar = column in inlineCellFields && record && ["Prospecting", "Available", "Not Yet Awarded"].includes(record.status) && record.result === "Pending" && ["offer_type", "event_name", "bookmaker"].every(key => String(record[key as keyof typeof record] ?? "").trim()) && Object.keys(getFreeBetInputErrors(record)).length === 0; if (scalar) { void selectRow(rowId, { cell: { column, anchor } }); return; } return { reason: ledgerCellReviewReason(ledgerCellCapability("free-bets", column)), onReview: () => void selectRow(rowId) }; } }}>
               <table className="data-table sportsbook-data-table">
                 <colgroup>
                   {tableColumns.map((column) => {
                     const key = column.key as FreeBetColumnKey;
-                    const width = columnWidths[key] ?? defaultFreeBetColumnWidths[key];
+                    const width = visualV2 && key === "actions" ? ledgerV2ActionColumnWidth : columnWidths[key] ?? defaultFreeBetColumnWidths[key];
                     return <col key={column.key} style={{ width: `${width}px` }} />;
                   })}
                 </colgroup>
@@ -3615,7 +3624,7 @@ export function FreeBetWorkflowShell({
                       return (
                         <FinancialValueReplayRow
                           className={[
-                            selectedId === rowId ? "is-selected-row" : "",
+                            selectedId === rowId || selectedGridRowId === rowId ? "is-selected-row" : "",
                             issueTone === "danger"
                               ? "row-state-issue-danger"
                               : issueTone === "warning"
@@ -3629,8 +3638,8 @@ export function FreeBetWorkflowShell({
                             .filter(Boolean)
                             .join(" ") || undefined}
                           key={`${rowId}-${index}`}
-                          onClick={() => void selectRow(rowId)}
-                          onDoubleClick={() => void selectRow(rowId, { collapseTable: true })}
+                          onClick={visualV2 ? undefined : () => void selectRow(rowId)}
+                          onDoubleClick={visualV2 ? undefined : () => void selectRow(rowId, { collapseTable: true })}
                         >
                           {tableColumns.map((column) => (
                             <td className="align-center" key={column.key} data-ledger-row={column.key !== "actions" ? rowId : undefined} data-ledger-column={column.key !== "actions" ? column.key : undefined} data-pd-id={column.key !== "actions" ? `free-bets.cell.${rowId}.${column.key}` : undefined}>

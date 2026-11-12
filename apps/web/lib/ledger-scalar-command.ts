@@ -4,6 +4,7 @@ import type { LedgerSourceRecord } from "@/lib/combined-ledger-source";
 import type { CombinedLedgerModule } from "@/lib/profile-scope";
 import { canCasinoInlineScalarEdit } from "@/components/casino-offer-workflow-shell";
 import { getFreeBetInputErrors } from "@/lib/free-bet-input";
+import { normalizeAccountAccessChannels } from "@/lib/account-access-channels";
 
 type ScalarField = { key: string; label: string; maxLength: number; required?: boolean };
 
@@ -57,6 +58,45 @@ export function ownedScalarField(module: CombinedLedgerModule, column: string, r
   return field;
 }
 
+/** The same Account row gate used by the native Access Channels cell editor. */
+export function ownedAccessChannelsEditable(record: LedgerSourceRecord): boolean {
+  return Boolean(record.catalogue_id) && record.type !== "Exchange" && record.signup_offer_status !== "Yes";
+}
+
+/**
+ * A bounded Account Access Channels edit through the existing Profile-owned
+ * Account PUT. Balance fields are omitted so this edit cannot append a balance
+ * observation; the API checks the current updated_at inside its transaction.
+ */
+export async function commitOwnedAccessChannels({ profileId, recordId, expected, values }: {
+  profileId: string;
+  recordId: string;
+  expected: string[];
+  values: string[];
+}): Promise<LedgerSourceRecord> {
+  const desired = normalizeAccountAccessChannels(values);
+  const previous = normalizeAccountAccessChannels(expected);
+  const endpoint = `${apiBaseUrl}/profiles/${encodeURIComponent(profileId)}/accounts/${encodeURIComponent(recordId)}`;
+  const response = await fetch(endpoint, { cache: "no-store", credentials: "include" });
+  if (!response.ok) throw new Error(formatApiErrorBody(await response.text(), "The Account could not be reloaded."));
+  const current = await response.json() as LedgerSourceRecord;
+  if (current.profile_id !== profileId || current.account_id !== recordId) throw new Error("Source identity changed; reload this ledger before editing.");
+  if (!ownedAccessChannelsEditable(current)) throw new Error("This Account now requires its native review workflow.");
+  const actual = normalizeAccountAccessChannels(Array.isArray(current.access_channels) ? current.access_channels as string[] : []);
+  if (JSON.stringify(actual) === JSON.stringify(desired)) return current;
+  if (JSON.stringify(actual) !== JSON.stringify(previous)) throw new Error("Access channels changed elsewhere. Reload the Account and review its current value.");
+  const payload: Record<string, unknown> = { ...current, access_channels: desired, expected_updated_at: current.updated_at };
+  delete payload.current_balance;
+  delete payload.pending_withdrawal_amount;
+  delete payload.last_balance_update;
+  const saved = await fetch(endpoint, { method: "PUT", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+  if (!saved.ok) throw new Error(formatApiErrorBody(await saved.text(), "Access channels were not saved."));
+  const confirmed = await saved.json() as LedgerSourceRecord;
+  const confirmedValues = normalizeAccountAccessChannels(Array.isArray(confirmed.access_channels) ? confirmed.access_channels as string[] : []);
+  if (confirmed.profile_id !== profileId || confirmed.account_id !== recordId || JSON.stringify(confirmedValues) !== JSON.stringify(desired)) throw new Error("The save response did not confirm Access Channels. Reload before retrying.");
+  return confirmed;
+}
+
 /**
  * Uses the same Profile-owned full-record PUT authority as each native editor.
  * A fresh read checks identity and field staleness before writing one allowlisted
@@ -96,5 +136,32 @@ export async function commitOwnedScalar({ module, profileId, recordId, column, e
   if (!saved.ok) throw new Error(formatApiErrorBody(await saved.text(), "The field was not saved."));
   const confirmed = await saved.json() as LedgerSourceRecord;
   if (confirmed.profile_id !== profileId || confirmed[identityKey] !== recordId || confirmed[column] !== value) throw new Error("The save response did not confirm this field. Reload the record before retrying.");
+  return confirmed;
+}
+
+/** Extra Place displays Runner and Race in one cell; its native PUT validates both together. */
+export async function commitOwnedRunnerRace({ profileId, recordId, expectedRunner, expectedRace, runner, race }: {
+  profileId: string;
+  recordId: string;
+  expectedRunner: string;
+  expectedRace: string;
+  runner: string;
+  race: string;
+}): Promise<LedgerSourceRecord> {
+  if (runner.length > 240 || race.length > 240) throw new Error("Runner and Race must each be at most 240 characters.");
+  const endpoint = `${apiBaseUrl}/profiles/${encodeURIComponent(profileId)}/each-way-extra-places/${encodeURIComponent(recordId)}`;
+  const response = await fetch(endpoint, { cache: "no-store", credentials: "include" });
+  if (!response.ok) throw new Error(formatApiErrorBody(await response.text(), "The Extra Place record could not be reloaded."));
+  const current = await response.json() as LedgerSourceRecord;
+  if (current.profile_id !== profileId || current.each_way_extra_place_id !== recordId) throw new Error("Source identity changed; reload this ledger before editing.");
+  if (!ownedScalarField("each-way-extra-places", "runner", current) || !ownedScalarField("each-way-extra-places", "race", current)) throw new Error("This row now requires its native review or correction workflow.");
+  const currentRunner = String(current.runner ?? "");
+  const currentRace = String(current.race ?? "");
+  if (currentRunner === runner && currentRace === race) return current;
+  if (currentRunner !== expectedRunner || currentRace !== expectedRace) throw new Error("Runner or Race changed elsewhere. Reload and review the current values.");
+  const saved = await fetch(endpoint, { method: "PUT", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...current, runner, race }) });
+  if (!saved.ok) throw new Error(formatApiErrorBody(await saved.text(), "Runner and Race were not saved."));
+  const confirmed = await saved.json() as LedgerSourceRecord;
+  if (confirmed.profile_id !== profileId || confirmed.each_way_extra_place_id !== recordId || confirmed.runner !== runner || confirmed.race !== race) throw new Error("The save response did not confirm Runner and Race. Reload before retrying.");
   return confirmed;
 }

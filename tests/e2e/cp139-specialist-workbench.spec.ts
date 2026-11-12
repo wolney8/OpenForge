@@ -81,7 +81,13 @@ for (const item of cases) {
       await range.click();
       await page.getByRole("option", { name: "All Dates", exact: true }).click();
     }
-    await page.locator(`td[data-ledger-row="${item.record}"][data-ledger-column="${item.column}"]`).dblclick();
+    if (item.id === "sportsbook") {
+      await page.locator(`td[data-ledger-row="${item.record}"][data-ledger-column="${item.column}"]`).click();
+      await page.locator('[data-pd-id="sportsbook.toolbar.open-selected"]').click();
+    } else {
+      await page.locator(`td[data-ledger-row="${item.record}"][data-ledger-column="${item.column}"]`).click();
+      await page.locator(`[data-pd-id="${item.id}.toolbar.open-selected"]`).click();
+    }
     const dialog = page.getByRole("dialog", { name: item.editName, exact: true });
     await expect(dialog).toBeVisible();
     const context = dialog.locator(`[data-pd-id="${item.id}.editor.financial-context"]`);
@@ -90,7 +96,7 @@ for (const item of cases) {
     await expect(context).toContainText("Status");
     const stages = dialog.locator('[data-pd-id="ledger-editor.tabs"]');
     await expect(stages).toHaveClass(/stages/);
-    await expect(dialog.getByRole("tab").first()).toHaveAttribute("aria-current", "step");
+    await expect(dialog.locator('[role="tab"][aria-current="step"]')).toHaveCount(1);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
     await page.screenshot({ path: info.outputPath(`${item.id}-populated-900-dark.png`) });
     if (item.id !== "casino-offers") {
@@ -306,7 +312,8 @@ test("Sportsbook populated Lab and native workbenches expose their complete gove
   expect(range.status()).toBe(200);
   await page.goto("/profiles/profile-demo-001/tracker/sportsbook-bets");
   await expect(page.locator(".ledger-loading-overlay")).toHaveCount(0, { timeout: 45_000 });
-  await page.locator('td[data-ledger-row="SB-SEED-001"][data-ledger-column="event_name"]').dblclick();
+  await page.locator('td[data-ledger-row="SB-SEED-001"][data-ledger-column="event_name"]').click();
+  await page.locator('[data-pd-id="sportsbook.toolbar.open-selected"]').click();
   const native = page.getByRole("dialog", { name: "Edit sportsbook row", exact: true });
   await expect(native).toBeVisible();
   await expect(native).toHaveCSS("opacity", "1");
@@ -421,6 +428,7 @@ for (const item of cases) {
     const edit = page.getByRole("dialog", { name: item.editName, exact: true });
     await expect(edit).toBeVisible();
     const input = edit.getByLabel(item.id === "casino-offers" ? "Offer name" : "Event name", { exact: true });
+    await edit.getByRole("tab", { name: /Setup/i }).click();
     await expect(input).toHaveValue(sourceName);
     await input.fill(changedName);
     await edit.getByRole("button", { name: "Save", exact: true }).click();

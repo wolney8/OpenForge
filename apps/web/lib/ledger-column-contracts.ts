@@ -1,6 +1,9 @@
 import type { TableColumn } from "@/lib/tracker-modules";
 import type { CombinedLedgerModule } from "@/lib/profile-scope";
 
+/** The V2 open and overflow controls occupy two 44px targets plus cell padding. */
+export const ledgerV2ActionColumnWidth = 112;
+
 /** Columns shown by the Profile-owned ledgers. The combined view adds Profile before these. */
 export const ledgerColumnContracts: Record<CombinedLedgerModule, TableColumn[]> = {
   accounts: [

@@ -18,7 +18,7 @@ export function useLedgerCellEditor() {
   };
 }
 
-export function LedgerFloatingCellEditor({ session, ledger, label, dirty, error, pending = false, children, onSave, onCancel, onReview, readOnly = false, onEnableEditing, enableEditingLabel, compact = false }: {
+export function LedgerFloatingCellEditor({ session, ledger, label, dirty, error, pending = false, children, onSave, onCancel, onReview, readOnly = false, onEnableEditing, enableEditingLabel, compact = false, commitOnTab = true }: {
   session: LedgerCellSession;
   ledger: string;
   label: string;
@@ -33,6 +33,7 @@ export function LedgerFloatingCellEditor({ session, ledger, label, dirty, error,
   onEnableEditing?: () => void;
   enableEditingLabel?: string;
   compact?: boolean;
+  commitOnTab?: boolean;
 }) {
   const root = useRef<HTMLDivElement>(null);
   const saving = useRef(false);
@@ -108,7 +109,7 @@ export function LedgerFloatingCellEditor({ session, ledger, label, dirty, error,
     if (event.altKey && event.key === "Enter" && !blocked) { event.preventDefault(); session.anchor.focus({ preventScroll: true }); onReview(); return; }
     const plainField = event.target instanceof Element && event.target.matches('input:not([role="combobox"]),textarea');
     if (plainField && event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void commit(); }
-    if (plainField && event.key === "Tab") { event.preventDefault(); void commit(event.shiftKey ? "previous" : "next"); }
+    if (plainField && event.key === "Tab" && commitOnTab) { event.preventDefault(); void commit(event.shiftKey ? "previous" : "next"); }
   }}>
     {!compact ? <div className="workflow-panel-header"><strong>{label}</strong><button data-pd-id="ledger.floating-editor.cancel" aria-label={`Cancel ${ledger} ${label} edit`} className="modal-close-button" disabled={blocked} onClick={cancel} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button></div> : null}
     {readOnly ? <p className="muted" role="status">Read-only row. Choose Edit to enable this field.</p> : null}
@@ -117,6 +118,6 @@ export function LedgerFloatingCellEditor({ session, ledger, label, dirty, error,
       {message ? <p className={compact ? styles.floatingCellError : "error-text"} id={errorId} role="alert">{message}</p> : null}
       {compact ? <span className="sr-only" role="status">{blocked ? "Saving field…" : ""}</span> : <div className="table-action-row"><button data-pd-id="ledger.floating-editor.full" aria-keyshortcuts="Alt+Enter" className="review-chip" disabled={blocked} onClick={() => { session.anchor.focus({ preventScroll: true }); onReview(); }} type="button">Open full editor</button>{readOnly && onEnableEditing ? <button data-pd-id="ledger.floating-editor.enable" aria-label={enableEditingLabel ?? `Edit ${ledger} row`} className="review-chip" data-initial-focus disabled={blocked} onClick={() => { onEnableEditing(); requestAnimationFrame(() => root.current?.querySelector<HTMLElement>("input,textarea,select")?.focus()); }} type="button">Edit</button> : null}<button data-pd-id="ledger.floating-editor.save" className="modal-primary-button" disabled={blocked || readOnly} type="submit">{blocked ? <><span aria-hidden="true" className="button-spinner"/>Saving</> : "Save"}</button></div>}
     </form>
-    <span className="sr-only" id={instructionsId}>{compact ? "Enter commits this field; Tab commits and moves after a confirmed Save; Escape cancels. Alt+Enter opens the full editor with this draft." : "Save commits this field. Escape cancels after nested choices close. In text fields, Enter saves and Tab saves and moves between cells. Alt+Enter opens the full editor with this draft."}</span>
+    <span className="sr-only" id={instructionsId}>{compact ? commitOnTab ? "Enter commits this field; Tab commits and moves after a confirmed Save; Escape cancels. Alt+Enter opens the full editor with this draft." : "Use Tab to move between these controls. Enter or Apply commits the group; Escape cancels. Alt+Enter opens the full editor with this draft." : "Save commits this field. Escape cancels after nested choices close. In text fields, Enter saves and Tab saves and moves between cells. Alt+Enter opens the full editor with this draft."}</span>
   </div>, document.body);
 }

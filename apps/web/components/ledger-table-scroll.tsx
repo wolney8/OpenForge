@@ -10,7 +10,8 @@ type LedgerTableScrollProps = {
   dataPdId: string;
   visualV2?: boolean;
   narrowDetail?: boolean;
-  cellNavigation?: { label: string; onActivate: (rowId: string, column: string, anchor: HTMLElement) => void };
+  mode?: "read-only" | "editable";
+  cellNavigation?: { label: string; onActivate: (rowId: string, column: string, anchor: HTMLElement) => void | { reason: string; onReview: () => void }; onSelect?: (rowId: string) => void };
 };
 
 type ArrowAnchor = {
@@ -31,6 +32,7 @@ export function LedgerTableScroll({
   visualV2 = false,
   narrowDetail = false,
   cellNavigation,
+  mode = cellNavigation ? "editable" : "read-only",
 }: LedgerTableScrollProps) {
   const ref = useRef<HTMLDivElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -40,18 +42,23 @@ export function LedgerTableScroll({
     right: false,
   });
   const [arrowAnchor, setArrowAnchor] = useState<ArrowAnchor | null>(null);
+  const [review, setReview] = useState<{ reason: string; onReview: () => void } | null>(null);
   const instructionsId = useId();
   const activateCell = useEffectEvent((cell: HTMLTableCellElement) => {
-    cellNavigation?.onActivate(cell.dataset.ledgerRow!, cell.dataset.ledgerColumn!, cell);
+    const result = cellNavigation?.onActivate(cell.dataset.ledgerRow!, cell.dataset.ledgerColumn!, cell);
+    setReview(result && "reason" in result ? result : null);
   });
-  const navigationLabel = cellNavigation?.label;
+  const notifySelection = useEffectEvent((cell: HTMLTableCellElement) => {
+    cellNavigation?.onSelect?.(cell.dataset.ledgerRow!);
+  });
+  const navigationLabel = mode === "editable" ? cellNavigation?.label : undefined;
 
   useEffect(() => {
     const element = ref.current;
     if (!element || document.documentElement.dataset.uxShell !== "v2") return;
     element.tabIndex = 0;
     element.setAttribute("role", "region");
-    element.setAttribute("aria-label", "Ledger Table — Use Left and Right Arrows to Scroll");
+    element.setAttribute("aria-label", mode === "read-only" ? "Report table — Use Left and Right Arrows to Scroll" : "Ledger table — Use Left and Right Arrows to Scroll");
     if (navigationLabel) {
       element.setAttribute("aria-label", `${navigationLabel} spreadsheet`);
       element.setAttribute("aria-describedby", instructionsId);
@@ -64,9 +71,11 @@ export function LedgerTableScroll({
       available.forEach((cell, index) => { cell.tabIndex = selectedCell ? cell === selectedCell ? 0 : -1 : index === 0 ? 0 : -1; });
     };
     const selectCell = (cell: HTMLTableCellElement, focus = true) => {
+      setReview(null);
       selectedCell?.removeAttribute("data-ledger-selected");
       selectedCell = cell;
       cell.dataset.ledgerSelected = "true";
+      notifySelection(cell);
       initialiseCells();
       if (focus) cell.focus({ preventScroll: true });
     };
@@ -82,7 +91,9 @@ export function LedgerTableScroll({
     };
     const focused = (event: FocusEvent) => {
       const cell = cellFor(event.target);
-      if (cell && event.target === cell) selectCell(cell, false);
+      // Pointer focus arrives before the movement threshold is known. A click
+      // selects below; a completed pan must leave the row selection untouched.
+      if (cell && event.target === cell && !drag) selectCell(cell, false);
     };
     const activate = (event: MouseEvent) => {
       const cell = cellFor(event.target);
@@ -230,7 +241,7 @@ export function LedgerTableScroll({
       window.removeEventListener("pointercancel", finish);
       window.removeEventListener("blur", finish);
     };
-  }, [instructionsId, navigationLabel]);
+  }, [instructionsId, mode, navigationLabel]);
 
   useEffect(() => {
     const element = ref.current;
@@ -338,14 +349,26 @@ export function LedgerTableScroll({
   return (
     <div className={`ledger-table-scroll-wrap ${narrowDetail ? styles.tableHiddenForDetail : ""} ${className}`.trim()} ref={wrapperRef}>
       {cellNavigation ? <span className="sr-only" id={instructionsId}>Use arrow keys, Home or End to select a cell. Press Enter or F2, or double-click, to open the existing {cellNavigation.label} editor. Escape clears cell selection.</span> : null}
-      {visualV2 ? <div aria-label="Table horizontal navigation" className={styles.actionRow} data-pd-id={`${dataPdId}.scroll-controls`}>
+      {review ? <div className="field-hint" data-pd-id={`${dataPdId}.protected-cell`} role="status">{review.reason} <button className="button-link" onClick={review.onReview} type="button">Open record for review</button></div> : null}
+      {visualV2 && (mode === "editable" || scrollState.hasOverflow) ? <div aria-label="Table horizontal navigation" className={styles.actionRow} data-pd-id={`${dataPdId}.scroll-controls`}>
         <button aria-label="Scroll table left" className={styles.secondaryButton} data-pd-id={`${dataPdId}.scroll-left`} disabled={!scrollState.left} onClick={() => scroll(-1)} type="button"><span aria-hidden="true" className="material-symbols-outlined">chevron_left</span></button>
         <button aria-label="Scroll table right" className={styles.secondaryButton} data-pd-id={`${dataPdId}.scroll-right`} disabled={!scrollState.right} onClick={() => scroll(1)} type="button"><span aria-hidden="true" className="material-symbols-outlined">chevron_right</span></button>
       </div> : null}
-      <div className={`table-scroll${visualV2 ? ` ${styles.tableScroll}` : ""}`} data-pd-id={dataPdId} ref={ref}>
+      <div className={`table-scroll${visualV2 ? ` ${styles.tableScroll}${mode === "read-only" ? ` ${styles.readOnlyTableScroll}` : ""}` : ""}`} data-pd-id={dataPdId} ref={ref}>
         {children}
       </div>
       {controls}
     </div>
   );
+}
+
+/** Retains the legacy table host when V2 is disabled. */
+export function ReadOnlyTableRegion({ children, className = "table-shell", dataPdId, visualV2 }: {
+  children: ReactNode;
+  className?: string;
+  dataPdId: string;
+  visualV2: boolean;
+}) {
+  return visualV2 ? <LedgerTableScroll className={className} dataPdId={dataPdId} mode="read-only" visualV2>{children}</LedgerTableScroll>
+    : <div className={className}>{children}</div>;
 }

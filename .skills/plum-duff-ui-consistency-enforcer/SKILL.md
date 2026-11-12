@@ -73,6 +73,7 @@ use the canonical primitive and computed styling.
   letting an identity label overflow its shrinking flex target. Record combined stress separately.
 - Portal viewport-level dialogs to `document.body` when an ancestor can constrain fixed positioning.
 - For horizontally scrolled ledgers, inspect the pinned Actions cell over a tinted issue row. Its final painted surface must be opaque even when the semantic tint token contains alpha; test the real grid after scrolling with adjacent financial text underneath.
+- For compact pinned Actions, compare each icon's bounding rectangle with the actual sticky cell. A button can be reported visible while a wider legacy action-group minimum clips it outside the cell. Verify the same boundary in V2 and preserve flag-OFF sizing.
 - Filter clear/badge controls retain their existing positioned trigger wrapper. Exercise keyboard entry, trapping, Escape and trigger restoration; keep focus lifecycle in the persistent owner.
 - Dialog header and footer remain visible; only the intended body or table viewport scrolls.
 - Check every footer action against the actual clipping ancestor, and ensure focused fields remain reachable above actions. A sticky footer may be constrained by its form start; use the established modal scroll ownership and native form association. Distinguish textarea caret visibility from full-field reachability after scrolling. Failed saves release busy state, preserve drafts and show errors inside any active confirmation.

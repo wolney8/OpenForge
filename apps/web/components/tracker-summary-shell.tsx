@@ -1334,7 +1334,7 @@ export function TrackerSummaryShell({ profileId, profileTitle, variant, visualV2
 
               {data ? <ReportExplorer contextKey={profileId} state={selectedRangeReadState} scopes={[{profileId,label:"This Profile",dataset:data}]} summaryFirst={visualV2} /> : null}
               {data ? <PeriodPnlReport rows={summary.weeklyReports} contextKey={profileId}
-                scopes={[{ profileId, label: "This Profile", dataset: data }]} /> : null}
+                scopes={[{ profileId, label: "This Profile", dataset: data }]} visualV2={visualV2} /> : null}
               {renderReportTable({ title: "Weekly reports", rows: summary.weeklyReports })}
               {renderReportTable({ title: "Monthly reports", rows: summary.monthlyReports })}
               {renderReportTable({ title: "Yearly reports", rows: summary.yearlyReports })}

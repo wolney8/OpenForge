@@ -1,5 +1,22 @@
 # Plum Duff UI Change Register
 
+## CP-117 owner table and workbench interaction correction — 2026-11-12 / #118
+
+The owner rejects the current Today/Opportunities and ledger interaction candidate. These IDs preserve the complete requested correction; earlier visual and scalar evidence does not close them.
+
+| ID | Requested interaction | Status |
+| --- | --- | --- |
+| PD-PR-117A-97 | Today opportunity counts, scoped Track All, footer layout and exact separate normal activation proposal | NEEDS VERIFICATION — counts, scoped synthetic batch and footer pass final visual/integration; normal opportunity source activation awaits separate owner approval. |
+| PD-PR-117A-98 | Lab Opportunities capture/Prospecting composition, real governed paths and secondary authorised source list | NEEDS VERIFICATION — shared overview, Profile choice and unsaved Quick Capture continuation pass final browser checks. Arbitrary-offer persistence has no approved authority; owner Design Acceptance is open. |
+| PD-PR-117A-99 | Shared read-only/editable horizontal table drag with safe click/selection boundaries; Position spacing | COMPLETE for implemented scope — Position, Profiles directory and formal Period P&L/Explorer tables use the shared read-only boundary; editable Sportsbook drag does not select/open, and 390px report containment passes final suites. Other genuinely overflowing tables should reuse the same boundary when changed. |
+| PD-PR-117A-100 | Explicit typed cell-capability map and native governed compact editors across six ledgers and both scopes | IN PROGRESS — every combined display column is typed; native/combined Account multi-select and Extra Place Runner/Race reuse Profile-owned authority. Synthetic Account failed Save/retry/reload and unchanged balance fields pass. Coupled financial/lifecycle/date/enum cells remain protected and require the governed workflow; handoff is not inline parity. |
+| PD-PR-117A-101 | Selected row, deliberate single workbench and no duplicate primary editor host | COMPLETE for implemented scope — all six owned and six combined selected-row paths open one owning-Profile workbench, with no-selection disabled and separate new-record entry; final V2 integration passed. |
+| PD-PR-117A-102 | Per-ledger lifecycle initial stage, completion/required/urgency cues without new financial rules | NEEDS VERIFICATION — Sportsbook/Free Bet/Casino resolve populated entry from persisted state; placed Extra Place opens its native Settlement review (browser and resolver unit pass). Cash and Accounts retain native non-bet entry. Existing step badges remain; full owner interaction acceptance is open. |
+| PD-PR-117A-103 | Anchored vertical-dots row menu with permitted commands, focus and confirmation | COMPLETE for native row commands — Sportsbook/Free Bet/Casino/Extra Place/Cash anchored menus and keyboard dismissal pass browser checks. A 390px sticky Actions clipping regression was corrected and bounded in final integration; combined rows retain only their applicable owner-handoff command. |
+
+Final-source correction evidence: V2 integration 129 passed with five expected flag-OFF-phase skips, visual 223/223, flag-OFF rollback 9/9 and web units 746/746. These checks do not confer owner Design Acceptance or normal opportunity-source activation.
+
+
 ## CP-117 rejected Today and ledger parity — 2026-11-11 / #118
 
 The owner rejected the previous Today and ledger presentation candidate. The connected Lab is frozen as the reference at web `7629c801513909f3c60648cc027d7ea6158e2abd`; native financial commands remain authoritative. These items reopen affected acceptance without erasing prior implementation or owner decisions.
@@ -26,7 +43,7 @@ All captures use disposable data and are private under `data/private/evidence/cp
 | Sportsbook Bets | Compared at 900px/390px, light/dark; shared range and action layout | Event Name and Campaign Tag on eligible single-plan rows; multi-lay and settled/correction rows hand off | Combined ownership and required wider columns differ from the Lab fixture; multi-lay scalar preparation needs its native linked draft. |
 | Free Bets | Compared at 900px/390px, light/dark; shared range | Event Name and Campaign Tag on complete Prospecting/Available/Not Yet Awarded drafts; placed/settled or invalid drafts hand off | Native award, placement and commission validation is not reproduced by a simplified full-record edit. |
 | Casino Offers | Compared at 900px/390px, light/dark; shared range | Offer Name and Game only when native conditional-field normalization is unchanged | Legacy/conditional reward records needing normalization retain native editor. |
-| Extra Place | Compared at 900px/390px, light/dark; V2 title now matches Lab | Runner on the displayed composite cell; stored Race remains reachable through native editor | Race is not a separately displayed combined column; adding one needs a column-contract review, not an implicit combined field. |
+| Extra Place | Compared at 900px/390px, light/dark; V2 title now matches Lab | Runner and Race use one bounded composite cell and the existing Profile-owned PUT; stale pair and financial-field invariants are checked | Race is not a separately displayed combined column; a new column needs a separate column-contract review. |
 | Cash Adjustments | Compared at 900px/390px, light/dark; shared range | Description only on unresolved non-fee rows, with native audit idempotency | Resolved and fee withdrawals retain explicit Edit. The API requires a valid amount and adjustment date on creation and consequently returns `resolved` for every supported newly created row. A persisted eligible compact-edit row cannot be produced by the supported synthetic create workflow; the eligible-row retry remains mocked interaction evidence, not persisted execution. |
 
 Owned and combined date reads share `ledgerRangeAnchor`; a disposable browser comparison verifies Custom and refresh for all five dated ledgers, while existing tests cover All Dates and Week. The Accounts ledger has no invented date range. Existing native/combined financial-display tests retain the same source measure. The historical full visual result was 215/216 with an isolated-pass 390px dark case. The current final-source suite passed 221/221 after the documented readiness and synthetic setup corrections.

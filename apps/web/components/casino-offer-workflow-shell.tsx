@@ -40,6 +40,7 @@ import { LedgerViewContext } from "@/components/ledger-view-context";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerQuickActions, type LedgerQuickAction } from "@/components/ledger-quick-actions";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
+import { ledgerCellCapability, ledgerCellReviewReason } from "@/lib/ledger-cell-capabilities";
 import { LedgerFloatingCellEditor, useLedgerCellEditor, type LedgerCellSession } from "@/components/ledger-floating-cell-editor";
 import { designFloatingCellInputClass } from "@/components/design-lab-floating-cell-editor";
 
@@ -64,7 +65,8 @@ import {
 } from "@/lib/ledger-ui";
 import { getLookupValuesByType, type LookupValueRecord } from "@/lib/lookup-values";
 import { resolveVisibleQuickActions } from "@/lib/quick-actions";
-import { getSettlementTabAttentionState, type LedgerEditorTabDefinition } from "@/lib/ledger-editor-tabs";
+import { type LedgerEditorTabDefinition } from "@/lib/ledger-editor-tabs";
+import { casinoWorkbenchEntry } from "@/lib/ledger-workbench-entry";
 import {
   casinoOfferTypeUsesFieldGroup,
   casinoOfferTypeUsesTab,
@@ -1759,6 +1761,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
   const [trackerSettings, setTrackerSettings] = useState<TrackerSettingsRecord | null>(null);
   const [isTrackerRangeSaving, setIsTrackerRangeSaving] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedGridRowId, setSelectedGridRowId] = useState<string | null>(null);
   const [workflowVisible, setWorkflowVisible] = useState(false);
   const cellEditor = useLedgerCellEditor();
   const inlineField = cellEditor.session ? inlineCellFields[cellEditor.session.column as keyof typeof inlineCellFields] : undefined;
@@ -2180,11 +2183,6 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
       tabs.push({
         id: "settlement",
         label: "Settlement",
-        attentionState: getSettlementTabAttentionState({
-          result: formState.result,
-          settlementDate: formState.date_started,
-          status: formState.status,
-        }),
         requiredIssueCount: offerIdentityValidationActive ? missingSettlementFields.length : 0,
         status:
           offerIdentityValidationActive && missingSettlementFields.length > 0
@@ -2207,8 +2205,6 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
     [
       campaignUnlocked,
       campaignStepComplete,
-      formState.date_started,
-      formState.result,
       formState.status,
       missingCampaignFields.length,
       missingOfferIdentityFields.length,
@@ -3100,6 +3096,12 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
     () => paginateTrackerRows(filteredRows, effectivePage, pageSize),
     [effectivePage, filteredRows, pageSize]
   );
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      if (selectedGridRowId && !pagedRows.some(row => row.casino_offer_id === selectedGridRowId)) setSelectedGridRowId(null);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [pagedRows, selectedGridRowId]);
   const editorHeaderFullTitle = useMemo(() => {
     const offerName = formState.offer_name.trim();
     if (offerName) {
@@ -3136,11 +3138,11 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
     if (options?.cell && canCasinoInlineScalarEdit(record)) cellEditor.start(options.cell.column, options.cell.anchor);
     else cellEditor.close();
     setSelectedId(rowId);
-    setActiveEditorTabId("setup");
     setSelectedComboId("");
     isCreatingDraftRef.current = false;
     setWorkflowVisible(true);
     const nextFormState = recordToForm(record);
+    setActiveEditorTabId(casinoWorkbenchEntry({ status: record.status, result: record.result, setupComplete: getMissingRequiredFields(nextFormState).length === 0, hasCampaign: casinoOfferTypeUsesTab(nextFormState.offer_type, "campaign"), campaignComplete: isCasinoRequiredTabComplete(nextFormState, "campaign"), hasReward: casinoOfferTypeUsesTab(nextFormState.offer_type, "reward"), rewardComplete: isCasinoRequiredTabComplete(nextFormState, "reward") }));
     setFormState(nextFormState);
     setPristineFormState(nextFormState);
     setErrorMessage("");
@@ -3721,7 +3723,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
           <LedgerLoadingIndicator label="Loading casino-offer ledger" />
         ) : null}
         {!visualV2 ? quickViewPanel : null}
-        <DesignLedgerScreen actions={visualV2 ? <div className={designLedgerClasses.actionRow}><DesignLedgerToolbarAction dataPdId="casino-quick-add.open" onClick={() => { setErrorMessage(""); setQuickAddReturnValues(null); setIsQuickAddOpen(true); }}>Quick Add Free Spins</DesignLedgerToolbarAction><DesignLedgerPrimaryAction dataPdId="casino-offers.toolbar.add-row" onClick={() => void startNewRow()}>Add Casino Offer</DesignLedgerPrimaryAction></div> : null} dataPdId="casino-offers.design-screen" description={`${filteredRows.length} of ${rows.length} rows · ${activeTableControlCount ? `${activeTableControlCount} active table controls` : query.trim() ? "Search active" : "No filters"} · Current Profile`} enabled={visualV2} title="Casino Offers">
+        <DesignLedgerScreen actions={visualV2 ? <div className={designLedgerClasses.actionRow}><DesignLedgerToolbarAction dataPdId="casino-offers.toolbar.open-selected" disabled={!selectedGridRowId || !pagedRows.some(row => row.casino_offer_id === selectedGridRowId)} onClick={() => { if (selectedGridRowId) void selectRow(selectedGridRowId); }}>Open Casino Workbench</DesignLedgerToolbarAction><DesignLedgerToolbarAction dataPdId="casino-quick-add.open" onClick={() => { setErrorMessage(""); setQuickAddReturnValues(null); setIsQuickAddOpen(true); }}>Quick Add Free Spins</DesignLedgerToolbarAction><DesignLedgerPrimaryAction dataPdId="casino-offers.toolbar.add-row" onClick={() => void startNewRow()}>Add Casino Offer</DesignLedgerPrimaryAction></div> : null} dataPdId="casino-offers.design-screen" description={`${filteredRows.length} of ${rows.length} rows · ${activeTableControlCount ? `${activeTableControlCount} active table controls` : query.trim() ? "Search active" : "No filters"} · Current Profile`} enabled={visualV2} title="Casino Offers">
         <DesignLedgerToolbar ariaLabel="Casino-offer ledger controls" className={visualV2 ? "" : "sportsbook-review-bar"} enabled={visualV2}>
           <DesignLedgerSearch dataPdId="casino-offers.toolbar.search" label="Search casino-offer rows" onChange={event => { setQuery(event.target.value); setCurrentPage(1); }} placeholder="Search casino-offer rows" value={query} />
           {!visualV2 ? <button
@@ -3781,7 +3783,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
               totalRows={filteredRows.length}
             />}
             {visualV2 ? <DesignLedgerNarrowToggle expanded={mobileDetail} onToggle={() => setMobileDetail(value => !value)} /> : null}
-            <LedgerTableScroll dataPdId="casino-offers.table-scroll" visualV2={visualV2} narrowDetail={visualV2 && mobileDetail} cellNavigation={{ label: "Casino Offers", onActivate: (rowId, column, anchor) => void selectRow(rowId, { cell: column in inlineCellFields ? { column, anchor } : undefined }) }}>
+            <LedgerTableScroll dataPdId="casino-offers.table-scroll" visualV2={visualV2} narrowDetail={visualV2 && mobileDetail} cellNavigation={{ label: "Casino Offers", onSelect: setSelectedGridRowId, onActivate: (rowId, column, anchor) => { const record = rows.find(row => row.casino_offer_id === rowId); if (column in inlineCellFields && record && canCasinoInlineScalarEdit(record)) { void selectRow(rowId, { cell: { column, anchor } }); return; } return { reason: ledgerCellReviewReason(ledgerCellCapability("casino-offers", column)), onReview: () => void selectRow(rowId) }; } }}>
               <table className="data-table sportsbook-data-table">
                 <colgroup>
                   {tableColumns.map((column) => {
@@ -3877,7 +3879,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
                       return (
                         <FinancialValueReplayRow
                           className={[
-                            selectedId === rowId ? "is-selected-row" : "",
+                            selectedId === rowId || selectedGridRowId === rowId ? "is-selected-row" : "",
                             issueTone === "danger"
                               ? "row-state-issue-danger"
                               : issueTone === "warning"
@@ -3887,8 +3889,8 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
                             .filter(Boolean)
                             .join(" ") || undefined}
                           key={`${rowId}-${index}`}
-                          onClick={() => void selectRow(rowId)}
-                          onDoubleClick={() => void selectRow(rowId, { collapseTable: true })}
+                          onClick={visualV2 ? undefined : () => void selectRow(rowId)}
+                          onDoubleClick={visualV2 ? undefined : () => void selectRow(rowId, { collapseTable: true })}
                         >
                           {tableColumns.map((column) => (
                             <td className="align-center" key={column.key} data-ledger-row={column.key !== "actions" ? rowId : undefined} data-ledger-column={column.key !== "actions" ? column.key : undefined} data-pd-id={column.key !== "actions" ? `casino-offers.cell.${rowId}.${column.key}` : undefined}>

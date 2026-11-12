@@ -301,20 +301,27 @@ test("changing global scope respects the native unsaved editor guard", async ({ 
   const cell = page.locator('td[data-ledger-row="CA-SEED-001"][data-ledger-column="description"]');
   await cell.click();
   await page.keyboard.press("F2");
-  const editor = page.locator('[data-pd-id="ledger.floating-editor"]');
-  await expect(editor).toBeVisible();
+  const review = page.locator('[data-pd-id="cash-adjustments.table-scroll.protected-cell"]');
+  await expect(review).toBeVisible();
+  await review.getByRole("button", { name: "Open record for review" }).click();
+  const editor = page.getByRole("dialog", { name: "Edit cash adjustment" });
+  await editor.locator('[data-pd-id="ledger-editor.tab.notes"]').click();
   await editor.getByRole("button", { name: "Edit cash-adjustment row" }).click();
   const description = editor.getByRole("textbox", { name: "Description", exact: true });
   await description.fill("Synthetic unsaved scope guard");
-  await page.locator('[data-pd-id="ux-v2.profile-scope"]').click();
-  await page.getByRole("option", { name: "All Profiles" }).click();
+  // The native modal correctly blocks the header selector. Dismissal must
+  // resolve the draft before a different Profile scope can be chosen.
+  await page.keyboard.press("Escape");
   const guard = page.locator('[data-pd-id="unsaved-changes.dialog"]');
   await expect(guard).toBeVisible();
   await guard.locator('[data-pd-id="unsaved-changes.keep-editing"]').click();
   await expect(page).toHaveURL(/\/profiles\/profile-demo-001\/tracker\/cash-adjustments/);
   await expect(description).toHaveValue("Synthetic unsaved scope guard");
+  await page.keyboard.press("Escape");
+  await expect(guard).toBeVisible();
+  await guard.getByRole("button", { name: "Discard Changes" }).click();
+  await expect(editor).toHaveCount(0);
   await page.locator('[data-pd-id="ux-v2.profile-scope"]').click();
   await page.getByRole("option", { name: "All Profiles" }).click();
-  await guard.getByRole("button", { name: "Discard Changes" }).click();
   await expect(page).toHaveURL(/\/tracker\/cash-adjustments$/);
 });

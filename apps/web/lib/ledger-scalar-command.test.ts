@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { commitOwnedScalar, ownedScalarField } from "./ledger-scalar-command";
+import { commitOwnedAccessChannels, commitOwnedRunnerRace, commitOwnedScalar, ownedAccessChannelsEditable, ownedScalarField } from "./ledger-scalar-command";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -64,5 +64,59 @@ describe("combined Profile-owned scalar Save preflight", () => {
       recordId: source.cash_adjustment_id, column: "description", expected: source.description, value: "Updated demo note" });
     expect(calls.map(call => call.method)).toEqual(["GET", "PUT"]);
     expect(calls[1].headers.get("Idempotency-Key")).toMatch(/^[0-9a-f-]{36}$/i);
+  });
+
+  it("saves Runner and Race together through the owning Profile without changing financial fields", async () => {
+    const source = { profile_id: "profile-demo-001", each_way_extra_place_id: "EP-DEMO-001", runner: "Runner A", race: "Race A", each_way_stake: "10.00", status: "Placed" };
+    const requests: Array<{ method: string; body?: Record<string, unknown> }> = [];
+    vi.stubGlobal("fetch", vi.fn(async (_url: string, init?: RequestInit) => {
+      const body = init?.body ? JSON.parse(String(init.body)) as Record<string, unknown> : undefined;
+      requests.push({ method: init?.method ?? "GET", body });
+      return new Response(JSON.stringify(body ?? source), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+    const saved = await commitOwnedRunnerRace({ profileId: source.profile_id, recordId: source.each_way_extra_place_id,
+      expectedRunner: source.runner, expectedRace: source.race, runner: "Runner B", race: "Race B" });
+    expect(requests.map(request => request.method)).toEqual(["GET", "PUT"]);
+    expect(requests[1].body).toMatchObject({ runner: "Runner B", race: "Race B", each_way_stake: "10.00", status: "Placed" });
+    expect(saved).toMatchObject({ runner: "Runner B", race: "Race B" });
+  });
+
+  it("rejects a stale Runner/Race pair without submitting a partial write", async () => {
+    const source = { profile_id: "profile-demo-001", each_way_extra_place_id: "EP-DEMO-001", runner: "Runner B", race: "Race A" };
+    const fetcher = vi.fn(async () => new Response(JSON.stringify(source), { status: 200, headers: { "Content-Type": "application/json" } }));
+    vi.stubGlobal("fetch", fetcher);
+    await expect(commitOwnedRunnerRace({ profileId: source.profile_id, recordId: source.each_way_extra_place_id,
+      expectedRunner: "Runner A", expectedRace: source.race, runner: "Runner C", race: "Race C" })).rejects.toThrow("changed elsewhere");
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses the native Account PUT with its version check and no balance observation fields", async () => {
+    const source = { profile_id: "profile-demo-001", account_id: "AC-DEMO-001", catalogue_id: "CAT-DEMO-001", type: "Bookie", signup_offer_status: "No", access_channels: ["Online"], channel: "Online", current_balance: "12.00", pending_withdrawal_amount: "2.00", last_balance_update: "2026-11-01T10:00:00Z", updated_at: "2026-11-01T10:00:00Z" };
+    const calls: Array<{ method: string; body?: Record<string, unknown> }> = [];
+    vi.stubGlobal("fetch", vi.fn(async (_url: string, init?: RequestInit) => {
+      const body = init?.body ? JSON.parse(String(init.body)) as Record<string, unknown> : undefined;
+      calls.push({ method: init?.method ?? "GET", body });
+      return new Response(JSON.stringify(body ? { ...source, ...body, channel: "Online, Mobile" } : source), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+    const saved = await commitOwnedAccessChannels({ profileId: source.profile_id, recordId: source.account_id, expected: ["Online"], values: ["Mobile", "Online"] });
+    expect(calls.map(call => call.method)).toEqual(["GET", "PUT"]);
+    expect(calls[1].body).toMatchObject({ account_id: source.account_id, profile_id: source.profile_id, access_channels: ["Online", "Mobile"], expected_updated_at: source.updated_at });
+    expect(calls[1].body).not.toHaveProperty("current_balance");
+    expect(calls[1].body).not.toHaveProperty("pending_withdrawal_amount");
+    expect(calls[1].body).not.toHaveProperty("last_balance_update");
+    expect(saved.access_channels).toEqual(["Online", "Mobile"]);
+  });
+
+  it("rejects stale, foreign and unavailable Account channel updates without a PUT", async () => {
+    const source = { profile_id: "profile-demo-001", account_id: "AC-DEMO-001", catalogue_id: "CAT-DEMO-001", type: "Bookie", signup_offer_status: "No", access_channels: ["Mobile"], updated_at: "2026-11-01T10:00:00Z" };
+    const fetcher = vi.fn(async () => new Response(JSON.stringify(source), { status: 200, headers: { "Content-Type": "application/json" } }));
+    vi.stubGlobal("fetch", fetcher);
+    const edit = () => commitOwnedAccessChannels({ profileId: "profile-demo-001", recordId: source.account_id, expected: ["Online"], values: ["Retail"] });
+    await expect(edit()).rejects.toThrow("changed elsewhere");
+    source.profile_id = "foreign-profile";
+    await expect(edit()).rejects.toThrow("Source identity changed");
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(ownedAccessChannelsEditable({ ...source, type: "Exchange" })).toBe(false);
+    expect(ownedAccessChannelsEditable({ ...source, signup_offer_status: "Yes" })).toBe(false);
   });
 });

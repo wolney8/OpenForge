@@ -65,6 +65,9 @@ test("Today renders source-specific date and canonical provider/status evidence"
 test("authorised opportunities use the shared suggestion row instead of prose links", async ({ page }) => {
   await page.route(/\/fund-manager\/common-bet-combos\/profile-opportunities\/[^/]+$/, route => route.fulfill({ status: 200, json: route.request().url().endsWith(profile) ? [{ opportunity_key: "DEMO-OPP-001", label: "Review Demo Offer", bookmaker: "Bookmaker A", already_created: false, risk_warnings: [] }] : [] }));
   await page.goto("/opportunities");
+  const overview = page.locator('[data-pd-id="opportunities.overview"]');
+  await expect(overview.getByRole("button", { name: "Quick Capture" })).toBeVisible();
+  await expect(overview.getByRole("button", { name: "Open Tracker" })).toBeVisible();
   await expect(page.locator('[data-pd-id="opportunities.source-list"]')).toBeVisible();
   const row = page.locator('[data-pd-id^="opportunities.item."]').first();
   await expect(row).toBeVisible();
@@ -73,12 +76,42 @@ test("authorised opportunities use the shared suggestion row instead of prose li
   await expect(row.getByText("Open Profile opportunity")).toHaveCount(0);
 });
 
+test("Position financial table scrolls as a read-only region without opening an editor", async ({ page }) => {
+  await page.setViewportSize({ width: 900, height: 900 });
+  await page.goto("/");
+  const table = page.locator('[data-pd-id="position.financial-table-scroll"]');
+  await expect(table).toBeVisible();
+  await expect(table).toHaveAttribute("role", "region");
+  await expect(table).toHaveAttribute("aria-label", /Report table/);
+  expect(await table.evaluate(node => node.scrollWidth > node.clientWidth)).toBe(true);
+  await table.focus();
+  await page.keyboard.press("ArrowRight");
+  await expect.poll(() => table.evaluate(node => node.scrollLeft)).toBeGreaterThan(0);
+  await table.locator("tbody td").first().dblclick();
+  await expect(page.locator('[data-pd-id="ledger.floating-editor"]')).toHaveCount(0);
+});
+
+test("Sportsbook selection opens exactly one workbench only on a deliberate command", async ({ page }) => {
+  await page.goto(ledger);
+  await expect(page.locator(".ledger-loading-overlay")).toHaveCount(0, { timeout: 45_000 });
+  const open = page.locator('[data-pd-id="sportsbook.toolbar.open-selected"]');
+  await expect(open).toBeDisabled();
+  const row = page.locator('tr:has(td[data-ledger-row="CP117-CELL-001"])');
+  await row.locator('td[data-ledger-column="event_name"]').click();
+  await expect(row).toHaveClass(/is-selected-row/);
+  await expect(open).toBeEnabled();
+  await expect(page.locator('[data-pd-id="sportsbook.editor.dialog"]')).toHaveCount(0);
+  await open.click();
+  await expect(page.locator('[data-pd-id="sportsbook.editor.dialog"]')).toHaveCount(1);
+});
+
 test("source-backed advisory opportunities track in a bounded isolated batch", async ({ page }) => {
   await page.goto("/tasks");
   await page.getByRole("button", { name: /Opportunities \/ Suggestions/ }).click();
   const section = page.locator('[data-pd-id="tasks.v2.suggestions"]');
   await expect(section.locator('[data-pd-id^="opportunities.item."]').filter({ hasText: "Demo advisory opportunity" })).toHaveCount(2);
-  const bulk = section.getByRole("button", { name: /Track all 2 source-backed opportunities/ });
+  await expect(section.locator('[data-pd-id="tasks.v2.opportunity-summary"]')).toContainText("2 advisory · 2 shown · 2 eligible · 0 tracked");
+  const bulk = section.getByRole("button", { name: /Track all 2 eligible untracked opportunities/ });
   await expect(bulk).toBeEnabled();
   await bulk.click();
   await expect.poll(async () => {
@@ -128,13 +161,14 @@ test("native Sportsbook keeps governed row commands behind a compact action surf
   expect(await row.locator("td").last().evaluate(element => getComputedStyle(element).backgroundColor)).not.toBe("rgba(0, 0, 0, 0)");
   await expect(row.locator("td").last().getByRole("button")).toHaveCount(2);
   await row.getByRole("button", { name: "More actions for CP117-CELL-001" }).click();
-  const menu = page.getByRole("dialog", { name: "Actions for CP117-CELL-001" });
+  const menu = page.getByRole("menu", { name: "Actions for CP117-CELL-001" });
   await expect(menu).toBeVisible();
-  await expect(menu.getByRole("button", { name: "Update outcome" })).toBeVisible();
-  await expect(menu.getByRole("button", { name: "Copy to Profiles" })).toBeVisible();
-  await expect(menu.getByRole("button", { name: "Delete sportsbook row" })).toBeVisible();
-  await menu.getByRole("button", { name: "Close sportsbook actions" }).click();
+  await expect(menu.getByRole("menuitem", { name: "Update outcome" })).toBeVisible();
+  await expect(menu.getByRole("menuitem", { name: "Copy to Profiles" })).toBeVisible();
+  await expect(menu.getByRole("menuitem", { name: "Delete sportsbook row" })).toBeVisible();
+  await page.keyboard.press("Escape");
   await expect(menu).toHaveCount(0);
+  await expect(row.getByRole("button", { name: "More actions for CP117-CELL-001" })).toBeFocused();
   await row.getByRole("button", { name: "Open CP117-CELL-001" }).click();
   await expect(page.getByRole("dialog", { name: "Edit sportsbook row" })).toBeVisible();
 });
@@ -160,19 +194,19 @@ for (const item of [
       await page.screenshot({ path: "data/private/evidence/cp117-rejected-parity/free-bets-actions-after-1440-light.png", fullPage: true });
     }
     await actions.getByRole("button", { name: /More actions for/ }).click();
-    const dialog = page.getByRole("dialog", { name: /Actions for/ });
-    await expect(dialog.getByRole("button", { name: item.secondary })).toBeVisible();
+    const dialog = page.getByRole("menu", { name: /Actions for/ });
+    await expect(dialog.getByRole("menuitem", { name: item.secondary })).toBeVisible();
     if (item.module === "free-bets" || item.module === "casino-offers") {
-      await dialog.getByRole("button", { name: item.secondary }).click();
+      await dialog.getByRole("menuitem", { name: item.secondary }).click();
       await expect(page.getByRole("dialog", { name: item.module === "free-bets" ? "Update free-bet outcome" : "Update casino outcome" })).toBeVisible();
       return;
     }
     if (item.module === "each-way-extra-places") {
-      await dialog.getByRole("button", { name: item.secondary }).click();
+      await dialog.getByRole("menuitem", { name: item.secondary }).click();
       await expect(page.getByRole("dialog", { name: "Confirm Extra Place deletion" })).toBeVisible();
       return;
     }
-    await dialog.getByRole("button", { name: "Close row actions" }).click();
+    await page.keyboard.press("Escape");
     await expect(dialog).toHaveCount(0);
     await expect(actions.getByRole("button", { name: /More actions for/ })).toBeFocused();
   });
@@ -223,6 +257,8 @@ test("combined scalar retries preserve Profile identity and unrelated financial 
     const base = `Synthetic combined ${item.module} edit`;
     const next = before[item.column] === base ? `${base} revised` : base;
     await input.fill(next);
+    const nextRace = item.module === "each-way-extra-places" ? `${String(before.race ?? "")} reviewed` : null;
+    if (nextRace) await editor.getByRole("textbox", { name: "Race", exact: true }).fill(nextRace);
     let rejected = false;
     await page.route(`**${endpoint}`, async route => {
       if (route.request().method() === "PUT" && !rejected) { rejected = true; await route.fulfill({ status: 503, json: { detail: "Synthetic retry required" } }); }
@@ -235,10 +271,12 @@ test("combined scalar retries preserve Profile identity and unrelated financial 
     await expect(editor).toHaveCount(0);
     const after = await (await page.request.get(endpoint)).json() as Record<string, unknown>;
     expect(after[item.column], item.module).toBe(next);
+    if (nextRace) expect(after.race).toBe(nextRace);
     expect(after.profile_id).toBe(before.profile_id);
     for (const key of item.money) expect(after[key], `${item.module}.${key}`).toEqual(before[key]);
     await page.reload();
     await expect(page.locator(`td[data-ledger-column="${item.column}"]`).first()).toContainText(next);
+    if (nextRace) await expect(page.locator(`td[data-ledger-column="${item.column}"]`).first()).toContainText(nextRace);
     await page.unroute(`**${endpoint}`);
   }
 });

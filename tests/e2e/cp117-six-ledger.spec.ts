@@ -86,7 +86,10 @@ test("free-bet new draft keeps SNR-only retention while existing record keeps it
   await expect(dialog.getByLabel("Retention mode").locator("option")).toHaveCount(2);
 });
 
-for (const item of cases) {
+// The seeded Cash row is resolved: its Description uses explicit governed review.
+// Persisted Cash authority and the eligible combined retry remain covered by
+// cp117-scalar-authority-probe.spec.ts rather than a synthetic unlocked row.
+for (const item of cases.filter(item => item.module !== "cash-adjustments")) {
   test(`${item.module}: floating Save, authoritative invalid-input error, retry and specialist handoff`, async ({ page }) => {
     test.skip(legacy);
     await ready(page, item.module);
@@ -95,7 +98,6 @@ for (const item of cases) {
     await target.click(); await page.keyboard.press("F2");
     const editor = floating(page); await expect(editor).toBeVisible();
     await expect(page.getByRole("dialog")).toHaveCount(0);
-    if (item.module === "cash-adjustments") await editor.getByRole("button", { name: "Edit cash-adjustment row", exact: true }).click();
     const input = editor.getByRole("textbox", { name: item.label, exact: true });
     await expect(input).toHaveValue(String(before[item.field] ?? ""));
     const originalGeometry = await target.boundingBox();
@@ -115,7 +117,6 @@ for (const item of cases) {
     }
     await page.reload(); await ready(page, item.module);
     await target.dblclick(); await expect(input).toHaveValue(value);
-    if (item.module === "cash-adjustments") await editor.getByRole("button", { name: "Edit cash-adjustment row", exact: true }).click();
     const geometry = await target.boundingBox(); expect(Math.abs(geometry!.height - originalGeometry!.height)).toBeLessThanOrEqual(1);
     // Real Pydantic field limits: invalid text is rejected by the existing Save API.
     await input.fill("X".repeat(item.limit + 1));
@@ -127,7 +128,6 @@ for (const item of cases) {
     if (await editor.locator('[data-pd-id="ledger.floating-editor.cancel"]').count()) await expect(editor.locator('[data-pd-id="ledger.floating-editor.cancel"]')).toBeEnabled();
     await page.keyboard.press("Escape"); await expect(editor).toHaveCount(0); await expect(target).toBeFocused();
     await page.keyboard.press("Enter");
-    if (item.module === "cash-adjustments") await editor.getByRole("button", { name: "Edit cash-adjustment row", exact: true }).click();
     await input.fill(`${value} Retry`);
     let rejected = false;
     await page.route(`**/api/profiles/${profile}/${item.module}/${item.row}`, async route => {
@@ -143,6 +143,9 @@ for (const item of cases) {
     const foreign = await page.request.get(`/api/profiles/profile-demo-002/${item.module}`);
     expect(foreign.status()).toBe(200); expect((await foreign.json()).some((row: Record<string, unknown>) => row[item.idKey] === item.row)).toBe(false);
     await cell(page, item, item.review).click(); await page.keyboard.press("Enter");
+    const protectedNotice = page.locator(item.module === "sportsbook-bets" ? '[data-pd-id="sportsbook.protected-cell"]' : `[data-pd-id="${item.id}.table-scroll.protected-cell"]`);
+    await expect(protectedNotice).toBeVisible();
+    await protectedNotice.getByRole("button", { name: /Open .* for review/ }).click();
     await expect(page.getByRole("dialog", { name: item.dialog, exact: true })).toBeVisible();
     await expect(floating(page)).toHaveCount(0); await page.keyboard.press("Escape");
   });
@@ -168,14 +171,15 @@ test("Accounts: bounded access-channel floating control, rejected draft and relo
     if (route.request().method() === "PUT" && !rejected) { rejected = true; await route.fulfill({ status: 409, json: { detail: "Synthetic invalid/stale access change. Retry." } }); }
     else await route.continue();
   });
-  await editor.getByRole("button", { name: "Save", exact: true }).click(); await expect(editor.getByRole("alert")).toContainText("Synthetic invalid/stale");
+  await editor.getByRole("button", { name: "Apply access channels", exact: true }).click(); await expect(editor.getByRole("alert")).toContainText("Synthetic invalid/stale");
   await expect(editor.getByRole("button", { name: `Remove ${channel}`, exact: true })).toHaveCount(adding ? 1 : 0);
-  await editor.getByRole("button", { name: "Save", exact: true }).click(); await expect(editor).toHaveCount(0);
+  await editor.getByRole("button", { name: "Apply access channels", exact: true }).click(); await expect(editor).toHaveCount(0);
   const after = await readAccount(); expect(after.access_channels.includes(channel)).toBe(adding);
   for (const key of ["profile_id", "account_id", "catalogue_id", "account", "type", "status", "current_balance", "pending_withdrawal_amount", "counts_in_cash_total"]) expect(after[key], key).toEqual(before[key]);
   await page.reload(); await ready(page, "accounts"); await target.dblclick(); await expect(editor.getByRole("button", { name: `Remove ${channel}`, exact: true })).toHaveCount(adding ? 1 : 0);
   await page.keyboard.press("Escape");
   await page.locator('td[data-ledger-row="ACC-BOOK-A"][data-ledger-column="current_balance"]').click(); await page.keyboard.press("Enter");
+  await page.locator('[data-pd-id="accounts.table-scroll.protected-cell"]').getByRole("button", { name: "Open record for review" }).click();
   await expect(page.getByRole("dialog", { name: "Edit account", exact: true })).toBeVisible();
   await page.keyboard.press("Escape");
 });
@@ -196,6 +200,7 @@ test("floating Tab, click-away rejection and full-editor transition retain one n
   const editor = floating(page); const input = editor.getByRole("textbox", { name: "Event name", exact: true });
   await input.fill("Synthetic handoff draft"); await input.press("Alt+Enter");
   const full = page.getByRole("dialog", { name: "Edit sportsbook row", exact: true });
+  await full.getByRole("tab", { name: /Bet Setup/ }).click();
   await expect(full.getByRole("textbox", { name: "Event name", exact: true })).toHaveValue("Synthetic handoff draft");
   // The full editor retains its governed Save action and the same draft;
   // leaving without saving must not write this descriptive change.
@@ -218,15 +223,22 @@ for (const theme of ["light", "dark"]) {
     test.skip(legacy); await page.setViewportSize({ width: 390, height: 844 });
     for (const item of [...cases, {module: "accounts", row: "ACC-BOOK-A", column: "channel"}]) {
       await ready(page, item.module); await page.evaluate(theme => document.documentElement.setAttribute("data-theme", theme), theme);
-      const target = page.locator(`td[data-ledger-row="${item.row}"][data-ledger-column="${item.column}"]`); await target.click(); await page.keyboard.press("F2"); const editor = floating(page); await expect(editor).toBeVisible();
+      const target = page.locator(`td[data-ledger-row="${item.row}"][data-ledger-column="${item.column}"]`); await target.click(); await page.keyboard.press("F2");
+      if (item.module === "cash-adjustments") {
+        await expect(floating(page)).toHaveCount(0);
+        const review = page.locator('[data-pd-id="cash-adjustments.table-scroll.protected-cell"]');
+        await expect(review).toBeVisible();
+        await review.getByRole("button", { name: "Open record for review" }).click();
+        await expect(page.getByRole("dialog", { name: "Edit cash adjustment" })).toBeVisible();
+        await page.keyboard.press("Escape");
+        continue;
+      }
+      const editor = floating(page); await expect(editor).toBeVisible();
       const box = await editor.boundingBox(); expect(box!.x).toBeGreaterThanOrEqual(0); expect(box!.x + box!.width).toBeLessThanOrEqual(await page.evaluate(() => Math.min(document.documentElement.clientWidth, document.body.clientWidth))); expect(box!.y).toBeGreaterThanOrEqual(0); expect(box!.y + box!.height).toBeLessThanOrEqual(845);
       const overflow = await page.evaluate(() => ({ amount: document.documentElement.scrollWidth - innerWidth, nodes: [...document.querySelectorAll("body *")].filter(node => node instanceof HTMLElement && node.getBoundingClientRect().right > innerWidth + 2).slice(0, 12).map(node => ({ tag: node.tagName, className: typeof node.className === "string" ? node.className.slice(0, 90) : "", right: Math.round(node.getBoundingClientRect().right) })) }));
       expect(overflow.amount, JSON.stringify(overflow.nodes)).toBeLessThanOrEqual(1);
-      if (item.module === "cash-adjustments") {
-        await expect(editor.getByRole("button", { name: "Edit cash-adjustment row", exact: true })).toBeVisible();
-        await expect(editor.getByRole("button", { name: "Save", exact: true })).toBeDisabled();
-      } else if (item.module === "each-way-extra-places" || item.module === "accounts") {
-        await expect(editor.getByRole("button", { name: "Save", exact: true })).toBeInViewport();
+      if (item.module === "each-way-extra-places" || item.module === "accounts") {
+        await expect(editor.getByRole("button", { name: item.module === "accounts" ? "Apply access channels" : "Apply Runner / Race" })).toBeInViewport();
       } else {
         await expect(editor.getByRole("textbox")).toBeInViewport();
         await expect(editor.getByRole("button", { name: "Save", exact: true })).toHaveCount(0);
@@ -235,12 +247,7 @@ for (const theme of ["light", "dark"]) {
       const closeGeometry = await close.count() ? await close.boundingBox() : null;
       const heading = await editor.locator(".workflow-panel-header strong").count() ? await editor.locator(".workflow-panel-header strong").boundingBox() : null;
       if (closeGeometry && heading) expect(Math.abs((heading.y + heading.height / 2) - (closeGeometry.y + closeGeometry.height / 2))).toBeLessThanOrEqual(1);
-      if (item.module === "cash-adjustments") {
-        await editor.getByRole("button", {name:"Edit cash-adjustment row",exact:true}).click();
-        await expect(editor.getByRole("button", {name:"Edit cash-adjustment row",exact:true})).toHaveCount(0);
-        await expect(editor.getByRole("button", { name: "Save", exact: true })).toHaveCount(0);
-      }
-      await expect.poll(() => editor.locator(item.module === "each-way-extra-places" || item.module === "accounts" ? '[data-pd-id="ledger.floating-editor.save"]' : "input,textarea").first().evaluate(element => {
+      await expect.poll(() => editor.locator(item.module === "each-way-extra-places" || item.module === "accounts" ? 'button[type="submit"]' : "input,textarea").first().evaluate(element => {
         const style = getComputedStyle(element);
         const luminance = (value: string) => {
           const channels = value.match(/[\d.]+/g)!.slice(0,3).map(Number).map(channel => { const v=channel/255; return v<=.04045 ? v/12.92 : ((v+.055)/1.055)**2.4; });
@@ -276,7 +283,9 @@ test("all six ledgers reuse roving cell arrows, Home/End and explicit activation
     await page.keyboard.press("ArrowLeft"); await expect(target).toBeFocused();
     await page.keyboard.press("Home"); await page.keyboard.press("End");
     expect(await page.locator(`td[data-ledger-row="${item.row}"][data-ledger-selected=true]`).count()).toBe(1);
-    await target.click(); await page.keyboard.press("Enter"); await expect(floating(page)).toBeVisible();
+    await target.click(); await page.keyboard.press("Enter");
+    if (item.module === "cash-adjustments") await expect(page.locator('[data-pd-id="cash-adjustments.table-scroll.protected-cell"]')).toBeVisible();
+    else await expect(floating(page)).toBeVisible();
     await page.keyboard.press("Escape"); await expect(target).toBeFocused();
   }
 });
@@ -291,15 +300,25 @@ test("settled rows and legacy Casino preparation preserve populated correction g
     await ready(page, item.module);
     await page.locator(`td[data-ledger-row="${item.row}"][data-ledger-column="${item.column}"]`).dblclick();
     await expect(floating(page)).toHaveCount(0);
+    const review = page.locator(item.module === "sportsbook-bets" ? '[data-pd-id="sportsbook.protected-cell"]' : `[data-pd-id="${item.module}.table-scroll.protected-cell"]`);
+    await expect(review).toBeVisible();
+    await expect(page.getByRole("dialog", { name: item.dialog, exact: true })).toHaveCount(0);
+    await review.getByRole("button", { name: /Open .* for review/ }).click();
     const dialog = page.getByRole("dialog", { name: item.dialog, exact: true }); await expect(dialog).toBeVisible();
+    await dialog.locator('[data-pd-id="ledger-editor.tab.setup"]').click();
     await expect(dialog.getByRole("textbox", {name:item.label,exact:true})).toBeDisabled();
     await page.keyboard.press("Escape");
   }
   const item = cases[4]; await ready(page,item.module); await cell(page,item).dblclick();
-  const editor = floating(page); await expect(editor.getByRole("textbox",{name:"Description",exact:true})).toBeDisabled();
-  await expect(editor.getByRole("button",{name:"Save",exact:true})).toBeDisabled();
-  await editor.getByRole("button",{name:"Edit cash-adjustment row",exact:true}).click();
-  await expect(editor.getByRole("textbox",{name:"Description",exact:true})).toBeEnabled();
+  await expect(floating(page)).toHaveCount(0);
+  const cashReview = page.locator('[data-pd-id="cash-adjustments.table-scroll.protected-cell"]');
+  await expect(cashReview).toBeVisible();
+  await cashReview.getByRole("button", { name: "Open record for review" }).click();
+  const cashDialog = page.getByRole("dialog", { name: "Edit cash adjustment" });
+  await cashDialog.locator('[data-pd-id="ledger-editor.tab.notes"]').click();
+  await expect(cashDialog.getByRole("textbox", { name: "Description", exact: true })).toBeDisabled();
+  await cashDialog.getByRole("button", { name: "Edit cash-adjustment row" }).click();
+  await expect(cashDialog.getByRole("textbox", { name: "Description", exact: true })).toBeEnabled();
   await page.keyboard.press("Escape");
 });
 

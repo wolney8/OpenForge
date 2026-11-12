@@ -32,7 +32,7 @@ test("CP-140A Opportunities has an independent scoped destination and governed h
   await page.locator('[data-pd-id="ux-v2.nav.opportunities"]').click();
   await expect(page).toHaveURL(/\/opportunities$/);
   await expect(page.locator('[data-pd-id="opportunities.source-list"]')).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Opportunities", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Opportunities", exact: true, level: 1 })).toBeVisible();
   await page.goto("/opportunities?scope=profile-demo-001");
   await expect(page.locator('[data-pd-id="opportunities.page"]')).toBeVisible();
   await page.goto("/opportunities?scope=foreign-profile");

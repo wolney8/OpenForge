@@ -1,5 +1,9 @@
 # Plum Duff Known UI Pitfalls
 
+## CP-117 compact pinned row actions — 2026-11-12 / #118
+
+An imported row-action component can still inherit `.table-action-row`'s legacy 157px minimum width outside its module scope. At 390px, a 112px sticky Actions cell then clips the vertical menu trigger even though Playwright reports the button as visible. Use the shared V2 action-group boundary with sufficient selector specificity, and assert both button rectangles end within the actual cell after horizontal scroll. Preserve the legacy width under flag OFF. Regression: `cp117-table-workbench-contract.spec.ts` and the six-ledger whole-page comparison.
+
 ## CP-117 source-date groups, compact cells and isolated visual state — 2026-11-11 / #118
 
 A recorded task date has a source-specific meaning. Present event, reward expiry and expected check through typed source fields, and let verified priority choose which applicable group leads; a generic `due_at` timestamp or title-based wording is misleading. The Lab's compact scalar input cannot treat an asynchronous Profile-owned Save as complete before acknowledgement; Enter, Tab and click-away must retain rejected drafts and identity. Sticky Actions cells need an opaque base under any semantic tint: a `color-mix()` warning tint can retain alpha and let wide financial columns bleed through while scrolling. Full visual suites share disposable storage across cases: a test that tracks source-backed advisory opportunities must untrack them before later Position/banner geometry and count checks, and a range-dependent ledger test must set its own selected range. Regressions: `cp117-rejected-parity.spec.ts`, `cp117-visual-adoption.spec.ts`, `cp131-position-parity.spec.ts`, `cp134-tracked-tasks.spec.ts` and `cp137-profile-scope-banner.spec.ts`.

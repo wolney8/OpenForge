@@ -6,6 +6,7 @@ import { ContextHelp } from "@/components/context-help";
 import { FinancialValue } from "@/components/financial-value";
 import { usePersistedState } from "@/lib/ledger-ui";
 import { LedgerPagination } from "@/components/ledger-pagination";
+import { ReadOnlyTableRegion } from "@/components/ledger-table-scroll";
 import { filterFormalReportRows, type FormalReportFinancialFilter } from "@/lib/formal-report-filters";
 import { buildFormalReportRecords, formatHumanDisplayDate, formalReportWeekKey,
   type ReportRow, type TrackerSummaryDataset } from "@/lib/tracker-summary";
@@ -15,8 +16,8 @@ type Selection = { maximum: string; week: string; filter: string; point: string 
 const defaults: Selection = { maximum: "all", week: "", filter: "all", point: "" };
 const filters = ["all", "positive-pnl", "negative-pnl"];
 
-export function PeriodPnlReport({ rows, scopes, contextKey, scopeLabel }: {
-  rows: ReportRow[]; scopes: Scope[]; contextKey: string; scopeLabel?: string;
+export function PeriodPnlReport({ rows, scopes, contextKey, scopeLabel, visualV2 = false }: {
+  rows: ReportRow[]; scopes: Scope[]; contextKey: string; scopeLabel?: string; visualV2?: boolean;
 }) {
   // Existing UI preference storage, not a saved-preset/domain object.
   const [stored, setSelection] = usePersistedState<Selection>(
@@ -90,11 +91,11 @@ export function PeriodPnlReport({ rows, scopes, contextKey, scopeLabel }: {
       <LedgerPagination ariaLabel="Period P&L Periods" currentPage={safePeriodPage} onPageChange={setPeriodPage}
         onPageSizeChange={(size) => { setPeriodPageSize(size); setPeriodPage(1); }} pageCount={periodPageCount}
         pageSize={periodPageSize} position="top" totalRows={visible.length} />
-      <div className="table-shell"><table><thead><tr><th scope="col">Period</th><th scope="col">Betting P&amp;L</th><th scope="col">Cash Costs</th><th scope="col">Withdrawals</th><th scope="col">Retained Profit</th><th scope="col">Records</th></tr></thead><tbody>
+      <ReadOnlyTableRegion dataPdId="reports.period-pnl.period-table" visualV2={visualV2}><table><thead><tr><th scope="col">Period</th><th scope="col">Betting P&amp;L</th><th scope="col">Cash Costs</th><th scope="col">Withdrawals</th><th scope="col">Retained Profit</th><th scope="col">Records</th></tr></thead><tbody>
         {visiblePeriods.map((row) => <tr key={row.periodKey} data-pd-id={`reports.period-pnl.period.${row.periodKey}`}>
           <td>Week commencing {formatHumanDisplayDate(row.periodKey, false)}</td><td><FinancialValue animate={false} value={row.totalPnl} /></td><td><FinancialValue animate={false} value={row.costs} /></td><td><FinancialValue animate={false} value={row.withdrawals} /></td><td><FinancialValue animate={false} value={row.retainedProfit} /></td><td><button aria-pressed={selected?.periodKey === row.periodKey} className="button-link" onClick={() => change({ point: row.periodKey })} type="button">Inspect Records</button></td>
         </tr>)}
-      </tbody></table></div>
+      </tbody></table></ReadOnlyTableRegion>
       <LedgerPagination ariaLabel="Period P&L Periods" currentPage={safePeriodPage} onPageChange={setPeriodPage}
         onPageSizeChange={(size) => { setPeriodPageSize(size); setPeriodPage(1); }} pageCount={periodPageCount}
         pageSize={periodPageSize} position="bottom" totalRows={visible.length} />
@@ -104,10 +105,10 @@ export function PeriodPnlReport({ rows, scopes, contextKey, scopeLabel }: {
         <LedgerPagination ariaLabel="Period P&L Records" currentPage={safeRecordPage} onPageChange={setRecordPage}
           onPageSizeChange={(size) => { setRecordPageSize(size); setRecordPage(1); }} pageCount={recordPageCount}
           pageSize={recordPageSize} position="top" totalRows={pointRecords.length} />
-        <div className="table-shell"><table><thead><tr><th scope="col">Record</th><th scope="col">Profile</th><th scope="col">Type</th><th scope="col">Reporting Date</th><th scope="col">Value</th></tr></thead><tbody>
+        <ReadOnlyTableRegion dataPdId="reports.period-pnl.records-table" visualV2={visualV2}><table><thead><tr><th scope="col">Record</th><th scope="col">Profile</th><th scope="col">Type</th><th scope="col">Reporting Date</th><th scope="col">Value</th></tr></thead><tbody>
           {visibleRecords.map((row) => <tr key={row.profileId + ":" + row.module + ":" + row.id}><td><Link href={`/profiles/${row.profileId}/tracker/${row.module}?search=${encodeURIComponent(row.id)}&source=report-point`}>{row.label}</Link></td><td>{row.profileLabel}</td><td>{row.component === "costs" || row.component === "withdrawals" ? "Cash movement" : "Betting"}</td><td>{formatHumanDisplayDate(row.date.toISOString(), false)}</td><td><FinancialValue animate={false} value={row.value} /></td></tr>)}
           {!pointRecords.length ? <tr><td colSpan={5}>No records are available for this period.</td></tr> : null}
-        </tbody></table></div>
+        </tbody></table></ReadOnlyTableRegion>
         <LedgerPagination ariaLabel="Period P&L Records" currentPage={safeRecordPage} onPageChange={setRecordPage}
           onPageSizeChange={(size) => { setRecordPageSize(size); setRecordPage(1); }} pageCount={recordPageCount}
           pageSize={recordPageSize} position="bottom" totalRows={pointRecords.length} />

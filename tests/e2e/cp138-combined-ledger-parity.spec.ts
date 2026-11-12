@@ -76,6 +76,9 @@ test("mobile details preserve all fields and spreadsheet selection reaches nativ
   await expect(table.locator('td[data-ledger-column="displayed_value"]').first()).toBeVisible();
   await table.locator('td[data-ledger-column="bookmaker"]').first().focus();
   await page.keyboard.press("Enter");
+  const review = page.locator('[data-pd-id="combined.sportsbook-bets.protected-cell"]');
+  await expect(review).toBeVisible();
+  await review.getByRole("button", { name: "Open record for review" }).click();
   await expect(page).toHaveURL(/\/profiles\/profile-demo-001\/tracker\/sportsbook-bets\?record=/);
   await expect(page.getByRole("dialog", { name: "Edit sportsbook row" })).toBeVisible();
 });

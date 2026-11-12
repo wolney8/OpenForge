@@ -24,16 +24,19 @@ import {
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
 import { DesignLedgerSearch } from "@/components/design-ledger-search";
 import { ledgerColumnWidths } from "@/lib/ledger-column-contracts";
-import { DesignLedgerScreen, DesignLedgerToolbar, DesignLedgerToolbarAction, DesignLedgerPrimaryAction, DesignLedgerPagination, DesignPageHead, DesignLedgerNarrowToggle, DesignLedgerMobileRows, designPageHeadClasses } from "@/components/design-ledger-screen";
+import { DesignLedgerScreen, DesignLedgerToolbar, DesignLedgerToolbarAction, DesignLedgerPrimaryAction, DesignLedgerPagination, DesignPageHead, DesignLedgerNarrowToggle, DesignLedgerMobileRows, designPageHeadClasses, designLedgerClasses } from "@/components/design-ledger-screen";
 import { DesignLabSelect } from "@/components/design-lab-select";
 import { ledgerRangeAnchor } from "@/lib/ledger-range-anchor";
 import { DesignLedgerRowActions } from "@/components/design-ledger-row-actions";
 import { LedgerViewContext } from "@/components/ledger-view-context";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
+import { ledgerCellCapability, ledgerCellReviewReason } from "@/lib/ledger-cell-capabilities";
+import { extraPlaceWorkbenchEntry } from "@/lib/ledger-workbench-entry";
 import { formatApiErrorBody } from "@/lib/api-error";
 import { extraPlaceHasIssue } from "@/lib/ledger-operational-issues";
 import { LedgerFloatingCellEditor, useLedgerCellEditor, type LedgerCellSession } from "@/components/ledger-floating-cell-editor";
+import labStyles from "@/components/design-lab-connected.module.css";
 import { ModalBoundary } from "@/components/modal-boundary";
 import { QuickSelectRail, type QuickSelectChoice } from "@/components/quick-select-rail";
 import {
@@ -341,6 +344,7 @@ export function EachWayExtraPlaceWorkflowShell({
   const [preview, setPreview] = useState<Row | null>(null);
   const [open, setOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedGridRowId, setSelectedGridRowId] = useState<string | null>(null);
   const [step, setStep] = useState<StepId>("calculate");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -574,7 +578,11 @@ export function EachWayExtraPlaceWorkflowShell({
     setPristine(next);
     setPreview(row);
     setSelectedId(row?.each_way_extra_place_id ?? null);
-    setStep("calculate");
+    setStep(extraPlaceWorkbenchEntry({
+      status: row?.status ?? "Prospecting",
+      calculationInputsComplete: ["runner", "race", "placed_at", "bookmaker", "each_way_stake", "back_odds", "win_lay_odds", "place_lay_odds"]
+        .every(key => !isBlank(next[key as keyof Form] as string)),
+    }));
     setError("");
     setGuideDismissed(false);
     setOpen(true);
@@ -979,6 +987,12 @@ export function EachWayExtraPlaceWorkflowShell({
     ],
     [effectivePage, pageableRows, pageSize, pinnedIssueRows],
   );
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      if (selectedGridRowId && !paginatedRows.some(row => row.each_way_extra_place_id === selectedGridRowId)) setSelectedGridRowId(null);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [paginatedRows, selectedGridRowId]);
   const openRowById = (rowId: string) => {
     const row = paginatedRows.find(item => item.each_way_extra_place_id === rowId);
     if (row) openRow(row);
@@ -1105,7 +1119,7 @@ export function EachWayExtraPlaceWorkflowShell({
     >
       {visualV2 ? <DesignPageHead><div><h1>Extra Place</h1></div><div className={designPageHeadClasses.actions}><TrackerRangeCard activePreset={activeDatePreset} isReady={Boolean(trackerSettings)} isSaving={savingRange} onPresetChange={(preset) => void updateTrackerRange(preset)} rangeContext={rangeContext} rangeDetail={rangeDetail} visualV2 /></div></DesignPageHead> : <div className="tracker-toolbar"><div className="stack"><span className="eyebrow">Horse racing</span><h1>Extra Places</h1></div></div>}
       {!visualV2 ? quickViewPanel : null}
-      <DesignLedgerScreen actions={visualV2 ? <DesignLedgerPrimaryAction dataPdId="extra-place.toolbar.add-row" onClick={openNew}>Add Extra Place</DesignLedgerPrimaryAction> : null} dataPdId="extra-place.design-screen" description={`${pageableRows.length} of ${tableRows.length} rows · ${activeTableControlCount ? `${activeTableControlCount} active table controls` : query.trim() ? "Search active" : "No filters"} · Current Profile`} enabled={visualV2} title="Extra Place">
+      <DesignLedgerScreen actions={visualV2 ? <div className={designLedgerClasses.actionRow}><DesignLedgerToolbarAction dataPdId="extra-place.toolbar.open-selected" disabled={!paginatedRows.some(row => row.each_way_extra_place_id === selectedGridRowId)} onClick={() => { const row = paginatedRows.find(item => item.each_way_extra_place_id === selectedGridRowId); if (row) openRow(row); }}>Open Extra Place Workbench</DesignLedgerToolbarAction><DesignLedgerPrimaryAction dataPdId="extra-place.toolbar.add-row" onClick={openNew}>Add Extra Place</DesignLedgerPrimaryAction></div> : null} dataPdId="extra-place.design-screen" description={`${pageableRows.length} of ${tableRows.length} rows · ${activeTableControlCount ? `${activeTableControlCount} active table controls` : query.trim() ? "Search active" : "No filters"} · Current Profile`} enabled={visualV2} title="Extra Place">
       <DesignLedgerToolbar ariaLabel="Extra Place controls" className={visualV2 ? "" : "sportsbook-review-bar"} enabled={visualV2}>
         <DesignLedgerSearch dataPdId="extra-place.toolbar.search" label="Search Extra Place rows" onChange={event => { setQuery(event.target.value); setCurrentPage(1); }} placeholder="Search Extra Place rows" value={query} />
         {visualV2 ? <><DesignLabSelect dataPdId="extra-place.toolbar.view" label="View" value={tableFilters.view} options={[{ value: "recent", label: "Recent" }, { value: "issues", label: "Issues" }, { value: "all", label: "All" }]} onChange={value => { setTableFilters(current => ({ ...current, view: value as ExtraPlaceTableFilters["view"] })); setCurrentPage(1); }} compact /><DesignLabSelect compact dataPdId="extra-place.toolbar.status-filter" label="Status Filter" onChange={value => { setTableFilters(current => ({ ...current, status: value })); setCurrentPage(1); }} options={[{ value: "", label: "All statuses" }, ...extraPlaceFilterOptions.statuses.map(value => ({ value, label: value }))]} value={tableFilters.status} /><DesignLedgerToolbarAction dataPdId="extra-place.toolbar.filter" onClick={() => { setFilterDialogView("filters"); setIsFilterModalOpen(true); }}>Filters</DesignLedgerToolbarAction></> : null}
@@ -1237,9 +1251,11 @@ export function EachWayExtraPlaceWorkflowShell({
         )}
         onDelete={requestDelete}
         onEdit={openRow}
+        onSelect={setSelectedGridRowId}
         onResult={(row, result) => void saveResult(row, result)}
         providerIdsByName={providerIdsByName}
         rows={paginatedRows}
+        selectedRowId={selectedGridRowId}
         currentTime={currentTime}
         visibleColumns={visibleColumns}
         visualV2={visualV2}
@@ -1286,9 +1302,10 @@ export function EachWayExtraPlaceWorkflowShell({
       /> : null}
       </DesignLedgerScreen>
       {visualV2 ? quickViewPanel : null}
-      {open && cellEditor.session ? <LedgerFloatingCellEditor session={cellEditor.session} ledger="Extra Place" label="Runner / Race" dirty={isDirty} pending={saving} error={typeof error === "string" ? error : JSON.stringify(error)} onSave={async () => { const saved = await save(); if (saved) cellEditor.close(); return saved; }} onCancel={() => { setForm(pristine); setOpen(false); cellEditor.close(); }} onReview={() => cellEditor.close()}>
+      {open && cellEditor.session ? <LedgerFloatingCellEditor compact commitOnTab={false} session={cellEditor.session} ledger="Extra Place" label="Runner / Race" dirty={isDirty} pending={saving} error={typeof error === "string" ? error : JSON.stringify(error)} onSave={async () => { const saved = await save(); if (saved) cellEditor.close(); return saved; }} onCancel={() => { setForm(pristine); setOpen(false); cellEditor.close(); }} onReview={() => cellEditor.close()}>
         <label className="field-control"><span>Runner</span><input data-pd-id="extra-place.cell-editor.runner" aria-label="Runner" value={form.runner} onChange={event => { setError(""); update("runner", event.target.value); }} /></label>
         <label className="field-control"><span>Race</span><input data-pd-id="extra-place.cell-editor.race" aria-label="Race" value={form.race} onChange={event => { setError(""); update("race", event.target.value); }} /></label>
+        <button className={labStyles.secondaryButton} type="submit">Apply Runner / Race</button>
       </LedgerFloatingCellEditor> : null}
       {typeof document !== "undefined" && open && !cellEditor.active
         ? createPortal(
@@ -1810,7 +1827,9 @@ function ExtraPlaceTable({
   narrowDetail,
   onDelete,
   onEdit,
+  onSelect,
   onResult,
+  selectedRowId,
 }: {
   bookmakerCatalogue: MasterAccountCatalogueRecord[];
   currentTime: number;
@@ -1822,7 +1841,9 @@ function ExtraPlaceTable({
   narrowDetail: boolean;
   onDelete: (row: Row) => void;
   onEdit: (row: Row, cell?: LedgerCellSession) => void;
+  onSelect: (rowId: string) => void;
   onResult: (row: Row, result: string) => void;
+  selectedRowId: string | null;
 }) {
   const columns = [
     "date", "runner", "bookmaker", "stake", "backOdds", "terms", "placeOdds",
@@ -1857,7 +1878,7 @@ function ExtraPlaceTable({
     window.addEventListener("mouseup", stop);
   };
   return (
-    <LedgerTableScroll dataPdId="extra-place.table-scroll" visualV2={visualV2} narrowDetail={narrowDetail} cellNavigation={{ label: "Extra Place", onActivate: (rowId, column, anchor) => { const row = rows.find(item => item.each_way_extra_place_id === rowId); if (row) onEdit(row, column === "runner" ? { column, anchor } : undefined); } }}>
+    <LedgerTableScroll dataPdId="extra-place.table-scroll" visualV2={visualV2} narrowDetail={narrowDetail} cellNavigation={{ label: "Extra Place", onSelect, onActivate: (rowId, column, anchor) => { const row = rows.find(item => item.each_way_extra_place_id === rowId); if (!row) return; if (column === "runner") { onEdit(row, { column, anchor }); return; } return { reason: ledgerCellReviewReason(ledgerCellCapability("each-way-extra-places", column)), onReview: () => onEdit(row) }; } }}>
       <table className="data-table extra-place-data-table">
         <colgroup>
           {activeColumns.map((key) => <col key={key} style={{ width: `${columnWidths[key]}px` }} />)}
@@ -1917,6 +1938,7 @@ function ExtraPlaceTable({
               )}
               providerIdsByName={providerIdsByName}
               row={row}
+              selected={selectedRowId === row.each_way_extra_place_id}
               visualV2={visualV2}
               visibleColumns={visibleColumns}
             />
@@ -1942,6 +1964,7 @@ function LedgerRow({
   outsideTrackerRange,
   providerIdsByName,
   row,
+  selected,
   visualV2,
   visibleColumns,
   onDelete,
@@ -1953,6 +1976,7 @@ function LedgerRow({
   outsideTrackerRange: boolean;
   providerIdsByName: Record<string, string>;
   row: Row;
+  selected: boolean;
   visualV2: boolean;
   visibleColumns: ExtraPlaceVisibleColumns;
   onDelete: () => void;
@@ -1979,8 +2003,8 @@ function LedgerRow({
   return (
     <FinancialValueReplayGroup>
     <tr
-      className={`${issue ? issueCount > 4 ? "row-state-issue-danger" : "row-state-issue-warning" : ""}${raceReady?.tone === "due" ? " extra-place-row-result-due" : ""}${outsideTrackerRange ? " extra-place-row-outside-range" : ""}`}
-      onClick={onEdit}
+      className={`${selected ? "is-selected-row " : ""}${issue ? issueCount > 4 ? "row-state-issue-danger" : "row-state-issue-warning" : ""}${raceReady?.tone === "due" ? " extra-place-row-result-due" : ""}${outsideTrackerRange ? " extra-place-row-outside-range" : ""}`}
+      onClick={visualV2 ? undefined : onEdit}
       onKeyDown={(event) => {
         if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) {
           event.preventDefault();

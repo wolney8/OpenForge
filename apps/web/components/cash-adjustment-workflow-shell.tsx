@@ -26,13 +26,14 @@ import { EditorValidationBanner } from "@/components/editor-validation-banner";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerAddRowButton } from "@/components/ledger-add-row-button";
 import { DesignLedgerSearch } from "@/components/design-ledger-search";
-import { DesignLedgerScreen, DesignLedgerToolbar, DesignLedgerToolbarAction, DesignLedgerPrimaryAction, DesignLedgerPagination, DesignPageHead, DesignLedgerNarrowToggle, DesignLedgerMobileRows, designPageHeadClasses } from "@/components/design-ledger-screen";
+import { DesignLedgerScreen, DesignLedgerToolbar, DesignLedgerToolbarAction, DesignLedgerPrimaryAction, DesignLedgerPagination, DesignPageHead, DesignLedgerNarrowToggle, DesignLedgerMobileRows, designPageHeadClasses, designLedgerClasses } from "@/components/design-ledger-screen";
 import { DesignLabSelect } from "@/components/design-lab-select";
 import { ledgerRangeAnchor } from "@/lib/ledger-range-anchor";
 import { DesignLedgerRowActions } from "@/components/design-ledger-row-actions";
 import { LedgerViewContext } from "@/components/ledger-view-context";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
+import { ledgerCellCapability, ledgerCellReviewReason } from "@/lib/ledger-cell-capabilities";
 import { LedgerFloatingCellEditor, useLedgerCellEditor, type LedgerCellSession } from "@/components/ledger-floating-cell-editor";
 import { designFloatingCellInputClass } from "@/components/design-lab-floating-cell-editor";
 
@@ -556,6 +557,7 @@ export function CashAdjustmentWorkflowShell({ profileId, initialRecordId, initia
   const [trackerSettings, setTrackerSettings] = useState<TrackerSettingsRecord | null>(null);
   const [isTrackerRangeSaving, setIsTrackerRangeSaving] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedGridRowId, setSelectedGridRowId] = useState<string | null>(null);
   const [workflowVisible, setWorkflowVisible] = useState(false);
   const cellEditor = useLedgerCellEditor();
   const inlineField = cellEditor.session ? inlineCellFields[cellEditor.session.column as keyof typeof inlineCellFields] : undefined;
@@ -1060,6 +1062,12 @@ export function CashAdjustmentWorkflowShell({ profileId, initialRecordId, initia
     () => paginateTrackerRows(filteredRows, effectivePage, pageSize),
     [effectivePage, filteredRows, pageSize]
   );
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      if (selectedGridRowId && !pagedRows.some(row => row.cash_adjustment_id === selectedGridRowId)) setSelectedGridRowId(null);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [pagedRows, selectedGridRowId]);
   const signedAmountPreview = useMemo(
     () => getSignedAmountPreview(formState.direction, formState.amount),
     [formState.amount, formState.direction]
@@ -1801,7 +1809,7 @@ export function CashAdjustmentWorkflowShell({ profileId, initialRecordId, initia
           <LedgerLoadingIndicator label="Loading cash-adjustment ledger" />
         ) : null}
         {!visualV2 ? quickViewPanel : null}
-        <DesignLedgerScreen actions={visualV2 ? <DesignLedgerPrimaryAction dataPdId="cash-adjustments.toolbar.add-row" onClick={() => void startNewRow()}>Add Cash Adjustment</DesignLedgerPrimaryAction> : null} dataPdId="cash-adjustments.design-screen" description={`${filteredRows.length} of ${rows.length} rows · ${activeTableControlCount ? `${activeTableControlCount} active table controls` : query.trim() ? "Search active" : "No filters"} · Current Profile`} enabled={visualV2} title="Cash Adjustments">
+        <DesignLedgerScreen actions={visualV2 ? <div className={designLedgerClasses.actionRow}><DesignLedgerToolbarAction dataPdId="cash-adjustments.toolbar.open-selected" disabled={!selectedGridRowId || !pagedRows.some(row => row.cash_adjustment_id === selectedGridRowId)} onClick={() => { if (selectedGridRowId) void selectRow(selectedGridRowId); }}>Open Cash Adjustment Workbench</DesignLedgerToolbarAction><DesignLedgerPrimaryAction dataPdId="cash-adjustments.toolbar.add-row" onClick={() => void startNewRow()}>Add Cash Adjustment</DesignLedgerPrimaryAction></div> : null} dataPdId="cash-adjustments.design-screen" description={`${filteredRows.length} of ${rows.length} rows · ${activeTableControlCount ? `${activeTableControlCount} active table controls` : query.trim() ? "Search active" : "No filters"} · Current Profile`} enabled={visualV2} title="Cash Adjustments">
         <DesignLedgerToolbar ariaLabel="Cash-adjustment ledger controls" className={visualV2 ? "" : "sportsbook-review-bar"} enabled={visualV2}>
           <DesignLedgerSearch dataPdId="cash-adjustments.toolbar.search" label="Search cash-adjustment rows" onChange={event => { setQuery(event.target.value); setCurrentPage(1); }} placeholder="Search cash-adjustment rows" value={query} />
           {!visualV2 ? <LedgerAddRowButton label="Add cash adjustment" onClick={() => void startNewRow()} /> : null}
@@ -1858,7 +1866,7 @@ export function CashAdjustmentWorkflowShell({ profileId, initialRecordId, initia
               totalRows={filteredRows.length}
             />}
             {visualV2 ? <DesignLedgerNarrowToggle expanded={mobileDetail} onToggle={() => setMobileDetail(value => !value)} /> : null}
-            <LedgerTableScroll dataPdId="cash-adjustments.table-scroll" visualV2={visualV2} narrowDetail={visualV2 && mobileDetail} cellNavigation={{ label: "Cash Adjustments", onActivate: (rowId, column, anchor) => void selectRow(rowId, { cell: column in inlineCellFields ? { column, anchor } : undefined }) }}>
+            <LedgerTableScroll dataPdId="cash-adjustments.table-scroll" visualV2={visualV2} narrowDetail={visualV2 && mobileDetail} cellNavigation={{ label: "Cash Adjustments", onSelect: setSelectedGridRowId, onActivate: (rowId, column, anchor) => { const record = rows.find(row => row.cash_adjustment_id === rowId); const editable = column in inlineCellFields && record && record.calculation_state.toLowerCase() !== "resolved" && !lockedFeeWithdrawalTypes.has(record.adjustment_type); if (editable) { void selectRow(rowId, { cell: { column, anchor } }); return; } return { reason: ledgerCellReviewReason(ledgerCellCapability("cash-adjustments", column)), onReview: () => void selectRow(rowId) }; } }}>
               <table className="data-table sportsbook-data-table">
                 <colgroup>
                   {tableColumns.map((column) => {
@@ -1953,14 +1961,14 @@ export function CashAdjustmentWorkflowShell({ profileId, initialRecordId, initia
                       return (
                         <FinancialValueReplayRow
                           className={[
-                            selectedId === rowId ? "is-selected-row" : "",
+                            selectedId === rowId || selectedGridRowId === rowId ? "is-selected-row" : "",
                             rowIssueBadges.length > 0 ? "row-state-issue-warning" : "",
                           ]
                             .filter(Boolean)
                             .join(" ") || undefined}
                           key={`${rowId}-${index}`}
-                          onClick={() => void selectRow(rowId)}
-                          onDoubleClick={() => void selectRow(rowId, { collapseTable: true })}
+                          onClick={visualV2 ? undefined : () => void selectRow(rowId)}
+                          onDoubleClick={visualV2 ? undefined : () => void selectRow(rowId, { collapseTable: true })}
                         >
                           {tableColumns.map((column) => (
                             <td className="align-center" key={column.key} data-ledger-row={column.key !== "actions" ? rowId : undefined} data-ledger-column={column.key !== "actions" ? column.key : undefined} data-pd-id={column.key !== "actions" ? `cash-adjustments.cell.${rowId}.${column.key}` : undefined}>

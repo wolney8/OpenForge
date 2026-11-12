@@ -191,8 +191,8 @@ test("Reports advanced controls and ledger filters remain usable at actual Chrom
     await expect(freeBetRange).toContainText("All Dates");
     const row = page.locator('tr:has(td[data-ledger-row="CP117-FB-001"])');
     await row.getByRole("button", { name: /More actions for/ }).click();
-    const actions = page.getByRole("dialog", { name: /Actions for/ });
-    await expect(actions.getByRole("button", { name: "Review settlement" })).toBeVisible();
+    const actions = page.getByRole("menu", { name: /Actions for/ });
+    await expect(actions.getByRole("menuitem", { name: "Review settlement" })).toBeVisible();
     const box = await actions.boundingBox();
     expect(box).not.toBeNull();
     expect(box!.x).toBeGreaterThanOrEqual(0);

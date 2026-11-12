@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { DesignPageHead } from "@/components/design-ledger-screen";
 import { DesignTodayTaskRow, designTodayTaskListClass } from "@/components/design-today-task-row";
+import { DesignOpportunityOverview } from "@/components/design-opportunity-overview";
 import { loadAuthorizedProfileOpportunities, type OwnedOpportunity } from "@/lib/profile-opportunities";
 import styles from "@/components/design-lab-connected.module.css";
 
@@ -14,6 +15,13 @@ export function OpportunitiesPage() {
   const [failed, setFailed] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const trackerHref = (entry: "quick" | "prospecting") => {
+    const query = new URLSearchParams();
+    if (scope) { query.set("scope", scope); query.set("profile", scope); }
+    if (entry === "quick") { query.set("create", "1"); query.set("entry", "quick"); }
+    else query.set("f_status", "Prospecting");
+    return `/tracker/sportsbook-bets?${query.toString()}`;
+  };
   useEffect(() => {
     let active = true;
     const run = async () => {
@@ -30,6 +38,7 @@ export function OpportunitiesPage() {
 
   return <main className="page-shell" data-pd-id="opportunities.page">
     <DesignPageHead><div><h1>Opportunities</h1></div></DesignPageHead>
+    <DesignOpportunityOverview intro="Capture source wording as an unsaved draft, or review existing Profile-owned Prospecting records. Advisory opportunities are not confirmed promotions." onCapture={() => router.push(trackerHref("quick"))} onReview={() => router.push(trackerHref("prospecting"))} title="Opportunities" />
     <section className={styles.surface} data-pd-id="opportunities.source-list">
       <h2>Profile opportunities</h2>
       <p>Review offers from authorised Profile Accounts. Availability and actions belong to each Profile.</p>
