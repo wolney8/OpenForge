@@ -9,6 +9,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field, model_validator
 
 from openforge_api.auth import require_request_session
+from openforge_api.common_bet_combos import _profile_opportunities
 from openforge_api.config import settings
 from openforge_api.db import connect
 from openforge_api.notifications import (
@@ -122,7 +123,11 @@ def _row_payload(row, current: dict[str, FundManagerNotificationResponse]) -> di
         status = "changed" if related else "unavailable"
     return {
         "profile_id": str(row["profile_id"]),
-        "profile_name": source.profile_name if source is not None else str(row["profile_name"]),
+        "profile_name": (
+            source.profile_name
+            if source is not None and source.profile_name
+            else str(row["profile_name"])
+        ),
         "occurrence_key": occurrence,
         "source_key": str(row["source_key"]),
         "title": source.title if source is not None else str(row["title_snapshot"]),
@@ -143,16 +148,58 @@ def _viewer(request: Request) -> str:
     return session.email.strip().casefold()
 
 
-@router.get("")
-def list_annotations(request: Request) -> list[dict[str, object]]:
-    _require_enabled()
-    viewer = _viewer(request)
-    owned = notification_profile_scope(viewer, active_only=True)
+def _current_sources(
+    request: Request, owned: set[str]
+) -> dict[str, FundManagerNotificationResponse]:
+    """Resolve existing task occurrences plus authorised Profile opportunity rows.
+
+    Opportunity rows are annotation sources, not new notifications or financial
+    records. Their period key keeps weekly occurrences distinct and existing
+    reminder IDs compatible with annotations already saved by a viewer.
+    """
     current = {
         item.notification_id: item
         for item in list_fund_manager_notifications(request)
         if item.kind == "task" and item.profile_id in owned
     }
+    for profile_id in owned:
+        for opportunity in _profile_opportunities(profile_id):
+            occurrence = (
+                f"profile-opportunity:{profile_id}:"
+                f"{opportunity.opportunity_key}:{opportunity.period_key}"
+            )
+            if occurrence in current:
+                continue
+            current[occurrence] = FundManagerNotificationResponse(
+                audience="fund_manager",
+                security_tag="fund_manager_only",
+                kind="task",
+                task_state="done" if opportunity.already_created else "new",
+                notification_id=occurrence,
+                notification_type="profile_opportunity_reminder",
+                title=opportunity.label,
+                ledger_label="Opportunity Queue",
+                bookmaker_label=opportunity.bookmaker,
+                message="Advisory Profile opportunity; availability is unverified.",
+                profile_id=profile_id,
+                profile_name="",
+                record_id=opportunity.opportunity_key,
+                due_at="",
+                settles_at="",
+                created_at="",
+                href=f"/profiles/{profile_id}/tracker/accounts#profile-opportunities",
+                completion_href="",
+                tone="info",
+            )
+    return current
+
+
+@router.get("")
+def list_annotations(request: Request) -> list[dict[str, object]]:
+    _require_enabled()
+    viewer = _viewer(request)
+    owned = notification_profile_scope(viewer, active_only=True)
+    current = _current_sources(request, owned)
     with connect() as connection:
         rows = connection.execute(
             "SELECT annotation.*, profile.display_name AS profile_name "
@@ -175,11 +222,7 @@ def patch_annotations(request: Request, payload: BatchChange) -> list[dict[str, 
         raise HTTPException(status_code=422, detail="Duplicate task in update")
     if any(profile_id not in owned for profile_id, _ in keys):
         raise HTTPException(status_code=404, detail="Task unavailable")
-    current = {
-        item.notification_id: item
-        for item in list_fund_manager_notifications(request)
-        if item.kind == "task" and item.profile_id in owned
-    }
+    current = _current_sources(request, owned)
     now = datetime.now(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
     with connect() as connection:
         prepared = []
