@@ -8,7 +8,6 @@ from pathlib import Path
 
 from dotenv import dotenv_values
 
-
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -102,6 +101,11 @@ def main() -> None:
         choices=("check", "apply"),
         help="Inspect or explicitly migrate Today annotations without starting the API",
     )
+    parser.add_argument(
+        "--task-annotation-review-migration",
+        choices=("check", "apply"),
+        help="Explicitly inspect or add personal opportunity review columns without starting API",
+    )
     args = parser.parse_args()
 
     try:
@@ -193,6 +197,24 @@ def main() -> None:
         else:
             backup, checksum = apply(database_identity, revision)
             print(f"Task annotation schema installed; protected backup: {backup}")
+            print(f"Protected backup SHA-256: {checksum}")
+        return
+    if args.task_annotation_review_migration:
+        if args.role != "normal-owner":
+            parser.error(
+                "The normal review activation command requires --role normal-owner"
+            )
+        sys.path.insert(0, str(REPOSITORY_ROOT / "apps/api/src"))
+        from openforge_api.task_annotation_review_migration import apply, inspect
+
+        revision = source_revision()
+        if args.task_annotation_review_migration == "check":
+            print(
+                f"Personal review schema: {inspect(database_identity, revision)}; no changes"
+            )
+        else:
+            backup, checksum = apply(database_identity, revision)
+            print(f"Personal review schema installed; protected backup: {backup}")
             print(f"Protected backup SHA-256: {checksum}")
         return
     os.execv(

@@ -30,6 +30,7 @@ EXPECTED_COLUMNS = (
     "version",
     "updated_at",
 )
+REVIEW_COLUMNS = ("next_action", "notes", "reviewed_at")
 
 
 def _integrity(connection: sqlite3.Connection) -> None:
@@ -72,12 +73,14 @@ def _schema_state(connection: sqlite3.Connection) -> str:
         for row in connection.execute("PRAGMA index_info(idx_task_annotations_viewer_tracked)")
     )
     if (
-        columns != EXPECTED_COLUMNS
+        columns not in {EXPECTED_COLUMNS, EXPECTED_COLUMNS + REVIEW_COLUMNS}
         or primary_key != ("viewer_email", "profile_id", "occurrence_key")
         or index is None
         or index_columns != ("viewer_email", "tracked", "updated_at")
         or not all(
-            row[3] for row in columns_info if row[1] not in {"blocked_reason", "review_date"}
+            row[3]
+            for row in columns_info
+            if row[1] not in {"blocked_reason", "review_date", *REVIEW_COLUMNS}
         )
         or not any(
             row[2] == "profiles" and row[3] == "profile_id" and row[6] == "CASCADE"
@@ -85,7 +88,7 @@ def _schema_state(connection: sqlite3.Connection) -> str:
         )
     ):
         raise RuntimeError("Existing task annotation schema differs from reviewed migration")
-    return "installed"
+    return "installed-review" if columns == EXPECTED_COLUMNS + REVIEW_COLUMNS else "installed"
 
 
 def _runtime_database(expected_identity: str, expected_revision: str) -> Path:
