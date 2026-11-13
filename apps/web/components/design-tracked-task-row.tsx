@@ -19,6 +19,6 @@ export function DesignTrackedTaskRow({ action, context, dataPdId, details, extra
   return <div className={`${styles.trackedRow}${urgent ? ` ${styles.trackedUrgent}` : ""}`} data-pd-id={dataPdId} data-variant={variant}>
     <div className={styles.trackedMain}><strong>{title}</strong><small>{context}</small>{details}</div>
     <div className={styles.trackedStatus}>{state}</div>
-    <div className={styles.trackedActions}>{action}{extraAction}<button aria-label={untrackLabel} className={styles.untrackIcon} disabled={pending} onClick={onUntrack} title={untrackLabel} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button></div>
+    <div className={styles.trackedActions}>{action}{extraAction}<button aria-busy={pending} aria-label={untrackLabel} className={styles.untrackIcon} disabled={pending} onClick={onUntrack} title={untrackLabel} type="button"><span aria-hidden="true" className="material-symbols-outlined">{pending ? "progress_activity" : "close"}</span></button></div>
   </div>;
 }

@@ -21,7 +21,7 @@ test("non-notification advisory row opens Opportunity Details without tracking o
   await expect(row).toBeVisible();
   const before = await (await page.request.get("/api/fund-manager/tasks/annotations")).json() as unknown[];
   await row.click();
-  await expect(page.getByRole("heading", { name: "Opportunity Details" })).toBeFocused();
+  await expect(page.locator('[data-pd-id="tasks.v2.opportunity-detail"] h2')).toBeFocused();
   await expect(page).toHaveURL(/\/tasks(?:\?|$)/);
   expect(await (await page.request.get("/api/fund-manager/tasks/annotations")).json()).toEqual(before);
   await page.getByRole("link", { name: "Open Accounts" }).click();
@@ -83,7 +83,7 @@ test("personal opportunity notes, review and reopen persist without changing the
   expect(saved).toMatchObject({ tracked: true, work_state: "In Progress", notes: "Private synthetic review note", source_status: "active", reviewed_at: null });
   const occurrence = saved!.occurrence_key;
   await page.goto(`/tasks?opportunity=${encodeURIComponent(occurrence)}`);
-  await expect(page.getByRole("heading", { name: "Opportunity Details" })).toBeVisible();
+  await expect(page.locator('[data-pd-id="tasks.v2.opportunity-detail"] h2')).toBeVisible();
   await expect(page.getByRole("textbox", { name: "Personal Notes" })).toHaveValue("Private synthetic review note");
   await page.getByRole("button", { name: "Mark reviewed" }).click();
   await expect(page.getByRole("button", { name: "Reopen" })).toBeVisible();
@@ -113,7 +113,7 @@ test("switching between opportunity rows flushes pending personal notes", async 
   await rows.first().click();
   await page.getByRole("textbox", { name: "Personal Notes" }).fill("Review before switching");
   await rows.nth(1).click();
-  await expect(page.getByRole("heading", { name: "Opportunity Details" })).toBeVisible();
+  await expect(page.locator('[data-pd-id="tasks.v2.opportunity-detail"] h2')).toBeVisible();
   await rows.first().click();
   await expect(page.getByRole("textbox", { name: "Personal Notes" })).toHaveValue("Review before switching");
 });
@@ -183,12 +183,12 @@ test("tracked opportunity banner View details deep links to its own inspector", 
   await banner.locator('[data-pd-id="v2.active-task.toggle"]').click();
   await expect(banner).toContainText("Next action · Check current terms");
   await banner.getByRole("link", { name: "View details" }).first().click();
-  await expect(page.getByRole("heading", { name: "Opportunity Details" })).toBeVisible();
+  await expect(page.locator('[data-pd-id="tasks.v2.opportunity-detail"] h2')).toBeVisible();
   await page.reload();
-  await expect(page.getByRole("heading", { name: "Opportunity Details" })).toBeVisible();
+  await expect(page.locator('[data-pd-id="tasks.v2.opportunity-detail"] h2')).toBeVisible();
   await page.locator('[data-pd-id="ux-v2.header.tasks"]').click();
   await page.locator('[data-pd-id="ux-v2.header.tracked-panel"] a[href*="opportunity="]').first().click();
-  await expect(page.getByRole("heading", { name: "Opportunity Details" })).toBeVisible();
+  await expect(page.locator('[data-pd-id="tasks.v2.opportunity-detail"] h2')).toBeVisible();
 });
 
 for (const { width, theme } of [
@@ -217,7 +217,7 @@ for (const { width, theme } of [
     await page.locator('[data-pd-id^="opportunities.item."]').first().click();
     const inspector = page.locator('[data-pd-id="tasks.v2.inspector"]');
     await expect(inspector).toBeVisible();
-    await expect(inspector.getByRole("heading", { name: "Opportunity Details" })).toBeVisible();
+    await expect(inspector.locator("h2")).toBeVisible();
     const bounds = await inspector.boundingBox();
     expect(bounds).toBeTruthy();
     expect(bounds!.x).toBeGreaterThanOrEqual(0);
@@ -247,8 +247,11 @@ test("opportunity inspector remains usable at actual Chromium 200% tab zoom", as
   const context = await chromium.launchPersistentContext(join(scratch, "profile"), { channel: "chromium", headless: true, viewport: { width: 1440, height: 900 }, args: [`--disable-extensions-except=${extension}`, `--load-extension=${extension}`] });
   try {
     const page = await context.newPage();
+    await page.addInitScript(() => localStorage.setItem("pd-required-storage-notice", "acknowledged"));
     await page.goto(authURL);
+    expect((await (await page.request.get(`${baseURL}/api/auth/session`)).json()).email).toBe("demo@example.invalid");
     await page.goto(`${baseURL}/tasks`);
+    await expect(page).toHaveURL(/\/tasks(?:\?|$)/);
     const worker = context.serviceWorkers()[0] ?? await context.waitForEvent("serviceworker");
     await worker.evaluate(async url => {
       const tabs = (globalThis as unknown as { chrome: { tabs: { query: (filter: { url: string }) => Promise<Array<{ id: number }>>; setZoom: (id: number, zoom: number) => Promise<void> } } }).chrome.tabs;
@@ -259,11 +262,14 @@ test("opportunity inspector remains usable at actual Chromium 200% tab zoom", as
     await page.getByRole("button", { name: /Opportunities \/ Suggestions/ }).click();
     await page.locator('[data-pd-id^="opportunities.item."]').first().click();
     const inspector = page.locator('[data-pd-id="tasks.v2.inspector"]');
-    await expect(inspector.getByRole("heading", { name: "Opportunity Details" })).toBeVisible();
+    await expect(inspector.locator("h2")).toBeVisible();
     const bounds = await inspector.boundingBox();
     expect(bounds).toBeTruthy();
     expect(bounds!.x).toBeGreaterThanOrEqual(0);
     expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(721);
+    await inspector.evaluate(node => node.scrollTop = node.scrollHeight);
+    await expect(inspector.getByRole("link", { name: "Open Accounts" })).toBeInViewport();
+    await expect(inspector.getByRole("button", { name: "Close Opportunity Details" })).toBeInViewport();
     await page.screenshot({ path: info.outputPath("opportunity-inspector-200-percent.png"), fullPage: true });
   } finally { await context.close(); await rm(scratch, { recursive: true, force: true }); }
 });

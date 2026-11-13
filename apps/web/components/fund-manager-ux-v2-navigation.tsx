@@ -12,7 +12,7 @@ import { platformBrand } from "@/lib/brand";
 import { DesignLabHeaderOverlay } from "@/components/design-lab-header-overlay";
 import { ModalBoundary } from "@/components/modal-boundary";
 import { labDestinations } from "@/lib/design-lab-navigation";
-import { loadTaskAnnotations, patchTaskAnnotations, TASK_ANNOTATIONS_REFRESH_EVENT, trackedTaskDetailsHref, type TaskAnnotation } from "@/lib/task-annotations";
+import { acknowledgedTaskAnnotationRows, loadTaskAnnotations, mergeTaskAnnotationRows, TASK_ANNOTATIONS_REFRESH_EVENT, trackedTaskDetailsHref, untrackTaskAnnotation, type TaskAnnotation } from "@/lib/task-annotations";
 import { TrackedTaskCard } from "@/components/tracked-task-card";
 import { loadTrackedTaskContext, trackedTaskKey, type TrackedTaskContext } from "@/lib/tracked-task-context";
 import { scopedGlobalHref } from "@/lib/profile-scope";
@@ -135,9 +135,14 @@ export function FundManagerUxV2HeaderTasks({ profileId = null }: { profileId?: s
   const [open, setOpen] = useState(false);
   const [annotations, setAnnotations] = useState<TaskAnnotation[] | null>(null);
   const [taskContext, setTaskContext] = useState<Map<string, TrackedTaskContext>>(new Map());
+  const taskContextRef = useRef(taskContext);
+  const annotationReadId = useRef(0);
   const [pendingUntrack, setPendingUntrack] = useState("");
   const [untrackError, setUntrackError] = useState("");
+  const [failedUntrack, setFailedUntrack] = useState<TaskAnnotation | null>(null);
+  const [untrackFeedback, setUntrackFeedback] = useState("");
   const [bannerHidden, setBannerHidden] = useState(false);
+  useEffect(() => { taskContextRef.current = taskContext; }, [taskContext]);
   useEffect(() => {
     const refreshVisibility = () => setBannerHidden(trackedBannerIsHidden());
     refreshVisibility();
@@ -146,23 +151,34 @@ export function FundManagerUxV2HeaderTasks({ profileId = null }: { profileId?: s
   }, []);
   useEffect(() => {
     let active = true;
-    const refresh = () => void loadTaskAnnotations().then(async rows => {
-      if (!active) return;
-      setAnnotations(rows);
-      if (rows) try { const contexts = await loadTrackedTaskContext(rows); if (active) setTaskContext(contexts); } catch { if (active) setTaskContext(new Map()); }
-    });
+    const refresh = () => {
+      const readId = ++annotationReadId.current;
+      void loadTaskAnnotations().then(async rows => {
+        if (!active || readId !== annotationReadId.current) return;
+        setAnnotations(rows);
+        if (rows) try { const contexts = await loadTrackedTaskContext(rows); if (active && readId === annotationReadId.current) setTaskContext(contexts); } catch { if (active && readId === annotationReadId.current) setTaskContext(new Map()); }
+      });
+    };
     refresh();
-    window.addEventListener(TASK_ANNOTATIONS_REFRESH_EVENT, refresh);
-    return () => { active = false; window.removeEventListener(TASK_ANNOTATIONS_REFRESH_EVENT, refresh); };
+    const onRefresh = (event: Event) => {
+      const rows = acknowledgedTaskAnnotationRows(event);
+      if (!rows) { refresh(); return; }
+      annotationReadId.current += 1;
+      setAnnotations(current => mergeTaskAnnotationRows(current, rows));
+      if (rows.some(row => row.tracked && !taskContextRef.current.has(trackedTaskKey(row.profile_id, row.occurrence_key)))) void loadTrackedTaskContext(rows).then(contexts => { if (active) setTaskContext(current => new Map([...current, ...contexts])); }).catch(() => undefined);
+    };
+    window.addEventListener(TASK_ANNOTATIONS_REFRESH_EVENT, onRefresh);
+    return () => { active = false; window.removeEventListener(TASK_ANNOTATIONS_REFRESH_EVENT, onRefresh); };
   }, []);
   const allTasksHref = profileId ? `/tasks?scope=${encodeURIComponent(profileId)}` : "/tasks";
   const trackedTasksHref = profileId ? `${allTasksHref}&collection=tracked` : "/tasks?collection=tracked";
   const untrack = async (item: TaskAnnotation) => {
     if (pendingUntrack) return;
     setPendingUntrack(trackedTaskKey(item.profile_id, item.occurrence_key));
-    setUntrackError("");
-    const result = await patchTaskAnnotations([{ profile_id: item.profile_id, occurrence_key: item.occurrence_key, tracked: false, work_state: item.work_state, blocked_reason: item.blocked_reason, review_date: item.review_date, expected_version: item.version }]);
-    if (result.error) setUntrackError(result.error);
+    setUntrackError(""); setFailedUntrack(null); setUntrackFeedback("");
+    const result = await untrackTaskAnnotation(item.profile_id, item.occurrence_key);
+    if (result.error) { setUntrackError(result.error); setFailedUntrack(item); }
+    else setUntrackFeedback("Untracked");
     setPendingUntrack("");
     if (!result.error) window.requestAnimationFrame(() => {
       document.querySelector<HTMLElement>('[data-pd-id="ux-v2.header.tracked-view-all"]')?.focus();
@@ -177,7 +193,9 @@ export function FundManagerUxV2HeaderTasks({ profileId = null }: { profileId?: s
     {open ? <DesignLabHeaderOverlay anchorRef={triggerRef} label="Tracked Tasks" onClose={() => setOpen(false)} preferredWidth={380}>
       <div className={labStyles.menuBody} data-pd-id="ux-v2.header.tracked-panel">
         <h2>Tracked Tasks ({active.length})</h2>
-        {untrackError ? <p role="alert">{untrackError}</p> : null}
+        {untrackError ? <p role="alert">{untrackError} {failedUntrack ? <button onClick={() => void untrack(failedUntrack)} type="button">Retry Untrack</button> : null}</p> : null}
+        {pendingUntrack ? <p aria-live="polite" role="status">Untracking…</p> : null}
+        {untrackFeedback ? <p aria-live="polite" role="status">{untrackFeedback}</p> : null}
         {preview.length ? <div className={labStyles.trackedPanelRows}>{preview.map(item => {
           const href = trackedTaskDetailsHref(item, profileId);
           const key = trackedTaskKey(item.profile_id, item.occurrence_key);

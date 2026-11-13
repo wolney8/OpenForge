@@ -54,7 +54,11 @@ test("CP-140A Today date view preserves Needs Action and Position links to real 
   await expect(shortcuts.getByRole("link", { name: "Inspect linked Free Bets" })).toHaveAttribute("href", /free-bets/);
   await page.goto("/tasks");
   await expect(page.locator('[data-pd-id="tasks.v2.date-view"]')).toContainText("Needs Action · all dates");
-  await expect(page.locator('[data-pd-id="tasks.v2.pagination"]')).toBeVisible();
+  const collection = page.getByRole("region", { name: "Needs Action" });
+  const total = Number((await collection.getByRole("heading", { name: /Needs Action/ }).innerText()).match(/(\d+)/)?.[1] ?? 0);
+  expect(total).toBeGreaterThan(0);
+  if (total > 8) await expect(collection.locator('[data-pd-id="tasks.v2.pagination"]')).toBeVisible();
+  else await expect(collection.locator('[data-pd-id="tasks.v2.pagination"]')).toHaveCount(0);
 });
 
 test("CP-140A Reports keeps incomplete financial warnings discoverable without crowding its KPI row", async ({ page }) => {

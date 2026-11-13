@@ -114,6 +114,7 @@ test("owned and combined views agree on custom range precedence, invalid dates a
       const key = kind === "owned" ? nativeKey : `combined.${module}`;
       const rows = page.locator(`[data-pd-id="${key}.table-scroll"] tbody tr`);
       await expect(rows.first()).toBeVisible();
+      await expect(rows.locator('td[data-ledger-row]').first()).toBeVisible();
       return rows.locator('td[data-ledger-row]').evaluateAll(cells => [...new Set(cells.map(cell => cell.getAttribute("data-ledger-row")?.split(":").at(-1)))].filter(Boolean).sort());
     };
     await page.goto(`/profiles/${owner}/tracker/${module}`);

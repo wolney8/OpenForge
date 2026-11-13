@@ -13,6 +13,20 @@ async function dismissCookieNotice(page: import("@playwright/test").Page) {
   if (await acknowledge.isVisible()) await acknowledge.click();
 }
 
+async function clearActiveSyntheticTracking(page: import("@playwright/test").Page) {
+  const response = await page.request.get("/api/fund-manager/tasks/annotations");
+  expect(response.ok()).toBe(true);
+  const rows = await response.json() as Array<{ profile_id: string; occurrence_key: string; tracked: boolean; source_status: string; work_state: string; blocked_reason: string | null; review_date: string | null; version: number }>;
+  const active = rows.filter(row => row.tracked && row.source_status === "active");
+  for (let index = 0; index < active.length; index += 25) {
+    const reset = await page.request.patch("/api/fund-manager/tasks/annotations", { data: { changes: active.slice(index, index + 25).map(row => ({
+      profile_id: row.profile_id, occurrence_key: row.occurrence_key, tracked: false, work_state: row.work_state,
+      blocked_reason: row.blocked_reason, review_date: row.review_date, expected_version: row.version,
+    })) } });
+    expect(reset.status()).toBe(200);
+  }
+}
+
 test("global Profile scope stays in the same module and local filtering stays subordinate", async ({ page }, info) => {
   await page.goto("/");
   await page.locator('[data-pd-id="ux-v2.nav.accounts"]').click();
@@ -121,6 +135,7 @@ test("Position, Today and Reports commands preserve individual global scope", as
 });
 
 test("tracked banner survives refresh, hides independently and returns from header", async ({ page }, info) => {
+  await clearActiveSyntheticTracking(page);
   await page.goto("/tasks");
   const track = page.locator('[data-pd-id^="tasks.v2.track."]').first();
   await expect(track).toBeVisible();
@@ -130,6 +145,8 @@ test("tracked banner survives refresh, hides independently and returns from head
   await expect(banner).toContainText("Tracked Tasks (1 active");
   await dismissCookieNotice(page);
   await page.screenshot({ path: info.outputPath("today-tracked-banner.png") });
+  await expect(page.getByRole("button", { name: "Expand Tracked Tasks" })).toBeVisible();
+  await page.getByRole("button", { name: "Expand Tracked Tasks" }).click();
   await page.getByRole("button", { name: "Collapse Tracked Tasks" }).click();
   await expect(page.getByRole("button", { name: "Expand Tracked Tasks" })).toBeVisible();
   await page.getByRole("button", { name: "Hide Tracked Tasks Banner" }).click();
@@ -168,6 +185,7 @@ test("populated banner is bounded and Profile scope changes its view without cha
   const banner = page.locator('[data-pd-id="v2.active-task"]');
   await expect(banner).toContainText("Tracked Tasks (12 active · 1 history)");
   await page.locator('[data-pd-id="tasks.loading-shell"]').waitFor({ state: "hidden" });
+  await banner.getByRole("button", { name: "Expand Tracked Tasks" }).click();
   const tray = banner.locator('[class*="trackedRows"]');
   expect(await tray.evaluate(node => node.clientHeight)).toBeLessThanOrEqual(420);
   expect(await tray.evaluate(node => node.scrollHeight)).toBeGreaterThan(await tray.evaluate(node => node.clientHeight));

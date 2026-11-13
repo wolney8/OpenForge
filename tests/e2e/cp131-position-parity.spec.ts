@@ -60,7 +60,10 @@ for (const width of [1024, 1440, 390] as const) {
       await page.getByRole("option", { name: "Last Month", exact: true }).click();
       await expect(selectedRange).toContainText("Last Month");
       await page.locator('[data-pd-id="combined-reporting.loading"]').waitFor({ state: "hidden", timeout: 45_000 });
+      await page.locator('[data-pd-id="v2.active-task.loading"]').waitFor({ state: "hidden" });
       await theme(page, mode);
+      const trackedBanner = await page.locator('[data-pd-id="v2.active-task"]').count()
+        ? await geometry(page, '[data-pd-id="v2.active-task"]') : null;
       const real = {
         sidebar: await geometry(page, '[data-pd-id="ux-v2.sidebar"]'),
         header: await geometry(page, '[data-pd-id="app-shell.top-bar"]'),
@@ -84,7 +87,11 @@ for (const width of [1024, 1440, 390] as const) {
       expect(Math.abs(real.breadcrumb.y - lab.breadcrumb.y)).toBeLessThanOrEqual(5);
       expect(Math.abs(real.head.y - lab.head.y)).toBeLessThanOrEqual(12);
       expect(Math.abs(real.metrics.x - lab.metrics.x)).toBeLessThanOrEqual(3);
-      expect(Math.abs(real.metrics.y - lab.metrics.y)).toBeLessThanOrEqual(20);
+      if (trackedBanner) {
+        const gap = real.metrics.y - trackedBanner.y - trackedBanner.height;
+        expect(gap).toBeGreaterThanOrEqual(8);
+        expect(gap).toBeLessThanOrEqual(48);
+      } else expect(Math.abs(real.metrics.y - lab.metrics.y)).toBeLessThanOrEqual(20);
       expect(Math.abs(real.metrics.width - lab.metrics.width)).toBeLessThanOrEqual(4);
       expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
 

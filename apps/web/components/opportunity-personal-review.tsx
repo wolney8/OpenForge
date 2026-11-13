@@ -3,7 +3,7 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { DesignLabSelect } from "@/components/design-lab-select";
 import { designTodayDetailActionsClass, designTodayStateEditorClass } from "@/components/design-today-task-row";
-import { loadTaskAnnotations, patchTaskAnnotations, type TaskAnnotation, type TaskAnnotationChange, type TaskWorkState } from "@/lib/task-annotations";
+import { loadTaskAnnotations, patchTaskAnnotations, registerPendingTaskAnnotationFlush, type TaskAnnotation, type TaskAnnotationChange, type TaskWorkState } from "@/lib/task-annotations";
 
 type Draft = {
   tracked: boolean;
@@ -53,11 +53,13 @@ export const OpportunityPersonalReview = forwardRef<OpportunityPersonalReviewHan
   const [draft, setDraft] = useState<Draft>(() => fromRow(annotation));
   const [status, setStatus] = useState<"idle" | "unsaved" | "saving" | "saved" | "failed" | "needs-date">("idle");
   const [error, setError] = useState("");
+  const [actionFeedback, setActionFeedback] = useState("");
   const draftRef = useRef(draft);
   const acknowledgedRef = useRef<TaskAnnotation | null>(annotation);
   const revisionRef = useRef(0);
   const savedRevisionRef = useRef(0);
   const runningRef = useRef<Promise<boolean> | null>(null);
+  const flushDelegateRef = useRef<() => Promise<boolean>>(async () => true);
   const debounceRef = useRef<number | null>(null);
   const dirtyFieldsRef = useRef(new Set<keyof Draft>());
 
@@ -131,6 +133,8 @@ export const OpportunityPersonalReview = forwardRef<OpportunityPersonalReviewHan
         onAcknowledged([saved]);
         setError("");
         if (revisionRef.current === revision) {
+          if (dirtyFieldsRef.current.has("tracked")) setActionFeedback(saved.tracked ? "Tracked" : "Untracked");
+          else if (dirtyFieldsRef.current.has("reviewed")) setActionFeedback(saved.reviewed_at ? "Reviewed" : "Reopened");
           const accepted = fromRow(saved);
           draftRef.current = accepted;
           setDraft(accepted);
@@ -146,6 +150,9 @@ export const OpportunityPersonalReview = forwardRef<OpportunityPersonalReviewHan
     try { return await pending; }
     finally { if (runningRef.current === pending) runningRef.current = null; }
   };
+
+  useEffect(() => { flushDelegateRef.current = flush; });
+  useEffect(() => registerPendingTaskAnnotationFlush(profileId, occurrenceKey, () => flushDelegateRef.current()), [profileId, occurrenceKey]);
 
   useImperativeHandle(ref, () => ({ flush }));
   useEffect(() => {
@@ -165,6 +172,7 @@ export const OpportunityPersonalReview = forwardRef<OpportunityPersonalReviewHan
     setDraft(next);
     revisionRef.current += 1;
     setError("");
+    setActionFeedback("");
     setStatus("unsaved");
     if (debounceRef.current !== null) window.clearTimeout(debounceRef.current);
     if (immediate) void flush();
@@ -183,10 +191,11 @@ export const OpportunityPersonalReview = forwardRef<OpportunityPersonalReviewHan
     {draft.work_state === "Blocked" ? <label>Blocked reason<input aria-label="Personal blocked reason" maxLength={500} onBlur={() => void flush()} onChange={event => update({ blocked_reason: event.target.value })} value={draft.blocked_reason} /></label> : null}
     {draft.work_state === "Do Later" ? <label>Review / resume date<input aria-label="Personal review date" onBlur={() => void flush()} onChange={event => update({ review_date: event.target.value }, Boolean(event.target.value))} type="date" value={draft.review_date} /></label> : null}
     <p aria-live="polite" data-pd-id="opportunity.save-status" role="status">{status === "unsaved" ? "Unsaved changes" : status === "saving" ? "Saving personal review…" : status === "saved" || status === "idle" && persistedReview ? "Personal review saved" : status === "needs-date" ? "Choose a valid review date before saving Do Later." : status === "failed" ? "Personal review was not saved." : ""}</p>
+    {actionFeedback && status === "saved" ? <p aria-live="polite" role="status">{actionFeedback}</p> : null}
     {status === "failed" ? <p role="alert">{error} <button onClick={() => void flush()} type="button">Retry personal review</button></p> : null}
     <div className={designTodayDetailActionsClass}>
-      <button aria-pressed={Boolean(acknowledgedRef.current?.tracked)} data-pd-id="opportunity.track" disabled={(!sourceAvailable && !draft.tracked) || status === "saving" || (acknowledgedReviewed && !draft.tracked)} onClick={() => update({ tracked: !draft.tracked }, true)} type="button">{status === "saving" && draft.tracked !== Boolean(acknowledgedRef.current?.tracked) ? "Updating tracking…" : acknowledgedRef.current?.tracked ? "Untrack" : "Track"}</button>
-      {acknowledgedReviewed ? <button data-pd-id="opportunity.reopen" disabled={status === "saving"} onClick={() => update({ reviewed: false }, true)} type="button">Reopen</button> : <button data-pd-id="opportunity.mark-reviewed" disabled={!sourceAvailable || status === "saving"} onClick={() => update({ reviewed: true }, true)} type="button">Mark reviewed</button>}
+      <button aria-busy={status === "saving"} aria-pressed={Boolean(acknowledgedRef.current?.tracked)} data-pd-id="opportunity.track" disabled={(!sourceAvailable && !draft.tracked) || status === "saving" || (acknowledgedReviewed && !draft.tracked)} onClick={() => update({ tracked: !draft.tracked }, true)} type="button">{status === "saving" && draft.tracked !== Boolean(acknowledgedRef.current?.tracked) ? <span aria-hidden="true" className="material-symbols-outlined opportunity-action-progress">progress_activity</span> : null}{acknowledgedRef.current?.tracked ? "Untrack" : "Track"}</button>
+      {acknowledgedReviewed ? <button aria-busy={status === "saving"} data-pd-id="opportunity.reopen" disabled={status === "saving"} onClick={() => update({ reviewed: false }, true)} type="button">{status === "saving" && !draft.reviewed ? <span aria-hidden="true" className="material-symbols-outlined opportunity-action-progress">progress_activity</span> : null}Reopen</button> : <button aria-busy={status === "saving"} data-pd-id="opportunity.mark-reviewed" disabled={!sourceAvailable || status === "saving"} onClick={() => update({ reviewed: true }, true)} type="button">{status === "saving" && draft.reviewed ? <span aria-hidden="true" className="material-symbols-outlined opportunity-action-progress">progress_activity</span> : null}Mark reviewed</button>}
     </div>
   </section>;
 });

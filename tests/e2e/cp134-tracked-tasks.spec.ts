@@ -24,11 +24,26 @@ async function ensureRowTracking(page: Page, id: string, tracked: boolean) {
   await expect(control).toHaveAttribute("aria-pressed", String(tracked));
 }
 
+async function clearActiveSyntheticTracking(page: Page) {
+  const response = await page.request.get("/api/fund-manager/tasks/annotations");
+  expect(response.ok()).toBe(true);
+  const rows = await response.json() as Array<{ profile_id: string; occurrence_key: string; tracked: boolean; source_status: string; work_state: string; blocked_reason: string | null; review_date: string | null; version: number }>;
+  const active = rows.filter(row => row.tracked && row.source_status === "active");
+  for (let index = 0; index < active.length; index += 25) {
+    const reset = await page.request.patch("/api/fund-manager/tasks/annotations", { data: { changes: active.slice(index, index + 25).map(row => ({
+      profile_id: row.profile_id, occurrence_key: row.occurrence_key, tracked: false, work_state: row.work_state,
+      blocked_reason: row.blocked_reason, review_date: row.review_date, expected_version: row.version,
+    })) } });
+    expect(reset.status()).toBe(200);
+  }
+}
+
 test("CP-134 tracked Today persists through refresh and header navigation", async ({ page }) => {
   const health = await (await page.request.get("/api/healthz")).json();
   expect(health.database_classification).toBe("isolated");
   expect(health.database_identity).toBe("cp117-integration-synthetic");
   await page.goto(authURL);
+  await clearActiveSyntheticTracking(page);
   await page.goto("/tasks");
   await expect(page.locator('[data-pd-id="tasks.v2.collections"]')).toBeVisible();
   const rows = page.locator('[data-pd-id^="tasks.v2.row."]');
@@ -36,14 +51,15 @@ test("CP-134 tracked Today persists through refresh and header navigation", asyn
   await page.locator('[data-pd-id="tasks.v2.filter-toggle"]').click();
   await expect(page.locator('[data-pd-id="tasks.v2.page-size"]')).toHaveValue("8");
   await page.locator('[data-pd-id="tasks.v2.filter-toggle"]').click();
-  const pagination = await page.locator('[data-pd-id="tasks.v2.pagination"]').innerText();
-  const total = Number(pagination.match(/of (\d+)/)?.[1] ?? 0);
+  const collection = page.getByRole("region", { name: "Needs Action" });
+  const total = Number((await collection.getByRole("heading", { name: /Needs Action/ }).innerText()).match(/(\d+)/)?.[1] ?? 0);
   expect(total).toBeGreaterThan(0);
+  if (total > 8) await expect(collection.locator('[data-pd-id="tasks.v2.pagination"]')).toBeVisible();
+  else await expect(collection.locator('[data-pd-id="tasks.v2.pagination"]')).toHaveCount(0);
   await expect(rows).toHaveCount(Math.min(8, total));
   const first = rows.first();
   const id = (await first.getAttribute("data-pd-id"))!.replace("tasks.v2.row.", "");
-  await page.locator(`[data-pd-id="tasks.v2.track.${id}"]`).click();
-  await expect(page.locator(`[data-pd-id="tasks.v2.track.${id}"]`)).toHaveAttribute("aria-pressed", "true");
+  await ensureRowTracking(page, id, true);
   await page.reload();
   await expect(page.locator(`[data-pd-id="tasks.v2.track.${id}"]`)).toHaveAttribute("aria-pressed", "true");
   const separateContext = await page.context().browser()!.newContext();
@@ -108,12 +124,12 @@ test("CP-140B autosave uses the acknowledged Untrack version and membership with
   expect(health.database_classification).toBe("isolated");
   expect(health.database_identity).toBe("cp117-integration-synthetic");
   await page.goto(authURL);
+  await clearActiveSyntheticTracking(page);
   await page.goto("/tasks");
   const row = page.locator('[data-pd-id^="tasks.v2.row."]').first();
   await expect(row).toBeVisible();
   const id = (await row.getAttribute("data-pd-id"))!.replace("tasks.v2.row.", "");
-  await page.locator(`[data-pd-id="tasks.v2.track.${id}"]`).click();
-  await expect(page.locator(`[data-pd-id="tasks.v2.track.${id}"]`)).toHaveAttribute("aria-pressed", "true");
+  await ensureRowTracking(page, id, true);
   await row.click();
   const selector = page.locator(`[data-pd-id="tasks.v2.work-state.${id}"]`);
   await selector.click();

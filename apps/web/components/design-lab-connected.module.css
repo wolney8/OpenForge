@@ -49,6 +49,7 @@
 .resolvedState{font-size:.8rem;font-weight:700;color:var(--tracked-fg)}
 .trackedActions .untrackIcon{display:grid;place-items:center;min-width:44px;width:44px;height:44px;padding:0}
 .untrackIcon :global(.material-symbols-outlined){font-size:20px}
+.untrackIcon:disabled{cursor:wait;opacity:.58}
 .trackedCount{background:var(--tracked-fg);color:var(--tracked-surface)}
 @media(max-width:700px){.trackedRow{grid-template-columns:minmax(0,1fr) auto}.trackedRows{max-height:min(30dvh,260px)}}
 .gridEditGate{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px;padding:10px;border:1px solid var(--outline);border-radius:9px;color:var(--text)}.gridEditGate :global(.material-symbols-outlined){color:var(--danger)}.gridEditGate button{margin-left:auto}

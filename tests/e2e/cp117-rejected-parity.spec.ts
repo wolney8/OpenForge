@@ -106,6 +106,17 @@ test("Sportsbook selection opens exactly one workbench only on a deliberate comm
 });
 
 test("source-backed advisory opportunities track in a bounded isolated batch", async ({ page }) => {
+  const initialResponse = await page.request.get("/api/fund-manager/tasks/annotations");
+  expect(initialResponse.ok()).toBe(true);
+  const initialRows = await initialResponse.json() as Array<{ occurrence_key: string; profile_id: string; version: number; tracked: boolean; reviewed_at: string | null; source_status: string; work_state: string; blocked_reason: string | null; review_date: string | null }>;
+  const priorWork = initialRows.filter(row => row.occurrence_key.startsWith("profile-opportunity:") && row.source_status === "active" && (row.tracked || row.reviewed_at));
+  if (priorWork.length) {
+    const reset = await page.request.patch("/api/fund-manager/tasks/annotations", { data: { changes: priorWork.map(row => ({
+      profile_id: row.profile_id, occurrence_key: row.occurrence_key, tracked: false, reviewed: false,
+      work_state: row.work_state, blocked_reason: row.blocked_reason, review_date: row.review_date, expected_version: row.version,
+    })) } });
+    expect(reset.status()).toBe(200);
+  }
   await page.goto("/tasks");
   await page.getByRole("button", { name: /Opportunities \/ Suggestions/ }).click();
   const section = page.locator('[data-pd-id="tasks.v2.suggestions"]');

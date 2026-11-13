@@ -79,7 +79,8 @@ for (const [width, mode] of [[1440, "light"], [390, "dark"]] as const) {
     await page.locator('[data-pd-id="tasks.v2.page-size"]').selectOption("16");
     await expect(page.locator('[data-pd-id="tasks.v2.pagination"]')).toContainText("Showing 1–16 of 27");
     await page.locator('[data-pd-id="tasks.v2.page-size"]').selectOption("32");
-    await expect(page.locator('[data-pd-id="tasks.v2.pagination"]')).toContainText("Showing 1–27 of 27");
+    await expect(rows).toHaveCount(27);
+    await expect(page.locator('[data-pd-id="tasks.v2.pagination"]')).toHaveCount(0);
     await page.locator('[data-pd-id="tasks.v2.page-size"]').selectOption("8");
     await page.locator('[data-pd-id="tasks.v2.filter-toggle"]').click();
     const firstBounds = await rows.first().boundingBox();

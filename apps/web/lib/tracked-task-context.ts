@@ -6,8 +6,21 @@ import type { TaskAnnotation } from "@/lib/task-annotations";
 export type TrackedTaskContext = { href: string; task?: DailyTaskView; bookmakerLabel?: string };
 export const trackedTaskKey = (profileId: string, occurrenceKey: string) => `${profileId}:${occurrenceKey}`;
 
+const contextReads = new Map<string, Promise<Map<string, TrackedTaskContext>>>();
+
+/** Share only concurrent reads; later refreshes still recheck source and permission state. */
+export function loadTrackedTaskContext(annotations: TaskAnnotation[]): Promise<Map<string, TrackedTaskContext>> {
+  const key = annotations.filter(item => item.tracked).map(item => trackedTaskKey(item.profile_id, item.occurrence_key)).sort().join("|");
+  const pending = contextReads.get(key);
+  if (pending) return pending;
+  const read = readTrackedTaskContext(annotations);
+  contextReads.set(key, read);
+  void read.then(() => { if (contextReads.get(key) === read) contextReads.delete(key); }, () => { if (contextReads.get(key) === read) contextReads.delete(key); });
+  return read;
+}
+
 /** Reuse Today's source-verified ranking; a missing source read supplies no inferred urgency. */
-export async function loadTrackedTaskContext(annotations: TaskAnnotation[]): Promise<Map<string, TrackedTaskContext>> {
+async function readTrackedTaskContext(annotations: TaskAnnotation[]): Promise<Map<string, TrackedTaskContext>> {
   const response = await fetch(`${apiBaseUrl}/fund-manager/notifications`, { cache: "no-store", credentials: "include" });
   if (!response.ok) throw new Error("Task source context could not be loaded.");
   const notifications = await response.json() as FundManagerNotification[];

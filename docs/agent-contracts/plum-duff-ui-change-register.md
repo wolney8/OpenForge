@@ -1,5 +1,19 @@
 # Plum Duff UI Change Register
 
+## CP-117 Today opportunity regression correction — 2026-11-13 / #118
+
+| ID | Requested outcome and affected surface | Signed-off equivalent | Status |
+| --- | --- | --- | --- |
+| PD-PR-117A-110 | Compact, nonrepeating Opportunity Details hierarchy, source properties, guidance and prominent personal fields | Shared `DesignTodayDetail` Task Details inspector | COMPLETE — populated four-opportunity and single-heading browser cases pass. |
+| PD-PR-117A-111 | Bounded desktop/mobile inspector with reachable header, actions and internal scrolling at bottom scroll and 200% zoom | Shared Today detail pane and mobile drawer | COMPLETE — bottom-scroll, internal-action reachability, 900px/390px and actual 200% cases pass. |
+| PD-PR-117A-112 | Needs Action and Tracked Tasks pager scoped to the collection, hidden for zero/one page; opportunities retain own disclosure | Shared Today collection | COMPLETE — empty, single-page and paginated collections pass. |
+| PD-PR-117A-113 | Banner/header X uses current version and preserves pending personal notes, history and truthful failure/retry | Versioned annotation authority and shared tracked card | COMPLETE — pending note, external version advance, genuine 409, failed PATCH/Retry and count cases pass. |
+| PD-PR-117A-114 | Stable Track/Untrack/Review buttons with busy, success, failure and focus feedback | Shared Task Details actions | COMPLETE for tested controls — held PATCH verifies stable width, disabled/busy state and acknowledgement; existing header focus regression passes. Manual screen-reader acceptance remains unverified. |
+| PD-PR-117A-115 | Compact banner loading and acknowledged updates without expanded flash or avoidable layout jump | Shared tracked banner | COMPLETE — initial skeleton geometry, compact refresh and independent hide/show cases pass. |
+| PD-PR-117A-116 | Synthetic browser journeys, matched geometry, timing and final-source regression evidence | CP-117 isolated runner and approved Lab | COMPLETE — V2 integration 138 passed/5 expected skips, visual 246/246, flag-OFF 9/9, web units 747/747, web typecheck/build and changed app-source lint passed. |
+
+Before correction, focused synthetic browser checks reproduced the empty pager, repeating inspector hierarchy and stale-version banner X. The first complete integration run had five failures from superseded pager/banner assertions and a data-ready timing race; the first complete visual run had 11 failures from shared-fixture state and loading-skeleton assumptions. Those test fixtures/assertions were corrected without relaxing financial or permission checks; the final complete runs above are clean. A synthetic pending-note → Untrack sample acknowledged in 901 ms and settled after two frames in 931 ms; it includes two PATCH requests, one version preflight GET and source-context reads, and is not a server-latency claim. Owner visual acceptance and manual screen-reader verification remain separate.
+
 ## CP-117 actionable tracked opportunities — 2026-11-13 / #118
 
 | ID | Requested outcome and affected surface | Signed-off equivalent | Status |
