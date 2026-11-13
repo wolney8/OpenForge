@@ -56,6 +56,7 @@
 .boardDrawer{position:absolute;z-index:5;top:0;right:0;width:min(350px,calc(100% - 12px));max-height:min(76dvh,720px);box-shadow:0 12px 28px color-mix(in srgb,var(--text) 18%,transparent)}
 @media(max-width:700px){.boardColumn,.boardColumn:first-child,.boardColumn[data-empty="true"]{flex-basis:280px;width:280px;min-width:280px}.boardDrawer{display:none}}
 /* CP-118D: source urgency remains distinct from a work-state annotation. */
+.stateEditor textarea{min-width:0;width:100%;min-height:88px;resize:vertical;padding:8px 10px;border:1px solid var(--outline-strong);border-radius:9px;background:var(--surface-container);color:var(--text);font:inherit}
 .detailUrgent{border-left:3px solid var(--danger);background:color-mix(in srgb,var(--danger) 8%,var(--surface-strong))}
 .summary{flex-wrap:wrap;gap:6px 14px}
 @media(max-width:700px){.summary{width:100%}}

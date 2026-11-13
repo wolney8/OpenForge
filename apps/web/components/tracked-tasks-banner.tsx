@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import styles from "@/components/design-lab-connected.module.css";
 import { TrackedTaskCard } from "@/components/tracked-task-card";
 import { loadTrackedTaskContext, trackedTaskKey, type TrackedTaskContext } from "@/lib/tracked-task-context";
-import { loadTaskAnnotations, patchTaskAnnotations, TASK_ANNOTATIONS_REFRESH_EVENT, type TaskAnnotation } from "@/lib/task-annotations";
+import { loadTaskAnnotations, patchTaskAnnotations, TASK_ANNOTATIONS_REFRESH_EVENT, trackedTaskDetailsHref, type TaskAnnotation } from "@/lib/task-annotations";
 
 const visibilityKey = "plum-duff:v2-tracked-banner-visibility";
 export const SHOW_TRACKED_TASKS_BANNER_EVENT = "pd:show-tracked-tasks-banner";
@@ -15,8 +15,8 @@ type Visibility = "expanded" | "compact" | "hidden";
 function initialVisibility(): Visibility {
   try {
     const value = window.localStorage.getItem(visibilityKey);
-    return value === "compact" || value === "hidden" ? value : "expanded";
-  } catch { return "expanded"; }
+    return value === "hidden" ? "hidden" : "compact";
+  } catch { return "compact"; }
 }
 export function trackedBannerIsHidden(): boolean { return initialVisibility() === "hidden"; }
 
@@ -26,17 +26,16 @@ export function TrackedTasksBanner() {
   const searchParams = useSearchParams();
   const routeProfileId = pathname.match(/^\/profiles\/([^/]+)/)?.[1] ?? null;
   const requestedScope = routeProfileId ?? searchParams.get("scope");
-  const [visibility, setVisibility] = useState<Visibility>("expanded");
+  const [visibility, setVisibility] = useState<Visibility>(initialVisibility);
   const [annotations, setAnnotations] = useState<TaskAnnotation[] | null>(null);
   const [taskContext, setTaskContext] = useState<Map<string, TrackedTaskContext>>(new Map());
   const [error, setError] = useState("");
   const [pending, setPending] = useState("");
   const requestId = useRef(0);
 
-  useEffect(() => { const frame = requestAnimationFrame(() => setVisibility(initialVisibility())); return () => cancelAnimationFrame(frame); }, []);
   const setBannerVisibility = (next: Visibility) => {
     setVisibility(next);
-    try { window.localStorage.setItem(visibilityKey, next); } catch { /* Presentation remains usable without storage. */ }
+    try { if (next === "hidden") window.localStorage.setItem(visibilityKey, "hidden"); else window.localStorage.removeItem(visibilityKey); } catch { /* Presentation remains usable without storage. */ }
     window.dispatchEvent(new Event(TRACKED_BANNER_VISIBILITY_EVENT));
   };
   const refresh = useCallback(async () => {
@@ -53,7 +52,7 @@ export function TrackedTasksBanner() {
   useEffect(() => {
     const timer = window.setTimeout(() => void refresh(), 0);
     const onRefresh = () => void refresh();
-    const onShow = () => setBannerVisibility("expanded");
+    const onShow = () => setBannerVisibility("compact");
     window.addEventListener(TASK_ANNOTATIONS_REFRESH_EVENT, onRefresh);
     window.addEventListener(SHOW_TRACKED_TASKS_BANNER_EVENT, onShow);
     return () => { window.clearTimeout(timer); requestId.current += 1; window.removeEventListener(TASK_ANNOTATIONS_REFRESH_EVENT, onRefresh); window.removeEventListener(SHOW_TRACKED_TASKS_BANNER_EVENT, onShow); };
@@ -61,8 +60,8 @@ export function TrackedTasksBanner() {
 
   if (pathname === "/design-lab" || pathname.startsWith("/design-lab/") || !annotations?.some(item => item.tracked)) return error ? <p className={styles.trackedNotice} role="alert">{error} <button onClick={() => void refresh()} type="button">Retry</button></p> : null;
   const scopeRows = annotations.filter(item => item.tracked && (!requestedScope || item.profile_id === requestedScope));
-  const active = scopeRows.filter(item => item.source_status === "active");
-  const history = scopeRows.filter(item => item.source_status !== "active");
+  const active = scopeRows.filter(item => item.source_status === "active" && !item.reviewed_at);
+  const history = scopeRows.filter(item => item.source_status !== "active" || Boolean(item.reviewed_at));
   if (!scopeRows.length) return null;
   if (visibility === "hidden") return null;
 
@@ -75,7 +74,7 @@ export function TrackedTasksBanner() {
   };
   const renderRow = (item: TaskAnnotation) => {
     const key = `${item.profile_id}:${item.occurrence_key}`;
-    return <TrackedTaskCard context={taskContext.get(trackedTaskKey(item.profile_id, item.occurrence_key))} item={item} key={key} onUntrack={() => void untrack(item)} pending={pending === key} taskHref={`/tasks?${requestedScope ? `scope=${encodeURIComponent(requestedScope)}&` : ""}collection=tracked&task=${encodeURIComponent(item.occurrence_key)}`} />;
+    return <TrackedTaskCard context={taskContext.get(trackedTaskKey(item.profile_id, item.occurrence_key))} item={item} key={key} onUntrack={() => void untrack(item)} pending={pending === key} taskHref={trackedTaskDetailsHref(item, requestedScope)} />;
   };
 
   return <section aria-label="Tracked Tasks" className={styles.activeTaskTray} data-pd-id="v2.active-task">

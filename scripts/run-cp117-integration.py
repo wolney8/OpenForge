@@ -11,10 +11,9 @@ import argparse
 import errno
 import json
 import os
-from pathlib import Path
 import secrets
-import signal
 import shutil
+import signal
 import socket
 import subprocess
 import sys
@@ -22,6 +21,7 @@ import tempfile
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from pathlib import Path
 from urllib.error import URLError
 from urllib.request import urlopen
 
@@ -85,7 +85,9 @@ def fixture_environment(
             "OPENFORGE_FUND_MANAGER_UX_V2": "true",
             "OPENFORGE_DESIGN_LAB_ENABLED": "true",
             "OPENFORGE_TASK_ANNOTATIONS_ISOLATED_ENABLED": "true",
+            "OPENFORGE_TASK_ANNOTATIONS_REVIEW_ISOLATED_ENABLED": "true",
             "NEXT_PUBLIC_OPENFORGE_OPPORTUNITY_TASK_ANNOTATIONS_ENABLED": "true",
+            "NEXT_PUBLIC_OPENFORGE_OPPORTUNITY_PERSONAL_REVIEW_ENABLED": "true",
             "UVICORN_ACCESS_LOG": "false",
             "NEXT_TELEMETRY_DISABLED": "1",
             "PYTHONDONTWRITEBYTECODE": "1",
@@ -127,22 +129,23 @@ def seed_and_issue_session(env: dict[str, str]) -> str:
             del os.environ[key]
     os.environ.update(env)
     sys.path[:0] = [str(ROOT / "apps/api/src"), str(ROOT)]
+    from openforge_api.auth import create_session_token
+    from openforge_api.casino_offers import CasinoOfferPayload
     from openforge_api.config import settings
+    from openforge_api.db import (
+        create_casino_offer,
+        create_each_way_extra_place,
+        create_free_bet,
+        create_profile_quick_action,
+        create_sportsbook_bet,
+    )
+    from openforge_api.each_way_extra_places import EachWayExtraPlacePayload
     from openforge_api.runtime_safety import validate_runtime_contract
+
     from apps.api.tests.synthetic_setup import (
         seed_committed_test_database,
         seed_synthetic_betting_context,
     )
-    from openforge_api.db import (
-        create_sportsbook_bet,
-        create_each_way_extra_place,
-        create_casino_offer,
-        create_free_bet,
-        create_profile_quick_action,
-    )
-    from openforge_api.casino_offers import CasinoOfferPayload
-    from openforge_api.each_way_extra_places import EachWayExtraPlacePayload
-    from openforge_api.auth import create_session_token
 
     identity = validate_runtime_contract(settings)
     if identity.database_classification != "isolated" or settings.owner_emails != {
@@ -154,19 +157,22 @@ def seed_and_issue_session(env: dict[str, str]) -> str:
     seed_committed_test_database()
     seed_synthetic_betting_context()
     for profile_id in ("profile-demo-001", "profile-demo-002"):
-        create_profile_quick_action(profile_id, {
-            "ledger_type": "Sportsbook",
-            "label": f"Demo advisory opportunity for {profile_id}",
-            "enabled_fields": ["offer_name"],
-            "defaults": {
-                "bookmaker": "Bookmaker A",
-                "opportunityEnabled": "true",
-                "opportunityKind": "Reload",
-                "opportunityRecurrence": "One Off",
-                "opportunityReminderEnabled": "false",
+        create_profile_quick_action(
+            profile_id,
+            {
+                "ledger_type": "Sportsbook",
+                "label": f"Demo advisory opportunity for {profile_id}",
+                "enabled_fields": ["offer_name"],
+                "defaults": {
+                    "bookmaker": "Bookmaker A",
+                    "opportunityEnabled": "true",
+                    "opportunityKind": "Reload",
+                    "opportunityRecurrence": "One Off",
+                    "opportunityReminderEnabled": "false",
+                },
+                "enabled": True,
             },
-            "enabled": True,
-        })
+        )
     from openforge_api.task_annotations import install_isolated_schema
 
     install_isolated_schema()
@@ -465,7 +471,9 @@ def main() -> int:
                 if graph.exists():
                     for attempt in range(50):
                         if (graph / "lock").exists():
-                            raise RuntimeError("Another Next runtime owns this source worktree")
+                            raise RuntimeError(
+                                "Another Next runtime owns this source worktree"
+                            )
                         try:
                             shutil.rmtree(graph)
                             break

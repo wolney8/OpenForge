@@ -52,8 +52,9 @@ export function DesignTodayViewToggle({ layout, onChange, dataPdId }: { layout: 
   </div>;
 }
 
-export function DesignTodayDetail({ children, dataPdId, eyebrow, headingRef, onClose, title, urgent = false }: {
+export function DesignTodayDetail({ children, closeLabel = "Close Task Details", dataPdId, eyebrow, headingRef, onClose, title, urgent = false }: {
   children: ReactNode;
+  closeLabel?: string;
   dataPdId: string;
   eyebrow: ReactNode;
   headingRef?: Ref<HTMLHeadingElement>;
@@ -63,7 +64,7 @@ export function DesignTodayDetail({ children, dataPdId, eyebrow, headingRef, onC
 }) {
   return <div className={`${styles.detailContent}${urgent ? ` ${styles.detailUrgent}` : ""}`} data-pd-id={dataPdId}>
     <header className={styles.detailHead}><div><small>{eyebrow}</small><h2 ref={headingRef} tabIndex={headingRef ? -1 : undefined}>{title}</h2></div>
-      <button aria-label="Close Task Details" className={styles.closeButton} onClick={onClose} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button>
+      <button aria-label={closeLabel} className={styles.closeButton} onClick={onClose} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button>
     </header>
     {children}
   </div>;

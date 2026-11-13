@@ -49,6 +49,7 @@ test("real header urgent card has a themed background outside the Lab wrapper", 
 test("expanded real banner places its work state in the top-right slot", async ({ page }) => {
   await installUrgentTrackedTask(page);
   await page.goto("/tasks");
+  await page.locator('[data-pd-id="v2.active-task.toggle"]').click();
   const card = page.locator('[data-pd-id="v2.active-task"] [data-pd-id^="tracked-task."]').first();
   await expect(card).toBeVisible();
   const geometry = await card.evaluate(node => {
@@ -133,6 +134,7 @@ for (const { width, height, theme, zoom } of [
     await installUrgentTrackedTask(page);
     await page.goto("/tasks");
     await page.evaluate(({ theme, zoom }) => { localStorage.setItem("openforge-theme", theme); document.documentElement.dataset.theme = theme; document.body.style.zoom = String(zoom); }, { theme, zoom });
+    await page.locator('[data-pd-id="v2.active-task.toggle"]').click();
     const card = page.locator('[data-pd-id="v2.active-task"] [data-pd-id^="tracked-task."]').first();
     await expect(card).toBeVisible();
     await expect(card.getByRole("link", { name: "Resolve Source" })).toBeVisible();
@@ -169,6 +171,7 @@ test("real tracked banner and popup remain usable at actual Chromium 200% tab zo
     await page.goto(authURL);
     await installUrgentTrackedTask(page);
     await page.goto(`${baseURL}/tasks`);
+    await page.locator('[data-pd-id="v2.active-task.toggle"]').click();
     const worker = context.serviceWorkers()[0] ?? await context.waitForEvent("serviceworker");
     await worker.evaluate(async url => {
       const tabs = (globalThis as unknown as { chrome: { tabs: { query: (filter: { url: string }) => Promise<Array<{ id: number }>>; setZoom: (id: number, zoom: number) => Promise<void> } } }).chrome.tabs;

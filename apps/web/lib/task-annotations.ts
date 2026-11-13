@@ -13,10 +13,21 @@ export type TaskAnnotation = {
   work_state: TaskWorkState;
   blocked_reason: string | null;
   review_date: string | null;
+  next_action?: string | null;
+  notes?: string | null;
+  reviewed_at?: string | null;
   version: number;
   updated_at: string;
 };
-export type TaskAnnotationChange = Pick<TaskAnnotation, "profile_id" | "occurrence_key" | "tracked" | "work_state" | "blocked_reason" | "review_date"> & { expected_version: number };
+export type TaskAnnotationChange = Pick<TaskAnnotation, "profile_id" | "occurrence_key" | "tracked" | "work_state" | "blocked_reason" | "review_date"> & { expected_version: number; next_action?: string | null; notes?: string | null; reviewed?: boolean };
+
+export function trackedTaskDetailsHref(item: Pick<TaskAnnotation, "profile_id" | "occurrence_key">, scope?: string | null): string {
+  const query = new URLSearchParams();
+  if (scope) query.set("scope", scope);
+  if (item.occurrence_key.startsWith("profile-opportunity:")) query.set("opportunity", item.occurrence_key);
+  else { query.set("collection", "tracked"); query.set("task", item.occurrence_key); }
+  return `/tasks?${query.toString()}`;
+}
 
 export async function loadTaskAnnotations(): Promise<TaskAnnotation[] | null> {
   try {

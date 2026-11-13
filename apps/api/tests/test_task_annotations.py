@@ -3,11 +3,12 @@ from __future__ import annotations
 import sqlite3
 from concurrent.futures import ThreadPoolExecutor
 
+import pytest
 from apps.api.tests.synthetic_setup import seed_synthetic_betting_context
 from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 
-from openforge_api import task_annotations
+from openforge_api import task_annotation_review_migration, task_annotations
 from openforge_api.auth import SESSION_COOKIE_NAME, create_session_token
 from openforge_api.common_bet_combos import ProfileOpportunityResponse
 from openforge_api.config import settings
@@ -15,8 +16,11 @@ from openforge_api.db import connect
 from openforge_api.notifications import FundManagerNotificationResponse
 
 
-def client_and_sources(monkeypatch) -> tuple[TestClient, list[FundManagerNotificationResponse]]:
+def client_and_sources(
+    monkeypatch, *, review=False
+) -> tuple[TestClient, list[FundManagerNotificationResponse]]:
     monkeypatch.setattr(settings, "task_annotations_isolated_enabled", True)
+    monkeypatch.setattr(settings, "task_annotations_review_isolated_enabled", review)
     seed_synthetic_betting_context()
     task_annotations.install_isolated_schema()
     settings.auth_owner_emails = "viewer@example.invalid"
@@ -59,14 +63,371 @@ def client_and_sources(monkeypatch) -> tuple[TestClient, list[FundManagerNotific
     return client, sources
 
 
+def advisory_source(profile: str) -> ProfileOpportunityResponse:
+    return ProfileOpportunityResponse(
+        opportunity_key="DEMO-OPP-001",
+        source="quick_action",
+        ledger_type="Sportsbook",
+        label="Demo advisory opportunity",
+        bookmaker="Bookmaker A",
+        recurrence="One Off",
+        kind="Reload",
+        period_key="one-off",
+        already_created=False,
+        target_record_id="",
+        risk_warnings=[],
+        defaults={},
+    )
+
+
+def test_personal_opportunity_review_is_versioned_and_separate_from_source(monkeypatch):
+    client, _ = client_and_sources(monkeypatch, review=True)
+    profile = "profile-demo-001"
+    current = [advisory_source(profile)]
+    monkeypatch.setattr(
+        task_annotations, "_profile_opportunities", lambda p: current if p == profile else []
+    )
+    occurrence = f"profile-opportunity:{profile}:DEMO-OPP-001:one-off"
+    base = {
+        "profile_id": profile,
+        "occurrence_key": occurrence,
+        "tracked": True,
+        "work_state": "In Progress",
+        "expected_version": 0,
+    }
+    first = client.patch(
+        "/fund-manager/tasks/annotations",
+        json={
+            "changes": [
+                {**base, "next_action": "Check current terms", "notes": "Ask before acting."}
+            ]
+        },
+    )
+    assert first.status_code == 200
+    assert first.json()[0]["version"] == 1
+    assert first.json()[0]["reviewed_at"] is None
+    assert (
+        client.patch(
+            "/fund-manager/tasks/annotations",
+            json={
+                "changes": [
+                    {**base, "next_action": "Check current terms", "notes": "Ask before acting."}
+                ]
+            },
+        ).json()[0]["version"]
+        == 1
+    )
+
+    reviewed = client.patch(
+        "/fund-manager/tasks/annotations",
+        json={"changes": [{**base, "expected_version": 1, "reviewed": True}]},
+    )
+    assert reviewed.status_code == 200
+    saved = reviewed.json()[0]
+    assert saved["reviewed_at"] and saved["source_status"] == "active"
+    assert saved["tracked"] is True and saved["notes"] == "Ask before acting."
+    assert saved["next_action"] == "Check current terms"
+    assert (
+        client.patch(
+            "/fund-manager/tasks/annotations",
+            json={"changes": [{**base, "expected_version": 1, "reviewed": True}]},
+        ).json()[0]["version"]
+        == 2
+    )
+    assert (
+        client.patch(
+            "/fund-manager/tasks/annotations",
+            json={"changes": [{**base, "expected_version": 1, "notes": "Stale"}]},
+        ).status_code
+        == 409
+    )
+
+    untracked = client.patch(
+        "/fund-manager/tasks/annotations",
+        json={"changes": [{**base, "tracked": False, "expected_version": 2}]},
+    )
+    assert untracked.status_code == 200
+    assert untracked.json()[0]["reviewed_at"] == saved["reviewed_at"]
+    assert (
+        client.patch(
+            "/fund-manager/tasks/annotations", json={"changes": [{**base, "expected_version": 3}]}
+        ).status_code
+        == 409
+    )
+    reopened = client.patch(
+        "/fund-manager/tasks/annotations",
+        json={"changes": [{**base, "tracked": False, "expected_version": 3, "reviewed": False}]},
+    )
+    assert reopened.status_code == 200
+    assert reopened.json()[0]["reviewed_at"] is None
+    assert reopened.json()[0]["tracked"] is False
+    tracked = client.patch(
+        "/fund-manager/tasks/annotations", json={"changes": [{**base, "expected_version": 4}]}
+    )
+    assert tracked.status_code == 200 and tracked.json()[0]["tracked"] is True
+
+    current.clear()
+    history = client.get("/fund-manager/tasks/annotations").json()[0]
+    assert history["source_status"] == "unavailable" and history["notes"] == "Ask before acting."
+    assert (
+        client.patch(
+            "/fund-manager/tasks/annotations",
+            json={"changes": [{**base, "expected_version": 5, "reviewed": True}]},
+        ).status_code
+        == 409
+    )
+
+
+def test_personal_review_rejects_financial_tasks_and_foreign_profiles(monkeypatch):
+    client, _ = client_and_sources(monkeypatch, review=True)
+    profile = "profile-demo-001"
+    source = advisory_source(profile)
+    monkeypatch.setattr(
+        task_annotations, "_profile_opportunities", lambda p: [source] if p == profile else []
+    )
+    opportunity = f"profile-opportunity:{profile}:DEMO-OPP-001:one-off"
+    base = {
+        "profile_id": profile,
+        "occurrence_key": opportunity,
+        "tracked": False,
+        "work_state": "To Do",
+        "expected_version": 0,
+        "reviewed": True,
+    }
+    assert (
+        client.patch(
+            "/fund-manager/tasks/annotations",
+            json={"changes": [{**base, "profile_id": "foreign-profile"}]},
+        ).status_code
+        == 404
+    )
+    assert (
+        client.patch(
+            "/fund-manager/tasks/annotations",
+            json={"changes": [{**base, "occurrence_key": f"review:{profile}:ROW-1:v1"}]},
+        ).status_code
+        == 422
+    )
+    rejected_batch = client.patch(
+        "/fund-manager/tasks/annotations",
+        json={"changes": [base, {**base, "occurrence_key": f"review:{profile}:ROW-1:v1"}]},
+    )
+    assert rejected_batch.status_code == 422
+    assert client.get("/fund-manager/tasks/annotations").json() == []
+    assert (
+        client.patch("/fund-manager/tasks/annotations", json={"changes": [base] * 33}).status_code
+        == 422
+    )
+
+
+def test_personal_review_history_notes_remain_editable_without_source(monkeypatch):
+    client, _ = client_and_sources(monkeypatch, review=True)
+    profile = "profile-demo-001"
+    current = [advisory_source(profile)]
+    monkeypatch.setattr(
+        task_annotations, "_profile_opportunities", lambda p: current if p == profile else []
+    )
+    occurrence = f"profile-opportunity:{profile}:DEMO-OPP-001:one-off"
+    base = {
+        "profile_id": profile,
+        "occurrence_key": occurrence,
+        "tracked": True,
+        "work_state": "To Do",
+    }
+    reviewed = client.patch(
+        "/fund-manager/tasks/annotations",
+        json={
+            "changes": [
+                {**base, "expected_version": 0, "reviewed": True, "notes": "First private note"}
+            ]
+        },
+    )
+    assert reviewed.status_code == 200
+    current.clear()
+    updated = client.patch(
+        "/fund-manager/tasks/annotations",
+        json={
+            "changes": [
+                {
+                    **base,
+                    "expected_version": 1,
+                    "reviewed": True,
+                    "notes": "Historical private note",
+                }
+            ]
+        },
+    )
+    assert updated.status_code == 200
+    assert updated.json()[0]["notes"] == "Historical private note"
+    assert updated.json()[0]["reviewed_at"] == reviewed.json()[0]["reviewed_at"]
+    assert updated.json()[0]["source_status"] == "unavailable"
+    assert (
+        client.patch(
+            "/fund-manager/tasks/annotations",
+            json={"changes": [{**base, "expected_version": 2, "reviewed": False}]},
+        ).status_code
+        == 200
+    )
+    assert (
+        client.patch(
+            "/fund-manager/tasks/annotations",
+            json={"changes": [{**base, "expected_version": 3, "reviewed": True}]},
+        ).status_code
+        == 409
+    )
+
+
+def test_personal_notes_are_viewer_scoped(monkeypatch):
+    client, _ = client_and_sources(monkeypatch, review=True)
+    profile = "profile-demo-001"
+    monkeypatch.setattr(
+        task_annotations,
+        "_profile_opportunities",
+        lambda p: [advisory_source(profile)] if p == profile else [],
+    )
+    occurrence = f"profile-opportunity:{profile}:DEMO-OPP-001:one-off"
+    change = {
+        "profile_id": profile,
+        "occurrence_key": occurrence,
+        "tracked": True,
+        "work_state": "To Do",
+        "expected_version": 0,
+        "notes": "First viewer only",
+    }
+    assert (
+        client.patch("/fund-manager/tasks/annotations", json={"changes": [change]}).status_code
+        == 200
+    )
+    settings.auth_owner_emails = "viewer@example.invalid,second@example.invalid"
+    second = create_session_token(
+        subject="synthetic-second-viewer", email="second@example.invalid", name="Second Viewer"
+    )
+    client.cookies.set(SESSION_COOKIE_NAME, second)
+    assert client.get("/fund-manager/tasks/annotations").json() == []
+    assert (
+        client.patch(
+            "/fund-manager/tasks/annotations",
+            json={"changes": [{**change, "notes": "Second viewer only"}]},
+        ).status_code
+        == 200
+    )
+    assert client.get("/fund-manager/tasks/annotations").json()[0]["notes"] == "Second viewer only"
+    first = create_session_token(
+        subject="synthetic-first-viewer", email="viewer@example.invalid", name="First Viewer"
+    )
+    client.cookies.set(SESSION_COOKIE_NAME, first)
+    assert client.get("/fund-manager/tasks/annotations").json()[0]["notes"] == "First viewer only"
+
+
+def test_normal_personal_review_route_remains_disabled_without_its_separate_flag(monkeypatch):
+    client, _ = client_and_sources(monkeypatch, review=True)
+    monkeypatch.setattr(
+        task_annotations,
+        "validate_runtime_contract",
+        lambda _settings: type(
+            "Identity",
+            (),
+            {
+                "database_classification": "normal-owner",
+                "role": "normal-owner",
+                "database_engine": "sqlite",
+            },
+        )(),
+    )
+    monkeypatch.setattr(settings, "task_annotations_normal_enabled", True)
+    monkeypatch.setattr(settings, "task_annotations_review_normal_enabled", False)
+    profile = "profile-demo-001"
+    assert (
+        client.patch(
+            "/fund-manager/tasks/annotations", json={"changes": [change(profile)]}
+        ).status_code
+        == 200
+    )
+    assert "notes" not in client.get("/fund-manager/tasks/annotations").json()[0]
+    review_change = {**change(profile, version=1), "notes": "Should remain unavailable"}
+    assert (
+        client.patch(
+            "/fund-manager/tasks/annotations", json={"changes": [review_change]}
+        ).status_code
+        == 503
+    )
+
+
+def test_review_schema_migration_preserves_existing_annotations(monkeypatch):
+    client, _ = client_and_sources(monkeypatch)
+    profile = "profile-demo-001"
+    assert (
+        client.patch(
+            "/fund-manager/tasks/annotations", json={"changes": [change(profile)]}
+        ).status_code
+        == 200
+    )
+    assert (
+        task_annotation_review_migration.inspect("pytest-committed-synthetic-seed", "pytest-source")
+        == "installed"
+    )
+    backup, checksum = task_annotation_review_migration.apply(
+        "pytest-committed-synthetic-seed", "pytest-source"
+    )
+    assert backup.is_file() and len(checksum) == 64
+    assert (
+        task_annotation_review_migration.inspect("pytest-committed-synthetic-seed", "pytest-source")
+        == "installed-review"
+    )
+    with connect() as connection:
+        assert connection.execute("SELECT COUNT(*) FROM task_annotations").fetchone()[0] == 1
+        assert tuple(
+            connection.execute(
+                "SELECT next_action,notes,reviewed_at FROM task_annotations"
+            ).fetchone()
+        ) == (None, None, None)
+    monkeypatch.setattr(settings, "task_annotations_review_isolated_enabled", True)
+    assert client.get("/fund-manager/tasks/annotations").json()[0]["version"] == 1
+    with pytest.raises(RuntimeError, match="existing annotation schema"):
+        task_annotation_review_migration.apply("pytest-committed-synthetic-seed", "pytest-source")
+
+
+def test_failed_review_migration_rolls_back_all_columns(monkeypatch):
+    client, _ = client_and_sources(monkeypatch)
+    assert (
+        client.patch(
+            "/fund-manager/tasks/annotations", json={"changes": [change("profile-demo-001")]}
+        ).status_code
+        == 200
+    )
+    monkeypatch.setattr(
+        task_annotation_review_migration,
+        "REVIEW_ALTERATIONS",
+        (
+            "ALTER TABLE task_annotations ADD COLUMN next_action TEXT",
+            "ALTER TABLE task_annotations ADD COLUMN next_action TEXT",
+        ),
+    )
+    with pytest.raises(sqlite3.OperationalError):
+        task_annotation_review_migration.apply("pytest-committed-synthetic-seed", "pytest-source")
+    assert (
+        task_annotation_review_migration.inspect("pytest-committed-synthetic-seed", "pytest-source")
+        == "installed"
+    )
+    assert client.get("/fund-manager/tasks/annotations").json()[0]["version"] == 1
+
+
 def test_authorised_advisory_opportunity_tracks_without_creating_financial_source(monkeypatch):
     client, _ = client_and_sources(monkeypatch)
     profile = "profile-demo-001"
     opportunity = ProfileOpportunityResponse(
-        opportunity_key="DEMO-OPP-001", source="quick_action", ledger_type="Sportsbook",
-        label="Review Demo Offer", bookmaker="Bookmaker A", recurrence="One Off",
-        kind="Reload", period_key="one-off", already_created=False,
-        target_record_id="", risk_warnings=[], defaults={},
+        opportunity_key="DEMO-OPP-001",
+        source="quick_action",
+        ledger_type="Sportsbook",
+        label="Review Demo Offer",
+        bookmaker="Bookmaker A",
+        recurrence="One Off",
+        kind="Reload",
+        period_key="one-off",
+        already_created=False,
+        target_record_id="",
+        risk_warnings=[],
+        defaults={},
     )
     current = [opportunity]
     monkeypatch.setattr(
@@ -75,8 +436,17 @@ def test_authorised_advisory_opportunity_tracks_without_creating_financial_sourc
         lambda profile_id: current if profile_id == profile else [],
     )
     occurrence = f"profile-opportunity:{profile}:DEMO-OPP-001:one-off"
-    payload = {"changes": [{"profile_id": profile, "occurrence_key": occurrence,
-                           "tracked": True, "work_state": "To Do", "expected_version": 0}]}
+    payload = {
+        "changes": [
+            {
+                "profile_id": profile,
+                "occurrence_key": occurrence,
+                "tracked": True,
+                "work_state": "To Do",
+                "expected_version": 0,
+            }
+        ]
+    }
     first = client.patch("/fund-manager/tasks/annotations", json=payload)
     assert first.status_code == 200
     assert first.json()[0]["source_status"] == "active"

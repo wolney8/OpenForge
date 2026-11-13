@@ -1,5 +1,15 @@
 # Plum Duff UI Change Register
 
+## CP-117 actionable tracked opportunities — 2026-11-13 / #118
+
+| ID | Requested outcome and affected surface | Signed-off equivalent | Status |
+| --- | --- | --- | --- |
+| PD-PR-117A-106 | Today opportunity row and tracked-card detail link open one Profile-owned Opportunity Details inspector, with explicit Accounts navigation and deep-link recovery. | Existing `DesignTodayDetail`, Today side pane/mobile drawer and typed opportunity occurrence. | COMPLETE in V2 — synthetic row/deep-link/Accounts journeys and responsive captures pass; owner visual acceptance outstanding. |
+| PD-PR-117A-107 | Real and Lab tracked banners start compact, retain explicit hidden state, and stay stable during reads and annotation updates. | Shared tracked banner/header presentation and Lab compact variant. | COMPLETE in V2/Lab — old expanded preference ignored, manual expansion and hidden show-again verified. |
+| PD-PR-117A-108 | Advisory cards use View details and concise truthful guidance; expanded cards show personal Next action when saved. | `DesignTrackedTaskRow` and existing opportunity suggestion row. | COMPLETE in V2 — synthetic banner/header deep-link and saved Next action verified; normal Next action awaits activation. |
+| PD-PR-117A-109 | Viewer/Profile/occurrence-scoped Next action, Notes, Mark reviewed and Reopen persist with conflict safety and history, separate from source resolution. | Existing versioned task annotations; normal activation requires a new explicit approval. | COMPLETE in disposable API/web; BLOCKED in normal runtime pending the exact separate API/schema approval. Owner Design Acceptance outstanding. |
+
+
 ## CP-117 owner table and workbench interaction correction — 2026-11-12 / #118
 
 The owner rejects the current Today/Opportunities and ledger interaction candidate. These IDs preserve the complete requested correction; earlier visual and scalar evidence does not close them.

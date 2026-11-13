@@ -31,6 +31,7 @@ test("header tracked panel, three banner states, X removal and source urgency", 
   const trigger = page.locator('[data-pd-id="lab.header-trigger.tracked"]');
   const banner = page.locator('[data-pd-id="lab.active-task"]');
   await expect(trigger).toHaveAttribute("aria-label", "Tracked Tasks, 3 active");
+  await banner.getByRole("button", { name: "Expand Tracked Tasks" }).click();
   await expect(banner.locator('[data-pd-id="lab.tracked-task.task:LAB-SB-OVERDUE"]')).toHaveClass(/trackedUrgent/);
   await banner.getByRole("button",{name:"Collapse Tracked Tasks"}).click();
   await expect(banner.locator('[data-pd-id^="lab.tracked-task."]')).toHaveCount(0);
@@ -42,7 +43,11 @@ test("header tracked panel, three banner states, X removal and source urgency", 
   await expect(panel.locator('[data-pd-id^="lab.header-tracked-task."]')).toHaveCount(3);
   await panel.locator('[data-pd-id="lab.header-tracked-task.reload"]').getByRole("button",{name:/Untrack/}).click();
   await expect(trigger).toHaveAttribute("aria-label", "Tracked Tasks, 2 active");
+  await panel.getByRole("button", { name: "Show Tracked Tasks Banner" }).click();
+  await expect(banner).toBeVisible();
+  await trigger.click();
   await panel.getByRole("button",{name:"View All Tracked Tasks"}).click();
+  await banner.getByRole("button", { name: "Expand Tracked Tasks" }).click();
   await expect(banner.locator('[data-pd-id^="lab.tracked-task."]')).toHaveCount(2);
   await page.locator('[data-pd-id="lab.nav.sportsbook"]').click();
   await expect(trigger).toHaveAttribute("aria-label", "Tracked Tasks, 2 active");
@@ -126,8 +131,8 @@ test("header task trigger and panel remain contained at responsive widths and in
   await capture(page,"tracked-panel-390-light.png");
 });
 
-test("actual Chromium 200% zoom contains the tracked-task header overlay", async () => {
-  const baseURL = process.env.OPENFORGE_E2E_BASE_URL ?? "http://127.0.0.1:3010";
+test("actual Chromium 200% zoom contains the tracked-task header overlay", async ({}, info) => {
+  const baseURL = process.env.OPENFORGE_E2E_BASE_URL ?? String(info.project.use.baseURL);
   const scratch = await mkdtemp(join(tmpdir(),"pd-cp118d-zoom-"));
   const extension = join(scratch,"extension");
   await mkdir(extension);

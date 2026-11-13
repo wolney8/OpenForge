@@ -12,7 +12,7 @@ import { platformBrand } from "@/lib/brand";
 import { DesignLabHeaderOverlay } from "@/components/design-lab-header-overlay";
 import { ModalBoundary } from "@/components/modal-boundary";
 import { labDestinations } from "@/lib/design-lab-navigation";
-import { loadTaskAnnotations, patchTaskAnnotations, TASK_ANNOTATIONS_REFRESH_EVENT, type TaskAnnotation } from "@/lib/task-annotations";
+import { loadTaskAnnotations, patchTaskAnnotations, TASK_ANNOTATIONS_REFRESH_EVENT, trackedTaskDetailsHref, type TaskAnnotation } from "@/lib/task-annotations";
 import { TrackedTaskCard } from "@/components/tracked-task-card";
 import { loadTrackedTaskContext, trackedTaskKey, type TrackedTaskContext } from "@/lib/tracked-task-context";
 import { scopedGlobalHref } from "@/lib/profile-scope";
@@ -169,8 +169,8 @@ export function FundManagerUxV2HeaderTasks({ profileId = null }: { profileId?: s
     });
   };
   if (!annotations) return <Link aria-label="Open Tasks" className={labStyles.iconButton} data-pd-id="ux-v2.header.tasks" href={allTasksHref} onClick={(event) => void navigate(event, allTasksHref)} title="Tasks"><span aria-hidden="true" className="material-symbols-outlined">task_alt</span></Link>;
-  const active = annotations.filter(item => item.tracked && item.source_status === "active" && (!profileId || item.profile_id === profileId));
-  const history = annotations.filter(item => item.tracked && item.source_status !== "active" && (!profileId || item.profile_id === profileId));
+  const active = annotations.filter(item => item.tracked && item.source_status === "active" && !item.reviewed_at && (!profileId || item.profile_id === profileId));
+  const history = annotations.filter(item => item.tracked && (item.source_status !== "active" || Boolean(item.reviewed_at)) && (!profileId || item.profile_id === profileId));
   const preview = active.slice(0, 5);
   return <div className="app-menu-shell ux-v2-tracked-root">
     <button aria-expanded={open} aria-label={`Tracked Tasks, ${active.length} active`} className={labStyles.iconButton} data-pd-id="ux-v2.header.tasks" onClick={() => setOpen(value => !value)} ref={triggerRef} type="button"><span aria-hidden="true" className="material-symbols-outlined">task_alt</span>{active.length ? <span aria-hidden="true" className={labStyles.notificationCount}>{active.length}</span> : null}</button>
@@ -179,7 +179,7 @@ export function FundManagerUxV2HeaderTasks({ profileId = null }: { profileId?: s
         <h2>Tracked Tasks ({active.length})</h2>
         {untrackError ? <p role="alert">{untrackError}</p> : null}
         {preview.length ? <div className={labStyles.trackedPanelRows}>{preview.map(item => {
-          const href = `${trackedTasksHref}&task=${encodeURIComponent(item.occurrence_key)}`;
+          const href = trackedTaskDetailsHref(item, profileId);
           const key = trackedTaskKey(item.profile_id, item.occurrence_key);
           return <TrackedTaskCard context={taskContext.get(key)} item={item} key={key} onNavigate={(event, target) => void navigate(event, target, () => setOpen(false))} onUntrack={() => void untrack(item)} pending={pendingUntrack === key} taskHref={href} />;
         })}</div> : <p className={labStyles.menuEmpty}>No Active Tracked Tasks</p>}

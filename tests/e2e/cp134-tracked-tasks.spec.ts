@@ -195,6 +195,7 @@ for (const surface of ["header", "banner"] as const) {
       await page.locator('[data-pd-id="ux-v2.header.tracked-panel"]').locator(`[data-pd-id="tracked-task.${savedState.profile_id}.${id}"]`).getByRole("button", { name: /^Untrack / }).click();
       await page.keyboard.press("Escape");
     } else {
+      await page.locator('[data-pd-id="v2.active-task.toggle"]').click();
       await page.locator('[data-pd-id="v2.active-task"]').locator(`[data-pd-id="tracked-task.${savedState.profile_id}.${id}"]`).getByRole("button", { name: /^Untrack / }).click();
     }
     await expect(page.getByRole("button", { name: "Track Task" })).toBeVisible();

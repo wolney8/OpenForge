@@ -74,6 +74,7 @@ test("populated tracked preview stays bounded and urgent actions remain clickabl
   await expect(partial.getByRole("button", { name: "Resolve Source" })).toBeFocused();
   await panel.getByRole("button", { name: "View All Tracked Tasks" }).click();
   await expect(today).toBeVisible();
+  await page.locator('[data-pd-id="lab.active-task.toggle"]').click();
   await expect(page.locator('[data-pd-id="lab.active-task"] [data-pd-id^="lab.tracked-task."]')).toHaveCount(trackedCount - 1);
   await expect(page.locator('[data-pd-id="lab.active-task.toggle"]')).toBeFocused();
   if (evidence) await page.screenshot({ path: `${evidence}/cp117-today-tracked-full-after.png`, fullPage: true, style: "nextjs-portal { display: none !important; }" });
@@ -124,6 +125,7 @@ test("more than thirteen tracked tasks keep a five-item preview at narrow width"
   expect(rect.top).toBeGreaterThanOrEqual(0);
   expect(rect.bottom).toBeLessThanOrEqual(850);
   await panel.getByRole("button", { name: "View All Tracked Tasks" }).click();
+  await page.locator('[data-pd-id="lab.active-task.toggle"]').click();
   const bannerRows = page.locator('[data-pd-id="lab.active-task"] [data-pd-id^="lab.tracked-task."]');
   await expect(bannerRows).toHaveCount(14);
   const bannerGeometry = await page.locator('[data-pd-id="lab.active-task"] [class*="trackedRows"]').evaluate(node => {

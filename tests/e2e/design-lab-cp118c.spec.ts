@@ -33,6 +33,7 @@ test("tracks three unique tasks across navigation and untracks one", async ({ pa
   }
   const tray = page.locator('[data-pd-id="lab.active-task"]');
   await expect(tray).toContainText("Tracked Tasks (3)");
+  await tray.getByRole("button", { name: "Expand Tracked Tasks" }).click();
   await expect(tray.locator('[data-pd-id^="lab.tracked-task."]')).toHaveCount(3);
   await tray.getByRole("button", { name: "Collapse Tracked Tasks" }).click();
   await expect(tray).toContainText("Tracked Tasks (3)");
@@ -102,8 +103,8 @@ test("both themes and narrow Board keep local scrolling without page overflow", 
   await capture(page, "board-390-light.png");
 });
 
-test("actual Chromium 200% zoom keeps Board and tracked tray contained", async () => {
-  const baseURL = process.env.OPENFORGE_E2E_BASE_URL ?? "http://127.0.0.1:3010";
+test("actual Chromium 200% zoom keeps Board and tracked tray contained", async ({}, info) => {
+  const baseURL = process.env.OPENFORGE_E2E_BASE_URL ?? String(info.project.use.baseURL);
   const scratch = await mkdtemp(join(tmpdir(), "pd-cp118c-zoom-"));
   const extension = join(scratch, "extension");
   await mkdir(extension);
