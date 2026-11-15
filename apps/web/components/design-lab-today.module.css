@@ -63,3 +63,12 @@
 .detailUrgent{border-left:3px solid var(--danger);background:color-mix(in srgb,var(--danger) 8%,var(--surface-strong))}
 .summary{flex-wrap:wrap;gap:6px 14px}
 @media(max-width:700px){.summary{width:100%}}
+
+/* The same row opens Lab and real inspectors. Selection is independent of
+   source urgency, work state, and the keyboard focus outline. */
+.taskRow:is([aria-expanded="true"],[aria-pressed="true"]){background:color-mix(in srgb,var(--surface-strong) 88%,var(--primary) 12%);box-shadow:inset 3px 0 0 var(--primary)}
+.taskRow:is([aria-expanded="true"],[aria-pressed="true"]):hover{background:color-mix(in srgb,var(--surface-strong) 81%,var(--primary) 19%)}
+.taskRow.urgent:is([aria-expanded="true"],[aria-pressed="true"]){background:color-mix(in srgb,var(--task-urgent-bg) 91%,var(--primary) 9%)}
+.taskRow.urgent:is([aria-expanded="true"],[aria-pressed="true"]):hover{background:color-mix(in srgb,var(--task-urgent-hover) 91%,var(--primary) 9%)}
+.taskRow:is([aria-expanded="true"],[aria-pressed="true"]) .rowArrow{color:var(--primary-strong);font-weight:700}
+.detailPane,.mobileDetail{border-color:color-mix(in srgb,var(--primary) 52%,var(--outline));box-shadow:inset 3px 0 0 var(--primary)}

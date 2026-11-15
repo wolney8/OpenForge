@@ -2,6 +2,7 @@
    legacy routes and the OFF rollback never acquire these overrides. Existing
    financial, provider and back/lay semantic tokens retain their authorities. */
 html[data-ux-shell="v2"] {
+  --ux-v2-page-max-width: 1640px;
   --bg: #f8f9fa;
   --bg-elevated: #fff;
   --bg-muted: #f0f2f4;
@@ -35,7 +36,7 @@ html[data-ux-shell="v2"][data-theme="dark"] {
 html[data-ux-shell="v2"], html[data-ux-shell="v2"] body { background: var(--bg); }
 
 .ux-v2-frame .ux-v2-top-bar .app-navigation-drawer-trigger { display: inline-flex; }
-.ux-v2-main > .page-shell { width: 100%; max-width: 1500px; }
+.ux-v2-main > .page-shell { width: 100%; max-width: var(--ux-v2-page-max-width); }
 .ux-v2-main > .ux-v2-crumb-row { box-sizing: border-box; width: 100%; max-width: none; min-height: 42px; margin: 0 0 0; padding: 7px clamp(16px,2.5vw,32px); }
 .ux-v2-main :is(.hero-panel, .content-panel, .route-card) {
   border-radius: var(--shape-large);

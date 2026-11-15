@@ -2,6 +2,15 @@
 
 Complete this for every feature, bug fix, component, fixture-backed UI, route or page change.
 
+## CP-117 selected task and desktop width — 2026-11-15 / #118
+
+- [x] Registered PD-PR-117A-117/118 before editing and used the shared Lab/real `DesignTodayTaskRow` and V2 `.page-shell` boundaries.
+- [x] Captured the pre-fix selected-row computed styles and matched 2000px Position/Sportsbook baseline; the real expanded row had no edge accent and its chevron remained muted.
+- [x] Selected rows in both `aria-expanded` and `aria-pressed` modes use one semantic accent; inspector, mobile drawer, hover, focus and urgent source styling remain distinct. Focused synthetic browser cases cover transfer, close, opportunity, tracked rows and Lab.
+- [x] At 2000px, the measured Position and populated combined Sportsbook visible gutter fell from 134.5px to 64.5px per side (52%); shell width rose from 1500px to 1640px. Nineteen V2 routes use the shared cap without document overflow; 1600/1280/900/390px and Chromium zoom/reflow checks pass.
+- [x] Final-source visual 252/252, V2 integration 138 passed/five expected skips, flag-OFF 9/9, web units 747/747, typecheck/build and lint (zero errors, 12 existing warnings) passed. Record the final local runtime revision in the delivery receipt after the web-only restart.
+
+
 ## CP-117 typed cell editing — 2026-11-12 / #118
 
 - [x] Registered PD-PR-117A-104/105, inspected native field/state gates and retained the approved Lab floating editor and Profile-owned Save authority.

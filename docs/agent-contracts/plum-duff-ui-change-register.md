@@ -1,5 +1,14 @@
 # Plum Duff UI Change Register
 
+## CP-117 selected task and desktop width — 2026-11-15 / #118
+
+| ID | Requested outcome and affected surface | Signed-off equivalent | Status |
+| --- | --- | --- | --- |
+| PD-PR-117A-117 | Today selected Needs Action, opportunity, tracked and future recurring rows visibly connect to their inspector in both supported selection modes; focus and source urgency remain distinct. | Shared `DesignTodayTaskRow`, Lab/real `DesignTodayDetail` and semantic primary/focus tokens. | COMPLETE in implementation — dark/light selected row, opportunity, tracked row, mobile drawer, focus and Lab pressed-mode browser checks passed. Owner visual acceptance remains outstanding. |
+| PD-PR-117A-118 | Reclaim about half the unused full-desktop side gutters across V2 routes without changing sidebar, modal or narrow-screen geometry. | Shared V2 `.page-shell` boundary, existing mobile gutters and scroll-contained ledger grids. | COMPLETE in implementation — 2000px visible gutters measured 134.5px → 64.5px per side on Position and combined Sportsbook (52% reduction); 19 V2 routes and 1600/1280/900/390px plus 200% checks have no document overflow. Owner visual acceptance remains outstanding. |
+
+The final-source synthetic run passed V2 integration 138 with five expected skips, visual 252/252, and flag-OFF rollback 9/9. Web units 747/747, typecheck and build passed; lint had zero errors and 12 existing unrelated warnings. Private paired screenshots and measurements are in `data/private/evidence/cp117-visual-adoption/playwright/cp117-selected-width-*`. The urgent red source cue remains on the inspector's inner content; the selected accent is on its outer pane.
+
 ## CP-117 Today opportunity regression correction — 2026-11-13 / #118
 
 | ID | Requested outcome and affected surface | Signed-off equivalent | Status |

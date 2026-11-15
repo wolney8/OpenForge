@@ -1,5 +1,10 @@
 # Plum Duff Known UI Pitfalls
 
+## CP-117 shared task selection and visible page gutters — 2026-11-15 / #118
+
+The shared Today row has two valid selection semantics: Lab uses `aria-pressed`, while real inspector rows use `aria-expanded`. A selected-state rule covering only one can appear correct in the Lab and fail in the real page. Test both at the actual mount, including the matching inspector accent, chevron, independent keyboard focus and urgent source cue. For desktop width, measure the page shell and its internal padding against the available main area after the sidebar; changing `max-width` alone does not prove the visible side gutters were reduced. Regression: `cp117-selected-width.spec.ts`.
+
+
 ## CP-117 typed cells and recorded event dates — 2026-11-12 / #118
 
 The column's display type does not grant editability: check the current row's lifecycle, Profile authority, native account options and coupled fields before opening a compact control. A bookmaker choice in Extra Place also changes its associated bookmaker account; recheck both against current authorised Accounts before the native full-record Save. Failed or stale field writes must retain the draft. A recorded event date is not a settlement deadline: do not show settlement urgency unless the source supplies an actual deadline with that meaning. Regression: `cp117-typed-cell-editing.spec.ts`, `ledger-cell-capabilities.test.ts`, `ledger-workbench-entry.test.ts`, and `ledger-editor-tabs.test.ts`.
