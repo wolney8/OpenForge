@@ -118,6 +118,20 @@ test("switching between opportunity rows flushes pending personal notes", async 
   await expect(page.getByRole("textbox", { name: "Personal Notes" })).toHaveValue("Review before switching");
 });
 
+test("changing Today filters clears opportunity selection after preserving pending personal notes", async ({ page }) => {
+  await page.goto("/tasks");
+  await page.getByRole("button", { name: /Opportunities \/ Suggestions/ }).click();
+  const row = page.locator('[data-pd-id^="opportunities.item."]').first();
+  await row.click();
+  const notes = page.getByRole("textbox", { name: "Personal Notes" });
+  await notes.fill("Review after changing task filters");
+  await page.locator('[data-pd-id="tasks.v2.filter-toggle"]').click();
+  await page.getByRole("searchbox", { name: "Search Daily Tasks" }).fill("no-match-for-pending-note");
+  await expect(page.locator('[data-pd-id="tasks.v2.inspector"]')).toHaveCount(0);
+  await row.click();
+  await expect(page.getByRole("textbox", { name: "Personal Notes" })).toHaveValue("Review after changing task filters");
+});
+
 test("an external Untrack is not undone by a pending personal note", async ({ page }) => {
   await page.goto("/tasks");
   await page.getByRole("button", { name: /Opportunities \/ Suggestions/ }).click();
@@ -263,6 +277,8 @@ test("opportunity inspector remains usable at actual Chromium 200% tab zoom", as
     await page.locator('[data-pd-id^="opportunities.item."]').first().click();
     const inspector = page.locator('[data-pd-id="tasks.v2.inspector"]');
     await expect(inspector.locator("h2")).toBeVisible();
+    await expect(page.locator('[data-pd-id^="opportunities.item."]').first()).toHaveAttribute("aria-expanded", "true");
+    expect(await inspector.evaluate(node => getComputedStyle(node).borderLeftWidth)).toBe("3px");
     const bounds = await inspector.boundingBox();
     expect(bounds).toBeTruthy();
     expect(bounds!.x).toBeGreaterThanOrEqual(0);

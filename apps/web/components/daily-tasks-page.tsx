@@ -157,6 +157,7 @@ export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
   const inspectorRef = useRef<HTMLElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
   const opportunityReviewRef = useRef<OpportunityPersonalReviewHandle | null>(null);
+  const controlChangeVersionRef = useRef(0);
 
   useEffect(() => {
     const media = window.matchMedia("(max-width: 700px)");
@@ -533,8 +534,17 @@ export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
   };
 
   const changeControls = (change: () => void) => {
-    change();
-    setPage(1);
+    const version = ++controlChangeVersionRef.current;
+    const apply = () => {
+      change(); setPage(1);
+      activeTaskIdRef.current = "";
+      setInspectedTaskId(""); setInspectedOpportunityKey("");
+    };
+    if (!inspectedOpportunityKey) { apply(); return; }
+    void (async () => {
+      if (!(await flushOpportunityReview()) || version !== controlChangeVersionRef.current) return;
+      apply();
+    })();
   };
 
   const openTask = async (item: FundManagerNotification) => {
@@ -652,7 +662,11 @@ export function DailyTasksPage({ uxV2 = false }: { uxV2?: boolean }) {
   const todayPager = pageCount > 1 ? <nav aria-label={collection === "tracked" ? "Tracked Tasks pages" : "Needs Action pages"} className={designTodayPaginationClass} data-pd-id="tasks.v2.pagination"><span aria-live="polite">Showing {(currentPage - 1) * pageSize + 1}–{Math.min(currentPage * pageSize, filtered.length)} of {filtered.length}</span><button aria-label="Previous Today page" disabled={currentPage <= 1} onClick={() => { setPage(currentPage - 1); setInspectedTaskId(""); }} type="button">Previous</button><button aria-label="Next Today page" disabled={currentPage >= pageCount} onClick={() => { setPage(currentPage + 1); setInspectedTaskId(""); }} type="button">Next</button></nav> : null;
 
   return (
-    <main className={`page-shell stack daily-tasks-page${uxV2 ? " ux-v2-today" : ""}`} data-pd-id="tasks.page">
+    <main className={`page-shell stack daily-tasks-page${uxV2 ? " ux-v2-today" : ""}`} data-pd-id="tasks.page" onKeyDown={event => {
+      if (uxV2 && !narrow && (inspectedTask || opportunityInspectorOpen) && event.key === "Escape" && !event.defaultPrevented) {
+        event.preventDefault(); void closeInspector();
+      }
+    }}>
       {uxV2 ? <DesignPageHead dataPdId="tasks.page-header">
         <div><h1>Today</h1></div>
         <div className={designPageHeadClasses.actions}>

@@ -1,5 +1,9 @@
 # Plum Duff Known UI Pitfalls
 
+## CP-117 Today selection after focus transfer — 2026-11-15 / #118
+
+An `aria-expanded` row can keep the correct state while a more specific list rule replaces its selected tint; a focus outline then makes selection appear to vanish on click-away. Assert the computed selected colour after moving focus, and clear explicit selection on filter changes so a hidden record cannot reappear selected. An inset shadow on a scrolling inspector can sit behind its opaque sticky header; measure the outer border pixels at top, middle and bottom before and after internal scrolling. Regression: `cp117-selected-width.spec.ts` and `cp117-opportunity-actionability.spec.ts`.
+
 ## CP-117 shared task selection and visible page gutters — 2026-11-15 / #118
 
 The shared Today row has two valid selection semantics: Lab uses `aria-pressed`, while real inspector rows use `aria-expanded`. A selected-state rule covering only one can appear correct in the Lab and fail in the real page. Test both at the actual mount, including the matching inspector accent, chevron, independent keyboard focus and urgent source cue. For desktop width, measure the page shell and its internal padding against the available main area after the sidebar; changing `max-width` alone does not prove the visible side gutters were reduced. Regression: `cp117-selected-width.spec.ts`.

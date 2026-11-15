@@ -1,5 +1,14 @@
 # Plum Duff UI Change Register
 
+## CP-117 persistent Today selection — 2026-11-15 / #118
+
+| ID | Requested outcome and affected surface | Signed-off equivalent | Status |
+| --- | --- | --- | --- |
+| PD-PR-117A-119 | Today Needs Action, opportunity, tracked and shared Lab rows keep the selected tint, edge and chevron after click-away or focus transfer; only row transfer, X, Escape or invalidated selection clears it. | `DesignTodayTaskRow` explicit expanded/pressed state and shared Task Details inspector. | COMPLETE in implementation — the unfocused tint and stale filter selection failed before correction; light/dark, Lab Board, tracked/opportunity, transfer, X, Escape and filter lifecycle browser cases now pass. Owner visual acceptance remains outstanding. |
+| PD-PR-117A-120 | Desktop and mobile Today inspector show one continuous cyan selection accent on the full outer left edge, including beneath the sticky header and during internal scrolling. | Shared `detailPane`/`mobileDetail` boundaries and semantic primary token. | COMPLETE in implementation — 3px outer semantic border sampled at top/middle/bottom before and after internal scroll; 900px, 390px and actual Chromium 200% checks pass. Owner visual acceptance remains outstanding. |
+
+Current focused synthetic regression: 34/34 affected visual/interaction cases, eight Today integration cases, nine flag-OFF rollback cases and 747/747 web units passed; web typecheck/build passed. Lint reported zero errors and 12 existing unrelated warnings. No API, annotation, financial, authentication or desktop-width authority changed. Private paired captures are in `data/private/evidence/cp117-visual-adoption/playwright/cp117-selected-width-selec-*/persistent-selection-*.png`.
+
 ## CP-117 selected task and desktop width — 2026-11-15 / #118
 
 | ID | Requested outcome and affected surface | Signed-off equivalent | Status |

@@ -2,6 +2,14 @@
 
 Complete this for every feature, bug fix, component, fixture-backed UI, route or page change.
 
+## CP-117 persistent Today selection — 2026-11-15 / #118
+
+- [x] Registered PD-PR-117A-119/120; reproduced lost selected tint in both themes and stale selection after search filter reset before correcting them.
+- [x] Used the shared Lab/real task row and drawer boundaries. Selection follows explicit expanded/pressed state; keyboard focus, hover and source urgency stay distinct.
+- [x] Verified click-away, focus transfer, row transfer, X, Escape, Lab Board, opportunities, tracked rows and filter lifecycle using synthetic authentication. A pending opportunity note is flushed before a filter closes its inspector.
+- [x] Measured the 3px outer inspector accent at top/middle/bottom before and after internal scroll; checked 900px, 390px and actual Chromium 200% zoom, light/dark and no page overflow.
+- [x] Affected visual/interaction 34/34, Today integration 8/8, flag-OFF 9/9, web units 747/747, typecheck/build and lint (zero errors, 12 existing warnings) passed. Local runtime and owner acceptance remain separate delivery checks.
+
 ## CP-117 selected task and desktop width — 2026-11-15 / #118
 
 - [x] Registered PD-PR-117A-117/118 before editing and used the shared Lab/real `DesignTodayTaskRow` and V2 `.page-shell` boundaries.
