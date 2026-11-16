@@ -338,15 +338,23 @@ for (const theme of ["light", "dark"] as const) {
       await noPageOverflow(page);
       await page.screenshot({ path: join(evidence, `v2-${ledger.key}-detail-390-${theme}.png`), fullPage: true });
       await details.getByRole("button", { name: /^Open full record for / }).first().click();
-      await expect(page.getByRole("dialog").first()).toBeVisible();
+      const sportsbookWorkbench = page.locator('[data-pd-id="sportsbook.editor.workbench-surface"]');
+      if (ledger.key === "sportsbook") {
+        await expect(sportsbookWorkbench).toBeVisible();
+        await expect(page.locator('[data-pd-id="sportsbook.editor.dialog"]')).toHaveCount(0);
+      } else {
+        await expect(page.getByRole("dialog").first()).toBeVisible();
+      }
       await page.screenshot({ path: join(evidence, `v2-${ledger.key}-editor-390-${theme}.png`), fullPage: true });
       await page.keyboard.press("Escape");
       const unsavedGuard = page.getByRole("dialog", { name: "Unsaved tracker changes" });
       if (await unsavedGuard.isVisible()) {
-        await expect(page.getByRole("dialog", { name: /Edit |Create / })).toHaveCount(1);
+        if (ledger.key === "sportsbook") await expect(sportsbookWorkbench).toHaveCount(1);
+        else await expect(page.getByRole("dialog", { name: /Edit |Create / })).toHaveCount(1);
         await unsavedGuard.getByRole("button", { name: "Discard changes" }).click();
       }
       await expect(page.getByRole("dialog")).toHaveCount(0);
+      if (ledger.key === "sportsbook") await expect(sportsbookWorkbench).toHaveCount(0);
       await screen.getByRole("button", { name: "Show Full Table" }).click();
       await expect(table).toBeVisible();
       await expect(details).toBeHidden();
@@ -465,9 +473,10 @@ test("Sportsbook specialist editor uses the approved Lab step presentation", asy
   await page.locator(".ledger-loading-overlay").first().waitFor({ state: "hidden", timeout: 45_000 });
   await setTheme(page, "light");
   await page.locator('[data-pd-id="sportsbook.toolbar.add-row"]').click();
-  const dialog = page.locator('[data-pd-id="sportsbook.editor.dialog"]');
-  await expect(dialog).toBeVisible();
-  const realStep = dialog.locator('[data-pd-id="ledger-editor.tabs"] button').first();
+  const workbench = page.locator('[data-pd-id="sportsbook.editor.workbench-surface"]');
+  await expect(workbench).toBeVisible();
+  await expect(page.locator('[data-pd-id="sportsbook.editor.dialog"]')).toHaveCount(0);
+  const realStep = workbench.locator('[data-pd-id="ledger-editor.tabs"] button').first();
   const realStyle = await realStep.evaluate(element => ({ padding: getComputedStyle(element).padding, radius: getComputedStyle(element).borderRadius, minimumHeight: getComputedStyle(element).minHeight }));
   expect(realStyle).toEqual(labStyle);
   await page.screenshot({ path: join(evidence, "v2-sportsbook-add-1440-light.png") });
@@ -611,13 +620,14 @@ test("Sportsbook floating and full editor use the integrated V2 surfaces", async
   await page.screenshot({ path: join(evidence, "v2-sportsbook-floating-1440-light.png"), fullPage: true });
   await expect(floating.getByRole("button", { name: "Open full editor" })).toHaveCount(0);
   await floating.getByRole("textbox").press("Alt+Enter");
-  const dialog = page.getByRole("dialog");
-  await expect(dialog).toBeVisible();
+  const workbench = page.locator('[data-pd-id="sportsbook.editor.workbench-surface"]');
+  await expect(workbench).toBeVisible();
+  await expect(page.locator('[data-pd-id="sportsbook.editor.dialog"]')).toHaveCount(0);
   await noPageOverflow(page);
   await page.screenshot({ path: join(evidence, "v2-sportsbook-full-editor-1440-light.png"), fullPage: true });
   await page.setViewportSize({ width: 390, height: 900 });
   await setTheme(page, "dark");
-  const bounds = await dialog.boundingBox();
+  const bounds = await workbench.boundingBox();
   expect(bounds).toBeTruthy();
   expect(bounds!.x).toBeGreaterThanOrEqual(0);
   expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(390);
@@ -625,7 +635,7 @@ test("Sportsbook floating and full editor use the integrated V2 surfaces", async
   await page.screenshot({ path: join(evidence, "v2-sportsbook-full-editor-390-dark.png"), fullPage: true });
 });
 
-test("Sportsbook, Free Bet and Casino native editors share the Lab financial card and retain their actions", async ({ page }) => {
+test("Sportsbook, Free Bet and Casino native editors use their approved Lab field surfaces and retain actions", async ({ page }) => {
   test.setTimeout(180_000);
   await mkdir(evidence, { recursive: true });
   const editors = [
@@ -644,25 +654,34 @@ test("Sportsbook, Free Bet and Casino native editors share the Lab financial car
       await expect(page.locator(`[data-pd-id="${editor.id}.design-screen"]`)).toBeVisible({ timeout: 45_000 });
       await setTheme(page, theme);
       await page.locator(`[data-pd-id="${editor.id}.toolbar.add-row"]`).click();
-      const dialog = page.locator(`[data-pd-id="${editor.id}.editor.dialog"]`);
-      await expect(dialog).toBeVisible();
-      const stage = dialog.locator(".editor-section").first();
+      const surface = page.locator(`[data-pd-id="${editor.id}.editor.${editor.id === "sportsbook" ? "workbench-surface" : "dialog"}"]`);
+      await expect(surface).toBeVisible();
+      const stage = surface.locator(".editor-section").first();
       await expect(stage).toBeVisible();
       await expect(stage).toHaveAttribute("data-pd-financial-card", "true");
-      await expect(stage).toHaveCSS("border-radius", "14px");
-      await expect(stage).toHaveCSS("border-top-width", "1px");
-      await expect(stage).toHaveCSS("padding-top", width <= 850 ? "14px" : "18px");
-      expect(await stage.evaluate(element => getComputedStyle(element).backgroundColor)).not.toBe("rgba(0, 0, 0, 0)");
-      await expect(dialog.locator('[data-pd-id="ledger-editor.tabs"]')).toBeVisible();
-      await expect(dialog.locator(".workflow-editor-footer")).toBeInViewport();
-      const bounds = await dialog.boundingBox();
+      if (editor.id === "sportsbook") {
+        // The page workbench uses the Lab entry field surface; only its
+        // financial aside has a card. A nested legacy card is a regression.
+        await expect(stage).toHaveCSS("border-radius", "0px");
+        await expect(stage).toHaveCSS("border-top-width", "0px");
+        await expect(stage).toHaveCSS("padding-top", "0px");
+        await expect(surface.locator('[data-pd-id="sportsbook.editor.financial-context"]')).toBeVisible();
+      } else {
+        await expect(stage).toHaveCSS("border-radius", "14px");
+        await expect(stage).toHaveCSS("border-top-width", "1px");
+        await expect(stage).toHaveCSS("padding-top", width <= 850 ? "14px" : "18px");
+        expect(await stage.evaluate(element => getComputedStyle(element).backgroundColor)).not.toBe("rgba(0, 0, 0, 0)");
+      }
+      await expect(surface.locator('[data-pd-id="ledger-editor.tabs"]')).toBeVisible();
+      await expect(surface.locator(".workflow-editor-footer")).toBeInViewport();
+      const bounds = await surface.boundingBox();
       expect(bounds).toBeTruthy();
       expect(bounds!.x).toBeGreaterThanOrEqual(0);
       expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width);
       await noPageOverflow(page);
       await page.screenshot({ path: join(evidence, `v2-${editor.id}-add-${width}-${theme}.png`), fullPage: true });
-      await dialog.getByRole("button", { name: /^Close .* editor$/i }).click();
-      await expect(dialog).toHaveCount(0);
+      await surface.getByRole("button", { name: /^Close .* editor$/i }).click();
+      await expect(surface).toHaveCount(0);
     }
   }
 });
@@ -991,8 +1010,11 @@ for (const { width, theme } of [{ width: 1440, theme: "light" }, { width: 390, t
       await page.locator(".ledger-loading-overlay").first().waitFor({ state: "hidden", timeout: 45_000 });
       await setTheme(page, theme);
       await page.locator(`[data-pd-id="${ledger.key}.toolbar.add-row"]`).click();
-      const editor = page.getByRole("dialog").first();
+      const editor = ledger.key === "sportsbook"
+        ? page.locator('[data-pd-id="sportsbook.editor.workbench-surface"]')
+        : page.getByRole("dialog").first();
       await expect(editor).toBeVisible();
+      if (ledger.key === "sportsbook") await expect(page.locator('[data-pd-id="sportsbook.editor.dialog"]')).toHaveCount(0);
       await expect(editor.getByRole("button", { name: /close/i }).first()).toBeVisible();
       await noPageOverflow(page);
       const box = await editor.boundingBox();

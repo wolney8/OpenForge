@@ -43,7 +43,12 @@ for (const module of modules) {
     await page.getByRole("option", { name: "Subscriber Alpha" }).click();
     await page.getByRole("button", { name: "Continue to Add workflow" }).click();
     await expect(page).toHaveURL(new RegExp(`/profiles/profile-demo-001/tracker/${module}\\?create=1&returnTo=`));
-    await expect(page.getByRole("dialog", { name: dialogs[module] })).toBeVisible();
+    if (module === "sportsbook-bets") {
+      await expect(page.locator('[data-pd-id="sportsbook.editor.workbench-surface"]')).toBeVisible();
+      await expect(page.locator('[data-pd-id="sportsbook.editor.dialog"]')).toHaveCount(0);
+    } else {
+      await expect(page.getByRole("dialog", { name: dialogs[module] })).toBeVisible();
+    }
     await expect(page.locator('[data-pd-id="tracker.return-to-combined"]')).toHaveAttribute("href", `/tracker/${module}`);
   });
 }
@@ -74,13 +79,13 @@ test("mobile details preserve all fields and spreadsheet selection reaches nativ
   await page.getByRole("button", { name: "Show Full Table" }).click();
   const table = page.locator('[data-pd-id="combined.sportsbook-bets.table-scroll"]');
   await expect(table.locator('td[data-ledger-column="displayed_value"]').first()).toBeVisible();
-  await table.locator('td[data-ledger-column="bookmaker"]').first().focus();
+  await table.locator('td[data-ledger-column="displayed_value"]').first().focus();
   await page.keyboard.press("Enter");
   const review = page.locator('[data-pd-id="combined.sportsbook-bets.protected-cell"]');
   await expect(review).toBeVisible();
   await review.getByRole("button", { name: "Open record for review" }).click();
   await expect(page).toHaveURL(/\/profiles\/profile-demo-001\/tracker\/sportsbook-bets\?record=/);
-  await expect(page.getByRole("dialog", { name: "Edit sportsbook row" })).toBeVisible();
+  await expect(page.locator('[data-pd-id="sportsbook.editor.workbench-surface"]')).toBeVisible();
 });
 
 test("source-owned financial cells retain the native displayed measure", async ({ page }) => {

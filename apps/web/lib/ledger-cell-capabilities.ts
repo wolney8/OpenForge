@@ -1,5 +1,6 @@
 import { ledgerColumnContracts } from "@/lib/ledger-column-contracts";
 import type { CombinedLedgerModule } from "@/lib/profile-scope";
+import { sportsbookPlanningFieldEditable } from "@/lib/sportsbook-inline-eligibility";
 
 export type LedgerCellType = "text" | "identifier" | "enum" | "multi-value" | "date" | "datetime" | "money" | "odds" | "percentage" | "boolean" | "composite" | "status" | "action";
 export type LedgerCellAuthority = "scalar" | "typed" | "native-composite" | "source-identity" | "financial-workflow" | "calculated" | "lifecycle" | "row-action";
@@ -14,7 +15,7 @@ export const ledgerCellCapabilities: Record<CombinedLedgerModule, Record<string,
     last_balance_update: cell("datetime", "financial-workflow"), channel: cell("multi-value", "native-composite"), group_name: cell("text", "lifecycle"), platform: cell("text", "lifecycle"), actions: cell("action", "row-action"),
   },
   "sportsbook-bets": {
-    date_settled: cell("datetime", "financial-workflow"), bookmaker: cell("enum", "financial-workflow"), event_name: cell("text", "scalar"), offer_name: cell("text", "scalar"),
+    date_settled: cell("datetime", "typed"), bookmaker: cell("enum", "typed"), event_name: cell("text", "scalar"), offer_name: cell("text", "scalar"),
     offer_details: cell("composite", "financial-workflow"), match_strategy: cell("enum", "financial-workflow"), lay_status: cell("status", "calculated"),
     back_bet_status: cell("status", "calculated"), displayed_value: cell("money", "calculated"), status: cell("status", "lifecycle"), actions: cell("action", "row-action"),
   },
@@ -57,6 +58,7 @@ export function ledgerCellDecision(module: CombinedLedgerModule, column: string,
   if (canInline) return { interaction: "edit", reason: "" };
   const status = String(record.status ?? "");
   if (["Settled", "Void", "Cancelled", "Free Bet Awarded"].includes(status)) return { interaction: "review", reason: `${status} records require their governed correction or review workflow.` };
+  if (module === "sportsbook-bets" && ["bookmaker", "date_settled"].includes(column) && !sportsbookPlanningFieldEditable(record)) return { interaction: "review", reason: "Placed or executed bets require the populated placement and financial review workflow." };
   if (module === "each-way-extra-places" && ["date", "bookmaker", "stake"].includes(column) && status !== "Prospecting") return { interaction: "review", reason: "Placement and financial evidence require the populated Extra Place review workflow." };
   return { interaction: "review", reason: ledgerCellReviewReason(capability) };
 }

@@ -1,5 +1,17 @@
 # Plum Duff UI Change Register
 
+## CP-117 rejected Sportsbook workbench and typed cells — 2026-11-16 / #118
+
+Owner Sportsbook Design and Interaction Acceptance remain **REJECTED** until the corrected candidate is reviewed. The statuses below describe implementation verification only.
+
+| ID | Requested outcome and affected surface | Approved equivalent | Status |
+| --- | --- | --- | --- |
+| PD-PR-117A-121 | V2 Sportsbook Open, Add, Quick Capture and protected-review entries use exactly one full Lab-composed workbench surface, with native Save, correction and unsaved-change authority; flag OFF retains the old modal. | Design Lab Sportsbook workbench and shared financial-workbench components. | COMPLETE in implementation — application-level V2 workbench and zero legacy primary dialogs verified through all entry points, mobile, 200% zoom, full visual/integration suites and flag-OFF rollback. Owner Design Acceptance remains rejected pending review of the correction. |
+| PD-PR-117A-122 | Eligible Sportsbook grid fields expose datatype-aware compact controls and persist through Profile-owned native validation/Save in owned and combined scope. Protected/calculated/lifecycle fields explain the restriction. | Lab floating-cell editor, native Sportsbook form controls and `real-ledger-cell-editing.md`. | COMPLETE for the displayed independently writable columns — Event Name/Campaign Tag text, authorised Bookmaker select and Settles datetime in eligible planning rows; owned/combined persisted Save/reload and failed-Save retry pass. Coupled offer/strategy/status/financial columns remain deliberate workbench review, not inline parity. No standalone writable numeric/boolean Sportsbook grid column exists. |
+| PD-PR-117A-123 | Stage entry uses stored lifecycle evidence and preserves conditional financial stages, focus, return context and correction safeguards across all workbench entries. | `sportsbookWorkbenchEntry()` and approved Lab stepper presentation. | COMPLETE in implementation — new, incomplete, placed and protected entries, focus, Quick Capture, Escape and 200% browser paths pass. The fixed-five-stage Lab navigation decision and settlement/correction mutation acceptance remain open. |
+
+Final-source synthetic evidence: V2 integration 138 passed / five expected flag-OFF-phase skips; complete visual 266/266; legacy rollback 9/9; web units 748/748; typecheck and build passed; changed web source lint had zero errors and seven existing warnings. The first reused-storage visual run failed 14/266, including five stale modal assertions, one no-op retry fixture and long unrelated timeouts; focused reruns passed, then the fresh-storage full rerun passed 266/266. Private paired captures and recordings are indexed in `data/private/evidence/cp117-design-review/INDEX.md`.
+
 ## CP-117 persistent Today selection — 2026-11-15 / #118
 
 | ID | Requested outcome and affected surface | Signed-off equivalent | Status |

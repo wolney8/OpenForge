@@ -1,5 +1,9 @@
 # Plum Duff Known UI Pitfalls
 
+## CP-117 Sportsbook workbench host and short-viewport scroll — 2026-11-16 / #118
+
+Embedding the Lab header and rail inside the old primary modal still presents the old editor. Check the actual V2 mount for one application-level workbench and zero legacy primary dialogs, while testing flag-OFF separately. At actual 200% browser zoom, a fixed `100dvh - 12rem` editor leaves almost no scrollable form area; verify the focused input and footer geometry within the real workbench. An eligible Bookmaker or Settles cell also needs its typed control and acknowledged owning-Profile Save, not merely a capability label. Regression: `cp117-rejected-parity.spec.ts` and `cp139-specialist-workbench.spec.ts`.
+
 ## CP-117 Today selection after focus transfer — 2026-11-15 / #118
 
 An `aria-expanded` row can keep the correct state while a more specific list rule replaces its selected tint; a focus outline then makes selection appear to vanish on click-away. Assert the computed selected colour after moving focus, and clear explicit selection on filter changes so a hidden record cannot reappear selected. An inset shadow on a scrolling inspector can sit behind its opaque sticky header; measure the outer border pixels at top, middle and bottom before and after internal scrolling. Regression: `cp117-selected-width.spec.ts` and `cp117-opportunity-actionability.spec.ts`.

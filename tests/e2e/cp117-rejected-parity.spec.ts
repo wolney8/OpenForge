@@ -102,7 +102,7 @@ test("Sportsbook selection opens exactly one workbench only on a deliberate comm
   await expect(open).toBeEnabled();
   await expect(page.locator('[data-pd-id="sportsbook.editor.dialog"]')).toHaveCount(0);
   await open.click();
-  await expect(page.locator('[data-pd-id="sportsbook.editor.dialog"]')).toHaveCount(1);
+  await expect(page.locator('[data-pd-id="sportsbook.editor.workbench-surface"]')).toHaveCount(1);
 });
 
 test("source-backed advisory opportunities track in a bounded isolated batch", async ({ page }) => {
@@ -158,10 +158,243 @@ test("real Sportsbook ledger has the Lab entry modes and horizontal controls", a
   await quick.getByLabel("Event Name").fill("Demo Fixture");
   await expect(quick.getByRole("button", { name: "Save" })).toHaveCount(0);
   await quick.getByRole("button", { name: "Open full workbench" }).click();
-  const full = page.locator('[data-pd-id="sportsbook.editor.dialog"]');
+  const full = page.locator('[data-pd-id="sportsbook.editor.workbench-surface"]');
   await expect(full).toBeVisible();
   await expect(full.getByLabel("Event name", { exact: true })).toHaveValue("Demo Fixture");
   await expect(full.getByLabel("Campaign tag (optional)")).toHaveValue("Demo Campaign");
+});
+
+test("Sportsbook V2 opens one application workbench instead of the legacy primary modal", async ({ page }) => {
+  await page.goto(ledger);
+  await expect(page.locator(".ledger-loading-overlay")).toHaveCount(0, { timeout: 45_000 });
+  const event = page.locator('td[data-ledger-row="CP117-CELL-001"][data-ledger-column="event_name"]');
+  await event.click();
+  await page.locator('[data-pd-id="sportsbook.toolbar.open-selected"]').click();
+  const workbench = page.locator('[data-pd-id="sportsbook.editor.workbench-surface"]');
+  await expect(workbench).toBeVisible();
+  await expect(workbench.locator('[data-pd-id="ledger-editor.tab.setup"]')).toHaveCount(1);
+  await expect(page.locator('[data-pd-id="sportsbook.editor.dialog"]')).toHaveCount(0);
+  await expect(page.locator('[role="dialog"][aria-modal="true"]')).toHaveCount(0);
+});
+
+test("eligible Sportsbook Settles cell exposes the native datetime control without opening a workbench", async ({ page }) => {
+  await page.goto(ledger);
+  await expect(page.locator(".ledger-loading-overlay")).toHaveCount(0, { timeout: 45_000 });
+  await page.locator('td[data-ledger-row="CP117-CELL-001"][data-ledger-column="date_settled"]').dblclick();
+  const editor = page.locator('[data-pd-id="ledger.floating-editor"]');
+  await expect(editor).toBeVisible();
+  await expect(editor.locator('[data-pd-id="sportsbook.cell-editor.date_settled"]')).toHaveAttribute("type", "datetime-local");
+  await expect(page.locator('[data-pd-id="sportsbook.editor.workbench-surface"]')).toHaveCount(0);
+});
+
+test("Sportsbook typed cells activate by F2 or Enter and Escape cancels without opening the workbench", async ({ page }) => {
+  await page.goto(ledger);
+  await expect(page.locator(".ledger-loading-overlay")).toHaveCount(0, { timeout: 45_000 });
+  const bookmaker = page.locator('td[data-ledger-row="CP117-CELL-001"][data-ledger-column="bookmaker"]');
+  await bookmaker.click();
+  await page.keyboard.press("F2");
+  await expect(page.locator('[data-pd-id="sportsbook.cell-editor.bookmaker"]')).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.locator('[data-pd-id="ledger.floating-editor"]')).toHaveCount(0);
+  const settles = page.locator('td[data-ledger-row="CP117-CELL-001"][data-ledger-column="date_settled"]');
+  await settles.click();
+  await page.keyboard.press("Enter");
+  await expect(page.locator('[data-pd-id="sportsbook.cell-editor.date_settled"]')).toHaveAttribute("type", "datetime-local");
+  await page.keyboard.press("Escape");
+  await expect(page.locator('[data-pd-id="ledger.floating-editor"]')).toHaveCount(0);
+  await expect(page.locator('[data-pd-id="sportsbook.editor.workbench-surface"]')).toHaveCount(0);
+});
+
+test("placed and settled Sportsbook cells explain their protected boundary before a deliberate workbench review", async ({ page }) => {
+  const original = await (await page.request.get(`/api/profiles/${profile}/sportsbook-bets/CP117-CELL-001`)).json() as Record<string, unknown>;
+  await page.route(`**/profiles/${profile}/sportsbook-bets`, route => route.fulfill({ status: 200, json: [
+    { ...original, sportsbook_bet_id: "PROTECTED-PLACED", status: "Placed", actual_accepted_back_odds: "2.10" },
+    { ...original, sportsbook_bet_id: "PROTECTED-SETTLED", status: "Settled", result: "Win" },
+  ] }));
+  await page.goto(ledger);
+  await expect(page.locator(".ledger-loading-overlay")).toHaveCount(0, { timeout: 45_000 });
+  for (const [rowId, column] of [["PROTECTED-PLACED", "bookmaker"], ["PROTECTED-SETTLED", "date_settled"]]) {
+    await page.locator(`td[data-ledger-row="${rowId}"][data-ledger-column="${column}"]`).dblclick();
+    await expect(page.locator('[data-pd-id="sportsbook.protected-cell"]')).toBeVisible();
+    await expect(page.locator('[data-pd-id="ledger.floating-editor"]')).toHaveCount(0);
+    await expect(page.locator('[data-pd-id="sportsbook.editor.workbench-surface"]')).toHaveCount(0);
+  }
+});
+
+test("Prospecting Sportsbook datetime commits through its native command in owned and combined scopes", async ({ page }) => {
+  const source = await (await page.request.get(`/api/profiles/${profile}/sportsbook-bets/CP117-CELL-001`)).json() as Record<string, unknown>;
+  await page.goto(ledger);
+  await expect(page.locator(".ledger-loading-overlay")).toHaveCount(0, { timeout: 45_000 });
+  await page.locator('td[data-ledger-row="CP117-CELL-001"][data-ledger-column="date_settled"]').dblclick();
+  const owned = page.locator('[data-pd-id="sportsbook.cell-editor.date_settled"]');
+  await expect(owned).toHaveAttribute("type", "datetime-local");
+  await owned.fill("2026-11-04T13:30");
+  await owned.press("Enter");
+  await expect(page.locator('[data-pd-id="ledger.floating-editor"]')).toHaveCount(0);
+  let saved = await (await page.request.get(`/api/profiles/${profile}/sportsbook-bets/CP117-CELL-001`)).json() as Record<string, unknown>;
+  expect(String(saved.date_settled)).toContain("2026-11-04 13:30");
+  for (const key of ["profile_id", "sportsbook_bet_id", "back_stake", "back_odds", "lay_odds_1", "status", "result"]) expect(saved[key]).toEqual(source[key]);
+  await page.goto("/tracker/sportsbook-bets?q=CP117-CELL-001");
+  const cell = page.locator('td[data-ledger-row="profile-demo-001::CP117-CELL-001"][data-ledger-column="date_settled"]');
+  await expect(cell).toBeVisible();
+  await cell.dblclick();
+  const combined = page.locator('[data-pd-id="combined.sportsbook-bets.cell-editor.date_settled"]');
+  await expect(combined).toHaveAttribute("type", "datetime-local");
+  await combined.fill("2026-11-05T14:45");
+  await combined.press("Enter");
+  await expect(page.locator('[data-pd-id="ledger.floating-editor"]')).toHaveCount(0);
+  saved = await (await page.request.get(`/api/profiles/${profile}/sportsbook-bets/CP117-CELL-001`)).json() as Record<string, unknown>;
+  expect(String(saved.date_settled)).toContain("2026-11-05 14:45");
+  for (const key of ["profile_id", "sportsbook_bet_id", "back_stake", "back_odds", "lay_odds_1", "status", "result"]) expect(saved[key]).toEqual(source[key]);
+  await page.reload();
+  await expect(cell).toContainText("5");
+});
+
+test("a rejected Sportsbook datetime Save retains its draft and retries without opening a workbench", async ({ page }) => {
+  await page.goto(ledger);
+  await expect(page.locator(".ledger-loading-overlay")).toHaveCount(0, { timeout: 45_000 });
+  // This disposable source also runs after the persisted-date journey in the
+  // complete suite. Always propose a different value so a retry is exercised.
+  const current = await (await page.request.get(`/api/profiles/${profile}/sportsbook-bets/CP117-CELL-002`)).json() as Record<string, unknown>;
+  const proposed = String(current.date_settled ?? "").includes("2026-11-06") ? "2026-11-07T16:15" : "2026-11-06T16:15";
+  await page.locator('td[data-ledger-row="CP117-CELL-002"][data-ledger-column="date_settled"]').dblclick();
+  const editor = page.locator('[data-pd-id="ledger.floating-editor"]');
+  const input = editor.locator('[data-pd-id="sportsbook.cell-editor.date_settled"]');
+  await input.fill(proposed);
+  let rejected = false;
+  await page.route("**/profiles/profile-demo-001/sportsbook-bets/CP117-CELL-002", async route => {
+    if (route.request().method() === "PUT" && !rejected) {
+      rejected = true;
+      await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "Synthetic transient Save failure" }) });
+      return;
+    }
+    await route.continue();
+  });
+  await input.press("Enter");
+  await expect(editor).toBeVisible();
+  await expect(input).toHaveValue(proposed);
+  await expect(editor.getByRole("alert")).toContainText(/Synthetic transient Save failure|not saved|failed/i);
+  await expect(page.locator('[data-pd-id="sportsbook.editor.workbench-surface"]')).toHaveCount(0);
+  await input.press("Enter");
+  await expect(editor).toHaveCount(0);
+  const saved = await (await page.request.get(`/api/profiles/${profile}/sportsbook-bets/CP117-CELL-002`)).json() as Record<string, unknown>;
+  expect(String(saved.date_settled)).toContain(`${proposed.slice(0, 10)} 16:15`);
+});
+
+test("Prospecting Sportsbook bookmaker opens an authorised selector in both scopes", async ({ page }) => {
+  await page.goto(ledger);
+  await expect(page.locator(".ledger-loading-overlay")).toHaveCount(0, { timeout: 45_000 });
+  await page.locator('td[data-ledger-row="CP117-CELL-001"][data-ledger-column="bookmaker"]').dblclick();
+  const owned = page.locator('[data-pd-id="sportsbook.cell-editor.bookmaker"]');
+  await expect(owned).toBeVisible();
+  await expect(owned.locator("option")).not.toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await page.goto("/tracker/sportsbook-bets?q=CP117-CELL-001");
+  const cell = page.locator('td[data-ledger-row="profile-demo-001::CP117-CELL-001"][data-ledger-column="bookmaker"]');
+  await expect(cell).toBeVisible();
+  await cell.dblclick();
+  const combined = page.locator('[data-pd-id="combined.sportsbook-bets.cell-editor.bookmaker"]');
+  await expect(combined).toBeVisible();
+  await expect(combined.locator("option")).toContainText("Bookmaker A");
+});
+
+test("Sportsbook bookmaker choices persist through owned and combined Profile commands", async ({ page }) => {
+  const stamp = Date.now();
+  const created = await page.request.post("/api/profiles/onboarding", { data: {
+    accounts: [], display_name: `Synthetic Sportsbook choices ${stamp}`, profile_code: `SB-CHOICE-${stamp}`,
+    enabled_modules: ["sportsbook-bets", "free-bets", "casino-offers", "cash-adjustments", "each-way-extra-places"],
+    quick_actions: [], setup_path: "import", tracking_start_date: "2026-09-01",
+    profile_relationship: "Personal", management_fee_percent: "0", investment_fee_percent: "0",
+  } });
+  expect(created.status(), await created.text()).toBe(201);
+  const owner = (await created.json()).profile.profile_id as string;
+  const rowId = `SB-CHOICE-${stamp}`;
+  try {
+    for (const bookmaker of ["Bookmaker A", "Bookmaker B"]) {
+      const account = await page.request.post(`/api/profiles/${owner}/accounts`, { data: {
+        account: bookmaker, type: "Bookie", status: "Active", lifecycle_status: "Active", channel: "Online",
+        stake_access: "Normal", promo_access: "Full", restrictions: [], current_balance: "0.00", pending_withdrawal_amount: "0.00",
+      } });
+      expect(account.status(), await account.text()).toBe(201);
+    }
+    const seed = await page.request.post(`/api/profiles/${owner}/sportsbook-bets`, { data: {
+      sportsbook_bet_id: rowId, event_name: "Synthetic choice fixture", offer_text: "Demo Offer", bookmaker: "Bookmaker A",
+      offer_type: "Sign up / Welcome", bet_type: "Single", fixture_type: "Football", status: "Prospecting", result: "Pending",
+      back_stake: "10.00", back_odds: "2.10", match_strategy: "Standard", lay_odds_1: "2.20", lay_commission_1: "0.02",
+      date_settled: "2026-11-03 13:00", user_notes: "Synthetic disposable fixture",
+    } });
+    expect(seed.status(), await seed.text()).toBe(201);
+    const original = await seed.json() as Record<string, unknown>;
+    await page.goto(`/profiles/${owner}/tracker/sportsbook-bets`);
+    await expect(page.locator(".ledger-loading-overlay")).toHaveCount(0, { timeout: 45_000 });
+    await page.locator(`td[data-ledger-row="${rowId}"][data-ledger-column="bookmaker"]`).dblclick();
+    const owned = page.locator('[data-pd-id="sportsbook.cell-editor.bookmaker"]');
+    await expect(owned).toBeVisible();
+    await owned.selectOption("Bookmaker B");
+    await owned.press("Enter");
+    await expect(page.locator('[data-pd-id="ledger.floating-editor"]')).toHaveCount(0);
+    let saved = await (await page.request.get(`/api/profiles/${owner}/sportsbook-bets/${rowId}`)).json() as Record<string, unknown>;
+    expect(saved.bookmaker).toBe("Bookmaker B");
+    await page.goto(`/tracker/sportsbook-bets?q=${rowId}`);
+    const combinedCell = page.locator(`td[data-ledger-row="${owner}::${rowId}"][data-ledger-column="bookmaker"]`);
+    await expect(combinedCell).toBeVisible();
+    await combinedCell.dblclick();
+    const combined = page.locator('[data-pd-id="combined.sportsbook-bets.cell-editor.bookmaker"]');
+    await expect(combined).toBeVisible();
+    await combined.selectOption("Bookmaker A");
+    await combined.press("Enter");
+    await expect(page.locator('[data-pd-id="ledger.floating-editor"]')).toHaveCount(0);
+    saved = await (await page.request.get(`/api/profiles/${owner}/sportsbook-bets/${rowId}`)).json() as Record<string, unknown>;
+    expect(saved.bookmaker).toBe("Bookmaker A");
+    for (const key of ["profile_id", "sportsbook_bet_id", "back_stake", "back_odds", "lay_odds_1", "status", "result"]) expect(saved[key]).toEqual(original[key]);
+    const foreign = await page.request.put(`/api/profiles/profile-demo-002/sportsbook-bets/${rowId}`, { data: saved });
+    expect([403, 404]).toContain(foreign.status());
+  } finally {
+    const archived = await page.request.patch(`/api/profiles/${owner}`, { data: { status: "Archived" } });
+    expect(archived.status(), await archived.text()).toBe(200);
+  }
+});
+
+test("Sportsbook workbench replaces the ledger and keeps its controls contained at narrow widths", async ({ page }, info) => {
+  test.setTimeout(90_000);
+  for (const [width, theme] of [[1440, "light"], [900, "dark"], [390, "light"]] as const) {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.evaluate(value => { localStorage.setItem("openforge-theme", value); document.documentElement.dataset.theme = value; }, theme);
+    await page.goto("/design-lab");
+    await page.locator('[data-pd-id="lab.nav.sportsbook"]').click();
+    await page.locator('[data-pd-id="lab.add.modal"]').click();
+    await page.getByRole("button", { name: "Open full workbench" }).click();
+    await page.setViewportSize({ width, height: 900 });
+    await page.screenshot({ path: info.outputPath(`sportsbook-lab-${width}-${theme}.png`) });
+    await page.goto(ledger);
+    await expect(page.locator(".ledger-loading-overlay")).toHaveCount(0, { timeout: 45_000 });
+    await page.locator('[data-pd-id="sportsbook.toolbar.add-row"]').click();
+    const surface = page.locator('[data-pd-id="sportsbook.editor.workbench-surface"]');
+    await expect(surface).toBeVisible();
+    await expect(page.locator('[data-pd-id="sportsbook.design-screen"]')).toHaveCount(0);
+    const setupFieldsetBorder = await surface.locator('.editor-section .section-fieldset').first().evaluate(element => getComputedStyle(element).borderTopWidth);
+    expect(setupFieldsetBorder).toBe("0px");
+    const geometry = await surface.evaluate(element => {
+      const bounds = element.getBoundingClientRect();
+      const body = element.querySelector(".workflow-editor-body")!;
+      const footer = element.querySelector(".workflow-editor-footer")?.getBoundingClientRect();
+      return { left: bounds.left, right: bounds.right, width: bounds.width, bodyScrolls: body.scrollHeight > body.clientHeight, pageOverflow: document.documentElement.scrollWidth - innerWidth,
+        footerBottom: footer?.bottom ?? Infinity, viewportHeight: innerHeight };
+    });
+    expect(geometry.left).toBeGreaterThanOrEqual(0);
+    expect(geometry.right).toBeLessThanOrEqual(width + 1);
+    expect(geometry.pageOverflow).toBeLessThanOrEqual(1);
+    expect(geometry.bodyScrolls).toBe(true);
+    expect(geometry.footerBottom).toBeLessThanOrEqual(geometry.viewportHeight + 1);
+    for (const button of await surface.locator('[data-pd-id="sportsbook.editor.actions"] button:visible').all()) {
+      const bounds = await button.boundingBox();
+      expect(bounds?.y ?? Infinity).toBeGreaterThanOrEqual(0);
+      expect((bounds?.y ?? Infinity) + (bounds?.height ?? Infinity)).toBeLessThanOrEqual(geometry.viewportHeight + 1);
+    }
+    await page.screenshot({ path: info.outputPath(`sportsbook-v2-${width}-${theme}.png`) });
+    await surface.getByRole("button", { name: "Close sportsbook editor" }).click();
+    await expect(surface).toHaveCount(0);
+  }
 });
 
 test("native Sportsbook keeps governed row commands behind a compact action surface", async ({ page }) => {
@@ -181,7 +414,7 @@ test("native Sportsbook keeps governed row commands behind a compact action surf
   await expect(menu).toHaveCount(0);
   await expect(row.getByRole("button", { name: "More actions for CP117-CELL-001" })).toBeFocused();
   await row.getByRole("button", { name: "Open CP117-CELL-001" }).click();
-  await expect(page.getByRole("dialog", { name: "Edit sportsbook row" })).toBeVisible();
+  await expect(page.locator('[data-pd-id="sportsbook.editor.workbench-surface"]')).toBeVisible();
 });
 
 for (const item of [

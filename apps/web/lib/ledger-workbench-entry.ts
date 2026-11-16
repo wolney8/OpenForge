@@ -5,8 +5,8 @@ export function sportsbookWorkbenchEntry(input: {
   matchStrategy: string;
   setupComplete: boolean;
 }): "setup" | "matching" | "placement" | "settlement" {
-  if (!input.setupComplete) return "setup";
   if (["Settled", "Void", "Cancelled", "Free Bet Awarded"].includes(input.status)) return "settlement";
+  if (!input.setupComplete) return "setup";
   if (input.status !== "Placed") return "matching";
   if (input.matchStrategy === "Partial Lay" && input.layStatus !== "Fully Laid") return "placement";
   if (input.matchStrategy !== "No Lay" && input.layStatus !== "Fully Laid") return "matching";

@@ -6,6 +6,7 @@ import { canCasinoInlineScalarEdit } from "@/components/casino-offer-workflow-sh
 import { getFreeBetInputErrors } from "@/lib/free-bet-input";
 import { normalizeAccountAccessChannels } from "@/lib/account-access-channels";
 import { fromDateTimeLocalValue } from "@/lib/date-format";
+import { sportsbookPlanningFieldEditable } from "@/lib/sportsbook-inline-eligibility";
 
 type ScalarField = { key: string; label: string; maxLength: number; required?: boolean };
 
@@ -14,6 +15,8 @@ const fields: Partial<Record<CombinedLedgerModule, Record<string, ScalarField>>>
   "sportsbook-bets": {
     event_name: { key: "event_name", label: "Event name", maxLength: 200, required: true },
     offer_name: { key: "offer_name", label: "Campaign Tag", maxLength: 200 },
+    bookmaker: { key: "bookmaker", label: "Bookmaker", maxLength: 200, required: true },
+    date_settled: { key: "date_settled", label: "Settles", maxLength: 60 },
   },
   "free-bets": {
     event_name: { key: "event_name", label: "Event name", maxLength: 200 },
@@ -44,6 +47,7 @@ export function ownedScalarField(module: CombinedLedgerModule, column: string, r
   if (!field) return null;
   const status = String(record.status ?? "");
   if (module === "sportsbook-bets" && ["Settled", "Void", "Cancelled", "Free Bet Awarded"].includes(status)) return null;
+  if (module === "sportsbook-bets" && ["bookmaker", "date_settled"].includes(column) && !sportsbookPlanningFieldEditable(record)) return null;
   if ((module === "free-bets" || module === "casino-offers") && status === "Settled") return null;
   // The native Free Bet Save also validates award, placement and commission
   // dependencies. Keep those lifecycle rows in the populated native editor.
@@ -127,7 +131,7 @@ export async function commitOwnedScalar({ module, profileId, recordId, column, e
   if (!ownedScalarField(module, column, current)) throw new Error("This row now requires its native review or correction workflow.");
   // A previous PUT may have succeeded while its response was lost. The fresh
   // authoritative read confirms that result without producing a second audit write.
-  const preparedValue = column === "expiry_datetime" ? fromDateTimeLocalValue(value) : value;
+  const preparedValue = column === "expiry_datetime" || column === "date_settled" ? fromDateTimeLocalValue(value) : value;
   if (String(current[column] ?? "") === preparedValue) return current;
   if (String(current[column] ?? "") !== expected) throw new Error("This field changed elsewhere. Reload the ledger and review its current value.");
   const saved = await fetch(endpoint, {

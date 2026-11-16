@@ -28,7 +28,10 @@ for (const [route, prefix] of owned) {
     await expect(opener).toBeEnabled();
     await expect(page.locator('[data-pd-id="ledger.floating-editor"]')).toHaveCount(0);
     await opener.click();
-    await expect(page.locator('[role="dialog"][aria-modal="true"]')).toHaveCount(1);
+    if (route === "sportsbook-bets") {
+      await expect(page.locator('[data-pd-id="sportsbook.editor.workbench-surface"]')).toHaveCount(1);
+      await expect(page.locator('[role="dialog"][aria-modal="true"]')).toHaveCount(0);
+    } else await expect(page.locator('[role="dialog"][aria-modal="true"]')).toHaveCount(1);
   });
 }
 
@@ -105,7 +108,10 @@ for (const [route] of owned) {
     await expect(page.locator('[role="dialog"][aria-modal="true"]')).toHaveCount(0);
     await opener.click();
     await expect(page).toHaveURL(/\/profiles\/[^/]+\/tracker\//);
-    await expect(page.locator('[role="dialog"][aria-modal="true"]')).toHaveCount(1);
+    if (route === "sportsbook-bets") {
+      await expect(page.locator('[data-pd-id="sportsbook.editor.workbench-surface"]')).toHaveCount(1);
+      await expect(page.locator('[role="dialog"][aria-modal="true"]')).toHaveCount(0);
+    } else await expect(page.locator('[role="dialog"][aria-modal="true"]')).toHaveCount(1);
   });
 }
 
@@ -233,15 +239,22 @@ test("combined Account Access Channels uses its compact native authority and ret
   expect(source).toBeTruthy();
   const recordId = String(source!.account_id);
   const originalChannels = source!.access_channels as string[];
-  const added = originalChannels.includes("Mobile") ? "Retail" : "Mobile";
+  // Earlier integration cases may already have added every compatible channel.
+  // Toggle a known channel so this test remains isolated from suite order.
+  const changedChannel = "Mobile";
+  const shouldInclude = !originalChannels.includes(changedChannel);
   await page.goto(`/tracker/accounts?q=${encodeURIComponent(recordId)}`);
   const cell = page.locator(`[data-pd-id="combined.accounts.table-scroll"] td[data-ledger-row="profile-demo-001::${recordId}"][data-ledger-column="channel"]`);
   await expect(cell).toBeVisible();
   await cell.dblclick();
   const editor = page.locator('[data-pd-id="ledger.floating-editor"]');
   await expect(editor.locator('[data-pd-id="combined.accounts.cell-editor.channel"]')).toBeVisible();
-  await editor.getByRole("button", { name: "Show all access channels options" }).click();
-  await editor.getByRole("option", { name: added }).click();
+  if (shouldInclude) {
+    await editor.getByRole("button", { name: "Show all access channels options" }).click();
+    await editor.getByRole("option", { name: changedChannel }).click();
+  } else {
+    await editor.getByRole("button", { name: `Remove ${changedChannel}` }).click();
+  }
   let rejectOnce = true;
   await page.route(`**/profiles/profile-demo-001/accounts/${recordId}`, async route => {
     if (route.request().method() === "PUT" && rejectOnce) {
@@ -252,16 +265,18 @@ test("combined Account Access Channels uses its compact native authority and ret
   await editor.getByRole("button", { name: "Apply access channels" }).click();
   await expect(editor).toBeVisible();
   await expect(editor.getByRole("alert")).toContainText(/Synthetic retry|not confirmed|not saved/i);
-  await expect(editor.locator('[data-pd-id="combined.accounts.cell-editor.channel"]')).toContainText(added);
+  await expect(editor.getByRole("button", { name: `Remove ${changedChannel}` })).toHaveCount(shouldInclude ? 1 : 0);
   await editor.getByRole("button", { name: "Apply access channels" }).click();
   await expect(editor).toHaveCount(0);
   const savedResponse = await page.request.get(`${endpoint}/${recordId}`);
   expect(savedResponse.ok()).toBe(true);
   const saved = await savedResponse.json() as Record<string, unknown>;
-  expect(saved.access_channels).toContain(added);
+  expect((saved.access_channels as string[]).includes(changedChannel)).toBe(shouldInclude);
   for (const key of ["profile_id", "account_id", "current_balance", "pending_withdrawal_amount", "last_balance_update", "status", "lifecycle_status"]) expect(saved[key]).toEqual(source![key]);
   await page.reload();
-  await expect(page.locator(`[data-pd-id="combined.accounts.table-scroll"] td[data-ledger-row="profile-demo-001::${recordId}"][data-ledger-column="channel"]`)).toContainText(added);
+  const reloadedCell = page.locator(`[data-pd-id="combined.accounts.table-scroll"] td[data-ledger-row="profile-demo-001::${recordId}"][data-ledger-column="channel"]`);
+  if (shouldInclude) await expect(reloadedCell).toContainText(changedChannel);
+  else await expect(reloadedCell).not.toContainText(changedChannel);
 });
 
 test("Opportunities Quick Capture chooses an owner and continues the existing unsaved draft", async ({ page }) => {
@@ -278,6 +293,6 @@ test("Opportunities Quick Capture chooses an owner and continues the existing un
   await expect(page.locator('[data-pd-id="sportsbook.quick-capture.dialog"]')).toBeVisible();
   await page.locator('[data-pd-id="sportsbook.quick-capture.offer-text"]').fill("Synthetic advisory wording");
   await page.getByRole("button", { name: "Open full workbench" }).click();
-  await expect(page.getByRole("dialog", { name: /Create sportsbook row/i }).getByLabel("Offer", { exact: true })).toHaveValue("Synthetic advisory wording");
-  await expect(page.locator('[role="dialog"][aria-modal="true"]')).toHaveCount(1);
+  await expect(page.locator('[data-pd-id="sportsbook.editor.workbench-surface"]').getByLabel("Offer", { exact: true })).toHaveValue("Synthetic advisory wording");
+  await expect(page.locator('[role="dialog"][aria-modal="true"]')).toHaveCount(0);
 });

@@ -2,6 +2,15 @@
 
 Complete this for every feature, bug fix, component, fixture-backed UI, route or page change.
 
+## CP-117 rejected Sportsbook workbench and typed cells — 2026-11-16 / #118
+
+- [x] Registered PD-PR-117A-121–123; captured two failing-before browser cases for the legacy modal and missing datetime control.
+- [x] Reused the approved financial-workbench header, rail, columns and footer in an application-level V2 surface. The original primary modal remains for flag-OFF rollback; legitimate Quick Capture and financial confirmation dialogs remain separate.
+- [x] Reused native Profile-owned Save preparation for Bookmaker and Settles on eligible planning rows; combined scope uses its existing fresh owning-Profile read, stale-field check and governed Save. No financial formula or API changed.
+- [x] Verified disposable persisted owned/combined Bookmaker and datetime edits, rejected Save/retry, calculated-field protection, one-editor mount, responsive Lab/V2 captures and actual Chromium 200% focus containment.
+- [x] Final-source synthetic V2 integration 138 passed/five expected skips; complete visual 266/266 after correcting stale modal and reused-fixture assertions; flag-OFF rollback 9/9; web units 748/748; typecheck/build passed; changed-source lint zero errors/seven existing warnings. Paired Lab/V2 captures and workbench videos are indexed privately. Owner Design/Interaction Acceptance and manual spoken screen-reader review remain separate.
+- [ ] Record the exact committed/pushed web revision and restored localhost:3010 runtime after the verified source checkpoint.
+
 ## CP-117 persistent Today selection — 2026-11-15 / #118
 
 - [x] Registered PD-PR-117A-119/120; reproduced lost selected tint in both themes and stale selection after search filter reset before correcting them.

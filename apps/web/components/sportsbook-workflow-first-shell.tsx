@@ -13,6 +13,7 @@ import { readLayPlan, type LayPlan } from "@/lib/lay-plan";
 import { getMoneyInputErrors } from "@/lib/decimal-input";
 import { hasNewerFormEdits, reconcileSavedForm } from "@/lib/latest-edit";
 import { isOnlyFieldChange } from "@/lib/field-change";
+import { sportsbookPlanningFieldEditable } from "@/lib/sportsbook-inline-eligibility";
 
 import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import type { MouseEvent as ReactMouseEvent, ReactNode, SetStateAction } from "react";
@@ -58,7 +59,8 @@ import {
   useBookmakerCatalogue,
 } from "@/components/bookmaker-identity";
 import { EditorSection } from "@/components/editor-section";
-import { DesignFinancialOutcomeSurface, DesignFinancialWorkbenchAside, DesignFinancialWorkbenchColumns, DesignFinancialWorkbenchFooter, DesignFinancialWorkbenchHeader, financialWorkbenchHeaderClass, financialWorkbenchModalClass, financialWorkbenchPrimaryActionClass, financialWorkbenchSecondaryActionClass } from "@/components/design-financial-workbench-layout";
+import { DesignFinancialOutcomeSurface, DesignFinancialWorkbenchFooter, DesignFinancialWorkbenchHeader, financialWorkbenchHeaderClass, financialWorkbenchSurfaceClass, financialWorkbenchPrimaryActionClass, financialWorkbenchSecondaryActionClass } from "@/components/design-financial-workbench-layout";
+import { DesignBetWorkbenchContext, DesignBetWorkbenchGrid, DesignBetWorkbenchSummary, designBetWorkbenchEntryClass } from "@/components/design-bet-workbench-presentation";
 import { EditorValidationBanner } from "@/components/editor-validation-banner";
 import { FinancialValue, FinancialValueReplayRow } from "@/components/financial-value";
 import { FinancialHistoryPanel } from "@/components/financial-history-panel";
@@ -109,7 +111,7 @@ import {
 import { getLookupValuesByType, type LookupValueRecord } from "@/lib/lookup-values";
 import { getSettlementTabAttentionState, type LedgerEditorTabDefinition } from "@/lib/ledger-editor-tabs";
 import { sportsbookWorkbenchEntry } from "@/lib/ledger-workbench-entry";
-import { ledgerCellCapability, ledgerCellReviewReason } from "@/lib/ledger-cell-capabilities";
+import { ledgerCellDecision } from "@/lib/ledger-cell-capabilities";
 import {
   getSpecialOfferBookmakerSuggestion,
   resolveKnownBookmakerCoverage,
@@ -160,7 +162,24 @@ import {
   sportsbookStatusOptions,
 } from "@/lib/workbook-options";
 
-const inlineCellFields = {"event_name": {"key": "event_name", "label": "Event name"}, "offer_name": {"key": "offer_name", "label": "Campaign Tag"}} as const;
+const inlineCellFields = {
+  event_name: { key: "event_name", label: "Event name", type: "text" },
+  offer_name: { key: "offer_name", label: "Campaign Tag", type: "text" },
+  bookmaker: { key: "bookmaker", label: "Bookmaker", type: "enum" },
+  date_settled: { key: "date_settled", label: "Settles", type: "datetime" },
+} as const;
+
+function canInlineSportsbookField(record: SportsbookRecord | undefined, column: string): boolean {
+  if (!record || !(column in inlineCellFields)) return false;
+  if (["Settled", "Void", "Cancelled", "Free Bet Awarded"].includes(record.status)) return false;
+  if (["bookmaker", "date_settled"].includes(column)) return sportsbookPlanningFieldEditable(record as unknown as Record<string, unknown>);
+  return true;
+}
+
+function SportsbookWorkbenchHost({ visualV2, onDismiss, children }: { visualV2: boolean; onDismiss: () => void; children: ReactNode }) {
+  if (visualV2) return <>{children}</>;
+  return <ModalBoundary onDismiss={onDismiss}><div className="modal-backdrop" onClick={onDismiss}>{children}</div></ModalBoundary>;
+}
 
 const validSportsbookStrategyValues = new Set([
   "Standard",
@@ -3211,28 +3230,48 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     [visibleColumnKeys]
   );
 
-  const hasOpenModal = (workflowVisible && !cellEditor.active) || isFilterModalOpen || Boolean(outcomeModalState);
+  const hasOpenModal = (workflowVisible && !cellEditor.active && (!visualV2 || quickCaptureOpen)) || isFilterModalOpen || Boolean(outcomeModalState);
 
   useToastDismiss(statusMessage, clearStatusMessage);
   useBodyScrollLock(hasOpenModal);
-  useDialogFocusLifecycle(workflowVisible && !cellEditor.active && !quickCaptureOpen, editorRef);
+  useDialogFocusLifecycle(workflowVisible && !visualV2 && !cellEditor.active && !quickCaptureOpen, editorRef);
 
   const revealEditor = useCallback(
     (options?: { expandLedger?: boolean }) => {
       if (options?.expandLedger ?? true) {
         setTableCollapsed(false);
       }
-      scrollToElementTopAfterRender(() => editorRef.current);
+      if (visualV2) window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
+        editorRef.current?.querySelector<HTMLElement>('[data-pd-financial-header="true"] button')?.focus({ preventScroll: true });
+      }));
+      else scrollToElementTopAfterRender(() => editorRef.current);
     },
-    [setTableCollapsed]
+    [setTableCollapsed, visualV2]
   );
 
   useTrackerRouteReselect(() => {
     setTableCollapsed(false);
     if (workflowVisible) {
-      scrollToElementTopAfterRender(() => editorRef.current);
+      if (visualV2) {
+        const surface = editorRef.current?.getBoundingClientRect();
+        const overflow = surface ? surface.bottom - window.innerHeight : 0;
+        window.scrollTo({ top: overflow > 0 ? window.scrollY + overflow : 0, behavior: "instant" });
+      }
+      else scrollToElementTopAfterRender(() => editorRef.current);
     }
   });
+
+  useEffect(() => {
+    if (!visualV2 || !workflowVisible || quickCaptureOpen || cellEditor.active) return;
+    // The page workbench mounts after the row selection. Align it after that
+    // render so short 200% zoom viewports still expose its governed actions.
+    const frame = window.requestAnimationFrame(() => {
+      const bounds = editorRef.current?.getBoundingClientRect();
+      if (!bounds) return;
+      window.scrollTo({ top: Math.max(0, window.scrollY + bounds.bottom - window.innerHeight), behavior: "instant" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [visualV2, workflowVisible, quickCaptureOpen, cellEditor.active]);
 
   useEffect(() => {
     selectedIdRef.current = selectedId;
@@ -5438,7 +5477,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     if (!record) {
       return;
     }
-    protectedGridReturnFocusRef.current = options?.returnFocus ?? null;
+    protectedGridReturnFocusRef.current = options?.returnFocus ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
     resetPayoutOddsHelper();
     if (options?.cell && !["Settled", "Void", "Cancelled", "Free Bet Awarded"].includes(record.status)) cellEditor.start(options.cell.column, options.cell.anchor); else cellEditor.close();
     setSelectedId(rowId);
@@ -5493,7 +5532,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       return;
     }
     resetPayoutOddsHelper();
-    protectedGridReturnFocusRef.current = null;
+    protectedGridReturnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setSelectedId(null);
     setSelectedGridRowId(null);
     setProtectedGridCell(null);
@@ -5530,6 +5569,21 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     openInitialCreate();
   }, [initialCreate, isInitialLoading]);
 
+  function restoreEditorReturnFocus() {
+    const returnFocus = protectedGridReturnFocusRef.current;
+    protectedGridReturnFocusRef.current = null;
+    if (returnFocus) requestAnimationFrame(() => {
+      const row = returnFocus.closest<HTMLElement>("[data-ledger-row]") ?? (returnFocus.hasAttribute("data-ledger-row") ? returnFocus : null);
+      const column = returnFocus.closest<HTMLElement>("[data-ledger-column]") ?? (returnFocus.hasAttribute("data-ledger-column") ? returnFocus : null);
+      const matchingCell = row && column ? [...document.querySelectorAll<HTMLElement>("[data-ledger-row][data-ledger-column]")].find(cell =>
+        cell.dataset.ledgerRow === row.dataset.ledgerRow && cell.dataset.ledgerColumn === column.dataset.ledgerColumn) : null;
+      const restored = returnFocus.isConnected ? returnFocus : matchingCell
+        ? returnFocus === column ? matchingCell : [...matchingCell.querySelectorAll<HTMLElement>("button,[tabindex]")].find(item => item.getAttribute("aria-label") === returnFocus.getAttribute("aria-label")) ?? matchingCell
+        : [...document.querySelectorAll<HTMLElement>("[data-pd-id]")].find(item => item.dataset.pdId === returnFocus.dataset.pdId) ?? null;
+      restored?.focus({ preventScroll: true });
+    });
+  }
+
   async function closeEditor() {
     if (isPersistingRef.current) return;
     if (hasPendingEditorChanges && !(await confirmDiscardChanges())) {
@@ -5545,10 +5599,19 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     isCreatingDraftRef.current = false;
     setTableCollapsed(false);
     setStatusMessage("");
-    const returnFocus = protectedGridReturnFocusRef.current;
-    protectedGridReturnFocusRef.current = null;
-    if (returnFocus) window.setTimeout(() => { if (returnFocus.isConnected) returnFocus.focus({ preventScroll: true }); }, 0);
+    restoreEditorReturnFocus();
   }
+
+  const onWorkbenchEscape = useEffectEvent((event: KeyboardEvent) => {
+    if (event.key !== "Escape" || event.defaultPrevented || document.querySelector('[role="dialog"][aria-modal="true"]')) return;
+    event.preventDefault();
+    void closeEditor();
+  });
+  useEffect(() => {
+    if (!visualV2 || !workflowVisible || quickCaptureOpen || cellEditor.active) return;
+    document.addEventListener("keydown", onWorkbenchEscape);
+    return () => document.removeEventListener("keydown", onWorkbenchEscape);
+  }, [visualV2, workflowVisible, quickCaptureOpen, cellEditor.active]);
 
   function canPersistForm(
     nextFormState: SportsbookFormState,
@@ -5800,6 +5863,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       ignoreInitialRecordIdRef.current = true;
       isCreatingDraftRef.current = false;
       setTableCollapsed(false);
+      restoreEditorReturnFocus();
     }
     return true;
   }
@@ -6987,13 +7051,14 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
     const value = String(row[column.key] ?? "").trim() || "—";
 
     if (column.key === "bookmaker") {
+      const identity = <BookmakerIdentity
+        bookmaker={value}
+        catalogueId={catalogueIdForBookmaker(providerIdsByName, value)}
+        catalogue={bookmakerCatalogue}
+        mode="Brand badge"
+      />;
       return (
-        <AccountReviewButton profileId={profileId} accounts={accountAuthorities} accountName={value}><BookmakerIdentity
-          bookmaker={value}
-          catalogueId={catalogueIdForBookmaker(providerIdsByName, value)}
-          catalogue={bookmakerCatalogue}
-          mode="Brand badge"
-        /></AccountReviewButton>
+        visualV2 ? identity : <AccountReviewButton profileId={profileId} accounts={accountAuthorities} accountName={value}>{identity}</AccountReviewButton>
       );
     }
 
@@ -7198,6 +7263,145 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
         </section>
   );
 
+  const editorFooter = (
+            <DesignFinancialWorkbenchFooter className="field-span-2 workflow-editor-footer" data-pd-id="sportsbook.editor.actions" enabled={visualV2}>
+              {errorMessage ? <p className="field-validation-text" data-pd-id="sportsbook.editor.save-error" role="alert">{errorMessage}</p> : null}
+              {selectedId && settledDeleteGuardRowId === selectedId ? (
+                <LedgerSettledDeleteGuard
+                  disabled={isPersisting}
+                  ledgerLabel="sportsbook"
+                  onCancel={() => {
+                    setSettledDeleteGuardRowId(null);
+                    setSettledDeleteReason("");
+                  }}
+                  onConfirm={() =>
+                    void handleDeleteSelectedRow(selectedId, {
+                      confirmedSettledReason: settledDeleteReason,
+                    })
+                  }
+                  onReasonChange={setSettledDeleteReason}
+                  reason={settledDeleteReason}
+                  rowLabel={selectedId}
+                />
+              ) : null}
+	              <div className="tracker-nav workflow-editor-footer-primary">
+	                {isSettledReadOnly ? (
+	                  <button
+	                    aria-label="Close sportsbook editor"
+	                    className="review-chip"
+	                    onClick={() => void closeEditor()}
+	                    type="button"
+	                  >
+	                    Close
+	                  </button>
+	                ) : (
+	                  <>
+	                    <button
+	                      className={`review-chip${visualV2 ? ` ${financialWorkbenchPrimaryActionClass}` : " review-chip-copy"}`}
+	                      form={visualV2 ? "sportsbook-workbench-form" : undefined}
+	                      disabled={
+	                        isInitialLoading ||
+	                        isPersisting ||
+	                        (corePlanPending && coreIsDirty && !isNotesOnlyExistingEdit) ||
+	                        !isDirty ||
+	                        (hasSettledFinancialCorrection(formState, pristineFormState) &&
+	                          !formState.correction_reason?.trim()) ||
+	                        (hasInvalidOddsInput && coreIsDirty && !isNotesOnlyExistingEdit)
+	                      }
+	                      type="submit"
+	                    >
+	                      {isPersisting ? <span aria-hidden="true" className="button-spinner" /> : null}
+	                      {isPersisting ? "Saving" : settledEditEnabled ? "Save Edits" : "Save"}
+	                    </button>
+                      {settledEditEnabled ? (
+                        <button
+                          className="review-chip"
+                          disabled={isPersisting}
+                          onClick={handleCancelSettledEdit}
+                          type="button"
+                        >
+                          Cancel
+                        </button>
+                      ) : null}
+	                    {selectedId ? (
+	                      <button
+	                        className="review-chip review-chip-danger"
+	                        disabled={isPersisting || Boolean(selectedSportsbookRow && isFreeBetAwardingOffer(selectedSportsbookRow.offer_type) && ["Placed", "Settled", "Free Bet Awarded"].includes(selectedSportsbookRow.status))}
+	                        onClick={() => void handleDeleteSelectedRow()}
+	                        type="button"
+	                      >
+	                        {isPersisting ? <span aria-hidden="true" className="button-spinner" /> : null}
+	                        {isPersisting ? "Deleting" : "Delete"}
+	                      </button>
+	                    ) : null}
+	                    <button className="review-chip" onClick={() => void handleResetForm()} type="button">
+	                      Revert
+	                    </button>
+		                {showFreeBetBridgeFooterAction ? (
+		                  <>
+		                    <span aria-hidden="true" className="workflow-editor-footer-divider" />
+		                    <button
+		                      aria-label="Create free bet from sportsbook row"
+		                      className="review-chip review-chip-action-bridge"
+		                      disabled={
+		                        isFreeBetBridgeSubmitting ||
+		                        Boolean(
+		                          freeBetBridgeModalState
+		                            ? getFreeBetBridgeValidationMessage(freeBetBridgeModalState)
+		                            : null
+		                        )
+		                      }
+		                      onClick={() => void handleFreeBetBridgeFooterAction()}
+		                      type="button"
+		                    >
+		                      {isFreeBetBridgeSubmitting ? <span aria-hidden="true" className="button-spinner" /> : null}
+		                      {isFreeBetBridgeSubmitting
+		                        ? "Creating Free Bet"
+		                        : freeBetBridgeComplete
+		                          ? "Create Another Free Bet"
+		                          : freeBetBridgeModalState?.splits.length === 1
+		                            ? "Create Free Bet"
+		                            : `Create ${freeBetBridgeModalState?.splits.length ?? 0} Free Bets`}
+		                    </button>
+		                  </>
+		                ) : null}
+	                  </>
+	                )}
+		              </div>
+	              <div
+	                aria-label="Editor tab navigation"
+	                className="tracker-nav workflow-editor-footer-nav"
+	                data-pd-id="sportsbook.editor.footer-tab-actions"
+	                role="group"
+	              >
+	                <button
+	                  className="review-chip review-chip-action-previous"
+	                  disabled={!previousEditorTab}
+	                  onClick={() => {
+	                    if (previousEditorTab) {
+	                      activateEditorTab(previousEditorTab.id as SportsbookEditorTabId);
+	                    }
+	                  }}
+	                  type="button"
+	                >
+	                  Previous
+	                </button>
+	                <button
+	                  className="review-chip review-chip-action-next"
+	                  disabled={!nextEditorTab}
+	                  onClick={() => {
+	                    if (nextEditorTab) {
+	                      activateEditorTab(nextEditorTab.id as SportsbookEditorTabId);
+	                    }
+	                  }}
+	                  type="button"
+	                >
+	                  Next
+	                </button>
+	              </div>
+	            </DesignFinancialWorkbenchFooter>
+  );
+
   return (
     <section className="stack">
       {feeReviewContext ? (
@@ -7210,7 +7414,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       {!workflowVisible || cellEditor.active ? (
         <StatusToast message={statusMessage} onDismiss={clearStatusMessage} />
       ) : null}
-      <section
+      {(!visualV2 || !workflowVisible || cellEditor.active || quickCaptureOpen) ? <section
         aria-busy={isInitialLoading}
         className={visualV2 ? "stack sportsbook-page-shell ledger-v2-page" : "content-panel stack sportsbook-page-shell"}
       >
@@ -7307,7 +7511,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
             {visualV2 ? <DesignLedgerNarrowToggle expanded={mobileDetail} onToggle={() => setMobileDetail(value => !value)} /> : null}
             <LedgerTableScroll dataPdId="sportsbook.table-scroll" visualV2={visualV2} narrowDetail={visualV2 && mobileDetail} cellNavigation={{ label: "Sportsbook", onSelect: visualV2 ? setSelectedGridRowId : undefined, onActivate: (rowId, column, anchor) => {
               const record = rows.find(entry => entry.sportsbook_bet_id === rowId);
-              if (visualV2 && (!(column in inlineCellFields) || !record || ["Settled", "Void", "Cancelled", "Free Bet Awarded"].includes(record.status))) { setProtectedGridCell({ rowId, column, anchor }); return; }
+              if (visualV2 && !canInlineSportsbookField(record, column)) { setProtectedGridCell({ rowId, column, anchor }); return; }
               void selectRow(rowId, { cell: column in inlineCellFields ? { column, anchor } : undefined });
             } }}>
               <table className="data-table sportsbook-data-table">
@@ -7460,7 +7664,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                 </tbody>
               </table>
             </LedgerTableScroll>
-            {visualV2 && protectedGridCell ? <p className="field-hint" data-pd-id="sportsbook.protected-cell" role="status">{tableColumns.find(column => column.key === protectedGridCell.column)?.label ?? protectedGridCell.column}: {ledgerCellReviewReason(ledgerCellCapability("sportsbook-bets", protectedGridCell.column))} <button className="button-link" onClick={() => void selectRow(protectedGridCell.rowId, { returnFocus: protectedGridCell.anchor })} type="button">Open bet for review</button></p> : null}
+            {visualV2 && protectedGridCell ? <p className="field-hint" data-pd-id="sportsbook.protected-cell" role="status">{tableColumns.find(column => column.key === protectedGridCell.column)?.label ?? protectedGridCell.column}: {ledgerCellDecision("sportsbook-bets", protectedGridCell.column, (rows.find(row => row.sportsbook_bet_id === protectedGridCell.rowId) ?? {}) as unknown as Record<string, unknown>, false).reason} <button className="button-link" onClick={() => void selectRow(protectedGridCell.rowId, { returnFocus: protectedGridCell.anchor })} type="button">Open bet for review</button></p> : null}
             {visualV2 ? <DesignLedgerMobileRows dataPdId="sportsbook.labelled-details" expanded={mobileDetail} rows={pagedRows.map(row => {
               const rowId = String(row.sportsbook_bet_id ?? "");
               return { id: rowId, title: String(row.event_name ?? "").trim() || rowId, status: String(row.status ?? ""), subtitle: String(row.offer_name ?? "").trim(), fields: sportsbookTableColumns.filter(column => column.key !== "actions").map(column => ({ key: column.key, label: column.label, value: renderTableCell(row, column) })), onOpen: () => void selectRow(rowId) };
@@ -7482,7 +7686,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
         ) : null}
         </DesignLedgerScreen>
         {visualV2 ? quickViewPanel : null}
-      </section>
+      </section> : null}
 
       {isFilterModalOpen ? (
         <div className="modal-backdrop" onClick={() => setIsFilterModalOpen(false)}>
@@ -7831,23 +8035,23 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       ) : null}
 
       {workflowVisible && cellEditor.session && inlineField ? <LedgerFloatingCellEditor compact session={cellEditor.session} ledger="Sportsbook" label={inlineField.label} dirty={isDirty} pending={isPersisting} error={errorMessage || statusMessage} onSave={async () => { const saved = await saveEditorDraft(true); if (saved) cellEditor.close(); return saved; }} onCancel={() => { handleResetForm(); setWorkflowVisible(false); setSelectedId(null); selectedIdRef.current = null; cellEditor.close(); }} onReview={() => { cellEditor.close(); revealEditor(); }}>
-        <label><span className="sr-only">{inlineField.label}</span><input className={designFloatingCellInputClass} data-pd-id={`sportsbook.cell-editor.${inlineField.key}`} aria-label={inlineField.label} value={formState[inlineField.key]} onChange={event => { setErrorMessage(""); setFormState(current => ({ ...current, [inlineField.key]: event.target.value })); }} type="text" /></label>
+        <label><span className="sr-only">{inlineField.label}</span>{inlineField.type === "enum" ? <select className={designFloatingCellInputClass} data-pd-id={`sportsbook.cell-editor.${inlineField.key}`} aria-label={inlineField.label} value={formState.bookmaker} onChange={event => { setErrorMessage(""); setFormState(current => ({ ...current, bookmaker: event.target.value })); }}><option value="">Select bookmaker</option>{bookmakerOptions.map(option => <option key={option} value={option}>{option}</option>)}</select> : <input className={designFloatingCellInputClass} data-pd-id={`sportsbook.cell-editor.${inlineField.key}`} aria-label={inlineField.label} value={formState[inlineField.key]} onChange={event => { setErrorMessage(""); setFormState(current => ({ ...current, [inlineField.key]: event.target.value })); }} type={inlineField.type === "datetime" ? "datetime-local" : "text"} />}</label>
       </LedgerFloatingCellEditor> : null}
       {workflowVisible && quickCaptureOpen && !cellEditor.active ? <ModalBoundary onDismiss={() => void closeEditor()}><div className="modal-backdrop" onClick={() => void closeEditor()}><section aria-label="Quick Capture Sportsbook offer" aria-modal="true" className={labStyles.entryModal} data-pd-id="sportsbook.quick-capture.dialog" onClick={event => event.stopPropagation()} role="dialog"><div className={labStyles.modalHead}><h2>Quick Capture</h2><button aria-label="Close quick capture" className={labStyles.secondaryButton} onClick={() => void closeEditor()} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button></div><div className={labStyles.modalBody}><div className={labStyles.entry}><div className={labStyles.entryTop}><div><strong>Sportsbook offer</strong><p>Capture known details, then complete the governed bet workbench.</p></div></div><div className={labStyles.entryFields}><fieldset><legend>Offer</legend><label>Original Offer text<textarea data-pd-id="sportsbook.quick-capture.offer-text" onChange={event => setFormState(current => ({ ...current, offer_text: event.target.value }))} rows={3} value={formState.offer_text}/></label><div className={labStyles.fieldPair}><label>Bookmaker<input data-pd-id="sportsbook.quick-capture.bookmaker" onChange={event => setFormState(current => ({ ...current, bookmaker: event.target.value }))} value={formState.bookmaker}/></label><label>Offer Name<input data-pd-id="sportsbook.quick-capture.offer-name" onChange={event => setFormState(current => ({ ...current, offer_name: event.target.value }))} value={formState.offer_name}/></label><label>Event Name<input data-pd-id="sportsbook.quick-capture.event-name" onChange={event => setFormState(current => ({ ...current, event_name: event.target.value }))} value={formState.event_name}/></label></div></fieldset></div><p className="muted">These details remain an unsaved draft until the full workbench validates and saves a record.</p><div className={labStyles.entryFooter}><button className={labStyles.secondaryButton} onClick={() => void closeEditor()} type="button">Cancel</button><button className={labStyles.primaryButton} onClick={() => { setQuickCaptureOpen(false); requestAnimationFrame(() => revealEditor({ expandLedger: true })); }} type="button">Open full workbench</button></div></div></div></section></div></ModalBoundary> : null}
       {workflowVisible && !quickCaptureOpen && !cellEditor.active ? (
-        <ModalBoundary onDismiss={() => void closeEditor()}>
-        <div className="modal-backdrop" onClick={() => void closeEditor()}>
+        <SportsbookWorkbenchHost visualV2={visualV2} onDismiss={() => void closeEditor()}>
           <section
-            aria-label={selectedId ? "Edit sportsbook row" : "Create sportsbook row"}
-            aria-modal="true"
-            className={`content-panel stack workflow-editor-panel modal-panel workflow-editor-modal sportsbook-tabbed-editor-modal${visualV2 ? ` ${financialWorkbenchModalClass}` : ""}`}
-            data-pd-id="sportsbook.editor.dialog"
+            aria-label={visualV2 ? (selectedId ? "Edit Sportsbook Bet workbench" : "Add Sportsbook Bet workbench") : (selectedId ? "Edit sportsbook row" : "Create sportsbook row")}
+            aria-modal={visualV2 ? undefined : "true"}
+            className={visualV2 ? `sportsbook-v2-workbench ${designBetWorkbenchEntryClass} ${financialWorkbenchSurfaceClass}` : "content-panel stack workflow-editor-panel modal-panel workflow-editor-modal sportsbook-tabbed-editor-modal"}
+            data-pd-id={visualV2 ? "sportsbook.editor.workbench-surface" : "sportsbook.editor.dialog"}
             onClick={(event) => event.stopPropagation()}
+            onKeyDown={visualV2 ? event => { if (event.key === "Escape" && !event.defaultPrevented) { event.preventDefault(); event.stopPropagation(); void closeEditor(); } } : undefined}
             ref={editorRef}
-            role="dialog"
+            role={visualV2 ? "region" : "dialog"}
           >
             <div className={`workflow-panel-header workflow-editor-header${visualV2 ? ` ${financialWorkbenchHeaderClass}` : ""}`} data-pd-id="sportsbook.editor.header">
-              {visualV2 ? <DesignFinancialWorkbenchHeader context={selectedId ? editorHeaderTitle : "Offer first · confirm external placement in its governed stage"} eyebrow="Sportsbook workbench" title={selectedId ? "Edit Sportsbook Bet" : "Add Sportsbook Bet"} closeLabel="Close sportsbook editor" onClose={() => void closeEditor()} disabled={isPersisting} /> : <div className="stack workflow-editor-title-stack">
+              {visualV2 ? <DesignFinancialWorkbenchHeader context={selectedId ? editorHeaderTitle : "Offer first · confirm external placement in its governed stage"} eyebrow="" title={selectedId ? "Edit Sportsbook Bet" : "Add Sportsbook Bet"} closeLabel="Close sportsbook editor" onClose={() => void closeEditor()} disabled={isPersisting} /> : <div className="stack workflow-editor-title-stack">
                 <span className="eyebrow">
                   {selectedId ? "Edit sportsbook row" : "Create sportsbook row"}
                 </span>
@@ -7940,9 +8144,11 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                   <span aria-hidden="true" className="material-symbols-outlined">close</span>
                 </button>
               </div> : null}
+              {visualV2 ? <DesignBetWorkbenchContext title="Bet Workbench" context={selectedId ? `${formState.status || "Prospecting"} · ${selectedId}` : "New offer · selected Profile"} controls={!selectedId ? <button className={labStyles.linkButton} data-pd-id="sportsbook.workbench.quick-capture" onClick={() => setQuickCaptureOpen(true)} type="button">Quick Capture</button> : undefined} /> : null}
               <LedgerEditorTabRail
                 activeTabId={safeActiveEditorTabId}
                 financialWorkbench={visualV2}
+                labPageWorkbench={visualV2}
                 ariaLabel="Sportsbook editor sections"
                 guidedTargetTabId={guidedEntryVisible ? guidedEntryTargetTabId : null}
                 onActiveTabChange={(tabId) => activateEditorTab(tabId as SportsbookEditorTabId)}
@@ -7993,8 +8199,8 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
               Show guide
             </button>
           ) : null}
-          <DesignFinancialWorkbenchColumns dataPdId="sportsbook.editor.workbench" enabled={visualV2}>
-          <form className="form-grid" onSubmit={(event) => void handleSubmit(event)}>
+          <DesignBetWorkbenchGrid dataPdId="sportsbook.editor.workbench" enabled={visualV2}>
+          <form className={visualV2 ? `form-grid ${labStyles.entryFields}` : "form-grid"} data-pd-bet-workbench-fields={visualV2 || undefined} id="sportsbook-workbench-form" onSubmit={(event) => void handleSubmit(event)}>
             <LedgerEditorTabPanel activeTabId={safeActiveEditorTabId} tabId="setup">
             <EditorSection visualV2={visualV2}
               collapsible={false}
@@ -11115,154 +11321,24 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                 ) : null}
               </EditorSection>
             </LedgerEditorTabPanel>
-		            <DesignFinancialWorkbenchFooter className="field-span-2 workflow-editor-footer" data-pd-id="sportsbook.editor.actions" enabled={visualV2}>
-              {errorMessage ? <p className="field-validation-text" data-pd-id="sportsbook.editor.save-error" role="alert">{errorMessage}</p> : null}
-              {selectedId && settledDeleteGuardRowId === selectedId ? (
-                <LedgerSettledDeleteGuard
-                  disabled={isPersisting}
-                  ledgerLabel="sportsbook"
-                  onCancel={() => {
-                    setSettledDeleteGuardRowId(null);
-                    setSettledDeleteReason("");
-                  }}
-                  onConfirm={() =>
-                    void handleDeleteSelectedRow(selectedId, {
-                      confirmedSettledReason: settledDeleteReason,
-                    })
-                  }
-                  onReasonChange={setSettledDeleteReason}
-                  reason={settledDeleteReason}
-                  rowLabel={selectedId}
-                />
-              ) : null}
-	              <div className="tracker-nav workflow-editor-footer-primary">
-	                {isSettledReadOnly ? (
-	                  <button
-	                    aria-label="Close sportsbook editor"
-	                    className="review-chip"
-	                    onClick={() => void closeEditor()}
-	                    type="button"
-	                  >
-	                    Close
-	                  </button>
-	                ) : (
-	                  <>
-	                    <button
-	                      className={`review-chip${visualV2 ? ` ${financialWorkbenchPrimaryActionClass}` : " review-chip-copy"}`}
-	                      disabled={
-	                        isInitialLoading ||
-	                        isPersisting ||
-	                        (corePlanPending && coreIsDirty && !isNotesOnlyExistingEdit) ||
-	                        !isDirty ||
-	                        (hasSettledFinancialCorrection(formState, pristineFormState) &&
-	                          !formState.correction_reason?.trim()) ||
-	                        (hasInvalidOddsInput && coreIsDirty && !isNotesOnlyExistingEdit)
-	                      }
-	                      type="submit"
-	                    >
-	                      {isPersisting ? <span aria-hidden="true" className="button-spinner" /> : null}
-	                      {isPersisting ? "Saving" : settledEditEnabled ? "Save Edits" : "Save"}
-	                    </button>
-                      {settledEditEnabled ? (
-                        <button
-                          className="review-chip"
-                          disabled={isPersisting}
-                          onClick={handleCancelSettledEdit}
-                          type="button"
-                        >
-                          Cancel
-                        </button>
-                      ) : null}
-	                    {selectedId ? (
-	                      <button
-	                        className="review-chip review-chip-danger"
-	                        disabled={isPersisting || Boolean(selectedSportsbookRow && isFreeBetAwardingOffer(selectedSportsbookRow.offer_type) && ["Placed", "Settled", "Free Bet Awarded"].includes(selectedSportsbookRow.status))}
-	                        onClick={() => void handleDeleteSelectedRow()}
-	                        type="button"
-	                      >
-	                        {isPersisting ? <span aria-hidden="true" className="button-spinner" /> : null}
-	                        {isPersisting ? "Deleting" : "Delete"}
-	                      </button>
-	                    ) : null}
-	                    <button className="review-chip" onClick={() => void handleResetForm()} type="button">
-	                      Revert
-	                    </button>
-		                {showFreeBetBridgeFooterAction ? (
-		                  <>
-		                    <span aria-hidden="true" className="workflow-editor-footer-divider" />
-		                    <button
-		                      aria-label="Create free bet from sportsbook row"
-		                      className="review-chip review-chip-action-bridge"
-		                      disabled={
-		                        isFreeBetBridgeSubmitting ||
-		                        Boolean(
-		                          freeBetBridgeModalState
-		                            ? getFreeBetBridgeValidationMessage(freeBetBridgeModalState)
-		                            : null
-		                        )
-		                      }
-		                      onClick={() => void handleFreeBetBridgeFooterAction()}
-		                      type="button"
-		                    >
-		                      {isFreeBetBridgeSubmitting ? <span aria-hidden="true" className="button-spinner" /> : null}
-		                      {isFreeBetBridgeSubmitting
-		                        ? "Creating Free Bet"
-		                        : freeBetBridgeComplete
-		                          ? "Create Another Free Bet"
-		                          : freeBetBridgeModalState?.splits.length === 1
-		                            ? "Create Free Bet"
-		                            : `Create ${freeBetBridgeModalState?.splits.length ?? 0} Free Bets`}
-		                    </button>
-		                  </>
-		                ) : null}
-	                  </>
-	                )}
-		              </div>
-	              <div
-	                aria-label="Editor tab navigation"
-	                className="tracker-nav workflow-editor-footer-nav"
-	                data-pd-id="sportsbook.editor.footer-tab-actions"
-	                role="group"
-	              >
-	                <button
-	                  className="review-chip review-chip-action-previous"
-	                  disabled={!previousEditorTab}
-	                  onClick={() => {
-	                    if (previousEditorTab) {
-	                      activateEditorTab(previousEditorTab.id as SportsbookEditorTabId);
-	                    }
-	                  }}
-	                  type="button"
-	                >
-	                  Previous
-	                </button>
-	                <button
-	                  className="review-chip review-chip-action-next"
-	                  disabled={!nextEditorTab}
-	                  onClick={() => {
-	                    if (nextEditorTab) {
-	                      activateEditorTab(nextEditorTab.id as SportsbookEditorTabId);
-	                    }
-	                  }}
-	                  type="button"
-	                >
-	                  Next
-	                </button>
-	              </div>
-	            </DesignFinancialWorkbenchFooter>
+		            {!visualV2 ? editorFooter : null}
           </form>
-          {visualV2 ? <DesignFinancialWorkbenchAside dataPdId="sportsbook.editor.financial-context" title="Financial Position" facts={[
-            { label: "Bookmaker", value: formState.bookmaker || "Not selected" },
-            { label: "Status", value: formState.status || "Prospecting" },
-            { label: "Strategy", value: editorMatchStrategyLabel || "Standard" },
-            { label: "Lay", value: editorLayStatus },
-            { label: activeDisplayedValueLabel, value: activeDisplayedNumericValue === null ? "Unavailable" : formatFinancialValue(activeDisplayedNumericValue) },
-          ]}><p>Detailed outcomes and actual placement remain in their governed workflow stages.</p></DesignFinancialWorkbenchAside> : null}
-          </DesignFinancialWorkbenchColumns>
+          {visualV2 ? <DesignBetWorkbenchSummary dataPdId="sportsbook.editor.financial-context" title="Financial Position">
+            <p>{editorMatchStrategyLabel || "Standard"} · source-backed values</p>
+            <dl>{[
+              { label: "Bookmaker", value: formState.bookmaker || "Not selected" },
+              { label: "Status", value: formState.status || "Prospecting" },
+              { label: "Strategy", value: editorMatchStrategyLabel || "Standard" },
+              { label: "Lay", value: editorLayStatus },
+              { label: activeDisplayedValueLabel, value: activeDisplayedNumericValue === null ? "Unavailable" : formatFinancialValue(activeDisplayedNumericValue) },
+            ].map(fact => <div key={fact.label}><dt>{fact.label}</dt><dd>{fact.value}</dd></div>)}</dl>
+            <p>Detailed outcomes and actual placement remain in their governed workflow stages.</p>
+          </DesignBetWorkbenchSummary> : null}
+          </DesignBetWorkbenchGrid>
             </div>
+            {visualV2 ? editorFooter : null}
           </section>
-        </div>
-        </ModalBoundary>
+        </SportsbookWorkbenchHost>
       ) : null}
 
     </section>

@@ -10,12 +10,26 @@ Native cell editing uses loaded record drafts, typed controls, validation and Sa
 
 | Ledger | Supported floating fields | Existing Save authority | Specialist / full-editor fallback |
 | --- | --- | --- | --- |
-| Sportsbook | Event name, Campaign Tag | Existing loaded `SportsbookFormState` / `saveEditorDraft` | Composite offer details, date, Account, strategy, placement, status, calculated value, settlement and overrides |
+| Sportsbook | Event name and Campaign Tag as compact text; Bookmaker as the authorised Account selector and Settles as a local datetime picker only before actual placement evidence in Prospecting/Not Placed | Existing loaded `SportsbookFormState` / `saveEditorDraft` in an owned ledger; fresh Profile-owned record read, staleness check and governed PUT in combined scope | Offer/strategy and numeric planning composites, placement, status, calculated values, settlement and overrides use the explicit workbench review/correction path |
 | Accounts | Access channels, using the existing bounded multi-select | Existing loaded `AccountFormState` / Account submit | Immutable/catalogue-derived identity, status/access restrictions, balances/observations, commission, cash inclusion and unsupported fields |
 | Free Bets | Event name, Campaign Tag; expiry datetime on a valid Prospecting/Available/Not Yet Awarded Pending row | Existing loaded `FreeBetFormState` / `persistForm`; fresh Profile-owned full-record PUT for combined expiry | Offer composites, Account, strategy, placement, status, reward/retention, calculated/settled values |
 | Casino | Offer name, Game; expiry datetime when native Save preparation is unchanged and the row is not Settled | Existing loaded `CasinoOfferFormState` / `persistForm`; fresh Profile-owned full-record PUT for combined expiry | Account/type, settlement date, cash/credit/wagering/reward, status, calculated/settled values and corrections |
 | Extra Place | Runner/Race composite; date/time, authorised bookmaker choice with coupled account, and validated stake on a native Prospecting/Pending row | Existing loaded `Form` / `save`; fresh Profile-owned full-record PUT for combined typed fields | Placed/settled timing and stakes, terms, other odds/lay, result/status and derived values |
 | Cash | Description | Existing loaded `CashAdjustmentFormState` / `persistForm` including idempotency | Account/date/type/direction/amount/inclusion and confirmed fee-withdrawal restrictions |
+
+### Sportsbook displayed-column eligibility
+
+| Column | Eligible state and compact control | Save or review boundary |
+| --- | --- | --- |
+| Settles | Prospecting/Not Placed without actual placement evidence: local date/time picker | Native draft Save or owning-Profile fresh read and governed PUT. The recorded time is not an inferred settlement deadline. |
+| Bookmaker | Same planning states: authorised Profile Bookie Account selector, retaining the recorded option when relevant | Native draft Save or owning-Profile fresh read and governed PUT. No arbitrary provider text in the compact editor. |
+| Event Name; Campaign Tag | Nonterminal rows: compact text input | Existing native Save in owned scope; fresh Profile-owned staleness check and PUT in combined scope. |
+| Offer Details; Match Strategy | Coupled offer, stake, odds and planning fields | Deliberate populated workbench review; no independent scalar commit. |
+| Lay Status; Back Bet Status; Status | Placement or lifecycle evidence | Governed workbench and confirmation/correction controls. |
+| Value | Calculated current/final reporting value | Read-only; never a direct money input. |
+| Actions | Open and secondary governed commands | Opens the owning Profile workbench or specialist confirmation. |
+
+Multi-lay planning still requires native draft preparation in combined scope. Settled, Void, Cancelled and Free Bet Awarded rows retain correction protection. Numeric and boolean Sportsbook inputs are within coupled workbench stages, not independent displayed grid columns; the table does not expose a valid numeric/boolean scalar cell to invent an inline control for.
 
 The map is an allowlist, never a generic permission inferred from a field looking editable. Eligibility also depends on the current source record and the native Save-preparation gate. If the native authority cannot safely save a row, preserve its draft/error and offer the full editor. The Extra Place stake uses the native decimal input pattern; its full Profile-owned Save recomputes derived values under the existing API authority. Immutable and calculated cells never receive fabricated writes.
 
@@ -37,7 +51,7 @@ Existing columns remain. Assess saved views against the current server persisten
 
 ## Native gate and normalization limits
 
-Sportsbook Settled/Void/Cancelled/Free Bet Awarded, Free Bet Settled and Casino Settled retain their populated read-only/correction editor. Floating editing does not enable their settled-edit state. Casino also falls back when the native Save preparation would change other form fields (including different legacy start/settlement dates or absent reward metadata). Accounts requires an existing catalogue link, a non-Exchange Account and no coupled signup-definition creation. Cash Description starts disabled for a resolved row and reuses the existing explicit **Edit cash-adjustment row** action; confirmed fee-withdrawal rows remain restricted to their monthly fee review correction authority. Extra Place retains its native Account/use checks and Save.
+Sportsbook Settled/Void/Cancelled/Free Bet Awarded, Free Bet Settled and Casino Settled retain their populated read-only/correction editor. Sportsbook Bookmaker/Settles also cease to be independently writable once actual back odds, matched lay stake or multi-lay execution is recorded, regardless of a stale lifecycle label. Floating editing does not enable settled-edit state. Casino also falls back when the native Save preparation would change other form fields (including different legacy start/settlement dates or absent reward metadata). Accounts requires an existing catalogue link, a non-Exchange Account and no coupled signup-definition creation. Cash Description starts disabled for a resolved row and reuses the existing explicit **Edit cash-adjustment row** action; confirmed fee-withdrawal rows remain restricted to their monthly fee review correction authority. Extra Place retains its native Account/use checks and Save.
 
 Existing full-form timestamp serialization may normalize representation while retaining calendar/time value; tests compare that value and assert financial fields separately. These adapters do not repair legacy records. Any native validation failure keeps the draft and offers the full editor.
 

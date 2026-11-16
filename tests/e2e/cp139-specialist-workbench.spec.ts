@@ -9,6 +9,9 @@ const cases = [
   { route: "free-bets", id: "free-bets", add: "free-bets.toolbar.add-row", record: "FB-SEED-001", column: "event_name", editName: "Edit free-bet row" },
   { route: "casino-offers", id: "casino-offers", add: "casino-offers.toolbar.add-row", record: "CO-SEED-001", column: "game", editName: "Edit casino row" },
 ] as const;
+const nativeWorkbench = (page: import("@playwright/test").Page, item: (typeof cases)[number]) => item.id === "sportsbook"
+  ? page.locator('[data-pd-id="sportsbook.editor.workbench-surface"]')
+  : page.locator(`[data-pd-id="${item.id}.editor.dialog"]`);
 
 test.use({ video: "on", trace: "retain-on-failure", screenshot: "only-on-failure" });
 
@@ -24,7 +27,7 @@ for (const item of cases) for (const [width, theme] of [[1440, "light"], [900, "
     await page.goto(`/profiles/profile-demo-001/tracker/${item.route}`);
     await expect(page.locator(".ledger-loading-overlay")).toHaveCount(0, { timeout: 45_000 });
     await page.locator(`[data-pd-id="${item.add}"]`).click();
-    const dialog = page.locator(`[data-pd-id="${item.id}.editor.dialog"]`);
+    const dialog = nativeWorkbench(page, item);
     await expect(dialog).toBeVisible();
     const columns = dialog.locator(`[data-pd-id="${item.id}.editor.workbench"]`);
     const form = columns.locator("form");
@@ -88,14 +91,14 @@ for (const item of cases) {
       await page.locator(`td[data-ledger-row="${item.record}"][data-ledger-column="${item.column}"]`).click();
       await page.locator(`[data-pd-id="${item.id}.toolbar.open-selected"]`).click();
     }
-    const dialog = page.getByRole("dialog", { name: item.editName, exact: true });
+    const dialog = nativeWorkbench(page, item);
     await expect(dialog).toBeVisible();
     const context = dialog.locator(`[data-pd-id="${item.id}.editor.financial-context"]`);
     await expect(context).toBeVisible();
     await expect(context).toContainText("Bookmaker");
     await expect(context).toContainText("Status");
     const stages = dialog.locator('[data-pd-id="ledger-editor.tabs"]');
-    await expect(stages).toHaveClass(/stages/);
+    await expect(stages).toHaveClass(item.id === "sportsbook" ? /stepper/ : /stages/);
     await expect(dialog.locator('[role="tab"][aria-current="step"]')).toHaveCount(1);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
     await page.screenshot({ path: info.outputPath(`${item.id}-populated-900-dark.png`) });
@@ -136,7 +139,7 @@ for (const item of cases) {
     await page.goto(`/profiles/profile-demo-001/tracker/${item.route}`);
     await expect(page.locator(".ledger-loading-overlay")).toHaveCount(0, { timeout: 45_000 });
     await page.locator(`[data-pd-id="${item.add}"]`).click();
-    const dialog = page.locator(`[data-pd-id="${item.id}.editor.dialog"]`);
+    const dialog = nativeWorkbench(page, item);
     await expect(dialog).toBeVisible();
     await expect(dialog.getByRole("button", { name: "Save", exact: true })).toBeDisabled();
     const field = dialog.getByLabel(item.id === "casino-offers" ? "Offer name" : "Event name", { exact: true });
@@ -164,12 +167,13 @@ for (const item of cases) {
     await writeFile(join(extension, "background.js"), "chrome.runtime.onInstalled.addListener(() => {});");
     const context = await chromium.launchPersistentContext(join(scratch, "profile"), { channel: "chromium", headless: true, viewport: { width: 1440, height: 900 }, args: [`--disable-extensions-except=${extension}`, `--load-extension=${extension}`] });
     try {
+      await context.addInitScript(() => localStorage.setItem("pd-required-storage-notice", "acknowledged"));
       const page = await context.newPage();
       await page.goto(authURL);
       await page.goto(`${baseURL}/profiles/profile-demo-001/tracker/${item.route}`);
       await expect(page.locator(".ledger-loading-overlay")).toHaveCount(0, { timeout: 45_000 });
       await page.locator(`[data-pd-id="${item.add}"]`).click();
-      const dialog = page.locator(`[data-pd-id="${item.id}.editor.dialog"]`);
+      const dialog = nativeWorkbench(page, item);
       await expect(dialog).toBeVisible();
       const worker = context.serviceWorkers()[0] ?? await context.waitForEvent("serviceworker");
       await worker.evaluate(async url => {
@@ -198,6 +202,13 @@ for (const item of cases) {
       expect(fieldRect!.y).toBeGreaterThanOrEqual(bodyRect!.y - 1);
       expect(fieldRect!.y + fieldRect!.height).toBeLessThanOrEqual(footerRect!.y + 1);
       await page.screenshot({ path: info.outputPath(`${item.id}-actual-200-percent-field-focus.png`) });
+      if (item.id === "sportsbook") {
+        const save = footer.getByRole("button", { name: "Save", exact: true });
+        await save.scrollIntoViewIfNeeded();
+        const saveRect = await save.boundingBox();
+        expect(saveRect!.y).toBeGreaterThanOrEqual(0);
+        expect(saveRect!.y + saveRect!.height).toBeLessThanOrEqual(901);
+      }
     } finally {
       await context.close();
       await rm(scratch, { recursive: true, force: true });
@@ -267,7 +278,7 @@ for (const item of [
     await page.goto(`/profiles/profile-demo-001/tracker/${item.route}`);
     await expect(page.locator(".ledger-loading-overlay")).toHaveCount(0, { timeout: 45_000 });
     await page.locator(`[data-pd-id="${item.add}"]`).click();
-    const dialog = page.locator(`[data-pd-id="${item.id}.editor.dialog"]`);
+    const dialog = nativeWorkbench(page, item);
     const nativeHeader = dialog.locator('[data-pd-financial-header="true"]');
     await expect(nativeHeader).toHaveAttribute("class", labHeaderClass!);
     expect(await nativeHeader.locator("h2").evaluate(element => ({
@@ -314,7 +325,7 @@ test("Sportsbook populated Lab and native workbenches expose their complete gove
   await expect(page.locator(".ledger-loading-overlay")).toHaveCount(0, { timeout: 45_000 });
   await page.locator('td[data-ledger-row="SB-SEED-001"][data-ledger-column="event_name"]').click();
   await page.locator('[data-pd-id="sportsbook.toolbar.open-selected"]').click();
-  const native = page.getByRole("dialog", { name: "Edit sportsbook row", exact: true });
+  const native = page.locator('[data-pd-id="sportsbook.editor.workbench-surface"]');
   await expect(native).toBeVisible();
   await expect(native).toHaveCSS("opacity", "1");
   await page.waitForTimeout(350);
@@ -354,7 +365,7 @@ for (const item of cases) {
     await page.goto(`/profiles/profile-demo-001/tracker/${item.route}`);
     await expect(page.locator(".ledger-loading-overlay")).toHaveCount(0, { timeout: 45_000 });
     await page.locator(`[data-pd-id="${item.add}"]`).click();
-    const dialog = page.getByRole("dialog", { name: `Create ${item.id === "sportsbook" ? "sportsbook" : item.id === "free-bets" ? "free-bet" : "casino"} row` });
+    const dialog = item.id === "sportsbook" ? nativeWorkbench(page, item) : page.getByRole("dialog", { name: `Create ${item.id === "free-bets" ? "free-bet" : "casino"} row` });
     await expect(dialog).toBeVisible();
     if (item.id === "sportsbook") {
       await dialog.getByLabel("Offer", { exact: true }).fill("Synthetic offer");
@@ -425,7 +436,7 @@ for (const item of cases) {
     await expect(floating).toBeVisible();
     await expect(floating.getByRole("button", { name: "Open full editor" })).toHaveCount(0);
     await floating.getByRole("textbox").press("Alt+Enter");
-    const edit = page.getByRole("dialog", { name: item.editName, exact: true });
+    const edit = item.id === "sportsbook" ? nativeWorkbench(page, item) : page.getByRole("dialog", { name: item.editName, exact: true });
     await expect(edit).toBeVisible();
     const input = edit.getByLabel(item.id === "casino-offers" ? "Offer name" : "Event name", { exact: true });
     await edit.getByRole("tab", { name: /Setup/i }).click();

@@ -29,7 +29,7 @@ test("flagged Today opens a real isolated source through the existing API", asyn
   await page.screenshot({ path: info.outputPath("today-real-api-source.png") });
   await detail.getByRole("link", { name: "Open Source" }).click();
   await expect(page).toHaveURL(/sportsbook-bets/);
-  const editor = page.getByRole("dialog", { name: "Edit sportsbook row", exact: true });
+  const editor = page.locator('[data-pd-id="sportsbook.editor.workbench-surface"], [data-pd-id="sportsbook.editor.dialog"]');
   await expect(editor).toBeVisible();
   await expect(editor.getByRole("textbox", { name: "Event name" })).toHaveValue(before.event_name);
   await editor.getByRole("textbox", { name: "Event name" }).fill(nextEventName);

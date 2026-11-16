@@ -19,7 +19,7 @@ test("Sportsbook source status filter retains scope and native return context", 
   await expect(page).toHaveURL(/f_status=/);
   for (const cell of await table.locator('tbody tr td[data-ledger-column="status"]').all()) await expect(cell).toContainText(status);
   await table.locator("tbody a").first().click();
-  await expect(page.getByRole("dialog", { name: "Edit sportsbook row" })).toBeVisible();
+  await expect(page.locator('[data-pd-id="sportsbook.editor.workbench-surface"]')).toBeVisible();
   const back = page.locator('[data-pd-id="tracker.return-to-combined"]');
   await expect(back).toHaveAttribute("href", /f_status=/);
   await page.getByRole("button", { name: "Close sportsbook editor" }).click();

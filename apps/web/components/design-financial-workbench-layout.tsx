@@ -5,6 +5,7 @@ import styles from "@/components/design-lab-financial-workflows.module.css";
 
 /** The Lab's 1180px workbench width, adapted to the governed native dialog. */
 export const financialWorkbenchModalClass = styles.modalFrame;
+export const financialWorkbenchSurfaceClass = styles.workbenchSurface;
 export const financialWorkbenchHeaderClass = styles.modalHeader;
 export const financialWorkbenchHeadingClass = styles.cardHeading;
 export const financialWorkbenchPrimaryActionClass = styles.primaryAction;
@@ -16,7 +17,7 @@ export function DesignFinancialWorkbenchFooter({ enabled, className = "", childr
   useEffect(() => {
     if (!enabled || !ref.current) return;
     const footer = ref.current;
-    const modal = footer.closest<HTMLElement>(".workflow-editor-modal");
+    const modal = footer.closest<HTMLElement>(".workflow-editor-modal, .sportsbook-v2-workbench");
     if (!modal) return;
     const measure = () => modal.style.setProperty("--financial-workbench-footer-height", `${footer.getBoundingClientRect().height}px`);
     measure();
@@ -63,7 +64,7 @@ export function DesignFinancialWorkbenchAside({
 
 export function DesignFinancialWorkbenchTitle({ eyebrow, title, context }: { eyebrow: string; title: string; context: string }) {
   return <div className={`${styles.workbenchTitle} workflow-editor-title-stack`}>
-    <span className={styles.labTag}>{eyebrow}</span>
+    {eyebrow ? <span className={styles.labTag}>{eyebrow}</span> : null}
     <h2>{title}</h2>
     <p>{context}</p>
   </div>;

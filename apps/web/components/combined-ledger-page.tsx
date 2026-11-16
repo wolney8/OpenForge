@@ -20,7 +20,7 @@ import { saveFundManagerSelectedRange } from "@/lib/tracker-settings-client";
 import { commitOwnedAccessChannels, commitOwnedRunnerRace, commitOwnedScalar, ownedAccessChannelsEditable, ownedScalarField } from "@/lib/ledger-scalar-command";
 import { accountAccessChannelOptions } from "@/lib/account-access-channels";
 import { commitOwnedExtraPlaceTyped, extraPlaceBookmakerOptions, extraPlaceTypedCellEligibility, extraPlaceTypedSourceKey, type ExtraPlaceTypedColumn } from "@/lib/extra-place-typed-cell";
-import type { AccountAuthorityRecord } from "@/lib/account-authorities";
+import { getNewSportsbookActivityAccountNamesByType, type AccountAuthorityRecord } from "@/lib/account-authorities";
 import { toDateTimeLocalValue } from "@/lib/date-format";
 import { useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
 import { presentLedgerCell, type LedgerSourceRecord } from "@/lib/combined-ledger-source";
@@ -285,20 +285,24 @@ export function CombinedLedgerPage({ module }: { module: CombinedLedgerModule })
     const accountChannels = module === "accounts" && column === "channel" && Array.isArray(row.data.access_channels) && ownedAccessChannelsEditable(row.data);
     const typedExtraPlace = module === "each-way-extra-places" && (["date", "bookmaker", "stake"] as string[]).includes(column) && !extraPlaceTypedCellEligibility(row.data, column);
     const typedExpiry = (module === "free-bets" || module === "casino-offers") && column === "expiry_datetime" && Boolean(field);
-    if (!accountChannels && !typedExtraPlace && !typedExpiry && ((!runnerRace && capability.authority !== "scalar") || !field)) { setProtectedCell({ row, column }); return; }
+    const typedSportsbook = module === "sportsbook-bets" && ["bookmaker", "date_settled"].includes(column) && Boolean(field);
+    if (!accountChannels && !typedExtraPlace && !typedExpiry && !typedSportsbook && ((!runnerRace && capability.authority !== "scalar") || !field)) { setProtectedCell({ row, column }); return; }
     let bookmakerOptions: string[] | undefined;
-    if (typedExtraPlace && column === "bookmaker") {
+    if ((typedExtraPlace || typedSportsbook) && column === "bookmaker") {
       try {
         const response = await fetch(`${apiBaseUrl}/profiles/${encodeURIComponent(row.profileId)}/accounts`, { cache: "no-store", credentials: "include" });
         if (!response.ok) throw new Error("Authorised bookmaker options could not be loaded.");
-        bookmakerOptions = extraPlaceBookmakerOptions(await response.json() as AccountAuthorityRecord[], row.data);
+        const accounts = await response.json() as AccountAuthorityRecord[];
+        bookmakerOptions = typedSportsbook
+          ? [...new Set([...getNewSportsbookActivityAccountNamesByType(accounts, "Bookie"), String(row.data.bookmaker ?? "")].filter(Boolean))]
+          : extraPlaceBookmakerOptions(accounts, row.data);
       } catch (cause) { if (request === cellActivationRequest.current) setError(cause instanceof Error ? cause.message : "Authorised bookmaker options could not be loaded."); return; }
       if (request !== cellActivationRequest.current || !anchor.isConnected) return;
     }
     setProtectedCell(null);
     cashScalarOperation.current = null;
-    const sourceOriginal = typedExtraPlace ? String(row.data[extraPlaceTypedSourceKey(column as ExtraPlaceTypedColumn)] ?? "") : typedExpiry ? String(row.data[column] ?? "") : undefined;
-    const original = typedExtraPlace ? column === "date" ? toDateTimeLocalValue(sourceOriginal ?? "") : sourceOriginal ?? "" : typedExpiry ? toDateTimeLocalValue(sourceOriginal ?? "") : String(row.data[column] ?? "");
+    const sourceOriginal = typedExtraPlace ? String(row.data[extraPlaceTypedSourceKey(column as ExtraPlaceTypedColumn)] ?? "") : typedExpiry || typedSportsbook ? String(row.data[column] ?? "") : undefined;
+    const original = typedExtraPlace ? column === "date" ? toDateTimeLocalValue(sourceOriginal ?? "") : sourceOriginal ?? "" : typedExpiry || typedSportsbook && column === "date_settled" ? toDateTimeLocalValue(sourceOriginal ?? "") : String(row.data[column] ?? "");
     const originalChannels = accountChannels && Array.isArray(row.data.access_channels) ? row.data.access_channels as string[] : undefined;
     setActiveCell({ row, column, original, sourceOriginal, bookmakerOptions, originalRace: runnerRace ? String(row.data.race ?? "") : undefined, originalChannels, label: accountChannels ? "Access channels" : runnerRace ? "Runner / Race" : typedExtraPlace ? { date: "Date / time", bookmaker: "Bookmaker", stake: "E/W Stake" }[column]! : field!.label });
     setCellDraft(original); setRaceDraft(runnerRace ? String(row.data.race ?? "") : ""); setChannelDraft(originalChannels ?? []); setChannelMode("CLOSED"); setCellError("");
@@ -410,7 +414,7 @@ export function CombinedLedgerPage({ module }: { module: CombinedLedgerModule })
     </DesignLedgerScreen>
     {activeCell && cellEditor.session ? <LedgerFloatingCellEditor compact commitOnTab={activeCell.originalRace === undefined && activeCell.originalChannels === undefined} session={cellEditor.session} ledger={label} label={activeCell.label} dirty={activeCellDirty} pending={cellPending} error={cellError} onSave={saveCell} onCancel={() => { cellEditor.close(); setActiveCell(null); setCellDraft(""); setRaceDraft(""); setChannelDraft([]); setChannelMode("CLOSED"); setCellError(""); }} onReview={() => { if (activeCellDirty) { setCellError("Save or cancel this draft before opening the native editor."); return; } cellEditor.close(); setActiveCell(null); router.push(rowHref(activeCell.row)); }}>
       {activeCell.originalChannels !== undefined ? <><SearchableCombobox dataPdId="combined.accounts.cell-editor.channel" id="combined-account-cell-channels" label="Access channels" mode={channelMode} onChange={values => { setChannelDraft(values); setCellError(""); }} onModeChange={setChannelMode} options={accountAccessChannelOptions} values={channelDraft} /><button className={labStyles.secondaryButton} type="submit">Apply access channels</button></> : <>
-        {activeCell.bookmakerOptions ? <select aria-label={activeCell.label} className={designFloatingCellInputClass} data-pd-id={`combined.${module}.cell-editor.${activeCell.column}`} onChange={event => { setCellDraft(event.target.value); setCellError(""); }} value={cellDraft}>{activeCell.bookmakerOptions.map(option => <option key={option} value={option}>{option}</option>)}</select> : <label><span className={activeCell.originalRace === undefined ? "sr-only" : undefined}>{activeCell.originalRace === undefined ? activeCell.label : "Runner"}</span><input aria-label={activeCell.originalRace === undefined ? activeCell.label : "Runner"} className={designFloatingCellInputClass} data-pd-id={`combined.${module}.cell-editor.${activeCell.column}`} inputMode={activeCell.column === "stake" ? "decimal" : undefined} onChange={event => { setCellDraft(event.target.value); setCellError(""); }} pattern={activeCell.column === "stake" ? "[0-9]+(\\.[0-9]+)?" : undefined} title={activeCell.column === "stake" ? "Enter a non-negative decimal stake" : undefined} type={activeCell.column === "date" || activeCell.column === "expiry_datetime" ? "datetime-local" : "text"} value={cellDraft} /></label>}
+        {activeCell.bookmakerOptions ? <select aria-label={activeCell.label} className={designFloatingCellInputClass} data-pd-id={`combined.${module}.cell-editor.${activeCell.column}`} onChange={event => { setCellDraft(event.target.value); setCellError(""); }} value={cellDraft}>{activeCell.bookmakerOptions.map(option => <option key={option} value={option}>{option}</option>)}</select> : <label><span className={activeCell.originalRace === undefined ? "sr-only" : undefined}>{activeCell.originalRace === undefined ? activeCell.label : "Runner"}</span><input aria-label={activeCell.originalRace === undefined ? activeCell.label : "Runner"} className={designFloatingCellInputClass} data-pd-id={`combined.${module}.cell-editor.${activeCell.column}`} inputMode={activeCell.column === "stake" ? "decimal" : undefined} onChange={event => { setCellDraft(event.target.value); setCellError(""); }} pattern={activeCell.column === "stake" ? "[0-9]+(\\.[0-9]+)?" : undefined} title={activeCell.column === "stake" ? "Enter a non-negative decimal stake" : undefined} type={activeCell.column === "date" || activeCell.column === "expiry_datetime" || activeCell.column === "date_settled" ? "datetime-local" : "text"} value={cellDraft} /></label>}
         {activeCell.originalRace !== undefined ? <><label><span>Race</span><input aria-label="Race" className={designFloatingCellInputClass} data-pd-id={`combined.${module}.cell-editor.race`} onChange={event => { setRaceDraft(event.target.value); setCellError(""); }} type="text" value={raceDraft} /></label><button className={labStyles.secondaryButton} type="submit">Apply Runner / Race</button></> : null}
       </>}
     </LedgerFloatingCellEditor> : null}

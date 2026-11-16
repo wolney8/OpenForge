@@ -4,6 +4,7 @@ import { casinoWorkbenchEntry, extraPlaceWorkbenchEntry, freeBetWorkbenchEntry, 
 describe("persisted ledger lifecycle chooses the initial workbench stage", () => {
   it("keeps a new or incomplete Sportsbook row at setup", () => {
     expect(sportsbookWorkbenchEntry({ status: "Prospecting", layStatus: "Unknown", matchStrategy: "Partial Lay", setupComplete: false })).toBe("setup");
+    expect(sportsbookWorkbenchEntry({ status: "Settled", layStatus: "Unknown", matchStrategy: "Standard", setupComplete: false })).toBe("settlement");
   });
   it("sends placed partial hedge evidence to placement without treating a past event as settlement", () => {
     expect(sportsbookWorkbenchEntry({ status: "Placed", layStatus: "Part Laid", matchStrategy: "Partial Lay", setupComplete: true })).toBe("placement");

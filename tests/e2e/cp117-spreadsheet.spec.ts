@@ -60,7 +60,7 @@ for (const module of ["sportsbook-bets", "accounts"] as const) {
     });
     const cell = module === "accounts"
       ? viewport.locator('td[data-ledger-row="ACC-BOOK-A"][data-ledger-column="account_id"]')
-      : viewport.locator('td[data-ledger-row="CP117-CELL-001"][data-ledger-column="date_settled"]');
+      : viewport.locator('td[data-ledger-row="CP117-CELL-001"][data-ledger-column="displayed_value"]');
     await cell.click();
     await expect(page.getByRole("dialog")).toHaveCount(0);
     await expect(cell).toHaveAttribute("data-ledger-selected", "true");
@@ -75,7 +75,7 @@ for (const module of ["sportsbook-bets", "accounts"] as const) {
     await page.keyboard.press("ArrowUp");
     await expect(cell).toBeFocused();
     await page.keyboard.press("F2");
-    const editor = page.getByRole("dialog", { name: module === "accounts" ? "Edit account" : "Edit sportsbook row", exact: true });
+    const editor = module === "accounts" ? page.getByRole("dialog", { name: "Edit account", exact: true }) : page.locator('[data-pd-id="sportsbook.editor.workbench-surface"]');
     const review = page.locator(module === "accounts" ? '[data-pd-id="accounts.table-scroll.protected-cell"]' : '[data-pd-id="sportsbook.protected-cell"]');
     await expect(review).toBeVisible();
     const reviewAction = review.getByRole("button", { name: /Open .* for review/ });
@@ -117,7 +117,7 @@ test("Sportsbook cell handoff saves through the real API and retains a failed dr
   const cell = page.locator('td[data-ledger-row="CP117-CELL-001"][data-ledger-column="event_name"]');
   await cell.click(); await page.keyboard.press("Enter");
   await page.locator('[data-pd-id="ledger.floating-editor"]').getByRole("textbox", { name: "Event name", exact: true }).press("Alt+Enter");
-  const editor = page.getByRole("dialog", { name: "Edit sportsbook row", exact: true });
+  const editor = page.locator('[data-pd-id="sportsbook.editor.workbench-surface"]');
   await editor.getByRole("tab", { name: /Bet Setup/ }).click();
   const input = editor.getByRole("textbox", { name: "Event name", exact: true });
   const next = before.event_name.endsWith("Reviewed") ? "Synthetic cell review 1" : "Synthetic cell review 1 Reviewed";
@@ -273,15 +273,19 @@ test("actual Chromium 200% zoom keeps selected cells and native editors reachabl
       const range = page.getByRole("combobox", { name: "Change tracker date range" });
       if (await range.count()) await range.selectOption({ label: "All Dates" });
       if (module === "sportsbook-bets") {
-        const cell = page.locator('td[data-ledger-column]').first();
+        const cell = page.locator('td[data-ledger-row="CP117-CELL-001"][data-ledger-column="displayed_value"]');
+        await cell.scrollIntoViewIfNeeded();
         await cell.click(); await page.keyboard.press("Enter");
-        const editor = page.getByRole("dialog", { name: "Edit sportsbook row", exact: true });
+        const editor = legacy ? page.getByRole("dialog", { name: "Edit sportsbook row", exact: true }) : page.locator('[data-pd-id="sportsbook.editor.workbench-surface"]');
         const review = page.locator('[data-pd-id="sportsbook.protected-cell"]');
         await expect(review).toBeVisible();
         await review.getByRole("button", { name: /Open .* for review/ }).click();
         await expect(editor).toBeVisible();
         const rect = await editor.boundingBox();
         expect(rect!.x).toBeGreaterThanOrEqual(0); expect(rect!.x + rect!.width).toBeLessThanOrEqual(721);
+        const footerBottom = await editor.locator('[data-pd-id="sportsbook.editor.actions"]').evaluate(node => node.getBoundingClientRect().bottom);
+        expect(footerBottom).toBeLessThanOrEqual(501);
+        await expect(editor.getByRole("button", { name: "Save", exact: true })).toBeInViewport();
         expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
         await page.keyboard.press("Escape"); await expect(cell).toBeFocused();
       }

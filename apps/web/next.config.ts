@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // The development badge covers the governed Save action at narrow/zoomed widths.
+  devIndicators: false,
   // Playwright targets the local app through 127.0.0.1; permit its development assets.
   allowedDevOrigins: ["127.0.0.1", "localhost"],
   // Local owner databases and workbook evidence are runtime-only inputs. Never

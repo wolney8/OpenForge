@@ -18,6 +18,7 @@ type LedgerEditorTabRailProps = {
   tabs: LedgerEditorTabDefinition[];
   visualV2?: boolean;
   financialWorkbench?: boolean;
+  labPageWorkbench?: boolean;
 };
 
 export function LedgerEditorTabRail({
@@ -28,6 +29,7 @@ export function LedgerEditorTabRail({
   tabs,
   visualV2 = false,
   financialWorkbench = false,
+  labPageWorkbench = false,
 }: LedgerEditorTabRailProps) {
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
@@ -43,7 +45,7 @@ export function LedgerEditorTabRail({
   return (
     <div
       aria-label={ariaLabel}
-      className={`ledger-editor-tab-rail${visualV2 ? ` ${styles.stepper}` : ""}${financialWorkbench ? ` ${workbenchStyles.stages} ${workbenchStyles.ledgerStageRail}` : ""}`}
+      className={`ledger-editor-tab-rail${visualV2 ? ` ${styles.stepper}` : ""}${financialWorkbench && !labPageWorkbench ? ` ${workbenchStyles.stages} ${workbenchStyles.ledgerStageRail}` : ""}`}
       data-pd-id="ledger-editor.tabs"
       onKeyDown={handleKeyDown}
       role="tablist"
@@ -73,7 +75,7 @@ export function LedgerEditorTabRail({
             aria-selected={isActive}
             aria-current={financialWorkbench && isActive ? "step" : undefined}
             className={`ledger-editor-tab-button ledger-editor-tab-button-${tab.status} ledger-editor-tab-button-${tab.id}${
-              isActive ? " is-active" : ""
+              isActive ? ` is-active${labPageWorkbench ? ` ${styles.stepActive}` : ""}` : ""
             }${isGuidedTarget ? " is-guided-target" : ""}`}
             data-pd-id={`ledger-editor.tab.${tab.id}`}
             key={tab.id}

@@ -12,6 +12,9 @@ const cases = [
   { module: "cash-adjustments", id: "cash-adjustments", row: "CA-SEED-001", idKey: "cash_adjustment_id", column: "description", field: "description", label: "Description", limit: 2000, review: "amount", dialog: "Edit cash adjustment", money: ["adjustment_date", "amount", "direction", "adjustment_type", "affects_investment", "affects_cash_snapshot", "linked_account", "signed_amount"] },
 ] as const;
 type Case = typeof cases[number];
+const editorFor = (page: Page, item: { module: string; dialog: string }) => item.module === "sportsbook-bets" && !legacy
+  ? page.locator('[data-pd-id="sportsbook.editor.workbench-surface"]')
+  : page.getByRole("dialog", { name: item.dialog, exact: true });
 
 async function ready(page: Page, module: string) {
   await page.goto(`${baseURL}/profiles/${profile}/tracker/${module}`);
@@ -146,7 +149,7 @@ for (const item of cases.filter(item => item.module !== "cash-adjustments")) {
     const protectedNotice = page.locator(item.module === "sportsbook-bets" ? '[data-pd-id="sportsbook.protected-cell"]' : `[data-pd-id="${item.id}.table-scroll.protected-cell"]`);
     await expect(protectedNotice).toBeVisible();
     await protectedNotice.getByRole("button", { name: /Open .* for review/ }).click();
-    await expect(page.getByRole("dialog", { name: item.dialog, exact: true })).toBeVisible();
+    await expect(editorFor(page, item)).toBeVisible();
     await expect(floating(page)).toHaveCount(0); await page.keyboard.press("Escape");
   });
 }
@@ -199,7 +202,7 @@ test("floating Tab, click-away rejection and full-editor transition retain one n
   test.skip(legacy); const item = cases[0]; await ready(page, item.module); const target = cell(page, item); await target.dblclick();
   const editor = floating(page); const input = editor.getByRole("textbox", { name: "Event name", exact: true });
   await input.fill("Synthetic handoff draft"); await input.press("Alt+Enter");
-  const full = page.getByRole("dialog", { name: "Edit sportsbook row", exact: true });
+  const full = editorFor(page, cases[0]);
   await full.getByRole("tab", { name: /Bet Setup/ }).click();
   await expect(full.getByRole("textbox", { name: "Event name", exact: true })).toHaveValue("Synthetic handoff draft");
   // The full editor retains its governed Save action and the same draft;
@@ -302,9 +305,9 @@ test("settled rows and legacy Casino preparation preserve populated correction g
     await expect(floating(page)).toHaveCount(0);
     const review = page.locator(item.module === "sportsbook-bets" ? '[data-pd-id="sportsbook.protected-cell"]' : `[data-pd-id="${item.module}.table-scroll.protected-cell"]`);
     await expect(review).toBeVisible();
-    await expect(page.getByRole("dialog", { name: item.dialog, exact: true })).toHaveCount(0);
+    await expect(editorFor(page, item)).toHaveCount(0);
     await review.getByRole("button", { name: /Open .* for review/ }).click();
-    const dialog = page.getByRole("dialog", { name: item.dialog, exact: true }); await expect(dialog).toBeVisible();
+    const dialog = editorFor(page, item); await expect(dialog).toBeVisible();
     await dialog.locator('[data-pd-id="ledger-editor.tab.setup"]').click();
     await expect(dialog.getByRole("textbox", {name:item.label,exact:true})).toBeDisabled();
     await page.keyboard.press("Escape");
@@ -343,7 +346,7 @@ test("flag OFF: all six ledgers preserve native editor activation and no floatin
     const search = page.locator(`[data-pd-id="${item.id}.toolbar.search"]`);
     await expect(search).toBeVisible();
     await expect(search.locator(".material-symbols-outlined")).toBeHidden();
-    await cell(page, item).click(); await expect(page.getByRole("dialog", { name: item.dialog, exact: true })).toBeVisible(); await expect(floating(page)).toHaveCount(0); await page.keyboard.press("Escape");
+    await cell(page, item).click(); await expect(editorFor(page, item)).toBeVisible(); await expect(floating(page)).toHaveCount(0); await page.keyboard.press("Escape");
   }
   await ready(page, "accounts");
   await expect(page.locator('[data-pd-id="accounts.toolbar.search"] .material-symbols-outlined')).toBeHidden();
