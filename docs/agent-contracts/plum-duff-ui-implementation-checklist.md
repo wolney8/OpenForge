@@ -9,7 +9,7 @@ Complete this for every feature, bug fix, component, fixture-backed UI, route or
 - [x] Reused native Profile-owned Save preparation for Bookmaker and Settles on eligible planning rows; combined scope uses its existing fresh owning-Profile read, stale-field check and governed Save. No financial formula or API changed.
 - [x] Verified disposable persisted owned/combined Bookmaker and datetime edits, rejected Save/retry, calculated-field protection, one-editor mount, responsive Lab/V2 captures and actual Chromium 200% focus containment.
 - [x] Final-source synthetic V2 integration 138 passed/five expected skips; complete visual 266/266 after correcting stale modal and reused-fixture assertions; flag-OFF rollback 9/9; web units 748/748; typecheck/build passed; changed-source lint zero errors/seven existing warnings. Paired Lab/V2 captures and workbench videos are indexed privately. Owner Design/Interaction Acceptance and manual spoken screen-reader review remain separate.
-- [ ] Record the exact committed/pushed web revision and restored localhost:3010 runtime after the verified source checkpoint.
+- [x] Tested application checkpoint `b47dff918cd0977756d5b89ad6473687fd1f7c0c` pushed on `feature/cp117-ledger-adoption`; the canonical local launcher serves the clean checkpoint, with final exact runtime SHA in the private receipt and issue #118. Web 3010 returns 200 at `/login` and redirects anonymous `/` and `/design-lab` to sign-in as expected; unchanged API 8010 returns 200 at `/healthz`. Signed-in owner refresh after this web restart remains unverified.
 
 ## CP-117 persistent Today selection — 2026-11-15 / #118
 
