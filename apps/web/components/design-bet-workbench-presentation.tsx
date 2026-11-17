@@ -24,3 +24,14 @@ export function DesignBetWorkbenchSummary({ title, children, dataPdId }: { title
 
 export const designBetWorkbenchEntryClass = styles.entry;
 export const designBetWorkbenchFooterClass = styles.entryFooter;
+
+/** The Lab's five-step navigation, with optional source-backed state from the real adapter. */
+export function DesignBetWorkbenchStageRail({ stages, activeId, onSelect }: {
+  stages: Array<{ id: string; label: string; state?: "complete" | "required" | "attention" | "not-required"; explanation?: string }>;
+  activeId: string;
+  onSelect: (id: string) => void;
+}) {
+  return <nav aria-label="Bet workbench sections" className={styles.stepper} data-pd-id="bet-workbench.stages">
+    {stages.map((stage, index) => <button aria-current={activeId === stage.id ? "step" : undefined} aria-disabled={stage.state === "not-required"} aria-label={`${stage.label}${stage.state ? `, ${stage.state.replace("-", " ")}` : ""}${stage.explanation ? `: ${stage.explanation}` : ""}`} className={activeId === stage.id ? styles.stepActive : ""} data-pd-id={`bet-workbench.stage.${stage.id}`} key={stage.id} onClick={() => { if (stage.state !== "not-required") onSelect(stage.id); }} title={stage.explanation} type="button"><span aria-hidden="true">{stage.state === "complete" ? "✓" : stage.state === "attention" ? "!" : stage.state === "not-required" ? "–" : index + 1}</span><span>{stage.label}{stage.state ? <small className={styles.stageState}>{stage.state === "not-required" ? "Not required" : stage.state === "attention" ? "Needs attention" : stage.state === "complete" ? "Complete" : "Required"}</small> : null}</span></button>)}
+  </nav>;
+}

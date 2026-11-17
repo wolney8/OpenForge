@@ -476,7 +476,7 @@ test("Sportsbook specialist editor uses the approved Lab step presentation", asy
   const workbench = page.locator('[data-pd-id="sportsbook.editor.workbench-surface"]');
   await expect(workbench).toBeVisible();
   await expect(page.locator('[data-pd-id="sportsbook.editor.dialog"]')).toHaveCount(0);
-  const realStep = workbench.locator('[data-pd-id="ledger-editor.tabs"] button').first();
+  const realStep = workbench.locator('[data-pd-id="bet-workbench.stages"] button').first();
   const realStyle = await realStep.evaluate(element => ({ padding: getComputedStyle(element).padding, radius: getComputedStyle(element).borderRadius, minimumHeight: getComputedStyle(element).minHeight }));
   expect(realStyle).toEqual(labStyle);
   await page.screenshot({ path: join(evidence, "v2-sportsbook-add-1440-light.png") });
@@ -672,7 +672,11 @@ test("Sportsbook, Free Bet and Casino native editors use their approved Lab fiel
         await expect(stage).toHaveCSS("padding-top", width <= 850 ? "14px" : "18px");
         expect(await stage.evaluate(element => getComputedStyle(element).backgroundColor)).not.toBe("rgba(0, 0, 0, 0)");
       }
-      await expect(surface.locator('[data-pd-id="ledger-editor.tabs"]')).toBeVisible();
+      await expect(surface.locator(editor.id === "sportsbook" ? '[data-pd-id="bet-workbench.stages"]' : '[data-pd-id="ledger-editor.tabs"]')).toBeVisible();
+      if (editor.id === "sportsbook") {
+        await expect(surface.locator(".workflow-editor-body")).toHaveCSS("overflow-y", "visible");
+        await surface.locator(".workflow-editor-footer").scrollIntoViewIfNeeded();
+      }
       await expect(surface.locator(".workflow-editor-footer")).toBeInViewport();
       const bounds = await surface.boundingBox();
       expect(bounds).toBeTruthy();

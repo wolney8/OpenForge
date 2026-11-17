@@ -1995,6 +1995,16 @@ export function CashAdjustmentWorkflowShell({ profileId, initialRecordId, initia
               const rowId = String(row.cash_adjustment_id ?? "");
               return { id: rowId, title: String(row.description ?? "").trim() || rowId, status: String(row.status ?? ""), subtitle: String(row.adjustment_type ?? "").trim(), fields: cashAdjustmentTableColumns.filter(column => column.key !== "actions").map(column => ({ key: column.key, label: column.label, value: renderTableCell(row, column) })), onOpen: () => void selectRow(rowId) };
             })} /> : null}
+            {visualV2 ? <DesignLedgerPagination
+              currentPage={effectivePage}
+              dataPdId="cash-adjustments.pagination.bottom"
+              label="Cash Adjustments"
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(nextPageSize) => { setPageSize(nextPageSize); setCurrentPage(1); }}
+              pageCount={pageCount}
+              pageSize={pageSize}
+              totalRows={filteredRows.length}
+            /> : null}
             {!visualV2 ? <LedgerPagination
               ariaLabel="Cash Adjustment pagination"
               currentPage={effectivePage}

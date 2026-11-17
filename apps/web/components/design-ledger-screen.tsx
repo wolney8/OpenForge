@@ -49,12 +49,12 @@ export function DesignLedgerPagination({ currentPage, dataPdId, label, onPageCha
   const start = totalRows ? (currentPage - 1) * pageSize + 1 : 0;
   const end = Math.min(totalRows, currentPage * pageSize);
   return <div aria-label={`${label} pagination`} className={`${styles.toolbar} ${styles.ledgerPagination}`} data-pd-id={dataPdId}>
-    <span aria-live="polite" className={styles.tableNote}>Showing {start}–{end} of {totalRows} · Page {currentPage} of {pageCount}</span>
-    <DesignLabSelect compact dataPdId={`${dataPdId}.page-size`} label={`${label} rows per page`} onChange={value => onPageSizeChange(Number(value))} options={ledgerPageSizeOptions.map(size => ({ value: String(size), label: `${size} rows` }))} value={String(pageSize)} />
-    <div className={styles.ledgerPaginationActions}>
+    <span aria-live="polite" className={styles.tableNote}>{totalRows ? `Showing ${start}–${end} of ${totalRows} · Page ${currentPage} of ${pageCount}` : "No results"}</span>
+    {totalRows > 0 ? <DesignLabSelect compact dataPdId={`${dataPdId}.page-size`} label={`${label} rows per page`} onChange={value => onPageSizeChange(Number(value))} options={ledgerPageSizeOptions.map(size => ({ value: String(size), label: `${size} rows` }))} value={String(pageSize)} /> : null}
+    {pageCount > 1 ? <div className={styles.ledgerPaginationActions}>
       <button className={styles.secondaryButton} disabled={currentPage <= 1} onClick={() => onPageChange(Math.max(1, currentPage - 1))} type="button">Previous</button>
       <button className={styles.secondaryButton} disabled={currentPage >= pageCount} onClick={() => onPageChange(Math.min(pageCount, currentPage + 1))} type="button">Next</button>
-    </div>
+    </div> : null}
   </div>;
 }
 

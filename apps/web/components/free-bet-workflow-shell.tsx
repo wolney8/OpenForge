@@ -3678,6 +3678,16 @@ export function FreeBetWorkflowShell({
               const rowId = String(row.free_bet_id ?? "");
               return { id: rowId, title: String(row.event_name ?? "").trim() || rowId, status: String(row.status ?? ""), subtitle: String(row.offer_name ?? "").trim(), fields: freeBetTableColumns.filter(column => column.key !== "actions").map(column => ({ key: column.key, label: column.label, value: renderTableCell(row, column) })), onOpen: () => void selectRow(rowId) };
             })} /> : null}
+            {visualV2 ? <DesignLedgerPagination
+              currentPage={effectivePage}
+              dataPdId="free-bets.pagination.bottom"
+              label="Free Bets"
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(nextPageSize) => { setPageSize(nextPageSize); setCurrentPage(1); }}
+              pageCount={pageCount}
+              pageSize={pageSize}
+              totalRows={filteredRows.length}
+            /> : null}
             {!visualV2 ? <LedgerPagination
               ariaLabel="Free Bet pagination"
               currentPage={effectivePage}

@@ -12,6 +12,8 @@ const cases = [
 const nativeWorkbench = (page: import("@playwright/test").Page, item: (typeof cases)[number]) => item.id === "sportsbook"
   ? page.locator('[data-pd-id="sportsbook.editor.workbench-surface"]')
   : page.locator(`[data-pd-id="${item.id}.editor.dialog"]`);
+const saveAction = (editor: import("@playwright/test").Locator, item: (typeof cases)[number]) =>
+  editor.getByRole("button", { name: item.id === "sportsbook" ? /^Save (Changes|Edits|Prospecting)$/ : /^Save$/ });
 
 test.use({ video: "on", trace: "retain-on-failure", screenshot: "only-on-failure" });
 
@@ -97,19 +99,21 @@ for (const item of cases) {
     await expect(context).toBeVisible();
     await expect(context).toContainText("Bookmaker");
     await expect(context).toContainText("Status");
-    const stages = dialog.locator('[data-pd-id="ledger-editor.tabs"]');
+    const stages = dialog.locator(item.id === "sportsbook" ? '[data-pd-id="bet-workbench.stages"]' : '[data-pd-id="ledger-editor.tabs"]');
     await expect(stages).toHaveClass(item.id === "sportsbook" ? /stepper/ : /stages/);
-    await expect(dialog.locator('[role="tab"][aria-current="step"]')).toHaveCount(1);
+    await expect(dialog.locator(item.id === "sportsbook" ? '[data-pd-id="bet-workbench.stages"] button[aria-current="step"]' : '[role="tab"][aria-current="step"]')).toHaveCount(1);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
     await page.screenshot({ path: info.outputPath(`${item.id}-populated-900-dark.png`) });
     if (item.id !== "casino-offers") {
-      await dialog.getByRole("tab", { name: /Matching/i }).click();
+      if (item.id === "sportsbook") await stages.locator('[data-pd-id="bet-workbench.stage.matching"]').click();
+      else await dialog.getByRole("tab", { name: /Matching/i }).click();
       await expect(dialog.locator('[data-pd-id="ledger-editor.panel.matching"]')).toBeVisible();
       await page.screenshot({ path: info.outputPath(`${item.id}-matching-900-dark.png`) });
     }
-    await dialog.getByRole("tab", { name: /Settlement/i }).click();
+    if (item.id === "sportsbook") await stages.locator('[data-pd-id="bet-workbench.stage.finish"]').click();
+    else await dialog.getByRole("tab", { name: /Settlement/i }).click();
     await expect(dialog.locator('[data-pd-id="ledger-editor.panel.settlement"]')).toBeVisible();
-    await expect(dialog.getByRole("tab", { name: /Settlement/i })).toHaveAttribute("aria-current", "step");
+    await expect(item.id === "sportsbook" ? stages.locator('[data-pd-id="bet-workbench.stage.finish"]') : dialog.getByRole("tab", { name: /Settlement/i })).toHaveAttribute("aria-current", "step");
     const guide = dialog.locator(`[data-pd-id="${item.id}.guided-entry"]`);
     if (await guide.isVisible()) {
       expect((await guide.boundingBox())!.height).toBeGreaterThanOrEqual(70);
@@ -141,7 +145,7 @@ for (const item of cases) {
     await page.locator(`[data-pd-id="${item.add}"]`).click();
     const dialog = nativeWorkbench(page, item);
     await expect(dialog).toBeVisible();
-    await expect(dialog.getByRole("button", { name: "Save", exact: true })).toBeDisabled();
+    await expect(saveAction(dialog, item)).toBeDisabled();
     const field = dialog.getByLabel(item.id === "casino-offers" ? "Offer name" : "Event name", { exact: true });
     await field.fill(`Synthetic unsaved ${item.id}`);
     await page.keyboard.press("Escape");
@@ -203,7 +207,7 @@ for (const item of cases) {
       expect(fieldRect!.y + fieldRect!.height).toBeLessThanOrEqual(footerRect!.y + 1);
       await page.screenshot({ path: info.outputPath(`${item.id}-actual-200-percent-field-focus.png`) });
       if (item.id === "sportsbook") {
-        const save = footer.getByRole("button", { name: "Save", exact: true });
+        const save = footer.getByRole("button", { name: /Save Prospecting|Finish Placed Record/ });
         await save.scrollIntoViewIfNeeded();
         const saveRect = await save.boundingBox();
         expect(saveRect!.y).toBeGreaterThanOrEqual(0);
@@ -329,27 +333,86 @@ test("Sportsbook populated Lab and native workbenches expose their complete gove
   await expect(native).toBeVisible();
   await expect(native).toHaveCSS("opacity", "1");
   await page.waitForTimeout(350);
-  await expect(native.getByRole("tab", { name: /Bet Setup/i })).toBeVisible();
-  await expect(native.getByRole("tab", { name: /Matching/i })).toBeVisible();
-  await expect(native.getByRole("tab", { name: /Settlement/i })).toBeVisible();
-  await page.screenshot({ path: info.outputPath("sportsbook-native-populated-setup-900-dark.png") });
+  const nativeStages = native.locator('[data-pd-id="bet-workbench.stages"]');
+  await expect(nativeStages.getByRole("button")).toHaveCount(5);
+  await nativeStages.locator('[data-pd-id="bet-workbench.stage.offer"]').click();
+  await expect(native.locator('[data-pd-id="ledger-editor.panel.setup"]')).toBeVisible();
+  await page.screenshot({ path: info.outputPath("sportsbook-native-populated-offer-900-dark.png"), fullPage: true });
   const nativeBody = native.locator(".workflow-editor-body");
-  await nativeBody.evaluate(element => { element.scrollTop = element.scrollHeight; });
-  await page.screenshot({ path: info.outputPath("sportsbook-native-populated-setup-end-900-dark.png") });
-  await native.getByRole("tab", { name: /Matching/i }).click();
+  await expect(nativeBody).toHaveCSS("overflow-y", "visible");
+  await nativeStages.locator('[data-pd-id="bet-workbench.stage.requirements"]').click();
+  await expect(native.locator('[data-pd-id="sportsbook.workbench.requirements"]')).toBeVisible();
+  await page.screenshot({ path: info.outputPath("sportsbook-native-populated-requirements-900-dark.png"), fullPage: true });
+  await nativeStages.locator('[data-pd-id="bet-workbench.stage.matching"]').click();
   await expect(native.locator('[data-pd-id="ledger-editor.panel.matching"]')).toBeVisible();
-  await page.screenshot({ path: info.outputPath("sportsbook-native-populated-matching-900-dark.png") });
-  await nativeBody.evaluate(element => { element.scrollTop = element.scrollHeight; });
-  await page.screenshot({ path: info.outputPath("sportsbook-native-populated-matching-end-900-dark.png") });
-  await native.getByRole("tab", { name: /Settlement/i }).click();
+  await page.screenshot({ path: info.outputPath("sportsbook-native-populated-matching-900-dark.png"), fullPage: true });
+  const placement = nativeStages.locator('[data-pd-id="bet-workbench.stage.placement"]');
+  if (await placement.getAttribute("aria-disabled") !== "true") {
+    await placement.click();
+    await expect(native.locator('[data-pd-id="sportsbook.workbench.placement"]')).toBeVisible();
+    await page.screenshot({ path: info.outputPath("sportsbook-native-populated-placement-900-dark.png"), fullPage: true });
+  }
+  await nativeStages.locator('[data-pd-id="bet-workbench.stage.finish"]').click();
   await expect(native.locator('[data-pd-id="ledger-editor.panel.settlement"]')).toBeVisible();
-  await page.screenshot({ path: info.outputPath("sportsbook-native-populated-settlement-900-dark.png") });
-  await nativeBody.evaluate(element => { element.scrollTop = element.scrollHeight; });
-  await page.screenshot({ path: info.outputPath("sportsbook-native-populated-settlement-end-900-dark.png") });
+  await page.screenshot({ path: info.outputPath("sportsbook-native-populated-review-900-dark.png"), fullPage: true });
   await native.locator('[data-pd-id="sportsbook.editor.edit-settled-row"]:visible').first().click();
   await expect(native.locator('[data-pd-id="sportsbook.editor.editing-state"]:visible').first()).toBeVisible();
   await page.screenshot({ path: info.outputPath("sportsbook-native-populated-correction-900-dark.png") });
 });
+
+for (const [width, theme] of [[1440, "light"], [390, "dark"]] as const) {
+  test(`Sportsbook Lab and native populated workbenches compare at ${width}px ${theme}`, async ({ page }, info) => {
+    test.setTimeout(90_000);
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.addInitScript(selectedTheme => {
+      localStorage.setItem("pd-required-storage-notice", "acknowledged");
+      localStorage.setItem("openforge-theme", selectedTheme);
+    }, theme);
+    await page.goto(authURL);
+    await page.goto("/design-lab");
+    await page.locator('[data-pd-id="lab.nav.sportsbook"]').click();
+    await page.locator('tr[data-lab-row-id="LAB-SB-001"] button[aria-label^="Open "]').click();
+    await page.getByRole("button", { name: "Edit Bet", exact: true }).click();
+    await page.setViewportSize({ width, height: 900 });
+    const lab = page.locator('[data-pd-id="lab.entry.page"]');
+    await expect(lab).toBeVisible();
+    await page.screenshot({ path: info.outputPath(`sportsbook-lab-offer-${width}-${theme}.png`), fullPage: true });
+    const labMetrics = await lab.evaluate(node => {
+      const rail = node.querySelector('[data-pd-id="bet-workbench.stages"]')!;
+      const fields = node.querySelector('[class*="entryFields"]')!;
+      const aside = node.querySelector('aside')!;
+      return { railHeight: rail.getBoundingClientRect().height, railBackground: getComputedStyle(rail.querySelector('button')!).backgroundColor,
+        fieldsBackground: getComputedStyle(fields).backgroundColor, asideBackground: getComputedStyle(aside).backgroundColor,
+        columns: [fields.getBoundingClientRect().x, aside.getBoundingClientRect().x], overflow: document.documentElement.scrollWidth - innerWidth };
+    });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/profiles/profile-demo-001/tracker/sportsbook-bets");
+    await expect(page.locator(".ledger-loading-overlay")).toHaveCount(0, { timeout: 45_000 });
+    await page.locator('td[data-ledger-row="SB-SEED-001"][data-ledger-column="event_name"]').click();
+    await page.locator('[data-pd-id="sportsbook.toolbar.open-selected"]').click();
+    await page.setViewportSize({ width, height: 900 });
+    const native = page.locator('[data-pd-id="sportsbook.editor.workbench-surface"]');
+    await native.locator('[data-pd-id="bet-workbench.stage.offer"]').click();
+    await expect(native.locator('[data-pd-id="ledger-editor.panel.setup"]')).toBeVisible();
+    await page.screenshot({ path: info.outputPath(`sportsbook-native-offer-${width}-${theme}.png`), fullPage: true });
+    const nativeMetrics = await native.evaluate(node => {
+      const rail = node.querySelector('[data-pd-id="bet-workbench.stages"]')!;
+      const fields = node.querySelector('[class*="entryFields"]')!;
+      const aside = node.querySelector('aside')!;
+      return { railHeight: rail.getBoundingClientRect().height, railBackground: getComputedStyle(rail.querySelector('button')!).backgroundColor,
+        fieldsBackground: getComputedStyle(fields).backgroundColor, asideBackground: getComputedStyle(aside).backgroundColor,
+        columns: [fields.getBoundingClientRect().x, aside.getBoundingClientRect().x], overflow: document.documentElement.scrollWidth - innerWidth,
+        bodyOverflow: getComputedStyle(node.querySelector('.workflow-editor-body')!).overflowY,
+        footerPosition: getComputedStyle(node.querySelector('[data-pd-id="sportsbook.editor.actions"]')!).position };
+    });
+    expect(nativeMetrics.railBackground).toBe(labMetrics.railBackground);
+    expect(nativeMetrics.asideBackground).toBe(labMetrics.asideBackground);
+    expect(nativeMetrics.bodyOverflow).toBe("visible");
+    expect(nativeMetrics.footerPosition).toBe("static");
+    expect(nativeMetrics.overflow).toBeLessThanOrEqual(1);
+    await writeFile(info.outputPath(`sportsbook-workbench-computed-${width}-${theme}.json`), JSON.stringify({ lab: labMetrics, native: nativeMetrics }, null, 2));
+  });
+}
 
 for (const item of cases) {
   test(`${item.id} native Add, Save, reopen and Edit keep the source record`, async ({ page }) => {
@@ -374,7 +437,7 @@ for (const item of cases) {
       await dialog.getByLabel("Offer type").selectOption({ label: "Bet & Get" });
       await dialog.locator("label", { hasText: /^Fixture type/i }).locator("select").selectOption({ label: "Football" });
       await dialog.getByLabel("Event name").fill(sourceName);
-      await dialog.getByRole("tab", { name: /Matching/ }).click();
+      await dialog.locator('[data-pd-id="bet-workbench.stage.matching"]').click();
       const plan = dialog.locator('[data-pd-id="sportsbook.matching.core-planner"]');
       await expect(plan).toBeVisible();
       await plan.getByLabel("Back stake").fill("10.00");
@@ -411,11 +474,11 @@ for (const item of cases) {
       } else await route.continue();
     };
     await page.route(saveEndpoint, rejectSave);
-    await dialog.getByRole("button", { name: "Save", exact: true }).click();
+    await saveAction(dialog, item).click();
     await expect(dialog).toBeVisible();
     await expect(dialog.getByLabel(item.id === "casino-offers" ? "Offer name" : "Event name", { exact: true })).toHaveValue(sourceName);
     await expect(dialog.locator(`[data-pd-id="${item.id}.editor.save-error"]`)).toBeVisible();
-    await dialog.getByRole("button", { name: "Save", exact: true }).click();
+    await saveAction(dialog, item).click();
     await page.unroute(saveEndpoint, rejectSave);
     await expect(dialog).toHaveCount(0, { timeout: 30_000 });
     const idKey = item.id === "sportsbook" ? "sportsbook_bet_id" : item.id === "free-bets" ? "free_bet_id" : "casino_offer_id";
@@ -439,10 +502,11 @@ for (const item of cases) {
     const edit = item.id === "sportsbook" ? nativeWorkbench(page, item) : page.getByRole("dialog", { name: item.editName, exact: true });
     await expect(edit).toBeVisible();
     const input = edit.getByLabel(item.id === "casino-offers" ? "Offer name" : "Event name", { exact: true });
-    await edit.getByRole("tab", { name: /Setup/i }).click();
+    if (item.id === "sportsbook") await edit.locator('[data-pd-id="bet-workbench.stage.offer"]').click();
+    else await edit.getByRole("tab", { name: /Setup/i }).click();
     await expect(input).toHaveValue(sourceName);
     await input.fill(changedName);
-    await edit.getByRole("button", { name: "Save", exact: true }).click();
+    await saveAction(edit, item).click();
     await expect(edit).toHaveCount(0, { timeout: 30_000 });
     const reloaded = await page.request.get(`/api/profiles/profile-demo-001/${item.route}/${recordId}`);
     expect(reloaded.status()).toBe(200);

@@ -1557,6 +1557,16 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialCreat
                 </article>;
               })}
             </div>
+            {visualV2 ? <DesignLedgerPagination
+              currentPage={effectivePage}
+              dataPdId="accounts.pagination.bottom"
+              label="Accounts"
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(nextPageSize) => { setPageSize(nextPageSize); setCurrentPage(1); }}
+              pageCount={pageCount}
+              pageSize={pageSize}
+              totalRows={filteredRows.length}
+            /> : null}
             {!visualV2 ? <LedgerPagination
               ariaLabel="Accounts"
               currentPage={effectivePage}

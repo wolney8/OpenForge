@@ -3924,6 +3924,16 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
               const rowId = String(row.casino_offer_id ?? "");
               return { id: rowId, title: String(row.game ?? "").trim() || rowId, status: String(row.status ?? ""), subtitle: String(row.offer_name ?? "").trim(), fields: casinoTableColumns.filter(column => column.key !== "actions").map(column => ({ key: column.key, label: column.label, value: renderTableCell(row, column) })), onOpen: () => void selectRow(rowId) };
             })} /> : null}
+            {visualV2 ? <DesignLedgerPagination
+              currentPage={effectivePage}
+              dataPdId="casino-offers.pagination.bottom"
+              label="Casino Offers"
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(nextPageSize) => { setPageSize(nextPageSize); setCurrentPage(1); }}
+              pageCount={pageCount}
+              pageSize={pageSize}
+              totalRows={filteredRows.length}
+            /> : null}
             {!visualV2 ? <LedgerPagination
               ariaLabel="Casino Offer pagination"
               currentPage={effectivePage}

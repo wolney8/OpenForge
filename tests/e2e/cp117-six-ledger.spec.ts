@@ -203,11 +203,11 @@ test("floating Tab, click-away rejection and full-editor transition retain one n
   const editor = floating(page); const input = editor.getByRole("textbox", { name: "Event name", exact: true });
   await input.fill("Synthetic handoff draft"); await input.press("Alt+Enter");
   const full = editorFor(page, cases[0]);
-  await full.getByRole("tab", { name: /Bet Setup/ }).click();
+  await full.locator('[data-pd-id="bet-workbench.stage.offer"]').click();
   await expect(full.getByRole("textbox", { name: "Event name", exact: true })).toHaveValue("Synthetic handoff draft");
   // The full editor retains its governed Save action and the same draft;
   // leaving without saving must not write this descriptive change.
-  await expect(full.getByRole("button", { name: "Save", exact: true })).toBeVisible();
+  await expect(full.getByRole("button", { name: /^Save (Changes|Edits|Prospecting)$/ })).toBeVisible();
   await full.getByRole("button", { name: "Close sportsbook editor" }).click();
   const guard = page.getByRole("dialog", { name: "Unsaved tracker changes" });
   if (await guard.count()) await guard.getByRole("button", { name: "Discard changes" }).click();
@@ -308,7 +308,7 @@ test("settled rows and legacy Casino preparation preserve populated correction g
     await expect(editorFor(page, item)).toHaveCount(0);
     await review.getByRole("button", { name: /Open .* for review/ }).click();
     const dialog = editorFor(page, item); await expect(dialog).toBeVisible();
-    await dialog.locator('[data-pd-id="ledger-editor.tab.setup"]').click();
+    await dialog.locator(item.module === "sportsbook-bets" ? '[data-pd-id="bet-workbench.stage.offer"]' : '[data-pd-id="ledger-editor.tab.setup"]').click();
     await expect(dialog.getByRole("textbox", {name:item.label,exact:true})).toBeDisabled();
     await page.keyboard.press("Escape");
   }

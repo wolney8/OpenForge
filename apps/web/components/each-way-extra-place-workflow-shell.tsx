@@ -1290,7 +1290,17 @@ export function EachWayExtraPlaceWorkflowShell({
           { key: "status", label: "Status", value: row.status || "—" },
         ],
       }))} /> : null}
-      {!visualV2 ? <LedgerPagination
+      {visualV2 ? <DesignLedgerPagination
+        currentPage={effectivePage}
+        dataPdId="extra-place.pagination.bottom"
+        label="Extra Place"
+        onPageChange={setCurrentPage}
+        onPageSizeChange={(nextPageSize) => { setPageSize(nextPageSize); setCurrentPage(1); }}
+        pageCount={pageCount}
+        pageSize={pageSize}
+        totalRows={pageableRows.length}
+      /> : null}
+            {!visualV2 ? <LedgerPagination
         ariaLabel="Extra Place pagination"
         currentPage={effectivePage}
         onPageChange={setCurrentPage}

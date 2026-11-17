@@ -118,7 +118,7 @@ test("Sportsbook cell handoff saves through the real API and retains a failed dr
   await cell.click(); await page.keyboard.press("Enter");
   await page.locator('[data-pd-id="ledger.floating-editor"]').getByRole("textbox", { name: "Event name", exact: true }).press("Alt+Enter");
   const editor = page.locator('[data-pd-id="sportsbook.editor.workbench-surface"]');
-  await editor.getByRole("tab", { name: /Bet Setup/ }).click();
+  await editor.locator('[data-pd-id="bet-workbench.stage.offer"]').click();
   const input = editor.getByRole("textbox", { name: "Event name", exact: true });
   const next = before.event_name.endsWith("Reviewed") ? "Synthetic cell review 1" : "Synthetic cell review 1 Reviewed";
   await expect(input).toHaveValue(before.event_name);
@@ -128,10 +128,10 @@ test("Sportsbook cell handoff saves through the real API and retains a failed dr
     if (route.request().method() === "PUT" && !rejected) { rejected = true; await route.fulfill({ status: 503, json: { detail: "Synthetic retry check" } }); }
     else await route.continue();
   });
-  await editor.getByRole("button", { name: "Save", exact: true }).click();
+  await editor.getByRole("button", { name: /^Save (Changes|Edits|Prospecting)$/ }).click();
   await expect(editor).toBeVisible(); await expect(input).toHaveValue(next);
   await expect(editor).toContainText("Synthetic retry check");
-  await editor.getByRole("button", { name: "Save", exact: true }).click();
+  await editor.getByRole("button", { name: /^Save (Changes|Edits|Prospecting)$/ }).click();
   await expect(editor).toHaveCount(0);
   const after = await (await page.request.get(endpoint)).json();
   expect(after.event_name).toBe(next);
@@ -139,7 +139,7 @@ test("Sportsbook cell handoff saves through the real API and retains a failed dr
   await page.reload(); await ready(page, "sportsbook-bets");
   await cell.click(); await page.keyboard.press("Enter");
   await page.locator('[data-pd-id="ledger.floating-editor"]').getByRole("textbox", { name: "Event name", exact: true }).press("Alt+Enter");
-  await editor.getByRole("tab", { name: /Bet Setup/ }).click();
+  await editor.locator('[data-pd-id="bet-workbench.stage.offer"]').click();
   await expect(input).toHaveValue(next);
   await page.keyboard.press("Escape");
   expect((await page.request.get('/api/profiles/profile-demo-002/sportsbook-bets/CP117-CELL-001')).status()).toBe(404);
@@ -283,9 +283,17 @@ test("actual Chromium 200% zoom keeps selected cells and native editors reachabl
         await expect(editor).toBeVisible();
         const rect = await editor.boundingBox();
         expect(rect!.x).toBeGreaterThanOrEqual(0); expect(rect!.x + rect!.width).toBeLessThanOrEqual(721);
-        const footerBottom = await editor.locator('[data-pd-id="sportsbook.editor.actions"]').evaluate(node => node.getBoundingClientRect().bottom);
-        expect(footerBottom).toBeLessThanOrEqual(501);
-        await expect(editor.getByRole("button", { name: "Save", exact: true })).toBeInViewport();
+        const footer = editor.locator('[data-pd-id="sportsbook.editor.actions"]');
+        if (legacy) {
+          const footerBottom = await footer.evaluate(node => node.getBoundingClientRect().bottom);
+          expect(footerBottom).toBeLessThanOrEqual(501);
+          await expect(editor.getByRole("button", { name: "Save", exact: true })).toBeInViewport();
+        } else {
+          await expect(footer).toHaveCSS("position", "static");
+          await footer.scrollIntoViewIfNeeded();
+          await expect(editor.getByRole("button", { name: /^Save (Changes|Edits|Prospecting)$/ })).toBeInViewport();
+          expect(await page.evaluate(() => document.scrollingElement!.scrollTop)).toBeGreaterThan(0);
+        }
         expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
         await page.keyboard.press("Escape"); await expect(cell).toBeFocused();
       }

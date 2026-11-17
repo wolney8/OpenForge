@@ -293,6 +293,6 @@ test("Opportunities Quick Capture chooses an owner and continues the existing un
   await expect(page.locator('[data-pd-id="sportsbook.quick-capture.dialog"]')).toBeVisible();
   await page.locator('[data-pd-id="sportsbook.quick-capture.offer-text"]').fill("Synthetic advisory wording");
   await page.getByRole("button", { name: "Open full workbench" }).click();
-  await expect(page.locator('[data-pd-id="sportsbook.editor.workbench-surface"]').getByLabel("Offer", { exact: true })).toHaveValue("Synthetic advisory wording");
+  await expect(page.locator('[data-pd-id="sportsbook.editor.workbench-surface"] [data-guided-field="offer"] textarea')).toHaveValue("Synthetic advisory wording");
   await expect(page.locator('[role="dialog"][aria-modal="true"]')).toHaveCount(0);
 });

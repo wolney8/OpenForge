@@ -141,16 +141,20 @@ test("source-backed advisory opportunities track in a bounded isolated batch", a
   expect(cleanup.status()).toBe(200);
 });
 
-test("real Sportsbook ledger has the Lab entry modes and horizontal controls", async ({ page }) => {
+test("real Sportsbook ledger separates synchronized pagination from horizontal panning", async ({ page }) => {
   await page.goto(ledger);
   await expect(page.getByRole("heading", { name: "Sportsbook Bets", level: 1 })).toBeVisible();
   await expect(page.getByRole("button", { name: "Quick Capture" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Open Bet Workbench" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Scroll table right" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Scroll table right" })).toHaveCount(0);
   await expect(page.getByLabel("Status Filter")).toBeVisible();
-  const controls = await page.locator('[data-pd-id="sportsbook.table-scroll.scroll-controls"]').boundingBox();
-  const table = await page.locator('[data-pd-id="sportsbook.table-scroll"]').boundingBox();
-  expect(controls && table && controls.y + controls.height <= table.y).toBeTruthy();
+  const top = page.locator('[data-pd-id="sportsbook.pagination.top"]');
+  const bottom = page.locator('[data-pd-id="sportsbook.pagination.bottom"]');
+  await expect(top).toBeVisible();
+  await expect(bottom).toBeVisible();
+  await expect(bottom).toContainText(await top.locator('[aria-live="polite"]').innerText());
+  const gridBottom = (await page.locator('[data-pd-id="sportsbook.table-scroll"]').boundingBox())!.y + (await page.locator('[data-pd-id="sportsbook.table-scroll"]').boundingBox())!.height;
+  expect((await bottom.boundingBox())!.y).toBeGreaterThanOrEqual(gridBottom);
   await page.getByRole("button", { name: "Quick Capture" }).click();
   const quick = page.locator('[data-pd-id="sportsbook.quick-capture.dialog"]');
   await expect(quick).toBeVisible();
@@ -164,6 +168,32 @@ test("real Sportsbook ledger has the Lab entry modes and horizontal controls", a
   await expect(full.getByLabel("Campaign tag (optional)")).toHaveValue("Demo Campaign");
 });
 
+for (const [name, slug, paginationId] of [
+  ["Accounts", "accounts", "accounts"],
+  ["Free Bets", "free-bets", "free-bets"],
+  ["Casino Offers", "casino-offers", "casino-offers"],
+  ["Extra Place", "each-way-extra-places", "extra-place"],
+  ["Cash Adjustments", "cash-adjustments", "cash-adjustments"],
+] as const) {
+  test(`${name} keeps one synchronized pagination contract above and below its grid`, async ({ page }) => {
+    await page.goto(`/profiles/${profile}/tracker/${slug}`);
+    const top = page.locator(`[data-pd-id="${paginationId}.pagination.top"]`);
+    const bottom = page.locator(`[data-pd-id="${paginationId}.pagination.bottom"]`);
+    await expect(top).toBeVisible();
+    await expect(bottom).toBeVisible();
+    await expect(bottom.locator('[aria-live="polite"]')).toHaveText(await top.locator('[aria-live="polite"]').innerText());
+    await expect(page.getByRole("button", { name: /Scroll table (left|right)/ })).toHaveCount(0);
+    const topPageSize = top.locator(`[data-pd-id="${paginationId}.pagination.top.page-size"]`);
+    const bottomPageSize = bottom.locator(`[data-pd-id="${paginationId}.pagination.bottom.page-size"]`);
+    if (await topPageSize.count()) {
+      await topPageSize.click();
+      await page.getByRole("option", { name: "16 rows" }).click();
+      await expect(bottomPageSize).toContainText("16 rows");
+      await expect(bottom.locator('[aria-live="polite"]')).toHaveText(await top.locator('[aria-live="polite"]').innerText());
+    }
+  });
+}
+
 test("Sportsbook V2 opens one application workbench instead of the legacy primary modal", async ({ page }) => {
   await page.goto(ledger);
   await expect(page.locator(".ledger-loading-overlay")).toHaveCount(0, { timeout: 45_000 });
@@ -172,9 +202,76 @@ test("Sportsbook V2 opens one application workbench instead of the legacy primar
   await page.locator('[data-pd-id="sportsbook.toolbar.open-selected"]').click();
   const workbench = page.locator('[data-pd-id="sportsbook.editor.workbench-surface"]');
   await expect(workbench).toBeVisible();
-  await expect(workbench.locator('[data-pd-id="ledger-editor.tab.setup"]')).toHaveCount(1);
+  await expect(workbench.locator('[data-pd-id="bet-workbench.stages"] button')).toHaveCount(5);
+  await expect(workbench.locator('[data-pd-id="bet-workbench.stage.offer"]')).toBeVisible();
   await expect(page.locator('[data-pd-id="sportsbook.editor.dialog"]')).toHaveCount(0);
   await expect(page.locator('[role="dialog"][aria-modal="true"]')).toHaveCount(0);
+});
+
+test("Sportsbook workbench uses page scrolling, five stages and a normal-flow footer", async ({ page }, info) => {
+  await page.setViewportSize({ width: 900, height: 700 });
+  await page.goto(ledger);
+  await expect(page.locator(".ledger-loading-overlay")).toHaveCount(0, { timeout: 45_000 });
+  await page.locator('td[data-ledger-row="SB-SEED-001"][data-ledger-column="event_name"]').click();
+  await page.locator('[data-pd-id="sportsbook.toolbar.open-selected"]').click();
+  const surface = page.locator('[data-pd-id="sportsbook.editor.workbench-surface"]');
+  const stages = surface.locator('[data-pd-id="bet-workbench.stages"] button');
+  await expect(stages).toHaveCount(5);
+  await expect(stages).toHaveText([/Offer/, /Requirements/, /Matching/, /Placement/, /Finish \/ Review/]);
+  await surface.locator('[data-pd-id="bet-workbench.stage.offer"]').click();
+  await expect(surface.locator('[data-pd-id="ledger-editor.panel.setup"]')).toBeVisible();
+  expect(await surface.evaluate(node => getComputedStyle(node).maxHeight)).toBe("none");
+  await expect(surface.locator(".workflow-editor-body")).toHaveCSS("overflow-y", "visible");
+  const footer = surface.locator('[data-pd-id="sportsbook.editor.actions"]');
+  await expect(footer).toHaveCSS("position", "static");
+  const bodyBottom = await surface.locator(".workflow-editor-body").evaluate(node => node.getBoundingClientRect().bottom);
+  expect((await footer.boundingBox())!.y).toBeGreaterThanOrEqual(bodyBottom - 1);
+  expect(await page.evaluate(() => document.scrollingElement!.scrollHeight)).toBeGreaterThan(700);
+  await footer.scrollIntoViewIfNeeded();
+  expect(await page.evaluate(() => document.scrollingElement!.scrollTop)).toBeGreaterThan(0);
+  await page.screenshot({ path: info.outputPath("sportsbook-workbench-page-flow-900.png"), fullPage: true });
+});
+
+test("Lab and real cells pan over text without selecting it or opening an editor", async ({ page }) => {
+  await page.setViewportSize({ width: 900, height: 850 });
+  for (const route of [ledger, "/design-lab"] as const) {
+    if (route === "/design-lab") await page.setViewportSize({ width: 1440, height: 850 });
+    await page.goto(route);
+    if (route === "/design-lab") { await page.locator('[data-pd-id="lab.nav.sportsbook"]').click(); await page.setViewportSize({ width: 900, height: 850 }); }
+    const grid = page.locator(route === "/design-lab" ? '[data-pd-id="lab.ledger-pan.sportsbook"]' : '[data-pd-id="sportsbook.table-scroll"]');
+    const cell = grid.locator("tbody td[tabindex]").filter({ hasText: /./ }).first();
+    await cell.scrollIntoViewIfNeeded();
+    expect(await cell.evaluate(node => getComputedStyle(node).cursor)).toBe("cell");
+    await grid.evaluate(node => { node.scrollLeft = 0; window.getSelection()?.removeAllRanges(); });
+    const box = (await cell.boundingBox())!;
+    const x = Math.min(box.x + box.width - 12, Math.max(box.x + 16, 190));
+    const y = box.y + Math.min(box.height / 2, 20);
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await page.mouse.move(x - 110, y, { steps: 8 });
+    await page.mouse.up();
+    expect(await grid.evaluate(node => node.scrollLeft)).toBeGreaterThan(0);
+    expect(await page.evaluate(() => window.getSelection()?.toString() ?? "")).toBe("");
+    await expect(page.getByRole("button", { name: "Scroll table right" })).toHaveCount(0);
+    await expect(page.locator('[data-pd-id="ledger.floating-editor"]')).toHaveCount(0);
+  }
+});
+
+test("Escape cancels a changed Sportsbook cell without Revert toast or Save", async ({ page }) => {
+  await page.goto(ledger);
+  const cell = page.locator('td[data-ledger-row="CP117-CELL-001"][data-ledger-column="event_name"]');
+  await cell.dblclick();
+  const input = page.locator('[data-pd-id="sportsbook.cell-editor.event_name"]');
+  await expect(input).toBeVisible();
+  const original = await input.inputValue();
+  await input.fill(`${original} unsaved`);
+  await input.press("Escape");
+  await expect(page.locator('[data-pd-id="ledger.floating-editor"]')).toHaveCount(0);
+  await expect(page.getByText(/Reverted unsaved changes for sportsbook bet/)).toHaveCount(0);
+  await expect(cell).toContainText(original);
+  await page.reload();
+  const persisted = await (await page.request.get(`/api/profiles/${profile}/sportsbook-bets/CP117-CELL-001`)).json() as { event_name: string };
+  expect(persisted.event_name).toBe(original);
 });
 
 test("eligible Sportsbook Settles cell exposes the native datetime control without opening a workbench", async ({ page }) => {
@@ -365,7 +462,7 @@ test("Sportsbook workbench replaces the ledger and keeps its controls contained 
     await page.locator('[data-pd-id="lab.add.modal"]').click();
     await page.getByRole("button", { name: "Open full workbench" }).click();
     await page.setViewportSize({ width, height: 900 });
-    await page.screenshot({ path: info.outputPath(`sportsbook-lab-${width}-${theme}.png`) });
+    await page.screenshot({ path: info.outputPath(`sportsbook-lab-${width}-${theme}.png`), fullPage: true });
     await page.goto(ledger);
     await expect(page.locator(".ledger-loading-overlay")).toHaveCount(0, { timeout: 45_000 });
     await page.locator('[data-pd-id="sportsbook.toolbar.add-row"]').click();
@@ -378,20 +475,22 @@ test("Sportsbook workbench replaces the ledger and keeps its controls contained 
       const bounds = element.getBoundingClientRect();
       const body = element.querySelector(".workflow-editor-body")!;
       const footer = element.querySelector(".workflow-editor-footer")?.getBoundingClientRect();
-      return { left: bounds.left, right: bounds.right, width: bounds.width, bodyScrolls: body.scrollHeight > body.clientHeight, pageOverflow: document.documentElement.scrollWidth - innerWidth,
-        footerBottom: footer?.bottom ?? Infinity, viewportHeight: innerHeight };
+      return { left: bounds.left, right: bounds.right, width: bounds.width, bodyOverflow: getComputedStyle(body).overflowY, pageScrolls: document.scrollingElement!.scrollHeight > innerHeight, pageOverflow: document.documentElement.scrollWidth - innerWidth,
+        footerTop: footer?.top ?? -Infinity, bodyBottom: body.getBoundingClientRect().bottom, viewportHeight: innerHeight };
     });
     expect(geometry.left).toBeGreaterThanOrEqual(0);
     expect(geometry.right).toBeLessThanOrEqual(width + 1);
     expect(geometry.pageOverflow).toBeLessThanOrEqual(1);
-    expect(geometry.bodyScrolls).toBe(true);
-    expect(geometry.footerBottom).toBeLessThanOrEqual(geometry.viewportHeight + 1);
+    expect(geometry.bodyOverflow).toBe("visible");
+    expect(geometry.pageScrolls).toBe(true);
+    expect(geometry.footerTop).toBeGreaterThanOrEqual(geometry.bodyBottom - 1);
+    await surface.locator('[data-pd-id="sportsbook.editor.actions"]').scrollIntoViewIfNeeded();
     for (const button of await surface.locator('[data-pd-id="sportsbook.editor.actions"] button:visible').all()) {
       const bounds = await button.boundingBox();
       expect(bounds?.y ?? Infinity).toBeGreaterThanOrEqual(0);
       expect((bounds?.y ?? Infinity) + (bounds?.height ?? Infinity)).toBeLessThanOrEqual(geometry.viewportHeight + 1);
     }
-    await page.screenshot({ path: info.outputPath(`sportsbook-v2-${width}-${theme}.png`) });
+    await page.screenshot({ path: info.outputPath(`sportsbook-v2-${width}-${theme}.png`), fullPage: true });
     await surface.getByRole("button", { name: "Close sportsbook editor" }).click();
     await expect(surface).toHaveCount(0);
   }

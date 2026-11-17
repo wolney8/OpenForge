@@ -115,14 +115,18 @@ test("Profile Accounts uses the Lab toolbar hierarchy with compact governed pagi
   await expect(toolbar.locator('[data-pd-id="accounts.toolbar.columns"]')).toHaveText("Columns");
   await expect(screen.locator('[data-pd-id="accounts.table-loadouts"]')).toHaveCount(0);
   await expect(screen.locator('[data-pd-id="accounts.pagination.top"]')).toContainText(/Showing \d+–\d+ of \d+/);
-  await expect(screen.locator('[data-pd-id="accounts.pagination.bottom"]')).toHaveCount(0);
+  await expect(screen.locator('[data-pd-id="accounts.pagination.bottom"]')).toBeVisible();
+  await expect(screen.locator('[data-pd-id="accounts.pagination.bottom"] [aria-live="polite"]')).toHaveText(await screen.locator('[data-pd-id="accounts.pagination.top"] [aria-live="polite"]').innerText());
   for (const width of [900, 390] as const) {
     await page.setViewportSize({ width, height: 900 });
     const pager = page.locator('[data-pd-id="accounts.pagination.top"]');
     const select = (await pager.locator('[data-pd-id="accounts.pagination.top.page-size"]').boundingBox())!;
-    const previous = (await pager.getByRole("button", { name: "Previous" }).boundingBox())!;
-    const overlap = select.x < previous.x + previous.width && previous.x < select.x + select.width && select.y < previous.y + previous.height && previous.y < select.y + select.height;
-    expect(overlap, `Page size overlaps Previous at ${width}px`).toBe(false);
+    const previousButton = pager.getByRole("button", { name: "Previous" });
+    if (await previousButton.count()) {
+      const previous = (await previousButton.boundingBox())!;
+      const overlap = select.x < previous.x + previous.width && previous.x < select.x + select.width && select.y < previous.y + previous.height && previous.y < select.y + select.height;
+      expect(overlap, `Page size overlaps Previous at ${width}px`).toBe(false);
+    }
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
   }
 });
@@ -190,7 +194,8 @@ test("Accounts keeps search, secondary review filters, columns and owned-row han
   await page.locator('[data-pd-id="accounts.toolbar.restore-columns"]').click();
   await expect(page.locator('[data-pd-id="accounts.table-scroll"] th').filter({ hasText: "Channel" })).toHaveCount(1);
   await search.fill("No matching synthetic Account");
-  await expect(pager).toContainText("Showing 0–0 of 0");
+  await expect(pager).toContainText("No results");
+  await expect(pager.getByRole("button", { name: /Previous|Next/ })).toHaveCount(0);
   await expect(page.getByText("No account rows match the current filter.").first()).toBeVisible();
 });
 
@@ -280,8 +285,13 @@ test("management tabs remain usable at actual Chromium 200% zoom", async ({}, in
     const pager = page.locator('[data-pd-id="accounts.pagination.top"]');
     await expect(pager).toBeVisible({ timeout: 45_000 });
     const size = (await pager.locator('[data-pd-id="accounts.pagination.top.page-size"]').boundingBox())!;
-    const previous = (await pager.getByRole("button", { name: "Previous" }).boundingBox())!;
-    expect(size.x < previous.x + previous.width && previous.x < size.x + size.width && size.y < previous.y + previous.height && previous.y < size.y + size.height).toBe(false);
+    const previousButton = pager.getByRole("button", { name: "Previous" });
+    if (await previousButton.count()) {
+      const previous = (await previousButton.boundingBox())!;
+      expect(size.x < previous.x + previous.width && previous.x < size.x + size.width && size.y < previous.y + previous.height && previous.y < size.y + size.height).toBe(false);
+    } else {
+      await expect(pager).toContainText("Page 1 of 1");
+    }
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
   } finally {
     await context.close();

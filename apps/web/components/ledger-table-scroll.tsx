@@ -3,6 +3,7 @@
 import { type ReactNode, useEffect, useEffectEvent, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import styles from "@/components/design-lab-connected.module.css";
+import { installLedgerGridPan } from "@/lib/ledger-grid-pan";
 
 type LedgerTableScrollProps = {
   children: ReactNode;
@@ -89,82 +90,36 @@ export function LedgerTableScroll({
         selectedCell?.removeAttribute("data-ledger-selected");
       }
     };
+    const pan = mode === "editable" || visualV2 ? installLedgerGridPan(element) : null;
     const focused = (event: FocusEvent) => {
       const cell = cellFor(event.target);
       // Pointer focus arrives before the movement threshold is known. A click
       // selects below; a completed pan must leave the row selection untouched.
-      if (cell && event.target === cell && !drag) selectCell(cell, false);
+      if (cell && event.target === cell && !pan?.isPending()) selectCell(cell, false);
     };
     const activate = (event: MouseEvent) => {
       const cell = cellFor(event.target);
-      if (!cell || suppressClick) return;
+      if (!cell) return;
       event.preventDefault();
       event.stopPropagation();
       selectCell(cell);
       activateCell(cell);
     };
-    let drag: { id: number; start: number; scroll: number; active: boolean } | null = null;
-    let suppressClick = false;
-    const interactive = 'a,button,input,select,textarea,[contenteditable="true"],[draggable="true"],[role="separator"],.column-resize-handle,.table-column-resize-handle';
-    const down = (event: PointerEvent) => {
-      if (event.pointerType === "touch" || (event.button !== 0 && event.button !== 1)) return;
-      const target = event.target instanceof Element ? event.target : null;
-      if (!target || target.closest(interactive) || target.closest("th")) return;
-      // Left-button text selection remains native on nested cell content.
-      // Middle-button panning works on ordinary cell text as well as background.
-      if (event.button === 0 && target !== element && target.tagName !== "TD") return;
-      if (event.button === 0 && target.tagName === "TD") {
-        const hitsText = [...target.childNodes].some(node => {
-          if (node.nodeType !== Node.TEXT_NODE || !node.textContent?.trim()) return false;
-          const range = document.createRange();
-          range.selectNodeContents(node);
-          return [...range.getClientRects()].some(rect => event.clientX >= rect.left && event.clientX <= rect.right && event.clientY >= rect.top && event.clientY <= rect.bottom);
-        });
-        if (hitsText) return;
-      }
-      if (element.scrollWidth <= element.clientWidth) return;
-      suppressClick = false;
-      drag = { id: event.pointerId, start: event.clientX, scroll: element.scrollLeft, active: false };
-      if (event.button === 1) event.preventDefault();
-    };
-    const move = (event: PointerEvent) => {
-      if (!drag || event.pointerId !== drag.id) return;
-      const distance = event.clientX - drag.start;
-      if (!drag.active && Math.abs(distance) < 6) return;
-      if (!drag.active) {
-        drag.active = true;
-        element.setPointerCapture(event.pointerId);
-        element.classList.add("is-panning");
-      }
-      event.preventDefault();
-      element.scrollLeft = drag.scroll - distance;
-    };
-    const finish = () => {
-      if (!drag) return;
-      suppressClick = drag.active;
-      const id = drag.id;
-      drag = null;
-      element.classList.remove("is-panning");
-      if (element.hasPointerCapture(id)) element.releasePointerCapture(id);
-    };
     const click = (event: MouseEvent) => {
       if (event.type === "auxclick" && event.button === 1) event.preventDefault();
-      if (suppressClick) {
-        event.preventDefault();
-        event.stopPropagation();
-        suppressClick = false;
-        return;
-      }
       if (event.type !== "click" || event.button !== 0) return;
       const cell = cellFor(event.target);
       if (!cell) return;
       event.stopPropagation();
-      // Keep an actual native text selection intact; selecting a cell never saves it.
-      if (!window.getSelection()?.isCollapsed) return;
       selectCell(cell);
     };
     const keyboard = (event: KeyboardEvent) => {
       const cell = cellFor(event.target);
+      if (cell && event.target === cell && (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "c") {
+        event.preventDefault();
+        void navigator.clipboard?.writeText(cell.innerText.trim());
+        return;
+      }
       if (cell && event.target === cell && !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
         if (["Enter", "F2"].includes(event.key)) {
           event.preventDefault(); event.stopPropagation(); activateCell(cell); return;
@@ -208,8 +163,6 @@ export function LedgerTableScroll({
       event.preventDefault();
       element.scrollBy({ left: event.key === "ArrowRight" ? 120 : -120, behavior: "auto" });
     };
-    element.addEventListener("pointerdown", down);
-    element.addEventListener("pointermove", move);
     element.addEventListener("click", click, true);
     element.addEventListener("auxclick", click, true);
     element.addEventListener("keydown", keyboard);
@@ -218,30 +171,22 @@ export function LedgerTableScroll({
     document.addEventListener("pointerdown", clearSelection, true);
     const cellObserver = new MutationObserver(initialiseCells);
     if (navigationLabel) { initialiseCells(); cellObserver.observe(element, { childList: true, subtree: true }); }
-    window.addEventListener("pointerup", finish);
-    window.addEventListener("pointercancel", finish);
-    window.addEventListener("blur", finish);
     return () => {
-      finish();
+      pan?.dispose();
       element.removeAttribute("tabindex");
       element.removeAttribute("role");
       element.removeAttribute("aria-label");
       element.removeAttribute("aria-describedby");
       cells().forEach(cell => { cell.removeAttribute("tabindex"); cell.removeAttribute("data-ledger-selected"); });
       cellObserver.disconnect();
-      element.removeEventListener("pointerdown", down);
-      element.removeEventListener("pointermove", move);
       element.removeEventListener("click", click, true);
       element.removeEventListener("auxclick", click, true);
       element.removeEventListener("keydown", keyboard);
       element.removeEventListener("dblclick", activate, true);
       element.removeEventListener("focusin", focused);
       document.removeEventListener("pointerdown", clearSelection, true);
-      window.removeEventListener("pointerup", finish);
-      window.removeEventListener("pointercancel", finish);
-      window.removeEventListener("blur", finish);
     };
-  }, [instructionsId, mode, navigationLabel]);
+  }, [instructionsId, mode, navigationLabel, visualV2]);
 
   useEffect(() => {
     const element = ref.current;
@@ -348,12 +293,8 @@ export function LedgerTableScroll({
 
   return (
     <div className={`ledger-table-scroll-wrap ${narrowDetail ? styles.tableHiddenForDetail : ""} ${className}`.trim()} ref={wrapperRef}>
-      {cellNavigation ? <span className="sr-only" id={instructionsId}>Use arrow keys, Home or End to select a cell. Press Enter or F2, or double-click, to open the existing {cellNavigation.label} editor. Escape clears cell selection.</span> : null}
+      {cellNavigation ? <span className="sr-only" id={instructionsId}>Use arrow keys, Home or End to select a cell. Press Enter or F2, or double-click, to open the existing {cellNavigation.label} editor. Press Control C or Command C to copy selected cell text. Escape clears cell selection.</span> : null}
       {review ? <div className="field-hint" data-pd-id={`${dataPdId}.protected-cell`} role="status">{review.reason} <button className="button-link" onClick={review.onReview} type="button">Open record for review</button></div> : null}
-      {visualV2 && (mode === "editable" || scrollState.hasOverflow) ? <div aria-label="Table horizontal navigation" className={styles.actionRow} data-pd-id={`${dataPdId}.scroll-controls`}>
-        <button aria-label="Scroll table left" className={styles.secondaryButton} data-pd-id={`${dataPdId}.scroll-left`} disabled={!scrollState.left} onClick={() => scroll(-1)} type="button"><span aria-hidden="true" className="material-symbols-outlined">chevron_left</span></button>
-        <button aria-label="Scroll table right" className={styles.secondaryButton} data-pd-id={`${dataPdId}.scroll-right`} disabled={!scrollState.right} onClick={() => scroll(1)} type="button"><span aria-hidden="true" className="material-symbols-outlined">chevron_right</span></button>
-      </div> : null}
       <div className={`table-scroll${visualV2 ? ` ${styles.tableScroll}${mode === "read-only" ? ` ${styles.readOnlyTableScroll}` : ""}` : ""}`} data-pd-id={dataPdId} ref={ref}>
         {children}
       </div>
