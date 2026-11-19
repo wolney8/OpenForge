@@ -18619,6 +18619,7 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
 .ux-v2-top-bar {
   grid-column: 2;
   grid-row: 1;
+  gap: 14px;
   grid-template-areas: none;
   grid-template-columns: minmax(0,1fr) auto;
   position: relative;
@@ -18662,7 +18663,7 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
 .ux-v2-back-lay-group legend { padding: 8px 14px 2px; color: var(--muted); font-size: .8rem; font-weight: 700; letter-spacing: .035em; text-transform: uppercase; }
 .ux-v2-back-lay-group input[type="radio"] { width: 18px; height: 18px; margin: 0; accent-color: var(--primary); }
 .ux-v2-back-lay-group .back-lay-theme-swatch { justify-self: end; }
-.ux-v2-crumb-row { display: flex; align-items: center; justify-content: space-between; gap: .75rem; width: min(1560px, calc(100% - 2rem)); margin: 0 auto 1rem; font-size: .9rem; }
+.ux-v2-crumb-row { display: flex; align-items: center; justify-content: space-between; gap: 5px; width: min(1560px, calc(100% - 2rem)); margin: 0 auto 1rem; font-size: .875rem; }
 .ux-v2-crumb-row ol { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; margin: 0; padding: 0; list-style: none; }
 .ux-v2-crumb-row li + li::before { content: "›"; margin-right: .4rem; color: var(--muted-text); }
 .ux-v2-crumb-row a { color: var(--primary); }
@@ -18697,7 +18698,7 @@ html[data-theme="dark"] .extra-place-editor-modal .extra-place-outcome-row.extra
   .ux-v2-sidebar-scrim.is-open { position: fixed; z-index: 74; inset: 0; display: block; background: #0009; }
 }
 @media (max-width: 430px) {
-  .ux-v2-top-bar { gap: 6px; padding: 8px 12px; }
+  .ux-v2-top-bar { gap: 2px; padding: 8px; }
   .ux-v2-header-right { gap: .15rem; }
   .ux-v2-header-right .top-bar-actions { gap: 6px; }
   .ux-v2-header-right .fund-manager-role-chip,

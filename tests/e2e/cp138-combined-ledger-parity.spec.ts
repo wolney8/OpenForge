@@ -49,7 +49,12 @@ for (const module of modules) {
     } else {
       await expect(page.getByRole("dialog", { name: dialogs[module] })).toBeVisible();
     }
-    await expect(page.locator('[data-pd-id="tracker.return-to-combined"]')).toHaveAttribute("href", `/tracker/${module}`);
+    if (module === "sportsbook-bets") {
+      await expect(page.getByRole("navigation", { name: "Breadcrumb" }).getByRole("link", { name: "Sportsbook Bets" })).toHaveAttribute("href", `/tracker/${module}`);
+      await expect(page.locator('[data-pd-id="tracker.return-to-combined"]')).toHaveCount(0);
+    } else {
+      await expect(page.locator('[data-pd-id="tracker.return-to-combined"]')).toHaveAttribute("href", `/tracker/${module}`);
+    }
   });
 }
 

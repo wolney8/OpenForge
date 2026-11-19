@@ -15,7 +15,7 @@ import { labDestinations } from "@/lib/design-lab-navigation";
 import { acknowledgedTaskAnnotationRows, loadTaskAnnotations, mergeTaskAnnotationRows, TASK_ANNOTATIONS_REFRESH_EVENT, trackedTaskDetailsHref, untrackTaskAnnotation, type TaskAnnotation } from "@/lib/task-annotations";
 import { TrackedTaskCard } from "@/components/tracked-task-card";
 import { loadTrackedTaskContext, trackedTaskKey, type TrackedTaskContext } from "@/lib/tracked-task-context";
-import { scopedGlobalHref } from "@/lib/profile-scope";
+import { safeCombinedLedgerReturn, scopedGlobalHref } from "@/lib/profile-scope";
 import { SHOW_TRACKED_TASKS_BANNER_EVENT, TRACKED_BANNER_VISIBILITY_EVENT, trackedBannerIsHidden } from "@/components/tracked-tasks-banner";
 
 const originStorageKey = "plum-duff:ux-v2-source-origin";
@@ -234,6 +234,13 @@ export function FundManagerUxV2Breadcrumbs({ profileId, profileName }: { profile
   const pathname = usePathname() ?? "";
   const navigate = useShellNavigation();
   const [origin, setOrigin] = useState<Origin | null>(null);
+  const [sportsbookWorkbenchContext, setSportsbookWorkbenchContext] = useState<string | null>(null);
+  const [combinedSportsbookReturn, setCombinedSportsbookReturn] = useState<string | null>(null);
+  useEffect(() => {
+    const onContext = (event: Event) => setSportsbookWorkbenchContext((event as CustomEvent<string | null>).detail);
+    window.addEventListener("pd:sportsbook-workbench-context", onContext);
+    return () => window.removeEventListener("pd:sportsbook-workbench-context", onContext);
+  }, []);
   useEffect(() => {
     const capture = (event: globalThis.MouseEvent) => {
       const link = (event.target as Element | null)?.closest?.("a[href]") as HTMLAnchorElement | null;
@@ -250,6 +257,9 @@ export function FundManagerUxV2Breadcrumbs({ profileId, profileName }: { profile
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
     try {
+      setCombinedSportsbookReturn(pathname.endsWith("/tracker/sportsbook-bets")
+        ? safeCombinedLedgerReturn("sportsbook-bets", new URLSearchParams(window.location.search).get("returnTo") ?? undefined) ?? null
+        : null);
       const stored = sessionStorage.getItem(originStorageKey);
       const parsed = stored ? JSON.parse(stored) as Origin : null;
       if (parsed?.target === pathname && parsed.href.startsWith("/") && !parsed.href.startsWith("//")) setOrigin(parsed);
@@ -284,6 +294,8 @@ export function FundManagerUxV2Breadcrumbs({ profileId, profileName }: { profile
     if (parent && href) crumbs.push({ label: parent.label, href: scopedGlobalHref(href, profileId) });
   }
   else if (profileId && pathname.startsWith("/profiles/")) crumbs.push({ label: "Profiles", href: "/profiles" });
-  crumbs.push({ label: current.label });
-  return <div className="ux-v2-crumb-row" data-pd-id="ux-v2.breadcrumbs"><nav aria-label="Breadcrumb"><ol>{crumbs.map((crumb, index) => <li key={`${crumb.label}-${index}`}>{crumb.href ? <Link href={crumb.href} onClick={(event) => void navigate(event, crumb.href!)}>{crumb.label}</Link> : <span aria-current="page">{crumb.label}</span>}</li>)}</ol></nav>{origin ? <div className="ux-v2-origin-group">{/^\/(reports|tasks)(?:[/?#]|$)/.test(origin.href) ? <span className="ux-v2-origin-context">All Profiles view · viewing {profileName}</span> : null}<Link className="ux-v2-origin-back" href={origin.href} onClick={(event) => { void navigate(event, origin.href, () => sessionStorage.setItem(scrollRestoreKey, JSON.stringify({ href: origin.href, y: origin.scrollY }))); }}><span aria-hidden="true" className="material-symbols-outlined">arrow_back</span>Back to {origin.label}</Link></div> : null}</div>;
+  const sportsbookEntry = current.id === "sportsbook" && sportsbookWorkbenchContext;
+  crumbs.push({ label: current.label, href: sportsbookEntry ? (combinedSportsbookReturn ?? origin?.href ?? current.href(profileId) ?? undefined) : undefined });
+  if (sportsbookEntry) crumbs.push({ label: sportsbookWorkbenchContext });
+  return <div className="ux-v2-crumb-row" data-pd-id="ux-v2.breadcrumbs"><nav aria-label="Breadcrumb"><ol>{crumbs.map((crumb, index) => <li key={`${crumb.label}-${index}`}>{crumb.href ? <Link href={crumb.href} onClick={(event) => void navigate(event, crumb.href!)}>{crumb.label}</Link> : <span aria-current="page">{crumb.label}</span>}</li>)}</ol></nav>{origin && !sportsbookEntry ? <div className="ux-v2-origin-group">{/^\/(reports|tasks)(?:[/?#]|$)/.test(origin.href) ? <span className="ux-v2-origin-context">All Profiles view · viewing {profileName}</span> : null}<Link className="ux-v2-origin-back" href={origin.href} onClick={(event) => { void navigate(event, origin.href, () => sessionStorage.setItem(scrollRestoreKey, JSON.stringify({ href: origin.href, y: origin.scrollY }))); }}><span aria-hidden="true" className="material-symbols-outlined">arrow_back</span>Back to {origin.label}</Link></div> : null}</div>;
 }

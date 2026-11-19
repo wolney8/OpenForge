@@ -10,6 +10,7 @@ const sportsbookLayoutVariant: SportsbookLayoutVariant = "workflow-first";
 
 export function SportsbookWorkflowShell({
   profileId,
+  profileName,
   initialQuery,
   initialIssueFilter,
   initialRecordId,
@@ -19,6 +20,7 @@ export function SportsbookWorkflowShell({
   visualV2 = false,
 }: {
   profileId: string;
+  profileName?: string;
   initialQuery?: string;
   initialIssueFilter?: string;
   initialRecordId?: string;
@@ -31,5 +33,5 @@ export function SportsbookWorkflowShell({
     return <LegacySportsbookWorkflowShell profileId={profileId} />;
   }
 
-  return <WorkflowFirstSportsbookWorkflowShell feeReviewContext={feeReviewContext} initialIssueFilter={initialIssueFilter} initialQuery={initialQuery} initialRecordId={initialRecordId} initialCreate={initialCreate} initialCreateMode={initialCreateMode} profileId={profileId} visualV2={visualV2} />;
+  return <WorkflowFirstSportsbookWorkflowShell feeReviewContext={feeReviewContext} initialIssueFilter={initialIssueFilter} initialQuery={initialQuery} initialRecordId={initialRecordId} initialCreate={initialCreate} initialCreateMode={initialCreateMode} profileId={profileId} profileName={profileName} visualV2={visualV2} />;
 }

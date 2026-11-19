@@ -118,7 +118,7 @@ export default async function TrackerModulePage({
 
   return (
     <main className="page-shell stack">
-      {visualV2 && returnToCombined ? <Link className="button-link" data-pd-id="tracker.return-to-combined" href={returnToCombined}>Back to combined {moduleDefinition.title}</Link> : null}
+      {visualV2 && returnToCombined && module !== "sportsbook-bets" ? <Link className="button-link" data-pd-id="tracker.return-to-combined" href={returnToCombined}>Back to combined {moduleDefinition.title}</Link> : null}
       {!usesCompactHero ? (
         <section className="hero-panel stack tracker-hero">
           <span className="eyebrow">{profile.profileCode}</span>
@@ -130,7 +130,7 @@ export default async function TrackerModulePage({
       {module === "accounts" ? (
         <AccountsWorkflowShell profileId={profile.profileId} initialRecordId={requestedRecord} initialCreate={requestedCreate && Boolean(returnToCombined)} initialIssueFilter={requestedIssue} visualV2={visualV2} />
       ) : module === "sportsbook-bets" ? (
-        <SportsbookWorkflowShell feeReviewContext={feeReviewContext} initialIssueFilter={requestedIssue} initialQuery={requestedSearch} initialRecordId={requestedRecord} initialCreate={requestedCreate && Boolean(returnToCombined)} initialCreateMode={requestedQuickCapture ? "quick" : "full"} key={`sportsbook:${requestedRecord ?? requestedIssue ?? (requestedRecords.join(",") || "default")}`} profileId={profile.profileId} visualV2={visualV2} />
+        <SportsbookWorkflowShell feeReviewContext={feeReviewContext} initialIssueFilter={requestedIssue} initialQuery={requestedSearch} initialRecordId={requestedRecord} initialCreate={requestedCreate && Boolean(returnToCombined)} initialCreateMode={requestedQuickCapture ? "quick" : "full"} key={`sportsbook:${requestedRecord ?? requestedIssue ?? (requestedRecords.join(",") || "default")}`} profileId={profile.profileId} profileName={profile.displayName} visualV2={visualV2} />
       ) : module === "free-bets" ? (
         <FreeBetWorkflowShell feeReviewContext={feeReviewContext} initialIssueFilter={requestedIssue} initialQuery={requestedSearch} initialRecordId={requestedRecord} initialCreate={requestedCreate && Boolean(returnToCombined)} initialTableMode={requestedView} key={`free-bets:${requestedRecord ?? requestedIssue ?? (requestedRecords.join(",") || requestedView || "default")}`} profileId={profile.profileId} visualV2={visualV2} />
       ) : module === "casino-offers" ? (

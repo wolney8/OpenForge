@@ -208,7 +208,7 @@ test("floating Tab, click-away rejection and full-editor transition retain one n
   // The full editor retains its governed Save action and the same draft;
   // leaving without saving must not write this descriptive change.
   await expect(full.getByRole("button", { name: /^Save (Changes|Edits|Prospecting)$/ })).toBeVisible();
-  await full.getByRole("button", { name: "Close sportsbook editor" }).click();
+  await full.locator('[data-pd-id="sportsbook.editor.actions"]').getByRole("button", { name: "Cancel" }).click();
   const guard = page.getByRole("dialog", { name: "Unsaved tracker changes" });
   if (await guard.count()) await guard.getByRole("button", { name: "Discard changes" }).click();
   await expect(full).toHaveCount(0);

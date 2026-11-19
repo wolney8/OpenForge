@@ -38,10 +38,20 @@ for (const item of cases) for (const [width, theme] of [[1440, "light"], [900, "
     const footer = dialog.locator(`[data-pd-id="${item.id}.editor.actions"]`);
     await expect(form).toBeVisible();
     await expect(aside).toBeVisible();
-    await expect(header.locator('[data-pd-financial-header="true"]')).toBeVisible();
-    await expect(header.locator('[data-pd-financial-header="true"] button')).toHaveCSS("width", "44px");
-    await expect(form.locator(".editor-section-summary").first()).toHaveCSS("text-transform", "none");
-    await expect(form.locator(".editor-section-summary").first().locator("span").first()).toHaveCSS("font-size", "19.2px");
+    if (item.id === "sportsbook") {
+      await expect(page.locator('[data-pd-id="sportsbook.workbench.page-head"] h1')).toBeVisible();
+      await expect(header.locator('[data-pd-financial-header="true"]')).toHaveCount(0);
+    } else {
+      await expect(header.locator('[data-pd-financial-header="true"]')).toBeVisible();
+      await expect(header.locator('[data-pd-financial-header="true"] button')).toHaveCSS("width", "44px");
+    }
+    if (item.id === "sportsbook") {
+      await expect(form.locator(".sportsbook-lab-fieldset > legend").first()).toHaveText("Offer");
+      await expect(form.locator(".sportsbook-lab-fieldset > legend").first()).toHaveCSS("font-size", "17.6px");
+    } else {
+      await expect(form.locator(".editor-section-summary").first()).toHaveCSS("text-transform", "none");
+      await expect(form.locator(".editor-section-summary").first().locator("span").first()).toHaveCSS("font-size", "19.2px");
+    }
     await expect(form.locator(".field-control > input, .field-control > select").first()).toHaveCSS("border-radius", "9px");
     await expect(footer).toBeVisible();
     const footerRect = await footer.boundingBox();
@@ -53,12 +63,19 @@ for (const item of cases) for (const [width, theme] of [[1440, "light"], [900, "
       await expect(accountAction).toBeVisible();
       expect((await accountAction.boundingBox())!.height).toBeLessThanOrEqual(50);
     }
-    await expect(aside.locator("dt")).toContainText(["Bookmaker"]);
+    if (item.id === "sportsbook") await expect(aside.getByRole("heading", { name: "Outcome Comparison" })).toBeVisible();
+    else await expect(aside.locator("dt")).toContainText(["Bookmaker"]);
     const boxes = await Promise.all([form.boundingBox(), aside.boundingBox(), dialog.boundingBox()]);
     expect(boxes.every(Boolean)).toBe(true);
     if (width >= 900) {
       expect(boxes[1]!.x).toBeGreaterThan(boxes[0]!.x + boxes[0]!.width - 2);
-      expect(boxes[2]!.width).toBeLessThanOrEqual(1181);
+      if (item.id === "sportsbook") {
+        const pageContent = await page.locator(".ux-v2-main > .page-shell").evaluate(node => {
+          const style = getComputedStyle(node);
+          return node.getBoundingClientRect().width - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+        });
+        expect(Math.abs(boxes[2]!.width - pageContent)).toBeLessThanOrEqual(1);
+      } else expect(boxes[2]!.width).toBeLessThanOrEqual(1181);
     }
     else expect(boxes[1]!.y).toBeGreaterThan(boxes[0]!.y + boxes[0]!.height - 2);
     expect(boxes[2]!.x).toBeGreaterThanOrEqual(0);
@@ -97,8 +114,14 @@ for (const item of cases) {
     await expect(dialog).toBeVisible();
     const context = dialog.locator(`[data-pd-id="${item.id}.editor.financial-context"]`);
     await expect(context).toBeVisible();
-    await expect(context).toContainText("Bookmaker");
-    await expect(context).toContainText("Status");
+    if (item.id === "sportsbook") {
+      await expect(context).toContainText("Outcome Comparison");
+      await expect(context).toContainText(/Liability|Outcome unavailable/);
+      await expect(dialog.locator('[data-pd-bet-workbench-context="true"]')).toContainText("Subscriber Alpha");
+    } else {
+      await expect(context).toContainText("Bookmaker");
+      await expect(context).toContainText("Status");
+    }
     const stages = dialog.locator(item.id === "sportsbook" ? '[data-pd-id="bet-workbench.stages"]' : '[data-pd-id="ledger-editor.tabs"]');
     await expect(stages).toHaveClass(item.id === "sportsbook" ? /stepper/ : /stages/);
     await expect(dialog.locator(item.id === "sportsbook" ? '[data-pd-id="bet-workbench.stages"] button[aria-current="step"]' : '[role="tab"][aria-current="step"]')).toHaveCount(1);
@@ -126,7 +149,12 @@ for (const item of cases) {
     await page.screenshot({ path: info.outputPath(`${item.id}-settlement-900-dark.png`) });
     const lockId = item.id === "casino-offers" ? "casino-offers.editor.settlement.edit-settled-row" : `${item.id}.editor.edit-settled-row`;
     await dialog.locator(`[data-pd-id="${lockId}"]:visible`).first().click({ timeout: 5_000 });
-    await expect(dialog.locator(`[data-pd-id="${item.id === "casino-offers" ? "casino-offers.editor.settlement.editing-state" : `${item.id}.editor.editing-state`}"]:visible`).first()).toBeVisible();
+    if (item.id === "sportsbook") {
+      await expect(dialog.locator('[data-pd-id="sportsbook.editor.edit-settled-row"]:visible')).toHaveCount(0);
+      await expect(dialog.locator('[data-pd-id="sportsbook.editor.editing-state"]:visible')).toHaveCount(0);
+    } else {
+      await expect(dialog.locator(`[data-pd-id="${item.id === "casino-offers" ? "casino-offers.editor.settlement.editing-state" : `${item.id}.editor.editing-state`}"]:visible`).first()).toBeVisible();
+    }
     const footer = dialog.locator(`[data-pd-id="${item.id}.editor.actions"]`);
     expect(await footer.evaluate(element => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(1);
     await page.screenshot({ path: info.outputPath(`${item.id}-correction-handoff-900-dark.png`) });
@@ -153,7 +181,8 @@ for (const item of cases) {
     await expect(guard).toBeVisible();
     await guard.getByRole("button", { name: "Keep editing", exact: true }).click();
     await expect(field).toHaveValue(`Synthetic unsaved ${item.id}`);
-    await dialog.locator('[data-pd-financial-header="true"] button').click();
+    if (item.id === "sportsbook") await dialog.locator('[data-pd-id="sportsbook.editor.actions"]').getByRole("button", { name: "Cancel" }).click();
+    else await dialog.locator('[data-pd-financial-header="true"] button').click();
     await expect(guard).toBeVisible();
     await guard.getByRole("button", { name: "Discard changes", exact: true }).click();
     await expect(dialog).toHaveCount(0);
@@ -356,7 +385,7 @@ test("Sportsbook populated Lab and native workbenches expose their complete gove
   await expect(native.locator('[data-pd-id="ledger-editor.panel.settlement"]')).toBeVisible();
   await page.screenshot({ path: info.outputPath("sportsbook-native-populated-review-900-dark.png"), fullPage: true });
   await native.locator('[data-pd-id="sportsbook.editor.edit-settled-row"]:visible').first().click();
-  await expect(native.locator('[data-pd-id="sportsbook.editor.editing-state"]:visible').first()).toBeVisible();
+  await expect(native.locator('[data-pd-id="sportsbook.editor.edit-settled-row"]:visible')).toHaveCount(0);
   await page.screenshot({ path: info.outputPath("sportsbook-native-populated-correction-900-dark.png") });
 });
 
@@ -431,7 +460,7 @@ for (const item of cases) {
     const dialog = item.id === "sportsbook" ? nativeWorkbench(page, item) : page.getByRole("dialog", { name: `Create ${item.id === "free-bets" ? "free-bet" : "casino"} row` });
     await expect(dialog).toBeVisible();
     if (item.id === "sportsbook") {
-      await dialog.getByLabel("Offer", { exact: true }).fill("Synthetic offer");
+      await dialog.getByLabel("Original Offer text", { exact: true }).fill("Synthetic offer");
       await dialog.locator('[data-guided-field="bookmaker"] select').selectOption("Bookmaker A");
       await dialog.getByLabel("Bet type (bet shape / placement)").selectOption({ label: "Single" });
       await dialog.getByLabel("Offer type").selectOption({ label: "Bet & Get" });

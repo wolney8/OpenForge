@@ -59,7 +59,7 @@ import {
   useBookmakerCatalogue,
 } from "@/components/bookmaker-identity";
 import { EditorSection } from "@/components/editor-section";
-import { DesignFinancialOutcomeSurface, DesignFinancialWorkbenchFooter, DesignFinancialWorkbenchHeader, financialWorkbenchHeaderClass, financialWorkbenchSurfaceClass, financialWorkbenchPrimaryActionClass, financialWorkbenchSecondaryActionClass } from "@/components/design-financial-workbench-layout";
+import { DesignFinancialOutcomeSurface, DesignFinancialWorkbenchFooter, financialWorkbenchHeaderClass, financialWorkbenchSurfaceClass, financialWorkbenchPrimaryActionClass, financialWorkbenchSecondaryActionClass } from "@/components/design-financial-workbench-layout";
 import { DesignBetWorkbenchContext, DesignBetWorkbenchGrid, DesignBetWorkbenchSummary, DesignBetWorkbenchStageRail, designBetWorkbenchEntryClass } from "@/components/design-bet-workbench-presentation";
 import { EditorValidationBanner } from "@/components/editor-validation-banner";
 import { FinancialValue, FinancialValueReplayRow } from "@/components/financial-value";
@@ -2969,7 +2969,7 @@ function makeOfferGroupId(): string {
   return `OFG-${new Date().toISOString().slice(0, 10).replaceAll("-", "")}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
 }
 
-export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialIssueFilter, initialRecordId, initialCreate = false, initialCreateMode = "full", feeReviewContext, visualV2 = false }: { profileId: string; initialQuery?: string; initialIssueFilter?: string; initialRecordId?: string; initialCreate?: boolean; initialCreateMode?: "quick" | "full"; feeReviewContext?: FeeReviewResolutionContext; visualV2?: boolean }) {
+export function SportsbookWorkflowShell({ profileId, profileName, initialQuery = "", initialIssueFilter, initialRecordId, initialCreate = false, initialCreateMode = "full", feeReviewContext, visualV2 = false }: { profileId: string; profileName?: string; initialQuery?: string; initialIssueFilter?: string; initialRecordId?: string; initialCreate?: boolean; initialCreateMode?: "quick" | "full"; feeReviewContext?: FeeReviewResolutionContext; visualV2?: boolean }) {
   const { catalogue: bookmakerCatalogue, providerIdsByName } =
     useBookmakerCatalogue(profileId);
   const [guidedAccessMode] = useProfileGuidedAccessMode(profileId);
@@ -4109,6 +4109,17 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       "setup";
   const displayEditorTabId = visualV2 && requirementsVisible ? "requirements" : safeActiveEditorTabId;
   const visualStageId = requirementsVisible ? "requirements" : placementVisualOnly ? "placement" : safeActiveEditorTabId === "free_bet" || safeActiveEditorTabId === "settlement" ? "finish" : safeActiveEditorTabId === "setup" ? "offer" : safeActiveEditorTabId;
+  useEffect(() => {
+    if (!visualV2) return;
+    const context = workflowVisible && !quickCaptureOpen && !cellEditor.active
+      ? selectedId ? "Bet details" : "Add Bet"
+      : null;
+    const frame = requestAnimationFrame(() => window.dispatchEvent(new CustomEvent("pd:sportsbook-workbench-context", { detail: context })));
+    return () => {
+      cancelAnimationFrame(frame);
+      window.dispatchEvent(new CustomEvent("pd:sportsbook-workbench-context", { detail: null }));
+    };
+  }, [visualV2, workflowVisible, quickCaptureOpen, cellEditor.active, selectedId]);
   const visualStages: Array<{ id: string; label: string; state?: "complete" | "required" | "attention" | "not-required"; explanation?: string }> = [
     { id: "offer", label: "Offer", state: betSetupComplete ? "complete" : "required", explanation: betSetupComplete ? "Recorded setup is complete" : "Complete required offer and bet setup fields" },
     { id: "requirements", label: "Requirements", state: missingBetSetupFields.length ? "attention" : betSetupComplete && missingCalculatorFields.length === 0 && ["Placed", "Settled", "Free Bet Awarded"].includes(formState.status) ? "complete" : "required", explanation: "Review recorded conditions and source readiness; no external action is confirmed here" },
@@ -4475,8 +4486,11 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       if (!selectedId) {
         return null;
       }
+      if (!isSettledReadOnly) {
+        return visualV2 ? null : <span className="section-lock-chip" data-pd-id="sportsbook.editor.editing-state">EDITING</span>;
+      }
 
-      return isSettledReadOnly ? (
+      return (
         <button
           className="section-lock-chip section-lock-chip-action"
           data-pd-id="sportsbook.editor.edit-settled-row"
@@ -4485,13 +4499,9 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
         >
           EDIT
         </button>
-      ) : (
-        <span className="section-lock-chip" data-pd-id="sportsbook.editor.editing-state">
-          EDITING
-        </span>
       );
     },
-    [isSettledReadOnly, selectedId]
+    [isSettledReadOnly, selectedId, visualV2]
   );
   const renderEditorSectionAside = useCallback(
     (extra?: ReactNode) => {
@@ -4603,6 +4613,9 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       ? getDisplayedValue(null, selectedSportsbookRow)
       : "—";
   const activeDisplayedNumericValue = parseCurrencyLikeValue(activeDisplayedValue);
+  const comparisonSource = activePreviewCalculation && isPreviewReady
+    ? activePreviewCalculation
+    : !coreIsDirty ? selectedSportsbookRow : null;
   const settlementHasFinalOutcome =
     formState.status === "Settled" && formState.result !== "Pending";
   const settlementPrimaryValue = activePreviewCalculation
@@ -7357,12 +7370,11 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
 	                {visualV2 && !isSettledReadOnly ? <details className={labStyles.footerMore}><summary>More actions</summary><button className={labStyles.secondaryButton} disabled={isPersisting} onClick={() => void handleResetForm()} type="button">Revert draft</button></details> : null}
 	                {isSettledReadOnly ? (
 	                  <button
-	                    aria-label="Close sportsbook editor"
-	                    className="review-chip"
+	                    className={visualV2 ? labStyles.secondaryButton : "review-chip"}
 	                    onClick={() => void closeEditor()}
 	                    type="button"
 	                  >
-	                    Close
+	                    {visualV2 ? "Cancel" : "Close"}
 	                  </button>
 	                ) : (
 	                  <>
@@ -7471,7 +7483,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
   );
 
   return (
-    <section className="stack">
+    <section className={visualV2 && workflowVisible && !quickCaptureOpen && !cellEditor.active ? undefined : "stack"}>
       {feeReviewContext ? (
         <FeeReviewResolutionBanner
           context={feeReviewContext}
@@ -8126,6 +8138,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
       {workflowVisible && quickCaptureOpen && !cellEditor.active ? <ModalBoundary onDismiss={() => void closeEditor()}><div className="modal-backdrop" onClick={() => void closeEditor()}><section aria-label="Quick Capture Sportsbook offer" aria-modal="true" className={labStyles.entryModal} data-pd-id="sportsbook.quick-capture.dialog" onClick={event => event.stopPropagation()} role="dialog"><div className={labStyles.modalHead}><h2>Quick Capture</h2><button aria-label="Close quick capture" className={labStyles.secondaryButton} onClick={() => void closeEditor()} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button></div><div className={labStyles.modalBody}><div className={labStyles.entry}><div className={labStyles.entryTop}><div><strong>Sportsbook offer</strong><p>Capture known details, then complete the governed bet workbench.</p></div></div><div className={labStyles.entryFields}><fieldset><legend>Offer</legend><label>Original Offer text<textarea data-pd-id="sportsbook.quick-capture.offer-text" onChange={event => setFormState(current => ({ ...current, offer_text: event.target.value }))} rows={3} value={formState.offer_text}/></label><div className={labStyles.fieldPair}><label>Bookmaker<input data-pd-id="sportsbook.quick-capture.bookmaker" onChange={event => setFormState(current => ({ ...current, bookmaker: event.target.value }))} value={formState.bookmaker}/></label><label>Offer Name<input data-pd-id="sportsbook.quick-capture.offer-name" onChange={event => setFormState(current => ({ ...current, offer_name: event.target.value }))} value={formState.offer_name}/></label><label>Event Name<input data-pd-id="sportsbook.quick-capture.event-name" onChange={event => setFormState(current => ({ ...current, event_name: event.target.value }))} value={formState.event_name}/></label></div></fieldset></div><p className="muted">These details remain an unsaved draft until the full workbench validates and saves a record.</p><div className={labStyles.entryFooter}><button className={labStyles.secondaryButton} onClick={() => void closeEditor()} type="button">Cancel</button><button className={labStyles.primaryButton} onClick={() => { setQuickCaptureOpen(false); requestAnimationFrame(() => revealEditor({ expandLedger: true })); }} type="button">Open full workbench</button></div></div></div></section></div></ModalBoundary> : null}
       {workflowVisible && !quickCaptureOpen && !cellEditor.active ? (
         <SportsbookWorkbenchHost visualV2={visualV2} onDismiss={() => void closeEditor()}>
+          {visualV2 ? <DesignPageHead dataPdId="sportsbook.workbench.page-head"><div><h1>{selectedId ? `Edit Sportsbook Bet · ${selectedId}` : "Add Sportsbook Bet"}</h1><p>Offer first · prepare and confirm external placement later</p></div></DesignPageHead> : null}
           <section
             aria-label={visualV2 ? (selectedId ? "Edit Sportsbook Bet workbench" : "Add Sportsbook Bet workbench") : (selectedId ? "Edit sportsbook row" : "Create sportsbook row")}
             aria-modal={visualV2 ? undefined : "true"}
@@ -8137,12 +8150,12 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
             role={visualV2 ? "region" : "dialog"}
           >
             <div className={`workflow-panel-header workflow-editor-header${visualV2 ? ` ${financialWorkbenchHeaderClass}` : ""}`} data-pd-id="sportsbook.editor.header">
-              {visualV2 ? <DesignFinancialWorkbenchHeader context={selectedId ? editorHeaderTitle : "Offer first · confirm external placement in its governed stage"} eyebrow="" title={selectedId ? "Edit Sportsbook Bet" : "Add Sportsbook Bet"} closeLabel="Close sportsbook editor" onClose={() => void closeEditor()} disabled={isPersisting} /> : <div className="stack workflow-editor-title-stack">
+              {!visualV2 ? <div className="stack workflow-editor-title-stack">
                 <span className="eyebrow">
                   {selectedId ? "Edit sportsbook row" : "Create sportsbook row"}
                 </span>
                 <strong className="workflow-header-title" title={editorHeaderFullTitle}>{editorHeaderTitle}</strong>
-              </div>}
+              </div> : null}
               {!visualV2 ? <section
                 aria-label="Sportsbook editor context"
                 className="editor-compact-summary"
@@ -8230,7 +8243,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                   <span aria-hidden="true" className="material-symbols-outlined">close</span>
                 </button>
               </div> : null}
-              {visualV2 ? <DesignBetWorkbenchContext title="Bet Workbench" context={selectedId ? `${formState.status || "Prospecting"} · ${selectedId}` : "New offer · selected Profile"} controls={!selectedId ? <button className={labStyles.linkButton} data-pd-id="sportsbook.workbench.quick-capture" onClick={() => setQuickCaptureOpen(true)} type="button">Quick Capture</button> : undefined} /> : null}
+              {visualV2 ? <DesignBetWorkbenchContext title="Bet Workbench" context={`${profileName || profileId} · ${selectedId ? formState.status || "Prospecting" : "New offer"}`} controls={!selectedId ? <button className={labStyles.linkButton} data-pd-id="sportsbook.workbench.quick-capture" onClick={() => setQuickCaptureOpen(true)} type="button">Compare Quick Capture</button> : undefined} /> : null}
               {visualV2 ? <DesignBetWorkbenchStageRail activeId={visualStageId} stages={visualStages} onSelect={stage => {
                 if (stage === "requirements") { setPlacementVisualOnly(false); setRequirementsVisible(true); return; }
                 setRequirementsVisible(false);
@@ -8256,17 +8269,17 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
           {!visualV2 ? guidedEntryPanel : null}
           <DesignBetWorkbenchGrid dataPdId="sportsbook.editor.workbench" enabled={visualV2}>
           <form className={visualV2 ? `form-grid ${labStyles.entryFields}` : "form-grid"} data-pd-bet-workbench-fields={visualV2 || undefined} id="sportsbook-workbench-form" onSubmit={(event) => void handleSubmit(event)}>
-            {visualV2 ? guidedEntryPanel : null}
+            {/* The Lab entry presents the active field card directly; guidance remains in native validation. */}
             {visualV2 && requirementsVisible ? <fieldset className={labStyles.requirementsCard} data-pd-id="sportsbook.workbench.requirements"><legend>Requirements</legend><p>Review the recorded offer conditions and source readiness before matching or placement. This stage does not confirm any external action.</p><dl><div><dt>Offer setup</dt><dd>{betSetupComplete ? "Required setup recorded" : `${missingBetSetupFields.length} required setup fields need review`}</dd></div><div><dt>Calculation inputs</dt><dd>{missingCalculatorFields.length ? `${missingCalculatorFields.length} inputs need review` : "Recorded inputs available for review"}</dd></div><div><dt>Current record</dt><dd>{formState.status || "Prospecting"}</dd></div></dl><button className={labStyles.secondaryButton} onClick={() => activateEditorTab("setup")} type="button">Review Offer fields</button></fieldset> : null}
             {visualV2 && placementVisualOnly && !showsPlacementSection ? <fieldset className={labStyles.requirementsCard} data-pd-id="sportsbook.workbench.placement"><legend>Placement</legend><p>Record externally confirmed back and lay information in the native controls below. Planning values are separate from actual placement.</p><dl><div><dt>Recorded bet status</dt><dd>{formState.status || "Prospecting"}</dd></div><div><dt>Recorded lay state</dt><dd>{editorLayStatus}</dd></div></dl></fieldset> : null}
             <LedgerEditorTabPanel activeTabId={displayEditorTabId} tabId="setup">
-            <EditorSection visualV2={visualV2}
+            <EditorSection visualV2={visualV2} labFieldset={visualV2}
               collapsible={false}
               headerAside={
                 renderEditorSectionAside()
               }
               invalid={betSetupValidationActive && missingBetSetupFields.length > 0}
-              title="Bet Setup"
+              title={visualV2 ? "Offer" : "Bet Setup"}
             >
               {betSetupValidationActive && missingBetSetupFields.length > 0 ? (
                 <EditorValidationBanner
@@ -8278,33 +8291,13 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
               ) : null}
               <fieldset className="section-fieldset" disabled={isSettledReadOnly}>
               <div className="form-grid">
-                {!formState.sportsbook_bet_id && !selectedId ? (
-                  <div className="field-span-2 stack-tight">
-	                  <label className="field-control">
-                    <span>Common combo (optional)</span>
-                    <select
-                      aria-label="Apply common bet combo to new sportsbook draft"
-                      data-pd-id="sportsbook.editor.common-combo"
-                      onChange={(event) => applyCommonBetCombo(event.target.value)}
-                      value={formState.source_combo_preset_id}
-                    >
-                      <option value="">No combo</option>
-                      {commonBetCombos.map((combo) => (
-                        <option key={combo.preset_id} value={combo.preset_id}>
-                          {combo.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  {comboBookmakerCandidates.length > 1 ? <div aria-label="Eligible combo bookmakers" className="common-combo-candidate-row" data-pd-id="sportsbook.editor.combo-bookmakers">{comboBookmakerCandidates.map((bookmaker) => <button className={`common-combo-candidate${formState.bookmaker === bookmaker ? " is-selected" : ""}`} key={bookmaker} onClick={() => setFormState((current) => ({ ...current, bookmaker }))} type="button">{bookmaker}</button>)}</div> : null}
-                  </div>
-                ) : null}
                 <label className={getGuidedFieldClass("offer")} {...getGuidedFieldData("offer")}>
-                  <span>Offer</span>
+                  <span>{visualV2 ? "Original Offer text" : "Offer"}</span>
                   {visualV2 ? <textarea
                     aria-describedby={getGuidedDescribedBy("offer")}
                     onChange={(event) => setFormState((current) => ({ ...current, offer_text: event.target.value }))}
-                    rows={3}
+                    placeholder="Paste original offer text verbatim"
+                    rows={5}
                     value={formState.offer_text}
                   /> : <input
                     aria-describedby={getGuidedDescribedBy("offer")}
@@ -8314,6 +8307,23 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                     value={formState.offer_text}
                   />}
                 </label>
+                {!formState.sportsbook_bet_id && !selectedId ? (
+                  <div className="field-span-2 stack-tight">
+                    <label className="field-control">
+                      <span>Common combo (optional)</span>
+                      <select
+                        aria-label="Apply common bet combo to new sportsbook draft"
+                        data-pd-id="sportsbook.editor.common-combo"
+                        onChange={(event) => applyCommonBetCombo(event.target.value)}
+                        value={formState.source_combo_preset_id}
+                      >
+                        <option value="">No combo</option>
+                        {commonBetCombos.map((combo) => <option key={combo.preset_id} value={combo.preset_id}>{combo.name}</option>)}
+                      </select>
+                    </label>
+                    {comboBookmakerCandidates.length > 1 ? <div aria-label="Eligible combo bookmakers" className="common-combo-candidate-row" data-pd-id="sportsbook.editor.combo-bookmakers">{comboBookmakerCandidates.map((bookmaker) => <button className={`common-combo-candidate${formState.bookmaker === bookmaker ? " is-selected" : ""}`} key={bookmaker} onClick={() => setFormState((current) => ({ ...current, bookmaker }))} type="button">{bookmaker}</button>)}</div> : null}
+                  </div>
+                ) : null}
                 <label
                   className={`${getGuidedFieldClass("bookmaker")}${
                     betSetupValidationActive && !formState.bookmaker.trim() ? " is-invalid" : ""
@@ -8782,7 +8792,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
             </LedgerEditorTabPanel>
 
             <LedgerEditorTabPanel activeTabId={displayEditorTabId} tabId="matching">
-            <EditorSection visualV2={visualV2}
+            <EditorSection visualV2={visualV2} labFieldset={visualV2}
               collapsible={false}
               headerAside={renderEditorSectionAside(
                 !isSettledReadOnly && !calculatorUnlocked ? (
@@ -8795,7 +8805,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
                   placementPlanRequired &&
                   missingPlacementFields.length > 0)
               }
-              title="Odds and matching"
+              title={visualV2 ? "Matching" : "Odds and matching"}
             >
               {placementPlanRequired && missingPlacementFields.length > 0 ? (
                 <EditorValidationBanner
@@ -10270,7 +10280,7 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
 
             {showsPlacementSection ? (
               <LedgerEditorTabPanel activeTabId={displayEditorTabId} tabId="placement">
-              <EditorSection visualV2={visualV2}
+              <EditorSection visualV2={visualV2} labFieldset={visualV2}
                 collapsible={false}
                 headerAside={
                   renderEditorSectionAside()
@@ -10573,12 +10583,12 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
 
             <LedgerEditorTabPanel activeTabId={displayEditorTabId} tabId="settlement">
             {visualV2 && isFreeBetAwardableRow ? <div className={labStyles.actionRow}><button className={labStyles.secondaryButton} disabled={!canUseFreeBetBridge} onClick={() => activateEditorTab("free_bet")} title={!canUseFreeBetBridge ? "Save the qualifying Sportsbook record before reviewing its Free Bet award" : undefined} type="button">Review linked Free Bet award</button></div> : null}
-            <EditorSection visualV2={visualV2}
+            <EditorSection visualV2={visualV2} labFieldset={visualV2}
               collapsible={false}
               defaultOpen={Boolean(selectedId)}
               headerAside={renderEditorSectionAside()}
               key={selectedId ?? "sportsbook-settlement-new"}
-              title="Settlement"
+              title={visualV2 ? "Finish / Review" : "Settlement"}
             >
               <fieldset className="section-fieldset" disabled={isSettledReadOnly}>
                 <div className="form-grid">
@@ -11388,16 +11398,16 @@ export function SportsbookWorkflowShell({ profileId, initialQuery = "", initialI
             </LedgerEditorTabPanel>
 		            {!visualV2 ? editorFooter : null}
           </form>
-          {visualV2 ? <DesignBetWorkbenchSummary dataPdId="sportsbook.editor.financial-context" title="Financial Position">
-            <p>{editorMatchStrategyLabel || "Standard"} · source-backed values</p>
-            <dl>{[
-              { label: "Bookmaker", value: formState.bookmaker || "Not selected" },
-              { label: "Status", value: formState.status || "Prospecting" },
-              { label: "Strategy", value: editorMatchStrategyLabel || "Standard" },
-              { label: "Lay", value: editorLayStatus },
-              { label: activeDisplayedValueLabel, value: activeDisplayedNumericValue === null ? "Unavailable" : formatFinancialValue(activeDisplayedNumericValue) },
-            ].map(fact => <div key={fact.label}><dt>{fact.label}</dt><dd>{fact.value}</dd></div>)}</dl>
-            <p>Detailed outcomes and actual placement remain in their governed workflow stages.</p>
+          {visualV2 ? <DesignBetWorkbenchSummary dataPdId="sportsbook.editor.financial-context" title="Outcome Comparison">
+            <p>{editorMatchStrategyLabel || "Standard"} · source-backed calculation</p>
+            {comparisonSource ? <dl>{[
+              { label: "Reference Lay Stake", value: comparisonSource.reference_lay_stake_standard },
+              { label: "Liability", value: comparisonSource.calculated_liability_1 },
+              { label: "Bookmaker wins", value: comparisonSource.scenario_pnl_if_back_wins },
+              { label: "Exchange wins", value: comparisonSource.scenario_pnl_if_lay_wins },
+              { label: activeDisplayedValueLabel, value: activeDisplayedValue },
+            ].map(fact => <div key={fact.label}><dt>{fact.label}</dt><dd>{fact.value === null || fact.value === undefined || fact.value === "" || fact.value === "—" ? "Unavailable" : formatPreviewFinancialValue(fact.value)}</dd></div>)}</dl>
+              : <p role="status">Outcome unavailable until the native calculation has complete, validated inputs.</p>}
           </DesignBetWorkbenchSummary> : null}
           </DesignBetWorkbenchGrid>
             </div>

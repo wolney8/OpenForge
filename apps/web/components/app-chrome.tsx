@@ -835,7 +835,7 @@ function AppChromeContent({
             ) : null}
           </div>
           </div>
-          {uxV2 ? <div className={`ux-v2-header-right ${labStyles.headerRight}`}><GlobalSearch /><div className="top-bar-actions"><NotificationCentre uxV2 /><FundManagerUxV2HeaderTasks profileId={selectedScopeId} /><FundManagerUxV2Help key={`help-${pathname}`} /><FundManagerUxV2Launcher key={pathname} /><FundManagerIdentityMenu uxV2 /></div></div> : <div className="top-bar-actions"><NotificationCentre /><BackLayThemeToggle /><FundManagerIdentityMenu /><ThemeToggle /></div>}
+          {uxV2 ? <div className={`ux-v2-header-right ${labStyles.headerRight}`}><GlobalSearch uxV2 /><div className="top-bar-actions"><NotificationCentre uxV2 /><FundManagerUxV2HeaderTasks profileId={selectedScopeId} /><FundManagerUxV2Help key={`help-${pathname}`} /><FundManagerUxV2Launcher key={pathname} /><FundManagerIdentityMenu uxV2 /></div></div> : <div className="top-bar-actions"><NotificationCentre /><BackLayThemeToggle /><FundManagerIdentityMenu /><ThemeToggle /></div>}
           <Suspense fallback={null}><ShellLoadingProgress /></Suspense>
         </header> : null}
         {!isPublicAuthRoute && !uxV2 ? <Suspense fallback={null}>

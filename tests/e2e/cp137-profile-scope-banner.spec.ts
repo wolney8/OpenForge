@@ -87,7 +87,12 @@ test("all six combined ledgers use authorised reads and a native owner handoff",
     await expect(nativeLink).toHaveAttribute("href", new RegExp(`/profiles/profile-demo-001/tracker/${module}\\?record=`));
     await nativeLink.click();
     await expect(page).toHaveURL(new RegExp(`/profiles/profile-demo-001/tracker/${module}\\?record=`));
-    await expect(page.locator('[data-pd-id="tracker.return-to-combined"]')).toHaveAttribute("href", `/tracker/${module}`);
+    if (module === "sportsbook-bets") {
+      await expect(page.getByRole("navigation", { name: "Breadcrumb" }).getByRole("link", { name: "Sportsbook Bets" })).toHaveAttribute("href", `/tracker/${module}`);
+      await expect(page.locator('[data-pd-id="tracker.return-to-combined"]')).toHaveCount(0);
+    } else {
+      await expect(page.locator('[data-pd-id="tracker.return-to-combined"]')).toHaveAttribute("href", `/tracker/${module}`);
+    }
     if (module === "each-way-extra-places") await expect(page.locator('[data-pd-id="extra-place.editor.dialog"]')).toBeVisible();
     if (module === "cash-adjustments") await expect(page.locator('[data-pd-id="cash-adjustments.editor.dialog"]')).toBeVisible();
   }

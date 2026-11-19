@@ -23,7 +23,7 @@ html[data-ux-shell="v2"][data-theme="dark"] {
   --bg-elevated: #111316;
   --bg-muted: #1b1e22;
   --surface: #111316;
-  --surface-strong: #1b1e22;
+  --surface-strong: #111316;
   --surface-container: #24272d;
   --surface-container-high: #292d33;
   --surface-container-highest: #32373f;
@@ -34,17 +34,34 @@ html[data-ux-shell="v2"][data-theme="dark"] {
   --shadow: 0 4px 16px rgba(0, 0, 0, .12);
 }
 html[data-ux-shell="v2"], html[data-ux-shell="v2"] body { background: var(--bg); }
+/* The Sportsbook Lab workbench uses this rhythm. Scope it to that workbench
+   so the already accepted Free Bet and Casino modal scroll geometry stays intact. */
+.sportsbook-v2-workbench,
+[data-pd-id="sportsbook.workbench.page-head"] { line-height: 1.45; }
 
 .ux-v2-frame .ux-v2-top-bar .app-navigation-drawer-trigger { display: inline-flex; }
+html[data-ux-shell="v2"] .ux-v2-sidebar .ux-v2-nav-link.is-active { border-radius: 999px; }
+/* Lab mobile chrome uses plain icon targets; the legacy circular button border
+   belongs to the OFF shell, not the shared V2 header. */
+.ux-v2-top-bar .app-navigation-drawer-trigger,
+.ux-v2-top-bar .global-search-compact-trigger { border-color: transparent; background: transparent; box-shadow: none; }
 .ux-v2-main > .page-shell { width: 100%; max-width: var(--ux-v2-page-max-width); }
-.ux-v2-main > .ux-v2-crumb-row { box-sizing: border-box; width: 100%; max-width: none; min-height: 42px; margin: 0 0 0; padding: 7px clamp(16px,2.5vw,32px); }
+/* The approved Lab editor uses its 1500px page container; ledger browsing keeps the accepted 1640px width. */
+.ux-v2-main > .page-shell:has(.sportsbook-v2-workbench) { max-width: 1500px; }
+@media (max-width: 430px) {
+  .ux-v2-main > .page-shell:has(.sportsbook-v2-workbench) { padding-inline: 14px; }
+}
+.ux-v2-main > .ux-v2-crumb-row { box-sizing: border-box; width: 100%; max-width: none; min-height: 50px; margin: 0 0 0; padding: 7px clamp(16px,2.5vw,32px); }
+@media (max-width: 430px) {
+  .ux-v2-main > .ux-v2-crumb-row { padding-inline: 12px; }
+}
 .ux-v2-main :is(.hero-panel, .content-panel, .route-card) {
   border-radius: var(--shape-large);
   backdrop-filter: none;
   box-shadow: none;
 }
 .ux-v2-main .hero-panel { background: var(--surface); }
-.ux-v2-main h1 { font-size: clamp(1.75rem, 2.5vw, 2.5rem); }
+.ux-v2-main h1 { font-size: clamp(1.8rem, 2.7vw, 2.5rem); }
 .ux-v2-main .content-subpanel { box-shadow: none; }
 .ux-v2-main .ledger-table-scroll-wrap .data-table > thead > tr > th,
 .ux-v2-main .ledger-table-scroll-wrap .data-table > tbody > tr > td {

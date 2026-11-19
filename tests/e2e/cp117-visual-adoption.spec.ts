@@ -658,15 +658,17 @@ test("Sportsbook, Free Bet and Casino native editors use their approved Lab fiel
       await expect(surface).toBeVisible();
       const stage = surface.locator(".editor-section").first();
       await expect(stage).toBeVisible();
-      await expect(stage).toHaveAttribute("data-pd-financial-card", "true");
       if (editor.id === "sportsbook") {
-        // The page workbench uses the Lab entry field surface; only its
-        // financial aside has a card. A nested legacy card is a regression.
+        // The page workbench uses the Lab fieldset, not the legacy nested card.
+        await expect(stage).toHaveJSProperty("tagName", "FIELDSET");
+        await expect(stage.locator(":scope > legend")).toHaveText("Offer");
+        await expect(stage).not.toHaveAttribute("data-pd-financial-card", "true");
         await expect(stage).toHaveCSS("border-radius", "0px");
         await expect(stage).toHaveCSS("border-top-width", "0px");
         await expect(stage).toHaveCSS("padding-top", "0px");
         await expect(surface.locator('[data-pd-id="sportsbook.editor.financial-context"]')).toBeVisible();
       } else {
+        await expect(stage).toHaveAttribute("data-pd-financial-card", "true");
         await expect(stage).toHaveCSS("border-radius", "14px");
         await expect(stage).toHaveCSS("border-top-width", "1px");
         await expect(stage).toHaveCSS("padding-top", width <= 850 ? "14px" : "18px");
@@ -684,7 +686,7 @@ test("Sportsbook, Free Bet and Casino native editors use their approved Lab fiel
       expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width);
       await noPageOverflow(page);
       await page.screenshot({ path: join(evidence, `v2-${editor.id}-add-${width}-${theme}.png`), fullPage: true });
-      await surface.getByRole("button", { name: /^Close .* editor$/i }).click();
+      await surface.getByRole("button", { name: editor.id === "sportsbook" ? "Cancel" : /^Close .* editor$/i }).click();
       await expect(surface).toHaveCount(0);
     }
   }
@@ -1019,7 +1021,7 @@ for (const { width, theme } of [{ width: 1440, theme: "light" }, { width: 390, t
         : page.getByRole("dialog").first();
       await expect(editor).toBeVisible();
       if (ledger.key === "sportsbook") await expect(page.locator('[data-pd-id="sportsbook.editor.dialog"]')).toHaveCount(0);
-      await expect(editor.getByRole("button", { name: /close/i }).first()).toBeVisible();
+      await expect(editor.getByRole("button", { name: ledger.key === "sportsbook" ? "Cancel" : /close/i }).first()).toBeVisible();
       await noPageOverflow(page);
       const box = await editor.boundingBox();
       expect(box!.x).toBeGreaterThanOrEqual(0);

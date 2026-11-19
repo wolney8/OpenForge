@@ -224,8 +224,14 @@ test("Sportsbook workbench uses page scrolling, five stages and a normal-flow fo
   await expect(surface.locator(".workflow-editor-body")).toHaveCSS("overflow-y", "visible");
   const footer = surface.locator('[data-pd-id="sportsbook.editor.actions"]');
   await expect(footer).toHaveCSS("position", "static");
-  const bodyBottom = await surface.locator(".workflow-editor-body").evaluate(node => node.getBoundingClientRect().bottom);
-  expect((await footer.boundingBox())!.y).toBeGreaterThanOrEqual(bodyBottom - 1);
+  // Sample both rectangles in one layout frame: asynchronous source hydration can
+  // otherwise move the page between two separate browser round trips.
+  await expect.poll(() => surface.evaluate(node => {
+    const body = node.querySelector(".workflow-editor-body");
+    const actions = node.querySelector('[data-pd-id="sportsbook.editor.actions"]');
+    if (!body || !actions) return -1;
+    return actions.getBoundingClientRect().top - body.getBoundingClientRect().bottom;
+  })).toBeGreaterThanOrEqual(-1);
   expect(await page.evaluate(() => document.scrollingElement!.scrollHeight)).toBeGreaterThan(700);
   await footer.scrollIntoViewIfNeeded();
   expect(await page.evaluate(() => document.scrollingElement!.scrollTop)).toBeGreaterThan(0);
@@ -491,7 +497,7 @@ test("Sportsbook workbench replaces the ledger and keeps its controls contained 
       expect((bounds?.y ?? Infinity) + (bounds?.height ?? Infinity)).toBeLessThanOrEqual(geometry.viewportHeight + 1);
     }
     await page.screenshot({ path: info.outputPath(`sportsbook-v2-${width}-${theme}.png`), fullPage: true });
-    await surface.getByRole("button", { name: "Close sportsbook editor" }).click();
+    await surface.locator('[data-pd-id="sportsbook.editor.actions"]').getByRole("button", { name: "Cancel" }).click();
     await expect(surface).toHaveCount(0);
   }
 });

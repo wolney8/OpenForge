@@ -3,7 +3,7 @@ import { useEffect, useRef, type ComponentPropsWithoutRef, type ReactNode } from
 import { DesignFinancialEditorCard } from "@/components/design-financial-editor-card";
 import styles from "@/components/design-lab-financial-workflows.module.css";
 
-/** The Lab's 1180px workbench width, adapted to the governed native dialog. */
+/** Legacy modal geometry remains separate from the Lab page-flow Sportsbook workbench. */
 export const financialWorkbenchModalClass = styles.modalFrame;
 export const financialWorkbenchSurfaceClass = styles.workbenchSurface;
 export const financialWorkbenchHeaderClass = styles.modalHeader;

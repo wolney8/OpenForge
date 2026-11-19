@@ -12,6 +12,7 @@ type EditorSectionProps = {
   invalid?: boolean;
   title: string;
   visualV2?: boolean;
+  labFieldset?: boolean;
 };
 
 export function EditorSection({
@@ -22,6 +23,7 @@ export function EditorSection({
   invalid = false,
   title,
   visualV2 = false,
+  labFieldset = false,
 }: EditorSectionProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const contentId = useId();
@@ -107,6 +109,14 @@ export function EditorSection({
   }, [isContentOpen]);
 
   const Surface = visualV2 ? DesignFinancialEditorCard : "section";
+
+  if (visualV2 && labFieldset && !collapsible) {
+    return <fieldset className={`editor-section sportsbook-lab-fieldset${invalid ? " is-invalid-section" : ""}`} data-invalid={invalid || undefined}>
+      <legend>{title}</legend>
+      {headerAside ? <div className="sportsbook-lab-fieldset-action">{headerAside}</div> : null}
+      <div className="editor-section-content" id={contentId} ref={contentRef}><div className="editor-section-content-inner stack">{children}</div></div>
+    </fieldset>;
+  }
 
   return (
     <Surface

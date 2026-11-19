@@ -18,7 +18,7 @@ type SearchResult = {
 
 const groupOrder: SearchResult["group"][] = ["Navigation", "Profiles", "Account Catalogue"];
 
-export function GlobalSearch() {
+export function GlobalSearch({ uxV2 = false }: { uxV2?: boolean } = {}) {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -146,7 +146,7 @@ export function GlobalSearch() {
               else setIsOpen(false);
             }
           }}
-          placeholder="Search Plum Duff"
+          placeholder={uxV2 ? "Search" : "Search Plum Duff"}
           ref={inputRef}
           role="combobox"
           type="search"
