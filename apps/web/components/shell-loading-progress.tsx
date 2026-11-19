@@ -8,6 +8,7 @@ import {
   SHELL_ROUTE_TRANSITION_END_EVENT,
   SHELL_ROUTE_TRANSITION_START_EVENT,
 } from "@/lib/shell-loading";
+import { hasUnsavedTrackerChanges } from "@/lib/use-unsaved-changes-guard";
 
 type LockedElement = {
   ariaBusy: string | null;
@@ -97,6 +98,9 @@ export function ShellLoadingProgress() {
         return;
       }
       if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      // The global unsaved-draft guard may stop this click and leave the user
+      // editing. Do not lock the shell before that asynchronous decision.
+      if (hasUnsavedTrackerChanges()) return;
       const anchor = (event.target as Element | null)?.closest<HTMLAnchorElement>("a[href]");
       if (!anchor || anchor.target === "_blank" || anchor.hasAttribute("download")) return;
       const destination = new URL(anchor.href, window.location.href);

@@ -61,6 +61,7 @@ import {
 import { EditorSection } from "@/components/editor-section";
 import { DesignFinancialOutcomeSurface, DesignFinancialWorkbenchFooter, financialWorkbenchHeaderClass, financialWorkbenchSurfaceClass, financialWorkbenchPrimaryActionClass, financialWorkbenchSecondaryActionClass } from "@/components/design-financial-workbench-layout";
 import { DesignBetWorkbenchContext, DesignBetWorkbenchGrid, DesignBetWorkbenchSummary, DesignBetWorkbenchStageRail, designBetWorkbenchEntryClass } from "@/components/design-bet-workbench-presentation";
+import { SPORTSBOOK_RETURN_TO_LEDGER_EVENT } from "@/lib/sportsbook-workbench-navigation";
 import { EditorValidationBanner } from "@/components/editor-validation-banner";
 import { FinancialValue, FinancialValueReplayRow } from "@/components/financial-value";
 import { FinancialHistoryPanel } from "@/components/financial-history-panel";
@@ -5618,9 +5619,9 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
     });
   }
 
-  async function closeEditor() {
+  async function closeEditor(skipGuard = false) {
     if (isPersistingRef.current) return;
-    if (hasPendingEditorChanges && !(await confirmDiscardChanges())) {
+    if (!skipGuard && hasPendingEditorChanges && !(await confirmDiscardChanges())) {
       return;
     }
     resetPayoutOddsHelper();
@@ -5635,6 +5636,15 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
     setStatusMessage("");
     restoreEditorReturnFocus();
   }
+
+  const onBreadcrumbReturn = useEffectEvent(() => {
+    if (visualV2 && workflowVisible) void closeEditor(true);
+  });
+  useEffect(() => {
+    if (!visualV2 || !workflowVisible) return;
+    window.addEventListener(SPORTSBOOK_RETURN_TO_LEDGER_EVENT, onBreadcrumbReturn);
+    return () => window.removeEventListener(SPORTSBOOK_RETURN_TO_LEDGER_EVENT, onBreadcrumbReturn);
+  }, [visualV2, workflowVisible]);
 
   const onWorkbenchEscape = useEffectEvent((event: KeyboardEvent) => {
     if (event.key !== "Escape" || event.defaultPrevented || document.querySelector('[role="dialog"][aria-modal="true"]')) return;
@@ -8324,6 +8334,7 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
                     {comboBookmakerCandidates.length > 1 ? <div aria-label="Eligible combo bookmakers" className="common-combo-candidate-row" data-pd-id="sportsbook.editor.combo-bookmakers">{comboBookmakerCandidates.map((bookmaker) => <button className={`common-combo-candidate${formState.bookmaker === bookmaker ? " is-selected" : ""}`} key={bookmaker} onClick={() => setFormState((current) => ({ ...current, bookmaker }))} type="button">{bookmaker}</button>)}</div> : null}
                   </div>
                 ) : null}
+                <div className={visualV2 ? `field-span-2 ${labStyles.fieldPair} sportsbook-offer-pair` : "field-span-2"} style={!visualV2 ? { display: "contents" } : undefined}>
                 <label
                   className={`${getGuidedFieldClass("bookmaker")}${
                     betSetupValidationActive && !formState.bookmaker.trim() ? " is-invalid" : ""
@@ -8350,7 +8361,20 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
                     ))}
                   </select>
                 </label>
-                <AccountReviewButton className={visualV2 ? financialWorkbenchSecondaryActionClass : ""} profileId={profileId} accounts={accountAuthorities} accountName={formState.bookmaker} />
+                {visualV2 ? <label className="field-control" data-pd-id="sportsbook.editor.offer-name">
+                  <span>Offer Name</span>
+                  <input
+                    maxLength={120}
+                    onBlur={() => void applyDropdownChange((current) => current, "Offer Name change")}
+                    onChange={(event) => setFormState((current) => ({ ...current, offer_name: event.target.value }))}
+                    type="text"
+                    value={formState.offer_name}
+                  />
+                </label> : null}
+                </div>
+                <div className={visualV2 ? "field-span-2 sportsbook-account-review-row" : undefined} style={!visualV2 ? { display: "contents" } : undefined}>
+                  <AccountReviewButton className={visualV2 ? financialWorkbenchSecondaryActionClass : ""} profileId={profileId} accounts={accountAuthorities} accountName={formState.bookmaker} />
+                </div>
 	                {specialOfferBookmakerSuggestion ? (
 	                  <div className="field-span-2 special-offer-suggestion-panel">
 	                    <div className="section-heading-row">
@@ -8532,42 +8556,12 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
 	                  </div>
 	                ) : null}
                   <label
-                    className={`${getGuidedFieldClass("bet_type")}${
-                      betSetupValidationActive && !formState.bet_type.trim() ? " is-invalid" : ""
-                    }`}
-                    {...getGuidedFieldData("bet_type")}
-                  >
-                  <span>Bet type (bet shape / placement)</span>
-                  <select
-                    aria-describedby={getGuidedDescribedBy("bet_type")}
-                    aria-invalid={betSetupValidationActive && !formState.bet_type.trim()}
-                    onChange={(event) =>
-                      void applyDropdownChange(
-                        (current) =>
-                          applyBetTypeDefaults(current, normalizeSportsbookBetType(event.target.value)),
-                        "Bet type change"
-                      )
-                    }
-                    value={formState.bet_type}
-                  >
-                    <option value="">Select bet type</option>
-                    {betTypeOptionsResolved.map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="field-help-text">
-                    Use bet type for wager shape or placement context, for example Single, In Play + Single, Bet Builder, Correct Score, or First Goalscorer.
-                  </p>
-                </label>
-                  <label
                     className={`${getGuidedFieldClass("offer_type")}${
                       betSetupValidationActive && !formState.offer_type.trim() ? " is-invalid" : ""
                     }`}
                     {...getGuidedFieldData("offer_type")}
                   >
-                  <span>Offer type (promotion mechanism)</span>
+                  <span>{visualV2 ? "Offer Type" : "Offer type (promotion mechanism)"}</span>
                   <select
                     aria-describedby={getGuidedDescribedBy("offer_type")}
                     aria-invalid={betSetupValidationActive && !formState.offer_type.trim()}
@@ -8592,9 +8586,39 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
                       </option>
                     ))}
                   </select>
-                  <p className="field-help-text">
+                  {!visualV2 ? <p className="field-help-text">
                     Offer type describes the promotion mechanics, for example Bet &amp; Get, Price Boost, or Cashback.
-                  </p>
+                  </p> : null}
+                </label>
+                  <label
+                    className={`${getGuidedFieldClass("bet_type")}${
+                      betSetupValidationActive && !formState.bet_type.trim() ? " is-invalid" : ""
+                    }`}
+                    {...getGuidedFieldData("bet_type")}
+                  >
+                  <span>{visualV2 ? "Bet Type" : "Bet type (bet shape / placement)"}</span>
+                  <select
+                    aria-describedby={getGuidedDescribedBy("bet_type")}
+                    aria-invalid={betSetupValidationActive && !formState.bet_type.trim()}
+                    onChange={(event) =>
+                      void applyDropdownChange(
+                        (current) =>
+                          applyBetTypeDefaults(current, normalizeSportsbookBetType(event.target.value)),
+                        "Bet type change"
+                      )
+                    }
+                    value={formState.bet_type}
+                  >
+                    <option value="">Select bet type</option>
+                    {betTypeOptionsResolved.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                  {!visualV2 ? <p className="field-help-text">
+                    Use bet type for wager shape or placement context, for example Single, In Play + Single, Bet Builder, Correct Score, or First Goalscorer.
+                  </p> : null}
                 </label>
                 <fieldset className="form-section-fieldset promotion-link-fields" data-pd-id="sportsbook.promotion.link">
                   <legend>Promotion Link</legend>
@@ -8698,7 +8722,7 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
                     </section>
                   );
                 })() : null}
-                <label className="field-control">
+                {!visualV2 ? <label className="field-control">
                   <span>Campaign tag (optional)</span>
                   <input
                     maxLength={120}
@@ -8712,7 +8736,7 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
                     type="text"
                     value={formState.offer_name}
                   />
-                </label>
+                </label> : null}
                   <label
                     className={`${getGuidedFieldClass("fixture_type")}${
                       betSetupValidationActive && !formState.fixture_type.trim() ? " is-invalid" : ""
@@ -10777,7 +10801,7 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
                       </small>
                     </label>
                   ) : null}
-                  {isPreviewReady && activePreviewCalculation ? (
+                  {isPreviewReady && activePreviewCalculation && (!visualV2 || settlementHasFinalOutcome || usesMultiLayStrategy || Boolean(activePreviewCalculation.multi_lay_actual)) ? (
                     <DesignFinancialOutcomeSurface
                       aria-label={
                         settlementHasFinalOutcome
@@ -10904,7 +10928,7 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
                       </select>
                     </label>
                     <label className="field-control">
-                      <span>Campaign tag</span>
+                      <span>{visualV2 ? "Offer Name" : "Campaign tag"}</span>
                       <select
                         onChange={(event) =>
                           setFreeBetBridgeModalState((current) =>
@@ -11248,7 +11272,7 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
                                 </select>
                               </label>
                               <label className="field-control bridge-split-campaign">
-                                <span>Campaign tag</span>
+                                <span>{visualV2 ? "Offer Name" : "Campaign tag"}</span>
                                 <select
                                   onChange={(event) => updateSplit({ offer_name: event.target.value })}
                                   value={split.offer_name}

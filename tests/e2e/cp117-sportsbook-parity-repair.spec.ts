@@ -16,6 +16,7 @@ test("approved Sportsbook rail, surface and page width survive the real adapter"
   await page.getByRole("button", { name: "Edit Bet", exact: true }).click();
   const lab = page.locator('[data-pd-id="lab.entry.page"]');
   await expect(lab).toBeVisible();
+  await page.evaluate(() => window.scrollTo(0, 0));
   const approved = await lab.evaluate(node => {
     const rail = node.querySelector<HTMLElement>('[data-pd-id="bet-workbench.stages"]')!;
     const context = node.querySelector<HTMLElement>('[data-pd-bet-workbench-context="true"]')!;
@@ -35,14 +36,13 @@ test("approved Sportsbook rail, surface and page width survive the real adapter"
     selected_range_preset: "All Dates", selected_range_custom_start: null, selected_range_custom_end: null,
   } });
   expect(range.status()).toBe(200);
-  await page.goto("/profiles/profile-demo-001/tracker/sportsbook-bets");
+  await page.goto("/profiles/profile-demo-001/tracker/sportsbook-bets?record=SB-SEED-001");
   await expect(page.locator(".ledger-loading-overlay")).toHaveCount(0, { timeout: 45_000 });
-  await page.locator('td[data-ledger-row="SB-SEED-001"][data-ledger-column="event_name"]').click();
-  await page.locator('[data-pd-id="sportsbook.toolbar.open-selected"]').click();
   const native = page.locator('[data-pd-id="sportsbook.editor.workbench-surface"]');
   await expect(native).toBeVisible();
   await native.locator('[data-pd-id="bet-workbench.stage.offer"]').click();
   await page.screenshot({ path: info.outputPath("native-sportsbook-after.png"), fullPage: true });
+  await page.evaluate(() => window.scrollTo(0, 0));
   const actual = await native.evaluate(node => {
     const rail = node.querySelector<HTMLElement>('[data-pd-id="bet-workbench.stages"]')!;
     const context = node.querySelector<HTMLElement>('[data-pd-bet-workbench-context="true"]')!;
@@ -58,6 +58,8 @@ test("approved Sportsbook rail, surface and page width survive the real adapter"
   });
   expect(actual.railNumbers).toEqual(approved.railNumbers);
   expect(Math.abs(actual.railHeight - approved.railHeight)).toBeLessThanOrEqual(1);
+  expect(Math.abs(actual.contextY - approved.contextY)).toBeLessThanOrEqual(1);
+  expect(Math.abs(actual.railY - approved.railY)).toBeLessThanOrEqual(1);
   expect(actual.surface).toBe(approved.surface);
   expect(Math.abs(actual.width - approved.width)).toBeLessThanOrEqual(1);
   await expect(native.getByRole("heading", { name: "Outcome Comparison" })).toBeVisible();
@@ -137,6 +139,11 @@ for (const { width, theme } of [
       const native = actual[key]!;
       close(native.x, lab.x);
       close(native.width, lab.width);
+      // At 390px the Lab-only simulation badge and Exit Lab command add
+      // vertical space that cannot appear in the real application. Anchor
+      // the production workbench to its own context and assert every stage
+      // and card position relative to that approved composition.
+      if (width !== 390 && ["head", "context", "rail", "field", "aside"].includes(key)) close(native.y, lab.y);
       // Lab's simulation badge adds a second breadcrumb line at 390px.
       if (["sidebar", "header", "crumb"].includes(key) && !(key === "crumb" && width === 390)) close(native.height, lab.height);
       if (key === "rail" || key === "aside" || key === "field" || key === "footer") {
@@ -156,6 +163,15 @@ for (const { width, theme } of [
         expect(native.padding).toBe(lab.padding);
         expect(native.gap).toBe(lab.gap);
       }
+    }
+    if (width === 390) {
+      close(actual.rail!.y - actual.context!.y, approved.rail!.y - approved.context!.y);
+      close(actual.field!.y - actual.rail!.y, approved.field!.y - approved.rail!.y);
+      // The additional required native Offer fields make this card taller.
+      // Compare the actual card-to-aside gap and keep the total vertical drift
+      // visible in the separate proposal register until its design is approved.
+      close(actual.aside!.y - (actual.field!.y + actual.field!.height), approved.aside!.y - (approved.field!.y + approved.field!.height));
+      expect(actual.aside!.y - approved.aside!.y).toBeGreaterThan(0);
     }
     await expect(page.getByRole("button", { name: "Close sportsbook editor" })).toHaveCount(0);
     await expect(page.locator('[data-pd-id="tracker.return-to-combined"]')).toHaveCount(0);

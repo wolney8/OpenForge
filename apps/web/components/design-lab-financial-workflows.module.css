@@ -16,6 +16,9 @@
 .workbenchSurface .modalHeader :global([data-pd-bet-workbench-context]) strong{display:inline;font-size:inherit}
 .workbenchSurface .workbenchTitle h2{font-size:2rem;line-height:1.25}
 .workbenchSurface :global(.workflow-editor-body){min-height:0;height:auto;max-height:none;overflow:visible;overscroll-behavior:auto;padding:0}
+.workbenchSurface :global(.sportsbook-offer-pair),.workbenchSurface :global(.sportsbook-account-review-row){grid-column:1/-1}
+.workbenchSurface :global(.sportsbook-offer-pair){grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr))}
+.workbenchSurface :global(.sportsbook-offer-pair)>label{min-width:0}
 .workbenchSurface .modalFooter:global(.workflow-editor-footer){position:static;display:flex;justify-content:flex-end;align-items:center;gap:8px;inset:auto;width:100%;max-height:none;overflow:visible;margin-top:16px;padding:14px 0 0;border-top:1px solid var(--outline);background:transparent}
 .workbenchSurface .modalFooter details{margin-top:0}
 .workbenchSurface .modalFooter details summary{padding-block:9px}
