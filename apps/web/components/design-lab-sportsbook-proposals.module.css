@@ -5,9 +5,12 @@
 .previewNotice{margin:0 0 16px;padding:12px 14px;border:1px solid var(--outline);border-radius:10px;background:var(--bg-muted);color:var(--muted)}
 .previewNotice strong{color:var(--text)}
 .switchRow{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px}
+.placementConfirm{margin-top:16px}
+.switchRow button[aria-pressed="true"]{border-color:var(--primary);background:var(--primary-soft);color:var(--primary-strong)}
 .inlineStatus{margin:10px 0;color:var(--primary-strong);font-weight:700}
 .error{margin:8px 0 0;color:var(--danger);font-weight:700}
 .fieldHelp{display:block;margin-top:5px;color:var(--muted);font-size:.875rem;font-weight:400}
-.moreActions{margin-top:12px}
+.linkedDetail{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:10px}
+.linkedDetail p{margin:0}
 .footerMessage{margin-right:auto;align-self:center;color:var(--muted);font-size:.875rem}
 @media(max-width:700px){.choiceRow{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.choiceRow a{white-space:normal}.footerMessage{flex-basis:100%}}

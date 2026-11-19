@@ -22,6 +22,39 @@ export function DesignBetWorkbenchSummary({ title, children, dataPdId }: { title
   return <aside className={styles.calcSummary} data-pd-id={dataPdId}><h3>{title}</h3>{children}</aside>;
 }
 
+/** Approved protected-record copy and footer actions, with simulated or native commands supplied by the caller. */
+export function DesignBetWorkbenchProtectedNotice() {
+  return <p data-pd-id="bet-workbench.protected-notice">Recorded financial fields are read-only. Review a correction to change them.</p>;
+}
+
+export function DesignBetWorkbenchProtectedActions({
+  correction,
+  pending = false,
+  saveDisabled = false,
+  form,
+  onCancel,
+  onReviewCorrection,
+  onCancelCorrection,
+  onSaveCorrection,
+}: {
+  correction: boolean;
+  pending?: boolean;
+  saveDisabled?: boolean;
+  form?: string;
+  onCancel: () => void;
+  onReviewCorrection: () => void;
+  onCancelCorrection: () => void;
+  onSaveCorrection?: () => void;
+}) {
+  return correction ? <>
+    <button className={styles.secondaryButton} data-pd-id="bet-workbench.cancel-correction" disabled={pending} onClick={onCancelCorrection} type="button">Cancel Correction</button>
+    <button className={styles.primaryButton} data-pd-id="bet-workbench.save-audited-correction" disabled={pending || saveDisabled} form={form} onClick={onSaveCorrection} type={form ? "submit" : "button"}>{pending ? "Saving" : "Save Audited Correction"}</button>
+  </> : <>
+    <button className={styles.secondaryButton} data-pd-id="bet-workbench.cancel-protected" disabled={pending} onClick={onCancel} type="button">Cancel</button>
+    <button className={styles.primaryButton} data-pd-id="bet-workbench.review-correction" disabled={pending} onClick={onReviewCorrection} type="button">Review Correction</button>
+  </>;
+}
+
 export const designBetWorkbenchEntryClass = styles.entry;
 export const designBetWorkbenchFooterClass = styles.entryFooter;
 

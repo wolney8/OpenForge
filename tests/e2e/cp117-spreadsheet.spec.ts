@@ -328,6 +328,12 @@ test("flag OFF retains original row activation and no cell navigation", async ({
     await ready(page, module);
     expect(await page.locator('html').getAttribute('data-ux-shell')).not.toBe('v2');
     const cell = module === 'accounts' ? page.locator('td[data-ledger-row="ACC-BOOK-A"][data-ledger-column="account_id"]') : page.locator('td[data-ledger-row="CP117-CELL-001"][data-ledger-column="event_name"]');
+    for (let index = 0; index < 50 && await cell.count() === 0; index += 1) {
+      const next = page.getByRole("button", { name: "Next", exact: true }).first();
+      if (!await next.isVisible() || await next.isDisabled()) break;
+      await next.click();
+    }
+    await expect(cell).toBeVisible();
     await expect(cell).not.toHaveAttribute('tabindex', '0');
     await cell.click();
     await expect(page.getByRole('dialog', { name: module === 'accounts' ? 'Edit account' : 'Edit sportsbook row', exact: true })).toBeVisible();

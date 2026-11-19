@@ -202,6 +202,44 @@ test("actual Today source link opens a direct record and breadcrumb returns to a
   await expect(workbench).toHaveCount(0);
 });
 
+for (const width of [1440, 390] as const) {
+  test(`approved protected Sportsbook footer uses two distinct states at ${width}px dark`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.addInitScript(() => localStorage.setItem("openforge-theme", "dark"));
+    await page.goto(`${owned}?record=SB-SEED-001`);
+    const workbench = page.locator('[data-pd-id="sportsbook.editor.workbench-surface"]');
+    await expect(workbench).toBeVisible();
+    await workbench.locator('[data-pd-id="bet-workbench.stage.finish"]').click();
+    await expect(workbench.locator('[data-pd-id="bet-workbench.protected-notice"]'))
+      .toHaveText("Recorded financial fields are read-only. Review a correction to change them.");
+    const footer = workbench.locator('[data-pd-id="sportsbook.editor.actions"]');
+    await expect(footer.getByRole("button", { name: "Cancel", exact: true })).toHaveCount(1);
+    await expect(footer.getByRole("button", { name: "Review Correction" })).toHaveCount(1);
+    await expect(footer.getByRole("button", { name: "Save Audited Correction" })).toHaveCount(0);
+    await expect(workbench.locator('[data-pd-id="sportsbook.editor.edit-settled-row"]')).toHaveCount(0);
+    await page.screenshot({ path: `data/private/evidence/cp117-sportsbook-proposals/native-protected-before-${width}-dark.png`, fullPage: true });
+    await footer.getByRole("button", { name: "Review Correction" }).click();
+    await expect(footer.getByRole("button", { name: "Cancel", exact: true })).toHaveCount(0);
+    await expect(footer.getByRole("button", { name: "Cancel Correction" })).toHaveCount(1);
+    await expect(footer.getByRole("button", { name: "Save Audited Correction" })).toHaveCount(1);
+    if (width === 390) {
+      const geometry = await footer.evaluate(node => {
+        const cancel = node.querySelector<HTMLElement>('[data-pd-id="bet-workbench.cancel-correction"]')!.getBoundingClientRect();
+        const save = node.querySelector<HTMLElement>('[data-pd-id="bet-workbench.save-audited-correction"]')!.getBoundingClientRect();
+        return { leftGap: Math.abs(cancel.left - save.left), widthGap: Math.abs(cancel.width - save.width), verticalGap: save.top - cancel.bottom };
+      });
+      expect(geometry.leftGap).toBeLessThanOrEqual(1);
+      expect(geometry.widthGap).toBeLessThanOrEqual(1);
+      expect(geometry.verticalGap).toBeGreaterThanOrEqual(7);
+    }
+    await page.screenshot({ path: `data/private/evidence/cp117-sportsbook-proposals/native-protected-correction-${width}-dark.png`, fullPage: true });
+    await footer.getByRole("button", { name: "Cancel Correction" }).click();
+    await expect(footer.getByRole("button", { name: "Review Correction" })).toBeVisible();
+    await footer.getByRole("button", { name: "Cancel", exact: true }).click();
+    await expect(workbench).toHaveCount(0);
+  });
+}
+
 test("source-backed scenario labels keep their own signed amounts", async ({ page }) => {
   test.setTimeout(120_000);
   const cases = [

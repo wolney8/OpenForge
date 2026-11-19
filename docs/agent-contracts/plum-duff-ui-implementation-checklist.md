@@ -2,6 +2,15 @@
 
 Complete this for every feature, bug fix, component, fixture-backed UI, route or page change.
 
+## CP-117 protected-record approval and proposal revisions — 2026-11-19 / #118
+
+- [x] Registered PD-FIX-623 and PD-PR-624–627; kept the frozen approved Lab unchanged and the four unapproved designs in the synthetic preview.
+- [x] Reused the approved protected-record notice and two footer states in the V2 Sportsbook workbench. The existing correction gate, reason validation, audited Save command and flag-OFF editor remain authoritative.
+- [x] Compared actual protected V2 at 1440px and 390px dark; checked wording, one Cancel per state, correction entry/cancel and mobile footer stacking. Preview captures cover Offer, requirements/outcomes, Matching, Placement and Finish at desktop and mobile sizes.
+- [x] Focused browser tests cover Market retention across disclosure toggles, selected-record outcome consistency across stages, unavailable detail, independent Back/Lay confirmations, linked reward and existing/new Finish actions. Native and Lab synthetic actions are distinct.
+- [x] Fresh disposable V2 integration passed 140 with five expected skips; complete visual 300/300; corrected flag-OFF rollback 9/9; web units 751/751, typecheck and lint passed with zero lint errors. Build, checkpoint and local runtime are reported in the delivery receipt.
+- [ ] Owner decisions on the four revised proposals, whole-editor Design/Interaction Acceptance and manual spoken screen-reader review remain open.
+
 ## CP-117 rejected Sportsbook workbench and typed cells — 2026-11-16 / #118
 
 - [x] Registered PD-PR-117A-121–123; captured two failing-before browser cases for the legacy modal and missing datetime control.

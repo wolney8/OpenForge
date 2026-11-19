@@ -346,6 +346,13 @@ test("flag OFF: all six ledgers preserve native editor activation and no floatin
     const search = page.locator(`[data-pd-id="${item.id}.toolbar.search"]`);
     await expect(search).toBeVisible();
     await expect(search.locator(".material-symbols-outlined")).toBeHidden();
+    // Synthetic integration writes can move this stable row beyond page one.
+    for (let index = 0; index < 50 && await cell(page, item).count() === 0; index += 1) {
+      const next = page.getByRole("button", { name: "Next", exact: true }).first();
+      if (!await next.isVisible() || await next.isDisabled()) break;
+      await next.click();
+    }
+    await expect(cell(page, item)).toBeVisible();
     await cell(page, item).click(); await expect(editorFor(page, item)).toBeVisible(); await expect(floating(page)).toHaveCount(0); await page.keyboard.press("Escape");
   }
   await ready(page, "accounts");

@@ -104,8 +104,7 @@ for (const item of cases) {
       await page.getByRole("option", { name: "All Dates", exact: true }).click();
     }
     if (item.id === "sportsbook") {
-      await page.locator(`td[data-ledger-row="${item.record}"][data-ledger-column="${item.column}"]`).click();
-      await page.locator('[data-pd-id="sportsbook.toolbar.open-selected"]').click();
+      await page.goto(`/profiles/profile-demo-001/tracker/${item.route}?record=${item.record}`);
     } else {
       await page.locator(`td[data-ledger-row="${item.record}"][data-ledger-column="${item.column}"]`).click();
       await page.locator(`[data-pd-id="${item.id}.toolbar.open-selected"]`).click();
@@ -148,10 +147,13 @@ for (const item of cases) {
     }
     await page.screenshot({ path: info.outputPath(`${item.id}-settlement-900-dark.png`) });
     const lockId = item.id === "casino-offers" ? "casino-offers.editor.settlement.edit-settled-row" : `${item.id}.editor.edit-settled-row`;
-    await dialog.locator(`[data-pd-id="${lockId}"]:visible`).first().click({ timeout: 5_000 });
+    if (item.id === "sportsbook") await dialog.locator('[data-pd-id="bet-workbench.review-correction"]').click();
+    else await dialog.locator(`[data-pd-id="${lockId}"]:visible`).first().click({ timeout: 5_000 });
     if (item.id === "sportsbook") {
       await expect(dialog.locator('[data-pd-id="sportsbook.editor.edit-settled-row"]:visible')).toHaveCount(0);
       await expect(dialog.locator('[data-pd-id="sportsbook.editor.editing-state"]:visible')).toHaveCount(0);
+      await expect(dialog.locator('[data-pd-id="bet-workbench.cancel-correction"]')).toBeVisible();
+      await expect(dialog.locator('[data-pd-id="bet-workbench.save-audited-correction"]')).toBeVisible();
     } else {
       await expect(dialog.locator(`[data-pd-id="${item.id === "casino-offers" ? "casino-offers.editor.settlement.editing-state" : `${item.id}.editor.editing-state`}"]:visible`).first()).toBeVisible();
     }
@@ -356,8 +358,7 @@ test("Sportsbook populated Lab and native workbenches expose their complete gove
   expect(range.status()).toBe(200);
   await page.goto("/profiles/profile-demo-001/tracker/sportsbook-bets");
   await expect(page.locator(".ledger-loading-overlay")).toHaveCount(0, { timeout: 45_000 });
-  await page.locator('td[data-ledger-row="SB-SEED-001"][data-ledger-column="event_name"]').click();
-  await page.locator('[data-pd-id="sportsbook.toolbar.open-selected"]').click();
+  await page.goto("/profiles/profile-demo-001/tracker/sportsbook-bets?record=SB-SEED-001");
   const native = page.locator('[data-pd-id="sportsbook.editor.workbench-surface"]');
   await expect(native).toBeVisible();
   await expect(native).toHaveCSS("opacity", "1");
@@ -384,7 +385,7 @@ test("Sportsbook populated Lab and native workbenches expose their complete gove
   await nativeStages.locator('[data-pd-id="bet-workbench.stage.finish"]').click();
   await expect(native.locator('[data-pd-id="ledger-editor.panel.settlement"]')).toBeVisible();
   await page.screenshot({ path: info.outputPath("sportsbook-native-populated-review-900-dark.png"), fullPage: true });
-  await native.locator('[data-pd-id="sportsbook.editor.edit-settled-row"]:visible').first().click();
+  await native.locator('[data-pd-id="bet-workbench.review-correction"]').click();
   await expect(native.locator('[data-pd-id="sportsbook.editor.edit-settled-row"]:visible')).toHaveCount(0);
   await page.screenshot({ path: info.outputPath("sportsbook-native-populated-correction-900-dark.png") });
 });

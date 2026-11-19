@@ -3,6 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 const authURL = process.env.OPENFORGE_CP117_AUTH_URL ?? "http://127.0.0.1:9127/";
 const profile = "profile-demo-001";
 const ledger = `/profiles/${profile}/tracker/sportsbook-bets`;
+const cellLedger = `${ledger}?search=${encodeURIComponent("Synthetic cell review 1")}`;
 
 function notification(id: string, kind: string, date: string, source: "Sportsbook Bets" | "Free Bets") {
   return { audience: "fund_manager", security_tag: "fund_manager_only", kind: "task", task_state: "new",
@@ -197,7 +198,7 @@ for (const [name, slug, paginationId] of [
 }
 
 test("Sportsbook V2 opens one application workbench instead of the legacy primary modal", async ({ page }) => {
-  await page.goto(ledger);
+  await page.goto(cellLedger);
   await expect(page.locator(".ledger-loading-overlay")).toHaveCount(0, { timeout: 45_000 });
   const event = page.locator('td[data-ledger-row="CP117-CELL-001"][data-ledger-column="event_name"]');
   await event.click();
@@ -212,10 +213,8 @@ test("Sportsbook V2 opens one application workbench instead of the legacy primar
 
 test("Sportsbook workbench uses page scrolling, five stages and a normal-flow footer", async ({ page }, info) => {
   await page.setViewportSize({ width: 900, height: 700 });
-  await page.goto(ledger);
+  await page.goto(`${ledger}?record=SB-SEED-001`);
   await expect(page.locator(".ledger-loading-overlay")).toHaveCount(0, { timeout: 45_000 });
-  await page.locator('td[data-ledger-row="SB-SEED-001"][data-ledger-column="event_name"]').click();
-  await page.locator('[data-pd-id="sportsbook.toolbar.open-selected"]').click();
   const surface = page.locator('[data-pd-id="sportsbook.editor.workbench-surface"]');
   const stages = surface.locator('[data-pd-id="bet-workbench.stages"] button');
   await expect(stages).toHaveCount(5);
@@ -266,7 +265,7 @@ test("Lab and real cells pan over text without selecting it or opening an editor
 });
 
 test("Escape cancels a changed Sportsbook cell without Revert toast or Save", async ({ page }) => {
-  await page.goto(ledger);
+  await page.goto(cellLedger);
   const cell = page.locator('td[data-ledger-row="CP117-CELL-001"][data-ledger-column="event_name"]');
   await cell.dblclick();
   const input = page.locator('[data-pd-id="sportsbook.cell-editor.event_name"]');
@@ -283,7 +282,7 @@ test("Escape cancels a changed Sportsbook cell without Revert toast or Save", as
 });
 
 test("eligible Sportsbook Settles cell exposes the native datetime control without opening a workbench", async ({ page }) => {
-  await page.goto(ledger);
+  await page.goto(cellLedger);
   await expect(page.locator(".ledger-loading-overlay")).toHaveCount(0, { timeout: 45_000 });
   await page.locator('td[data-ledger-row="CP117-CELL-001"][data-ledger-column="date_settled"]').dblclick();
   const editor = page.locator('[data-pd-id="ledger.floating-editor"]');
@@ -293,7 +292,7 @@ test("eligible Sportsbook Settles cell exposes the native datetime control witho
 });
 
 test("Sportsbook typed cells activate by F2 or Enter and Escape cancels without opening the workbench", async ({ page }) => {
-  await page.goto(ledger);
+  await page.goto(cellLedger);
   await expect(page.locator(".ledger-loading-overlay")).toHaveCount(0, { timeout: 45_000 });
   const bookmaker = page.locator('td[data-ledger-row="CP117-CELL-001"][data-ledger-column="bookmaker"]');
   await bookmaker.click();
@@ -328,7 +327,7 @@ test("placed and settled Sportsbook cells explain their protected boundary befor
 
 test("Prospecting Sportsbook datetime commits through its native command in owned and combined scopes", async ({ page }) => {
   const source = await (await page.request.get(`/api/profiles/${profile}/sportsbook-bets/CP117-CELL-001`)).json() as Record<string, unknown>;
-  await page.goto(ledger);
+  await page.goto(cellLedger);
   await expect(page.locator(".ledger-loading-overlay")).toHaveCount(0, { timeout: 45_000 });
   await page.locator('td[data-ledger-row="CP117-CELL-001"][data-ledger-column="date_settled"]').dblclick();
   const owned = page.locator('[data-pd-id="sportsbook.cell-editor.date_settled"]');
@@ -356,7 +355,7 @@ test("Prospecting Sportsbook datetime commits through its native command in owne
 });
 
 test("a rejected Sportsbook datetime Save retains its draft and retries without opening a workbench", async ({ page }) => {
-  await page.goto(ledger);
+  await page.goto(`${ledger}?search=${encodeURIComponent("Synthetic cell review 2")}`);
   await expect(page.locator(".ledger-loading-overlay")).toHaveCount(0, { timeout: 45_000 });
   // This disposable source also runs after the persisted-date journey in the
   // complete suite. Always propose a different value so a retry is exercised.
@@ -387,7 +386,7 @@ test("a rejected Sportsbook datetime Save retains its draft and retries without 
 });
 
 test("Prospecting Sportsbook bookmaker opens an authorised selector in both scopes", async ({ page }) => {
-  await page.goto(ledger);
+  await page.goto(cellLedger);
   await expect(page.locator(".ledger-loading-overlay")).toHaveCount(0, { timeout: 45_000 });
   await page.locator('td[data-ledger-row="CP117-CELL-001"][data-ledger-column="bookmaker"]').dblclick();
   const owned = page.locator('[data-pd-id="sportsbook.cell-editor.bookmaker"]');
@@ -505,7 +504,7 @@ test("Sportsbook workbench replaces the ledger and keeps its controls contained 
 });
 
 test("native Sportsbook keeps governed row commands behind a compact action surface", async ({ page }) => {
-  await page.goto(ledger);
+  await page.goto(cellLedger);
   await expect(page.locator(".ledger-loading-overlay")).toHaveCount(0, { timeout: 45_000 });
   const row = page.locator('tr:has(td[data-ledger-row="CP117-CELL-001"])');
   await expect(row).toBeVisible();
@@ -564,7 +563,7 @@ for (const item of [
 }
 
 test("native Event Name uses the compact Lab scalar input", async ({ page }) => {
-  await page.goto(ledger);
+  await page.goto(cellLedger);
   const cell = page.locator('td[data-ledger-row="CP117-CELL-001"][data-ledger-column="event_name"]');
   await expect(cell).toBeVisible();
   await cell.dblclick();

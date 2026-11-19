@@ -60,7 +60,7 @@ import {
 } from "@/components/bookmaker-identity";
 import { EditorSection } from "@/components/editor-section";
 import { DesignFinancialOutcomeSurface, DesignFinancialWorkbenchFooter, financialWorkbenchHeaderClass, financialWorkbenchSurfaceClass, financialWorkbenchPrimaryActionClass, financialWorkbenchSecondaryActionClass } from "@/components/design-financial-workbench-layout";
-import { DesignBetWorkbenchContext, DesignBetWorkbenchGrid, DesignBetWorkbenchSummary, DesignBetWorkbenchStageRail, designBetWorkbenchEntryClass } from "@/components/design-bet-workbench-presentation";
+import { DesignBetWorkbenchContext, DesignBetWorkbenchGrid, DesignBetWorkbenchProtectedActions, DesignBetWorkbenchProtectedNotice, DesignBetWorkbenchSummary, DesignBetWorkbenchStageRail, designBetWorkbenchEntryClass } from "@/components/design-bet-workbench-presentation";
 import { SPORTSBOOK_RETURN_TO_LEDGER_EVENT } from "@/lib/sportsbook-workbench-navigation";
 import { sportsbookComparisonScenarios } from "@/lib/sportsbook-outcome-comparison";
 import { EditorValidationBanner } from "@/components/editor-validation-banner";
@@ -4488,8 +4488,10 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
       if (!selectedId) {
         return null;
       }
+      // V2 presents the approved correction entry in the workbench footer.
+      if (visualV2) return null;
       if (!isSettledReadOnly) {
-        return visualV2 ? null : <span className="section-lock-chip" data-pd-id="sportsbook.editor.editing-state">EDITING</span>;
+        return <span className="section-lock-chip" data-pd-id="sportsbook.editor.editing-state">EDITING</span>;
       }
 
       return (
@@ -7355,6 +7357,15 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
             </button>
           ) : null;
 
+  const editorSaveDisabled =
+    isInitialLoading ||
+    isPersisting ||
+    (corePlanPending && coreIsDirty && !isNotesOnlyExistingEdit) ||
+    !isDirty ||
+    (hasSettledFinancialCorrection(formState, pristineFormState) &&
+      !formState.correction_reason?.trim()) ||
+    (hasInvalidOddsInput && coreIsDirty && !isNotesOnlyExistingEdit);
+
   const editorFooter = (
             <DesignFinancialWorkbenchFooter className="field-span-2 workflow-editor-footer" data-pd-id="sportsbook.editor.actions" enabled={visualV2}>
               {errorMessage ? <p className="field-validation-text" data-pd-id="sportsbook.editor.save-error" role="alert">{errorMessage}</p> : null}
@@ -7377,9 +7388,17 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
                 />
               ) : null}
 	              <div className="tracker-nav workflow-editor-footer-primary">
-	                {visualV2 && !isSettledReadOnly ? <button className={labStyles.secondaryButton} disabled={isPersisting} onClick={() => void closeEditor()} type="button">Cancel</button> : null}
-	                {visualV2 && !isSettledReadOnly ? <details className={labStyles.footerMore}><summary>More actions</summary><button className={labStyles.secondaryButton} disabled={isPersisting} onClick={() => void handleResetForm()} type="button">Revert draft</button></details> : null}
-	                {isSettledReadOnly ? (
+	                {visualV2 && isSettledBet ? (
+	                  <DesignBetWorkbenchProtectedActions
+	                    correction={settledEditEnabled}
+	                    form="sportsbook-workbench-form"
+	                    onCancel={() => void closeEditor()}
+	                    onCancelCorrection={handleCancelSettledEdit}
+	                    onReviewCorrection={() => { setSettledEditEnabled(true); activateEditorTab("settlement"); }}
+	                    pending={isPersisting}
+	                    saveDisabled={editorSaveDisabled}
+	                  />
+	                ) : isSettledReadOnly ? (
 	                  <button
 	                    className={visualV2 ? labStyles.secondaryButton : "review-chip"}
 	                    onClick={() => void closeEditor()}
@@ -7389,18 +7408,12 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
 	                  </button>
 	                ) : (
 	                  <>
+	                    {visualV2 ? <button className={labStyles.secondaryButton} disabled={isPersisting} onClick={() => void closeEditor()} type="button">Cancel</button> : null}
+	                    {visualV2 ? <details className={labStyles.footerMore}><summary>More actions</summary><button className={labStyles.secondaryButton} disabled={isPersisting} onClick={() => void handleResetForm()} type="button">Revert draft</button></details> : null}
 	                    <button
 	                      className={`review-chip${visualV2 ? ` ${financialWorkbenchPrimaryActionClass}` : " review-chip-copy"}`}
 	                      form={visualV2 ? "sportsbook-workbench-form" : undefined}
-	                      disabled={
-	                        isInitialLoading ||
-	                        isPersisting ||
-	                        (corePlanPending && coreIsDirty && !isNotesOnlyExistingEdit) ||
-	                        !isDirty ||
-	                        (hasSettledFinancialCorrection(formState, pristineFormState) &&
-	                          !formState.correction_reason?.trim()) ||
-	                        (hasInvalidOddsInput && coreIsDirty && !isNotesOnlyExistingEdit)
-	                      }
+	                      disabled={editorSaveDisabled}
 	                      type="submit"
 	                    >
 	                      {isPersisting ? <span aria-hidden="true" className="button-spinner" /> : null}
@@ -10615,6 +10628,7 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
               key={selectedId ?? "sportsbook-settlement-new"}
               title={visualV2 ? "Finish / Review" : "Settlement"}
             >
+              {visualV2 && isSettledBet ? <DesignBetWorkbenchProtectedNotice /> : null}
               <fieldset className="section-fieldset" disabled={isSettledReadOnly}>
                 <div className="form-grid">
                   <label className="field-control">
