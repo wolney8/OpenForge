@@ -2,21 +2,21 @@
 
 _Last updated: 2026-11-19_
 
-## CP-117 V2 Sportsbook precedence and open Lab amendment — 2026-11-18
+## CP-117 V2 Sportsbook precedence and approved Lab amendments — 2026-11-19
 
 The owner's approved connected Design Lab Sportsbook workbench at `ad51ef215e49f8774e2ad3d291613e678896f462` supersedes the older **modal presentation** clauses below when the V2 flag is on. The approved reference is `design-lab-connected.tsx` `renderBetEntry` with `design-lab-connected.module.css` `.entry`, `.entryTop`, `.entryGrid`, `.entryFields`, `.stepper`, `.calcSummary` and `.entryFooter`. The source blobs are `2ad22d5c` and `af232602`; the approved Lab must not be changed to fit PD. The older modal header, capped body scroll, tick-mark rail, docked footer and Previous/Next presentation remains available only under flag OFF.
 
 For V2 Sportsbook, parity verification must compare the **complete rendered page and shell**, including sidebar, header, breadcrumb, page heading, five numbered stages, fieldsets, outcome card and footer. Equivalent synthetic state, viewport, zoom and theme are required. Assert computed geometry, typography, surfaces and control order; inspect paired images. Matching classes alone cannot close Design Acceptance. The native Save, validation, placement, settlement, correction, audit and Profile permissions remain authoritative. Do not copy Lab fixture calculations or confirmation checkboxes into those commands.
 
-Item 1 below was approved for the V2 Sportsbook protected record on 2026-11-19. Items 2–5 remain **separate, unapproved Lab proposals**. Required production states have no complete approved Lab equivalent and remain open in PD-FIX-613. The proposal route uses the existing Lab page workbench, not a new modal:
+The owner approved all five decisions individually for V2 Sportsbook on 2026-11-19. The separate synthetic preview remains a comparison aid while PD adoption is implemented and verified. The frozen Lab source stays unchanged:
 
 1. **APPROVED protected settled/void/cancelled records.** Retain the five numbered stages and approved card geometry. In the Finish / Review card show exactly `Recorded financial fields are read-only. Review a correction to change them.` Keep field values legible and read-only. Before correction, the footer contains one `Cancel` (closes the workbench) and `Review Correction` (enters the governed correction editor without writing). During correction, it contains one `Cancel Correction` (abandons only the correction draft and returns to protected review) and `Save Audited Correction` (validates and invokes the existing audited command, including correction-reason validation). No V2 `EDIT` chip or duplicate Cancel. The native settled gate, permission checks, reason requirement and audit remain in force.
-2. **Additional required offer and account fields — revised proposal.** The approved `Offer Name` is bound to `offer_name` beside `Bookmaker`; `Offer Type` precedes `Bet Type`. Keep the Lab's `Fixture Type` and `Back Stake · if known` visible above `Additional offer details`. The disclosure contains existing event/market, promotion link, combo and account-review controls in the same two-column field grid; closing and reopening retains typed values and required-field validation opens it at the relevant field. The former `Campaign tag` label also wrote `offer_name`. No distinct campaign input is proposed until a separate backing field is identified and approved. Decision still requested for this disclosure and field grouping; no required input is removed or made optional.
-3. **Recorded requirements and exceptional outcomes — revised proposal.** Replace Lab-only simulated checkboxes with an uneditable `Recorded requirements` summary of genuine source fields, with `Unknown` where evidence is absent. The heading, outcome context, visible scenario rows, signed values and unavailable message must follow the same selected record across stages. Keep `Outcome Comparison` and its Lab card layout; propose `Detailed outcomes` for additional branches and source detail, showing what remains visible when collapsed. Never label a reference stake as an actual requested or placed stake. Decision still requested; calculation and placement authorities do not change.
-4. **Matching and Placement detail — revised proposal.** Keep the approved everyday Matching fields plus visible `Exchange`, `Strategy` and `Requested Lay Stake`. Put advanced calculator options in Matching. Keep actual back/lay stakes and independent Back/Lay confirmation controls visible in Placement; put secondary partial-fill fields in `Actual stakes and partial-fill details`. Show standard, partial-fill and `Not recorded` states, including only one side confirmed. Decision still requested; existing calculator, placement and audit commands remain unchanged.
-5. **Linked rewards and restricted actions — revised proposal.** In Finish / Review, provide `Linked Free Bets` as a form disclosure with the existing authorised action; place destructive or rarely used commands under `More actions` in the footer. An unchanged existing bet presents `Save Existing Bet`; the appropriate new placed-record example presents `Finish Placed Record`. Decision still requested for these placements; the linked reward and correction commands continue to use their existing Profile-owned authority.
+2. **APPROVED additional required offer and account fields.** The approved `Offer Name` is bound to `offer_name` beside `Bookmaker`; `Offer Type` precedes `Bet Type`. Keep the Lab's `Fixture Type` and `Back Stake · if known` visible above `Additional offer details`. The disclosure contains existing event/market, promotion link, combo and account-review controls in the same two-column field grid; closing and reopening retains typed values and required-field validation opens it at the relevant field. The former `Campaign tag` label also wrote `offer_name`. No distinct campaign input is proposed until a separate backing field is identified and approved; no required input is removed or made optional.
+3. **APPROVED recorded requirements and exceptional outcomes.** Replace Lab-only simulated checkboxes with an uneditable `Recorded requirements` summary of genuine source fields, with `Unknown` where evidence is absent. The heading, outcome context, visible scenario rows, signed values and unavailable message must follow the same selected record across stages. Keep `Outcome Comparison` and its Lab card layout; use `Detailed outcomes` for additional branches and source detail, showing what remains visible when collapsed. Never label a reference stake as an actual requested or placed stake. Calculation and placement authorities do not change.
+4. **APPROVED Matching and Placement detail.** Keep the approved everyday Matching fields plus visible `Exchange`, `Strategy` and `Requested Lay Stake`. Put advanced calculator options in Matching. Keep actual back/lay stakes and independent Back/Lay confirmation controls visible in Placement; put secondary partial-fill fields in `Actual stakes and partial-fill details`. Show standard, partial-fill and `Not recorded` states, including only one side confirmed. Existing calculator, placement and audit commands remain unchanged.
+5. **APPROVED linked rewards and restricted actions.** In Finish / Review, provide `Linked Free Bets` as a form disclosure with the existing authorised action; place destructive or rarely used commands under `More actions` in the footer. An unchanged existing bet presents `Save Existing Bet`; the appropriate new placed-record example presents `Finish Placed Record`. The linked reward and correction commands continue to use their existing Profile-owned authority. A reward-only protected draft cannot enable Save Audited Correction, and an unsaved new bet offers neither Delete nor an inherited reward.
 
-Until the owner decides items 2–5, synthetic functional evidence can establish Integration Acceptance, but extended screens cannot be marked Design COMPLETE. Item 1's implementation does not grant whole-editor Design or Interaction Acceptance. The private paired Lab/PD renders and five amendment images belong in the existing CP-117 evidence index; no owner records or private images are committed. The remaining proposals do not modify the approved Lab source or activate new PD controls.
+Whole-editor Design and Interaction Acceptance remain REJECTED until the owner reviews the integrated PD result. Synthetic functional evidence and a completed code migration do not grant that acceptance. Private paired Lab/PD renders belong in the existing CP-117 evidence index; no owner records or private images are committed. The amendments do not change the frozen approved Lab source.
 
 ## Status and authority
 
@@ -255,9 +255,16 @@ ordering, Outcome Comparison and footer hierarchy. The older modal remains for f
 Native draft, validation, calculation, placement, settlement, correction and audit commands remain
 authoritative. The five amendment states are isolated at
 `/design-lab/sportsbook-proposals?amendment=protected|offer|requirements|matching|finish`;
-the protected wording and two footer states are approved for V2, while Offer, Requirements,
-Matching/Placement and Finish remain synthetic proposals requiring individual approval. The
-approved `/design-lab` route must not be changed to match an unapproved proposal.
+all five amendment presentations are individually approved for V2. Offer keeps the Bookmaker /
+Offer Name and Offer Type / Bet Type pairs visible, with optional event, market, promotion,
+combo and account controls in Additional offer details; validation opens and focuses the
+relevant field without discarding a typed value. Requirements uses recorded evidence and
+Unknown for missing evidence. Matching keeps everyday inputs visible and advanced calculator
+options in a disclosure. Placement owns actual stakes, separate external Back/Lay confirmations
+and partial-fill detail. Finish keeps Linked Free Bets in the form and More actions in the footer.
+These approved presentations do not replace native calculations, Save, correction or audit
+authority. The frozen `/design-lab` reference remains unchanged; the separate preview records
+the approved amendments with synthetic data and simulated actions.
 
 V2 Outcome Comparison must pair each available signed source amount with its own governed
 scenario label. Standard, No Lay (including “Back loses”), Cashback, Double Delight and all
@@ -267,6 +274,11 @@ entry must return through the Sportsbook Bets breadcrumb to a query-free ledger 
 there on refresh. Dirty drafts retain the existing Keep editing / Discard guard, and combined
 returns retain their local filters.
 
-Whole-editor Design and Interaction Acceptance remain **REJECTED** until the owner decides the
-four outstanding amendments and the resulting production composition is independently compared with the
-approved reference. Proposal screenshots and passing synthetic tests do not grant that approval.
+For a protected record, a linked-reward draft alone must not enable Save Audited Correction or
+be reported as a Sportsbook correction. Only a genuine protected financial change with a
+correction reason may use that audited Save command. Cancel Correction returns to protected
+review. New unsaved rows never inherit a prior record's reward or Delete action.
+
+Whole-editor Design and Interaction Acceptance remain **REJECTED** pending owner review of the
+integrated production composition. Proposal screenshots and passing synthetic tests do not
+grant that approval.

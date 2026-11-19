@@ -13,7 +13,7 @@ const nativeWorkbench = (page: import("@playwright/test").Page, item: (typeof ca
   ? page.locator('[data-pd-id="sportsbook.editor.workbench-surface"]')
   : page.locator(`[data-pd-id="${item.id}.editor.dialog"]`);
 const saveAction = (editor: import("@playwright/test").Locator, item: (typeof cases)[number]) =>
-  editor.getByRole("button", { name: item.id === "sportsbook" ? /^Save (Changes|Edits|Prospecting)$/ : /^Save$/ });
+  editor.getByRole("button", { name: item.id === "sportsbook" ? /^(Save Existing Bet|Save Changes|Save Edits|Save Prospecting)$/ : /^Save$/ });
 
 test.use({ video: "on", trace: "retain-on-failure", screenshot: "only-on-failure" });
 
@@ -46,8 +46,8 @@ for (const item of cases) for (const [width, theme] of [[1440, "light"], [900, "
       await expect(header.locator('[data-pd-financial-header="true"] button')).toHaveCSS("width", "44px");
     }
     if (item.id === "sportsbook") {
-      await expect(form.locator(".sportsbook-lab-fieldset > legend").first()).toHaveText("Offer");
-      await expect(form.locator(".sportsbook-lab-fieldset > legend").first()).toHaveCSS("font-size", "17.6px");
+      await expect(form.locator(".sportsbook-lab-fieldset:visible > legend").first()).toHaveText("Offer");
+      await expect(form.locator(".sportsbook-lab-fieldset:visible > legend").first()).toHaveCSS("font-size", "17.6px");
     } else {
       await expect(form.locator(".editor-section-summary").first()).toHaveCSS("text-transform", "none");
       await expect(form.locator(".editor-section-summary").first().locator("span").first()).toHaveCSS("font-size", "19.2px");
@@ -59,6 +59,7 @@ for (const item of cases) for (const [width, theme] of [[1440, "light"], [900, "
     expect(footerRect!.x).toBeGreaterThanOrEqual(bodyRect!.x - 2);
     expect(footerRect!.x + footerRect!.width).toBeLessThanOrEqual(bodyRect!.x + bodyRect!.width + 2);
     if (item.id === "sportsbook") {
+      await dialog.getByText("Additional offer details", { exact: true }).click();
       const accountAction = dialog.locator('[data-pd-id="account.review.open"]');
       await expect(accountAction).toBeVisible();
       expect((await accountAction.boundingBox())!.height).toBeLessThanOrEqual(50);
@@ -176,6 +177,7 @@ for (const item of cases) {
     const dialog = nativeWorkbench(page, item);
     await expect(dialog).toBeVisible();
     await expect(saveAction(dialog, item)).toBeDisabled();
+    if (item.id === "sportsbook") await dialog.getByText("Additional offer details", { exact: true }).click();
     const field = dialog.getByLabel(item.id === "casino-offers" ? "Offer name" : "Event name", { exact: true });
     await field.fill(`Synthetic unsaved ${item.id}`);
     await page.keyboard.press("Escape");
@@ -416,10 +418,10 @@ for (const [width, theme] of [[1440, "light"], [390, "dark"]] as const) {
         columns: [fields.getBoundingClientRect().x, aside.getBoundingClientRect().x], overflow: document.documentElement.scrollWidth - innerWidth };
     });
     await page.setViewportSize({ width: 1440, height: 900 });
-    await page.goto("/profiles/profile-demo-001/tracker/sportsbook-bets");
+    // The seeded record can be outside the current date range or first ledger page.
+    // This case compares the editor itself; row selection is covered separately.
+    await page.goto("/profiles/profile-demo-001/tracker/sportsbook-bets?record=SB-SEED-001");
     await expect(page.locator(".ledger-loading-overlay")).toHaveCount(0, { timeout: 45_000 });
-    await page.locator('td[data-ledger-row="SB-SEED-001"][data-ledger-column="event_name"]').click();
-    await page.locator('[data-pd-id="sportsbook.toolbar.open-selected"]').click();
     await page.setViewportSize({ width, height: 900 });
     const native = page.locator('[data-pd-id="sportsbook.editor.workbench-surface"]');
     await native.locator('[data-pd-id="bet-workbench.stage.offer"]').click();
@@ -468,6 +470,7 @@ for (const item of cases) {
       await expect(dialog.locator('[data-guided-field="bet_type"] > span')).toHaveText("Bet Type");
       await dialog.locator('[data-guided-field="bet_type"] select').selectOption({ label: "Single" });
       await dialog.locator("label", { hasText: /^Fixture type/i }).locator("select").selectOption({ label: "Football" });
+      await dialog.getByText("Additional offer details", { exact: true }).click();
       await dialog.getByLabel("Event name").fill(sourceName);
       await dialog.locator('[data-pd-id="bet-workbench.stage.matching"]').click();
       const plan = dialog.locator('[data-pd-id="sportsbook.matching.core-planner"]');
@@ -534,7 +537,10 @@ for (const item of cases) {
     const edit = item.id === "sportsbook" ? nativeWorkbench(page, item) : page.getByRole("dialog", { name: item.editName, exact: true });
     await expect(edit).toBeVisible();
     const input = edit.getByLabel(item.id === "casino-offers" ? "Offer name" : "Event name", { exact: true });
-    if (item.id === "sportsbook") await edit.locator('[data-pd-id="bet-workbench.stage.offer"]').click();
+    if (item.id === "sportsbook") {
+      await edit.locator('[data-pd-id="bet-workbench.stage.offer"]').click();
+      await edit.getByText("Additional offer details", { exact: true }).click();
+    }
     else await edit.getByRole("tab", { name: /Setup/i }).click();
     await expect(input).toHaveValue(sourceName);
     await input.fill(changedName);

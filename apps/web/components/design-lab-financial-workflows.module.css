@@ -23,7 +23,7 @@
 .workbenchSurface .modalFooter details{margin-top:0}
 .workbenchSurface .modalFooter details summary{padding-block:9px}
 .workbenchSurface :global(.form-grid){min-width:0}
-.workbenchSurface :global([data-pd-bet-workbench-fields]){grid-template-columns:minmax(0,1fr)}
+.workbenchSurface :global([data-pd-bet-workbench-fields]){grid-template-columns:minmax(0,1fr);gap:12px}
 .workbenchSurface :global([data-pd-bet-workbench-fields] > .ledger-editor-tab-panel > .editor-section[data-pd-financial-card="true"]){padding:0;border:0;border-radius:0;background:transparent;box-shadow:none}
 .workbenchSurface :global([data-pd-bet-workbench-fields] > .ledger-editor-tab-panel > .editor-section.is-invalid-section[data-pd-financial-card="true"]){border-top:2px solid var(--danger);padding-top:8px}
 .workbenchSurface :global(.editor-section > .editor-section-content .section-fieldset){margin:0;padding:0;border:0;border-radius:0;background:transparent}
@@ -37,6 +37,14 @@
 .workbenchSurface :global(.sportsbook-lab-fieldset > .editor-section-content){display:block;overflow:visible;max-height:none;opacity:1;transform:none}
 .workbenchSurface :global(.sportsbook-lab-fieldset > .editor-section-content > .editor-section-content-inner){display:grid;gap:0;padding:0;overflow:visible;max-height:none;opacity:1;transform:none}
 .workbenchSurface :global(.sportsbook-lab-fieldset-action){position:absolute;z-index:2;top:0;right:0}
+.workbenchSurface :global(.sportsbook-lab-matching){padding:0;border:0;border-radius:0;background:transparent;box-shadow:none}
+.workbenchSurface :global(.sportsbook-lab-matching .calculator-shell){gap:0}
+.workbenchSurface :global(.sportsbook-lab-matching .calculator-shell > details){margin-top:14px}
+.workbenchSurface :global(.sportsbook-lab-matching .sportsbook-advanced-calculator-content){margin-top:12px}
+.workbenchSurface :global(.sportsbook-lab-matching details .calculator-band-primary),.workbenchSurface :global(.sportsbook-lab-matching details .calculator-band-secondary){padding:0;background:transparent}
+.workbenchSurface :global(.sportsbook-lab-matching details .calculator-segment),.workbenchSurface :global(.sportsbook-lab-matching details .calculator-panel-card){padding:12px;border:1px solid var(--outline);border-radius:10px;background:var(--surface-container);box-shadow:none}
+.workbenchSurface :global(.sportsbook-lab-matching details .calculator-result-card){background:var(--surface-container);box-shadow:none}
+.workbenchSurface :global(.sportsbook-lab-matching details .calculator-result-card-heading){justify-content:flex-start;min-height:0;padding:10px 12px;border-bottom:1px solid var(--outline);background:transparent;color:var(--text);text-align:left}
 
 /* The same Lab chrome lives inside the governed native modal host. */
 .modalFrame:global(.workflow-editor-modal){position:relative;background:var(--surface-strong);color:var(--text);overflow:hidden}

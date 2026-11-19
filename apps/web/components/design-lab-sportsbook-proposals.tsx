@@ -115,7 +115,7 @@ export function DesignLabSportsbookProposals({ initialAmendment }: { initialAmen
         <nav aria-label="Breadcrumb" className={lab.breadcrumb} data-pd-id="lab.proposal.breadcrumb"><span className={lab.crumb}><Link href="/design-lab">Position</Link></span><span className={lab.crumb}><Icon>chevron_right</Icon><Link href="/design-lab">Tracker</Link></span><span className={lab.crumb}><Icon>chevron_right</Icon><Link href="/design-lab">Sportsbook Bets</Link></span><span className={lab.crumb}><Icon>chevron_right</Icon><span aria-current="page">Bet details · proposal</span></span><span className={lab.labBadge}>LAB · proposal</span></nav>
         <main className={lab.main} data-pd-id="lab.proposal.main" id="lab-main">
           <DesignPageHead><div><h1>{isNewFinish ? "New Sportsbook Bet" : `Edit Sportsbook Bet · ${selectedRecord.id}`}</h1><p>Offer first · prepare and confirm external placement later</p></div><div className={lab.headActions}><Link className={lab.linkButton} href="/design-lab">Approved Lab</Link></div></DesignPageHead>
-          <p className={local.previewNotice}><strong>Protected-record presentation approved; four amendments await decisions.</strong> Synthetic records and simulated actions only. The approved Design Lab remains available from the link above.</p>
+          <p className={local.previewNotice}><strong>Five Sportsbook presentation decisions approved for PD adoption.</strong> This separate preview uses synthetic records and simulated actions only. The frozen Design Lab remains available from the link above.</p>
           <nav aria-label="Choose amendment" className={local.choiceRow}>{choices.map(choice => <a aria-current={amendment === choice.id ? "page" : undefined} href={`?amendment=${choice.id}`} key={choice.id} onClick={event => { event.preventDefault(); selectAmendment(choice.id); }}>{choice.label}</a>)}</nav>
           <div className={lab.entry} data-pd-id="lab.proposal.workbench">
             <DesignBetWorkbenchContext title="Bet Workbench · simulated" context={`Profile A · ${isNewFinish ? "New placed-record example" : selectedRecord.status}`} />
@@ -183,7 +183,7 @@ export function DesignLabSportsbookProposals({ initialAmendment }: { initialAmen
                   <legend>Finish / Review</legend>
                   <div className={local.switchRow}>
                     <button aria-pressed={finishMode === "existing"} className={lab.secondaryButton} onClick={() => setFinishMode("existing")} type="button">Existing unchanged bet</button>
-                    <button aria-pressed={finishMode === "new"} className={lab.secondaryButton} onClick={() => setFinishMode("new")} type="button">New placed-record example</button>
+                    <button aria-pressed={finishMode === "new"} className={lab.secondaryButton} onClick={() => { setFinishMode("new"); setLinked(false); }} type="button">New placed-record example</button>
                     <button className={lab.secondaryButton} onClick={() => setLinked(true)} type="button">With linked reward</button>
                     <button className={lab.secondaryButton} onClick={() => setLinked(false)} type="button">Without linked reward</button>
                   </div>
@@ -215,7 +215,7 @@ export function DesignLabSportsbookProposals({ initialAmendment }: { initialAmen
                     onReviewCorrection={() => { setCorrection(true); setNotice("Correction editor opened; no write was made."); }}
                     onSaveCorrection={() => setNotice("Save Audited Correction simulated; no record changed.")} />
                 : <>
-                  {amendment === "finish" ? <details className={lab.footerMore}><summary>More actions</summary><button className={lab.dangerButton} onClick={() => setNotice("Destructive action preview only; no record changed.")} type="button">Delete record · preview</button></details> : null}
+                  {amendment === "finish" && !isNewFinish ? <details className={lab.footerMore}><summary>More actions</summary><button className={lab.dangerButton} onClick={() => setNotice("Destructive action preview only; no record changed.")} type="button">Delete record · preview</button></details> : null}
                   <button className={lab.secondaryButton} onClick={() => setNotice("Preview cancelled; no record changed.")} type="button">Cancel</button>
                   <button className={lab.primaryButton} onClick={() => setNotice("Primary action simulated; no bet was placed, settled or saved.")} type="button">{isNewFinish ? "Finish Placed Record" : "Save Existing Bet"}</button>
                 </>}

@@ -661,9 +661,12 @@ test("Sportsbook, Free Bet and Casino native editors use their approved Lab fiel
       await page.locator(`[data-pd-id="${editor.id}.toolbar.add-row"]`).click();
       const surface = page.locator(`[data-pd-id="${editor.id}.editor.${editor.id === "sportsbook" ? "workbench-surface" : "dialog"}"]`);
       await expect(surface).toBeVisible();
-      const stage = surface.locator(".editor-section").first();
+      const stage = editor.id === "sportsbook"
+        ? surface.locator('[data-pd-id="ledger-editor.panel.setup"] .editor-section').first()
+        : surface.locator(".editor-section").first();
       await expect(stage).toBeVisible();
       if (editor.id === "sportsbook") {
+        await expect(surface.locator('[data-pd-id="bet-workbench.stage.offer"]')).toHaveAttribute("aria-current", "step");
         // The page workbench uses the Lab fieldset, not the legacy nested card.
         await expect(stage).toHaveJSProperty("tagName", "FIELDSET");
         await expect(stage.locator(":scope > legend")).toHaveText("Offer");

@@ -183,3 +183,30 @@ test("each amendment opens directly and its proposal states respond without writ
   await expect(footer.getByRole("button", { name: "Finish Placed Record" })).toBeVisible();
   await capture(page, `finish-new`);
 });
+
+for (const width of [2048, 390] as const) {
+  test(`approved amendment preview renders all Sportsbook stages at ${width}px dark`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.addInitScript(() => { localStorage.setItem("pd-required-storage-notice", "acknowledged"); localStorage.setItem("openforge-theme", "dark"); });
+    await page.goto(authURL);
+    await page.goto("/design-lab/sportsbook-proposals?amendment=offer");
+    const workbench = page.locator('[data-pd-id="lab.proposal.workbench"]');
+    await expect(workbench).toBeVisible();
+    await capture(page, `adopted-offer-${width}-dark`);
+    await page.getByRole("link", { name: /Requirements and outcomes/ }).click();
+    await expect(workbench.getByText("Recorded requirements")).toBeVisible();
+    await capture(page, `adopted-requirements-${width}-dark`);
+    await page.getByRole("link", { name: /Matching and Placement/ }).click();
+    await page.getByRole("button", { name: "Partial fill" }).click();
+    await capture(page, `adopted-matching-${width}-dark`);
+    await page.getByText("Advanced calculator options", { exact: true }).click();
+    await capture(page, `adopted-matching-expanded-${width}-dark`);
+    await page.getByRole("button", { name: "Placement", exact: true }).last().click();
+    await capture(page, `adopted-placement-${width}-dark`);
+    await page.getByText("Actual stakes and partial-fill details", { exact: true }).click();
+    await capture(page, `adopted-placement-expanded-${width}-dark`);
+    await page.getByRole("link", { name: /Finish \/ Review/ }).click();
+    await capture(page, `adopted-finish-${width}-dark`);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1)).toBe(false);
+  });
+}

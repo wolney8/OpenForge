@@ -312,7 +312,7 @@ test("Offer Name saves through the native eligible Placed edit command", async (
   const name = workbench.locator('[data-pd-id="sportsbook.editor.offer-name"] input');
   await name.fill("Synthetic offer name revision");
   await name.blur();
-  const save = workbench.getByRole("button", { name: "Save Changes" });
+  const save = workbench.getByRole("button", { name: "Save Existing Bet" });
   await expect(save).toBeEnabled();
   await save.click();
   const response = await page.request.get(`/api/profiles/${profile}/sportsbook-bets/${id}`);
@@ -381,4 +381,332 @@ test("Placed pending standard edit shows one source-backed Outcome Comparison", 
   // production extension. Assert their vertical footprint rather than masking it.
   expect(nativeGeometry.footer).toBeGreaterThan(approvedGeometry.footer);
   await page.screenshot({ path: "data/private/evidence/cp117-sportsbook-parity/native-placed-pending-finish-2048-dark.png", fullPage: true });
+});
+
+test("approved Offer disclosure retains entered Market and opens for required event validation", async ({ page }) => {
+  await page.goto(owned);
+  await expect(page.locator(".ledger-loading-overlay")).toHaveCount(0, { timeout: 45_000 });
+  await page.locator('[data-pd-id="sportsbook.toolbar.add-row"]').click();
+  const workbench = page.locator('[data-pd-id="sportsbook.editor.workbench-surface"]');
+  await expect(workbench).toBeVisible();
+  const offer = workbench.locator('[data-pd-id="ledger-editor.panel.setup"]');
+  const details = offer.locator('[data-pd-id="sportsbook.editor.additional-offer-details"]');
+  await expect(workbench.getByRole("combobox", { name: "Bookmaker", exact: true })).toBeVisible();
+  await expect(workbench.locator('[data-pd-id="sportsbook.editor.offer-name"] input')).toBeVisible();
+  await expect(workbench.getByRole("textbox", { name: "Back Stake · if known" })).toBeVisible();
+  await details.locator("summary").click();
+  const market = details.getByLabel("Market (optional)");
+  await market.fill("Synthetic review market");
+  await details.locator("summary").click();
+  await details.locator("summary").click();
+  await expect(market).toHaveValue("Synthetic review market");
+  await details.locator("summary").click();
+  await offer.getByLabel("Original Offer text").fill("Synthetic offer requiring event review");
+  await workbench.getByRole("button", { name: "Save Prospecting" }).click();
+  await expect(details).toHaveAttribute("open", "");
+  await expect(details.getByLabel("Event name")).toBeFocused();
+});
+
+test("protected reward draft cannot masquerade as an audited Sportsbook correction", async ({ page }) => {
+  const id = `CP117-PROTECTED-${Date.now()}`;
+  const payload = {
+    sportsbook_bet_id: id, event_name: "Synthetic protected reward test", offer_text: "Synthetic source only",
+    offer_name: "Synthetic protected reward", bookmaker: "Bookmaker A", offer_type: "Bet & Get", bet_type: "Single",
+    fixture_type: "Football", market: "Match Odds", status: "Settled", result: "Win",
+    back_stake: "10.00", back_odds: "2.00", match_strategy: "Standard", lay_odds_1: "2.10",
+    lay_actual: "9.62", lay_matched_stake_1: "9.62", lay_commission_1: "0.02",
+    exchange_name: "Matchbook", date_settled: "2026-11-03T18:00", user_notes: "Synthetic only",
+  };
+  const created = await page.request.post(`/api/profiles/${profile}/sportsbook-bets`, { data: payload });
+  expect(created.status(), await created.text()).toBe(201);
+  await page.goto(`${owned}?record=${encodeURIComponent(id)}`);
+  const workbench = page.locator('[data-pd-id="sportsbook.editor.workbench-surface"]');
+  await expect(workbench).toBeVisible();
+  await workbench.locator('[data-pd-id="bet-workbench.stage.finish"]').click();
+  const linked = workbench.locator('[data-pd-id="sportsbook.workbench.linked-free-bets"]');
+  await linked.locator("summary").click();
+  await linked.getByRole("button", { name: "Review linked Free Bets" }).click();
+  const bridge = workbench.locator('[data-pd-id="sportsbook.free-bet-bridge.inline"]');
+  await expect(bridge).toBeVisible();
+  await bridge.getByLabel("Notes", { exact: true }).fill("Reward-only synthetic draft");
+  const footer = workbench.locator('[data-pd-id="sportsbook.editor.actions"]');
+  await footer.getByRole("button", { name: "Review Correction" }).click();
+  await expect(footer.getByRole("button", { name: "Save Audited Correction" })).toBeDisabled();
+  await expect(footer.getByRole("button", { name: "Cancel Correction" })).toBeVisible();
+  await footer.getByRole("button", { name: "Cancel Correction" }).click();
+  await expect(footer.getByRole("button", { name: "Review Correction" })).toBeVisible();
+  const unchanged = await (await page.request.get(`/api/profiles/${profile}/sportsbook-bets/${id}`)).json() as Record<string, unknown>;
+  expect(unchanged.result).toBe("Win");
+  const historyBefore = await (await page.request.get(`/api/profiles/${profile}/financial-history/sportsbook/${id}`)).json() as unknown[];
+  await footer.getByRole("button", { name: "Review Correction" }).click();
+  await workbench.locator('[data-pd-id="bet-workbench.stage.finish"]').click();
+  await workbench.getByRole("combobox", { name: "Result", exact: true }).selectOption("Lay Won");
+  const auditedSave = footer.getByRole("button", { name: "Save Audited Correction" });
+  await expect(auditedSave).toBeDisabled();
+  await workbench.locator('[data-pd-id="sportsbook.settlement.correction-reason"]').fill("Synthetic result correction after review");
+  await expect(auditedSave).toBeEnabled();
+  await auditedSave.click();
+  const saved = await (await page.request.get(`/api/profiles/${profile}/sportsbook-bets/${id}`)).json() as Record<string, unknown>;
+  expect(saved.result).toBe("Lay Won");
+  const historyAfter = await (await page.request.get(`/api/profiles/${profile}/financial-history/sportsbook/${id}`)).json() as unknown[];
+  expect(historyAfter.length).toBeGreaterThan(historyBefore.length);
+});
+
+test("missing and partial lay evidence cannot acquire an outcome amount by opening Finish", async ({ page }) => {
+  test.setTimeout(90_000);
+  for (const [caseName, stake] of [["missing", ""], ["partial", "5.00"]] as const) {
+    const id = `CP117-EVIDENCE-${caseName}-${Date.now()}`;
+    const created = await page.request.post(`/api/profiles/${profile}/sportsbook-bets`, { data: {
+      sportsbook_bet_id: id, event_name: `Synthetic ${caseName} lay`, offer_text: "Synthetic source only",
+      offer_name: "Synthetic evidence review", bookmaker: "Bookmaker A", offer_type: "Bet & Get", bet_type: "Single",
+      fixture_type: "Football", market: "Match Odds", status: stake ? "Placed" : "Prospecting", result: "Pending",
+      back_stake: "10.00", back_odds: "2.10", match_strategy: "Standard", lay_odds_1: "2.20",
+      lay_actual: stake, lay_matched_stake_1: stake, lay_commission_1: "0.02",
+      exchange_name: "Matchbook", date_settled: "2026-11-03T18:00", user_notes: "Synthetic only",
+    }});
+    expect(created.status(), await created.text()).toBe(201);
+    await page.goto(`${owned}?record=${encodeURIComponent(id)}`);
+    const workbench = page.locator('[data-pd-id="sportsbook.editor.workbench-surface"]');
+    await expect(workbench).toBeVisible();
+    const aside = workbench.locator('[data-pd-id="sportsbook.editor.financial-context"]');
+    const before = await aside.locator('[data-pd-id^="sportsbook.editor.outcome."]').allTextContents();
+    await workbench.locator('[data-pd-id="bet-workbench.stage.finish"]').click();
+    const after = await aside.locator('[data-pd-id^="sportsbook.editor.outcome."]').allTextContents();
+    expect(after).toEqual(before);
+    if (before.length === 0) await expect(aside).toContainText("Outcome unavailable");
+  }
+});
+
+test("approved Placement separates confirmations from Matching and a new bet has no inherited reward or Delete", async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto(owned);
+  await expect(page.locator(".ledger-loading-overlay")).toHaveCount(0, { timeout: 45_000 });
+  await page.locator('[data-pd-id="sportsbook.toolbar.add-row"]').click();
+  const workbench = page.locator('[data-pd-id="sportsbook.editor.workbench-surface"]');
+  await expect(workbench).toBeVisible();
+  await workbench.getByLabel("Original Offer text", { exact: true }).fill("Synthetic offer");
+  await workbench.locator('[data-guided-field="bookmaker"] select').selectOption("Bookmaker A");
+  await workbench.locator('[data-guided-field="offer_type"] select').selectOption({ label: "Bet & Get" });
+  await workbench.locator('[data-guided-field="bet_type"] select').selectOption({ label: "Single" });
+  await workbench.locator("label", { hasText: /^Fixture type/i }).locator("select").selectOption({ label: "Football" });
+  await workbench.getByText("Additional offer details", { exact: true }).click();
+  await workbench.getByLabel("Event name").fill("Synthetic matching fixture");
+  await workbench.locator('[data-pd-id="bet-workbench.stage.matching"]').click();
+  const matching = workbench.locator('[data-pd-id="ledger-editor.panel.matching"]');
+  const everyday = matching.locator('[data-pd-id="sportsbook.matching.core-planner.paired-segments"]');
+  await expect(everyday).toBeVisible();
+  for (const label of ["Back stake", "Back odds", "Lay odds", "Commission", "Exchange", "Strategy", "Requested Lay Stake"]) {
+    await expect(everyday.getByText(label, { exact: true })).toBeVisible();
+  }
+  const advanced = matching.getByText("Advanced calculator options", { exact: true });
+  await expect(advanced).toBeVisible();
+  await expect(matching.locator(".calculator-segment-back")).toHaveCount(0);
+  await expect(matching.locator(".calculator-segment-lay")).toHaveCount(0);
+  await expect(workbench.getByRole("group", { name: "Back placement actions" })).toHaveCount(0);
+  await expect(workbench.getByRole("group", { name: "Lay placement actions" })).toHaveCount(0);
+  await workbench.locator('[data-pd-id="bet-workbench.stage.placement"]').click();
+  const placement = workbench.locator('[data-pd-id="ledger-editor.panel.placement"]');
+  await expect(placement).toBeVisible();
+  await expect(placement.getByLabel("Back placement")).toHaveValue("Not recorded");
+  await expect(placement.getByLabel("Lay placement")).toHaveValue("Not recorded");
+  await expect(placement.getByRole("button", { name: "Confirm external Back" })).toBeVisible();
+  await workbench.locator('[data-pd-id="bet-workbench.stage.finish"]').click();
+  const linked = workbench.locator('[data-pd-id="sportsbook.workbench.linked-free-bets"]');
+  await linked.locator("summary").click();
+  await expect(linked).toContainText("No linked reward is recorded for this unsaved bet.");
+  const more = workbench.locator('[data-pd-id="sportsbook.editor.actions"]').getByText("More actions");
+  await more.click();
+  await expect(workbench.getByRole("button", { name: "Delete record" })).toHaveCount(0);
+});
+
+for (const width of [2048, 390] as const) {
+  test(`new Sportsbook Matching uses approved everyday field composition at ${width}px dark`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.addInitScript(() => localStorage.setItem("openforge-theme", "dark"));
+    await page.goto(owned);
+    await expect(page.locator(".ledger-loading-overlay")).toHaveCount(0, { timeout: 45_000 });
+    await page.locator('[data-pd-id="sportsbook.toolbar.add-row"]').click();
+    const workbench = page.locator('[data-pd-id="sportsbook.editor.workbench-surface"]');
+    await workbench.getByLabel("Original Offer text", { exact: true }).fill("Synthetic offer");
+    await workbench.locator('[data-guided-field="bookmaker"] select').selectOption("Bookmaker A");
+    await workbench.locator('[data-guided-field="offer_type"] select').selectOption({ label: "Bet & Get" });
+    await workbench.locator('[data-guided-field="bet_type"] select').selectOption({ label: "Single" });
+    await workbench.locator("label", { hasText: /^Fixture type/i }).locator("select").selectOption({ label: "Football" });
+    await workbench.getByText("Additional offer details", { exact: true }).click();
+    await workbench.getByLabel("Event name").fill("Synthetic matching fixture");
+    await workbench.locator('[data-pd-id="bet-workbench.stage.matching"]').click();
+    const panel = workbench.locator('[data-pd-id="ledger-editor.panel.matching"]');
+    await expect(panel).toBeVisible();
+    const everyday = panel.locator('[data-pd-id="sportsbook.matching.core-planner.paired-segments"]');
+    await everyday.getByLabel("Back stake").fill("10.00");
+    await everyday.getByLabel("Back odds").fill("2.10");
+    await everyday.getByLabel("Lay odds").fill("2.20");
+    await everyday.getByLabel("Planning exchange commission (%)").fill("2");
+    await expect(panel.locator('[data-pd-id="sportsbook.matching.core-planner"]')).toHaveAttribute("data-plan-reviewed", "true", { timeout: 20_000 });
+    const positions = await everyday.evaluate(node => {
+      const names = ["Back stake", "Back odds", "Lay odds", "Commission", "Exchange", "Strategy", "Requested Lay Stake"];
+      const labels = [...node.querySelectorAll("label")];
+      return names.map(name => {
+        const label = labels.find(item => item.querySelector(":scope > span")?.textContent?.trim() === name);
+        if (!label) return { name, x: -1, y: -1 };
+        const rect = label.getBoundingClientRect();
+        return { name, x: rect.x, y: rect.y };
+      });
+    });
+    expect(positions.every(item => item.x >= 0)).toBe(true);
+    if (width === 2048) {
+      expect(Math.abs(positions[0].y - positions[1].y)).toBeLessThanOrEqual(1);
+      expect(positions[1].x).toBeGreaterThan(positions[0].x);
+    } else expect(positions[1].y).toBeGreaterThan(positions[0].y);
+    await expect(panel.getByText("Advanced calculator options", { exact: true })).toBeVisible();
+    const advanced = panel.locator("details").filter({ hasText: "Advanced calculator options" }).first();
+    await expect(advanced).not.toHaveAttribute("open", "");
+    await advanced.locator("summary").click();
+    await expect(advanced.getByText("Presentation Mode", { exact: true })).toBeVisible();
+    await advanced.locator("summary").click();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.screenshot({ path: `data/private/evidence/cp117-sportsbook-parity/native-new-matching-${width}-dark.png`, fullPage: true });
+  });
+}
+
+for (const width of [2048, 390] as const) {
+  test(`integrated partial Sportsbook workbench keeps the approved stages at ${width}px dark`, async ({ page }) => {
+    test.setTimeout(90_000);
+    await page.setViewportSize({ width, height: 900 });
+    await page.addInitScript(() => localStorage.setItem("openforge-theme", "dark"));
+    const id = `CP117-PARTIAL-VISUAL-${width}-${Date.now()}`;
+    const created = await page.request.post(`/api/profiles/${profile}/sportsbook-bets`, { data: {
+      sportsbook_bet_id: id, event_name: "Synthetic partial placement review", offer_text: "Synthetic partial fill",
+      offer_name: "Synthetic offer", bookmaker: "Bookmaker A", offer_type: "Bet & Get", bet_type: "Single",
+      fixture_type: "Football", market: "Match Odds", status: "Placed", result: "Pending",
+      back_stake: "10.00", back_odds: "2.10", match_strategy: "Partial Lay", lay_odds_1: "2.20",
+      lay_actual: "9.54", lay_matched_stake_1: "5.00", lay_commission_1: "0.02",
+      exchange_name: "Matchbook", date_settled: "2026-11-03T18:00", user_notes: "Synthetic only",
+    } });
+    expect(created.status(), await created.text()).toBe(201);
+    await page.goto(`${owned}?record=${encodeURIComponent(id)}`);
+    const workbench = page.locator('[data-pd-id="sportsbook.editor.workbench-surface"]');
+    await expect(workbench).toBeVisible();
+    for (const stage of ["offer", "requirements", "matching", "placement", "finish"] as const) {
+      await workbench.locator(`[data-pd-id="bet-workbench.stage.${stage}"]`).click();
+      await expect(workbench.locator('[data-pd-id="bet-workbench.stages"]')).toBeVisible();
+      if (stage === "requirements") {
+        const requirements = workbench.locator('[data-pd-id="sportsbook.workbench.requirements"]');
+        await expect(requirements).toContainText("Recorded requirements");
+        await expect(requirements).toContainText("External Lay placementPartially matched");
+      }
+      if (stage === "placement") {
+        const panel = workbench.locator('[data-pd-id="ledger-editor.panel.placement"]');
+        await expect(panel).toBeVisible();
+        await expect(panel.locator('[data-pd-id="sportsbook.workbench.placement-controls"]')).toBeVisible();
+        await expect(panel.getByRole("button", { name: "Confirm external Back" })).toBeVisible();
+        await expect(panel.getByLabel("Lay placement")).toHaveValue("Partially matched");
+        const detail = panel.locator('[data-pd-id="sportsbook.workbench.partial-fill"]');
+        await expect(detail).toBeVisible();
+        await expect(detail).not.toHaveAttribute("open", "");
+        await detail.locator("summary").click();
+        await expect(detail.getByLabel("Actual lay amount")).toHaveValue("9.54");
+        await expect(detail.getByLabel("Partial Lay Legs")).toBeVisible();
+        await page.evaluate(() => window.scrollTo(0, 0));
+        await page.screenshot({ path: `data/private/evidence/cp117-sportsbook-parity/native-partial-placement-expanded-${width}-dark.png`, fullPage: true });
+        await detail.locator("summary").click();
+      }
+      if (stage === "matching") {
+        const advanced = workbench.locator('[data-pd-id="sportsbook.workbench.advanced-calculator"]');
+        await expect(advanced).toBeVisible();
+        await expect(advanced).not.toHaveAttribute("open", "");
+        await advanced.locator("summary").click();
+        await expect(advanced).toHaveAttribute("open", "");
+        await expect(advanced.getByLabel("Lay actual", { exact: true })).toHaveCount(0);
+        await expect(advanced).not.toContainText("Confirm lay execution from these actions");
+        await page.evaluate(() => window.scrollTo(0, 0));
+        await page.screenshot({ path: `data/private/evidence/cp117-sportsbook-parity/native-partial-matching-expanded-${width}-dark.png`, fullPage: true });
+        await advanced.locator("summary").click();
+      }
+      if (stage === "finish") await expect(workbench.locator('[data-pd-id="sportsbook.workbench.linked-free-bets"]')).toBeVisible();
+      await page.evaluate(() => window.scrollTo(0, 0));
+      await page.screenshot({ path: `data/private/evidence/cp117-sportsbook-parity/native-partial-${stage}-${width}-dark.png`, fullPage: true });
+    }
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1);
+    expect(overflow).toBe(false);
+  });
+}
+
+test("Back confirmation alone leaves Lay unrecorded and adds no Finish outcome", async ({ page }) => {
+  const id = `CP117-BACK-ONLY-${Date.now()}`;
+  const created = await page.request.post(`/api/profiles/${profile}/sportsbook-bets`, { data: {
+    sportsbook_bet_id: id, event_name: "Synthetic Back-only review", offer_text: "Synthetic source only",
+    offer_name: "Synthetic offer", bookmaker: "Bookmaker A", offer_type: "Bet & Get", bet_type: "Single",
+    fixture_type: "Football", market: "Match Odds", status: "Prospecting", result: "Pending",
+    back_stake: "10.00", back_odds: "2.10", match_strategy: "Standard", lay_odds_1: "2.20",
+    lay_actual: "", lay_matched_stake_1: "", lay_commission_1: "0.02",
+    exchange_name: "Matchbook", date_settled: "2026-11-03T18:00", user_notes: "Synthetic only",
+  } });
+  expect(created.status(), await created.text()).toBe(201);
+  await page.goto(`${owned}?record=${encodeURIComponent(id)}`);
+  const workbench = page.locator('[data-pd-id="sportsbook.editor.workbench-surface"]');
+  await expect(workbench).toBeVisible();
+  const outcomes = workbench.locator('[data-pd-id="sportsbook.editor.financial-context"] [data-pd-id^="sportsbook.editor.outcome."]');
+  const before = await outcomes.allTextContents();
+  await workbench.locator('[data-pd-id="bet-workbench.stage.placement"]').click();
+  const placement = workbench.locator('[data-pd-id="ledger-editor.panel.placement"]');
+  await expect(placement.getByLabel("Lay placement")).toHaveValue("Not recorded");
+  await placement.getByRole("button", { name: "Confirm external Back" }).click();
+  await expect(placement.getByLabel("Back placement")).toHaveValue("Confirmed externally");
+  await expect(placement.getByLabel("Lay placement")).toHaveValue("Not recorded");
+  await workbench.locator('[data-pd-id="bet-workbench.stage.finish"]').click();
+  const after = await outcomes.allTextContents();
+  expect(after.every(row => before.includes(row))).toBe(true);
+  await expect(workbench.locator('[data-pd-id="sportsbook.editor.financial-context"]')).toContainText("Outcome unavailable");
+  const stored = await (await page.request.get(`/api/profiles/${profile}/sportsbook-bets/${id}`)).json() as Record<string, unknown>;
+  expect(stored.status).toBe("Prospecting");
+  expect(stored.lay_matched_stake_1).toBeFalsy();
+});
+
+test("Finish loads a saved linked Free Bet before reporting reward history", async ({ page }) => {
+  const id = `CP117-LINKED-${Date.now()}`;
+  const created = await page.request.post(`/api/profiles/${profile}/sportsbook-bets`, { data: {
+    sportsbook_bet_id: id, event_name: "Synthetic linked reward review", offer_text: "Synthetic qualifying source",
+    offer_name: "Synthetic reward offer", bookmaker: "Bookmaker A", offer_type: "Bet & Get", bet_type: "Single",
+    fixture_type: "Football", market: "Match Odds", status: "Placed", result: "Pending",
+    back_stake: "10.00", back_odds: "2.10", match_strategy: "Standard", lay_odds_1: "2.20",
+    lay_actual: "9.54", lay_matched_stake_1: "9.54", lay_commission_1: "0.02",
+    exchange_name: "Matchbook", date_settled: "2026-11-03T18:00", user_notes: "Synthetic only",
+  } });
+  expect(created.status(), await created.text()).toBe(201);
+  const reward = await page.request.post(`/api/profiles/${profile}/sportsbook-bets/${id}/free-bet-awards`, { data: {
+    operation_id: `CP117-LINKED-AWARD-${Date.now()}`, expected_award_value: "10.00", variance_reason: "",
+    children: [{
+    event_name: "Synthetic linked Free Bet", offer_text: "Synthetic reward only", bookmaker: "Bookmaker A",
+    offer_type: "Bet & Get", bet_type: "Single", offer_name: "Synthetic linked reward", fixture_type: "Football",
+    status: "Available", result: "Pending", retention_mode: "SNR", free_bet_value: "10.00",
+    back_odds: "", match_strategy: "Standard", lay_odds_1: "", lay_actual: "",
+    lay_matched_stake_1: "", lay_commission_1: "", exchange_name: "",
+    expiry_datetime: "2099-07-24T20:00:00", date_settled: "", user_notes: "Synthetic only",
+    }],
+  } });
+  expect(reward.status(), await reward.text()).toBe(201);
+  await page.goto(`${owned}?record=${encodeURIComponent(id)}`);
+  const workbench = page.locator('[data-pd-id="sportsbook.editor.workbench-surface"]');
+  await expect(workbench).toBeVisible();
+  await workbench.locator('[data-pd-id="bet-workbench.stage.finish"]').click();
+  const linked = workbench.locator('[data-pd-id="sportsbook.workbench.linked-free-bets"]');
+  await linked.locator("summary").click();
+  await expect(linked).toContainText("1 linked Free Bet recorded for this bet.");
+  await expect(linked).toContainText("Synthetic linked reward");
+});
+
+test("Finish reports a linked-reward read failure instead of a false empty history", async ({ page }) => {
+  await page.route(`**/profiles/${profile}/free-bets`, route => route.fulfill({ status: 503, body: "Synthetic unavailable" }));
+  await page.goto(`${owned}?record=SB-SEED-001`);
+  const workbench = page.locator('[data-pd-id="sportsbook.editor.workbench-surface"]');
+  await expect(workbench).toBeVisible();
+  await workbench.locator('[data-pd-id="bet-workbench.stage.finish"]').click();
+  const linked = workbench.locator('[data-pd-id="sportsbook.workbench.linked-free-bets"]');
+  await linked.locator("summary").click();
+  await expect(linked.getByRole("alert")).toContainText("Linked Free Bets are unavailable");
+  await expect(linked).not.toContainText("No linked Free Bets are recorded");
+  await expect(linked.getByRole("button", { name: "Retry" })).toBeVisible();
 });

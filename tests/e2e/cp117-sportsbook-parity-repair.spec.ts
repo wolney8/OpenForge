@@ -129,6 +129,7 @@ for (const { width, theme } of [
     const banner = page.getByRole("button", { name: "Hide Tracked Tasks Banner" });
     if (await banner.isVisible()) await banner.click();
     await page.setViewportSize({ width, height: 900 });
+    await page.evaluate(() => { (document.activeElement as HTMLElement | null)?.blur(); window.scrollTo(0, 0); });
     const actual = await snapshot("native");
     await page.screenshot({ path: info.outputPath(`native-add-${width}-${theme}.png`), fullPage: true });
     expect(actual.stageNames).toEqual(approved.stageNames);
@@ -167,11 +168,10 @@ for (const { width, theme } of [
     if (width === 390) {
       close(actual.rail!.y - actual.context!.y, approved.rail!.y - approved.context!.y);
       close(actual.field!.y - actual.rail!.y, approved.field!.y - approved.rail!.y);
-      // The additional required native Offer fields make this card taller.
-      // Compare the actual card-to-aside gap and keep the total vertical drift
-      // visible in the separate proposal register until its design is approved.
+      // The Lab-only badge and Exit Lab row change the absolute mobile Y
+      // position. The approved Offer disclosure adds production content, so
+      // compare the actual card-to-aside gap rather than its page offset.
       close(actual.aside!.y - (actual.field!.y + actual.field!.height), approved.aside!.y - (approved.field!.y + approved.field!.height));
-      expect(actual.aside!.y - approved.aside!.y).toBeGreaterThan(0);
     }
     await expect(page.getByRole("button", { name: "Close sportsbook editor" })).toHaveCount(0);
     await expect(page.locator('[data-pd-id="tracker.return-to-combined"]')).toHaveCount(0);
