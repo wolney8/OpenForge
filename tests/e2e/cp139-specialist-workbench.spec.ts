@@ -462,8 +462,10 @@ for (const item of cases) {
     if (item.id === "sportsbook") {
       await dialog.getByLabel("Original Offer text", { exact: true }).fill("Synthetic offer");
       await dialog.locator('[data-guided-field="bookmaker"] select').selectOption("Bookmaker A");
-      await dialog.getByLabel("Bet type (bet shape / placement)").selectOption({ label: "Single" });
-      await dialog.getByLabel("Offer type").selectOption({ label: "Bet & Get" });
+      await expect(dialog.locator('[data-guided-field="offer_type"] > span')).toHaveText("Offer Type");
+      await dialog.locator('[data-guided-field="offer_type"] select').selectOption({ label: "Bet & Get" });
+      await expect(dialog.locator('[data-guided-field="bet_type"] > span')).toHaveText("Bet Type");
+      await dialog.locator('[data-guided-field="bet_type"] select').selectOption({ label: "Single" });
       await dialog.locator("label", { hasText: /^Fixture type/i }).locator("select").selectOption({ label: "Football" });
       await dialog.getByLabel("Event name").fill(sourceName);
       await dialog.locator('[data-pd-id="bet-workbench.stage.matching"]').click();

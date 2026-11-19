@@ -79,7 +79,20 @@ for (const entry of ["profile", "combined", "reports", "tasks"] as const) {
     await expect(workbench).toBeVisible();
     const crumb = page.locator('[data-pd-id="ux-v2.breadcrumbs"] a', { hasText: "Sportsbook Bets" });
     await expect(crumb).toHaveAttribute("href", entry === "combined" ? /\/tracker\/sportsbook-bets\?.*profile=.*q=Synthetic.*sort=event_name.*size=16/ : entry === "profile" ? owned : /\/tracker\/sportsbook-bets/);
-    await crumb.click();
+    if (entry === "reports" || entry === "tasks") {
+      await workbench.locator('[data-pd-id="bet-workbench.stage.offer"]').click();
+      const draft = workbench.getByLabel("Original Offer text");
+      await draft.fill(`Unsaved ${entry} return`);
+      await crumb.click();
+      const guard = page.getByRole("dialog", { name: "Unsaved tracker changes" });
+      await expect(guard).toBeVisible();
+      await guard.getByRole("button", { name: "Keep editing", exact: true }).click();
+      await expect(draft).toHaveValue(`Unsaved ${entry} return`);
+      await crumb.click();
+      await guard.getByRole("button", { name: "Discard changes", exact: true }).click();
+    } else {
+      await crumb.click();
+    }
     await expect(workbench).toHaveCount(0);
     if (entry === "combined") await expect(page).toHaveURL(/\/tracker\/sportsbook-bets\?.*profile=.*q=Synthetic.*size=16/);
     else if (entry === "reports" || entry === "tasks") await expect(page).toHaveURL(/\/tracker\/sportsbook-bets/);
@@ -171,6 +184,10 @@ test("Placed pending standard edit shows one source-backed Outcome Comparison", 
   await page.getByRole("button", { name: "Edit Bet", exact: true }).click();
   await page.locator('[data-pd-id="bet-workbench.stage.4"]').click();
   await page.evaluate(() => window.scrollTo(0, 0));
+  const approvedGeometry = await page.locator('[data-pd-id="lab.entry.page"]').evaluate(node => {
+    const y = (selector: string) => node.querySelector(selector)!.getBoundingClientRect().y;
+    return { context: y('[data-pd-bet-workbench-context="true"]'), rail: y('[data-pd-id="bet-workbench.stages"]'), aside: y('aside'), footer: y('[class*="entryFooter"]') };
+  });
   await page.screenshot({ path: "data/private/evidence/cp117-sportsbook-parity/lab-placed-pending-finish-2048-dark.png", fullPage: true });
   const id = `CP117-PLACED-${Date.now()}`;
   const created = await page.request.post(`/api/profiles/${profile}/sportsbook-bets`, { data: {
@@ -198,5 +215,13 @@ test("Placed pending standard edit shows one source-backed Outcome Comparison", 
   if (stored.scenario_pnl_if_lay_wins) await expect(comparison).toContainText(Number(stored.scenario_pnl_if_lay_wins).toFixed(2).replace("-", ""));
   await expect(workbench.locator('[data-pd-id="sportsbook.settlement.outcomes"]')).toHaveCount(0);
   await page.evaluate(() => window.scrollTo(0, 0));
+  const nativeGeometry = await workbench.evaluate(node => {
+    const y = (selector: string) => node.querySelector(selector)!.getBoundingClientRect().y;
+    return { context: y('[data-pd-bet-workbench-context="true"]'), rail: y('[data-pd-id="bet-workbench.stages"]'), aside: y('aside'), footer: y('[data-pd-id="sportsbook.editor.actions"]') };
+  });
+  for (const key of ["context", "rail", "aside"] as const) expect(Math.abs(nativeGeometry[key] - approvedGeometry[key])).toBeLessThanOrEqual(1);
+  // Native settlement/reward/history fields remain a visible, unapproved
+  // production extension. Assert their vertical footprint rather than masking it.
+  expect(nativeGeometry.footer).toBeGreaterThan(approvedGeometry.footer);
   await page.screenshot({ path: "data/private/evidence/cp117-sportsbook-parity/native-placed-pending-finish-2048-dark.png", fullPage: true });
 });
