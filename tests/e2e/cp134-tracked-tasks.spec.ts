@@ -52,11 +52,17 @@ test("CP-134 tracked Today persists through refresh and header navigation", asyn
   await expect(page.locator('[data-pd-id="tasks.v2.page-size"]')).toHaveValue("8");
   await page.locator('[data-pd-id="tasks.v2.filter-toggle"]').click();
   const collection = page.getByRole("region", { name: "Needs Action" });
-  const total = Number((await collection.getByRole("heading", { name: /Needs Action/ }).innerText()).match(/(\d+)/)?.[1] ?? 0);
-  expect(total).toBeGreaterThan(0);
-  if (total > 8) await expect(collection.locator('[data-pd-id="tasks.v2.pagination"]')).toBeVisible();
-  else await expect(collection.locator('[data-pd-id="tasks.v2.pagination"]')).toHaveCount(0);
-  await expect(rows).toHaveCount(Math.min(8, total));
+  const shown = Number((await collection.getByRole("heading", { name: /Needs Action/ }).innerText()).match(/(\d+)/)?.[1] ?? 0);
+  expect(shown).toBeGreaterThan(0);
+  const pager = collection.locator('[data-pd-id="tasks.v2.pagination"]');
+  if (await pager.count()) {
+    const total = Number((await pager.innerText()).match(/of (\d+)/)?.[1] ?? 0);
+    expect(total).toBeGreaterThan(8);
+    await expect(pager).toBeVisible();
+  } else {
+    expect(shown).toBeLessThanOrEqual(8);
+  }
+  await expect(rows).toHaveCount(shown);
   const first = rows.first();
   const id = (await first.getAttribute("data-pd-id"))!.replace("tasks.v2.row.", "");
   await ensureRowTracking(page, id, true);

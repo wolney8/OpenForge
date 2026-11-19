@@ -607,7 +607,12 @@ test("Sportsbook floating and full editor use the integrated V2 surfaces", async
     selected_range_preset: "All Dates", selected_range_custom_start: null, selected_range_custom_end: null,
   } });
   expect(range.status()).toBe(200);
-  await page.goto(`${profile}/sportsbook-bets`);
+  // Native search matches visible source fields, not the stable record ID.
+  // Earlier synthetic journeys can add newer rows before this fixture on page 1.
+  const fixtureResponse = await page.request.get("/api/profiles/profile-demo-001/sportsbook-bets/CP117-CELL-001");
+  expect(fixtureResponse.ok()).toBeTruthy();
+  const fixture = await fixtureResponse.json() as { event_name: string };
+  await page.goto(`${profile}/sportsbook-bets?search=${encodeURIComponent(fixture.event_name)}`);
   await page.locator(".ledger-loading-overlay").first().waitFor({ state: "hidden" });
   await setTheme(page, "light");
   const cell = page.locator('td[data-ledger-row="CP117-CELL-001"][data-ledger-column="event_name"]');

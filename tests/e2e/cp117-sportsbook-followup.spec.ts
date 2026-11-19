@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { formatFinancialValue } from "../../apps/web/lib/financial-display";
 
 const profile = "profile-demo-001";
 const owned = `/profiles/${profile}/tracker/sportsbook-bets`;
@@ -143,6 +144,118 @@ test("combined Sportsbook breadcrumb keeps filters through the unsaved guard", a
   await expect(workbench).toHaveCount(0);
 });
 
+for (const source of ["report-explorer", "task"] as const) {
+  test(`clean ${source} direct-record breadcrumb clears the deep link and remains responsive`, async ({ page }) => {
+    test.setTimeout(90_000);
+    await page.goto(`${owned}?record=SB-SEED-001&source=${source}`);
+    const workbench = page.locator('[data-pd-id="sportsbook.editor.workbench-surface"]');
+    await expect(workbench).toBeVisible();
+    await page.locator('[data-pd-id="ux-v2.breadcrumbs"] a', { hasText: "Sportsbook Bets" }).click();
+    await expect(workbench).toHaveCount(0);
+    await expect(page).toHaveURL(new RegExp(`${owned}$`));
+    await page.locator('[data-pd-id="sportsbook.toolbar.add-row"]').click();
+    await expect(workbench).toBeVisible();
+    await page.locator('[data-pd-id="ux-v2.breadcrumbs"] a', { hasText: "Sportsbook Bets" }).click();
+    await expect(workbench).toHaveCount(0);
+    await page.reload();
+    await expect(page).toHaveURL(new RegExp(`${owned}$`));
+    await expect(workbench).toHaveCount(0);
+    await expect(page.locator('[data-pd-id="sportsbook.toolbar.add-row"]')).toBeEnabled();
+  });
+}
+
+test("actual Today source link opens a direct record and breadcrumb returns to a responsive ledger", async ({ page }) => {
+  test.setTimeout(90_000);
+  const id = `CP117-TASK-LINK-${Date.now()}`;
+  const created = await page.request.post(`/api/profiles/${profile}/sportsbook-bets`, { data: {
+    sportsbook_bet_id: id, event_name: "Synthetic task-link return", offer_text: "Synthetic task source",
+    offer_name: "Demo Offer", bookmaker: "Bookmaker A", offer_type: "Bet & Get", bet_type: "Single",
+    fixture_type: "Football", market: "Match Odds", status: "Placed", result: "Pending",
+    back_stake: "10.00", back_odds: "2.10", match_strategy: "Standard", lay_odds_1: "2.20",
+    lay_actual: "9.54", lay_matched_stake_1: "9.54", lay_commission_1: "0.02",
+    exchange_name: "Matchbook", date_settled: "2026-11-03T18:00", user_notes: "Synthetic only",
+  } });
+  expect(created.status(), await created.text()).toBe(201);
+  const now = new Date().toISOString();
+  await page.route("**/fund-manager/notifications", route => route.fulfill({ status: 200, json: [{
+    audience: "fund_manager", security_tag: "fund_manager_only", kind: "task", task_state: "new",
+    notification_id: id, notification_type: "settlement_review", title: "Review synthetic task-link bet",
+    ledger_label: "Sportsbook Bets", bookmaker_label: "Bookmaker A", message: "Synthetic source requires review.",
+    profile_id: profile, profile_name: "Subscriber Alpha", record_id: id, due_at: now,
+    settles_at: "", created_at: now, href: `${owned}?record=${encodeURIComponent(id)}&source=task`,
+    completion_href: "", tone: "warning",
+  }] }));
+  await page.goto("/tasks");
+  await page.locator(`[data-pd-id="tasks.v2.row.${id}"]`).click();
+  await page.locator('[data-pd-id="tasks.v2.inspector"]').getByRole("link", { name: "Open Bet" }).click();
+  const workbench = page.locator('[data-pd-id="sportsbook.editor.workbench-surface"]');
+  await expect(workbench).toBeVisible();
+  await expect(page).toHaveURL(new RegExp(`${owned.replaceAll("/", "\\/")}\\?record=${id}`));
+  await page.locator('[data-pd-id="ux-v2.breadcrumbs"] a', { hasText: "Sportsbook Bets" }).click();
+  await expect(workbench).toHaveCount(0);
+  await expect(page).toHaveURL(new RegExp(`${owned}$`));
+  await page.locator('[data-pd-id="sportsbook.toolbar.add-row"]').click();
+  await expect(workbench).toBeVisible();
+  await page.locator('[data-pd-id="ux-v2.breadcrumbs"] a', { hasText: "Sportsbook Bets" }).click();
+  await page.reload();
+  await expect(page).toHaveURL(new RegExp(`${owned}$`));
+  await expect(workbench).toHaveCount(0);
+});
+
+test("source-backed scenario labels keep their own signed amounts", async ({ page }) => {
+  test.setTimeout(120_000);
+  const cases = [
+    { name: "Standard", offerType: "Bet & Get", strategy: "Standard", odds: "2.10", layOdds: "2.20", expected: [
+      ["back-wins", "Back wins", "scenario_pnl_if_back_wins"],
+      ["lay-wins", "Lay wins", "scenario_pnl_if_lay_wins"],
+    ] },
+    { name: "No Lay", offerType: "Mug Bet", strategy: "No Lay", odds: "2.10", layOdds: "", expected: [
+      ["back-wins", "Back wins", "scenario_pnl_if_back_wins"],
+      ["lay-wins", "Back loses", "scenario_pnl_if_lay_wins"],
+    ] },
+    { name: "Cashback", offerType: "Cashback", strategy: "Underlay", odds: "4.00", layOdds: "4.20", expected: [
+      ["back-wins", "Back wins", "scenario_pnl_if_back_wins"],
+      ["lay-wins", "Lay wins", "scenario_pnl_if_lay_wins"],
+      ["outcome-2", "Cashback trigger hits", "scenario_pnl_if_outcome_2_wins"],
+    ] },
+    { name: "Double Delight", offerType: "Double Delight / Hat-trick Heaven", strategy: "Underlay", odds: "8.00", layOdds: "9.00", expected: [
+      ["back-wins", "Player scores first but no further goals", "scenario_pnl_if_back_wins"],
+      ["lay-wins", "Player does not score first", "scenario_pnl_if_lay_wins"],
+      ["outcome-2", "Player scores first and then scores again", "scenario_pnl_if_outcome_2_wins"],
+      ["outcome-3", "Player scores first and gets a hat-trick", "scenario_pnl_if_outcome_3_wins"],
+    ] },
+  ] as const;
+  for (const variant of cases) {
+    const id = `CP117-COMPARISON-${variant.name.replaceAll(" ", "-")}-${Date.now()}`;
+    const created = await page.request.post(`/api/profiles/${profile}/sportsbook-bets`, { data: {
+      sportsbook_bet_id: id, event_name: `Synthetic ${variant.name} outcome`, offer_text: "Synthetic source-backed comparison", offer_name: "Demo Offer",
+      bookmaker: "Bookmaker A", offer_type: variant.offerType, bet_type: "Single", fixture_type: "Football", market: "Match Odds",
+      status: "Placed", result: "Pending", back_stake: "10.00", back_odds: variant.odds,
+      match_strategy: variant.strategy, lay_odds_1: variant.layOdds, lay_actual: variant.strategy === "No Lay" ? "" : "8.20",
+      lay_matched_stake_1: variant.strategy === "No Lay" ? "" : "8.20", lay_commission_1: "0.02", exchange_name: "Matchbook",
+      date_settled: "2026-11-03T18:00", user_notes: "Synthetic only",
+    } });
+    expect(created.status(), `${variant.name}: ${await created.text()}`).toBe(201);
+    const stored = await created.json() as Record<string, string | null>;
+    await page.goto(`${owned}?record=${encodeURIComponent(id)}`);
+    const workbench = page.locator('[data-pd-id="sportsbook.editor.workbench-surface"]');
+    await expect(workbench).toBeVisible();
+    await workbench.locator('[data-pd-id="bet-workbench.stage.finish"]').click();
+    const comparison = workbench.locator('[data-pd-id="sportsbook.editor.financial-context"]');
+    let verifiedScenarios = 0;
+    for (const [key, label, field] of variant.expected) {
+      const amount = stored[field];
+      if (amount === null || amount === undefined) continue;
+      const row = comparison.locator(`[data-pd-id="sportsbook.editor.outcome.${key}"]`);
+      await expect(row.locator("dt")).toHaveText(label);
+      await expect(row.locator("dd")).toHaveText(formatFinancialValue(Number(amount)));
+      verifiedScenarios += 1;
+    }
+    if (variant.name === "Double Delight") expect(verifiedScenarios).toBeGreaterThanOrEqual(3);
+    if (variant.strategy === "No Lay") await expect(comparison).not.toContainText("Exchange wins");
+  }
+});
+
 test("Offer Name saves through the native eligible Placed edit command", async ({ page }) => {
   const id = `CP117-OFFER-${Date.now()}`;
   const created = await page.request.post(`/api/profiles/${profile}/sportsbook-bets`, { data: {
@@ -209,10 +322,16 @@ test("Placed pending standard edit shows one source-backed Outcome Comparison", 
   await workbench.locator('[data-pd-id="bet-workbench.stage.finish"]').click();
   const comparison = workbench.locator('[data-pd-id="sportsbook.editor.financial-context"]');
   await expect(comparison).toContainText("Outcome Comparison");
-  await expect(comparison).toContainText("Bookmaker wins");
-  await expect(comparison).toContainText("Exchange wins");
-  if (stored.scenario_pnl_if_back_wins) await expect(comparison).toContainText(Number(stored.scenario_pnl_if_back_wins).toFixed(2).replace("-", ""));
-  if (stored.scenario_pnl_if_lay_wins) await expect(comparison).toContainText(Number(stored.scenario_pnl_if_lay_wins).toFixed(2).replace("-", ""));
+  if (stored.scenario_pnl_if_back_wins != null) {
+    const back = comparison.locator('[data-pd-id="sportsbook.editor.outcome.back-wins"]');
+    await expect(back.locator("dt")).toHaveText("Back wins");
+    await expect(back.locator("dd")).toHaveText(formatFinancialValue(Number(stored.scenario_pnl_if_back_wins)));
+  }
+  if (stored.scenario_pnl_if_lay_wins != null) {
+    const lay = comparison.locator('[data-pd-id="sportsbook.editor.outcome.lay-wins"]');
+    await expect(lay.locator("dt")).toHaveText("Lay wins");
+    await expect(lay.locator("dd")).toHaveText(formatFinancialValue(Number(stored.scenario_pnl_if_lay_wins)));
+  }
   await expect(workbench.locator('[data-pd-id="sportsbook.settlement.outcomes"]')).toHaveCount(0);
   await page.evaluate(() => window.scrollTo(0, 0));
   const nativeGeometry = await workbench.evaluate(node => {

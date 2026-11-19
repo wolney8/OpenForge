@@ -103,7 +103,7 @@ export function AppChrome({ children, uxV2 = false }: { children: React.ReactNod
   const pathname = usePathname();
   if (pathname === "/invite" || pathname.startsWith("/subscriber")) return <><a className="skip-link" href="#main-content">Skip to content</a><header className="calculator-popout-toolbar"><Link href="/subscriber">Plum Duff · Subscriber</Link><ThemeToggle /><button className="button-link" onClick={async () => { await fetch("/api/auth/logout", { method: "POST" }); window.location.replace("/login"); }}>Sign out</button></header>{children}</>;
   const isCalculatorPopout = pathname === "/calculator";
-  const isDesignLab = pathname === "/design-lab";
+  const isDesignLab = pathname === "/design-lab" || pathname?.startsWith("/design-lab/");
   const isV2Onboarding = uxV2 && pathname === "/profiles/new";
   const isPublicAuthRoute =
     pathname === "/login" ||

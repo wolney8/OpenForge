@@ -62,6 +62,7 @@ import { EditorSection } from "@/components/editor-section";
 import { DesignFinancialOutcomeSurface, DesignFinancialWorkbenchFooter, financialWorkbenchHeaderClass, financialWorkbenchSurfaceClass, financialWorkbenchPrimaryActionClass, financialWorkbenchSecondaryActionClass } from "@/components/design-financial-workbench-layout";
 import { DesignBetWorkbenchContext, DesignBetWorkbenchGrid, DesignBetWorkbenchSummary, DesignBetWorkbenchStageRail, designBetWorkbenchEntryClass } from "@/components/design-bet-workbench-presentation";
 import { SPORTSBOOK_RETURN_TO_LEDGER_EVENT } from "@/lib/sportsbook-workbench-navigation";
+import { sportsbookComparisonScenarios } from "@/lib/sportsbook-outcome-comparison";
 import { EditorValidationBanner } from "@/components/editor-validation-banner";
 import { FinancialValue, FinancialValueReplayRow } from "@/components/financial-value";
 import { FinancialHistoryPanel } from "@/components/financial-history-panel";
@@ -11425,12 +11426,21 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
           {visualV2 ? <DesignBetWorkbenchSummary dataPdId="sportsbook.editor.financial-context" title="Outcome Comparison">
             <p>{editorMatchStrategyLabel || "Standard"} · source-backed calculation</p>
             {comparisonSource ? <dl>{[
-              { label: "Reference Lay Stake", value: comparisonSource.reference_lay_stake_standard },
-              { label: "Liability", value: comparisonSource.calculated_liability_1 },
-              { label: "Bookmaker wins", value: comparisonSource.scenario_pnl_if_back_wins },
-              { label: "Exchange wins", value: comparisonSource.scenario_pnl_if_lay_wins },
-              { label: activeDisplayedValueLabel, value: activeDisplayedValue },
-            ].map(fact => <div key={fact.label}><dt>{fact.label}</dt><dd>{fact.value === null || fact.value === undefined || fact.value === "" || fact.value === "—" ? "Unavailable" : formatPreviewFinancialValue(fact.value)}</dd></div>)}</dl>
+              ...(formState.match_strategy === "No Lay" ? [] : [{ key: "reference-stake", label: "Reference Lay Stake", value: comparisonSource.reference_lay_stake_standard }]),
+              ...(formState.match_strategy === "No Lay" ? [] : [{ key: "liability", label: "Liability", value: comparisonSource.calculated_liability_1 }]),
+              ...sportsbookComparisonScenarios({
+                source: comparisonSource,
+                labels: {
+                  back: getScenarioBranchText(scenarioBranchLabels.backWinLabel, formState.result) ?? "",
+                  lay: getScenarioBranchText(scenarioBranchLabels.layWinLabel, formState.result) ?? "",
+                  outcome2: getScenarioBranchText(scenarioBranchLabels.outcome2Label, formState.result),
+                  outcome3: getScenarioBranchText(scenarioBranchLabels.outcome3Label, formState.result),
+                },
+                actualMultiLay: comparisonSource.multi_lay_actual?.scenarios.map(scenario => ({ key: scenario.key, label: scenario.label, amount: scenario.total })),
+                plannedMultiLay: usesMultiLayStrategy && activePreviewCalculation ? multiLayResultsGridRows.map(row => ({ key: row.key, label: row.outcomeLabel, amount: row.profit })) : null,
+              }).map(scenario => ({ key: scenario.key, label: scenario.label, value: scenario.amount })),
+              { key: "displayed-value", label: activeDisplayedValueLabel, value: activeDisplayedValue },
+            ].map(fact => <div data-pd-id={`sportsbook.editor.outcome.${fact.key}`} key={fact.key}><dt>{fact.label}</dt><dd>{fact.value === null || fact.value === undefined || fact.value === "" || fact.value === "—" ? "Unavailable" : formatPreviewFinancialValue(fact.value)}</dd></div>)}</dl>
               : <p role="status">Outcome unavailable until the native calculation has complete, validated inputs.</p>}
           </DesignBetWorkbenchSummary> : null}
           </DesignBetWorkbenchGrid>

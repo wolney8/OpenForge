@@ -96,7 +96,9 @@ test("Sportsbook selection opens exactly one workbench only on a deliberate comm
   await expect(page.locator(".ledger-loading-overlay")).toHaveCount(0, { timeout: 45_000 });
   const open = page.locator('[data-pd-id="sportsbook.toolbar.open-selected"]');
   await expect(open).toBeDisabled();
-  const row = page.locator('tr:has(td[data-ledger-row="CP117-CELL-001"])');
+  // The disposable ledger can contain earlier persisted scenario fixtures;
+  // select an actually visible record rather than assuming one ID is on page 1.
+  const row = page.locator('tr:has(td[data-ledger-column="event_name"])').first();
   await row.locator('td[data-ledger-column="event_name"]').click();
   await expect(row).toHaveClass(/is-selected-row/);
   await expect(open).toBeEnabled();
@@ -165,7 +167,7 @@ test("real Sportsbook ledger separates synchronized pagination from horizontal p
   const full = page.locator('[data-pd-id="sportsbook.editor.workbench-surface"]');
   await expect(full).toBeVisible();
   await expect(full.getByLabel("Event name", { exact: true })).toHaveValue("Demo Fixture");
-  await expect(full.getByLabel("Campaign tag (optional)")).toHaveValue("Demo Campaign");
+  await expect(full.getByLabel("Offer Name", { exact: true })).toHaveValue("Demo Campaign");
 });
 
 for (const [name, slug, paginationId] of [

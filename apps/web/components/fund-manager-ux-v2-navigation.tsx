@@ -233,6 +233,7 @@ export function FundManagerUxV2Launcher() {
 
 export function FundManagerUxV2Breadcrumbs({ profileId, profileName }: { profileId: string | null; profileName: string }) {
   const pathname = usePathname() ?? "";
+  const router = useRouter();
   const navigate = useShellNavigation();
   const [origin, setOrigin] = useState<Origin | null>(null);
   const [sportsbookWorkbenchContext, setSportsbookWorkbenchContext] = useState<string | null>(null);
@@ -302,7 +303,15 @@ export function FundManagerUxV2Breadcrumbs({ profileId, profileName }: { profile
     if (sportsbookEntry && crumb.label === "Sportsbook Bets" && new URL(crumb.href!, window.location.origin).pathname === pathname) {
       event.preventDefault();
       void (async () => {
-        if (await confirmUnsavedTrackerChanges()) window.dispatchEvent(new Event(SPORTSBOOK_RETURN_TO_LEDGER_EVENT));
+        if (!(await confirmUnsavedTrackerChanges())) return;
+        window.dispatchEvent(new Event(SPORTSBOOK_RETURN_TO_LEDGER_EVENT));
+        // A report/task deep link keeps ?record= in the address unless the
+        // same-path breadcrumb explicitly removes it. Otherwise refresh reopens
+        // the editor even though the user returned to the ledger.
+        if (`${window.location.pathname}${window.location.search}` !== crumb.href) {
+          beginRouteTransition();
+          router.replace(crumb.href!);
+        }
       })();
       return;
     }

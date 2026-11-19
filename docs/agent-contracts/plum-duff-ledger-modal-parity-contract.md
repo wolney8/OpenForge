@@ -245,3 +245,27 @@ Before handoff, verify:
 
 Regression coverage should include the MVP reference ledger and every migrated ledger in the same
 parity suite.
+
+## CP-117 V2 Sportsbook approved-reference boundary
+
+The preceding modal and three-step guidance documents the older ledger editor. For V2 Sportsbook,
+the frozen Design Lab workbench at source `ad51ef215e49f8774e2ad3d291613e678896f462`
+is the presentation reference: page-flow scrolling, its five visible stage names, Offer field
+ordering, Outcome Comparison and footer hierarchy. The older modal remains for flag-OFF rollback.
+Native draft, validation, calculation, placement, settlement, correction and audit commands remain
+authoritative. The five proposed additions are isolated at
+`/design-lab/sportsbook-proposals?amendment=protected|offer|requirements|matching|finish`;
+they are synthetic and require individual owner approval before production adoption. The
+approved `/design-lab` route must not be changed to match an unapproved proposal.
+
+V2 Outcome Comparison must pair each available signed source amount with its own governed
+scenario label. Standard, No Lay (including “Back loses”), Cashback, Double Delight and all
+available multi-lay branches may have different outcome counts; do not collapse them into a
+generic two-row matrix or recompute values in the presentation. A clean `?record=` report/task
+entry must return through the Sportsbook Bets breadcrumb to a query-free ledger URL and stay
+there on refresh. Dirty drafts retain the existing Keep editing / Discard guard, and combined
+returns retain their local filters.
+
+Whole-editor Design and Interaction Acceptance remain **REJECTED** until the owner decides the
+five amendments and the resulting production composition is independently compared with the
+approved reference. Proposal screenshots and passing synthetic tests do not grant that approval.
