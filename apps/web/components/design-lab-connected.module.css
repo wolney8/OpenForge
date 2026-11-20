@@ -18,6 +18,7 @@
 @media(max-width:900px){.navScrim{display:block;position:fixed;z-index:29;inset:78px 0 0;width:100%;border:0;background:#0006}}
 @media(prefers-reduced-motion:reduce){.lab *{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
 .entryGrid>.entryFields{align-self:start;padding:18px;border:1px solid var(--outline);border-radius:12px;background:var(--bet-entry-field-surface,var(--surface-strong))}
+.entryGrid>.entryFields :global(.field-control){align-content:start}
 :global(html[data-theme="dark"]) .entryGrid{--bet-entry-field-surface:#111316}
 .entryGrid>.entryFields>fieldset{margin:0;padding:0;border:0;min-width:0}
 .entryGrid>.entryFields>fieldset>legend{padding:0;margin:0 0 8px;font-size:1.1rem;font-weight:800}

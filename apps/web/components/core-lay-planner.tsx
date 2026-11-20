@@ -257,7 +257,7 @@ export function CoreLayPlanner({ accounts, basis, defaultCommission, exchangeCom
         <option value="">Select Exchange</option>{exchanges.map(account => <option key={account.account_id} value={account.account_id}>{account.account}</option>)}</select></label>
       <label className="field-control"><span>Strategy</span><select disabled={readOnly} onChange={event => { const next = event.target.value as LayPlan["selected_strategy"]; if (next !== "Standard" && modeRef.current === "Simple") { modeRef.current = "Advanced"; setMode("Advanced"); } selectStrategy(next); }} value={strategy}>
         {(["Standard", "Underlay", "Overlay", "Custom"] as const).map(value => <option key={value} value={value}>{value}</option>)}</select></label>
-      <label className="field-control"><span>Requested Lay Stake</span><input readOnly value={reviewedInputsUnchanged ? savedPlan?.reviewed_planned_lay_stake ?? "" : ""} placeholder="Not recorded" /></label>
+      <label className="field-control"><span>Requested Lay Stake</span><input readOnly value="" placeholder="Not recorded" />{reviewedInputsUnchanged && savedPlan?.reviewed_planned_lay_stake ? <span className="field-hint">Recommended Lay Stake · plan: <CopyableFinancialValue label="Recommended lay stake plan" value={savedPlan.reviewed_planned_lay_stake} /></span> : null}</label>
       {busy ? <p role="status">Updating reference…</p> : null}{error ? <p className="error-text" role="alert">{error}</p> : null}
     </div> : <div className="calculator-band calculator-band-primary">
       <div className="ledger-calculator-mode-bar">

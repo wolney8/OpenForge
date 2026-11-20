@@ -16,15 +16,15 @@ export type MultiLayActual = {
 };
 
 /** Uses the same form, disclosure, value and Outcomes primitives as CoreLayPlanner. */
-export function MultiLayActualEditor({ accounts, legs, execution, savedExecution, actual, correctionReason, onCorrectionReason, onChange, onStart }: {
+export function MultiLayActualEditor({ accounts, legs, execution, savedExecution, actual, correctionReason, onCorrectionReason, onChange, onStart, startDisabled = false }: {
   accounts: AccountAuthorityRecord[]; legs: Array<{ id: string; label: string }>;
   execution?: MultiLayExecution; savedExecution?: MultiLayExecution; actual?: MultiLayActual | null;
   correctionReason: string; onCorrectionReason: (value: string) => void;
-  onChange: (value: MultiLayExecution) => void; onStart: () => void;
+  onChange: (value: MultiLayExecution) => void; onStart: () => void; startDisabled?: boolean;
 }) {
   if (!execution) return <div className="stack" data-pd-id="sportsbook.multi-lay.actual">
     <p className="field-help">References and Copy do not record matches. Record the back bet and each actual exchange fill explicitly.</p>
-    <button className="button-link icon-text-action" type="button" onClick={onStart}><span className="material-symbols-outlined" aria-hidden="true">add</span>Record actual placements</button>
+    <button className="button-link icon-text-action" type="button" disabled={startDisabled} onClick={onStart}><span className="material-symbols-outlined" aria-hidden="true">add</span>Record actual placements</button>
   </div>;
   const patch = (values: Partial<MultiLayExecution>) => onChange({ ...execution, ...values });
   const exchanges = accounts.filter(a => a.type === "Exchange" && (a.account_id === execution.exchangeAccountId || (a.status !== "Archived" && a.lifecycle_status !== "Archived")));
