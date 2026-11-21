@@ -756,6 +756,12 @@ for (const width of [2048, 390] as const) {
         await detail.locator("summary").click();
       }
       if (stage === "matching") {
+        await expect(workbench.getByLabel("Requested Lay Stake", { exact: true })).toHaveCount(1);
+        const recordedMatching = workbench.locator('[data-pd-id="sportsbook.workbench.recorded-matching-fields"]');
+        const matchingOrder = await recordedMatching.locator('label').evaluateAll(labels => labels.map(label =>
+          (label.querySelector(':scope > span')?.textContent ?? '').trim()));
+        expect(matchingOrder).toEqual(["Back stake", "Back odds", "Lay odds", "Commission", "Exchange", "Strategy", "Requested Lay Stake"]);
+        await expect(recordedMatching.getByLabel("Requested Lay Stake", { exact: true })).toHaveAttribute("placeholder", "Not recorded");
         const advanced = workbench.locator('[data-pd-id="sportsbook.workbench.advanced-calculator"]');
         await expect(advanced).toBeVisible();
         await expect(advanced).not.toHaveAttribute("open", "");
