@@ -46,6 +46,8 @@ export function DesignLabSportsbookProposals({ initialAmendment }: { initialAmen
   const [outcomeState, setOutcomeState] = useState<"ordinary" | "exceptional" | "unavailable">("ordinary");
   const [fillState, setFillState] = useState<"standard" | "partial">("standard");
   const [requestedLayRecorded, setRequestedLayRecorded] = useState(true);
+  const [requestedLayStake, setRequestedLayStake] = useState("8.00");
+  const [matchedLayStake, setMatchedLayStake] = useState("5.00");
   const [backConfirmed, setBackConfirmed] = useState(false);
   const [layConfirmed, setLayConfirmed] = useState(false);
   const [linked, setLinked] = useState(true);
@@ -163,7 +165,7 @@ export function DesignLabSportsbookProposals({ initialAmendment }: { initialAmen
                       <label>Commission<input defaultValue="2.00" inputMode="decimal" /></label>
                       <label>Exchange<input defaultValue="Exchange A" /></label>
                       <label>Strategy<input defaultValue="Standard" /></label>
-                      <label>Requested Lay Stake<input placeholder="Not recorded" readOnly value={requestedLayRecorded ? "9.54" : ""} /></label>
+                      <label>Requested Lay Stake<input inputMode="decimal" onChange={event => setRequestedLayStake(event.target.value)} placeholder="Not recorded" value={requestedLayRecorded ? requestedLayStake : ""} /></label>
                     </div>
                     <button className={lab.secondaryButton} onClick={() => setRequestedLayRecorded(value => !value)} type="button">{requestedLayRecorded ? "Show Not recorded example" : "Show recorded example"}</button>
                     <details><summary>Advanced calculator options</summary><div className={lab.fieldPair}><label>Calculator Type<input defaultValue={fillState === "partial" ? "Partial lay" : "Standard"} /></label><label>Lay mode<input defaultValue="Reference stake" /></label><label>Back bet<input defaultValue="£10.00 at 2.10" readOnly /></label><label>Lay bet<input defaultValue="Reference 9.54 at 2.20" readOnly /></label><label>Execution choice<input defaultValue={fillState === "partial" ? "Partial match review" : "Standard hedge"} readOnly /></label></div><small className={local.fieldHelp}>Advanced strategy and execution choices are illustrative. Replan uses the native calculator in PD.</small><button className={lab.secondaryButton} onClick={() => setNotice("Replan simulated. No calculation or source record changed.")} type="button">Replan with current references</button></details>
@@ -172,14 +174,15 @@ export function DesignLabSportsbookProposals({ initialAmendment }: { initialAmen
                       <label>Back placement<input readOnly value={backConfirmed ? "Confirmed externally" : "Not recorded"} /></label>
                       <label>Lay placement<input readOnly value={layConfirmed ? fillState === "partial" ? "Partially matched" : "Fully matched" : "Not recorded"} /></label>
                       <label>Actual back stake<input inputMode="decimal" placeholder="Not recorded" readOnly value={backConfirmed ? "10.00" : ""} /></label>
-                      <label>Actual matched lay stake<input inputMode="decimal" placeholder="Not recorded" readOnly value={layConfirmed ? fillState === "partial" ? "5.00" : "9.54" : ""} /></label>
+                      <label>Actual matched lay stake<input inputMode="decimal" placeholder="Not recorded" readOnly value={layConfirmed ? matchedLayStake : ""} /></label>
                     </div>
-                    <div className={`${local.switchRow} ${local.placementConfirm}`}><button className={lab.secondaryButton} disabled={backConfirmed} onClick={() => { setBackConfirmed(true); setNotice("External Back confirmation simulated; Lay remains separate."); }} type="button">Confirm external Back</button><button className={lab.secondaryButton} disabled={layConfirmed} onClick={() => { setLayConfirmed(true); setNotice("External Lay confirmation simulated; Back remains separate."); }} type="button">Confirm external Lay</button></div>
+                    {!layConfirmed ? <label>Matched Lay amount to confirm<input aria-label="Matched Lay amount to confirm" inputMode="decimal" onChange={event => setMatchedLayStake(event.target.value)} value={matchedLayStake} /></label> : null}
+                    <div className={`${local.switchRow} ${local.placementConfirm}`}><button className={lab.secondaryButton} disabled={backConfirmed} onClick={() => { setBackConfirmed(true); setNotice("External Back confirmation simulated; Lay remains separate."); }} type="button">Confirm external Back</button><button className={lab.secondaryButton} disabled={layConfirmed || !matchedLayStake.trim()} onClick={() => { setLayConfirmed(true); setNotice(`External Lay match of £${matchedLayStake} simulated; Back remains separate.`); }} type="button">Confirm external Lay · £{matchedLayStake || "—"}</button></div>
                     <p role="status">Back: {backConfirmed ? "Confirmed" : "Not recorded"} · Lay: {layConfirmed ? "Confirmed" : "Not recorded"}</p>
-                    <details><summary>Actual stakes and partial-fill details</summary><div className={lab.fieldPair}><label>Remaining unmatched stake<input defaultValue={fillState === "partial" ? "4.54" : "0.00"} inputMode="decimal" /></label><label>Actual lay odds<input defaultValue="2.20" inputMode="decimal" /></label><label>Exchange<input defaultValue="Exchange A" /></label></div></details>
+                    <details><summary>Actual stakes and partial-fill details</summary><div className={lab.fieldPair}><label>Remaining unmatched stake<input readOnly value={layConfirmed ? Math.max(0, Number(requestedLayStake || 0) - Number(matchedLayStake || 0)).toFixed(2) : "Not recorded"} /></label><label>Actual lay odds<input defaultValue="2.20" inputMode="decimal" /></label><label>Exchange<input defaultValue="Exchange A" /></label></div></details>
                   </>}
                 </fieldset> : null}
-                {amendment === "finish" ? <fieldset>
+                {amendment === "finish" ? <fieldset className={local.finishCard}>
                   <legend>Finish / Review</legend>
                   <div className={local.switchRow}>
                     <button aria-pressed={finishMode === "existing"} className={lab.secondaryButton} onClick={() => setFinishMode("existing")} type="button">Existing unchanged bet</button>
@@ -187,8 +190,10 @@ export function DesignLabSportsbookProposals({ initialAmendment }: { initialAmen
                     <button className={lab.secondaryButton} onClick={() => setLinked(true)} type="button">With linked reward</button>
                     <button className={lab.secondaryButton} onClick={() => setLinked(false)} type="button">Without linked reward</button>
                   </div>
-                  <div className={lab.fieldPair}><label>Result<input defaultValue="Pending" /></label><label>Settlement date<input type="date" /></label></div>
+                  <div className={lab.fieldPair}><label>Status<select defaultValue={isNewFinish ? "Placed" : selectedRecord.status}><option>Prospecting</option><option>Placed</option><option>Settled</option></select></label><div className={lab.settlesField}><label htmlFor="lab-proposal-settles">Settles</label><div className={lab.settlesRow}><input id="lab-proposal-settles" type="datetime-local" /><button className={lab.secondaryButton} onClick={() => setNotice("Football settlement-time assist simulated; no source date changed.")} type="button">+90m Football</button></div></div><label>Result<select defaultValue="Pending"><option>Pending</option><option>Back Won</option><option>Lay Won</option></select></label></div>
                   <details><summary>Linked Free Bets</summary>{linked ? <div className={local.linkedDetail}><p>One recorded synthetic relationship · Profile A</p><button className={lab.linkButton} onClick={() => setNotice("Linked Free Bet review simulated. No source record changed.")} type="button">Review linked Free Bet</button></div> : <p>No linked reward is recorded for this synthetic case.</p>}</details>
+                  <details data-pd-id="lab.proposal.additional-review"><summary>Additional review details</summary><div className={lab.fieldPair}><label>Manual override<input inputMode="decimal" placeholder="Not recorded" /></label><label>Override reason<input placeholder="Required when an override is entered" /></label></div><label>Notes<textarea rows={3} /></label></details>
+                  <details data-pd-id="lab.proposal.history"><summary>History</summary><p>Recorded source and audited changes appear here. This proposal has no persisted history.</p></details>
                 </fieldset> : null}
               </div>
               <DesignBetWorkbenchSummary title="Outcome Comparison">

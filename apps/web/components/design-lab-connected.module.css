@@ -22,6 +22,12 @@
 :global(html[data-theme="dark"]) .entryGrid{--bet-entry-field-surface:#111316}
 .entryGrid>.entryFields>fieldset{margin:0;padding:0;border:0;min-width:0}
 .entryGrid>.entryFields>fieldset>legend{padding:0;margin:0 0 8px;font-size:1.1rem;font-weight:800}
+.settlesField{display:grid;gap:6px;margin-top:10px;font-weight:700;min-width:0}
+.settlesField label{margin:0!important}
+.settlesRow{display:flex;align-items:center;gap:8px;min-width:0;margin:0!important}
+.settlesRow input{flex:1 1 auto;min-width:0}
+.settlesRow button{flex:none;white-space:nowrap}
+@media(max-width:700px){.settlesRow{flex-wrap:wrap}.settlesRow button{width:100%}}
 .stageState{display:inline-block;margin-left:4px;color:var(--muted);font-size:.68rem;font-weight:650;line-height:1.1;white-space:nowrap}
 @media(max-width:700px){.stageState{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}}
 .requirementsCard{display:grid;gap:12px;min-width:0;padding:18px;border:1px solid var(--outline);border-radius:12px;background:var(--surface-strong)}.requirementsCard legend{padding:0 6px;font-size:1.1rem;font-weight:800}.requirementsCard p{margin:0;color:var(--muted)}.requirementsCard dl{margin:0}.requirementsCard dl>div{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid var(--outline)}.requirementsCard dt{color:var(--muted)}.requirementsCard dd{margin:0;text-align:right;font-weight:700}

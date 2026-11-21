@@ -18,6 +18,7 @@ type FinancialHistoryPanelProps = {
   activityId: string;
   ledger: FinancialHistoryLedger;
   profileId: string;
+  presentation?: "panel" | "workbench-disclosure";
 };
 
 function RecordedMultiLayFills({ snapshot }: { snapshot: Record<string, unknown> | null }) {
@@ -35,7 +36,7 @@ function RecordedMultiLayFills({ snapshot }: { snapshot: Record<string, unknown>
   </details>;
 }
 
-export function FinancialHistoryPanel({ activityId, ledger, profileId }: FinancialHistoryPanelProps) {
+export function FinancialHistoryPanel({ activityId, ledger, profileId, presentation = "panel" }: FinancialHistoryPanelProps) {
   const [events, setEvents] = useState<FinancialHistoryEvent[] | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -60,7 +61,7 @@ export function FinancialHistoryPanel({ activityId, ledger, profileId }: Financi
 
   return (
     <details
-      className="content-subpanel stack-tight financial-history-panel"
+      className={presentation === "workbench-disclosure" ? "sportsbook-workbench-history stack-tight" : "content-subpanel stack-tight financial-history-panel"}
       data-pd-id={`${ledger}.editor.history`}
       onToggle={(event) => {
         if (event.currentTarget.open) void load();

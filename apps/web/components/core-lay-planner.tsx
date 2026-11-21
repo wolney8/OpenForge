@@ -25,6 +25,7 @@ type CoreForm = {
   lay_plan_json?: string | null; back_odds: string; lay_odds_1: string;
   back_stake?: string; free_bet_value?: string; exchange_name: string;
   match_strategy: string; lay_actual: string; lay_matched_stake_1: string;
+  back_placement_confirmed?: boolean | null; requested_lay_stake?: string | null;
   lay_commission_1: string; status: string; date_settled: string;
 };
 type Reference = { strategy: LayPlan["selected_strategy"]; lay_stake: string; liability: string;
@@ -90,8 +91,12 @@ export function CoreLayPlanner({ accounts, basis, defaultCommission, exchangeCom
   useEffect(() => { callbacks.current = { onPatch, onValidity }; }, [onPatch, onValidity]);
   const planRef = useRef(savedPlan);
   useEffect(() => { planRef.current = savedPlan; }, [savedPlan]); // revision acknowledgement only
-  const hasActual = Boolean((form.lay_actual && Number(form.lay_actual) > 0) || (form.lay_matched_stake_1 && Number(form.lay_matched_stake_1) > 0));
-  const hasRecordedBack = form.status === "Placed" || form.status === "Settled";
+  const hasActual = labPresentation && basis === "Normal"
+    ? Boolean(form.lay_matched_stake_1 && Number(form.lay_matched_stake_1) > 0)
+    : Boolean((form.lay_actual && Number(form.lay_actual) > 0) || (form.lay_matched_stake_1 && Number(form.lay_matched_stake_1) > 0));
+  const hasRecordedBack = basis === "Normal" && labPresentation
+    ? form.back_placement_confirmed === true
+    : form.status === "Placed" || form.status === "Settled";
   const stake = basis === "SNR" ? form.free_bet_value ?? "" : form.back_stake ?? "";
   const exchanges = accounts.filter(
     (account) =>
@@ -198,12 +203,12 @@ export function CoreLayPlanner({ accounts, basis, defaultCommission, exchangeCom
   const minimum = minimumText === "" ? Number(lower?.lay_stake ?? "0") : Number(minimumText);
   const maximum = maximumText === "" ? Number(upper?.lay_stake ?? standard?.lay_stake ?? "0") : Number(maximumText);
   const disabled = busy || !validInputs || Boolean(error) || readOnly;
-  const recordedStake = form.lay_actual || form.lay_matched_stake_1;
+  const recordedStake = form.lay_matched_stake_1 || (labPresentation ? "" : form.lay_actual);
   const actualTermsMatchPlan = Boolean(savedPlan && recordedStake &&
     Number(form.lay_odds_1) === Number(savedPlan.lay_odds) &&
     Number(form.lay_commission_1) === Number(savedPlan.commission));
   const partialSummary = getPartialLayExecutionSummary({
-    explicitTargetLayStake: savedPlan?.reviewed_planned_lay_stake ?? "",
+    explicitTargetLayStake: form.requested_lay_stake || savedPlan?.reviewed_planned_lay_stake || "",
     suggestedTargetLayStake: "",
     legs: recordedStake ? [{matchedStake:recordedStake}] : [],
   });
@@ -237,9 +242,9 @@ export function CoreLayPlanner({ accounts, basis, defaultCommission, exchangeCom
             : "The actual odds or commission differ from the plan. An additional hedge needs a reviewed changed-odds calculation; no unmatched order is assumed filled."}</p></> : <>
           <div className="form-grid"><PlannerField id={`${inspectionId}.actual-stake`} label="Actual matched stake" value={actualDraft} onChange={setActualDraft} readOnly={readOnly} /><PlannerField id={`${inspectionId}.actual-odds`} label="Actual lay odds" value={actualOdds || planningOdds} onChange={setActualOdds} readOnly={readOnly} />
             <label className="field-control"><span>Actual exchange commission (%)</span><CommissionInput aria-label="Actual exchange commission (%)" onRatioChange={setActualCommission} readOnly={readOnly} value={actualCommission} /></label></div>
-          <button className="button-link icon-text-action" disabled={disabled || actualConfirmDisabled || !reviewedInputsUnchanged || !actualValid} onClick={() => onPatch({lay_actual:actualDraft,lay_matched_stake_1:actualDraft,
+          <button className="button-link icon-text-action" disabled={disabled || actualConfirmDisabled || !reviewedInputsUnchanged || !actualValid} onClick={() => onPatch({lay_actual:labPresentation && basis === "Normal" ? form.requested_lay_stake || actualDraft : actualDraft,lay_matched_stake_1:actualDraft,
             lay_odds_1:actualOdds || planningOdds,lay_commission_1:actualCommission,status:"Placed",
-            date_settled:form.date_settled || toDateTimeLocalValue(new Date().toISOString())})} type="button"><span aria-hidden="true" className="material-symbols-outlined">check</span><span>{actualConfirmLabel}</span></button>
+            date_settled:labPresentation && basis === "Normal" ? form.date_settled : form.date_settled || toDateTimeLocalValue(new Date().toISOString())})} type="button"><span aria-hidden="true" className="material-symbols-outlined">check</span><span>{actualConfirmLabel}{labPresentation && basis === "Normal" ? ` · £${actualDraft || "—"}` : ""}</span></button>
         </>}
       </section>
   );
@@ -257,7 +262,7 @@ export function CoreLayPlanner({ accounts, basis, defaultCommission, exchangeCom
         <option value="">Select Exchange</option>{exchanges.map(account => <option key={account.account_id} value={account.account_id}>{account.account}</option>)}</select></label>
       <label className="field-control"><span>Strategy</span><select disabled={readOnly} onChange={event => { const next = event.target.value as LayPlan["selected_strategy"]; if (next !== "Standard" && modeRef.current === "Simple") { modeRef.current = "Advanced"; setMode("Advanced"); } selectStrategy(next); }} value={strategy}>
         {(["Standard", "Underlay", "Overlay", "Custom"] as const).map(value => <option key={value} value={value}>{value}</option>)}</select></label>
-      <label className="field-control"><span>Requested Lay Stake</span><input readOnly value="" placeholder="Not recorded" />{reviewedInputsUnchanged && savedPlan?.reviewed_planned_lay_stake ? <span className="field-hint">Recommended Lay Stake · plan: <CopyableFinancialValue label="Recommended lay stake plan" value={savedPlan.reviewed_planned_lay_stake} /></span> : null}</label>
+      <label className="field-control"><span>Requested Lay Stake</span><input inputMode="decimal" onChange={event => basis === "Normal" && onPatch({requested_lay_stake:event.target.value || null})} readOnly={basis !== "Normal" || readOnly} value={basis === "Normal" ? form.requested_lay_stake ?? "" : ""} placeholder="Not recorded" />{reviewedInputsUnchanged && savedPlan?.reviewed_planned_lay_stake ? <span className="field-hint">Recommended Lay Stake · plan: <CopyableFinancialValue label="Recommended lay stake plan" value={savedPlan.reviewed_planned_lay_stake} /></span> : null}</label>
       {busy ? <p role="status">Updating reference…</p> : null}{error ? <p className="error-text" role="alert">{error}</p> : null}
     </div> : <div className="calculator-band calculator-band-primary">
       <div className="ledger-calculator-mode-bar">

@@ -143,7 +143,7 @@ test("each amendment opens directly and its proposal states respond without writ
   await page.getByRole("link", { name: /Matching and Placement/ }).click();
   await expect(page.getByLabel("Exchange")).toBeVisible();
   await expect(page.getByLabel("Strategy")).toBeVisible();
-  await expect(page.getByLabel("Requested Lay Stake")).toHaveValue("9.54");
+  await expect(page.getByLabel("Requested Lay Stake")).toHaveValue("8.00");
   await page.getByRole("button", { name: "Show Not recorded example" }).click();
   await expect(page.getByLabel("Requested Lay Stake")).toHaveValue("");
   await capture(page, `matching-not-recorded`);
@@ -158,7 +158,7 @@ test("each amendment opens directly and its proposal states respond without writ
   await page.getByRole("button", { name: "Placement", exact: true }).last().click();
   await capture(page, `placement-collapsed`);
   await page.getByText("Actual stakes and partial-fill details", { exact: true }).click();
-  await expect(page.getByLabel("Remaining unmatched stake")).toHaveValue("4.54");
+  await expect(page.getByLabel("Remaining unmatched stake")).toHaveValue("Not recorded");
   await expect(page.getByLabel("Actual lay odds")).toBeVisible();
   await expect(page.getByRole("button", { name: "Confirm external Lay" })).toBeVisible();
   await expect(page.getByText("Back: Not recorded · Lay: Not recorded")).toBeVisible();
@@ -167,9 +167,16 @@ test("each amendment opens directly and its proposal states respond without writ
   await capture(page, `placement-back-only`);
   await page.getByRole("button", { name: "Confirm external Lay" }).click();
   await expect(page.getByText("Back: Confirmed · Lay: Confirmed")).toBeVisible();
+  await expect(page.getByLabel("Actual matched lay stake")).toHaveValue("5.00");
+  await expect(page.getByLabel("Remaining unmatched stake")).toHaveValue("3.00");
   await capture(page, `placement-expanded`);
 
   await page.getByRole("link", { name: /Finish \/ Review/ }).click();
+  await expect(page.getByLabel("Status")).toBeVisible();
+  await expect(page.getByLabel("Settles")).toBeVisible();
+  await expect(page.getByLabel("Result")).toBeVisible();
+  await expect(page.locator('[data-pd-id="lab.proposal.additional-review"]')).not.toHaveAttribute("open", "");
+  await expect(page.locator('[data-pd-id="lab.proposal.history"]')).not.toHaveAttribute("open", "");
   await expect(footer.getByRole("button", { name: "Save Existing Bet" })).toBeVisible();
   await expect(footer.getByText("More actions", { exact: true })).toBeVisible();
   await page.getByText("Linked Free Bets", { exact: true }).click();

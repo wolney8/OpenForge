@@ -1770,4 +1770,13 @@ Placement-evidence source proposal (PD-FIX-630–631): add independent, nullable
 
 Focused regression additionally reproduced a saved settled Multi-Lay record appearing dirty on clean reopen: the calculator's initial callback reset recorded exchange/odds placement evidence in the draft. The callback now preserves loaded placement state and stable outcome identity. The persisted one-fill correction, audit reason, clean breadcrumb return and reload passed together after the repair.
 
+### CP-117 approved placement and Finish amendments — 2026-11-21 / #118
+
+| ID | Owner-requested result | Reference and authority | Status |
+| --- | --- | --- | --- |
+| PD-FIX-636 | Independently persisted nullable Back confirmation and requested Lay stake; historical missing evidence stays Not recorded | Approved placement amendment; `docs/contracts/sportsbook-placement-evidence-contract.md` | IN PROGRESS |
+| PD-FIX-637 | Before single-lay confirmation, show and require an explicit matched amount; prove £10 plan/£8 request/£5 match and all confirmation orders after reload | Approved placement amendment; existing partial-fill Save authority | IN PROGRESS |
+| PD-FIX-638 | Preview then adopt Status/Settles/Result, football assist, Additional review details and History in Finish / Review | Approved Finish amendment; frozen Lab reference remains unchanged | IN PROGRESS |
+| PD-FIX-639 | Paired 2048 dark, 1440 light, 390 mobile integrated review plus final-revision API/web/visual/rollback checks and local delivery | Approved Lab and synthetic integration runner | NOT STARTED |
+
 Consolidated replacement run on the candidate source: V2 integration **140 passed, 5 expected flag-OFF skips**; full visual **320/320 passed**; legacy flag-OFF **9/9 passed**. The final Settles/Result field-grid alignment was applied while the visual run was in progress; its added matched 2048px dark, 1440px light and 390px dark assertions then passed **3/3** against the final source. Web units passed **751/751**, typecheck passed, changed web-source lint had **0 errors and 7 existing warnings**, and `git diff --check` passed. The final production build and served revision are recorded at delivery. These checks do not establish owner Design or Interaction Acceptance or independent Lay-first persistence.
