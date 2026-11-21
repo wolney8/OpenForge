@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 
 import { BrandLogo } from "@/components/brand-logo";
-import { DesignBetWorkbenchContext, DesignBetWorkbenchGrid, DesignBetWorkbenchProtectedActions, DesignBetWorkbenchProtectedNotice, DesignBetWorkbenchStageRail, DesignBetWorkbenchSummary } from "@/components/design-bet-workbench-presentation";
+import { DesignBetWorkbenchContext, DesignBetWorkbenchGrid, DesignBetWorkbenchPlacementDetails, DesignBetWorkbenchProtectedActions, DesignBetWorkbenchProtectedNotice, DesignBetWorkbenchStageRail, DesignBetWorkbenchSummary } from "@/components/design-bet-workbench-presentation";
 import { DesignPageHead } from "@/components/design-ledger-screen";
 import { DesignLabSelect } from "@/components/design-lab-select";
 import { formatFinancialValue } from "@/lib/financial-display";
@@ -48,8 +48,12 @@ export function DesignLabSportsbookProposals({ initialAmendment }: { initialAmen
   const [requestedLayRecorded, setRequestedLayRecorded] = useState(true);
   const [requestedLayStake, setRequestedLayStake] = useState("8.00");
   const [matchedLayStake, setMatchedLayStake] = useState("5.00");
+  const [nextLayStake, setNextLayStake] = useState("");
   const [backConfirmed, setBackConfirmed] = useState(false);
   const [layConfirmed, setLayConfirmed] = useState(false);
+  const [secondLayConfirmed, setSecondLayConfirmed] = useState(false);
+  const [reminderActive, setReminderActive] = useState(false);
+  const [reversalPending, setReversalPending] = useState(false);
   const [linked, setLinked] = useState(true);
   const [finishMode, setFinishMode] = useState<"existing" | "new">("existing");
   const [notice, setNotice] = useState("");
@@ -154,8 +158,8 @@ export function DesignLabSportsbookProposals({ initialAmendment }: { initialAmen
                   <div className={local.switchRow}>
                     <button aria-pressed={stage === 2} className={lab.secondaryButton} onClick={() => setStage(2)} type="button">Matching</button>
                     <button aria-pressed={stage === 3} className={lab.secondaryButton} onClick={() => setStage(3)} type="button">Placement</button>
-                    <button aria-pressed={fillState === "standard"} className={lab.secondaryButton} onClick={() => { setFillState("standard"); setBackConfirmed(false); setLayConfirmed(false); }} type="button">Standard case</button>
-                    <button aria-pressed={fillState === "partial"} className={lab.secondaryButton} onClick={() => { setFillState("partial"); setBackConfirmed(false); setLayConfirmed(false); }} type="button">Partial fill</button>
+                    <button aria-pressed={fillState === "standard"} className={lab.secondaryButton} onClick={() => { setFillState("standard"); setBackConfirmed(false); setLayConfirmed(false); setSecondLayConfirmed(false); setNextLayStake(""); setReminderActive(false); setReversalPending(false); }} type="button">Standard case</button>
+                    <button aria-pressed={fillState === "partial"} className={lab.secondaryButton} onClick={() => { setFillState("partial"); setBackConfirmed(false); setLayConfirmed(false); setSecondLayConfirmed(false); setNextLayStake(""); setReminderActive(false); setReversalPending(false); }} type="button">Partial fill</button>
                   </div>
                   {stage === 2 ? <>
                     <div className={lab.fieldPair}>
@@ -172,14 +176,19 @@ export function DesignLabSportsbookProposals({ initialAmendment }: { initialAmen
                   </> : <>
                     <div className={lab.fieldPair}>
                       <label>Back placement<input readOnly value={backConfirmed ? "Confirmed externally" : "Not recorded"} /></label>
-                      <label>Lay placement<input readOnly value={layConfirmed ? fillState === "partial" ? "Partially matched" : "Fully matched" : "Not recorded"} /></label>
+                      <label>Lay placement<input readOnly value={layConfirmed ? fillState === "partial" && !secondLayConfirmed ? "Partially matched" : "Fully matched" : "Not recorded"} /></label>
                       <label>Actual back stake<input inputMode="decimal" placeholder="Not recorded" readOnly value={backConfirmed ? "10.00" : ""} /></label>
-                      <label>Actual matched lay stake<input inputMode="decimal" placeholder="Not recorded" readOnly value={layConfirmed ? matchedLayStake : ""} /></label>
+                      <label>Actual matched lay stake<input inputMode="decimal" placeholder="Not recorded" readOnly value={layConfirmed ? (Number(matchedLayStake) + (secondLayConfirmed ? Number(nextLayStake) : 0)).toFixed(2) : ""} /></label>
                     </div>
-                    {!layConfirmed ? <label>Matched Lay amount to confirm<input aria-label="Matched Lay amount to confirm" inputMode="decimal" onChange={event => setMatchedLayStake(event.target.value)} value={matchedLayStake} /></label> : null}
-                    <div className={`${local.switchRow} ${local.placementConfirm}`}><button className={lab.secondaryButton} disabled={backConfirmed} onClick={() => { setBackConfirmed(true); setNotice("External Back confirmation simulated; Lay remains separate."); }} type="button">Confirm external Back</button><button className={lab.secondaryButton} disabled={layConfirmed || !matchedLayStake.trim()} onClick={() => { setLayConfirmed(true); setNotice(`External Lay match of £${matchedLayStake} simulated; Back remains separate.`); }} type="button">Confirm external Lay · £{matchedLayStake || "—"}</button></div>
-                    <p role="status">Back: {backConfirmed ? "Confirmed" : "Not recorded"} · Lay: {layConfirmed ? "Confirmed" : "Not recorded"}</p>
-                    <details><summary>Actual stakes and partial-fill details</summary><div className={lab.fieldPair}><label>Remaining unmatched stake<input readOnly value={layConfirmed ? Math.max(0, Number(requestedLayStake || 0) - Number(matchedLayStake || 0)).toFixed(2) : "Not recorded"} /></label><label>Actual lay odds<input defaultValue="2.20" inputMode="decimal" /></label><label>Exchange<input defaultValue="Exchange A" /></label></div></details>
+                    {!layConfirmed || fillState === "partial" && !secondLayConfirmed ? <label>Matched Lay amount to confirm<input aria-label="Matched Lay amount to confirm" inputMode="decimal" onChange={event => layConfirmed ? setNextLayStake(event.target.value) : setMatchedLayStake(event.target.value)} placeholder="Enter exact matched amount" value={layConfirmed ? nextLayStake : matchedLayStake} /></label> : null}
+                    <div className={`${local.switchRow} ${local.placementConfirm}`}><button className={lab.secondaryButton} disabled={backConfirmed} onClick={() => { setBackConfirmed(true); setNotice("External Back confirmation simulated; Lay remains separate."); }} type="button">Confirm external Back</button><button className={lab.secondaryButton} disabled={layConfirmed && (fillState !== "partial" || secondLayConfirmed) || !(layConfirmed ? nextLayStake : matchedLayStake).trim()} onClick={() => { if (layConfirmed) { setSecondLayConfirmed(true); setNotice(`A second £${nextLayStake} Lay fill is shown in this synthetic preview.`); } else { setLayConfirmed(true); setNotice(`External Lay match of £${matchedLayStake} simulated; Back remains separate.`); } }} type="button">Confirm external Lay · £{(layConfirmed ? nextLayStake : matchedLayStake) || "—"}</button></div>
+                    <p role="status">Back: {backConfirmed ? "Confirmed" : "Not recorded"} · Lay: {layConfirmed ? fillState === "partial" && !secondLayConfirmed ? "Partially matched" : "Confirmed" : "Not recorded"}</p>
+                    <DesignBetWorkbenchPlacementDetails
+                      fields={<div className={lab.fieldPair}><label>Recommended Lay Stake · plan<input readOnly value="10.00" /></label><label>Requested Lay Stake<input readOnly value={requestedLayRecorded ? requestedLayStake : ""} placeholder="Not recorded" /></label><label>Matched so far<input readOnly value={layConfirmed ? (Number(matchedLayStake) + (secondLayConfirmed ? Number(nextLayStake) : 0)).toFixed(2) : ""} placeholder="Not recorded" /></label><label>Actual lay amount<input readOnly value={requestedLayRecorded ? requestedLayStake : ""} placeholder="Not recorded" /></label></div>}
+                      legs={<div className={local.placementCardContent}><strong>Recorded legs</strong>{layConfirmed ? <><p>Leg 1 · Exchange A · £{Number(matchedLayStake).toFixed(2)} matched at 2.20</p>{secondLayConfirmed ? <p>Leg 2 · Exchange A · £{Number(nextLayStake).toFixed(2)} matched at 2.20</p> : fillState === "partial" ? <p>Another fill can be confirmed using the everyday Placement controls.</p> : null}<p>Matched so far · {money((Number(matchedLayStake) + (secondLayConfirmed ? Number(nextLayStake) : 0)).toFixed(2))}</p></> : <p>No Lay fill is recorded.</p>}</div>}
+                      followUp={<div className={local.placementCardContent}><strong>Follow-up reminder</strong><p>{reminderActive ? "Recheck scheduled for this synthetic partial fill." : "Not set"}</p><button className={lab.secondaryButton} onClick={() => { setReminderActive(value => !value); setNotice("Reminder state changed only in this preview."); }} type="button">{reminderActive ? "Review Reminder" : "Set Reminder"}</button></div>}
+                      reversal={<div className={local.placementCardContent}>{reversalPending ? <><p>Remove the recorded Lay placement?</p><button className={lab.dangerButton} onClick={() => { setLayConfirmed(false); setSecondLayConfirmed(false); setReversalPending(false); setNotice("Synthetic Lay placement removed; Back confirmation is unchanged."); }} type="button">Remove Lay</button><button className={lab.secondaryButton} onClick={() => setReversalPending(false)} type="button">Cancel reversal</button></> : <button className={lab.secondaryButton} disabled={!layConfirmed} onClick={() => setReversalPending(true)} type="button">Review Lay reversal</button>}</div>}
+                    />
                   </>}
                 </fieldset> : null}
                 {amendment === "finish" ? <fieldset className={local.finishCard}>

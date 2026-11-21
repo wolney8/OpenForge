@@ -22,6 +22,24 @@ export function DesignBetWorkbenchSummary({ title, children, dataPdId }: { title
   return <aside className={styles.calcSummary} data-pd-id={dataPdId}><h3>{title}</h3>{children}</aside>;
 }
 
+/** Approved Placement disclosure. Real and simulated adapters supply their own recorded evidence and commands. */
+export function DesignBetWorkbenchPlacementDetails({ fields, legs, followUp, reversal }: {
+  fields?: ReactNode;
+  legs: ReactNode;
+  followUp: ReactNode;
+  reversal: ReactNode;
+}) {
+  return <details className={styles.placementDetails} data-pd-id="sportsbook.workbench.partial-fill">
+    <summary>Actual stakes and partial-fill details</summary>
+    {fields}
+    <div className={styles.placementSecondaryCard} data-pd-id="sportsbook.workbench.placement-secondary-card">
+      <section aria-label="Recorded legs" className={styles.placementCardSection} data-pd-id="sportsbook.workbench.recorded-legs">{legs}</section>
+      <section aria-label="Follow-up reminder" className={styles.placementCardSection} data-pd-id="sportsbook.workbench.follow-up">{followUp}</section>
+      <section aria-label="Lay reversal" className={styles.placementCardSection} data-pd-id="sportsbook.workbench.lay-reversal">{reversal}</section>
+    </div>
+  </details>;
+}
+
 /** Approved protected-record copy and footer actions, with simulated or native commands supplied by the caller. */
 export function DesignBetWorkbenchProtectedNotice() {
   return <p data-pd-id="bet-workbench.protected-notice">Recorded financial fields are read-only. Review a correction to change them.</p>;

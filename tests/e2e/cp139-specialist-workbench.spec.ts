@@ -381,7 +381,9 @@ test("Sportsbook populated Lab and native workbenches expose their complete gove
   const placement = nativeStages.locator('[data-pd-id="bet-workbench.stage.placement"]');
   if (await placement.getAttribute("aria-disabled") !== "true") {
     await placement.click();
-    await expect(native.locator('[data-pd-id="sportsbook.workbench.placement"]')).toBeVisible();
+    const placementPanel = native.locator('[data-pd-id="ledger-editor.panel.placement"]');
+    await expect(placementPanel).toBeVisible();
+    await expect(placementPanel.locator('[data-pd-id="sportsbook.workbench.placement-controls"]')).toBeVisible();
     await page.screenshot({ path: info.outputPath("sportsbook-native-populated-placement-900-dark.png"), fullPage: true });
   }
   await nativeStages.locator('[data-pd-id="bet-workbench.stage.finish"]').click();

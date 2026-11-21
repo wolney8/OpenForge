@@ -61,7 +61,7 @@ import {
 } from "@/components/bookmaker-identity";
 import { EditorSection } from "@/components/editor-section";
 import { DesignFinancialOutcomeSurface, DesignFinancialWorkbenchFooter, financialWorkbenchHeaderClass, financialWorkbenchSurfaceClass, financialWorkbenchPrimaryActionClass, financialWorkbenchSecondaryActionClass } from "@/components/design-financial-workbench-layout";
-import { DesignBetWorkbenchContext, DesignBetWorkbenchGrid, DesignBetWorkbenchProtectedActions, DesignBetWorkbenchProtectedNotice, DesignBetWorkbenchSummary, DesignBetWorkbenchStageRail, designBetWorkbenchEntryClass } from "@/components/design-bet-workbench-presentation";
+import { DesignBetWorkbenchContext, DesignBetWorkbenchGrid, DesignBetWorkbenchPlacementDetails, DesignBetWorkbenchProtectedActions, DesignBetWorkbenchProtectedNotice, DesignBetWorkbenchSummary, DesignBetWorkbenchStageRail, designBetWorkbenchEntryClass } from "@/components/design-bet-workbench-presentation";
 import { SPORTSBOOK_RETURN_TO_LEDGER_EVENT } from "@/lib/sportsbook-workbench-navigation";
 import { sportsbookComparisonScenarios } from "@/lib/sportsbook-outcome-comparison";
 import { EditorValidationBanner } from "@/components/editor-validation-banner";
@@ -185,8 +185,8 @@ function SportsbookAdvancedCalculatorOptions({ visualV2, children }: { visualV2:
     : <>{children}</>;
 }
 
-function SportsbookPlacementDetailDisclosure({ visualV2, children }: { visualV2: boolean; children: ReactNode }) {
-  return visualV2
+function SportsbookPlacementDetailDisclosure({ visualV2, nestedUnderSharedCard = false, children }: { visualV2: boolean; nestedUnderSharedCard?: boolean; children: ReactNode }) {
+  return visualV2 && !nestedUnderSharedCard
     ? <details data-pd-id="sportsbook.workbench.partial-fill"><summary>Actual stakes and partial-fill details</summary>{children}</details>
     : <>{children}</>;
 }
@@ -1795,6 +1795,8 @@ const settledFinancialCorrectionFields: ReadonlyArray<keyof SportsbookFormState>
   "lay_matched_stake_1",
   "lay_commission_1",
   "exchange_name",
+  "requested_lay_stake",
+  "back_placement_confirmed",
   "date_settled",
   "manual_override_value",
   "bonus_trigger",
@@ -3057,6 +3059,7 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
   const [requirementsVisible, setRequirementsVisible] = useState(false);
   const [placementVisualOnly, setPlacementVisualOnly] = useState(false);
   const [placementPortalTarget, setPlacementPortalTarget] = useState<HTMLDivElement | null>(null);
+  const [reminderPortalTarget, setReminderPortalTarget] = useState<HTMLDivElement | null>(null);
   const [guidedEntryDismissed, setGuidedEntryDismissed] = useState(false);
   const [tableCollapsed, setTableCollapsed] = usePersistedBoolean(
     `openforge-ledger-collapsed:${profileId}:sportsbook-bets`,
@@ -3917,7 +3920,7 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
   const canUseFootballSettlesAssist =
     formState.fixture_type === "Football" && formState.date_settled.trim().length > 0;
   const showsLayMatchedStake = formState.match_strategy === "Partial Lay";
-  const showsPlacementSection = !isNoLayStrategy && showsLayMatchedStake;
+  const showsPlacementSection = !isNoLayStrategy && (showsLayMatchedStake || visualV2);
   const isCashbackOffer =
     formState.offer_type === "Cashback" || isBonusLockInOfferType(formState.offer_type);
   const isConditionalCashbackOffer = formState.offer_type === "Cashback";
@@ -4201,6 +4204,9 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
   const displayEditorTabId = visualV2 && requirementsVisible ? "requirements" : visualV2 && placementVisualOnly && !showsPlacementSection ? "placement" : safeActiveEditorTabId;
   const renderActualPlacement = (content: ReactNode) => visualV2
     ? placementPortalTarget ? createPortal(content, placementPortalTarget) : null
+    : content;
+  const renderPlacementReminder = (content: ReactNode) => visualV2
+    ? reminderPortalTarget ? createPortal(content, reminderPortalTarget) : null
     : content;
   const visualStageId = requirementsVisible ? "requirements" : placementVisualOnly ? "placement" : safeActiveEditorTabId === "free_bet" || safeActiveEditorTabId === "settlement" ? "finish" : safeActiveEditorTabId === "setup" ? "offer" : safeActiveEditorTabId;
   useEffect(() => {
@@ -4840,8 +4846,7 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
     partialLayLegs.length === 1 && layFullyConfirmed ? "Matched Lay" : "Partial Lay Legs";
   const shouldShowLayPlacementLegDetails =
     partialLayLegs.length > 0 &&
-    !usesMultiLayStrategy &&
-    (formState.match_strategy === "Partial Lay" || partialLayLegs.length > 1);
+    !usesMultiLayStrategy;
   const layPlacementReady =
     formState.match_strategy.trim().length > 0 &&
     formState.exchange_name.trim().length > 0 &&
@@ -6808,7 +6813,8 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
     }
     if (visualV2) {
       setFormState(current => ({...current, back_placement_confirmed: true,
-        status: "Placed", result: "Pending"}));
+        status: isSettledBet && settledEditEnabled ? current.status : "Placed",
+        result: isSettledBet && settledEditEnabled ? current.result : "Pending"}));
       setPendingBackPlacementRevert(false);
       setStatusMessage("External Back confirmation is recorded in this draft. Save to retain it.");
       return;
@@ -7699,6 +7705,165 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
 	                </button>
 	              </div> : null}
 	            </DesignFinancialWorkbenchFooter>
+  );
+
+  const recordedLegDetails = (
+                          <SportsbookPlacementDetailDisclosure visualV2={visualV2} nestedUnderSharedCard>
+	                          <div className={visualV2 ? "field-span-2 stack partial-lay-panel" : "field-span-2 content-subpanel stack partial-lay-panel"} aria-label={visualV2 ? undefined : partialLayPanelTitle}>
+	                            <div className="section-heading-row">
+	                              <span className="eyebrow">{visualV2 ? "Recorded legs" : partialLayPanelTitle}</span>
+                              <span className="table-chip">{partialLayLegs.length} {partialLayLegs.length === 1 ? "leg" : "legs"}</span>
+	                            </div>
+                            <div className="stack">
+                              {partialLayLegs.map((leg, index) => (
+                                <div className="partial-lay-leg-item" key={leg.id}>
+                                  <div className="partial-lay-leg-row">
+                                    <label className="field-control">
+                                      <span>{leg.isFinal ? `Final leg ${index + 1}` : `Partial leg ${index + 1}`}</span>
+                                      <select
+                                        onChange={(event) =>
+                                          updatePartialLayLeg(leg.id, "exchangeName", event.target.value)
+                                        }
+                                        value={leg.exchangeName}
+                                      >
+                                        <option value="">Select exchange</option>
+                                        {exchangeOptions.map((option) => (
+                                          <option key={option} value={option}>
+                                            {option}
+                                          </option>
+                                        ))}
+                                      </select>
+                                    </label>
+                                      <label className="field-control">
+                                        <span>Lay odds</span>
+                                        <input
+	                                      aria-label={`${leg.isFinal ? `Final leg ${index + 1}` : `Partial leg ${index + 1}`} lay odds`}
+	                                        aria-describedby={oddsIssueMap.has(`partial_lay_${leg.id}_odds`) ? `sportsbook-partial-lay-odds-error-${index}` : undefined}
+	                                        aria-invalid={oddsIssueMap.has(`partial_lay_${leg.id}_odds`)}
+	                                        inputMode="decimal"
+                                          onChange={(event) =>
+                                            updatePartialLayLeg(leg.id, "layOdds", event.target.value)
+                                          }
+                                          value={leg.layOdds}
+                                        />
+	                                      {oddsIssueMap.has(`partial_lay_${leg.id}_odds`) ? (
+	                                        <span className="field-validation-text" id={`sportsbook-partial-lay-odds-error-${index}`} role="alert">
+	                                          {oddsIssueMap.get(`partial_lay_${leg.id}_odds`)}
+	                                        </span>
+	                                      ) : null}
+                                      </label>
+                                    <label className="field-control">
+                                      <span>{leg.isFinal ? "Final matched stake" : "Matched stake"}</span>
+                                      <div className="inline-field-action">
+                                        <input
+                                          onChange={(event) =>
+                                            updatePartialLayLeg(leg.id, "matchedStake", event.target.value)
+                                          }
+                                          value={leg.matchedStake}
+                                        />
+	                                        {partialLayLegs.length > 1 && index > 0 ? (
+	                                          <button
+	                                            aria-label={leg.isFinal ? "Remove final lay leg" : "Remove lay leg"}
+	                                            className="icon-button icon-button-destructive table-action-button"
+	                                            onClick={() => requestRemovePartialLayLeg(leg.id)}
+	                                            title={leg.isFinal ? "Remove final lay leg" : "Remove lay leg"}
+	                                            type="button"
+	                                          >
+	                                            <span
+	                                              aria-hidden="true"
+	                                              className="material-symbols-outlined"
+	                                            >
+	                                              delete
+	                                            </span>
+	                                          </button>
+	                                        ) : null}
+                                      </div>
+                                    </label>
+                                  </div>
+                                  {pendingLegRemovalId === leg.id ? (
+                                    <div className="leg-remove-warning" role="alert">
+                                      <p className="field-validation-text">
+                                        Are you sure? lay has been entered.
+                                      </p>
+                                      <div className="tracker-nav">
+                                        <button
+                                          className="review-chip review-chip-danger"
+                                          onClick={() => confirmRemovePartialLayLeg(leg.id)}
+                                          type="button"
+                                        >
+                                          Remove Lay Leg
+                                        </button>
+                                        <button
+                                          className="button-link"
+                                          onClick={() => setPendingLegRemovalId(null)}
+                                          type="button"
+                                        >
+                                          Cancel
+                                        </button>
+                                      </div>
+                                    </div>
+                                  ) : null}
+                                </div>
+                              ))}
+                              {lastRemovedPartialLayLeg ? (
+                                <div className="leg-remove-undo">
+                                  <button
+                                    className="button-link"
+                                    onClick={undoRemovePartialLayLeg}
+                                    type="button"
+                                  >
+                                    Undo
+                                  </button>
+                                </div>
+                              ) : null}
+                            </div>
+                            <div className="summary-list">
+	                              <p className="lede">
+	                                <span className="summary-label">Matched so Far</span>
+	                                <strong>{formatPreviewFinancialValue(partialLayExecutionSummary.matchedTotal)}</strong>
+	                              </p>
+                              <p className="lede">
+                                <span className="summary-label">Target Lay</span>
+                                <strong>
+	                                  {partialLayExecutionSummary.targetLayStake === null
+	                                    ? "—"
+	                                    : formatPreviewFinancialValue(partialLayExecutionSummary.targetLayStake)}
+	                                </strong>
+	                              </p>
+                              <p className="lede">
+                                <span className="summary-label">Remaining to Match</span>
+                                <strong>
+	                                  {partialLayExecutionSummary.remainingToMatch === null
+	                                    ? "—"
+	                                    : formatPreviewFinancialValue(partialLayExecutionSummary.remainingToMatch)}
+	                                </strong>
+	                              </p>
+                              <p className="lede">
+                                <span className="summary-label">Recommended Next Lay Stake</span>
+                                <span className="summary-value-with-action">
+                                  <button
+                                    aria-label="Copy Recommended Next Lay Stake"
+                                    className="review-chip review-chip-copy"
+                                    disabled={!canCopyRecommendedNextLayStake}
+                                    onClick={() => void copyRecommendedNextLayStake()}
+                                    type="button"
+                                  >
+                                    {recommendedNextLayStakeDisplay}
+                                  </button>
+                                </span>
+                              </p>
+                            </div>
+                            {hasPartialLayShortfall ? (
+                              <p className="field-validation-text" role="status">
+                                Remaining lay exposure is still open. Use Recommended Next Lay Stake to place the next leg and re-check liability.
+                              </p>
+                            ) : null}
+                            {hasPartialLayOvermatch ? (
+                              <p className="field-validation-text" role="status">
+                                Matched lay stake exceeds target. Review exchange entries and confirm this overmatch is intentional.
+                              </p>
+                            ) : null}
+                          </div></SportsbookPlacementDetailDisclosure>
   );
 
   return (
@@ -9163,12 +9328,13 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
                       </div>
                   </div> : null}
                   {!formState.lay_plan_json && !isNewCoreIntent && selectedId && !isSettledReadOnly && !Number(formState.lay_actual || formState.lay_matched_stake_1) && !["Profit Boost", "Bonus Lock-In", "Cashback", "2UP", "Early Payout"].includes(formState.offer_type) && ["Standard", "Underlay", "Overlay", "Custom"].includes(formState.match_strategy) ? <CoreLayPlannerUpgrade onReplan={() => setIsNewCoreIntent(true)} /> : null}
+                  {usesCorePlannerInMatching && shouldShowLayPlacementLegDetails ? renderActualPlacement(recordedLegDetails) : null}
                   {usesCorePlannerInMatching ? <CoreLayPlanner
                     accounts={accountAuthorities} basis="Normal" defaultCommission={resolvedCommission} exchangeCommissions={exchangeSettings}
                     labPresentation={visualV2}
                     actualLiability={activePreviewCalculation?.calculated_liability_1 ?? (selectedSportsbookRow?.lay_actual === formState.lay_actual && selectedSportsbookRow?.lay_odds_1 === formState.lay_odds_1 && selectedSportsbookRow?.lay_commission_1 === formState.lay_commission_1 ? selectedSportsbookRow?.calculated_liability_1 : null)}
                     form={formState} inspectionId="sportsbook.matching.core-planner" onValidity={handleCoreValidity}
-                    actualPlacementTarget={visualV2 ? placementPortalTarget : null} deferActualPlacement={visualV2}
+                    actualPlacementTarget={null} deferActualPlacement={visualV2}
                     actualConfirmLabel={visualV2 ? "Confirm external Lay" : undefined}
                     actualConfirmDisabled={false}
                     readOnly={isSettledReadOnly} onPatch={patch => setFormState(current => { const next = {...current, ...patch}; formStateRef.current = next; return next; })}
@@ -9851,165 +10017,7 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
                         </div>
                         ) : null}
 
-                        {shouldShowLayPlacementLegDetails ? renderActualPlacement(
-                          <SportsbookPlacementDetailDisclosure visualV2={visualV2}>
-	                          {visualV2 ? <div className={labStyles.fieldPair}><label className="field-control"><span>Actual lay amount</span><input aria-label="Actual lay amount" aria-invalid={Boolean(financialInputErrors.lay_actual)} inputMode="decimal" onChange={event => updateDecimalFormField("lay_actual", event.target.value)} placeholder="Not recorded" value={formState.lay_actual} />{financialInputError("lay_actual")}</label></div> : null}
-	                          <div className="field-span-2 content-subpanel stack partial-lay-panel" aria-label={partialLayPanelTitle}>
-	                            <div className="section-heading-row">
-	                              <span className="eyebrow">{partialLayPanelTitle}</span>
-	                              <span className="table-chip">{partialLayLegs.length} legs</span>
-	                            </div>
-                            <div className="stack">
-                              {partialLayLegs.map((leg, index) => (
-                                <div className="partial-lay-leg-item" key={leg.id}>
-                                  <div className="partial-lay-leg-row">
-                                    <label className="field-control">
-                                      <span>{leg.isFinal ? `Final leg ${index + 1}` : `Partial leg ${index + 1}`}</span>
-                                      <select
-                                        onChange={(event) =>
-                                          updatePartialLayLeg(leg.id, "exchangeName", event.target.value)
-                                        }
-                                        value={leg.exchangeName}
-                                      >
-                                        <option value="">Select exchange</option>
-                                        {exchangeOptions.map((option) => (
-                                          <option key={option} value={option}>
-                                            {option}
-                                          </option>
-                                        ))}
-                                      </select>
-                                    </label>
-                                      <label className="field-control">
-                                        <span>Lay odds</span>
-                                        <input
-	                                      aria-label={`${leg.isFinal ? `Final leg ${index + 1}` : `Partial leg ${index + 1}`} lay odds`}
-	                                        aria-describedby={oddsIssueMap.has(`partial_lay_${leg.id}_odds`) ? `sportsbook-partial-lay-odds-error-${index}` : undefined}
-	                                        aria-invalid={oddsIssueMap.has(`partial_lay_${leg.id}_odds`)}
-	                                        inputMode="decimal"
-                                          onChange={(event) =>
-                                            updatePartialLayLeg(leg.id, "layOdds", event.target.value)
-                                          }
-                                          value={leg.layOdds}
-                                        />
-	                                      {oddsIssueMap.has(`partial_lay_${leg.id}_odds`) ? (
-	                                        <span className="field-validation-text" id={`sportsbook-partial-lay-odds-error-${index}`} role="alert">
-	                                          {oddsIssueMap.get(`partial_lay_${leg.id}_odds`)}
-	                                        </span>
-	                                      ) : null}
-                                      </label>
-                                    <label className="field-control">
-                                      <span>{leg.isFinal ? "Final matched stake" : "Matched stake"}</span>
-                                      <div className="inline-field-action">
-                                        <input
-                                          onChange={(event) =>
-                                            updatePartialLayLeg(leg.id, "matchedStake", event.target.value)
-                                          }
-                                          value={leg.matchedStake}
-                                        />
-	                                        {partialLayLegs.length > 1 && index > 0 ? (
-	                                          <button
-	                                            aria-label={leg.isFinal ? "Remove final lay leg" : "Remove lay leg"}
-	                                            className="icon-button icon-button-destructive table-action-button"
-	                                            onClick={() => requestRemovePartialLayLeg(leg.id)}
-	                                            title={leg.isFinal ? "Remove final lay leg" : "Remove lay leg"}
-	                                            type="button"
-	                                          >
-	                                            <span
-	                                              aria-hidden="true"
-	                                              className="material-symbols-outlined"
-	                                            >
-	                                              delete
-	                                            </span>
-	                                          </button>
-	                                        ) : null}
-                                      </div>
-                                    </label>
-                                  </div>
-                                  {pendingLegRemovalId === leg.id ? (
-                                    <div className="leg-remove-warning" role="alert">
-                                      <p className="field-validation-text">
-                                        Are you sure? lay has been entered.
-                                      </p>
-                                      <div className="tracker-nav">
-                                        <button
-                                          className="review-chip review-chip-danger"
-                                          onClick={() => confirmRemovePartialLayLeg(leg.id)}
-                                          type="button"
-                                        >
-                                          Remove Lay Leg
-                                        </button>
-                                        <button
-                                          className="button-link"
-                                          onClick={() => setPendingLegRemovalId(null)}
-                                          type="button"
-                                        >
-                                          Cancel
-                                        </button>
-                                      </div>
-                                    </div>
-                                  ) : null}
-                                </div>
-                              ))}
-                              {lastRemovedPartialLayLeg ? (
-                                <div className="leg-remove-undo">
-                                  <button
-                                    className="button-link"
-                                    onClick={undoRemovePartialLayLeg}
-                                    type="button"
-                                  >
-                                    Undo
-                                  </button>
-                                </div>
-                              ) : null}
-                            </div>
-                            <div className="summary-list">
-	                              <p className="lede">
-	                                <span className="summary-label">Matched so Far</span>
-	                                <strong>{formatPreviewFinancialValue(partialLayExecutionSummary.matchedTotal)}</strong>
-	                              </p>
-                              <p className="lede">
-                                <span className="summary-label">Target Lay</span>
-                                <strong>
-	                                  {partialLayExecutionSummary.targetLayStake === null
-	                                    ? "—"
-	                                    : formatPreviewFinancialValue(partialLayExecutionSummary.targetLayStake)}
-	                                </strong>
-	                              </p>
-                              <p className="lede">
-                                <span className="summary-label">Remaining to Match</span>
-                                <strong>
-	                                  {partialLayExecutionSummary.remainingToMatch === null
-	                                    ? "—"
-	                                    : formatPreviewFinancialValue(partialLayExecutionSummary.remainingToMatch)}
-	                                </strong>
-	                              </p>
-                              <p className="lede">
-                                <span className="summary-label">Recommended Next Lay Stake</span>
-                                <span className="summary-value-with-action">
-                                  <button
-                                    aria-label="Copy Recommended Next Lay Stake"
-                                    className="review-chip review-chip-copy"
-                                    disabled={!canCopyRecommendedNextLayStake}
-                                    onClick={() => void copyRecommendedNextLayStake()}
-                                    type="button"
-                                  >
-                                    {recommendedNextLayStakeDisplay}
-                                  </button>
-                                </span>
-                              </p>
-                            </div>
-                            {hasPartialLayShortfall ? (
-                              <p className="field-validation-text" role="status">
-                                Remaining lay exposure is still open. Use Recommended Next Lay Stake to place the next leg and re-check liability.
-                              </p>
-                            ) : null}
-                            {hasPartialLayOvermatch ? (
-                              <p className="field-validation-text" role="status">
-                                Matched lay stake exceeds target. Review exchange entries and confirm this overmatch is intentional.
-                              </p>
-                            ) : null}
-                          </div></SportsbookPlacementDetailDisclosure>
-                        ) : null}
+                        {shouldShowLayPlacementLegDetails ? renderActualPlacement(recordedLegDetails) : null}
                       </div>
                     </div>
 
@@ -10570,17 +10578,14 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
                       <label className="field-control"><span>Actual back stake</span><input readOnly value={recordedBackStake} placeholder="Not recorded" /></label>
                       <label className="field-control"><span>Actual matched lay stake</span><input readOnly value={recordedLayStake} placeholder="Not recorded" /></label>
                     </div>
-                    {!usesCorePlannerInMatching && !usesV2MultiLayPlanning && !isNoLayStrategy && !layPlacementConfirmed ? <label className="field-control"><span>Matched Lay amount to confirm</span><input aria-label="Matched Lay amount to confirm" inputMode="decimal" onChange={event => setMatchedLayConfirmationDraft(event.target.value)} placeholder="Enter exact matched amount" value={matchedLayConfirmationDraft} /></label> : null}
+                    {!usesV2MultiLayPlanning && !isNoLayStrategy && !layFullyConfirmed ? <label className="field-control"><span>Matched Lay amount to confirm</span><input aria-label="Matched Lay amount to confirm" inputMode="decimal" onChange={event => setMatchedLayConfirmationDraft(event.target.value)} placeholder="Enter exact matched amount" value={matchedLayConfirmationDraft} /></label> : null}
                     <div className="review-chip-row" role="group" aria-label="External placement confirmations">
                       <button className={labStyles.secondaryButton} disabled={!backPlacementReady || backPlacementConfirmed} onClick={() => applyPlacementAction("back-placed")} type="button">Confirm external Back</button>
-                      {!usesCorePlannerInMatching && !usesV2MultiLayPlanning && !isNoLayStrategy ? <button className={labStyles.secondaryButton} disabled={!layPlacementReady || layPlacementConfirmed || !matchedLayConfirmationDraft.trim()} onClick={() => addPartialLayLeg({ isFinal: false, matchedStake: matchedLayConfirmationDraft })} type="button">Confirm external Lay · £{matchedLayConfirmationDraft || "—"}</button> : null}
+                      {!usesV2MultiLayPlanning && !isNoLayStrategy ? <button className={labStyles.secondaryButton} disabled={!layPlacementReady || layFullyConfirmed || !matchedLayConfirmationDraft.trim()} onClick={() => addPartialLayLeg({ isFinal: false, matchedStake: matchedLayConfirmationDraft })} type="button">Confirm external Lay · £{matchedLayConfirmationDraft || "—"}</button> : null}
                       {backPlacementConfirmed && !pendingBackPlacementRevert ? <button className={labStyles.secondaryButton} onClick={requestRevertBackPlacement} type="button">Review Back reversal</button> : null}
                       {pendingBackPlacementRevert ? <><button className={labStyles.dangerButton} onClick={revertBackPlacement} type="button">Remove Back Placement</button><button className={labStyles.secondaryButton} onClick={() => setPendingBackPlacementRevert(false)} type="button">Cancel reversal</button></> : null}
-                      {layPlacementConfirmed && !pendingLayPlacementRevert ? <button className={labStyles.secondaryButton} onClick={requestRevertLayPlacement} type="button">Review Lay reversal</button> : null}
-                      {pendingLayPlacementRevert ? <><button className={labStyles.dangerButton} onClick={revertLayPlacement} type="button">Remove Lay</button><button className={labStyles.secondaryButton} onClick={() => setPendingLayPlacementRevert(false)} type="button">Cancel reversal</button></> : null}
                     </div>
                     <p>Back: {backPlacementConfirmed ? "Confirmed" : "Not recorded"} · Lay: {layFullyConfirmed ? "Confirmed" : layPartiallyConfirmed ? "Partially matched" : "Not recorded"}</p>
-                    <div ref={setPlacementPortalTarget} />
                   </div> : null}
                   {usesMultiLayStrategy ? (
                     <div
@@ -10696,16 +10701,31 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
                     </div>
                   ) : null}
                 </fieldset>
+                {visualV2 ? <DesignBetWorkbenchPlacementDetails
+                  fields={<div className={labStyles.fieldPair}>
+                    <label className="field-control"><span>Recommended Lay Stake · plan</span><input readOnly value={activeLayPlan?.reviewed_planned_lay_stake ?? (formState.match_strategy === "Standard" ? selectedSportsbookRow?.reference_lay_stake_standard : null) ?? ""} placeholder="Not recorded" />{!activeLayPlan?.reviewed_planned_lay_stake ? <small>Calculator reference, not external placement evidence.</small> : null}</label>
+                    <label className="field-control"><span>Requested Lay Stake</span><input readOnly value={formState.requested_lay_stake ?? ""} placeholder="Not recorded" /></label>
+                    <label className="field-control"><span>Matched so far</span><input readOnly value={partialLayLegs.length ? formState.lay_matched_stake_1 : ""} placeholder="Not recorded" /></label>
+                    <label className="field-control"><span>Actual lay amount</span><input aria-label="Actual lay amount" aria-invalid={Boolean(financialInputErrors.lay_actual)} disabled={isSettledReadOnly} inputMode="decimal" onChange={event => updateDecimalFormField("lay_actual", event.target.value)} placeholder="Not recorded" value={formState.lay_actual} />{financialInputError("lay_actual")}</label>
+                  </div>}
+                  legs={<fieldset className="section-fieldset" disabled={isSettledReadOnly}><div ref={setPlacementPortalTarget}>{partialLayLegs.length === 0 && !usesMultiLayStrategy ? <p>No recorded Lay legs.</p> : null}</div></fieldset>}
+                  followUp={<div ref={setReminderPortalTarget}>{!(selectedSportsbookRow && (selectedSportsbookRow.lay_status === "Part Laid" || selectedSportsbookRow.partial_lay_reminder_state === "Active")) ? <p>No follow-up reminder recorded.</p> : null}</div>}
+                  reversal={<div className="review-chip-row">
+                    {layPlacementConfirmed && !pendingLayPlacementRevert ? <button className={labStyles.secondaryButton} disabled={isSettledReadOnly} onClick={requestRevertLayPlacement} type="button">Review Lay reversal</button> : null}
+                    {pendingLayPlacementRevert ? <><button className={labStyles.dangerButton} disabled={isSettledReadOnly} onClick={revertLayPlacement} type="button">Remove Lay</button><button className={labStyles.secondaryButton} onClick={() => setPendingLayPlacementRevert(false)} type="button">Cancel reversal</button></> : null}
+                    {!layPlacementConfirmed ? <p>No Lay confirmation to reverse.</p> : null}
+                  </div>}
+                /> : null}
                 {selectedSportsbookRow &&
                 (selectedSportsbookRow.lay_status === "Part Laid" ||
-                  selectedSportsbookRow.partial_lay_reminder_state === "Active") ? (
+                  selectedSportsbookRow.partial_lay_reminder_state === "Active") ? renderPlacementReminder(
                   <section
                     aria-label="Partial-lay follow-up reminder"
                     className="stack"
                     data-pd-id="sportsbook.partial-lay-reminder.summary"
                   >
                     <div className="section-heading-row">
-                      <span className="eyebrow">Lay follow-up</span>
+                      <span className="eyebrow">{visualV2 ? "Follow-up reminder" : "Lay follow-up"}</span>
                       <span
                         className={`table-chip${
                           selectedSportsbookRow.partial_lay_reminder_state === "Active"

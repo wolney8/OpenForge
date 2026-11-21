@@ -2,9 +2,73 @@ import { expect, test, type Page } from "@playwright/test";
 
 const authURL = process.env.OPENFORGE_CP117_AUTH_URL ?? "http://127.0.0.1:9127/";
 const evidence = "data/private/evidence/cp117-sportsbook-proposals";
+const placementEvidence = "data/private/evidence/cp117-placement-640";
 async function capture(page: Page, name: string) {
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({ path: `${evidence}/${name}.png`, fullPage: true });
+}
+
+for (const { width, theme } of [
+  { width: 2048, theme: "dark" },
+  { width: 1440, theme: "light" },
+  { width: 390, theme: "dark" },
+] as const) {
+  test(`approved Placement secondary card matches preview and PD at ${width}px ${theme}`, async ({ page }) => {
+    test.setTimeout(90_000);
+    await page.setViewportSize({ width, height: 900 });
+    await page.addInitScript(selectedTheme => { localStorage.setItem("pd-required-storage-notice", "acknowledged"); localStorage.setItem("openforge-theme", selectedTheme); }, theme);
+    await page.goto(authURL);
+    await page.goto("/design-lab/sportsbook-proposals?amendment=matching");
+    await page.getByRole("button", { name: "Partial fill" }).click();
+    await page.getByRole("button", { name: "Placement", exact: true }).first().click();
+    await page.getByRole("button", { name: "Confirm external Back" }).click();
+    await page.getByRole("button", { name: "Confirm external Lay · £5.00" }).click();
+    const previewDisabledOpacity = await page.getByRole("button", { name: "Confirm external Back" }).evaluate(node => getComputedStyle(node).opacity);
+    expect(Number(previewDisabledOpacity)).toBeLessThan(1);
+    const previewDetail = page.locator('[data-pd-id="sportsbook.workbench.partial-fill"]');
+    await expect(previewDetail).not.toHaveAttribute("open", "");
+    await page.screenshot({ path: `${placementEvidence}/lab-collapsed-${width}-${theme}.png`, fullPage: true });
+    await previewDetail.locator("summary").click();
+    const previewCard = previewDetail.locator('[data-pd-id="sportsbook.workbench.placement-secondary-card"]');
+    await expect(previewCard).toBeVisible();
+    await expect(previewCard.locator('[data-pd-id="sportsbook.workbench.recorded-legs"]')).toContainText("£5.00 matched");
+    const previewStyle = await previewCard.evaluate(node => ({ background: getComputedStyle(node).backgroundColor, border: getComputedStyle(node).borderColor, padding: getComputedStyle(node).padding }));
+    await page.screenshot({ path: `${placementEvidence}/lab-expanded-${width}-${theme}.png`, fullPage: true });
+
+    const id = `PD-FIX-640-${width}-${Date.now()}`;
+    const base = "/api/profiles/profile-demo-001/sportsbook-bets";
+    const created = await page.request.post(base, { data: {
+      sportsbook_bet_id: id, event_name: "Synthetic partial placement", offer_text: "Synthetic source only",
+      offer_name: "Synthetic offer", bookmaker: "Bookmaker A", offer_type: "Bet & Get", bet_type: "Single",
+      fixture_type: "Football", market: "Match Odds", status: "Placed", result: "Pending",
+      back_stake: "10.00", back_odds: "2.00", match_strategy: "Standard", lay_odds_1: "2.00",
+      requested_lay_stake: "8.00", lay_actual: "8.00", lay_matched_stake_1: "5.00",
+      lay_commission_1: "0", exchange_name: "Matchbook", back_placement_confirmed: true,
+      multi_lay_outcomes_json: JSON.stringify([{ id: "leg-1", label: "Lay leg 1", layOdds: "2.00", exchangeName: "Matchbook", matchedStake: "5.00", isFinal: false }]),
+      date_settled: "2026-11-03T18:00", user_notes: "Synthetic only",
+    } });
+    expect(created.status(), await created.text()).toBe(201);
+    await page.goto(`/profiles/profile-demo-001/tracker/sportsbook-bets?record=${id}`);
+    const workbench = page.locator('[data-pd-id="sportsbook.editor.workbench-surface"]');
+    await workbench.locator('[data-pd-id="bet-workbench.stage.placement"]').click();
+    await expect(workbench.getByRole("button", { name: "Confirm external Back" })).toBeDisabled();
+    expect(await workbench.getByRole("button", { name: "Confirm external Back" }).evaluate(node => getComputedStyle(node).opacity)).toBe(previewDisabledOpacity);
+    const detail = workbench.locator('[data-pd-id="ledger-editor.panel.placement"] [data-pd-id="sportsbook.workbench.partial-fill"]');
+    await expect(detail).not.toHaveAttribute("open", "");
+    await page.screenshot({ path: `${placementEvidence}/pd-collapsed-${width}-${theme}.png`, fullPage: true });
+    await detail.locator("summary").click();
+    const card = detail.locator('[data-pd-id="sportsbook.workbench.placement-secondary-card"]');
+    await expect(card).toBeVisible();
+    const actualStyle = await card.evaluate(node => ({ background: getComputedStyle(node).backgroundColor, border: getComputedStyle(node).borderColor, padding: getComputedStyle(node).padding }));
+    expect(actualStyle).toEqual(previewStyle);
+    await expect(card.locator('[data-pd-id="sportsbook.workbench.recorded-legs"]')).toContainText("5.00");
+    await expect(card.locator('[data-pd-id="sportsbook.workbench.recorded-legs"]')).toContainText("Recorded legs");
+    await expect(card.locator('[data-pd-id="sportsbook.workbench.follow-up"]')).toBeVisible();
+    await expect(card.locator('[data-pd-id="sportsbook.workbench.follow-up"]')).toContainText("Follow-up reminder");
+    await expect(card.locator('[data-pd-id="sportsbook.workbench.lay-reversal"]')).toContainText("Review Lay reversal");
+    await page.screenshot({ path: `${placementEvidence}/pd-expanded-${width}-${theme}.png`, fullPage: true });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
+  });
 }
 
 for (const { width, theme } of [
@@ -158,18 +222,24 @@ test("each amendment opens directly and its proposal states respond without writ
   await page.getByRole("button", { name: "Placement", exact: true }).last().click();
   await capture(page, `placement-collapsed`);
   await page.getByText("Actual stakes and partial-fill details", { exact: true }).click();
-  await expect(page.getByLabel("Remaining unmatched stake")).toHaveValue("Not recorded");
-  await expect(page.getByLabel("Actual lay odds")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Confirm external Lay" })).toBeVisible();
+  await expect(page.getByLabel("Matched so far")).toHaveValue("");
+  await expect(page.getByLabel("Actual lay amount")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Confirm external Lay · £5.00" })).toBeVisible();
   await expect(page.getByText("Back: Not recorded · Lay: Not recorded")).toBeVisible();
   await page.getByRole("button", { name: "Confirm external Back" }).click();
   await expect(page.getByText("Back: Confirmed · Lay: Not recorded")).toBeVisible();
   await capture(page, `placement-back-only`);
   await page.getByRole("button", { name: "Confirm external Lay" }).click();
-  await expect(page.getByText("Back: Confirmed · Lay: Confirmed")).toBeVisible();
+  await expect(page.getByText("Back: Confirmed · Lay: Partially matched")).toBeVisible();
   await expect(page.getByLabel("Actual matched lay stake")).toHaveValue("5.00");
-  await expect(page.getByLabel("Remaining unmatched stake")).toHaveValue("3.00");
+  await expect(page.getByLabel("Matched so far")).toHaveValue("5.00");
   await capture(page, `placement-expanded`);
+  await page.getByLabel("Matched Lay amount to confirm").fill("3.00");
+  await page.getByRole("button", { name: "Confirm external Lay · £3.00" }).click();
+  await expect(page.getByText("Back: Confirmed · Lay: Confirmed")).toBeVisible();
+  await expect(page.getByLabel("Matched so far")).toHaveValue("8.00");
+  await expect(page.getByText("Leg 2 · Exchange A · £3.00 matched at 2.20")).toBeVisible();
+  await capture(page, `placement-second-fill`);
 
   await page.getByRole("link", { name: /Finish \/ Review/ }).click();
   await expect(page.getByLabel("Status")).toBeVisible();

@@ -206,3 +206,15 @@
 
 :global(html[data-ux-shell="legacy"]) .ledgerSearch > :global(.material-symbols-outlined){display:none}
 :global(html[data-ux-shell="v2"]) .ledgerSearch input{min-height:0;height:auto;padding:0;border:0}
+
+.placementDetails{min-width:0;margin-top:14px}
+.placementDetails>summary{cursor:pointer;color:var(--primary);font-weight:700}
+.placementSecondaryCard{display:grid;gap:0;min-width:0;margin-top:12px;padding:14px;border:1px solid var(--outline);border-radius:12px;background:var(--bg-muted,var(--surface-container));color:var(--text)}
+.placementCardSection{min-width:0;padding:12px 0}
+.placementCardSection:first-child{padding-top:0}
+.placementCardSection:last-child{padding-bottom:0}
+.placementCardSection+.placementCardSection{border-top:1px solid var(--outline)}
+.placementCardSection :global(.partial-lay-panel){background:transparent;border:0;padding:0}
+.placementCardSection :global(.review-chip-copy){min-width:max-content;white-space:nowrap}
+.primaryButton:disabled,.secondaryButton:disabled,.dangerButton:disabled{opacity:.55;cursor:not-allowed}
+@media(max-width:430px){.placementSecondaryCard{padding:12px}}
