@@ -163,6 +163,8 @@ class SportsbookBetFields(BaseModel):
     multi_lay_outcomes_json: str = Field(default="[]", max_length=20000)
     lay_actual: str = Field(default="", max_length=40)
     lay_matched_stake_1: str = Field(default="", max_length=40)
+    back_placement_confirmed: bool | None = None
+    requested_lay_stake: str | None = Field(default=None, max_length=40)
     lay_commission_1: str = Field(default="", max_length=40)
     exchange_name: str = Field(default="", max_length=120)
     date_settled: str = Field(default="", max_length=40)
@@ -174,6 +176,23 @@ class SportsbookBetFields(BaseModel):
 class SportsbookBetPayload(SportsbookBetFields):
     multi_lay_correction_reason: str = Field(default="", max_length=1000)
     correction_reason: str = Field(default="", max_length=1000)
+
+    @field_validator("back_placement_confirmed", mode="before")
+    @classmethod
+    def validate_back_confirmation(cls, value: Any) -> bool | None:
+        if value is None or value is True or value == 1:
+            return None if value is None else True
+        raise ValueError("back_placement_confirmed: record confirmed evidence or leave it unknown")
+
+    @field_validator("requested_lay_stake", mode="before")
+    @classmethod
+    def validate_requested_lay_stake(cls, value: Any) -> str | None:
+        if value in (None, ""):
+            return None
+        parsed = money(value, "requested_lay_stake")
+        if Decimal(parsed) <= 0:
+            raise ValueError("requested_lay_stake: enter a positive requested amount")
+        return parsed
     @field_validator("wagering_contribution", mode="before")
     @classmethod
     def validate_wagering_contribution(cls, value: Any) -> str:

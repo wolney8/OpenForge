@@ -1778,6 +1778,8 @@ def initialize_database(connection: sqlite3.Connection) -> None:
           multi_lay_outcomes_json TEXT NOT NULL DEFAULT '[]',
           lay_actual TEXT NOT NULL DEFAULT '',
           lay_matched_stake_1 TEXT NOT NULL DEFAULT '',
+          back_placement_confirmed INTEGER CHECK (back_placement_confirmed = 1),
+          requested_lay_stake TEXT,
           lay_commission_1 TEXT NOT NULL DEFAULT '',
           exchange_name TEXT NOT NULL,
           date_settled TEXT NOT NULL,
@@ -4014,6 +4016,8 @@ class SportsbookBetRecord:
     multi_lay_outcomes_json: str
     lay_actual: str
     lay_matched_stake_1: str
+    back_placement_confirmed: int | None
+    requested_lay_stake: str | None
     lay_commission_1: str
     exchange_name: str
     date_settled: str
@@ -4509,6 +4513,18 @@ def create_sportsbook_bet(profile_id: str, payload: dict[str, Any], *,
             """,
             tuple(record.values()),
         )
+        connection.execute(
+            "UPDATE sportsbook_bets SET back_placement_confirmed=?, "
+            "requested_lay_stake=? WHERE profile_id=? AND sportsbook_bet_id=?",
+            (
+                1 if payload.get("back_placement_confirmed") else None,
+                payload.get("requested_lay_stake"),
+                profile_id,
+                record["sportsbook_bet_id"],
+            ),
+        )
+        record["back_placement_confirmed"] = 1 if payload.get("back_placement_confirmed") else None
+        record["requested_lay_stake"] = payload.get("requested_lay_stake")
         from openforge_api.lay_plan import store_plan
         record["lay_plan_json"] = store_plan(connection, "sportsbook_bets", profile_id, record["sportsbook_bet_id"], payload.get("lay_plan_json"))
         write_audit_entry(
@@ -4602,6 +4618,8 @@ def update_sportsbook_bet(
         "multi_lay_outcomes_json": payload.get("multi_lay_outcomes_json", "[]"),
         "lay_actual": payload["lay_actual"],
         "lay_matched_stake_1": payload["lay_matched_stake_1"],
+        "back_placement_confirmed": 1 if payload.get("back_placement_confirmed") else None,
+        "requested_lay_stake": payload.get("requested_lay_stake"),
         "lay_commission_1": payload.get("lay_commission_1", "") if payload.get("lay_plan_json") and (payload.get("lay_actual") or payload.get("lay_matched_stake_1")) else "",
         "exchange_name": payload["exchange_name"],
         "date_settled": payload["date_settled"],
@@ -4631,6 +4649,7 @@ def update_sportsbook_bet(
         )
         settled_financial_fields = {
             "status", "result", "back_stake", "back_odds", "actual_accepted_back_odds",
+            "back_placement_confirmed", "requested_lay_stake",
             "match_strategy", "lay_odds_1", "lay_actual", "lay_matched_stake_1",
             "lay_commission_1", "exchange_name", "date_settled", "manual_override_value",
             "bonus_trigger", "maximum_bonus", "bonus_retention_rate",
@@ -4638,7 +4657,7 @@ def update_sportsbook_bet(
         is_terminal_correction = current["status"] in {
             "Settled", "Void", "Cancelled", "Free Bet Awarded"
         } and any(
-            str(updated.get(field, "")) != str(current[field] or "")
+            str(updated.get(field) or "") != str(current[field] or "")
             for field in settled_financial_fields
         )
         if is_terminal_correction:
@@ -4707,6 +4726,8 @@ def update_sportsbook_bet(
               multi_lay_outcomes_json = ?,
               lay_actual = ?,
               lay_matched_stake_1 = ?,
+              back_placement_confirmed = ?,
+              requested_lay_stake = ?,
               lay_commission_1 = ?,
               exchange_name = ?,
               date_settled = ?,
@@ -4751,6 +4772,8 @@ def update_sportsbook_bet(
                 updated["multi_lay_outcomes_json"],
                 updated["lay_actual"],
                 updated["lay_matched_stake_1"],
+                updated["back_placement_confirmed"],
+                updated["requested_lay_stake"],
                 updated["lay_commission_1"],
                 updated["exchange_name"],
                 updated["date_settled"],
