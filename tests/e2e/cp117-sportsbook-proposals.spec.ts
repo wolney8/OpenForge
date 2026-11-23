@@ -263,8 +263,9 @@ test("each amendment opens directly and its proposal states respond without writ
   await capture(page, `placement-expanded`);
   await page.getByLabel("Matched Lay amount to confirm").fill("3.00");
   await page.getByRole("button", { name: "Confirm external Lay · £3.00" }).click();
-  await expect(page.getByText("Back: Confirmed · Lay: Confirmed")).toBeVisible();
+  await expect(page.getByText("Back: Confirmed · Lay: Fully matched")).toBeVisible();
   await expect(page.getByLabel("Matched so far")).toHaveValue("8.00");
+  await expect(page.getByLabel("Matched Lay amount to confirm")).toHaveCount(0);
   const secondLeg = page.locator('[data-pd-id="lab.proposal.leg-2"]');
   await expect(secondLeg).toContainText("Leg 2");
   await expect(secondLeg).toContainText("Exchange A");

@@ -69,7 +69,7 @@ for (const { width, theme } of [
   });
 }
 
-test("proposal leg controls and reversal confirmations remain independent", async ({ page }) => {
+test("recorded request drives three fills and independent reversals", async ({ page }) => {
   await page.goto(authURL);
   await page.goto("/design-lab/sportsbook-proposals?amendment=matching&view=partial-leg");
   const leg = page.locator('[data-pd-id="lab.proposal.leg-1"]');
@@ -87,15 +87,34 @@ test("proposal leg controls and reversal confirmations remain independent", asyn
   await expect(page.getByRole("button", { name: "Remove Lay" })).toBeVisible();
   await page.getByRole("button", { name: "Cancel reversal" }).click();
   await expect(page.getByText("Back: Confirmed · Lay: Partially matched")).toBeVisible();
+  await page.getByLabel("Matched Lay amount to confirm").fill("1.00");
+  await page.getByRole("button", { name: "Confirm external Lay · £1.00" }).click();
+  await expect(page.locator('[data-pd-id="lab.proposal.leg-2"]')).toContainText("£1.00 matched");
+  await expect(page.getByLabel("Actual matched lay stake")).toHaveValue("6.00");
+  await expect(page.locator('[data-pd-id="sportsbook.workbench.recorded-legs"]')).toContainText("£2 remaining of the £8 request");
+  await expect(page.getByText("Back: Confirmed · Lay: Partially matched")).toBeVisible();
+  await expect(page.getByLabel("Matched Lay amount to confirm")).toBeVisible();
   await page.getByLabel("Matched Lay amount to confirm").fill("3.00");
-  await page.getByRole("button", { name: "Confirm external Lay · £3.00" }).click();
-  await expect(page.locator('[data-pd-id="lab.proposal.leg-2"]')).toContainText("£3.00 matched");
+  await expect(page.getByRole("button", { name: "Confirm external Lay · £3.00" })).toBeDisabled();
+  await page.getByLabel("Matched Lay amount to confirm").fill("2.00");
+  await page.getByRole("button", { name: "Confirm external Lay · £2.00" }).click();
+  await expect(page.locator('[data-pd-id="lab.proposal.leg-3"]')).toContainText("£2.00 matched");
+  await expect(page.getByLabel("Actual matched lay stake")).toHaveValue("8.00");
   await expect(page.locator('[data-pd-id="sportsbook.workbench.recorded-legs"]')).toContainText("£0 remaining of the £8 request");
+  await expect(page.getByText("Back: Confirmed · Lay: Fully matched")).toBeVisible();
+  await expect(page.getByLabel("Matched Lay amount to confirm")).toHaveCount(0);
   await page.getByRole("button", { name: "Review Back reversal" }).click();
   await page.getByRole("button", { name: "Remove Back Placement" }).click();
-  await expect(page.getByText("Back: Not recorded · Lay: Confirmed")).toBeVisible();
+  await expect(page.getByText("Back: Not recorded · Lay: Fully matched")).toBeVisible();
   await page.goto("/design-lab/sportsbook-proposals?amendment=matching&view=partial-leg");
   await page.getByRole("button", { name: "Review Lay reversal" }).click();
   await page.getByRole("button", { name: "Remove Lay" }).click();
   await expect(page.getByText("Back: Confirmed · Lay: Not recorded")).toBeVisible();
+  await page.goto("/design-lab/sportsbook-proposals?amendment=matching&view=partial-leg");
+  await page.getByRole("button", { name: "Matching", exact: true }).first().click();
+  await page.getByRole("button", { name: "Show Not recorded example" }).click();
+  await page.getByRole("button", { name: "Placement", exact: true }).first().click();
+  await expect(page.getByLabel("Requested Lay Stake")).toHaveValue("");
+  await expect(page.locator('[data-pd-id="sportsbook.workbench.recorded-legs"]')).toContainText("Request Not recorded");
+  await expect(page.getByText("Back: Confirmed · Lay: Partially matched")).toBeVisible();
 });
