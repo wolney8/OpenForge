@@ -17,15 +17,21 @@ for (const { width, theme } of [
     }, theme);
     await page.goto(authURL);
     await page.goto("/design-lab/sportsbook-proposals?amendment=matching&view=partial-leg");
-    await expect(page.locator('[data-pd-id="lab.proposal.leg-controls-1"]')).toBeVisible();
+    await expect(page.locator('[data-pd-id="sportsbook.workbench.leg-controls-1"]')).toBeVisible();
     const proposedCard = page.locator('[data-pd-id="sportsbook.workbench.placement-secondary-card"]');
     await expect(proposedCard).toContainText("£3 remaining of the £8 request");
     await expect(proposedCard.locator('[data-pd-id="lab.proposal.leg-1"]')).toContainText("Matchbook");
     await expect(proposedCard.locator('[data-pd-id="lab.proposal.leg-1"]')).toContainText("Odds 2.00");
     await expect(proposedCard.locator('[data-pd-id="lab.proposal.leg-1"]')).toContainText("£5.00 matched");
-    await expect(proposedCard.locator('[data-pd-id="lab.proposal.leg-controls-1"]')).toContainText("Exchange");
-    await expect(proposedCard.locator('[data-pd-id="lab.proposal.leg-controls-1"]')).toContainText("Lay odds");
-    await expect(proposedCard.locator('[data-pd-id="lab.proposal.leg-controls-1"]')).toContainText("Matched stake");
+    await expect(proposedCard.locator('[data-pd-id="sportsbook.workbench.leg-controls-1"]')).toContainText("Exchange");
+    await expect(proposedCard.locator('[data-pd-id="sportsbook.workbench.leg-controls-1"]')).toContainText("Lay odds");
+    await expect(proposedCard.locator('[data-pd-id="sportsbook.workbench.leg-controls-1"]')).toContainText("Matched stake");
+    const proposedLegs = proposedCard.locator('[data-pd-id="sportsbook.workbench.recorded-legs"]');
+    await expect(proposedLegs).toContainText("Recommended Next Lay Stake · plan");
+    await expect(proposedLegs).toContainText("Remaining lay exposure is still open.");
+    expect(await proposedLegs.locator('[data-pd-id="sportsbook.workbench.remaining-request"], [data-pd-id="sportsbook.workbench.next-lay-guidance"]').evaluateAll(nodes => nodes.map(node => node.getAttribute("data-pd-id")))).toEqual([
+      "sportsbook.workbench.remaining-request", "sportsbook.workbench.next-lay-guidance",
+    ]);
     const sectionOrder = await proposedCard.locator(":scope > section").evaluateAll(nodes => nodes.map(node => node.getAttribute("aria-label")));
     expect(sectionOrder).toEqual(["Recorded legs", "Follow-up reminder", "Lay reversal"]);
     const actionOrder = await proposedCard.getByRole("button", { name: /Review (Lay|Back) reversal/ }).allTextContents();
@@ -34,6 +40,27 @@ for (const { width, theme } of [
     const proposedStyles = await proposedCard.evaluate(node => {
       const style = getComputedStyle(node);
       return { background: style.backgroundColor, border: style.borderColor, padding: style.padding, radius: style.borderRadius };
+    });
+    const proposedStakeStyle = await proposedCard.getByLabel("Matched stake").evaluate(node => {
+      const style = getComputedStyle(node);
+      return { background: style.backgroundColor, color: style.color, border: style.borderColor, radius: style.borderRadius, height: node.getBoundingClientRect().height };
+    });
+    const proposedLegType = await proposedCard.evaluate(node => {
+      const label = [...node.querySelectorAll("label")].find(item => item.textContent?.includes("Matched stake"))!;
+      const labelStyle = getComputedStyle(label.querySelector("span") ?? label);
+      const buttonStyle = getComputedStyle(node.querySelector('[aria-label="Review leg 1"]')!);
+      return { labelColor: labelStyle.color, labelSize: labelStyle.fontSize, labelWeight: labelStyle.fontWeight,
+        buttonSize: buttonStyle.fontSize, buttonWeight: buttonStyle.fontWeight, buttonColor: buttonStyle.color };
+    });
+    const proposedGeometry = await proposedCard.evaluate(node => {
+      const top = node.getBoundingClientRect().top;
+      const y = (selector: string) => Math.round((node.querySelector(selector)!.getBoundingClientRect().top - top) * 10) / 10;
+      return { width: Math.round(node.getBoundingClientRect().width), leg: y('[data-pd-leg-row="true"]'),
+        controls: y('[data-pd-id="sportsbook.workbench.leg-controls-1"]'),
+        remaining: y('[data-pd-id="sportsbook.workbench.remaining-request"]'),
+        guidance: y('[data-pd-id="sportsbook.workbench.next-lay-guidance"]'),
+        reminder: y('[data-pd-id="sportsbook.workbench.follow-up"]'),
+        reversal: y('[data-pd-id="sportsbook.workbench.lay-reversal"]') };
     });
     await page.screenshot({ path: `${evidence}/lab-full-${width}-${theme}.png`, fullPage: true });
     await proposedCard.screenshot({ path: `${evidence}/lab-card-${width}-${theme}.png` });
@@ -58,11 +85,49 @@ for (const { width, theme } of [
     const actualCard = actualDetail.locator('[data-pd-id="sportsbook.workbench.placement-secondary-card"]');
     await expect(actualCard).toContainText("Recorded legs");
     await expect(actualCard).toContainText("5.00");
+    const actualLeg = actualCard.locator('[data-pd-id="sportsbook.workbench.leg-1"]');
+    await expect(actualLeg.getByRole("button", { name: "Review leg 1" })).toBeVisible();
+    await expect(actualLeg.locator('[data-pd-id="sportsbook.workbench.leg-controls-1"]')).toBeHidden();
+    await actualLeg.getByRole("button", { name: "Review leg 1" }).click();
+    await expect(actualLeg.locator('[data-pd-id="sportsbook.workbench.leg-controls-1"]')).toBeVisible();
+    const actualLegs = actualCard.locator('[data-pd-id="sportsbook.workbench.recorded-legs"]');
+    await expect(actualLegs).toContainText("£3 remaining of the £8 request");
+    await expect(actualLegs).toContainText("Recommended Next Lay Stake · plan");
+    await expect(actualLegs).toContainText("Remaining lay exposure is still open.");
+    expect(await actualLegs.locator('[data-pd-id="sportsbook.workbench.remaining-request"], [data-pd-id="sportsbook.workbench.next-lay-guidance"]').evaluateAll(nodes => nodes.map(node => node.getAttribute("data-pd-id")))).toEqual([
+      "sportsbook.workbench.remaining-request", "sportsbook.workbench.next-lay-guidance",
+    ]);
     const actualStyles = await actualCard.evaluate(node => {
       const style = getComputedStyle(node);
       return { background: style.backgroundColor, border: style.borderColor, padding: style.padding, radius: style.borderRadius };
     });
     expect(actualStyles).toEqual(proposedStyles);
+    const actualStakeStyle = await actualCard.getByLabel("Matched stake").evaluate(node => {
+      const style = getComputedStyle(node);
+      return { background: style.backgroundColor, color: style.color, border: style.borderColor, radius: style.borderRadius, height: node.getBoundingClientRect().height };
+    });
+    expect(actualStakeStyle).toEqual(proposedStakeStyle);
+    const actualLegType = await actualCard.evaluate(node => {
+      const label = [...node.querySelectorAll("label")].find(item => item.textContent?.includes("Matched stake"))!;
+      const labelStyle = getComputedStyle(label.querySelector("span") ?? label);
+      const buttonStyle = getComputedStyle(node.querySelector('[aria-label="Review leg 1"]')!);
+      return { labelColor: labelStyle.color, labelSize: labelStyle.fontSize, labelWeight: labelStyle.fontWeight,
+        buttonSize: buttonStyle.fontSize, buttonWeight: buttonStyle.fontWeight, buttonColor: buttonStyle.color };
+    });
+    expect(actualLegType).toEqual(proposedLegType);
+    const actualGeometry = await actualCard.evaluate(node => {
+      const top = node.getBoundingClientRect().top;
+      const y = (selector: string) => Math.round((node.querySelector(selector)!.getBoundingClientRect().top - top) * 10) / 10;
+      return { width: Math.round(node.getBoundingClientRect().width), leg: y('[data-pd-leg-row="true"]'),
+        controls: y('[data-pd-id="sportsbook.workbench.leg-controls-1"]'),
+        remaining: y('[data-pd-id="sportsbook.workbench.remaining-request"]'),
+        guidance: y('[data-pd-id="sportsbook.workbench.next-lay-guidance"]'),
+        reminder: y('[data-pd-id="sportsbook.workbench.follow-up"]'),
+        reversal: y('[data-pd-id="sportsbook.workbench.lay-reversal"]') };
+    });
+    for (const key of Object.keys(proposedGeometry) as (keyof typeof proposedGeometry)[]) {
+      expect(Math.abs(actualGeometry[key] - proposedGeometry[key]), `${key} geometry at ${width}px ${theme}`).toBeLessThanOrEqual(2);
+    }
     await page.screenshot({ path: `${evidence}/pd-full-${width}-${theme}.png`, fullPage: true });
     await actualCard.screenshot({ path: `${evidence}/pd-card-${width}-${theme}.png` });
     expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
@@ -76,7 +141,7 @@ test("recorded request drives three fills and independent reversals", async ({ p
   await leg.getByLabel("Exchange").selectOption("Exchange A");
   await leg.getByRole("button", { name: "Review leg 1" }).click();
   await expect(leg).toContainText("Exchange A");
-  await expect(leg.locator('[data-pd-id="lab.proposal.leg-controls-1"]')).toBeHidden();
+  await expect(leg.locator('[data-pd-id="sportsbook.workbench.leg-controls-1"]')).toBeHidden();
   await leg.getByRole("button", { name: "Review leg 1" }).click();
   await expect(leg.getByLabel("Exchange")).toHaveValue("Exchange A");
   await page.getByRole("button", { name: "Review Back reversal" }).click();

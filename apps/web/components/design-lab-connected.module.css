@@ -217,9 +217,32 @@
 .placementCardSection :global(.partial-lay-panel){background:transparent;border:0;padding:0}
 .placementCardSection :global(.review-chip-copy){min-width:max-content;white-space:nowrap}
 .placementCardHeading{color:var(--text);font-size:1rem;font-weight:700;line-height:1.45;letter-spacing:normal;text-transform:none}
+.placementRecordedLegs{display:grid;justify-items:start;gap:8px;min-width:0}
+.placementRecordedLegs>strong{color:var(--text);font-size:1rem;font-weight:700;line-height:1.45}
+.placementRecordedLegs p{margin:0;color:var(--muted)}
+.placementRemaining{color:var(--text)!important;font-weight:700}
+.placementNextGuidance{display:flex;align-items:center;flex-wrap:wrap;gap:8px;width:100%;min-width:0}
+.placementNextGuidance>span{color:var(--muted)}
+.placementNextGuidance>strong{color:var(--text)}
+.placementExposure{flex-basis:100%;color:var(--danger)!important}
+.placementLeg{width:100%;min-width:0;border-bottom:1px solid var(--outline)}
+.placementLegRow{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px 12px;padding:8px 0}
+.placementLegSummary{display:flex;align-items:center;flex-wrap:wrap;gap:4px 12px;min-width:0;color:var(--text)}
+.placementLegSummary span{color:var(--muted)}
+.placementLegSummary span:last-child{color:var(--text)}
+.placementLegControls{width:100%;padding:0 0 12px}
+.placementLegControls :global(.field-control) input,.placementLegControls :global(.field-control) select{min-width:0;width:100%;min-height:44px;padding:9px 12px;border:1px solid var(--outline-strong);border-radius:9px;background:var(--surface-container);color:var(--text);font:inherit}
+.placementLegControls .placementLegSelect{min-width:0;width:100%;min-height:44px;padding:9px 12px;border:1px solid var(--outline-strong);border-radius:9px;background:var(--surface-container);color:var(--text);font:inherit;appearance:auto}
+.placementSecondaryCard .secondaryButton{font-weight:400}
+.placementLegControls select{padding-right:40px}
+.placementLegControls small{display:block;margin-top:8px;color:var(--muted)}
+.placementCardSection :global(fieldset.section-fieldset){min-width:0;margin:0;padding:0;border:0}
+.placementReversalActions{display:grid;justify-items:start;gap:8px;min-width:0}
+.placementReversalAction{display:flex;align-items:center;flex-wrap:wrap;gap:8px;width:100%}
+.placementReversalAction+.placementReversalAction{padding-top:8px}
 .placementReminderContent{display:grid;justify-items:start;gap:8px;min-width:0}
 .placementReminderContent p{margin:0;color:var(--muted)}
 .placementReminderContent :global(.tracker-nav){margin:0}
 .placementReminderButton{font-weight:400}
 .primaryButton:disabled,.secondaryButton:disabled,.dangerButton:disabled{opacity:.55;cursor:not-allowed}
-@media(max-width:430px){.placementSecondaryCard{padding:12px}}
+@media(max-width:430px){.placementSecondaryCard{padding:12px}.placementLegRow{align-items:stretch}.placementLegRow button{width:100%}}

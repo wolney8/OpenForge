@@ -61,7 +61,7 @@ import {
 } from "@/components/bookmaker-identity";
 import { EditorSection } from "@/components/editor-section";
 import { DesignFinancialOutcomeSurface, DesignFinancialWorkbenchFooter, financialWorkbenchHeaderClass, financialWorkbenchSurfaceClass, financialWorkbenchPrimaryActionClass, financialWorkbenchSecondaryActionClass } from "@/components/design-financial-workbench-layout";
-import { DesignBetWorkbenchContext, DesignBetWorkbenchGrid, DesignBetWorkbenchPlacementDetails, DesignBetWorkbenchProtectedActions, DesignBetWorkbenchProtectedNotice, DesignBetWorkbenchSummary, DesignBetWorkbenchStageRail, designBetWorkbenchEntryClass } from "@/components/design-bet-workbench-presentation";
+import { DesignBetWorkbenchContext, DesignBetWorkbenchGrid, DesignBetWorkbenchLeg, DesignBetWorkbenchPlacementDetails, DesignBetWorkbenchProtectedActions, DesignBetWorkbenchProtectedNotice, DesignBetWorkbenchRecordedLegs, DesignBetWorkbenchSummary, DesignBetWorkbenchStageRail, designBetWorkbenchEntryClass } from "@/components/design-bet-workbench-presentation";
 import { SPORTSBOOK_RETURN_TO_LEDGER_EVENT } from "@/lib/sportsbook-workbench-navigation";
 import { sportsbookComparisonScenarios } from "@/lib/sportsbook-outcome-comparison";
 import { EditorValidationBanner } from "@/components/editor-validation-banner";
@@ -3060,6 +3060,7 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
   const [placementVisualOnly, setPlacementVisualOnly] = useState(false);
   const [placementPortalTarget, setPlacementPortalTarget] = useState<HTMLDivElement | null>(null);
   const [reminderPortalTarget, setReminderPortalTarget] = useState<HTMLDivElement | null>(null);
+  const [reviewedPartialLayLegId, setReviewedPartialLayLegId] = useState<string | null>(null);
   const [guidedEntryDismissed, setGuidedEntryDismissed] = useState(false);
   const [tableCollapsed, setTableCollapsed] = usePersistedBoolean(
     `openforge-ledger-collapsed:${profileId}:sportsbook-bets`,
@@ -4799,6 +4800,14 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
         })),
       }),
     [formState.requested_lay_stake, formState.lay_actual, layStakePreview?.suggested, partialLayLegs]
+  );
+  const recordedRequestSummary = useMemo(
+    () => getPartialLayExecutionSummary({
+      explicitTargetLayStake: formState.requested_lay_stake ?? "",
+      suggestedTargetLayStake: "",
+      legs: partialLayLegs.map((leg) => ({ matchedStake: leg.matchedStake })),
+    }),
+    [formState.requested_lay_stake, partialLayLegs]
   );
   const recommendedNextLayStakeValue = partialLayExecutionSummary.nextRecommendedStake;
   const recommendedNextLayStakeDisplay =
@@ -7709,6 +7718,39 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
 
   const recordedLegDetails = (
                           <SportsbookPlacementDetailDisclosure visualV2={visualV2} nestedUnderSharedCard>
+	                          {visualV2 ? <DesignBetWorkbenchRecordedLegs
+                              emptyMessage="No recorded Lay legs."
+                              guidance={recordedRequestSummary.remainingToMatch !== null && recordedRequestSummary.remainingToMatch > 0
+                                ? "Remaining lay exposure is still open. Use Recommended Next Lay Stake to place the next leg and re-check liability."
+                                : recordedRequestSummary.exceededTarget
+                                  ? "Matched lay stake exceeds target. Review exchange entries and confirm this overmatch is intentional."
+                                  : null}
+                              hasLegs={partialLayLegs.length > 0}
+                              matchedTotal={recordedRequestSummary.matchedTotal}
+                              onCopyRecommended={() => void copyRecommendedNextLayStake()}
+                              recommendedNext={recommendedNextLayStakeValue}
+                              remaining={recordedRequestSummary.remainingToMatch}
+                              target={recordedRequestSummary.targetLayStake}
+                            >
+                              {partialLayLegs.map((leg, index) => <DesignBetWorkbenchLeg
+                                dataPdId={`sportsbook.workbench.leg-${index + 1}`}
+                                exchange={leg.exchangeName}
+                                index={index}
+                                key={leg.id}
+                                matchedStake={leg.matchedStake}
+                                odds={leg.layOdds}
+                                onToggle={() => setReviewedPartialLayLegId(current => current === leg.id ? null : leg.id)}
+                                open={reviewedPartialLayLegId === leg.id}
+                              >
+                                <div className={labStyles.fieldPair}>
+                                  <label className="field-control"><span>Exchange</span><select className={labStyles.placementLegSelect} onChange={event => updatePartialLayLeg(leg.id, "exchangeName", event.target.value)} value={leg.exchangeName}><option value="">Select exchange</option>{exchangeOptions.map(option => <option key={option} value={option}>{option}</option>)}</select></label>
+                                  <label className="field-control"><span>Lay odds</span><input aria-label={`${leg.isFinal ? "Final" : "Partial"} leg ${index + 1} lay odds`} aria-describedby={oddsIssueMap.has(`partial_lay_${leg.id}_odds`) ? `sportsbook-partial-lay-odds-error-${index}` : undefined} aria-invalid={oddsIssueMap.has(`partial_lay_${leg.id}_odds`)} inputMode="decimal" onChange={event => updatePartialLayLeg(leg.id, "layOdds", event.target.value)} value={leg.layOdds} />{oddsIssueMap.has(`partial_lay_${leg.id}_odds`) ? <span className="field-validation-text" id={`sportsbook-partial-lay-odds-error-${index}`} role="alert">{oddsIssueMap.get(`partial_lay_${leg.id}_odds`)}</span> : null}</label>
+                                  <label className="field-control"><span>{leg.isFinal ? "Final matched stake" : "Matched stake"}</span><div className="inline-field-action"><input onChange={event => updatePartialLayLeg(leg.id, "matchedStake", event.target.value)} value={leg.matchedStake} />{partialLayLegs.length > 1 && index > 0 ? <button aria-label={leg.isFinal ? "Remove final lay leg" : "Remove lay leg"} className="icon-button icon-button-destructive table-action-button" onClick={() => requestRemovePartialLayLeg(leg.id)} title={leg.isFinal ? "Remove final lay leg" : "Remove lay leg"} type="button"><span aria-hidden="true" className="material-symbols-outlined">delete</span></button> : null}</div></label>
+                                </div>
+                                {pendingLegRemovalId === leg.id ? <div className="leg-remove-warning" role="alert"><p className="field-validation-text">Are you sure? lay has been entered.</p><div className="tracker-nav"><button className="review-chip review-chip-danger" onClick={() => confirmRemovePartialLayLeg(leg.id)} type="button">Remove Lay Leg</button><button className="button-link" onClick={() => setPendingLegRemovalId(null)} type="button">Cancel</button></div></div> : null}
+                              </DesignBetWorkbenchLeg>)}
+                              {lastRemovedPartialLayLeg ? <div className="leg-remove-undo"><button className="button-link" onClick={undoRemovePartialLayLeg} type="button">Undo</button></div> : null}
+                            </DesignBetWorkbenchRecordedLegs> :
 	                          <div className={visualV2 ? "field-span-2 stack partial-lay-panel" : "field-span-2 content-subpanel stack partial-lay-panel"} aria-label={visualV2 ? undefined : partialLayPanelTitle}>
 	                            <div className="section-heading-row">
 	                              {visualV2 ? <strong className={labStyles.placementCardHeading}>Recorded legs</strong> : <span className="eyebrow">{partialLayPanelTitle}</span>}
@@ -7863,7 +7905,8 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
                                 Matched lay stake exceeds target. Review exchange entries and confirm this overmatch is intentional.
                               </p>
                             ) : null}
-                          </div></SportsbookPlacementDetailDisclosure>
+                          </div>}
+                          </SportsbookPlacementDetailDisclosure>
   );
 
   return (
@@ -10582,8 +10625,6 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
                     <div className="review-chip-row" role="group" aria-label="External placement confirmations">
                       <button className={labStyles.secondaryButton} disabled={!backPlacementReady || backPlacementConfirmed} onClick={() => applyPlacementAction("back-placed")} type="button">Confirm external Back</button>
                       {!usesV2MultiLayPlanning && !isNoLayStrategy ? <button className={labStyles.secondaryButton} disabled={!layPlacementReady || layFullyConfirmed || !matchedLayConfirmationDraft.trim()} onClick={() => addPartialLayLeg({ isFinal: false, matchedStake: matchedLayConfirmationDraft })} type="button">Confirm external Lay · £{matchedLayConfirmationDraft || "—"}</button> : null}
-                      {backPlacementConfirmed && !pendingBackPlacementRevert ? <button className={labStyles.secondaryButton} onClick={requestRevertBackPlacement} type="button">Review Back reversal</button> : null}
-                      {pendingBackPlacementRevert ? <><button className={labStyles.dangerButton} onClick={revertBackPlacement} type="button">Remove Back Placement</button><button className={labStyles.secondaryButton} onClick={() => setPendingBackPlacementRevert(false)} type="button">Cancel reversal</button></> : null}
                     </div>
                     <p>Back: {backPlacementConfirmed ? "Confirmed" : "Not recorded"} · Lay: {layFullyConfirmed ? "Confirmed" : layPartiallyConfirmed ? "Partially matched" : "Not recorded"}</p>
                   </div> : null}
@@ -10710,10 +10751,17 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
                   </div>}
                   legs={<fieldset className="section-fieldset" disabled={isSettledReadOnly}><div ref={setPlacementPortalTarget}>{partialLayLegs.length === 0 && !usesMultiLayStrategy ? <p>No recorded Lay legs.</p> : null}</div></fieldset>}
                   followUp={<div ref={setReminderPortalTarget}>{!(selectedSportsbookRow && (selectedSportsbookRow.lay_status === "Part Laid" || selectedSportsbookRow.partial_lay_reminder_state === "Active")) ? <p>No follow-up reminder recorded.</p> : null}</div>}
-                  reversal={<div className="review-chip-row">
-                    {layPlacementConfirmed && !pendingLayPlacementRevert ? <button className={labStyles.secondaryButton} disabled={isSettledReadOnly} onClick={requestRevertLayPlacement} type="button">Review Lay reversal</button> : null}
-                    {pendingLayPlacementRevert ? <><button className={labStyles.dangerButton} disabled={isSettledReadOnly} onClick={revertLayPlacement} type="button">Remove Lay</button><button className={labStyles.secondaryButton} onClick={() => setPendingLayPlacementRevert(false)} type="button">Cancel reversal</button></> : null}
-                    {!layPlacementConfirmed ? <p>No Lay confirmation to reverse.</p> : null}
+                  reversal={<div className={labStyles.placementReversalActions}>
+                    <div className={labStyles.placementReversalAction}>
+                      {layPlacementConfirmed && !pendingLayPlacementRevert ? <button className={labStyles.secondaryButton} disabled={isSettledReadOnly} onClick={requestRevertLayPlacement} type="button">Review Lay reversal</button> : null}
+                      {pendingLayPlacementRevert ? <><p>Remove the recorded Lay placement?</p><button className={labStyles.dangerButton} disabled={isSettledReadOnly} onClick={revertLayPlacement} type="button">Remove Lay</button><button className={labStyles.secondaryButton} onClick={() => setPendingLayPlacementRevert(false)} type="button">Cancel reversal</button></> : null}
+                      {!layPlacementConfirmed ? <p>No Lay confirmation to reverse.</p> : null}
+                    </div>
+                    <div className={labStyles.placementReversalAction}>
+                      {backPlacementConfirmed && !pendingBackPlacementRevert ? <button className={labStyles.secondaryButton} disabled={isSettledReadOnly} onClick={requestRevertBackPlacement} type="button">Review Back reversal</button> : null}
+                      {pendingBackPlacementRevert ? <><p>Remove the recorded Back confirmation?</p><button className={labStyles.dangerButton} disabled={isSettledReadOnly} onClick={revertBackPlacement} type="button">Remove Back Placement</button><button className={labStyles.secondaryButton} onClick={() => setPendingBackPlacementRevert(false)} type="button">Cancel reversal</button></> : null}
+                      {!backPlacementConfirmed ? <p>No Back confirmation to reverse.</p> : null}
+                    </div>
                   </div>}
                 /> : null}
                 {selectedSportsbookRow &&

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useLayoutEffect, useRef, useState } from "react";
 
 import { BrandLogo } from "@/components/brand-logo";
-import { DesignBetWorkbenchContext, DesignBetWorkbenchGrid, DesignBetWorkbenchPlacementDetails, DesignBetWorkbenchProtectedActions, DesignBetWorkbenchProtectedNotice, DesignBetWorkbenchStageRail, DesignBetWorkbenchSummary } from "@/components/design-bet-workbench-presentation";
+import { DesignBetWorkbenchContext, DesignBetWorkbenchGrid, DesignBetWorkbenchLeg, DesignBetWorkbenchPlacementDetails, DesignBetWorkbenchProtectedActions, DesignBetWorkbenchProtectedNotice, DesignBetWorkbenchRecordedLegs, DesignBetWorkbenchStageRail, DesignBetWorkbenchSummary } from "@/components/design-bet-workbench-presentation";
 import { DesignPageHead } from "@/components/design-ledger-screen";
 import { DesignLabSelect } from "@/components/design-lab-select";
 import { formatFinancialValue } from "@/lib/financial-display";
@@ -77,21 +77,13 @@ export function DesignLabSportsbookProposals({ initialAmendment, initialPartialL
   const updateLegDetail = (index: number, field: keyof PreviewLayLeg, value: string) => {
     setRecordedLegs(current => current.map((leg, currentIndex) => currentIndex === index ? { ...leg, [field]: value } : leg));
   };
-  const compactAmount = (value: number) => Number.isInteger(value) ? value.toFixed(0) : value.toFixed(2);
-  const renderLeg = (index: number, leg: PreviewLayLeg) => <div className={local.legItem} data-pd-id={`lab.proposal.leg-${index + 1}`} key={index}>
-    <div className={local.legRow}>
-      <div className={local.legSummary}><strong>Leg {index + 1}</strong><span>{leg.exchange}</span><span>Odds {leg.odds}</span><span>£{Number(leg.matchedStake).toFixed(2)} matched</span></div>
-      <button aria-expanded={legReviewOpen === index} aria-label={`Review leg ${index + 1}`} className={lab.secondaryButton} onClick={() => setLegReviewOpen(current => current === index ? null : index)} type="button">Review leg</button>
-    </div>
-    {legReviewOpen === index ? <div className={local.legControls} data-pd-id={`lab.proposal.leg-controls-${index + 1}`}>
+  const renderLeg = (index: number, leg: PreviewLayLeg) => <DesignBetWorkbenchLeg dataPdId={`lab.proposal.leg-${index + 1}`} exchange={leg.exchange} index={index} key={index} matchedStake={leg.matchedStake} odds={leg.odds} onToggle={() => setLegReviewOpen(current => current === index ? null : index)} open={legReviewOpen === index}>
       <div className={lab.fieldPair}>
-        <label>Exchange<select onChange={event => updateLegDetail(index, "exchange", event.target.value)} value={leg.exchange}><option>Matchbook</option><option>Exchange A</option></select></label>
+        <label>Exchange<select className={lab.placementLegSelect} onChange={event => updateLegDetail(index, "exchange", event.target.value)} value={leg.exchange}><option>Matchbook</option><option>Exchange A</option></select></label>
         <label>Lay odds<input inputMode="decimal" onChange={event => updateLegDetail(index, "odds", event.target.value)} value={leg.odds} /></label>
         <label>Matched stake<input inputMode="decimal" onChange={event => updateLegDetail(index, "matchedStake", event.target.value)} value={leg.matchedStake} /></label>
       </div>
-      <small>Preview controls only · no financial record changes.</small>
-    </div> : null}
-  </div>;
+  </DesignBetWorkbenchLeg>;
 
   const selectAmendment = (next: SportsbookProposalId) => {
     setAmendment(next);
@@ -219,11 +211,11 @@ export function DesignLabSportsbookProposals({ initialAmendment, initialPartialL
                     <p role="status">Back: {backConfirmed ? "Confirmed" : "Not recorded"} · Lay: {layStatus}</p>
                     <div ref={placementPreviewRef}><DesignBetWorkbenchPlacementDetails
                       fields={<div className={lab.fieldPair}><label>Recommended Lay Stake · plan<input readOnly value="10.00" /></label><label>Requested Lay Stake<input readOnly value={requestedLayRecorded ? requestedLayStake : ""} placeholder="Not recorded" /></label><label>Matched so far<input readOnly value={recordedLegs.length ? laySummary.matchedTotal.toFixed(2) : ""} placeholder="Not recorded" /></label><label>Actual lay amount<input readOnly value={requestedLayRecorded ? requestedLayStake : ""} placeholder="Not recorded" /></label></div>}
-                      legs={<div className={local.placementCardContent}><strong>Recorded legs</strong>{recordedLegs.length ? <>{recordedLegs.map((leg, index) => renderLeg(index, leg))}<p>Matched so far · {money(laySummary.matchedTotal.toFixed(2))}</p>{laySummary.remainingToMatch !== null && laySummary.targetLayStake !== null ? <p className={local.remainingRequest}>{laySummary.exceededTarget ? `£${compactAmount(Math.abs(laySummary.remainingToMatch))} above` : `£${compactAmount(laySummary.remainingToMatch)} remaining of`} the £{compactAmount(laySummary.targetLayStake)} request</p> : <p>Request Not recorded</p>}</> : <p>No Lay fill is recorded.{laySummary.targetLayStake === null ? " Request Not recorded." : ""}</p>}</div>}
+                      legs={<DesignBetWorkbenchRecordedLegs guidance={laySummary.remainingToMatch !== null && laySummary.remainingToMatch > 0 ? "Remaining lay exposure is still open. Use Recommended Next Lay Stake to place the next leg and re-check liability." : null} hasLegs={recordedLegs.length > 0} matchedTotal={laySummary.matchedTotal} onCopyRecommended={() => setNotice("Recommended Next Lay Stake copied only in this synthetic preview.")} recommendedNext={laySummary.nextRecommendedStake} remaining={laySummary.remainingToMatch} target={laySummary.targetLayStake}>{recordedLegs.map((leg, index) => renderLeg(index, leg))}</DesignBetWorkbenchRecordedLegs>}
                       followUp={<div className={local.placementCardContent}><strong>Follow-up reminder</strong><p>{reminderActive ? "Recheck scheduled for this synthetic partial fill." : "Not set"}</p><button className={lab.secondaryButton} onClick={() => { setReminderActive(value => !value); setNotice("Reminder state changed only in this preview."); }} type="button">{reminderActive ? "Review Reminder" : "Set Reminder"}</button></div>}
-                      reversal={<div className={local.placementCardContent}>
-                        <div className={local.reversalAction}>{reversalPending ? <><p>Remove the recorded Lay placement?</p><button className={lab.dangerButton} onClick={() => { setRecordedLegs([]); setMatchedLayDraft("5.00"); setLegReviewOpen(null); setReversalPending(false); setNotice("Synthetic Lay placement removed; Back confirmation is unchanged."); }} type="button">Remove Lay</button><button className={lab.secondaryButton} onClick={() => setReversalPending(false)} type="button">Cancel reversal</button></> : <button className={lab.secondaryButton} disabled={recordedLegs.length === 0} onClick={() => setReversalPending(true)} type="button">Review Lay reversal</button>}</div>
-                        <div className={local.reversalAction}>{backReversalPending ? <><p>Remove the recorded Back confirmation?</p><button className={lab.dangerButton} onClick={() => { setBackConfirmed(false); setBackReversalPending(false); setNotice("Synthetic Back confirmation removed; Lay placement is unchanged."); }} type="button">Remove Back Placement</button><button className={lab.secondaryButton} onClick={() => setBackReversalPending(false)} type="button">Cancel reversal</button></> : <button className={lab.secondaryButton} disabled={!backConfirmed} onClick={() => setBackReversalPending(true)} type="button">Review Back reversal</button>}</div>
+                      reversal={<div className={lab.placementReversalActions}>
+                        <div className={lab.placementReversalAction}>{reversalPending ? <><p>Remove the recorded Lay placement?</p><button className={lab.dangerButton} onClick={() => { setRecordedLegs([]); setMatchedLayDraft("5.00"); setLegReviewOpen(null); setReversalPending(false); setNotice("Synthetic Lay placement removed; Back confirmation is unchanged."); }} type="button">Remove Lay</button><button className={lab.secondaryButton} onClick={() => setReversalPending(false)} type="button">Cancel reversal</button></> : <button className={lab.secondaryButton} disabled={recordedLegs.length === 0} onClick={() => setReversalPending(true)} type="button">Review Lay reversal</button>}</div>
+                        <div className={lab.placementReversalAction}>{backReversalPending ? <><p>Remove the recorded Back confirmation?</p><button className={lab.dangerButton} onClick={() => { setBackConfirmed(false); setBackReversalPending(false); setNotice("Synthetic Back confirmation removed; Lay placement is unchanged."); }} type="button">Remove Back Placement</button><button className={lab.secondaryButton} onClick={() => setBackReversalPending(false)} type="button">Cancel reversal</button></> : <button className={lab.secondaryButton} disabled={!backConfirmed} onClick={() => setBackReversalPending(true)} type="button">Review Back reversal</button>}</div>
                       </div>}
                     /></div>
                   </>}

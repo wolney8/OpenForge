@@ -1,6 +1,12 @@
 import type { ReactNode } from "react";
 
+import { formatFinancialValue } from "@/lib/financial-display";
+
 import styles from "@/components/design-lab-connected.module.css";
+
+function compactStake(value: number) {
+  return `£${new Intl.NumberFormat("en-GB", { maximumFractionDigits: 2 }).format(value)}`;
+}
 
 /** The approved Sportsbook page workbench structure, shared by Lab and real adapters. */
 export function DesignBetWorkbenchContext({ title, context, controls }: {
@@ -38,6 +44,52 @@ export function DesignBetWorkbenchPlacementDetails({ fields, legs, followUp, rev
       <section aria-label="Lay reversal" className={styles.placementCardSection} data-pd-id="sportsbook.workbench.lay-reversal">{reversal}</section>
     </div>
   </details>;
+}
+
+/** Approved compact leg summary; simulated and governed adapters retain their own controls. */
+export function DesignBetWorkbenchLeg({ index, exchange, odds, matchedStake, open, onToggle, children, dataPdId }: {
+  index: number;
+  exchange: string;
+  odds: string;
+  matchedStake: string;
+  open: boolean;
+  onToggle: () => void;
+  children: ReactNode;
+  dataPdId?: string;
+}) {
+  return <div className={styles.placementLeg} data-pd-id={dataPdId} data-pd-leg-row="true">
+    <div className={styles.placementLegRow}>
+      <div className={styles.placementLegSummary}><strong>Leg {index + 1}</strong><span>{exchange || "Not recorded"}</span><span>Odds {odds || "Not recorded"}</span><span>{matchedStake && Number.isFinite(Number(matchedStake)) ? `£${Number(matchedStake).toFixed(2)} matched` : "Matched stake Not recorded"}</span></div>
+      <button aria-expanded={open} aria-label={`Review leg ${index + 1}`} className={styles.secondaryButton} onClick={onToggle} type="button">Review leg</button>
+    </div>
+    {open ? <div className={styles.placementLegControls} data-pd-id={`sportsbook.workbench.leg-controls-${index + 1}`}>{children}</div> : null}
+  </div>;
+}
+
+/** The approved order: recorded legs, request figures, next-lay guidance, then reminder. */
+export function DesignBetWorkbenchRecordedLegs({ children, hasLegs, matchedTotal, target, remaining, recommendedNext, onCopyRecommended, guidance, emptyMessage = "No Lay fill is recorded." }: {
+  children: ReactNode;
+  hasLegs: boolean;
+  matchedTotal: number;
+  target: number | null;
+  remaining: number | null;
+  recommendedNext: number | null;
+  onCopyRecommended?: () => void;
+  guidance?: string | null;
+  emptyMessage?: string;
+}) {
+  return <div className={styles.placementRecordedLegs}>
+    <strong>Recorded legs</strong>
+    {!hasLegs ? <p>{emptyMessage}</p> : null}
+    {children}
+    {hasLegs ? <p>Matched so far · {formatFinancialValue(matchedTotal)}</p> : null}
+    <p className={styles.placementRemaining} data-pd-id="sportsbook.workbench.remaining-request">{target === null || remaining === null ? "Request Not recorded" : remaining < 0 ? `${compactStake(Math.abs(remaining))} above the ${compactStake(target)} request` : `${compactStake(remaining)} remaining of the ${compactStake(target)} request`}</p>
+    <div className={styles.placementNextGuidance} data-pd-id="sportsbook.workbench.next-lay-guidance">
+      <span>Recommended Next Lay Stake · plan</span>
+      {recommendedNext !== null ? <button aria-label="Copy Recommended Next Lay Stake" className={styles.secondaryButton} disabled={recommendedNext <= 0 || !onCopyRecommended} onClick={onCopyRecommended} type="button">{formatFinancialValue(recommendedNext)}</button> : <strong>Not recorded</strong>}
+      {guidance ? <p className={styles.placementExposure} role="status">{guidance}</p> : null}
+    </div>
+  </div>;
 }
 
 /** Approved protected-record copy and footer actions, with simulated or native commands supplied by the caller. */
