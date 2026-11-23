@@ -48,6 +48,11 @@ for (const { width, theme } of [
         padding: style.padding, radius: style.borderRadius, minHeight: style.minHeight, fontWeight: style.fontWeight };
     });
     const previewReminderButton = await reminderButtonStyle(previewCard.locator('[data-pd-id="sportsbook.workbench.follow-up"]'));
+    const reminderTextStyle = async (section: ReturnType<Page["locator"]>) => section.locator("p").first().evaluate(node => ({
+      color: getComputedStyle(node).color, margin: getComputedStyle(node).margin,
+      parentGap: getComputedStyle(node.parentElement!).gap,
+    }));
+    const previewReminderText = await reminderTextStyle(previewCard.locator('[data-pd-id="sportsbook.workbench.follow-up"]'));
     await expect(previewCard.locator('[data-pd-id="sportsbook.workbench.follow-up"] p').first()).toHaveText("Not set");
     const previewStyle = await previewCard.evaluate(node => ({ background: getComputedStyle(node).backgroundColor, border: getComputedStyle(node).borderColor, padding: getComputedStyle(node).padding }));
     await page.screenshot({ path: `${placementEvidence}/lab-expanded-${width}-${theme}.png`, fullPage: true });
@@ -85,6 +90,7 @@ for (const { width, theme } of [
     expect(await headingStyle(card.locator('[data-pd-id="sportsbook.workbench.recorded-legs"]'))).toEqual(previewLegHeading);
     expect(await headingStyle(card.locator('[data-pd-id="sportsbook.workbench.follow-up"]'))).toEqual(previewReminderHeading);
     await expect(card.locator('[data-pd-id="sportsbook.workbench.follow-up"] p').first()).toHaveText("Not set");
+    expect(await reminderTextStyle(card.locator('[data-pd-id="sportsbook.workbench.follow-up"]'))).toEqual(previewReminderText);
     expect(await reminderButtonStyle(card.locator('[data-pd-id="sportsbook.workbench.follow-up"]'))).toEqual(previewReminderButton);
     await expect(card.locator('[data-pd-id="sportsbook.workbench.lay-reversal"]')).toContainText("Review Lay reversal");
     await page.screenshot({ path: `${placementEvidence}/pd-expanded-${width}-${theme}.png`, fullPage: true });

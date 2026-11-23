@@ -10721,7 +10721,7 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
                   selectedSportsbookRow.partial_lay_reminder_state === "Active") ? renderPlacementReminder(
                   <section
                     aria-label="Partial-lay follow-up reminder"
-                    className="stack"
+                    className={visualV2 ? labStyles.placementReminderContent : "stack"}
                     data-pd-id="sportsbook.partial-lay-reminder.summary"
                   >
                     <div className="section-heading-row">
