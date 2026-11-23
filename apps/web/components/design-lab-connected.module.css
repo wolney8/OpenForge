@@ -217,5 +217,6 @@
 .placementCardSection :global(.partial-lay-panel){background:transparent;border:0;padding:0}
 .placementCardSection :global(.review-chip-copy){min-width:max-content;white-space:nowrap}
 .placementCardHeading{color:var(--text);font-size:1rem;font-weight:700;line-height:1.45;letter-spacing:normal;text-transform:none}
+.placementReminderButton{font-weight:400}
 .primaryButton:disabled,.secondaryButton:disabled,.dangerButton:disabled{opacity:.55;cursor:not-allowed}
 @media(max-width:430px){.placementSecondaryCard{padding:12px}}

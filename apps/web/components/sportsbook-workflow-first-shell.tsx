@@ -10726,7 +10726,7 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
                   >
                     <div className="section-heading-row">
                       {visualV2 ? <strong className={labStyles.placementCardHeading}>Follow-up reminder</strong> : <span className="eyebrow">Lay follow-up</span>}
-                      <span
+                      {!visualV2 ? <span
                         className={`table-chip${
                           selectedSportsbookRow.partial_lay_reminder_state === "Active"
                             ? " table-chip-lay-partial"
@@ -10734,9 +10734,12 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
                         }`}
                       >
                         {selectedSportsbookRow.partial_lay_reminder_state}
-                      </span>
+                      </span> : null}
                     </div>
-                    {selectedSportsbookRow.partial_lay_reminder_state === "Active" ? (
+                    {visualV2 ? <>
+                      <p>{selectedSportsbookRow.partial_lay_reminder_state === "Active" ? `Recheck due ${formatEditorSettlesDate(selectedSportsbookRow.partial_lay_reminder_due_at)}` : selectedSportsbookRow.partial_lay_reminder_state === "Not Set" ? "Not set" : selectedSportsbookRow.partial_lay_reminder_state}</p>
+                      {selectedSportsbookRow.partial_lay_reminder_state === "Active" && selectedSportsbookRow.partial_lay_reminder_reason ? <p>{selectedSportsbookRow.partial_lay_reminder_reason}</p> : null}
+                    </> : selectedSportsbookRow.partial_lay_reminder_state === "Active" ? (
                       <div className="summary-list">
                         <p className="lede">
                           <span className="summary-label">Due</span>
@@ -10761,16 +10764,16 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
                               ? "Set partial-lay reminder"
                               : "Set new partial-lay reminder"
                         }
-                        className="button-link icon-text-action"
+                        className={visualV2 ? `${labStyles.secondaryButton} ${labStyles.placementReminderButton}` : "button-link icon-text-action"}
                         data-pd-id="sportsbook.partial-lay-reminder.open"
                         onClick={() => openPartialLayReminderEditor(selectedSportsbookRow)}
                         type="button"
                       >
-                        <span aria-hidden="true" className="material-symbols-outlined">
+                        {!visualV2 ? <span aria-hidden="true" className="material-symbols-outlined">
                           {selectedSportsbookRow.partial_lay_reminder_state === "Active"
                             ? "notifications_active"
                             : "notification_add"}
-                        </span>
+                        </span> : null}
                         {selectedSportsbookRow.partial_lay_reminder_state === "Active"
                           ? "Review Reminder"
                           : selectedSportsbookRow.partial_lay_reminder_state === "Not Set"
