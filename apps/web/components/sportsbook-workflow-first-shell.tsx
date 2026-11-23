@@ -7711,7 +7711,7 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
                           <SportsbookPlacementDetailDisclosure visualV2={visualV2} nestedUnderSharedCard>
 	                          <div className={visualV2 ? "field-span-2 stack partial-lay-panel" : "field-span-2 content-subpanel stack partial-lay-panel"} aria-label={visualV2 ? undefined : partialLayPanelTitle}>
 	                            <div className="section-heading-row">
-	                              <span className="eyebrow">{visualV2 ? "Recorded legs" : partialLayPanelTitle}</span>
+	                              {visualV2 ? <strong className={labStyles.placementCardHeading}>Recorded legs</strong> : <span className="eyebrow">{partialLayPanelTitle}</span>}
                               <span className="table-chip">{partialLayLegs.length} {partialLayLegs.length === 1 ? "leg" : "legs"}</span>
 	                            </div>
                             <div className="stack">
@@ -10725,7 +10725,7 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
                     data-pd-id="sportsbook.partial-lay-reminder.summary"
                   >
                     <div className="section-heading-row">
-                      <span className="eyebrow">{visualV2 ? "Follow-up reminder" : "Lay follow-up"}</span>
+                      {visualV2 ? <strong className={labStyles.placementCardHeading}>Follow-up reminder</strong> : <span className="eyebrow">Lay follow-up</span>}
                       <span
                         className={`table-chip${
                           selectedSportsbookRow.partial_lay_reminder_state === "Active"

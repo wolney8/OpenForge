@@ -2,6 +2,14 @@
 
 Complete this for every feature, bug fix, component, fixture-backed UI, route or page change.
 
+## CP-117 running parity check — 2026-11-23 / #118
+
+- [x] Registered PD-FIX-644–646, compared approved Placement expanded/collapsed states and full shell at 2048px dark, 1440px light and 390px dark using isolated synthetic authentication and data.
+- [x] Reused the approved normal heading treatment for Recorded legs and Follow-up reminder in the real V2 card; kept the frozen Lab reference unchanged and flag-OFF markup separate.
+- [x] Corrected the real Position desktop range width at its shared page-head boundary; asserted measured Lab/PD width after the Lab route finishes loading and fonts settle.
+- [x] Checked page and horizontal overflow, sidebar/header/breadcrumb geometry, Placement action order and the existing production-only partial-fill controls. The latter remain a reviewable Lab amendment gap, not accepted parity.
+- [ ] Owner signed-in rendering, exact full-page parity for non-equivalent financial fixtures, and owner Design/Interaction Acceptance remain unverified.
+
 ## CP-117 protected-record approval and proposal revisions — 2026-11-19 / #118
 
 - [x] Registered PD-FIX-623 and PD-PR-624–627; kept the frozen approved Lab unchanged and the four unapproved designs in the synthetic preview.

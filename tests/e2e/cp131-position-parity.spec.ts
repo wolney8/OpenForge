@@ -40,6 +40,8 @@ for (const width of [1024, 1440, 390] as const) {
       await theme(page, mode);
       const cookie = page.locator('[data-pd-id="cookie-notice.acknowledge"]');
       if (await cookie.isVisible()) await cookie.click();
+      await page.waitForLoadState("networkidle");
+      await page.evaluate(async () => { await document.fonts.ready; });
       const lab = {
         sidebar: await geometry(page, 'aside[aria-label="Design Lab navigation"]'),
         header: await geometry(page, '[data-pd-id="lab.header"]'),
@@ -47,6 +49,7 @@ for (const width of [1024, 1440, 390] as const) {
         search: width > 700 ? await geometry(page, '[data-pd-id="lab.header"] [role="search"]') : null,
         breadcrumb: await geometry(page, '[data-pd-id="lab.breadcrumb"]'),
         head: await geometry(page, 'main[data-pd-id="lab.main"] h1'),
+        range: await geometry(page, '[data-pd-id="lab.range"]'),
         metrics: await geometry(page, '[data-pd-id="lab.metrics"]'),
       };
       await page.screenshot({ path: join(evidence, `lab-${width}-${mode}.png`), fullPage: true });
@@ -71,6 +74,7 @@ for (const width of [1024, 1440, 390] as const) {
         search: width > 700 ? await geometry(page, '[data-pd-id="global-search.root"]') : null,
         breadcrumb: await geometry(page, '[data-pd-id="ux-v2.breadcrumbs"]'),
         head: await geometry(page, '[data-pd-id="position.page-head"] h1'),
+        range: await geometry(page, '[data-pd-id="position.selected-range"]'),
         metrics: await geometry(page, '[data-pd-id="position.metrics"]'),
       };
       await page.screenshot({ path: join(evidence, `v2-${width}-${mode}.png`), fullPage: true });
@@ -86,6 +90,7 @@ for (const width of [1024, 1440, 390] as const) {
       }
       expect(Math.abs(real.breadcrumb.y - lab.breadcrumb.y)).toBeLessThanOrEqual(5);
       expect(Math.abs(real.head.y - lab.head.y)).toBeLessThanOrEqual(12);
+      if (width >= 1024) expect(Math.abs(real.range.width - lab.range.width)).toBeLessThanOrEqual(8);
       expect(Math.abs(real.metrics.x - lab.metrics.x)).toBeLessThanOrEqual(3);
       if (trackedBanner) {
         const gap = real.metrics.y - trackedBanner.y - trackedBanner.height;
