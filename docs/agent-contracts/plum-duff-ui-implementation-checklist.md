@@ -2,6 +2,14 @@
 
 Complete this for every feature, bug fix, component, fixture-backed UI, route or page change.
 
+## CP-117 partial-fill Lab proposal — 2026-11-23 / #118
+
+- [x] Registered PD-FIX-648 and isolated the proposed leg-row layout to `/design-lab/sportsbook-proposals`; frozen Lab and real PD financial commands are unchanged.
+- [x] Reused the approved Placement disclosure, field controls, theme tokens and secondary action treatment. A direct link opens the synthetic £10 plan / £8 request / £5 match with one leg expanded.
+- [x] Compared full-page and open-card captures with equivalent synthetic PD records at 2048px dark, 1440px light and 390px dark; checked order, spacing, control styling and horizontal containment.
+- [x] Exercised second £3 fill, preserved per-leg inputs after collapse/reopen, and tested separate Lay and Back reversal confirmations without financial writes.
+- [ ] Owner Approve / Revise decision on the proposed layout and manual spoken screen-reader review remain outstanding. PD adoption has not begun.
+
 ## CP-117 running parity check — 2026-11-23 / #118
 
 - [x] Registered PD-FIX-644–646, compared approved Placement expanded/collapsed states and full shell at 2048px dark, 1440px light and 390px dark using isolated synthetic authentication and data.

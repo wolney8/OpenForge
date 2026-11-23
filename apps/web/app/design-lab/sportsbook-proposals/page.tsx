@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 const valid = new Set(["protected", "offer", "requirements", "matching", "finish"]);
 
-export default async function SportsbookProposalPage({ searchParams }: { searchParams: Promise<{ amendment?: string }> }) {
+export default async function SportsbookProposalPage({ searchParams }: { searchParams: Promise<{ amendment?: string; view?: string }> }) {
   const requestHeaders = await headers();
   if (!designLabAllowed({
     host: requestHeaders.get("host"),
@@ -16,6 +16,7 @@ export default async function SportsbookProposalPage({ searchParams }: { searchP
     nodeEnv: process.env.NODE_ENV,
     vercel: process.env.VERCEL,
   })) notFound();
-  const requested = (await searchParams).amendment ?? "protected";
-  return <DesignLabSportsbookProposals initialAmendment={(valid.has(requested) ? requested : "protected") as SportsbookProposalId} />;
+  const params = await searchParams;
+  const requested = params.amendment ?? "protected";
+  return <DesignLabSportsbookProposals initialAmendment={(valid.has(requested) ? requested : "protected") as SportsbookProposalId} initialPartialLegOpen={requested === "matching" && params.view === "partial-leg"} />;
 }
