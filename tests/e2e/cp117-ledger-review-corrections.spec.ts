@@ -67,10 +67,25 @@ for (const [width, theme] of [[2048, "dark"], [1440, "light"], [390, "dark"]] as
   test(`ledger frame, compact date and scrollable Actions at ${width}px ${theme}`, async ({ page }) => {
     await page.setViewportSize({ width, height: 1000 });
     await page.addInitScript(value => localStorage.setItem("openforge-theme", value), theme);
+    const partialId = `PD-FIX-659-${width}-${Date.now()}`;
+    const created = await page.request.post(`/api/profiles/${profile}/sportsbook-bets`, { data: {
+      sportsbook_bet_id: partialId, event_name: `Synthetic partial placement ${partialId}`, offer_text: "Synthetic source only",
+      offer_name: "Synthetic offer", bookmaker: "Bookmaker A", offer_type: "Bet & Get", bet_type: "Single",
+      fixture_type: "Football", market: "Match Odds", status: "Placed", result: "Pending",
+      back_stake: "10.00", back_odds: "2.00", match_strategy: "Standard", lay_odds_1: "2.00",
+      requested_lay_stake: "8.00", lay_actual: "8.00", lay_matched_stake_1: "5.00",
+      lay_commission_1: "0", exchange_name: "Matchbook", back_placement_confirmed: true,
+      multi_lay_outcomes_json: JSON.stringify([{ id: "leg-1", label: "Lay leg 1", layOdds: "2.00", exchangeName: "Matchbook", matchedStake: "5.00", isFinal: false }]),
+      date_settled: "2026-11-20T18:54", user_notes: "Synthetic only",
+    } });
+    expect(created.status(), await created.text()).toBe(201);
     await page.goto(`/profiles/${profile}/tracker/sportsbook-bets`);
     const scroll = page.locator('[data-pd-id="sportsbook.table-scroll"]');
     await expect(scroll.locator("tbody tr").first()).toBeVisible();
-    await expect(scroll.locator('td[data-ledger-column="lay_status"]', { hasText: "Partial lay" }).first()).toBeVisible();
+    await page.getByRole("searchbox", { name: "Search sportsbook rows" }).fill(partialId);
+    await expect(scroll.locator('td[data-ledger-column="lay_status"]', { hasText: "Partial lay" })).toBeVisible();
+    await page.getByRole("searchbox", { name: "Search sportsbook rows" }).fill("Synthetic seeded match");
+    await expect(scroll.locator("tbody tr")).toHaveCount(1);
     const date = scroll.locator('td[data-ledger-column="date_settled"] .ledger-compact-date').first();
     await expect(date).toContainText(/\w{3} \d{1,2}(?:st|nd|rd|th) \w{3}/);
     await date.focus();
