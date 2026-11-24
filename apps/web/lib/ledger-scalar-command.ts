@@ -7,6 +7,7 @@ import { getFreeBetInputErrors } from "@/lib/free-bet-input";
 import { normalizeAccountAccessChannels } from "@/lib/account-access-channels";
 import { fromDateTimeLocalValue } from "@/lib/date-format";
 import { sportsbookPlanningFieldEditable } from "@/lib/sportsbook-inline-eligibility";
+import { canInlineSportsbookField, prepareSportsbookPlanningCellPayload } from "@/components/sportsbook-workflow-first-shell";
 
 type ScalarField = { key: string; label: string; maxLength: number; required?: boolean };
 
@@ -68,6 +69,31 @@ export function ownedScalarField(module: CombinedLedgerModule, column: string, r
 /** The same Account row gate used by the native Access Channels cell editor. */
 export function ownedAccessChannelsEditable(record: LedgerSourceRecord): boolean {
   return Boolean(record.catalogue_id) && record.type !== "Exchange" && record.signup_offer_status !== "Yes";
+}
+
+/** Profile-owned Save with the same Sportsbook Offer/Strategy draft preparation as the native grid. */
+export async function commitOwnedSportsbookPlanning({ profileId, recordId, column, expected, proposal }: {
+  profileId: string;
+  recordId: string;
+  column: "offer_details" | "match_strategy";
+  expected: { offer_type: string; bet_type: string; fixture_type: string; match_strategy: string };
+  proposal: { offer_type?: string; bet_type?: string; fixture_type?: string; match_strategy?: string };
+}): Promise<LedgerSourceRecord> {
+  const endpoint = `${apiBaseUrl}/profiles/${encodeURIComponent(profileId)}/sportsbook-bets/${encodeURIComponent(recordId)}`;
+  const read = await fetch(endpoint, { cache: "no-store", credentials: "include" });
+  if (!read.ok) throw new Error(formatApiErrorBody(await read.text(), "The Sportsbook record could not be reloaded."));
+  const current = await read.json() as LedgerSourceRecord;
+  if (current.profile_id !== profileId || current.sportsbook_bet_id !== recordId) throw new Error("Source identity changed; reload this ledger before editing.");
+  if (!canInlineSportsbookField(current as Parameters<typeof canInlineSportsbookField>[0], column)) throw new Error("This row now requires its populated Sportsbook review workflow.");
+  const keys = column === "offer_details" ? ["offer_type", "bet_type", "fixture_type"] : ["match_strategy"];
+  if (keys.every(key => String(current[key] ?? "") === String(proposal[key as keyof typeof proposal] ?? ""))) return current;
+  if (keys.some(key => String(current[key] ?? "") !== expected[key as keyof typeof expected])) throw new Error("These Sportsbook inputs changed elsewhere. Reload the row and review the current values.");
+  const payload = prepareSportsbookPlanningCellPayload(current, column, proposal);
+  const saved = await fetch(endpoint, { method: "PUT", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+  if (!saved.ok) throw new Error(formatApiErrorBody(await saved.text(), "The Sportsbook inputs were not saved. Your draft is retained."));
+  const confirmed = await saved.json() as LedgerSourceRecord;
+  if (confirmed.profile_id !== profileId || confirmed.sportsbook_bet_id !== recordId || keys.some(key => String(confirmed[key] ?? "") !== String(proposal[key as keyof typeof proposal] ?? ""))) throw new Error("The save response did not confirm these Sportsbook inputs. Reload before retrying.");
+  return confirmed;
 }
 
 /**

@@ -50,6 +50,11 @@ test("proposal exposes all warnings and cumulative partial-lay actions without c
   await expect(proposal.getByRole("combobox", { name: "Status" })).toBeFocused();
   await proposal.getByRole("button", { name: "Return to ledger" }).click();
   await ledger.getByRole("button", { name: "Edit partial lay matched so far" }).dblclick();
+  const anchored = page.locator('[data-pd-id="ledger.floating-editor"]');
+  await expect(anchored.getByLabel("Matched so far")).toBeFocused();
+  await anchored.getByLabel("Matched so far").press("Escape");
+  await expect(anchored).toHaveCount(0);
+  await warnings.getByRole("button", { name: "Update matched amount" }).click();
   const quick = page.locator('[data-pd-id="lab.proposal.quick-action"]');
   await expect(quick).toBeVisible();
   await expect(quick.getByLabel("Matched so far")).toBeFocused();
@@ -119,16 +124,16 @@ test("proposed date, Back and Status cells retain separate targets and strict in
   await placement.getByRole("button", { name: "Return to ledger" }).click();
   await ledger.getByRole("button", { name: "Edit partial lay matched so far" }).focus();
   await page.keyboard.press("F2");
-  const quick = page.locator('[data-pd-id="lab.proposal.quick-action"]');
+  const quick = page.locator('[data-pd-id="ledger.floating-editor"]');
   await expect(quick).toBeVisible();
   await quick.getByLabel("Matched so far").fill("5.101");
-  await quick.getByRole("button", { name: "Confirm actual match" }).click();
+  await quick.getByRole("button", { name: "Confirm" }).click();
   await expect(quick).toBeVisible();
-  await expect(page.getByRole("status").last()).toContainText("at most two decimal places");
+  await expect(quick).toContainText("at most two decimal places");
   await quick.getByLabel("Matched so far").fill("5.10");
-  await quick.getByRole("button", { name: "Confirm actual match" }).click();
+  await quick.getByRole("button", { name: "Confirm" }).click();
   await expect(quick).toHaveCount(0);
-  await expect(placement.locator('[class*="quickFigures"]')).toContainText("£5.10");
+  await expect(ledger).toContainText("£5.10 matched");
 });
 
 test("eligible Prospecting Offer details and Strategy use native dropdowns and persist without placement changes", async ({ page }) => {
@@ -260,6 +265,10 @@ for (const [width, theme] of [[2048, "dark"], [1440, "light"], [390, "dark"]] as
     await proposedLedger.locator('[class*="proposalTableScroll"]').evaluate(node => { (node as HTMLElement).scrollLeft = 0; });
     await proposedLedger.screenshot({ path: join(evidence, `lab-operations-row-${width}-${theme}.png`) });
     await proposedLedger.getByRole('button', { name: 'Edit partial lay matched so far' }).dblclick();
+    await expect(page.locator('[data-pd-id="ledger.floating-editor"]')).toBeVisible();
+    await page.screenshot({ path: join(evidence, `lab-operations-cell-${width}-${theme}.png`) });
+    await page.locator('[data-pd-id="ledger.floating-editor"]').getByLabel('Matched so far').press('Escape');
+    await proposedLedger.getByRole('button', { name: 'Open Bet Workbench' }).click();
     await page.locator('[data-pd-id="lab.proposal.operations"] [data-pd-id="sportsbook.workbench.partial-fill"] summary').click();
     await expect(page.locator('[data-pd-id="sportsbook.workbench.leg-controls-1"]')).toBeVisible();
     await page.evaluate(() => window.scrollTo(0, 0));

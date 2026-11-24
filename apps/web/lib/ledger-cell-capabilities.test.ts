@@ -19,7 +19,8 @@ describe("displayed ledger field capabilities", () => {
     expect(ledgerCellDecision("each-way-extra-places", "stake", { status: "Prospecting" }, true).interaction).toBe("edit");
     expect(ledgerCellDecision("each-way-extra-places", "stake", { status: "Placed" }, false)).toEqual({ interaction: "review", reason: "Placement and financial evidence require the populated Extra Place review workflow." });
     expect(ledgerCellDecision("each-way-extra-places", "rating", { status: "Prospecting" }, true).interaction).toBe("protected");
-    expect(ledgerCellDecision("sportsbook-bets", "lay_status", { requested_lay_stake: null }, false).reason).toContain("Requested Lay Stake is not recorded");
+    expect(ledgerCellDecision("sportsbook-bets", "lay_status", { status: "Placed", result: "Pending", requested_lay_stake: null }, false).reason).toContain("Requested Lay Stake is not recorded");
+    expect(ledgerCellDecision("sportsbook-bets", "lay_status", { status: "Settled", result: "Back Won", requested_lay_stake: null }, false).reason).toContain("protected Placement or correction");
     expect(ledgerCellDecision("sportsbook-bets", "back_bet_status", { back_placement_confirmed: null }, false).reason).toContain("Independent Back confirmation");
     expect(ledgerCellDecision("sportsbook-bets", "status", { result: "Pending" }, false).reason).toContain("recorded result");
     expect(ledgerCellDecision("sportsbook-bets", "offer_details", { status: "Prospecting", offer_type: "Profit Boost" }, false).reason).toContain("dependent inputs");

@@ -18,7 +18,12 @@ import { isWithinLedgerRange, ledgerRangeAnchor } from "@/lib/ledger-range-ancho
 import { ledgerDateSortValue } from "@/lib/ledger-compact-date";
 import { resolveDateRange, type DatePreset } from "@/lib/tracker-summary";
 import { saveFundManagerSelectedRange } from "@/lib/tracker-settings-client";
-import { commitOwnedAccessChannels, commitOwnedRunnerRace, commitOwnedScalar, ownedAccessChannelsEditable, ownedScalarField } from "@/lib/ledger-scalar-command";
+import { commitOwnedAccessChannels, commitOwnedRunnerRace, commitOwnedScalar, commitOwnedSportsbookPlanning, ownedAccessChannelsEditable, ownedScalarField } from "@/lib/ledger-scalar-command";
+import { canInlineSportsbookField } from "@/components/sportsbook-workflow-first-shell";
+import { commitRoutineCumulativeLay, routineLayEligibility, type RoutineLay } from "@/lib/sportsbook-cumulative-lay";
+import { DesignCumulativeLayCellFields } from "@/components/design-bet-workbench-presentation";
+import { stageSportsbookLayDraft } from "@/lib/sportsbook-lay-handoff";
+import { fixtureTypeOptions, getAllowedBetTypesForOfferType, getOfferTypeOptions } from "@/lib/workbook-options";
 import { accountAccessChannelOptions } from "@/lib/account-access-channels";
 import { commitOwnedExtraPlaceTyped, extraPlaceBookmakerOptions, extraPlaceTypedCellEligibility, extraPlaceTypedSourceKey, type ExtraPlaceTypedColumn } from "@/lib/extra-place-typed-cell";
 import { getNewSportsbookActivityAccountNamesByType, type AccountAuthorityRecord } from "@/lib/account-authorities";
@@ -93,7 +98,8 @@ export function CombinedLedgerPage({ module }: { module: CombinedLedgerModule })
   const previousModule = useRef(module);
   const [refreshKey, setRefreshKey] = useState(0);
   const cellEditor = useLedgerCellEditor();
-  const [activeCell, setActiveCell] = useState<{ row: OwnedRecord; column: string; original: string; sourceOriginal?: string; bookmakerOptions?: string[]; originalRace?: string; originalChannels?: string[]; label: string } | null>(null);
+  const [activeCell, setActiveCell] = useState<{ row: OwnedRecord; column: string; original: string; sourceOriginal?: string; bookmakerOptions?: string[]; originalRace?: string; originalChannels?: string[]; routineLay?: RoutineLay; label: string } | null>(null);
+  const [sportsbookDraft, setSportsbookDraft] = useState<{ offer_type: string; bet_type: string; fixture_type: string; match_strategy: string } | null>(null);
   const [cellDraft, setCellDraft] = useState("");
   const [raceDraft, setRaceDraft] = useState("");
   const [channelDraft, setChannelDraft] = useState<string[]>([]);
@@ -105,10 +111,10 @@ export function CombinedLedgerPage({ module }: { module: CombinedLedgerModule })
   const cellSaving = useRef(false);
   const cellActivationRequest = useRef(0);
   const cashScalarOperation = useRef<{ row: string; column: string; value: string; key: string } | null>(null);
-  const activeCellDirty = Boolean(activeCell && (cellDraft !== activeCell.original || activeCell.originalRace !== undefined && raceDraft !== activeCell.originalRace || activeCell.originalChannels !== undefined && JSON.stringify(channelDraft) !== JSON.stringify(activeCell.originalChannels)));
+  const activeCellDirty = Boolean(activeCell && (cellDraft !== activeCell.original || activeCell.originalRace !== undefined && raceDraft !== activeCell.originalRace || activeCell.originalChannels !== undefined && JSON.stringify(channelDraft) !== JSON.stringify(activeCell.originalChannels) || sportsbookDraft && ["offer_details", "match_strategy"].includes(activeCell.column) && (activeCell.column === "offer_details" ? ["offer_type", "bet_type", "fixture_type"] : ["match_strategy"]).some(key => sportsbookDraft[key as keyof typeof sportsbookDraft] !== String(activeCell.row.data[key] ?? ""))));
   const confirmDiscardCell = useUnsavedChangesGuard(activeCellDirty, {
     message: "Discard the unsaved ledger field change?",
-    onDiscard: () => { cellEditor.close(); setActiveCell(null); setCellDraft(""); setRaceDraft(""); setChannelDraft([]); setChannelMode("CLOSED"); setCellError(""); },
+    onDiscard: () => { cellEditor.close(); setActiveCell(null); setSportsbookDraft(null); setCellDraft(""); setRaceDraft(""); setChannelDraft([]); setChannelMode("CLOSED"); setCellError(""); },
   });
   const localProfileValid = localProfile === "all" || profiles.some(profile => profile.profile_id === localProfile);
 
@@ -299,7 +305,9 @@ export function CombinedLedgerPage({ module }: { module: CombinedLedgerModule })
     const typedExtraPlace = module === "each-way-extra-places" && (["date", "bookmaker", "stake"] as string[]).includes(column) && !extraPlaceTypedCellEligibility(row.data, column);
     const typedExpiry = (module === "free-bets" || module === "casino-offers") && column === "expiry_datetime" && Boolean(field);
     const typedSportsbook = module === "sportsbook-bets" && ["bookmaker", "date_settled"].includes(column) && Boolean(field);
-    if (!accountChannels && !typedExtraPlace && !typedExpiry && !typedSportsbook && ((!runnerRace && capability.authority !== "scalar") || !field)) { setProtectedCell({ row, column }); return; }
+    const sportsbookPlanning = module === "sportsbook-bets" && ["offer_details", "match_strategy"].includes(column) && canInlineSportsbookField(row.data as Parameters<typeof canInlineSportsbookField>[0], column);
+    const routineLay = module === "sportsbook-bets" && column === "lay_status" ? routineLayEligibility(row.data).value : null;
+    if (!accountChannels && !typedExtraPlace && !typedExpiry && !typedSportsbook && !sportsbookPlanning && !routineLay && ((!runnerRace && capability.authority !== "scalar") || !field)) { setProtectedCell({ row, column }); return; }
     let bookmakerOptions: string[] | undefined;
     if ((typedExtraPlace || typedSportsbook) && column === "bookmaker") {
       try {
@@ -315,9 +323,10 @@ export function CombinedLedgerPage({ module }: { module: CombinedLedgerModule })
     setProtectedCell(null);
     cashScalarOperation.current = null;
     const sourceOriginal = typedExtraPlace ? String(row.data[extraPlaceTypedSourceKey(column as ExtraPlaceTypedColumn)] ?? "") : typedExpiry || typedSportsbook ? String(row.data[column] ?? "") : undefined;
-    const original = typedExtraPlace ? column === "date" ? toDateTimeLocalValue(sourceOriginal ?? "") : sourceOriginal ?? "" : typedExpiry || typedSportsbook && column === "date_settled" ? toDateTimeLocalValue(sourceOriginal ?? "") : String(row.data[column] ?? "");
+    const original = routineLay ? routineLay.matched.toFixed(2) : typedExtraPlace ? column === "date" ? toDateTimeLocalValue(sourceOriginal ?? "") : sourceOriginal ?? "" : typedExpiry || typedSportsbook && column === "date_settled" ? toDateTimeLocalValue(sourceOriginal ?? "") : String(row.data[column] ?? "");
     const originalChannels = accountChannels && Array.isArray(row.data.access_channels) ? row.data.access_channels as string[] : undefined;
-    setActiveCell({ row, column, original, sourceOriginal, bookmakerOptions, originalRace: runnerRace ? String(row.data.race ?? "") : undefined, originalChannels, label: accountChannels ? "Access channels" : runnerRace ? "Runner / Race" : typedExtraPlace ? { date: "Date / time", bookmaker: "Bookmaker", stake: "E/W Stake" }[column]! : field!.label });
+    setActiveCell({ row, column, original, sourceOriginal, bookmakerOptions, routineLay: routineLay ?? undefined, originalRace: runnerRace ? String(row.data.race ?? "") : undefined, originalChannels, label: routineLay ? "Matched so far" : sportsbookPlanning ? column === "offer_details" ? "Offer details" : "Strategy" : accountChannels ? "Access channels" : runnerRace ? "Runner / Race" : typedExtraPlace ? { date: "Date / time", bookmaker: "Bookmaker", stake: "E/W Stake" }[column]! : field!.label });
+    setSportsbookDraft(sportsbookPlanning ? { offer_type: String(row.data.offer_type ?? ""), bet_type: String(row.data.bet_type ?? ""), fixture_type: String(row.data.fixture_type ?? ""), match_strategy: String(row.data.match_strategy ?? "") } : null);
     setCellDraft(original); setRaceDraft(runnerRace ? String(row.data.race ?? "") : ""); setChannelDraft(originalChannels ?? []); setChannelMode("CLOSED"); setCellError("");
     cellEditor.start(column, anchor);
   };
@@ -329,7 +338,11 @@ export function CombinedLedgerPage({ module }: { module: CombinedLedgerModule })
       if (module === "cash-adjustments" && (!cashScalarOperation.current || cashScalarOperation.current.row !== operationRow || cashScalarOperation.current.column !== activeCell.column || cashScalarOperation.current.value !== cellDraft)) {
         cashScalarOperation.current = { row: operationRow, column: activeCell.column, value: cellDraft, key: crypto.randomUUID() };
       }
-      const confirmed = module === "each-way-extra-places" && activeCell.sourceOriginal !== undefined
+      const confirmed = module === "sportsbook-bets" && activeCell.routineLay
+        ? await commitRoutineCumulativeLay({ profileId: activeCell.row.profileId, recordId: activeCell.row.recordId, expectedUpdatedAt: String(activeCell.row.data.updated_at ?? ""), cumulative: cellDraft })
+        : module === "sportsbook-bets" && sportsbookDraft && ["offer_details", "match_strategy"].includes(activeCell.column)
+        ? await commitOwnedSportsbookPlanning({ profileId: activeCell.row.profileId, recordId: activeCell.row.recordId, column: activeCell.column as "offer_details" | "match_strategy", expected: { offer_type: String(activeCell.row.data.offer_type ?? ""), bet_type: String(activeCell.row.data.bet_type ?? ""), fixture_type: String(activeCell.row.data.fixture_type ?? ""), match_strategy: String(activeCell.row.data.match_strategy ?? "") }, proposal: sportsbookDraft })
+        : module === "each-way-extra-places" && activeCell.sourceOriginal !== undefined
         ? await commitOwnedExtraPlaceTyped({ profileId: activeCell.row.profileId, recordId: activeCell.row.recordId, column: activeCell.column as ExtraPlaceTypedColumn, expected: activeCell.sourceOriginal, value: cellDraft, bookmakerOptions: activeCell.bookmakerOptions })
         : activeCell.originalChannels !== undefined
         ? await commitOwnedAccessChannels({ profileId: activeCell.row.profileId, recordId: activeCell.row.recordId, expected: activeCell.originalChannels, values: channelDraft })
@@ -338,7 +351,7 @@ export function CombinedLedgerPage({ module }: { module: CombinedLedgerModule })
           : await commitOwnedScalar({ module, profileId: activeCell.row.profileId, recordId: activeCell.row.recordId, column: activeCell.column, expected: activeCell.sourceOriginal ?? activeCell.original, value: cellDraft, operationId: cashScalarOperation.current?.key });
       setRows(current => current.map(row => identity(row) === identity(activeCell.row) ? { ...row, data: confirmed } : row));
       cashScalarOperation.current = null;
-      cellEditor.close(); setActiveCell(null); setCellDraft(""); setRaceDraft(""); setChannelDraft([]); setChannelMode("CLOSED");
+      cellEditor.close(); setActiveCell(null); setSportsbookDraft(null); setCellDraft(""); setRaceDraft(""); setChannelDraft([]); setChannelMode("CLOSED");
       return true;
     } catch (cause) {
       setCellError(cause instanceof Error ? cause.message : "The field was not saved. Your draft is retained.");
@@ -426,8 +439,13 @@ export function CombinedLedgerPage({ module }: { module: CombinedLedgerModule })
         {protectedCell ? <div className="field-hint" data-pd-id={`combined.${module}.protected-cell`} role="status">{protectedCell.column === "profile_name" ? "Profile" : nativeColumns.find(column => column.key === protectedCell.column)?.label ?? protectedCell.column}: {ledgerCellDecision(module, protectedCell.column, protectedCell.row.data, false).reason} <button className="button-link" onClick={() => router.push(rowHref(protectedCell.row))} type="button">Open record for review</button></div> : null}
       </>}
     </DesignLedgerScreen>
-    {activeCell && cellEditor.session ? <LedgerFloatingCellEditor compact commitOnTab={activeCell.originalRace === undefined && activeCell.originalChannels === undefined} session={cellEditor.session} ledger={label} label={activeCell.label} dirty={activeCellDirty} pending={cellPending} error={cellError} onSave={saveCell} onCancel={() => { cellEditor.close(); setActiveCell(null); setCellDraft(""); setRaceDraft(""); setChannelDraft([]); setChannelMode("CLOSED"); setCellError(""); }} onReview={() => { if (activeCellDirty) { setCellError("Save or cancel this draft before opening the native editor."); return; } cellEditor.close(); setActiveCell(null); router.push(rowHref(activeCell.row)); }}>
-      {activeCell.originalChannels !== undefined ? <><SearchableCombobox dataPdId="combined.accounts.cell-editor.channel" id="combined-account-cell-channels" label="Access channels" mode={channelMode} onChange={values => { setChannelDraft(values); setCellError(""); }} onModeChange={setChannelMode} options={accountAccessChannelOptions} values={channelDraft} /><button className={labStyles.secondaryButton} type="submit">Apply access channels</button></> : <>
+    {activeCell && cellEditor.session ? <LedgerFloatingCellEditor compact commitOnTab={activeCell.originalRace === undefined && activeCell.originalChannels === undefined && activeCell.column !== "offer_details" && !activeCell.routineLay} session={cellEditor.session} ledger={label} label={activeCell.label} dirty={activeCellDirty} pending={cellPending} error={cellError} onSave={saveCell} onCancel={() => { cellEditor.close(); setActiveCell(null); setSportsbookDraft(null); setCellDraft(""); setRaceDraft(""); setChannelDraft([]); setChannelMode("CLOSED"); setCellError(""); }} onReview={() => { if (activeCellDirty && !activeCell.routineLay) { setCellError("Save or cancel this draft before opening the native editor."); return; } if (activeCell.routineLay) stageSportsbookLayDraft(activeCell.row.profileId, activeCell.row.recordId, cellDraft); cellEditor.close(); setActiveCell(null); router.push(rowHref(activeCell.row)); }}>
+      {activeCell.routineLay ? <DesignCumulativeLayCellFields matched={activeCell.routineLay.matched} onCancel={() => { cellEditor.close(); setActiveCell(null); setCellDraft(""); setCellError(""); }} onChange={value => { setCellDraft(value); setCellError(""); }} pending={cellPending} remaining={activeCell.routineLay.remaining} requested={activeCell.routineLay.requested} value={cellDraft} /> : sportsbookDraft && module === "sportsbook-bets" && activeCell.column === "offer_details" ? <div className="ledger-floating-composite" data-pd-id="combined.sportsbook-bets.cell-editor.offer_details">
+        <label>Offer Type<select className={designFloatingCellInputClass} onChange={event => { const offer_type = event.target.value; const options = getAllowedBetTypesForOfferType(offer_type, sportsbookDraft.bet_type); setSportsbookDraft(current => current ? { ...current, offer_type, bet_type: options.includes(current.bet_type) ? current.bet_type : options[0] ?? "" } : current); setCellError(""); }} value={sportsbookDraft.offer_type}><option value="">Select offer type</option>{getOfferTypeOptions(String(activeCell.row.data.offer_type ?? "")).map(option => <option key={option} value={option}>{option}</option>)}</select></label>
+        <label>Bet Type<select className={designFloatingCellInputClass} onChange={event => { setSportsbookDraft(current => current ? { ...current, bet_type: event.target.value } : current); setCellError(""); }} value={sportsbookDraft.bet_type}><option value="">Select bet type</option>{getAllowedBetTypesForOfferType(sportsbookDraft.offer_type, sportsbookDraft.bet_type).map(option => <option key={option} value={option}>{option}</option>)}</select></label>
+        <label>Fixture Type<select className={designFloatingCellInputClass} onChange={event => { setSportsbookDraft(current => current ? { ...current, fixture_type: event.target.value } : current); setCellError(""); }} value={sportsbookDraft.fixture_type}><option value="">Select fixture type</option>{[...new Set([...fixtureTypeOptions, sportsbookDraft.fixture_type])].filter(Boolean).map(option => <option key={option} value={option}>{option}</option>)}</select></label>
+        <button className={labStyles.secondaryButton} type="submit">Apply offer details</button>
+      </div> : sportsbookDraft && module === "sportsbook-bets" && activeCell.column === "match_strategy" ? <label><span className="sr-only">Strategy</span><select aria-label="Strategy" className={designFloatingCellInputClass} data-pd-id="combined.sportsbook-bets.cell-editor.match_strategy" onChange={event => { setSportsbookDraft(current => current ? { ...current, match_strategy: event.target.value } : current); setCellError(""); }} value={sportsbookDraft.match_strategy}>{["Standard", "Underlay", "Overlay", "Custom", "No Lay"].map(option => <option key={option} value={option}>{option}</option>)}</select></label> : activeCell.originalChannels !== undefined ? <><SearchableCombobox dataPdId="combined.accounts.cell-editor.channel" id="combined-account-cell-channels" label="Access channels" mode={channelMode} onChange={values => { setChannelDraft(values); setCellError(""); }} onModeChange={setChannelMode} options={accountAccessChannelOptions} values={channelDraft} /><button className={labStyles.secondaryButton} type="submit">Apply access channels</button></> : <>
         {activeCell.bookmakerOptions ? <select aria-label={activeCell.label} className={designFloatingCellInputClass} data-pd-id={`combined.${module}.cell-editor.${activeCell.column}`} onChange={event => { setCellDraft(event.target.value); setCellError(""); }} value={cellDraft}>{activeCell.bookmakerOptions.map(option => <option key={option} value={option}>{option}</option>)}</select> : <label><span className={activeCell.originalRace === undefined ? "sr-only" : undefined}>{activeCell.originalRace === undefined ? activeCell.label : "Runner"}</span><input aria-label={activeCell.originalRace === undefined ? activeCell.label : "Runner"} className={designFloatingCellInputClass} data-pd-id={`combined.${module}.cell-editor.${activeCell.column}`} inputMode={activeCell.column === "stake" ? "decimal" : undefined} onChange={event => { setCellDraft(event.target.value); setCellError(""); }} pattern={activeCell.column === "stake" ? "[0-9]+(\\.[0-9]+)?" : undefined} title={activeCell.column === "stake" ? "Enter a non-negative decimal stake" : undefined} type={activeCell.column === "date" || activeCell.column === "expiry_datetime" || activeCell.column === "date_settled" ? "datetime-local" : "text"} value={cellDraft} /></label>}
         {activeCell.originalRace !== undefined ? <><label><span>Race</span><input aria-label="Race" className={designFloatingCellInputClass} data-pd-id={`combined.${module}.cell-editor.race`} onChange={event => { setRaceDraft(event.target.value); setCellError(""); }} type="text" value={raceDraft} /></label><button className={labStyles.secondaryButton} type="submit">Apply Runner / Race</button></> : null}
       </>}

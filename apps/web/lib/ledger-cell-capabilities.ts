@@ -1,6 +1,7 @@
 import { ledgerColumnContracts } from "@/lib/ledger-column-contracts";
 import type { CombinedLedgerModule } from "@/lib/profile-scope";
 import { sportsbookPlanningFieldEditable } from "@/lib/sportsbook-inline-eligibility";
+import { routineLayEligibility } from "@/lib/sportsbook-cumulative-lay";
 
 export type LedgerCellType = "text" | "identifier" | "enum" | "multi-value" | "date" | "datetime" | "money" | "odds" | "percentage" | "boolean" | "composite" | "status" | "action";
 export type LedgerCellAuthority = "scalar" | "typed" | "native-composite" | "source-identity" | "financial-workflow" | "calculated" | "lifecycle" | "row-action";
@@ -54,7 +55,7 @@ export function ledgerCellCapability(module: CombinedLedgerModule, column: strin
 /** Display type does not grant edit access. The native row gate supplies canInline. */
 export function ledgerCellDecision(module: CombinedLedgerModule, column: string, record: Record<string, unknown>, canInline: boolean): { interaction: "edit" | "review" | "protected"; reason: string } {
   const capability = ledgerCellCapability(module, column);
-  if (module === "sportsbook-bets" && column === "lay_status") return { interaction: "review", reason: !String(record.requested_lay_stake ?? "").trim() ? "Requested Lay Stake is not recorded. Review the request and actual matched legs in Placement." : "Actual matched Lay legs and remaining request require Placement review; the calculated status cannot be edited directly." };
+  if (module === "sportsbook-bets" && column === "lay_status") return { interaction: "review", reason: routineLayEligibility(record).reason || "The recorded Lay fill is eligible for the compact Matched so far control." };
   if (module === "sportsbook-bets" && column === "back_bet_status") return { interaction: "review", reason: record.back_placement_confirmed === true ? "Back confirmation is recorded. Review its evidence or reversal in Placement." : "Independent Back confirmation is not recorded. Review actual Back stake and accepted odds in Placement." };
   if (module === "sportsbook-bets" && column === "status") return { interaction: "review", reason: String(record.result ?? "") === "Pending" ? "A recorded result is required before settlement. Review Status, Settles and Result in Finish / Review." : "Status uses the recorded result and governed settlement or correction workflow in Finish / Review." };
   if (["source-identity", "calculated", "row-action"].includes(capability.authority)) return { interaction: "protected", reason: ledgerCellReviewReason(capability) };

@@ -28,6 +28,30 @@ export function DesignBetWorkbenchSummary({ title, children, dataPdId }: { title
   return <aside className={styles.calcSummary} data-pd-id={dataPdId}><h3>{title}</h3>{children}</aside>;
 }
 
+/** Compact, evidence-labelled cumulative Lay input shared by the Lab proposal and real ledgers. */
+export function DesignCumulativeLayCellFields({ requested, matched, remaining, value, onChange, onCancel, pending = false }: {
+  requested: number;
+  matched: number;
+  remaining: number;
+  value: string;
+  onChange: (value: string) => void;
+  onCancel: () => void;
+  pending?: boolean;
+}) {
+  return <div className={styles.floatingCumulative} data-pd-id="sportsbook.partial-lay.cumulative-fields">
+    <dl className={styles.floatingCumulativeFigures}>
+      <div><dt>Requested</dt><dd>{formatFinancialValue(requested)}</dd></div>
+      <div><dt>Matched</dt><dd>{formatFinancialValue(matched)}</dd></div>
+      <div><dt>Remaining</dt><dd>{formatFinancialValue(remaining)}</dd></div>
+    </dl>
+    <label>Matched so far<input aria-label="Matched so far" inputMode="decimal" onChange={event => onChange(event.target.value)} value={value} /></label>
+    <div className={styles.floatingCumulativeActions}>
+      <button className={styles.secondaryButton} disabled={pending} onClick={onCancel} type="button">Cancel</button>
+      <button className={styles.primaryButton} disabled={pending} type="submit">Confirm</button>
+    </div>
+  </div>;
+}
+
 /** Approved Placement disclosure. Real and simulated adapters supply their own recorded evidence and commands. */
 export function DesignBetWorkbenchPlacementDetails({ fields, legs, followUp, reversal }: {
   fields?: ReactNode;

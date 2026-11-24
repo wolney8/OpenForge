@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { useLayoutEffect, useRef, useState } from "react";
 
 import { BrandLogo } from "@/components/brand-logo";
-import { DesignBetWorkbenchContext, DesignBetWorkbenchGrid, DesignBetWorkbenchLeg, DesignBetWorkbenchPlacementDetails, DesignBetWorkbenchProtectedActions, DesignBetWorkbenchProtectedNotice, DesignBetWorkbenchRecordedLegs, DesignBetWorkbenchStageRail, DesignBetWorkbenchSummary } from "@/components/design-bet-workbench-presentation";
+import { DesignBetWorkbenchContext, DesignBetWorkbenchGrid, DesignBetWorkbenchLeg, DesignBetWorkbenchPlacementDetails, DesignBetWorkbenchProtectedActions, DesignBetWorkbenchProtectedNotice, DesignBetWorkbenchRecordedLegs, DesignBetWorkbenchStageRail, DesignBetWorkbenchSummary, DesignCumulativeLayCellFields } from "@/components/design-bet-workbench-presentation";
+import { LedgerFloatingCellEditor, useLedgerCellEditor } from "@/components/ledger-floating-cell-editor";
 import { DesignPageHead } from "@/components/design-ledger-screen";
 import { DesignLabSelect } from "@/components/design-lab-select";
 import { formatFinancialValue } from "@/lib/financial-display";
@@ -60,13 +61,19 @@ export function DesignLabSportsbookProposals({ initialAmendment, initialPartialL
     ? [{ exchange: "Matchbook", odds: "2.00", matchedStake: "5.00" }]
     : initialAmendment === "operations" ? [{ exchange: "Matchbook", odds: "2.00", matchedStake: "5.00" }] : []);
   const [cumulativeDraft, setCumulativeDraft] = useState("5.00");
+  const [cumulativeError, setCumulativeError] = useState("");
   const [quickActionOpen, setQuickActionOpen] = useState(false);
+  const previewCellEditor = useLedgerCellEditor();
+  const [portalTarget, setPortalTarget] = useState<HTMLDivElement | null>(null);
+  const layCellRef = useRef<HTMLButtonElement>(null);
   const [warningsOpen, setWarningsOpen] = useState(false);
   const [operationWorkbenchOpen, setOperationWorkbenchOpen] = useState(initialPartialLegOpen);
   const [operationAction, setOperationAction] = useState<"back" | "status" | null>(null);
   const [settlesEditing, setSettlesEditing] = useState(false);
   const [settlesValue, setSettlesValue] = useState("2026-11-20T18:54");
   const [settlesDraft, setSettlesDraft] = useState("2026-11-20T18:54");
+  const [finishStatusDraft, setFinishStatusDraft] = useState("Placed");
+  const [finishResultDraft, setFinishResultDraft] = useState("Pending");
   const [legReviewOpen, setLegReviewOpen] = useState<number | null>(initialPartialLegOpen || initialAmendment === "operations" ? 0 : null);
   const [reminderActive, setReminderActive] = useState(false);
   const [reversalPending, setReversalPending] = useState(false);
@@ -105,32 +112,43 @@ export function DesignLabSportsbookProposals({ initialAmendment, initialPartialL
       target?.focus({ preventScroll: true });
     });
   };
-  const openCumulativeEditor = () => {
+  const openCumulativeEditor = (anchor?: HTMLElement | null) => {
     setCumulativeDraft(current => current.trim() ? current : laySummary.matchedTotal.toFixed(2));
+    setCumulativeError("");
+    if (anchor && requestedLayRecorded && !laySummary.hasReachedTarget) {
+      setOperationWorkbenchOpen(false);
+      previewCellEditor.start("lay_status", anchor);
+      return;
+    }
+    if (!requestedLayRecorded) { openOperationStage(3, "request"); return; }
     setQuickActionOpen(true);
     openOperationStage(3);
     // A double-click dispatches a second click after the first render. Restore
     // focus to the editor after that pointer event rather than the ledger cell.
     requestAnimationFrame(() => operationWorkbenchRef.current?.querySelector<HTMLInputElement>('[data-pd-id="lab.proposal.quick-action"] input')?.focus({ preventScroll: true }));
   };
-  const confirmCumulativeEditor = () => {
+  const confirmCumulativeEditor = (): boolean => {
     const canonical = normalizeMoneyInput(cumulativeDraft.trim());
     const request = normalizeMoneyInput(requestedLayStake.trim());
     if (!requestedLayRecorded || canonical === null || canonical === "" || request === null || request === "") {
-      setNotice("Matched so far needs a complete amount with at most two decimal places and a recorded Lay request.");
-      return;
+      const message = "Matched so far needs a complete amount with at most two decimal places and a recorded Lay request.";
+      setCumulativeError(message); setNotice(message);
+      return false;
     }
     const nextPence = Math.round(Number(canonical) * 100);
     const previousPence = Math.round(laySummary.matchedTotal * 100);
     const requestedPence = Math.round(Number(request) * 100);
     if (nextPence < previousPence || nextPence > requestedPence) {
-      setNotice(`Enter a cumulative amount from the saved £${laySummary.matchedTotal.toFixed(2)} up to the £${Number(request).toFixed(2)} request. Downward changes require correction review.`);
-      return;
+      const message = `Enter a cumulative amount from the saved £${laySummary.matchedTotal.toFixed(2)} up to the £${Number(request).toFixed(2)} request. Downward changes require correction review.`;
+      setCumulativeError(message); setNotice(message);
+      return false;
     }
     const difference = nextPence - previousPence;
     if (difference > 0) setRecordedLegs(current => [...current, { exchange: "Matchbook", odds: "2.00", matchedStake: (difference / 100).toFixed(2) }]);
     setQuickActionOpen(false);
+    setCumulativeError("");
     setNotice(difference > 0 ? `Synthetic £${(difference / 100).toFixed(2)} fill added; no source record changed.` : "Already recorded · no new fill added.");
+    return true;
   };
   const layStatus = recordedLegs.length === 0 ? "Not recorded" : laySummary.hasReachedTarget ? "Fully matched" : "Partially matched";
   const nextMatchedValue = Number(matchedLayDraft);
@@ -172,7 +190,7 @@ export function DesignLabSportsbookProposals({ initialAmendment, initialPartialL
   const visibleScenarios = outcomeState === "exceptional" ? scenarios.slice(0, 2) : scenarios;
   const detailedScenarios = outcomeState === "exceptional" ? scenarios.slice(2) : [];
 
-  return <div className={lab.lab} data-pd-id="lab.sportsbook-proposals.root">
+  return <div className={lab.lab} data-pd-id="lab.sportsbook-proposals.root" ref={setPortalTarget}>
     <a className={lab.skip} href="#lab-main">Skip to proposal</a>
     <div className={`${lab.frame} ${collapsed ? lab.collapsed : ""}`}>
       {mobileNav ? <button aria-label="Dismiss navigation" className={lab.navScrim} onClick={() => setMobileNav(false)} tabIndex={-1} type="button" /> : null}
@@ -218,10 +236,10 @@ export function DesignLabSportsbookProposals({ initialAmendment, initialPartialL
               <td className={local.proposalDateCell}><div className={local.warningDateRow}>{settlesEditing ? <label className={local.dateEditor}>Settles<input aria-label="Settles date and time" onChange={event => setSettlesDraft(event.target.value)} type="datetime-local" value={settlesDraft} /><span><button className={lab.linkButton} onClick={() => { setSettlesValue(settlesDraft); setSettlesEditing(false); setNotice("Synthetic Settles date updated; no source record changed."); }} type="button">Apply date</button><button className={lab.linkButton} onClick={() => { setSettlesDraft(settlesValue); setSettlesEditing(false); }} type="button">Cancel</button></span></label> : <button aria-label="Edit Settles date and time" className={local.proposalCellButton} onClick={() => { setSettlesDraft(settlesValue); setSettlesEditing(true); }} type="button">{formatCompactLedgerDate(settlesValue)?.compact ?? "Not recorded"}</button>}<button aria-expanded={warningsOpen} aria-label={`Show ${warningCount} recorded warnings`} className={local.warningTrigger} onClick={() => setWarningsOpen(value => !value)} type="button"><Icon>warning</Icon><span>{warningCount}</span></button></div></td>
               <td><strong>Arsenal v Chelsea</strong><small>Football · Match odds</small></td><td>Matchbook</td>
               <td><button aria-expanded={operationAction === "back"} className={local.proposalCellButton} onClick={() => setOperationAction(current => current === "back" ? null : "back")} type="button">{backConfirmed ? "Back confirmed" : "Back not recorded"}<Icon>arrow_drop_down</Icon></button></td>
-              <td><button aria-label={laySummary.hasReachedTarget ? "Review fully matched Lay" : "Edit partial lay matched so far"} className={local.proposalCellButton} onClick={() => { if (laySummary.hasReachedTarget) openOperationStage(3); else openCumulativeEditor(); }} onDoubleClick={() => { if (laySummary.hasReachedTarget) openOperationStage(3); else openCumulativeEditor(); }} onKeyDown={event => { if (event.key === "F2") { event.preventDefault(); if (laySummary.hasReachedTarget) openOperationStage(3); else openCumulativeEditor(); } }} type="button"><span>{layStatus}</span><small>£{laySummary.matchedTotal.toFixed(2)} matched{laySummary.remainingToMatch === null ? " · request not recorded" : ` · £${laySummary.remainingToMatch.toFixed(2)} remaining`}</small></button></td>
+              <td><button aria-label={laySummary.hasReachedTarget ? "Review fully matched Lay" : "Edit partial lay matched so far"} className={local.proposalCellButton} ref={layCellRef} onClick={event => { if (event.detail === 0) { if (laySummary.hasReachedTarget) openOperationStage(3); else openCumulativeEditor(event.currentTarget); } }} onDoubleClick={event => { if (laySummary.hasReachedTarget) openOperationStage(3); else openCumulativeEditor(event.currentTarget); }} onPointerUp={event => { if (event.pointerType === "touch") { if (laySummary.hasReachedTarget) openOperationStage(3); else openCumulativeEditor(event.currentTarget); } }} onKeyDown={event => { if (event.key === "F2" || event.key === "Enter") { event.preventDefault(); if (laySummary.hasReachedTarget) openOperationStage(3); else openCumulativeEditor(event.currentTarget); } }} type="button"><span>{layStatus}</span><small>£{laySummary.matchedTotal.toFixed(2)} matched{laySummary.remainingToMatch === null ? " · request not recorded" : ` · £${laySummary.remainingToMatch.toFixed(2)} remaining`}</small></button></td>
               <td><button aria-expanded={operationAction === "status"} className={local.proposalCellButton} onClick={() => setOperationAction(current => current === "status" ? null : "status")} type="button">Placed<Icon>arrow_drop_down</Icon></button></td>
             </tr></tbody></table></div>
-            {operationAction ? <section aria-label={`${operationAction === "back" ? "Back Bet" : "Status"} actions`} className={local.warningPanel} data-pd-id={`lab.proposal.${operationAction}-actions`}><h3>{operationAction === "back" ? "Back Bet actions" : "Status actions"}</h3>{operationAction === "back" ? <><p>Back confirmation is independent of the recorded Lay fills.</p><button className={lab.secondaryButton} onClick={() => { setActualBackStakeDraft(backEvidenceAvailable ? "" : "10.00"); setAcceptedBackOddsDraft(backEvidenceAvailable ? "" : "2.00"); }} type="button">{backEvidenceAvailable ? "Show missing Back evidence" : "Restore Back evidence"}</button><button className={lab.secondaryButton} disabled={backConfirmed || !backEvidenceAvailable} onClick={() => openOperationStage(3, "back")} type="button">Review Back confirmation in Placement</button>{!backEvidenceAvailable ? <p role="status">Record the actual Back stake and accepted odds before confirming externally.</p> : null}{backConfirmed ? <button className={lab.secondaryButton} onClick={() => { openOperationStage(3); setBackReversalPending(true); }} type="button">Review Back reversal in Placement</button> : null}</> : <><p>Settlement requires a recorded result. The event date does not establish a settlement deadline.</p><button className={lab.secondaryButton} disabled type="button">Mark Settled · result missing</button><button className={lab.secondaryButton} onClick={() => openOperationStage(4, "status")} type="button">Review settlement in Finish</button><button className={lab.secondaryButton} onClick={() => openOperationStage(3, "request")} type="button">Review missing placement evidence</button></>}</section> : null}
+            {operationAction ? <section aria-label={`${operationAction === "back" ? "Back Bet" : "Status"} actions`} className={local.warningPanel} data-pd-id={`lab.proposal.${operationAction}-actions`}><h3>{operationAction === "back" ? "Back Bet actions" : "Status actions"}</h3>{operationAction === "back" ? <><p>Back confirmation is independent of the recorded Lay fills.</p><button className={lab.secondaryButton} onClick={() => { setActualBackStakeDraft(backEvidenceAvailable ? "" : "10.00"); setAcceptedBackOddsDraft(backEvidenceAvailable ? "" : "2.00"); }} type="button">{backEvidenceAvailable ? "Show missing Back evidence" : "Restore Back evidence"}</button><button className={lab.secondaryButton} disabled={backConfirmed || !backEvidenceAvailable} onClick={() => openOperationStage(3, "back")} type="button">Review Back confirmation in Placement</button>{!backEvidenceAvailable ? <p role="status">Record the actual Back stake and accepted odds before confirming externally.</p> : null}{backConfirmed ? <button className={lab.secondaryButton} onClick={() => { openOperationStage(3); setBackReversalPending(true); }} type="button">Review Back reversal in Placement</button> : null}</> : <><p>{finishResultDraft === "Pending" ? "Settlement requires a recorded result." : `Draft result: ${finishResultDraft}. Review the remaining placement prerequisites before saving.`} The event date does not establish a settlement deadline.</p><button className={lab.secondaryButton} disabled={finishResultDraft === "Pending"} onClick={() => openOperationStage(4, "status")} type="button">{finishResultDraft === "Pending" ? "Mark Settled · result missing" : "Review Settled change"}</button><button className={lab.secondaryButton} onClick={() => openOperationStage(4, "status")} type="button">Review settlement in Finish</button><button className={lab.secondaryButton} onClick={() => openOperationStage(3, "request")} type="button">Review missing placement evidence</button></>}</section> : null}
             {warningsOpen ? <section aria-label="Recorded warnings" className={local.warningPanel} data-pd-id="lab.proposal.warnings"><h3>{warningCount} items need review</h3><ul>{!requestedLayRecorded || !laySummary.hasReachedTarget ? <li><strong>Lay match</strong> · {requestedLayRecorded ? `£${laySummary.matchedTotal.toFixed(2)} of £${Number(requestedLayStake).toFixed(2)} requested.` : "Requested stake not recorded."} <button className={lab.linkButton} onClick={() => requestedLayRecorded ? openCumulativeEditor() : openOperationStage(3, "request")} type="button">{requestedLayRecorded ? "Update matched amount" : "Review requested stake"}</button></li> : null}{!backConfirmed ? <li><strong>Back confirmation</strong> · Not recorded. <button className={lab.linkButton} onClick={() => openOperationStage(3, "back")} type="button">Review Back confirmation</button></li> : null}<li><strong>Settlement</strong> · Event date is recorded; settlement deadline is not established. <button className={lab.linkButton} onClick={() => openOperationStage(4, "status")} type="button">Review settlement</button></li></ul></section> : null}
           </section> : null}
           {amendment !== "operations" || operationWorkbenchOpen ? <div className={lab.entry} data-pd-id="lab.proposal.workbench" ref={operationWorkbenchRef}>
@@ -255,14 +273,14 @@ export function DesignLabSportsbookProposals({ initialAmendment, initialPartialL
                 </fieldset> : null}
                 {amendment === "requirements" ? <fieldset><legend>Recorded requirements</legend><div className={local.switchRow}><button className={lab.secondaryButton} onClick={() => setOutcomeState("ordinary")} type="button">Ordinary result</button><button className={lab.secondaryButton} onClick={() => setOutcomeState("exceptional")} type="button">Extra scenarios</button><button className={lab.secondaryButton} onClick={() => setOutcomeState("unavailable")} type="button">Unavailable data</button></div><dl className={lab.detailGrid}><div><dt>Qualifying source</dt><dd>{outcomeState === "unavailable" ? "Unknown" : "Recorded · synthetic"}</dd></div><div><dt>Reward conditions</dt><dd>Unknown</dd></div><div><dt>External placement evidence</dt><dd>{outcomeState === "ordinary" ? "Recorded · synthetic" : "Unknown"}</dd></div></dl><small className={local.fieldHelp}>Unknown means no recorded evidence. This preview does not confirm external activity.</small></fieldset> : null}
                 {amendment === "operations" ? <fieldset data-pd-id="lab.proposal.operations"><legend>{stage === 4 ? "Finish / Review" : "Placement"} · proposed ledger actions</legend>
-                  {stage === 4 ? <><p className={local.previewNotice}>Arsenal v Chelsea · Profile A · synthetic Placed record. Settlement requires an actual result; the event date alone is not a deadline.</p><div className={lab.fieldPair}><label>Status<select data-operation-focus="status" defaultValue="Placed"><option>Placed</option><option>Settled</option></select></label><label>Result<select defaultValue="Pending"><option>Pending</option><option>Back Won</option><option>Lay Won</option></select></label></div><p className={local.fieldHelp}>A settled change uses the governed result and correction command in PD. This preview makes no write.</p></> : <>
+                  {stage === 4 ? <><p className={local.previewNotice}>Arsenal v Chelsea · Profile A · synthetic Placed record. Settlement requires an actual result; the event date alone is not a deadline.</p><div className={lab.fieldPair}><label>Status<select data-operation-focus="status" onChange={event => setFinishStatusDraft(event.target.value)} value={finishStatusDraft}><option>Placed</option><option>Settled</option></select></label><label>Result<select onChange={event => setFinishResultDraft(event.target.value)} value={finishResultDraft}><option>Pending</option><option>Back Won</option><option>Lay Won</option></select></label></div>{finishStatusDraft === "Settled" && finishResultDraft === "Pending" ? <p role="status">Choose a recorded result before settlement can be saved. The Status and Result draft remains here when you return.</p> : null}<p className={local.fieldHelp}>A settled change uses the governed result and correction command in PD. This preview makes no write.</p></> : <>
                   <p className={local.previewNotice}>Arsenal v Chelsea · £10 Back plan · {requestedLayRecorded ? `£${Number(requestedLayStake).toFixed(2)} recorded Lay request` : "Lay request Not recorded"} · £{laySummary.matchedTotal.toFixed(2)} matched. No financial command is connected.</p>
                   <button className={lab.secondaryButton} onClick={() => setRequestedLayRecorded(value => !value)} type="button">{requestedLayRecorded ? "Show missing-request example" : "Restore recorded £8 request"}</button>
                   <div className={lab.fieldPair}><label>Requested Lay Stake<input data-operation-focus="request" inputMode="decimal" onChange={event => { setRequestedLayStake(event.target.value); setRequestedLayRecorded(event.target.value.trim() !== ""); }} placeholder="Not recorded" value={requestedLayRecorded ? requestedLayStake : ""} /></label><label>Actual Back stake<input data-operation-focus="back" inputMode="decimal" onChange={event => setActualBackStakeDraft(event.target.value)} placeholder="Not recorded" value={actualBackStakeDraft} /></label><label>Accepted Back odds<input inputMode="decimal" onChange={event => setAcceptedBackOddsDraft(event.target.value)} placeholder="Not recorded" value={acceptedBackOddsDraft} /></label><label>Back placement<input readOnly value={backConfirmed ? "Confirmed externally" : "Not recorded"} /></label></div>
                   <button className={lab.secondaryButton} disabled={backConfirmed || !backEvidenceAvailable} onClick={() => { setBackConfirmed(true); setNotice("Synthetic Back confirmation recorded independently; Lay evidence is unchanged."); }} type="button">Confirm external Back</button>
                   <div className={local.quickFigures}><div><span>Requested</span><strong>{requestedLayRecorded ? `£${Number(requestedLayStake).toFixed(2)}` : "Not recorded"}</strong></div><div><span>Matched</span><strong>£{laySummary.matchedTotal.toFixed(2)}</strong></div><div><span>Remaining</span><strong>{laySummary.remainingToMatch === null ? "Not recorded" : `£${Math.max(0, laySummary.remainingToMatch).toFixed(2)}`}</strong></div></div>
                   <p className={local.inlineStatus}>{!requestedLayRecorded ? "Request not recorded · completion unknown" : laySummary.hasReachedTarget ? "Fully matched" : "Partially matched"}</p>
-                  <div className={local.switchRow}><button className={lab.primaryButton} disabled={!requestedLayRecorded || laySummary.hasReachedTarget} onClick={openCumulativeEditor} type="button">Update matched amount</button><button className={lab.secondaryButton} disabled={!requestedLayRecorded || laySummary.hasReachedTarget} onClick={() => { setCumulativeDraft(requestedLayStake); setQuickActionOpen(true); }} type="button">{laySummary.remainingToMatch === null ? "Confirm remaining · request unknown" : `Confirm remaining £${Math.max(0, laySummary.remainingToMatch).toFixed(2)} matched`}</button></div>
+                  <div className={local.switchRow}><button className={lab.primaryButton} disabled={!requestedLayRecorded || laySummary.hasReachedTarget} onClick={() => openCumulativeEditor()} type="button">Update matched amount</button><button className={lab.secondaryButton} disabled={!requestedLayRecorded || laySummary.hasReachedTarget} onClick={() => { setCumulativeDraft(requestedLayStake); setQuickActionOpen(true); }} type="button">{laySummary.remainingToMatch === null ? "Confirm remaining · request unknown" : `Confirm remaining £${Math.max(0, laySummary.remainingToMatch).toFixed(2)} matched`}</button></div>
                   {!requestedLayRecorded ? <p className={local.fieldHelp}>Record the requested Lay stake in Placement before confirming a remaining amount.</p> : null}
                   {quickActionOpen ? <section aria-label="Update matched amount" className={local.warningPanel} data-pd-id="lab.proposal.quick-action"><h3>Update matched amount</h3><label>Matched so far<input inputMode="decimal" onChange={event => setCumulativeDraft(event.target.value)} value={cumulativeDraft} /></label><p>Enter the total actually matched. The next fill is the difference from £{laySummary.matchedTotal.toFixed(2)} already recorded at Matchbook · odds 2.00. Changed odds, exchange or ambiguous legs require Placement review.</p><div className={local.switchRow}><button className={lab.secondaryButton} onClick={() => { setQuickActionOpen(false); setCumulativeDraft(laySummary.matchedTotal.toFixed(2)); }} type="button">Cancel</button><button className={lab.primaryButton} onClick={confirmCumulativeEditor} type="button">Confirm actual match</button></div></section> : null}
                   <DesignBetWorkbenchPlacementDetails
@@ -370,6 +388,7 @@ export function DesignLabSportsbookProposals({ initialAmendment, initialPartialL
             </div>
           </div> : null}
         </main>
+        {previewCellEditor.session ? <LedgerFloatingCellEditor compact commitOnTab={false} dirty={cumulativeDraft !== laySummary.matchedTotal.toFixed(2)} error={cumulativeError} label="Matched so far" ledger="Sportsbook" onCancel={() => { previewCellEditor.close(); setCumulativeError(""); setCumulativeDraft(laySummary.matchedTotal.toFixed(2)); }} onReview={() => { previewCellEditor.close(); openOperationStage(3, "request"); }} onSave={async () => { const saved = confirmCumulativeEditor(); if (saved) previewCellEditor.close(); return saved; }} portalTarget={portalTarget ?? undefined} session={previewCellEditor.session}><DesignCumulativeLayCellFields matched={laySummary.matchedTotal} onCancel={() => { previewCellEditor.close(); setCumulativeError(""); }} onChange={setCumulativeDraft} remaining={laySummary.remainingToMatch ?? 0} requested={Number(requestedLayStake)} value={cumulativeDraft} /></LedgerFloatingCellEditor> : null}
       </div>
     </div>
   </div>;

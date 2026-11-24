@@ -15,6 +15,9 @@ import { getMoneyInputErrors } from "@/lib/decimal-input";
 import { hasNewerFormEdits, reconcileSavedForm } from "@/lib/latest-edit";
 import { isOnlyFieldChange } from "@/lib/field-change";
 import { sportsbookPlanningFieldEditable } from "@/lib/sportsbook-inline-eligibility";
+import { commitRoutineCumulativeLay, routineLayEligibility } from "@/lib/sportsbook-cumulative-lay";
+import { DesignCumulativeLayCellFields } from "@/components/design-bet-workbench-presentation";
+import { takeSportsbookLayDraft } from "@/lib/sportsbook-lay-handoff";
 
 import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -175,7 +178,8 @@ const inlineCellFields = {
   match_strategy: { key: "match_strategy", label: "Strategy", type: "strategy" },
 } as const;
 
-function canInlineSportsbookField(record: SportsbookRecord | undefined, column: string): boolean {
+export function canInlineSportsbookField(record: SportsbookRecord | undefined, column: string): boolean {
+  if (record && column === "lay_status") return routineLayEligibility(record as unknown as Record<string, unknown>).value !== null;
   if (!record || !(column in inlineCellFields)) return false;
   if (["Settled", "Void", "Cancelled", "Free Bet Awarded"].includes(record.status)) return false;
   if (["offer_details", "match_strategy"].includes(column) && ["Profit Boost", "Cashback", "2UP", "Early Payout", "Bonus Lock-In"].includes(record.offer_type)) return false;
@@ -2221,6 +2225,27 @@ function applyStrategyDefaults(
   };
 }
 
+/** Shared native draft preparation for the same eligible Offer/Strategy grid controls. */
+export function prepareSportsbookPlanningCellPayload(record: Record<string, unknown>, column: "offer_details" | "match_strategy", proposal: { offer_type?: string; bet_type?: string; fixture_type?: string; match_strategy?: string }): Record<string, unknown> {
+  if (!canInlineSportsbookField(record as SportsbookRecord, column)) throw new Error("This record now requires its populated Sportsbook review workflow.");
+  const original = recordToForm(record as SportsbookRecord);
+  let next = original;
+  if (column === "offer_details") {
+    if (!proposal.offer_type || !getOfferTypeOptions(original.offer_type).includes(proposal.offer_type)) throw new Error("Choose an available Offer Type.");
+    next = applyOfferTypeDefaults(original, proposal.offer_type);
+    if (!proposal.bet_type || !getAllowedBetTypesForOfferType(next.offer_type, original.bet_type).includes(proposal.bet_type)) throw new Error("Choose a valid Bet Type for this offer.");
+    if (!proposal.fixture_type || ![...fixtureTypeOptions, original.fixture_type].includes(proposal.fixture_type)) throw new Error("Choose an available Fixture Type.");
+    next = { ...next, bet_type: proposal.bet_type, fixture_type: proposal.fixture_type };
+  } else {
+    if (!proposal.match_strategy || !["Standard", "Underlay", "Overlay", "Custom", "No Lay"].includes(proposal.match_strategy)) throw new Error("Choose an available Strategy.");
+    next = applyStrategyDefaults(original, proposal.match_strategy);
+  }
+  if (!getBetSetupComplete(next)) throw new Error(`Complete required Offer fields first: ${getMissingBetSetupFields(next).join(", ")}.`);
+  const prepared = serializeOfferMetadata(next);
+  const changed = Object.fromEntries((Object.keys(prepared) as Array<keyof SportsbookFormState>).filter(key => key !== "date_settled" && prepared[key] !== original[key]).map(key => [key, prepared[key]]));
+  return { ...record, ...changed };
+}
+
 function applyResultDefaults(
   current: SportsbookFormState,
   nextResult: string
@@ -3165,6 +3190,9 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
     () => new Set()
   );
   const [partialLayLegs, setPartialLayLegs] = useState<PartialLayLegInput[]>([]);
+  const [cumulativeLayDraft, setCumulativeLayDraft] = useState("");
+  const [cumulativeLayPending, setCumulativeLayPending] = useState(false);
+  const cumulativeLaySavingRef = useRef(false);
   const [matchedLayConfirmationDraft, setMatchedLayConfirmationDraft] = useState("");
   const [footballSettlesAssistUsed, setFootballSettlesAssistUsed] = useState(false);
   const [footballSettlesOriginalValue, setFootballSettlesOriginalValue] = useState<string | null>(
@@ -3417,7 +3445,16 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
           setFormState(nextFormState);
           setPristineFormState(nextFormState);
           setShowBetSetupValidation(false);
-          setActiveEditorTabId("setup");
+          const handedOffLayDraft = takeSportsbookLayDraft(profileId, activeRecord.sportsbook_bet_id);
+          if (handedOffLayDraft !== null) {
+            setMatchedLayConfirmationDraft(handedOffLayDraft);
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+              const field = [...document.querySelectorAll<HTMLInputElement>('input[aria-label="Matched Lay amount to confirm"]')].find(input => input.getClientRects().length > 0);
+              field?.focus({ preventScroll: true });
+              field?.scrollIntoView({ block: "center" });
+            }));
+          }
+          setActiveEditorTabId(handedOffLayDraft !== null ? "placement" : sportsbookWorkbenchEntry({ status: activeRecord.status, layStatus: activeRecord.lay_status, matchStrategy: nextFormState.match_strategy, setupComplete: getBetSetupComplete(nextFormState) }));
           setRequirementsVisible(false);
           setPlacementVisualOnly(false);
           setGuidedEntryDismissed(false);
@@ -4034,6 +4071,9 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
     () => rows.find((row) => row.sportsbook_bet_id === selectedId) ?? null,
     [rows, selectedId]
   );
+  const selectedRoutineLay = selectedSportsbookRow && cellEditor.session?.column === "lay_status"
+    ? routineLayEligibility(selectedSportsbookRow as unknown as Record<string, unknown>).value
+    : null;
   useEffect(() => {
     const offerGroupId =
       selectedSportsbookRow?.bet_role === "Trigger"
@@ -5647,6 +5687,7 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
     if (options?.cell && !["Settled", "Void", "Cancelled", "Free Bet Awarded"].includes(record.status)) cellEditor.start(options.cell.column, options.cell.anchor); else cellEditor.close();
     setSelectedId(rowId);
     setMatchedLayConfirmationDraft("");
+    setCumulativeLayDraft(record.lay_matched_stake_1 || "");
     setSelectedGridRowId(rowId);
     setProtectedGridCell(null);
     setQuickCaptureOpen(false);
@@ -6092,6 +6133,32 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
       restoreEditorReturnFocus();
     }
     return true;
+  }
+
+  async function saveRoutineLayCell(): Promise<boolean> {
+    const row = rows.find(entry => entry.sportsbook_bet_id === selectedId);
+    if (!row || cumulativeLaySavingRef.current) return false;
+    cumulativeLaySavingRef.current = true;
+    setCumulativeLayPending(true);
+    setErrorMessage("");
+    try {
+      const confirmed = await commitRoutineCumulativeLay({ profileId, recordId: row.sportsbook_bet_id, expectedUpdatedAt: row.updated_at, cumulative: cumulativeLayDraft }) as unknown as SportsbookRecord;
+      invalidateCachedJson(`${apiBaseUrl}/profiles/${profileId}/sportsbook-bets`);
+      dispatchTrackerDataUpdated({ ledger: "sportsbook-bets", profileId });
+      setRows(current => current.map(entry => entry.sportsbook_bet_id === confirmed.sportsbook_bet_id ? confirmed : entry));
+      const nextForm = recordToForm(confirmed);
+      setFormState(nextForm);
+      setPristineFormState(nextForm);
+      setPartialLayLegs(parsePartialLayLegs(confirmed.multi_lay_outcomes_json, { exchangeName: confirmed.exchange_name, layOdds: confirmed.lay_odds_1, matchedStake: confirmed.lay_matched_stake_1 }));
+      cellEditor.close();
+      setWorkflowVisible(false);
+      setSelectedId(null);
+      setStatusMessage("Matched Lay fill saved.");
+      return true;
+    } catch (cause) {
+      setErrorMessage(cause instanceof Error ? cause.message : "The Lay fill was not saved. Your input is retained.");
+      return false;
+    } finally { cumulativeLaySavingRef.current = false; setCumulativeLayPending(false); }
   }
 
   async function applyDropdownChange(
@@ -8026,7 +8093,7 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
             <LedgerTableScroll dataPdId="sportsbook.table-scroll" visualV2={visualV2} narrowDetail={visualV2 && mobileDetail} cellNavigation={{ label: "Sportsbook", onSelect: visualV2 ? setSelectedGridRowId : undefined, onActivate: (rowId, column, anchor) => {
               const record = rows.find(entry => entry.sportsbook_bet_id === rowId);
               if (visualV2 && !canInlineSportsbookField(record, column)) { setProtectedGridCell({ rowId, column, anchor }); return; }
-              void selectRow(rowId, { cell: column in inlineCellFields ? { column, anchor } : undefined });
+              void selectRow(rowId, { cell: column in inlineCellFields || column === "lay_status" ? { column, anchor } : undefined });
             } }}>
               <table className="data-table sportsbook-data-table">
                 <colgroup>
@@ -8558,6 +8625,7 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
         </div>
       ) : null}
 
+      {visualV2 && workflowVisible && cellEditor.session?.column === "lay_status" && selectedRoutineLay ? <LedgerFloatingCellEditor compact commitOnTab={false} dirty={cumulativeLayDraft !== selectedRoutineLay.matched.toFixed(2)} error={errorMessage} label="Matched so far" ledger="Sportsbook" onCancel={() => { cellEditor.close(); setWorkflowVisible(false); setSelectedId(null); setErrorMessage(""); }} onReview={() => { cellEditor.close(); setMatchedLayConfirmationDraft(cumulativeLayDraft); activateEditorTab("placement"); revealEditor(); }} onSave={saveRoutineLayCell} pending={cumulativeLayPending} session={cellEditor.session}><DesignCumulativeLayCellFields matched={selectedRoutineLay.matched} onCancel={() => { cellEditor.close(); setWorkflowVisible(false); setSelectedId(null); setErrorMessage(""); }} onChange={setCumulativeLayDraft} pending={cumulativeLayPending} remaining={selectedRoutineLay.remaining} requested={selectedRoutineLay.requested} value={cumulativeLayDraft} /></LedgerFloatingCellEditor> : null}
       {workflowVisible && cellEditor.session && inlineField ? <LedgerFloatingCellEditor
         compact
         commitOnTab={inlineField.type !== "composite"}
