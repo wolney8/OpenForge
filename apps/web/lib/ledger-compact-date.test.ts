@@ -16,9 +16,16 @@ describe("compact ledger date presentation", () => {
     expect(formatCompactLedgerDate("2026-02-31")).toBeNull();
   });
   it("sorts from recorded timestamps rather than the abbreviated text", () => {
-    expect(ledgerDateSortValue("2026-07-20T18:54:00Z")).toBe(Date.UTC(2026, 6, 20, 18, 54));
+    expect(ledgerDateSortValue("2026-07-20T18:54:00Z")).toBe(Date.UTC(2026, 6, 20, 19, 54));
     expect(ledgerDateSortValue("2026-07-20T18:54:00")).toBe(Date.UTC(2026, 6, 20, 18, 54));
-    expect(ledgerDateSortValue("2026-07-20T18:54:00+01:00")).toBe(Date.UTC(2026, 6, 20, 17, 54));
+    expect(ledgerDateSortValue("2026-07-20T18:54:00+01:00")).toBe(Date.UTC(2026, 6, 20, 18, 54));
     expect(ledgerDateSortValue("2026-02-31")).toBeNull();
+  });
+  it("orders local and offset timestamps by the London clock shown to the user in summer", () => {
+    const local = "2026-07-20T19:30:00";
+    const offset = "2026-07-20T18:54:00Z";
+    expect(formatCompactLedgerDate(local)?.compact).toBe("Mon 20th Jul - 19:30");
+    expect(formatCompactLedgerDate(offset)?.compact).toBe("Mon 20th Jul - 19:54");
+    expect(ledgerDateSortValue(local)!).toBeLessThan(ledgerDateSortValue(offset)!);
   });
 });

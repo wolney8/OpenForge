@@ -1,4 +1,9 @@
 const ordinal = (day: number) => day % 100 >= 11 && day % 100 <= 13 ? "th" : day % 10 === 1 ? "st" : day % 10 === 2 ? "nd" : day % 10 === 3 ? "rd" : "th";
+const sortPartsOptions: Intl.DateTimeFormatOptions = {
+  year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23",
+};
+const londonSortParts = new Intl.DateTimeFormat("en-GB", { ...sortPartsOptions, timeZone: "Europe/London" });
+const localSortParts = new Intl.DateTimeFormat("en-GB", { ...sortPartsOptions, timeZone: "UTC" });
 
 function parseRecordedLedgerDate(value: string | null | undefined): { parsed: Date; isDateOnly: boolean; hasOffset: boolean } | null {
   const source = value?.trim();
@@ -17,9 +22,14 @@ function parseRecordedLedgerDate(value: string | null | undefined): { parsed: Da
   return { parsed, isDateOnly, hasOffset };
 }
 
-/** A shared chronological key keeps combined sorting independent from the shortened display text. */
+/** Sort by the calendar and clock displayed to the user. Workbook local values are wall time;
+ * explicit offsets are rendered in Europe/London. Neither is reinterpreted in the browser zone. */
 export function ledgerDateSortValue(value: string | null | undefined): number | null {
-  return parseRecordedLedgerDate(value)?.parsed.getTime() ?? null;
+  const recorded = parseRecordedLedgerDate(value);
+  if (!recorded) return null;
+  const parts = (recorded.hasOffset ? londonSortParts : localSortParts).formatToParts(recorded.parsed);
+  const part = (type: string) => Number(parts.find(entry => entry.type === type)?.value);
+  return Date.UTC(part("year"), part("month") - 1, part("day"), part("hour"), part("minute"), part("second"));
 }
 
 /** Explicit-offset timestamps are shown in Europe/London; local source timestamps retain their wall time. */

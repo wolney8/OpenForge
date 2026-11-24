@@ -321,7 +321,7 @@ test("Sportsbook typed cells activate by F2 or Enter and Escape cancels without 
 test("placed and settled Sportsbook cells explain their protected boundary before a deliberate workbench review", async ({ page }) => {
   const original = await (await page.request.get(`/api/profiles/${profile}/sportsbook-bets/CP117-CELL-001`)).json() as Record<string, unknown>;
   await page.route(`**/profiles/${profile}/sportsbook-bets`, route => route.fulfill({ status: 200, json: [
-    { ...original, sportsbook_bet_id: "PROTECTED-PLACED", status: "Placed", actual_accepted_back_odds: "2.10" },
+    { ...original, sportsbook_bet_id: "PROTECTED-PLACED", status: "Placed", actual_accepted_back_odds: "2.10", requested_lay_stake: null },
     { ...original, sportsbook_bet_id: "PROTECTED-SETTLED", status: "Settled", result: "Win" },
   ] }));
   await page.goto(ledger);
@@ -332,6 +332,16 @@ test("placed and settled Sportsbook cells explain their protected boundary befor
     await expect(page.locator('[data-pd-id="ledger.floating-editor"]')).toHaveCount(0);
     await expect(page.locator('[data-pd-id="sportsbook.editor.workbench-surface"]')).toHaveCount(0);
   }
+  for (const column of ["offer_details", "match_strategy"]) {
+    await page.locator(`td[data-ledger-row="PROTECTED-PLACED"][data-ledger-column="${column}"]`).dblclick();
+    await expect(page.locator('[data-pd-id="ledger.floating-editor"]')).toHaveCount(0);
+    await expect(page.locator('[data-pd-id="sportsbook.protected-cell"]')).toContainText("recorded Back or Lay placement");
+  }
+  await page.locator('td[data-ledger-row="PROTECTED-PLACED"][data-ledger-column="lay_status"]').dblclick();
+  const notice = page.locator('[data-pd-id="sportsbook.protected-cell"]');
+  await expect(notice).toContainText("Requested Lay Stake is not recorded");
+  await notice.getByRole("button", { name: "Review in Placement" }).click();
+  await expect(page.locator('[data-pd-id="bet-workbench.stage.placement"]')).toHaveAttribute("aria-current", "step");
 });
 
 test("Prospecting Sportsbook datetime commits through its native command in owned and combined scopes", async ({ page }) => {

@@ -20,11 +20,40 @@ test.beforeEach(async ({ page }) => {
 
 test("proposal exposes all warnings and cumulative partial-lay actions without changing a record", async ({ page }) => {
   await page.goto("/design-lab/sportsbook-proposals?amendment=operations");
+  const ledger = page.locator('[data-pd-id="lab.proposal.ledger"]');
+  await expect(ledger.getByText("Arsenal v Chelsea")).toBeVisible();
+  const dateCell = ledger.locator("tbody td").first();
+  await expect(dateCell.getByRole("button", { name: "Edit Settles date and time" })).toBeVisible();
+  await dateCell.getByRole("button", { name: "Show 3 recorded warnings" }).click();
+  await dateCell.getByRole("button", { name: "Edit Settles date and time" }).click();
+  await expect(dateCell.getByLabel("Settles date and time")).toBeVisible();
+  await dateCell.getByRole("button", { name: "Cancel" }).click();
+  const warnings = ledger.locator('[data-pd-id="lab.proposal.warnings"]');
+  await expect(warnings.locator("li")).toHaveCount(3);
+  await warnings.getByRole("button", { name: "Update matched amount" }).click();
+  const corrective = page.locator('[data-pd-id="lab.proposal.quick-action"]');
+  await expect(corrective.getByLabel("Matched so far")).toBeFocused();
+  await corrective.getByLabel("Matched so far").fill("5.10");
+  await page.locator('[data-pd-id="lab.proposal.operations"]').getByRole("button", { name: "Return to ledger" }).click();
+  await warnings.getByRole("button", { name: "Update matched amount" }).click();
+  await expect(corrective.getByLabel("Matched so far")).toHaveValue("5.10");
+  await corrective.getByRole("button", { name: "Cancel" }).click();
+  await page.locator('[data-pd-id="lab.proposal.operations"]').getByRole("button", { name: "Return to ledger" }).click();
+  await warnings.getByRole("button", { name: "Review Back confirmation" }).click();
   const proposal = page.locator('[data-pd-id="lab.proposal.operations"]');
   await expect(proposal).toBeVisible();
-  await proposal.getByRole("button", { name: "Show 3 recorded warnings" }).click();
-  const warnings = page.locator('[data-pd-id="lab.proposal.warnings"]');
-  await expect(warnings.locator("li")).toHaveCount(3);
+  await expect(proposal.getByLabel("Actual Back stake")).toBeFocused();
+  await proposal.getByLabel("Requested Lay Stake").fill("8.00");
+  await proposal.getByRole("button", { name: "Return to ledger" }).click();
+  await expect(proposal).toHaveCount(0);
+  await warnings.getByRole("button", { name: "Review settlement" }).click();
+  await expect(proposal.getByRole("combobox", { name: "Status" })).toBeFocused();
+  await proposal.getByRole("button", { name: "Return to ledger" }).click();
+  await ledger.getByRole("button", { name: "Edit partial lay matched so far" }).dblclick();
+  const quick = page.locator('[data-pd-id="lab.proposal.quick-action"]');
+  await expect(quick).toBeVisible();
+  await expect(quick.getByLabel("Matched so far")).toBeFocused();
+  await expect(proposal.getByLabel("Requested Lay Stake")).toHaveValue("8.00");
   const details = proposal.locator('[data-pd-id="sportsbook.workbench.partial-fill"]');
   await expect(details).not.toHaveAttribute("open", "");
   await details.locator("summary").click();
@@ -35,8 +64,6 @@ test("proposal exposes all warnings and cumulative partial-lay actions without c
   await expect(details.getByRole("button", { name: "Remove Lay", exact: true })).toBeVisible();
   await details.getByRole("button", { name: "Cancel reversal" }).click();
   await expect(details.locator('[data-pd-leg-row="true"]')).toHaveCount(1);
-  await warnings.getByRole("button", { name: "Update matched amount" }).click();
-  const quick = page.locator('[data-pd-id="lab.proposal.quick-action"]');
   await expect(quick).toBeVisible();
   await quick.getByLabel("Matched so far").fill("4.00");
   await quick.getByRole("button", { name: "Confirm actual match" }).click();
@@ -56,11 +83,115 @@ test("proposal exposes all warnings and cumulative partial-lay actions without c
     await expect(proposal).toContainText(status);
     await expect(proposal.locator('[data-pd-leg-row="true"]')).toHaveCount(legs);
   }
-  await expect(proposal.getByRole("button", { name: "Show 2 recorded warnings" })).toBeVisible();
+  await expect(dateCell.getByRole("button", { name: "Show 2 recorded warnings" })).toBeVisible();
   await expect(warnings.locator("li")).toHaveCount(2);
   await proposal.getByRole("button", { name: "Show missing-request example" }).click();
   await expect(proposal.locator('[class*="quickFigures"]')).toContainText("Not recorded");
   await expect(proposal.getByRole("button", { name: "Update matched amount", exact: true })).toBeDisabled();
+});
+
+test("proposed date, Back and Status cells retain separate targets and strict input validation", async ({ page }) => {
+  await page.goto("/design-lab/sportsbook-proposals?amendment=operations");
+  const ledger = page.locator('[data-pd-id="lab.proposal.ledger"]');
+  const dateCell = ledger.locator("tbody td").first();
+  const date = dateCell.getByRole("button", { name: "Edit Settles date and time" });
+  const warning = dateCell.getByRole("button", { name: "Show 3 recorded warnings" });
+  const separated = await Promise.all([date.boundingBox(), warning.boundingBox()]);
+  expect(separated[0]!.x + separated[0]!.width).toBeLessThanOrEqual(separated[1]!.x);
+  await date.click();
+  await dateCell.getByLabel("Settles date and time").fill("2026-11-21T19:30");
+  await dateCell.getByRole("button", { name: "Apply date" }).click();
+  await expect(date).toContainText("Sat 21st Nov - 19:30");
+  await ledger.getByRole("button", { name: /Back not recorded/ }).click();
+  await expect(ledger.getByRole("region", { name: "Back Bet actions" })).toContainText("independent");
+  await ledger.getByRole("button", { name: "Show missing Back evidence" }).click();
+  await expect(ledger.getByRole("button", { name: "Review Back confirmation in Placement" })).toBeDisabled();
+  await expect(ledger.getByRole("region", { name: "Back Bet actions" })).toContainText("actual Back stake and accepted odds");
+  await ledger.getByRole("button", { name: "Restore Back evidence" }).click();
+  await ledger.getByRole("button", { name: "Review Back confirmation in Placement" }).click();
+  const placement = page.locator('[data-pd-id="lab.proposal.operations"]');
+  await expect(placement.getByLabel("Actual Back stake")).toBeFocused();
+  await placement.getByRole("button", { name: "Return to ledger" }).click();
+  await ledger.getByRole("button", { name: "Placed" }).click();
+  await expect(ledger.getByRole("region", { name: "Status actions" })).toContainText("requires a recorded result");
+  await ledger.getByRole("button", { name: "Review settlement in Finish" }).click();
+  await expect(placement.getByRole("combobox", { name: "Status" })).toBeFocused();
+  await placement.getByRole("button", { name: "Return to ledger" }).click();
+  await ledger.getByRole("button", { name: "Edit partial lay matched so far" }).focus();
+  await page.keyboard.press("F2");
+  const quick = page.locator('[data-pd-id="lab.proposal.quick-action"]');
+  await expect(quick).toBeVisible();
+  await quick.getByLabel("Matched so far").fill("5.101");
+  await quick.getByRole("button", { name: "Confirm actual match" }).click();
+  await expect(quick).toBeVisible();
+  await expect(page.getByRole("status").last()).toContainText("at most two decimal places");
+  await quick.getByLabel("Matched so far").fill("5.10");
+  await quick.getByRole("button", { name: "Confirm actual match" }).click();
+  await expect(quick).toHaveCount(0);
+  await expect(placement.locator('[class*="quickFigures"]')).toContainText("£5.10");
+});
+
+test("eligible Prospecting Offer details and Strategy use native dropdowns and persist without placement changes", async ({ page }) => {
+  const id = `PD-FIX-662-${Date.now()}`;
+  const created = await page.request.post(`/api/profiles/${profile}/sportsbook-bets`, { data: {
+    sportsbook_bet_id: id, event_name: "Arsenal v Chelsea", offer_text: "Synthetic draft for typed fields",
+    offer_name: "Fixture review", bookmaker: "Bookmaker A", offer_type: "Bet & Get", bet_type: "Single",
+    fixture_type: "Football", market: "Match Odds", status: "Prospecting", result: "Pending",
+    back_stake: "10.00", back_odds: "2.00", match_strategy: "Standard", lay_odds_1: "2.00",
+  } });
+  expect(created.status(), await created.text()).toBe(201);
+  const initial = await created.json() as Record<string, unknown>;
+  await page.goto(`/profiles/${profile}/tracker/sportsbook-bets?q=${id}`);
+  const cell = (column: string) => page.locator(`[data-pd-id="sportsbook.table-scroll"] td[data-ledger-row="${id}"][data-ledger-column="${column}"]`);
+  await expect(cell("offer_details")).toBeVisible();
+  await cell("offer_details").dblclick();
+  const editor = page.locator('[data-pd-id="ledger.floating-editor"]');
+  await expect(editor.getByRole("combobox", { name: "Offer Type" })).toHaveValue("Bet & Get");
+  await expect(editor.getByRole("combobox", { name: "Bet Type" })).toHaveValue("Single");
+  await editor.getByRole("combobox", { name: "Fixture Type" }).selectOption("Tennis");
+  await editor.getByRole("button", { name: "Apply offer details" }).click();
+  await expect(editor).toHaveCount(0);
+  await cell("match_strategy").dblclick();
+  const strategy = page.locator('[data-pd-id="sportsbook.cell-editor.match_strategy"]');
+  await expect(strategy).toBeVisible();
+  await strategy.selectOption("Underlay");
+  await strategy.press("Enter");
+  await expect(editor).toHaveCount(0);
+  await page.reload();
+  const saved = await (await page.request.get(`/api/profiles/${profile}/sportsbook-bets/${id}`)).json() as Record<string, unknown>;
+  expect(saved.fixture_type).toBe("Tennis");
+  expect(saved.match_strategy).toBe("Underlay");
+  for (const key of ["status", "result", "back_stake", "back_odds", "lay_odds_1", "back_placement_confirmed", "requested_lay_stake", "lay_matched_stake_1"]) expect(saved[key]).toEqual(initial[key]);
+  await cell("offer_details").dblclick();
+  await expect(editor.getByRole("combobox", { name: "Fixture Type" })).toHaveValue("Tennis");
+  await page.keyboard.press("Escape");
+  await cell("match_strategy").dblclick();
+  await page.locator('[data-pd-id="sportsbook.cell-editor.match_strategy"]').selectOption("No Lay");
+  await page.keyboard.press("Escape");
+  await expect(editor).toHaveCount(0);
+  const afterCancel = await (await page.request.get(`/api/profiles/${profile}/sportsbook-bets/${id}`)).json() as Record<string, unknown>;
+  expect(afterCancel.match_strategy).toBe("Underlay");
+  expect(afterCancel.lay_odds_1).toEqual(saved.lay_odds_1);
+});
+
+test("combined Settles sorting follows the shown London clock for mixed summer timestamps", async ({ page }) => {
+  const prefix = `PD-FIX-663-${Date.now()}`;
+  for (const [suffix, settles] of [["LOCAL", "2026-07-20T19:30"], ["OFFSET", "2026-07-20T18:54:00Z"]] as const) {
+    const created = await page.request.post(`/api/profiles/${profile}/sportsbook-bets`, { data: {
+      sportsbook_bet_id: `${prefix}-${suffix}`, event_name: `Arsenal v Chelsea ${prefix}`, offer_text: "Synthetic timestamp ordering",
+      offer_name: "Summer ordering", bookmaker: "Bookmaker A", offer_type: "Bet & Get", bet_type: "Single",
+      fixture_type: "Football", market: "Match Odds", status: "Prospecting", result: "Pending",
+      back_stake: "10.00", back_odds: "2.00", match_strategy: "Standard", date_settled: settles,
+    } });
+    expect(created.status(), await created.text()).toBe(201);
+  }
+  await page.goto(`/tracker/sportsbook-bets?q=${prefix}&sort=date_settled`);
+  const rows = page.locator('[data-pd-id="combined.sportsbook-bets.table-scroll"] tbody tr');
+  await expect(rows).toHaveCount(2);
+  await expect(rows.nth(0).locator('[data-ledger-column="date_settled"]')).toHaveAttribute("data-ledger-row", `${profile}::${prefix}-LOCAL`);
+  await expect(rows.nth(1).locator('[data-ledger-column="date_settled"]')).toHaveAttribute("data-ledger-row", `${profile}::${prefix}-OFFSET`);
+  await expect(rows.nth(0).locator('[data-ledger-column="date_settled"]')).toContainText("19:30");
+  await expect(rows.nth(1).locator('[data-ledger-column="date_settled"]')).toContainText("19:54");
 });
 
 for (const [width, theme] of [[2048, "dark"], [1440, "light"], [390, "dark"]] as const) {
@@ -123,8 +254,12 @@ for (const [width, theme] of [[2048, "dark"], [1440, "light"], [390, "dark"]] as
     await mkdir(evidence, { recursive: true });
     await page.screenshot({ path: join(evidence, `pd-sportsbook-${width}-${theme}.png`), fullPage: true });
     await page.goto('/design-lab/sportsbook-proposals?amendment=operations');
-    await expect(page.locator('[data-pd-id="lab.proposal.operations"]')).toBeVisible();
-    await page.locator('[data-pd-id="lab.proposal.operations"]').getByRole('button', { name: 'Show 3 recorded warnings' }).click();
+    const proposedLedger = page.locator('[data-pd-id="lab.proposal.ledger"]');
+    await expect(proposedLedger).toBeVisible();
+    await proposedLedger.getByRole('button', { name: 'Show 3 recorded warnings' }).click();
+    await proposedLedger.locator('[class*="proposalTableScroll"]').evaluate(node => { (node as HTMLElement).scrollLeft = 0; });
+    await proposedLedger.screenshot({ path: join(evidence, `lab-operations-row-${width}-${theme}.png`) });
+    await proposedLedger.getByRole('button', { name: 'Edit partial lay matched so far' }).dblclick();
     await page.locator('[data-pd-id="lab.proposal.operations"] [data-pd-id="sportsbook.workbench.partial-fill"] summary').click();
     await expect(page.locator('[data-pd-id="sportsbook.workbench.leg-controls-1"]')).toBeVisible();
     await page.evaluate(() => window.scrollTo(0, 0));

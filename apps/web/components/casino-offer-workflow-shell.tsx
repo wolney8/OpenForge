@@ -1,5 +1,6 @@
 "use client";
 import { LedgerCompactDate } from "@/components/ledger-compact-date";
+import { ledgerDateSortValue } from "@/lib/ledger-compact-date";
 
 import { ModalBoundary } from "@/components/modal-boundary";
 
@@ -2998,8 +2999,8 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
       const direction = tableSort.direction === "asc" ? 1 : -1;
 
       if (tableSort.key === "date_settling") {
-        const leftValue = getComparableDate(left.date_settling) ?? Number.POSITIVE_INFINITY;
-        const rightValue = getComparableDate(right.date_settling) ?? Number.POSITIVE_INFINITY;
+        const leftValue = ledgerDateSortValue(left.date_settling) ?? Number.POSITIVE_INFINITY;
+        const rightValue = ledgerDateSortValue(right.date_settling) ?? Number.POSITIVE_INFINITY;
         return (leftValue - rightValue) * direction;
       }
 

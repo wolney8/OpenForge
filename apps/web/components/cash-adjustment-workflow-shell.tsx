@@ -1,5 +1,6 @@
 "use client";
 import { LedgerCompactDate } from "@/components/ledger-compact-date";
+import { ledgerDateSortValue } from "@/lib/ledger-compact-date";
 
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState, useTransition } from "react";
@@ -526,18 +527,18 @@ function applyAdjustmentTypeDefaults(
 
 function sortCashAdjustmentsByDate(rows: CashAdjustmentRecord[]): CashAdjustmentRecord[] {
   return [...rows].sort((left, right) => {
-    const rightDate = Date.parse(right.adjustment_date);
-    const leftDate = Date.parse(left.adjustment_date);
+    const rightDate = ledgerDateSortValue(right.adjustment_date);
+    const leftDate = ledgerDateSortValue(left.adjustment_date);
 
-    if (Number.isFinite(rightDate) && Number.isFinite(leftDate)) {
+    if (rightDate !== null && leftDate !== null) {
       return rightDate - leftDate;
     }
 
-    if (Number.isFinite(rightDate)) {
+    if (rightDate !== null) {
       return 1;
     }
 
-    if (Number.isFinite(leftDate)) {
+    if (leftDate !== null) {
       return -1;
     }
 
@@ -958,9 +959,9 @@ export function CashAdjustmentWorkflowShell({ profileId, initialRecordId, initia
       const direction = tableSort.direction === "asc" ? 1 : -1;
 
       if (tableSort.key === "adjustment_date") {
-        const leftValue = Date.parse(left.adjustment_date);
-        const rightValue = Date.parse(right.adjustment_date);
-        return ((Number.isFinite(leftValue) ? leftValue : 0) - (Number.isFinite(rightValue) ? rightValue : 0)) * direction;
+        const leftValue = ledgerDateSortValue(left.adjustment_date);
+        const rightValue = ledgerDateSortValue(right.adjustment_date);
+        return ((leftValue ?? 0) - (rightValue ?? 0)) * direction;
       }
 
       if (tableSort.key === "signed_amount") {

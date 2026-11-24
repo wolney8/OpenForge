@@ -346,6 +346,14 @@ describe("sportsbook sort helpers", () => {
     const byDateAsc = sortSportsbookRows(rows, { key: "date_settled", direction: "asc" });
     expect(byDateAsc.map((row) => row.sportsbook_bet_id)).toEqual(["SB-2", "SB-1", "SB-3"]);
   });
+  it("orders mixed summer timestamps by their displayed London time in the owned ledger", () => {
+    const base = { bookmaker: "Bookmaker A", status: "Prospecting", result: "Pending", created_at: "2026-07-20T12:00", reporting_value: null, final_net_pnl: null, projected_current_pnl: null };
+    const rows = [
+      { ...base, sportsbook_bet_id: "OFFSET", date_settled: "2026-07-20T18:54:00Z" },
+      { ...base, sportsbook_bet_id: "LOCAL", date_settled: "2026-07-20T19:30" },
+    ];
+    expect(sortSportsbookRows(rows, { key: "date_settled", direction: "asc" }).map(row => row.sportsbook_bet_id)).toEqual(["LOCAL", "OFFSET"]);
+  });
 });
 
 describe("sportsbook row state classes", () => {

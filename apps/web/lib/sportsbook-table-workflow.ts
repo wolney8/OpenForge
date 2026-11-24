@@ -1,3 +1,5 @@
+import { ledgerDateSortValue } from "./ledger-compact-date";
+
 export type PlacementAction = "back-placed" | "lay-fully-placed" | "lay-partially-placed";
 
 export type PlacementFormFields = {
@@ -359,12 +361,7 @@ function formatMoney(value: number): string {
 }
 
 function toComparableDate(value: string): number | null {
-  if (!value.trim()) {
-    return null;
-  }
-
-  const timestamp = Date.parse(value);
-  return Number.isFinite(timestamp) ? timestamp : null;
+  return ledgerDateSortValue(value);
 }
 
 function getPlacedState<TFormState extends PlacementFormFields>(formState: TFormState): TFormState {

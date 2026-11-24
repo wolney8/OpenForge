@@ -1,5 +1,6 @@
 "use client";
 import { LedgerCompactDate } from "@/components/ledger-compact-date";
+import { ledgerDateSortValue } from "@/lib/ledger-compact-date";
 
 import { ModalBoundary } from "@/components/modal-boundary";
 import { formatApiErrorBody } from "@/lib/api-error";
@@ -2460,8 +2461,8 @@ export function FreeBetWorkflowShell({
       const direction = tableSort.direction === "asc" ? 1 : -1;
 
       if (tableSort.key === "date_settled") {
-        const leftValue = getComparableDate(left.date_settled) ?? Number.POSITIVE_INFINITY;
-        const rightValue = getComparableDate(right.date_settled) ?? Number.POSITIVE_INFINITY;
+        const leftValue = ledgerDateSortValue(left.date_settled) ?? Number.POSITIVE_INFINITY;
+        const rightValue = ledgerDateSortValue(right.date_settled) ?? Number.POSITIVE_INFINITY;
         return (leftValue - rightValue) * direction;
       }
 

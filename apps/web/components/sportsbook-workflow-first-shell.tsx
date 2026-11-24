@@ -171,12 +171,16 @@ const inlineCellFields = {
   offer_name: { key: "offer_name", label: "Campaign Tag", type: "text" },
   bookmaker: { key: "bookmaker", label: "Bookmaker", type: "enum" },
   date_settled: { key: "date_settled", label: "Settles", type: "datetime" },
+  offer_details: { key: "offer_type", label: "Offer details", type: "composite" },
+  match_strategy: { key: "match_strategy", label: "Strategy", type: "strategy" },
 } as const;
 
 function canInlineSportsbookField(record: SportsbookRecord | undefined, column: string): boolean {
   if (!record || !(column in inlineCellFields)) return false;
   if (["Settled", "Void", "Cancelled", "Free Bet Awarded"].includes(record.status)) return false;
-  if (["bookmaker", "date_settled"].includes(column)) return sportsbookPlanningFieldEditable(record as unknown as Record<string, unknown>);
+  if (["offer_details", "match_strategy"].includes(column) && ["Profit Boost", "Cashback", "2UP", "Early Payout", "Bonus Lock-In"].includes(record.offer_type)) return false;
+  if (column === "match_strategy" && /^Multilay/.test(record.match_strategy)) return false;
+  if (["bookmaker", "date_settled", "offer_details", "match_strategy"].includes(column)) return sportsbookPlanningFieldEditable(record as unknown as Record<string, unknown>);
   return true;
 }
 
@@ -8174,7 +8178,7 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
                 </tbody>
               </table>
             </LedgerTableScroll>
-            {visualV2 && protectedGridCell ? <p className="field-hint" data-pd-id="sportsbook.protected-cell" role="status">{tableColumns.find(column => column.key === protectedGridCell.column)?.label ?? protectedGridCell.column}: {ledgerCellDecision("sportsbook-bets", protectedGridCell.column, (rows.find(row => row.sportsbook_bet_id === protectedGridCell.rowId) ?? {}) as unknown as Record<string, unknown>, false).reason} <button className="button-link" onClick={() => void selectRow(protectedGridCell.rowId, { returnFocus: protectedGridCell.anchor })} type="button">Open bet for review</button></p> : null}
+            {visualV2 && protectedGridCell ? <p className="field-hint" data-pd-id="sportsbook.protected-cell" role="status">{tableColumns.find(column => column.key === protectedGridCell.column)?.label ?? protectedGridCell.column}: {ledgerCellDecision("sportsbook-bets", protectedGridCell.column, (rows.find(row => row.sportsbook_bet_id === protectedGridCell.rowId) ?? {}) as unknown as Record<string, unknown>, false).reason} <button className="button-link" onClick={async () => { const target: SportsbookEditorTabId = ["lay_status", "back_bet_status"].includes(protectedGridCell.column) ? "placement" : ["status", "date_settled"].includes(protectedGridCell.column) ? "settlement" : ["offer_details", "bookmaker"].includes(protectedGridCell.column) ? "setup" : "matching"; await selectRow(protectedGridCell.rowId, { returnFocus: protectedGridCell.anchor }); activateEditorTab(target); }} type="button">{["lay_status", "back_bet_status"].includes(protectedGridCell.column) ? "Review in Placement" : ["status", "date_settled"].includes(protectedGridCell.column) ? "Review in Finish" : "Open bet for review"}</button></p> : null}
             {visualV2 ? <DesignLedgerMobileRows dataPdId="sportsbook.labelled-details" expanded={mobileDetail} rows={pagedRows.map(row => {
               const rowId = String(row.sportsbook_bet_id ?? "");
               return { id: rowId, title: String(row.event_name ?? "").trim() || rowId, status: String(row.status ?? ""), subtitle: String(row.offer_name ?? "").trim(), fields: sportsbookTableColumns.filter(column => column.key !== "actions").map(column => ({ key: column.key, label: column.label, value: renderTableCell(row, column) })), onOpen: () => void selectRow(rowId) };
@@ -8554,16 +8558,43 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
         </div>
       ) : null}
 
-      {workflowVisible && cellEditor.session && inlineField ? <LedgerFloatingCellEditor compact session={cellEditor.session} ledger="Sportsbook" label={inlineField.label} dirty={formState[inlineField.key] !== pristineFormState[inlineField.key]} pending={isPersisting} error={errorMessage} onSave={async () => { const saved = await saveEditorDraft(true); if (saved) cellEditor.close(); return saved; }} onCancel={() => {
-        const key = inlineField.key;
-        const otherDraftChanges = awardDraftIsDirty || (Object.keys(formState) as Array<keyof SportsbookFormState>).some(field => field !== key && formState[field] !== pristineFormState[field]);
-        setFormState(current => ({ ...current, [key]: pristineFormState[key] }));
-        setErrorMessage("");
-        cellEditor.close();
-        if (otherDraftChanges) revealEditor();
-        else { setWorkflowVisible(false); setSelectedId(null); selectedIdRef.current = null; restoreEditorReturnFocus(); }
-      }} onReview={() => { cellEditor.close(); revealEditor(); }}>
-        <label><span className="sr-only">{inlineField.label}</span>{inlineField.type === "enum" ? <select className={designFloatingCellInputClass} data-pd-id={`sportsbook.cell-editor.${inlineField.key}`} aria-label={inlineField.label} value={formState.bookmaker} onChange={event => { setErrorMessage(""); setFormState(current => ({ ...current, bookmaker: event.target.value })); }}><option value="">Select bookmaker</option>{bookmakerOptions.map(option => <option key={option} value={option}>{option}</option>)}</select> : <input className={designFloatingCellInputClass} data-pd-id={`sportsbook.cell-editor.${inlineField.key}`} aria-label={inlineField.label} value={formState[inlineField.key]} onChange={event => { setErrorMessage(""); setFormState(current => ({ ...current, [inlineField.key]: event.target.value })); }} type={inlineField.type === "datetime" ? "datetime-local" : "text"} />}</label>
+      {workflowVisible && cellEditor.session && inlineField ? <LedgerFloatingCellEditor
+        compact
+        commitOnTab={inlineField.type !== "composite"}
+        session={cellEditor.session}
+        ledger="Sportsbook"
+        label={inlineField.label}
+        dirty={(inlineField.type === "composite" || inlineField.type === "strategy" ? Object.keys(formState) as Array<keyof SportsbookFormState> : [inlineField.key]).some(key => formState[key] !== pristineFormState[key])}
+        pending={isPersisting}
+        error={errorMessage}
+        onSave={async () => { const saved = await saveEditorDraft(true); if (saved) cellEditor.close(); return saved; }}
+        onCancel={() => {
+          // The native Offer Type and Strategy handlers can reset dependent result,
+          // calculator and placement draft fields. Escape restores that complete
+          // prospective change; a single scalar restores only its own field.
+          const keys: Array<keyof SportsbookFormState> = inlineField.type === "composite" || inlineField.type === "strategy" ? Object.keys(formState) as Array<keyof SportsbookFormState> : [inlineField.key];
+          const affected = new Set<keyof SportsbookFormState>(keys);
+          const otherDraftChanges = awardDraftIsDirty || (Object.keys(formState) as Array<keyof SportsbookFormState>).some(field => !affected.has(field) && formState[field] !== pristineFormState[field]);
+          setFormState(current => {
+            const next = { ...current };
+            for (const key of keys) (next as Record<string, unknown>)[key] = pristineFormState[key];
+            return next;
+          });
+          if (inlineField.type === "strategy") setSelectedLayWorkflowMode(getLayWorkflowModeForStrategy(pristineFormState.match_strategy));
+          setErrorMessage("");
+          cellEditor.close();
+          if (otherDraftChanges) revealEditor();
+          else { setWorkflowVisible(false); setSelectedId(null); selectedIdRef.current = null; restoreEditorReturnFocus(); }
+        }}
+        onReview={() => { cellEditor.close(); revealEditor(); }}
+      >
+        {inlineField.type === "composite" ? <div className="ledger-floating-composite" data-pd-id="sportsbook.cell-editor.offer_details">
+          <label>Offer Type<select className={designFloatingCellInputClass} value={formState.offer_type} onChange={event => { setErrorMessage(""); setFormState(current => applyOfferTypeDefaults(current, event.target.value, defaultBonusRetentionRate)); }}><option value="">Select offer type</option>{offerTypeOptions.map(option => <option key={option} value={option}>{option}</option>)}</select></label>
+          <label>Bet Type<select className={designFloatingCellInputClass} value={formState.bet_type} onChange={event => { setErrorMessage(""); setFormState(current => ({ ...current, bet_type: event.target.value })); }}><option value="">Select bet type</option>{betTypeOptionsResolved.map(option => <option key={option} value={option}>{option}</option>)}</select></label>
+          <label>Fixture Type<select className={designFloatingCellInputClass} value={formState.fixture_type} onChange={event => { setErrorMessage(""); setFormState(current => ({ ...current, fixture_type: event.target.value })); }}><option value="">Select fixture type</option>{fixtureTypeOptionsResolved.map(option => <option key={option} value={option}>{option}</option>)}</select></label>
+          <button className={labStyles.secondaryButton} type="submit">Apply offer details</button>
+        </div> : inlineField.type === "strategy" ? <label><span className="sr-only">Strategy</span><select aria-label="Strategy" className={designFloatingCellInputClass} data-pd-id="sportsbook.cell-editor.match_strategy" onChange={event => { const next = event.target.value; setErrorMessage(""); setSelectedLayWorkflowMode(getLayWorkflowModeForStrategy(next)); setFormState(current => applyStrategyDefaults(current, next)); }} value={formState.match_strategy}>{["Standard", "Underlay", "Overlay", "Custom", "No Lay"].map(option => <option key={option} value={option}>{option}</option>)}</select></label> :
+        <label><span className="sr-only">{inlineField.label}</span>{inlineField.type === "enum" ? <select className={designFloatingCellInputClass} data-pd-id={`sportsbook.cell-editor.${inlineField.key}`} aria-label={inlineField.label} value={formState.bookmaker} onChange={event => { setErrorMessage(""); setFormState(current => ({ ...current, bookmaker: event.target.value })); }}><option value="">Select bookmaker</option>{bookmakerOptions.map(option => <option key={option} value={option}>{option}</option>)}</select> : <input className={designFloatingCellInputClass} data-pd-id={`sportsbook.cell-editor.${inlineField.key}`} aria-label={inlineField.label} value={formState[inlineField.key]} onChange={event => { setErrorMessage(""); setFormState(current => ({ ...current, [inlineField.key]: event.target.value })); }} type={inlineField.type === "datetime" ? "datetime-local" : "text"} />}</label>}
       </LedgerFloatingCellEditor> : null}
       {workflowVisible && quickCaptureOpen && !cellEditor.active ? <ModalBoundary onDismiss={() => void closeEditor()}><div className="modal-backdrop" onClick={() => void closeEditor()}><section aria-label="Quick Capture Sportsbook offer" aria-modal="true" className={labStyles.entryModal} data-pd-id="sportsbook.quick-capture.dialog" onClick={event => event.stopPropagation()} role="dialog"><div className={labStyles.modalHead}><h2>Quick Capture</h2><button aria-label="Close quick capture" className={labStyles.secondaryButton} onClick={() => void closeEditor()} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button></div><div className={labStyles.modalBody}><div className={labStyles.entry}><div className={labStyles.entryTop}><div><strong>Sportsbook offer</strong><p>Capture known details, then complete the governed bet workbench.</p></div></div><div className={labStyles.entryFields}><fieldset><legend>Offer</legend><label>Original Offer text<textarea data-pd-id="sportsbook.quick-capture.offer-text" onChange={event => setFormState(current => ({ ...current, offer_text: event.target.value }))} rows={3} value={formState.offer_text}/></label><div className={labStyles.fieldPair}><label>Bookmaker<input data-pd-id="sportsbook.quick-capture.bookmaker" onChange={event => setFormState(current => ({ ...current, bookmaker: event.target.value }))} value={formState.bookmaker}/></label><label>Offer Name<input data-pd-id="sportsbook.quick-capture.offer-name" onChange={event => setFormState(current => ({ ...current, offer_name: event.target.value }))} value={formState.offer_name}/></label><label>Event Name<input data-pd-id="sportsbook.quick-capture.event-name" onChange={event => setFormState(current => ({ ...current, event_name: event.target.value }))} value={formState.event_name}/></label></div></fieldset></div><p className="muted">These details remain an unsaved draft until the full workbench validates and saves a record.</p><div className={labStyles.entryFooter}><button className={labStyles.secondaryButton} onClick={() => void closeEditor()} type="button">Cancel</button><button className={labStyles.primaryButton} onClick={() => { setQuickCaptureOpen(false); requestAnimationFrame(() => revealEditor({ expandLedger: true })); }} type="button">Open full workbench</button></div></div></div></section></div></ModalBoundary> : null}
       {workflowVisible && !quickCaptureOpen && !cellEditor.active ? (

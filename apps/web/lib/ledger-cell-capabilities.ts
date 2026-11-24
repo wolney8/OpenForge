@@ -16,7 +16,7 @@ export const ledgerCellCapabilities: Record<CombinedLedgerModule, Record<string,
   },
   "sportsbook-bets": {
     date_settled: cell("datetime", "typed"), bookmaker: cell("enum", "typed"), event_name: cell("text", "scalar"), offer_name: cell("text", "scalar"),
-    offer_details: cell("composite", "financial-workflow"), match_strategy: cell("enum", "financial-workflow"), lay_status: cell("status", "calculated"),
+    offer_details: cell("composite", "native-composite"), match_strategy: cell("enum", "typed"), lay_status: cell("status", "calculated"),
     back_bet_status: cell("status", "calculated"), displayed_value: cell("money", "calculated"), status: cell("status", "lifecycle"), actions: cell("action", "row-action"),
   },
   "free-bets": {
@@ -54,11 +54,16 @@ export function ledgerCellCapability(module: CombinedLedgerModule, column: strin
 /** Display type does not grant edit access. The native row gate supplies canInline. */
 export function ledgerCellDecision(module: CombinedLedgerModule, column: string, record: Record<string, unknown>, canInline: boolean): { interaction: "edit" | "review" | "protected"; reason: string } {
   const capability = ledgerCellCapability(module, column);
+  if (module === "sportsbook-bets" && column === "lay_status") return { interaction: "review", reason: !String(record.requested_lay_stake ?? "").trim() ? "Requested Lay Stake is not recorded. Review the request and actual matched legs in Placement." : "Actual matched Lay legs and remaining request require Placement review; the calculated status cannot be edited directly." };
+  if (module === "sportsbook-bets" && column === "back_bet_status") return { interaction: "review", reason: record.back_placement_confirmed === true ? "Back confirmation is recorded. Review its evidence or reversal in Placement." : "Independent Back confirmation is not recorded. Review actual Back stake and accepted odds in Placement." };
+  if (module === "sportsbook-bets" && column === "status") return { interaction: "review", reason: String(record.result ?? "") === "Pending" ? "A recorded result is required before settlement. Review Status, Settles and Result in Finish / Review." : "Status uses the recorded result and governed settlement or correction workflow in Finish / Review." };
   if (["source-identity", "calculated", "row-action"].includes(capability.authority)) return { interaction: "protected", reason: ledgerCellReviewReason(capability) };
   if (canInline) return { interaction: "edit", reason: "" };
   const status = String(record.status ?? "");
+  if (module === "sportsbook-bets" && ["offer_details", "match_strategy"].includes(column) && ["Profit Boost", "Cashback", "2UP", "Early Payout", "Bonus Lock-In"].includes(String(record.offer_type ?? ""))) return { interaction: "review", reason: "This promotion couples offer details and calculator choices. Review the recorded terms and dependent inputs in the Sportsbook workbench." };
+  if (module === "sportsbook-bets" && column === "match_strategy" && /^Multilay/.test(String(record.match_strategy ?? ""))) return { interaction: "review", reason: "Multi-Lay strategy uses coupled legs and outcome evidence. Review the Matching stage in the Sportsbook workbench." };
   if (["Settled", "Void", "Cancelled", "Free Bet Awarded"].includes(status)) return { interaction: "review", reason: `${status} records require their governed correction or review workflow.` };
-  if (module === "sportsbook-bets" && ["bookmaker", "date_settled"].includes(column) && !sportsbookPlanningFieldEditable(record)) return { interaction: "review", reason: "Placed or executed bets require the populated placement and financial review workflow." };
+  if (module === "sportsbook-bets" && ["bookmaker", "date_settled", "offer_details", "match_strategy"].includes(column) && !sportsbookPlanningFieldEditable(record)) return { interaction: "review", reason: "A recorded Back or Lay placement, or a protected status, requires the populated Sportsbook review workflow before this input can change." };
   if (module === "each-way-extra-places" && ["date", "bookmaker", "stake"].includes(column) && status !== "Prospecting") return { interaction: "review", reason: "Placement and financial evidence require the populated Extra Place review workflow." };
   return { interaction: "review", reason: ledgerCellReviewReason(capability) };
 }
