@@ -15,7 +15,7 @@ import { labDestinations } from "@/lib/design-lab-navigation";
 import lab from "@/components/design-lab-connected.module.css";
 import local from "@/components/design-lab-sportsbook-proposals.module.css";
 
-export type SportsbookProposalId = "protected" | "offer" | "requirements" | "matching" | "finish";
+export type SportsbookProposalId = "protected" | "offer" | "requirements" | "matching" | "finish" | "operations";
 
 const choices: { id: SportsbookProposalId; label: string; stage: number }[] = [
   { id: "protected", label: "1 · Protected records", stage: 4 },
@@ -23,6 +23,7 @@ const choices: { id: SportsbookProposalId; label: string; stage: number }[] = [
   { id: "requirements", label: "3 · Requirements and outcomes", stage: 1 },
   { id: "matching", label: "4 · Matching and Placement", stage: 2 },
   { id: "finish", label: "5 · Finish / Review", stage: 4 },
+  { id: "operations", label: "Ledger warnings and partial lay · proposal", stage: 3 },
 ];
 const stages = ["Offer", "Requirements", "Matching", "Placement", "Finish / Review"];
 function Icon({ children }: { children: string }) { return <span aria-hidden="true" className="material-symbols-outlined">{children}</span>; }
@@ -46,13 +47,18 @@ export function DesignLabSportsbookProposals({ initialAmendment, initialPartialL
   const [offerError, setOfferError] = useState(false);
   const [offerDetailsOpen, setOfferDetailsOpen] = useState(false);
   const [outcomeState, setOutcomeState] = useState<"ordinary" | "exceptional" | "unavailable">("ordinary");
-  const [fillState, setFillState] = useState<"standard" | "partial">(initialPartialLegOpen ? "partial" : "standard");
+  const [fillState, setFillState] = useState<"standard" | "partial">(initialPartialLegOpen || initialAmendment === "operations" ? "partial" : "standard");
   const [requestedLayRecorded, setRequestedLayRecorded] = useState(true);
   const [requestedLayStake, setRequestedLayStake] = useState("8.00");
   const [matchedLayDraft, setMatchedLayDraft] = useState(initialPartialLegOpen ? "" : "5.00");
   const [backConfirmed, setBackConfirmed] = useState(initialPartialLegOpen);
-  const [recordedLegs, setRecordedLegs] = useState<PreviewLayLeg[]>(initialPartialLegOpen ? [{ exchange: "Matchbook", odds: "2.00", matchedStake: "5.00" }] : []);
-  const [legReviewOpen, setLegReviewOpen] = useState<number | null>(initialPartialLegOpen ? 0 : null);
+  const [recordedLegs, setRecordedLegs] = useState<PreviewLayLeg[]>(initialPartialLegOpen
+    ? [{ exchange: "Matchbook", odds: "2.00", matchedStake: "5.00" }]
+    : initialAmendment === "operations" ? [{ exchange: "Matchbook", odds: "2.00", matchedStake: "5.00" }] : []);
+  const [cumulativeDraft, setCumulativeDraft] = useState("5.00");
+  const [quickActionOpen, setQuickActionOpen] = useState(false);
+  const [warningsOpen, setWarningsOpen] = useState(false);
+  const [legReviewOpen, setLegReviewOpen] = useState<number | null>(initialPartialLegOpen || initialAmendment === "operations" ? 0 : null);
   const [reminderActive, setReminderActive] = useState(false);
   const [reversalPending, setReversalPending] = useState(false);
   const [backReversalPending, setBackReversalPending] = useState(false);
@@ -69,6 +75,7 @@ export function DesignLabSportsbookProposals({ initialAmendment, initialPartialL
     suggestedTargetLayStake: "",
     legs: recordedLegs,
   });
+  const warningCount = 2 + (requestedLayRecorded && laySummary.hasReachedTarget ? 0 : 1);
   const layStatus = recordedLegs.length === 0 ? "Not recorded" : laySummary.hasReachedTarget ? "Fully matched" : "Partially matched";
   const nextMatchedValue = Number(matchedLayDraft);
   const canConfirmLay = !laySummary.hasReachedTarget && !laySummary.exceededTarget &&
@@ -179,6 +186,33 @@ export function DesignLabSportsbookProposals({ initialAmendment, initialPartialL
                   <button className={lab.secondaryButton} onClick={() => { setOfferError(true); setOfferDetailsOpen(true); setNotice("Validation opened Additional offer details at the field needing attention."); requestAnimationFrame(() => marketRef.current?.focus()); }} type="button">Trigger validation error</button>
                 </fieldset> : null}
                 {amendment === "requirements" ? <fieldset><legend>Recorded requirements</legend><div className={local.switchRow}><button className={lab.secondaryButton} onClick={() => setOutcomeState("ordinary")} type="button">Ordinary result</button><button className={lab.secondaryButton} onClick={() => setOutcomeState("exceptional")} type="button">Extra scenarios</button><button className={lab.secondaryButton} onClick={() => setOutcomeState("unavailable")} type="button">Unavailable data</button></div><dl className={lab.detailGrid}><div><dt>Qualifying source</dt><dd>{outcomeState === "unavailable" ? "Unknown" : "Recorded · synthetic"}</dd></div><div><dt>Reward conditions</dt><dd>Unknown</dd></div><div><dt>External placement evidence</dt><dd>{outcomeState === "ordinary" ? "Recorded · synthetic" : "Unknown"}</dd></div></dl><small className={local.fieldHelp}>Unknown means no recorded evidence. This preview does not confirm external activity.</small></fieldset> : null}
+                {amendment === "operations" ? <fieldset data-pd-id="lab.proposal.operations"><legend>Partial lay · proposed ledger actions</legend>
+                  <p className={local.previewNotice}>Synthetic £10 Back plan · {requestedLayRecorded ? `£${Number(requestedLayStake).toFixed(2)} recorded Lay request` : "Lay request Not recorded"} · one £5 matched leg. No financial command is connected.</p>
+                  <button className={lab.secondaryButton} onClick={() => setRequestedLayRecorded(value => !value)} type="button">{requestedLayRecorded ? "Show missing-request example" : "Restore recorded £8 request"}</button>
+                  <div className={local.warningDateRow}><span>Fri 20th Nov - 18:54</span><button aria-expanded={warningsOpen} aria-label={`Show ${warningCount} recorded warnings`} className={local.warningTrigger} onClick={() => setWarningsOpen(value => !value)} type="button"><Icon>warning</Icon><span>{warningCount}</span></button></div>
+                  {warningsOpen ? <section aria-label="Recorded warnings" className={local.warningPanel} data-pd-id="lab.proposal.warnings"><h3>{warningCount} items need review</h3><ul>{!requestedLayRecorded || !laySummary.hasReachedTarget ? <li><strong>Lay match</strong> · {requestedLayRecorded ? `£${laySummary.matchedTotal.toFixed(2)} of £${Number(requestedLayStake).toFixed(2)} requested.` : "Requested stake not recorded."} <button className={lab.linkButton} onClick={() => requestedLayRecorded ? setQuickActionOpen(true) : setNotice("Record the requested Lay stake in Placement before using this shortcut.")} type="button">{requestedLayRecorded ? "Update matched amount" : "Review requested stake"}</button></li> : null}<li><strong>Back confirmation</strong> · Not recorded. <button className={lab.linkButton} onClick={() => setNotice("Back confirmation opens the governed Placement stage.")} type="button">Review Back confirmation</button></li><li><strong>Settlement</strong> · Event date is recorded; settlement deadline is not established. <button className={lab.linkButton} onClick={() => setNotice("Settlement review opens the governed Finish stage.")} type="button">Review settlement</button></li></ul></section> : null}
+                  <div className={local.quickFigures}><div><span>Requested</span><strong>{requestedLayRecorded ? `£${Number(requestedLayStake).toFixed(2)}` : "Not recorded"}</strong></div><div><span>Matched</span><strong>£{laySummary.matchedTotal.toFixed(2)}</strong></div><div><span>Remaining</span><strong>{laySummary.remainingToMatch === null ? "Not recorded" : `£${Math.max(0, laySummary.remainingToMatch).toFixed(2)}`}</strong></div></div>
+                  <p className={local.inlineStatus}>{!requestedLayRecorded ? "Request not recorded · completion unknown" : laySummary.hasReachedTarget ? "Fully matched" : "Partially matched"}</p>
+                  <div className={local.switchRow}><button className={lab.primaryButton} disabled={!requestedLayRecorded || laySummary.hasReachedTarget} onClick={() => setQuickActionOpen(true)} type="button">Update matched amount</button><button className={lab.secondaryButton} disabled={!requestedLayRecorded || laySummary.hasReachedTarget} onClick={() => { setCumulativeDraft(requestedLayStake); setQuickActionOpen(true); }} type="button">{laySummary.remainingToMatch === null ? "Confirm remaining · request unknown" : `Confirm remaining £${Math.max(0, laySummary.remainingToMatch).toFixed(2)} matched`}</button></div>
+                  {!requestedLayRecorded ? <p className={local.fieldHelp}>Record the requested Lay stake in Placement before confirming a remaining amount.</p> : null}
+                  {quickActionOpen ? <section aria-label="Update matched amount" className={local.warningPanel} data-pd-id="lab.proposal.quick-action"><h3>Update matched amount</h3><label>Matched so far<input inputMode="decimal" onChange={event => setCumulativeDraft(event.target.value)} value={cumulativeDraft} /></label><p>Enter the total actually matched. The next fill is the difference from £{laySummary.matchedTotal.toFixed(2)} already recorded at Matchbook · odds 2.00. Changed odds, exchange or ambiguous legs require Placement review.</p><div className={local.switchRow}><button className={lab.secondaryButton} onClick={() => setQuickActionOpen(false)} type="button">Cancel</button><button className={lab.primaryButton} onClick={() => { const next = Number(cumulativeDraft); const delta = Number((next - laySummary.matchedTotal).toFixed(2)); if (!Number.isFinite(next) || next < laySummary.matchedTotal || next > Number(requestedLayStake)) { setNotice(`Enter a cumulative amount from the saved total up to the £${Number(requestedLayStake).toFixed(2)} request. Downward changes require correction review.`); return; } if (delta > 0) setRecordedLegs(current => [...current, { exchange: "Matchbook", odds: "2.00", matchedStake: delta.toFixed(2) }]); setQuickActionOpen(false); setNotice(delta ? `Synthetic £${delta.toFixed(2)} fill added; no source record changed.` : "Already recorded · no new fill added."); }} type="button">Confirm actual match</button></div></section> : null}
+                  <DesignBetWorkbenchPlacementDetails
+                    legs={<DesignBetWorkbenchRecordedLegs
+                      guidance={laySummary.remainingToMatch !== null && laySummary.remainingToMatch > 0 ? "Remaining lay exposure is still open. Use Recommended Next Lay Stake to place the next leg and re-check liability." : null}
+                      hasLegs={recordedLegs.length > 0}
+                      matchedTotal={laySummary.matchedTotal}
+                      onCopyRecommended={() => setNotice("Recommended Next Lay Stake copied only in this synthetic preview.")}
+                      recommendedNext={laySummary.nextRecommendedStake}
+                      remaining={laySummary.remainingToMatch}
+                      target={laySummary.targetLayStake}
+                    >{recordedLegs.map((leg, index) => renderLeg(index, leg))}</DesignBetWorkbenchRecordedLegs>}
+                    followUp={<div className={local.placementCardContent}><strong>Follow-up reminder</strong><p>{reminderActive ? "Recheck scheduled for this synthetic partial fill." : "Not set"}</p><button className={lab.secondaryButton} onClick={() => { setReminderActive(value => !value); setNotice("Reminder state changed only in this preview."); }} type="button">{reminderActive ? "Review Reminder" : "Set Reminder"}</button></div>}
+                    reversal={<div className={lab.placementReversalActions}>
+                      <div className={lab.placementReversalAction}>{reversalPending ? <><p>Remove the recorded Lay placement?</p><button className={lab.dangerButton} onClick={() => { setRecordedLegs([]); setLegReviewOpen(null); setReversalPending(false); setNotice("Synthetic Lay placement removed; Back confirmation is unchanged."); }} type="button">Remove Lay</button><button className={lab.secondaryButton} onClick={() => setReversalPending(false)} type="button">Cancel reversal</button></> : <button className={lab.secondaryButton} disabled={recordedLegs.length === 0} onClick={() => setReversalPending(true)} type="button">Review Lay reversal</button>}</div>
+                      <div className={lab.placementReversalAction}>{backReversalPending ? <><p>Remove the recorded Back confirmation?</p><button className={lab.dangerButton} onClick={() => { setBackConfirmed(false); setBackReversalPending(false); setNotice("Synthetic Back confirmation removed; Lay placement is unchanged."); }} type="button">Remove Back Placement</button><button className={lab.secondaryButton} onClick={() => setBackReversalPending(false)} type="button">Cancel reversal</button></> : <button className={lab.secondaryButton} disabled={!backConfirmed} onClick={() => setBackReversalPending(true)} type="button">Review Back reversal</button>}</div>
+                    </div>}
+                  />
+                </fieldset> : null}
                 {amendment === "matching" ? <fieldset key={`${stage}-${fillState}`}>
                   <legend>{stage === 3 ? "Placement" : "Matching"}</legend>
                   <div className={local.switchRow}>

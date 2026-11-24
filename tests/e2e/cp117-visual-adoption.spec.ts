@@ -364,7 +364,7 @@ for (const theme of ["light", "dark"] as const) {
   });
 }
 
-test("six ledgers: shared grid cell rhythm and pinned Actions", async ({ page }) => {
+test("six ledgers: shared grid cell rhythm and scrolling Actions", async ({ page }) => {
   test.setTimeout(180_000);
   await page.setViewportSize({ width: 1440, height: 900 });
   const range = await page.request.put("/api/fund-manager/preferences/selected-range", { data: {
@@ -397,7 +397,7 @@ test("six ledgers: shared grid cell rhythm and pinned Actions", async ({ page })
     const header = await table.locator("thead th").first().evaluate(element => ({ padding: getComputedStyle(element).padding, fontSize: getComputedStyle(element).fontSize, lineHeight: getComputedStyle(element).lineHeight, background: getComputedStyle(element).backgroundColor }));
     expect(cell, ledger.key).toEqual(labCell);
     expect(header, `${ledger.key} header`).toEqual(labHeader);
-    await expect(table.locator("th").last()).toHaveCSS("position", "sticky");
+    await expect(table.locator("th").last()).toHaveCSS("right", "auto");
     await noPageOverflow(page);
   }
 });

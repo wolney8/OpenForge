@@ -4,6 +4,7 @@ import { AccountProviderIdentity } from "@/components/account-provider-identity"
 import { BookmakerIdentity } from "@/components/bookmaker-identity";
 import { FinancialValue } from "@/components/financial-value";
 import { LedgerValueCell } from "@/components/ledger-value-cell";
+import { LedgerCompactDate } from "@/components/ledger-compact-date";
 import { getSportsbookBackBetStatusBadge } from "@/lib/sportsbook-table-workflow";
 import { freeBetBackBetStatus } from "@/lib/ledger-row-presentation";
 import type { CombinedLedgerModule } from "@/lib/profile-scope";
@@ -12,6 +13,10 @@ import { findMasterAccountCatalogueEntry, type MasterAccountCatalogueRecord } fr
 
 /** Reuses the native ledgers' existing chip, identity and financial-value primitives. */
 export function CombinedLedgerCell({ module, column, row, cell, catalogue }: { module: CombinedLedgerModule; column: string; row: LedgerSourceRecord; cell: PresentedLedgerCell; catalogue: MasterAccountCatalogueRecord[] }) {
+  const dateKey = module === "each-way-extra-places" && column === "date" ? "placed_at" : column;
+  if (["date_settled", "date_settling", "expiry_datetime", "adjustment_date", "last_balance_update", "date"].includes(column)) {
+    return <LedgerCompactDate value={typeof row[dateKey] === "string" ? row[dateKey] as string : null} fallback={column === "last_balance_update" ? "Not confirmed" : "Not recorded"} />;
+  }
   if (cell.valueLabel) return <LedgerValueCell fallback="£ -" label={cell.valueLabel} value={cell.money ?? null} />;
   if (cell.money !== undefined) {
     if (cell.money === null) return <span aria-label="Unavailable financial value">£ -</span>;
@@ -32,8 +37,8 @@ export function CombinedLedgerCell({ module, column, row, cell, catalogue }: { m
     if (column === "match_strategy") return <span className="table-chip">{cell.text}</span>;
     if (column === "lay_status") {
       const value = cell.text.toLowerCase();
-      const label = value.includes("not laid") ? "Not Laid" : value.includes("partially") || value.includes("part laid") ? "Part Laid" : value.includes("fully") ? "Fully Laid" : cell.text;
-      const tone = label === "Not Laid" ? "table-chip-muted" : label === "Part Laid" ? "table-chip-lay-partial" : label === "Fully Laid" ? "table-chip-back-placed" : "";
+      const label = value.includes("not laid") ? "Not Laid" : value.includes("partially") || value.includes("part laid") ? "Partial lay" : value.includes("fully") ? "Fully Laid" : cell.text;
+      const tone = label === "Not Laid" ? "table-chip-muted" : label === "Partial lay" ? "table-chip-lay-partial" : label === "Fully Laid" ? "table-chip-back-placed" : "";
       return <span className={`table-chip ${tone}`.trim()}>{label}</span>;
     }
     if (column === "back_bet_status") {

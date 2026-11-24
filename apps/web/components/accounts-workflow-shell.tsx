@@ -46,6 +46,7 @@ import {
 } from "@/lib/ledger-ui";
 import type { TableColumn } from "@/lib/tracker-modules";
 import { formatDisplayDate } from "@/lib/tracker-summary";
+import { LedgerCompactDate } from "@/components/ledger-compact-date";
 import { filterTrackerRows, getTrackerPageCount, paginateTrackerRows } from "@/lib/tracker-table";
 import type { TrackerRow } from "@/lib/tracker-types";
 import { useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
@@ -1490,6 +1491,8 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialCreat
                                 </span>
                               ) : column.key === "current_balance" || column.key === "pending_withdrawal_amount" ? (
                                 <span className="table-chip accounts-financial-chip"><FinancialValue value={accountMoneyDisplayValue(String(row[column.key] ?? ""))} /></span>
+                              ) : column.key === "last_balance_update" && visualV2 ? (
+                                <LedgerCompactDate value={accountRecord?.last_balance_update} fallback="Not confirmed" />
                               ) : column.key === "actions" ? (
                                 visualV2 ? <DesignLedgerRowAction label={`${accountRecord && hasAccountIssue(accountRecord) ? "Review attention for" : "Edit"} ${String(row.account ?? "account")}`} onClick={() => void selectRow(rowId)} /> :
                                 <button
@@ -1529,6 +1532,7 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialCreat
                   value: column.key === "account" ? <AccountProviderIdentity fallbackName={String(row.account ?? "")} provider={provider} />
                     : column.key === "type" ? <span className={`table-chip ${accountTypeChipClass(provider ? masterAccountProfileType(provider) : String(row.type))}`}>{provider ? masterAccountProfileType(provider) : String(row.type || "—")}</span>
                     : column.key === "status" ? <span className={`table-chip ${accountStatusChipClass(String(row.status))}`}>{String(row.status || "—")}</span>
+                    : column.key === "last_balance_update" ? <LedgerCompactDate value={record?.last_balance_update} fallback="Not confirmed" />
                     : column.key === "current_balance" || column.key === "pending_withdrawal_amount" ? <FinancialValue value={accountMoneyDisplayValue(String(row[column.key] ?? ""))} />
                     : column.key === "channel" ? <span className="table-chip-stack">{parseChannels(String(row.channel)).map(channel => <span className="table-chip table-chip-info" key={channel}>{channel}</span>)}</span>
                     : String(row[column.key] ?? "").trim() || "—",

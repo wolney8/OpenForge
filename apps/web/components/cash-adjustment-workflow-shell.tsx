@@ -1,4 +1,5 @@
 "use client";
+import { LedgerCompactDate } from "@/components/ledger-compact-date";
 
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState, useTransition } from "react";
@@ -1719,6 +1720,8 @@ export function CashAdjustmentWorkflowShell({ profileId, initialRecordId, initia
     const rowId = String(row.cash_adjustment_id ?? "");
     const sourceRow = cashAdjustmentRowsById.get(rowId);
     const value = String(row[column.key] ?? "").trim() || "—";
+
+    if (visualV2 && column.key === "adjustment_date") return <LedgerCompactDate value={sourceRow?.adjustment_date} fallback="Not recorded" />;
 
     if (
       column.key === "direction" ||

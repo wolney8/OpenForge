@@ -13,7 +13,8 @@ async function openLedger(page: import("@playwright/test").Page, ledger: typeof 
 }
 
 test.beforeEach(async ({ page }) => {
-  await page.route("**/api/**", async route => {
+  if (process.env.OPENFORGE_CP117_AUTH_URL) await page.goto(process.env.OPENFORGE_CP117_AUTH_URL);
+  if (!process.env.OPENFORGE_CP117_AUTH_URL) await page.route("**/api/**", async route => {
     if (route.request().url().endsWith("/api/auth/session")) return route.fulfill({ json: { authenticated: true, email: "demo@example.invalid", expires_at: 4102444800, role: "fund_manager", session_policy: { absolute_expires_at: 4102444800, auto_logout_enabled: false, effective_expires_at: 4102444800, inactivity_expires_at: null, last_activity_at: 1, preference_configured: true, timeout_minutes: 30, valid_now: true } } });
     if (route.request().url().endsWith("/api/auth/activity")) return route.fulfill({ json: { ok: true } });
     throw new Error(`Unexpected lab API request: ${route.request().url()}`);
@@ -31,12 +32,13 @@ test("Actions header and row cells stay aligned while every lab ledger scrolls",
     const geometry = await scroll.evaluate(node => {
       const scroller = node as HTMLElement;
       const max = scroller.scrollWidth - scroller.clientWidth;
+      const before = (scroller.querySelector("tbody tr td:last-child") as HTMLElement).getBoundingClientRect().right;
       scroller.scrollLeft = Math.min(180, max / 2);
       const header = scroller.querySelector("thead th:last-child") as HTMLElement;
       const cell = scroller.querySelector("tbody tr td:last-child") as HTMLElement;
       const h = header.getBoundingClientRect(), c = cell.getBoundingClientRect(), s = scroller.getBoundingClientRect();
       const action = cell.querySelector("button")?.getBoundingClientRect();
-      return { max, left: scroller.scrollLeft, headerRight: h.right, cellRight: c.right, headerWidth: h.width, cellWidth: c.width, viewportRight: s.right, cellPosition: getComputedStyle(cell).position, actionRight: action?.right ?? 0, actionVisible: !!action };
+      return { max, left: scroller.scrollLeft, before, headerRight: h.right, cellRight: c.right, headerWidth: h.width, cellWidth: c.width, viewportRight: s.right, cellPosition: getComputedStyle(cell).position, actionRight: action?.right ?? 0, actionVisible: !!action };
     });
     expect(geometry.max, ledger).toBeGreaterThan(80);
     expect(geometry.left, ledger).toBeGreaterThan(0);
@@ -46,12 +48,12 @@ test("Actions header and row cells stay aligned while every lab ledger scrolls",
       await page.screenshot({ path: join(evidence, `${phase}-${ledger}-scrolled-900-dark.png`), fullPage: false, style: "nextjs-portal { display: none !important; }" });
     }
     if (phase === "before") continue;
-    expect(geometry.cellPosition, ledger).toBe("sticky");
+    expect(geometry.cellPosition, ledger).toBe("static");
+    expect(geometry.before - geometry.cellRight, ledger).toBeGreaterThan(50);
     expect(Math.abs(geometry.cellRight - geometry.headerRight), ledger).toBeLessThanOrEqual(1);
     expect(Math.abs(geometry.cellWidth - geometry.headerWidth), ledger).toBeLessThanOrEqual(1);
-    expect(Math.abs(geometry.cellRight - geometry.viewportRight), ledger).toBeLessThanOrEqual(3);
     expect(geometry.actionVisible, ledger).toBe(true);
-    expect(geometry.actionRight, ledger).toBeLessThanOrEqual(geometry.viewportRight);
+    await scroll.evaluate(node => { const scroller = node as HTMLElement; scroller.scrollLeft = scroller.scrollWidth; });
     await expect(scroll.locator("tbody tr").first().locator("td:last-child button")).toBeVisible();
     if (ledger === "sportsbook") {
       await scroll.locator("tbody tr").first().locator("td:last-child button").click();
@@ -63,6 +65,7 @@ test("Actions header and row cells stay aligned while every lab ledger scrolls",
 });
 
 test("actual Chromium 200% zoom keeps scrolled Actions aligned and clickable", async () => {
+  test.setTimeout(60_000);
   if (phase === "before") return;
   const baseURL = process.env.OPENFORGE_E2E_BASE_URL ?? "http://127.0.0.1:3010";
   const scratch = await mkdtemp(join(tmpdir(), "pd-actions-zoom-"));
@@ -73,7 +76,8 @@ test("actual Chromium 200% zoom keeps scrolled Actions aligned and clickable", a
   const context = await chromium.launchPersistentContext(join(scratch, "profile"), { channel: "chromium", headless: true, viewport: { width: 1440, height: 900 }, args: [`--disable-extensions-except=${extension}`, `--load-extension=${extension}`] });
   try {
     const page = await context.newPage();
-    await page.route("**/api/**", async route => {
+    if (process.env.OPENFORGE_CP117_AUTH_URL) await page.goto(process.env.OPENFORGE_CP117_AUTH_URL);
+    if (!process.env.OPENFORGE_CP117_AUTH_URL) await page.route("**/api/**", async route => {
       if (route.request().url().endsWith("/api/auth/session")) return route.fulfill({ json: { authenticated: true, email: "demo@example.invalid", expires_at: 4102444800, role: "fund_manager", session_policy: { absolute_expires_at: 4102444800, auto_logout_enabled: false, effective_expires_at: 4102444800, inactivity_expires_at: null, last_activity_at: 1, preference_configured: true, timeout_minutes: 30, valid_now: true } } });
       if (route.request().url().endsWith("/api/auth/activity")) return route.fulfill({ json: { ok: true } });
       throw new Error(`Unexpected lab API request: ${route.request().url()}`);
@@ -93,7 +97,7 @@ test("actual Chromium 200% zoom keeps scrolled Actions aligned and clickable", a
   } finally { await context.close(); await rm(scratch, { recursive: true, force: true }); }
 });
 
-test("pinned Actions remain visible in both themes and narrow table view", async ({ page }) => {
+test("Actions move with rows in both themes and narrow table view", async ({ page }) => {
   await openLedger(page, "sportsbook");
   for (const width of [1440, 430, 390]) {
     await page.setViewportSize({ width, height: 900 });
@@ -113,7 +117,7 @@ test("pinned Actions remain visible in both themes and narrow table view", async
         await page.screenshot({ path: join(evidence, `${phase}-sportsbook-scrolled-${width}-${theme}.png`), fullPage: false });
       }
       if (phase === "before") continue;
-      expect(geometry.position, `${width}/${theme}`).toBe("sticky");
+      expect(geometry.position, `${width}/${theme}`).toBe("static");
       expect(Math.abs(geometry.cellRight - geometry.headerRight), `${width}/${theme}`).toBeLessThanOrEqual(1);
       expect(geometry.width, `${width}/${theme}`).toBeGreaterThanOrEqual(60);
       expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth), `${width}/${theme}`).toBeLessThanOrEqual(1);

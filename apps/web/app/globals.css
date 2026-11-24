@@ -2466,27 +2466,7 @@ html[data-theme="dark"] .notification-count-badge {
   }
 }
 
-/* Flagged ledger presentation: pin the complete Actions column, using the
-   existing table/colgroup widths and preserving each row's semantic surface. */
-.ux-v2-main .ledger-table-scroll-wrap .data-table:is(.sportsbook-data-table, .accounts-data-table, .extra-place-data-table) > thead > tr > th:last-child,
-.ux-v2-main .ledger-table-scroll-wrap .data-table:is(.sportsbook-data-table, .accounts-data-table, .extra-place-data-table) > tbody > tr > td:last-child:not([colspan]) {
-  position: sticky;
-  right: 0;
-  box-shadow: -1px 0 0 var(--outline-strong), -8px 0 12px -12px color-mix(in srgb, var(--text) 22%, transparent);
-}
-
-.ux-v2-main .ledger-table-scroll-wrap .data-table:is(.sportsbook-data-table, .accounts-data-table, .extra-place-data-table) > thead > tr > th:last-child {
-  z-index: 4;
-  background: var(--surface-container);
-}
-
-.ux-v2-main .ledger-table-scroll-wrap .data-table:is(.sportsbook-data-table, .accounts-data-table, .extra-place-data-table) > tbody > tr > td:last-child:not([colspan]) {
-  z-index: 2;
-  /* Some semantic row tints have alpha. Composite them over an opaque surface
-     so financial columns cannot show through the pinned Actions cell. */
-  background-color: var(--surface-container);
-  background-image: linear-gradient(var(--ledger-sticky-action-bg, transparent), var(--ledger-sticky-action-bg, transparent));
-}
+/* Actions travel with the ledger grid; column widths and native controls remain unchanged. */
 
 /* The real ledger keeps its existing API, columns and controls. The V2 shell
    gives the table the compact reading rhythm used by the approved lab grid. */
@@ -4869,21 +4849,8 @@ html[data-theme="dark"] .notification-count-badge {
 }
 
 .unsaved-changes-dialog {
-  display: flex;
-  width: min(34rem, calc(100vw - 2rem));
-  min-width: 0;
-  max-width: calc(100vw - 2rem);
-  max-height: min(32rem, calc(100dvh - 2rem));
-  padding: 1.35rem;
-  flex-direction: column;
-  gap: 1rem;
-  overflow: hidden;
-  resize: none;
-}
-
-.unsaved-changes-dialog .section-heading-row {
-  align-items: flex-start;
-  gap: 1rem;
+  width: min(520px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
 }
 
 .unsaved-changes-dialog p {
@@ -4893,35 +4860,6 @@ html[data-theme="dark"] .notification-count-badge {
   line-height: 1.55;
 }
 
-.unsaved-changes-dialog .workflow-editor-modal-footer {
-  margin-top: 0.35rem;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 0.75rem;
-  min-height: 3.25rem;
-}
-
-.unsaved-changes-dialog .workflow-editor-modal-footer > button {
-  display: inline-flex;
-  min-height: 3rem;
-  align-items: center;
-  justify-content: center;
-  gap: 0.45rem;
-  line-height: 1;
-  white-space: nowrap;
-}
-
-.unsaved-changes-dialog .workflow-editor-modal-footer .button-link {
-  border: 1px solid var(--outline);
-  border-radius: 999px;
-  padding: 0.75rem 1.1rem;
-  background: var(--surface);
-  color: var(--text);
-}
 
 .directory-icon-button.is-active .material-symbols-outlined {
   font-variation-settings: "FILL" 1;

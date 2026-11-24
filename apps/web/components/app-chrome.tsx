@@ -867,13 +867,13 @@ function AppChromeContent({
           <section
             aria-label={unsavedPrompt.request.accessibleName}
             aria-modal="true"
-            className="modal-panel unsaved-changes-dialog"
+            className={`${labStyles.editModal} unsaved-changes-dialog`}
             data-navigation-href={unsavedPrompt.request.navigationHref}
             data-pd-id="unsaved-changes.dialog"
             onClick={(event) => event.stopPropagation()}
             role="dialog"
           >
-            <header className="section-heading-row">
+            <header className={labStyles.modalHead}>
               <div>
                 {unsavedPrompt.request.eyebrow ? (
                   <span className="eyebrow">{unsavedPrompt.request.eyebrow}</span>
@@ -882,7 +882,7 @@ function AppChromeContent({
               </div>
               <button
                 aria-label={`Close confirmation and ${unsavedPrompt.request.cancelLabel.toLocaleLowerCase()}`}
-                className="dialog-close-button"
+                className={labStyles.iconButton}
                 data-pd-id="unsaved-changes.keep-editing-icon"
                 onClick={() => unsavedPrompt.respond(false)}
                 type="button"
@@ -891,9 +891,9 @@ function AppChromeContent({
               </button>
             </header>
             <p>{unsavedPrompt.request.message}</p>
-            <footer className="workflow-editor-modal-footer">
+            <footer className={labStyles.actionRow}>
               <button
-                className="button-link"
+                className={labStyles.secondaryButton}
                 data-pd-id="unsaved-changes.keep-editing"
                 onClick={() => unsavedPrompt.respond(false)}
                 ref={unsavedKeepEditingRef}
@@ -903,7 +903,7 @@ function AppChromeContent({
               </button>
               {unsavedPrompt.request.onSaveAndClose ? (
                 <button
-                  className="review-chip review-chip-copy"
+                  className={labStyles.primaryButton}
                   data-pd-id="unsaved-changes.save-and-close"
                   disabled={unsavedPrompt.isSaving}
                   onClick={() => {
@@ -921,7 +921,7 @@ function AppChromeContent({
               {unsavedPrompt.request.navigationHref ? (
                 <form action={unsavedPrompt.request.navigationHref} method="get">
                   <button
-                    className="icon-button icon-button-destructive"
+                    className={labStyles.dangerButton}
                     data-pd-confirmed-navigation="true"
                     data-pd-id="unsaved-changes.discard"
                     onPointerDown={() => {
@@ -937,7 +937,7 @@ function AppChromeContent({
                 </form>
               ) : (
                 <button
-                  className="icon-button icon-button-destructive"
+                  className={labStyles.dangerButton}
                   data-pd-id="unsaved-changes.discard"
                   onClick={() => unsavedPrompt.respond(true)}
                   type="button"

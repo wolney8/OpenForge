@@ -3,6 +3,7 @@
 import { MultiLayActualEditor, type MultiLayExecution, type MultiLayActual } from "@/components/multi-lay-actual-editor";
 import { AccountReviewButton } from "@/components/account-review-panel";
 import { ModalBoundary } from "@/components/modal-boundary";
+import { LedgerCompactDate } from "@/components/ledger-compact-date";
 import { formatApiErrorBody } from "@/lib/api-error";
 import { isWithinSportsbookRange, sportsbookRangeAnchor } from "@/lib/sportsbook-range-anchor";
 import { ledgerColumnContracts, ledgerColumnWidths, ledgerV2ActionColumnWidth } from "@/lib/ledger-column-contracts";
@@ -7308,6 +7309,8 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
     const sourceRow = sportsbookRowsById.get(rowId);
     const value = String(row[column.key] ?? "").trim() || "—";
 
+    if (visualV2 && column.key === "date_settled") return <LedgerCompactDate value={sourceRow?.date_settled} fallback="Unscheduled" />;
+
     if (column.key === "bookmaker") {
       const identity = <BookmakerIdentity
         bookmaker={value}
@@ -7345,10 +7348,10 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
           layStatusLabel = "Not Laid";
         } else if (normalizedLayStatus.includes("partially")) {
           layStatusToneClass = " table-chip-lay-partial";
-          layStatusLabel = "Part Laid";
+          layStatusLabel = visualV2 ? "Partial lay" : "Part Laid";
         } else if (normalizedLayStatus.includes("part laid")) {
           layStatusToneClass = " table-chip-lay-partial";
-          layStatusLabel = "Part Laid";
+          layStatusLabel = visualV2 ? "Partial lay" : "Part Laid";
         } else if (normalizedLayStatus.includes("fully")) {
           layStatusToneClass = " table-chip-back-placed";
           layStatusLabel = "Fully Laid";
@@ -8625,7 +8628,7 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
                         : " table-chip-muted"
                   }`}
                 >
-                  {editorLayStatus}
+                  {visualV2 && editorLayStatus === "Part Laid" ? "Partial lay" : editorLayStatus}
                 </span>
               </section> : null}
               {!visualV2 ? <div className="tracker-nav workflow-editor-header-actions">
@@ -9775,7 +9778,7 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
                                     : " table-chip-muted"
                               }`}
                             >
-                              {editorLayStatus}
+                              {visualV2 && editorLayStatus === "Part Laid" ? "Partial lay" : editorLayStatus}
                             </span>
                           </div>
                           <div className="calculator-segment-grid calculator-segment-grid-lay">

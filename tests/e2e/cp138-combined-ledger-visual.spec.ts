@@ -51,7 +51,7 @@ for (const width of [900, 390] as const) for (const theme of ["light", "dark"] a
     await setTheme();
     const combinedStyle = await combined.locator('tbody td[data-ledger-column="bookmaker"]').first().evaluate(node => ({ padding: getComputedStyle(node).padding, fontSize: getComputedStyle(node).fontSize, lineHeight: getComputedStyle(node).lineHeight }));
     expect(combinedStyle).toEqual(nativeStyle);
-    await expect(combined.locator("thead th").last()).toHaveCSS("position", "sticky");
+    await expect(combined.locator("thead th").last()).toHaveCSS("right", "auto");
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
     await page.screenshot({ path: info.outputPath(`combined-sportsbook-${width}-${theme}.png`), fullPage: true });
   });
@@ -78,7 +78,7 @@ test("actual Chromium 200% zoom retains combined details, full table and Actions
     await expect(page.locator('[data-pd-id="combined.sportsbook-bets.details"] article').first()).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
     await page.getByRole("button", { name: "Show Full Table" }).click();
-    await expect(combined.locator("thead th").last()).toHaveCSS("position", "sticky");
+    await expect(combined.locator("thead th").last()).toHaveCSS("right", "auto");
     await page.screenshot({ path: info.outputPath("combined-sportsbook-actual-200-percent.png"), fullPage: true });
   } finally { await context.close(); await rm(scratch, { recursive: true, force: true }); }
 });

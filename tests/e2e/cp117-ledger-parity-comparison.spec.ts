@@ -72,6 +72,7 @@ for (const width of [900, 390] as const) for (const theme of ["light", "dark"] a
       await page.goto(`/profiles/profile-demo-001/tracker/${module.path}`);
       await expect(page.locator(".ledger-loading-overlay")).toHaveCount(0, { timeout: 45_000 });
       await expect(page.locator(`[data-pd-id="${module.native}.table-scroll"] tbody tr`).first()).toBeVisible();
+      await expect(page.locator(`[data-pd-id="${module.native}.table-scroll"] tbody tr`).first().locator('.ledger-compact-date').first()).toBeVisible();
       if (module.path !== "accounts") await expect(page.locator('[data-pd-id="tracker.range-card.select"]')).toBeEnabled({ timeout: 45_000 });
       if (module.path === "each-way-extra-places") await expect(page.getByRole("region", { name: "Extra Place quick view" })).toHaveAttribute("aria-busy", "false", { timeout: 45_000 });
       if (module.path === "accounts") await expect(page.locator('[data-pd-id="accounts.table-scroll"] tbody tr').first().getByRole("button", { name: /^(Edit|Review attention for) / }).locator('.material-symbols-outlined')).toHaveText("open_in_new");
@@ -82,11 +83,13 @@ for (const width of [900, 390] as const) for (const theme of ["light", "dark"] a
       await page.goto(`/tracker/${module.path}`);
       const combined = page.locator(`[data-pd-id="combined.${module.path}.table-scroll"]`);
       await expect(combined.locator("tbody tr").first()).toHaveCount(1);
+      await expect(combined.locator("tbody tr").first().locator('.ledger-compact-date').first()).toBeVisible();
       await themePage();
       await expect(page.getByRole("heading", { name: module.heading, exact: true }).first()).toBeVisible();
       await expect(page.locator(`[data-pd-id="combined.${module.path}.filters"]`)).toBeVisible();
       await expect(page.locator(`[data-pd-id="combined.${module.path}.columns"]`)).toBeVisible();
-      await expect(combined.locator("thead th").last()).toHaveCSS("position", "sticky");
+      await expect(combined.locator("thead th").last()).toHaveCSS("right", "auto");
+      await expect(combined.locator("tbody tr").first().locator("td").last()).toHaveCSS("position", "static");
       if (width === 390 && module.path !== "accounts") {
         const range = page.locator('[data-pd-id="tracker.range-card.select"]');
         expect((await range.boundingBox())?.width ?? 0).toBeGreaterThan(220);

@@ -6,7 +6,7 @@ import { designLabAllowed } from "@/lib/design-lab-access";
 
 export const dynamic = "force-dynamic";
 
-const valid = new Set(["protected", "offer", "requirements", "matching", "finish"]);
+const valid = new Set(["protected", "offer", "requirements", "matching", "finish", "operations"]);
 
 export default async function SportsbookProposalPage({ searchParams }: { searchParams: Promise<{ amendment?: string; view?: string }> }) {
   const requestHeaders = await headers();

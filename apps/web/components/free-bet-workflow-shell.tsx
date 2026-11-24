@@ -1,4 +1,5 @@
 "use client";
+import { LedgerCompactDate } from "@/components/ledger-compact-date";
 
 import { ModalBoundary } from "@/components/modal-boundary";
 import { formatApiErrorBody } from "@/lib/api-error";
@@ -3215,6 +3216,8 @@ export function FreeBetWorkflowShell({
     const rowId = String(row.free_bet_id ?? "");
     const sourceRow = freeBetRowsById.get(rowId);
     const value = String(row[column.key] ?? "").trim() || "—";
+
+    if (visualV2 && (column.key === "date_settled" || column.key === "expiry_datetime")) return <LedgerCompactDate value={sourceRow?.[column.key]} fallback="Unscheduled" />;
 
     if (column.key === "bookmaker") {
       return (

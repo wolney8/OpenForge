@@ -517,7 +517,7 @@ test("native Sportsbook keeps governed row commands behind a compact action surf
   await expect(page.locator(".ledger-loading-overlay")).toHaveCount(0, { timeout: 45_000 });
   const row = page.locator('tr:has(td[data-ledger-row="CP117-CELL-001"])');
   await expect(row).toBeVisible();
-  expect(await row.locator("td").last().evaluate(element => getComputedStyle(element).backgroundColor)).not.toBe("rgba(0, 0, 0, 0)");
+  await expect(row.locator("td").last()).toHaveCSS("position", "static");
   await expect(row.locator("td").last().getByRole("button")).toHaveCount(2);
   await row.getByRole("button", { name: "More actions for CP117-CELL-001" }).click();
   const menu = page.getByRole("menu", { name: "Actions for CP117-CELL-001" });
@@ -548,7 +548,7 @@ for (const item of [
     await expect(row).toBeVisible();
     const actions = row.locator("td").last();
     await expect(actions.getByRole("button")).toHaveCount(2);
-    expect(await actions.evaluate(element => getComputedStyle(element).backgroundColor)).toMatch(/^rgb\(/);
+    await expect(actions).toHaveCSS("position", "static");
     if (item.module === "free-bets") {
       await page.screenshot({ path: "data/private/evidence/cp117-rejected-parity/free-bets-actions-after-1440-light.png", fullPage: true });
     }

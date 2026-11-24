@@ -56,6 +56,7 @@ import { getRaceDateSuggestions } from "@/lib/race-date-suggestion";
 import { extraPlaceBookmakerOptions, extraPlaceTypedCellEligibility } from "@/lib/extra-place-typed-cell";
 import { toDateTimeLocalValue } from "@/lib/date-format";
 import { formatLedgerDateTime } from "@/lib/ledger-date-display";
+import { LedgerCompactDate } from "@/components/ledger-compact-date";
 import { parseExtraPlaceRacePaste } from "@/lib/extra-place-race-paste";
 import { getExtraPlaceRaceReadyState } from "@/lib/extra-place-race-ready";
 import { getExtraPlaceLossBudgetState } from "@/lib/extra-place-loss-budget";
@@ -1270,7 +1271,7 @@ export function EachWayExtraPlaceWorkflowShell({
         status: row.status,
         subtitle: row.race || "Race needed",
         fields: [
-          { key: "date", label: "Date / time", value: formatLedgerDateTime(row.placed_at) },
+          { key: "date", label: "Date / time", value: <LedgerCompactDate value={row.placed_at} fallback="Not recorded" /> },
           { key: "runner", label: "Runner / Race", value: <><strong>{row.runner || "Runner needed"}</strong><br />{row.race || "Race needed"}</> },
           { key: "bookmaker", label: "Bookmaker", value: row.bookmaker ? <BookmakerIdentity bookmaker={row.bookmaker} catalogueId={catalogueIdForBookmaker(providerIdsByName, row.bookmaker)} catalogue={bookmakerCatalogue} mode="Brand badge" /> : "Bookmaker needed" },
           { key: "stake", label: "E/W Stake", value: neutralValue(row.each_way_stake) },
@@ -2046,7 +2047,7 @@ function LedgerRow({
             ) : null}
           </div>
         ) : null}
-        {formatLedgerDateTime(row.placed_at)}
+        {visualV2 ? <LedgerCompactDate value={row.placed_at} fallback="Not recorded" /> : formatLedgerDateTime(row.placed_at)}
       </td>
       <td {...cell("runner")}>
         <strong>{row.runner || "Runner needed"}</strong>

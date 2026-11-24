@@ -1,4 +1,5 @@
 "use client";
+import { LedgerCompactDate } from "@/components/ledger-compact-date";
 
 import { ModalBoundary } from "@/components/modal-boundary";
 
@@ -3567,6 +3568,8 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
     const rowId = String(row.casino_offer_id ?? "");
     const sourceRow = casinoRowsById.get(rowId);
     const value = String(row[column.key] ?? "").trim() || "—";
+
+    if (visualV2 && (column.key === "date_settling" || column.key === "expiry_datetime")) return <LedgerCompactDate value={sourceRow?.[column.key]} fallback="Unscheduled" />;
 
     if (column.key === "bookmaker") {
       return (

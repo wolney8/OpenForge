@@ -34,6 +34,16 @@ html[data-ux-shell="v2"][data-theme="dark"] {
   --shadow: 0 4px 16px rgba(0, 0, 0, .12);
 }
 html[data-ux-shell="v2"], html[data-ux-shell="v2"] body { background: var(--bg); }
+.ledger-compact-date { position: relative; display: inline-block; max-width: 100%; white-space: nowrap; font-variant-numeric: tabular-nums; cursor: help; }
+.ledger-compact-date:focus-visible { border-radius: 3px; outline: 2px solid var(--focus); outline-offset: 3px; }
+.ledger-date-tooltip {
+  position: fixed; z-index: 900; pointer-events: none;
+  width: max-content; max-width: min(320px, calc(100vw - 32px));
+  padding: 6px 9px; border: 1px solid var(--outline-strong); border-radius: 7px;
+  background: var(--surface-strong); color: var(--text); box-shadow: var(--shadow);
+  white-space: normal; text-align: left;
+}
+.ledger-compact-date-missing { color: var(--muted); cursor: default; }
 /* The Sportsbook Lab workbench uses this rhythm. Scope it to that workbench
    so the already accepted Free Bet and Casino modal scroll geometry stays intact. */
 .sportsbook-v2-workbench,
@@ -46,7 +56,9 @@ html[data-ux-shell="v2"] .ux-v2-sidebar .ux-v2-nav-link.is-active { border-radiu
 .ux-v2-top-bar .app-navigation-drawer-trigger,
 .ux-v2-top-bar .global-search-compact-trigger { border-color: transparent; background: transparent; box-shadow: none; }
 .ux-v2-main > .page-shell { width: 100%; max-width: var(--ux-v2-page-max-width); }
-/* The approved Lab editor uses its 1500px page container; ledger browsing keeps the accepted 1640px width. */
+/* Ledger pages use a balanced outer frame; the accepted workbench width stays separate. */
+.ux-v2-main > .page-shell:is(.ledger-v2-page, :has(.ledger-v2-page)) { max-width: 1560px; }
+/* The approved Lab editor uses its 1500px page container, independent of the ledger browsing frame. */
 .ux-v2-main > .page-shell:has(.sportsbook-v2-workbench) { max-width: 1500px; }
 @media (max-width: 430px) {
   .ux-v2-main > .page-shell:has(.sportsbook-v2-workbench) { padding-inline: 14px; }

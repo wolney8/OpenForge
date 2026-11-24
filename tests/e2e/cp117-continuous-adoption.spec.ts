@@ -32,7 +32,7 @@ for (const ledger of [
   { module: "cash-adjustments", id: "cash-adjustments", text: "Synthetic cash movement" },
   { module: "accounts", id: "accounts", text: "Bookmaker A" },
 ]) {
-  test(`real ${ledger.module} retains populated table, pinned Actions and existing editor`, async ({ page }, info) => {
+  test(`real ${ledger.module} retains populated table, scrolling Actions and existing editor`, async ({ page }, info) => {
     await ready(page, ledger.module);
     const viewport = page.locator(`[data-pd-id="${ledger.id}.table-scroll"]`);
     const row = viewport.locator("tbody tr").filter({ hasText: ledger.text }).first();

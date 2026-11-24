@@ -15,6 +15,7 @@ import labStyles from "@/components/design-lab-connected.module.css";
 import { TrackerRangeCard } from "@/components/tracker-range-card";
 import { apiBaseUrl } from "@/lib/api";
 import { isWithinLedgerRange, ledgerRangeAnchor } from "@/lib/ledger-range-anchor";
+import { ledgerDateSortValue } from "@/lib/ledger-compact-date";
 import { resolveDateRange, type DatePreset } from "@/lib/tracker-summary";
 import { saveFundManagerSelectedRange } from "@/lib/tracker-settings-client";
 import { commitOwnedAccessChannels, commitOwnedRunnerRace, commitOwnedScalar, ownedAccessChannelsEditable, ownedScalarField } from "@/lib/ledger-scalar-command";
@@ -232,6 +233,8 @@ export function CombinedLedgerPage({ module }: { module: CombinedLedgerModule })
   const nativeColumns = ledgerColumnContracts[module];
   const tableColumns = nativeColumns.filter(column => visibleColumnKeys.has(column.key));
   const toggleSort = (key: string) => { if (sortKey === key) setSortDescending(value => !value); else { setSortKey(key); setSortDescending(false); } setPage(1); };
+  const dateSortKey = sortKey === "date" && module === "each-way-extra-places" ? "placed_at" : sortKey;
+  const isDateSort = ["date_settled", "date_settling", "expiry_datetime", "adjustment_date", "last_balance_update", "date"].includes(sortKey);
   const visible = useMemo(() => rows.filter(row => {
     if (localProfileValid && localProfile !== "all" && row.profileId !== localProfile) return false;
     if (module !== "accounts" && rangePreset) {
@@ -250,11 +253,21 @@ export function CombinedLedgerPage({ module }: { module: CombinedLedgerModule })
     const rightCell = sortKey === "profile_name" ? null : presentLedgerCell(module, b.data, sortKey);
     const left = leftCell?.text ?? a.profileName;
     const right = rightCell?.text ?? b.profileName;
-    const comparison = leftCell?.money != null && rightCell?.money != null
-      ? leftCell.money - rightCell.money
-      : left.localeCompare(right, undefined, { numeric: true });
+    const comparison = isDateSort
+      ? (() => {
+          const leftDate = String(a.data[dateSortKey] ?? "");
+          const rightDate = String(b.data[dateSortKey] ?? "");
+          const leftTime = ledgerDateSortValue(leftDate);
+          const rightTime = ledgerDateSortValue(rightDate);
+          return leftTime !== null && rightTime !== null
+            ? leftTime - rightTime
+            : leftDate.localeCompare(rightDate);
+        })()
+      : leftCell?.money != null && rightCell?.money != null
+        ? leftCell.money - rightCell.money
+        : left.localeCompare(right, undefined, { numeric: true });
     return (sortDescending ? -comparison : comparison) || a.profileId.localeCompare(b.profileId) || a.recordId.localeCompare(b.recordId);
-  }), [rows, localProfile, localProfileValid, search, module, sortKey, sortDescending, selectedFilters, rangePreset, rangeSettings]);
+  }), [rows, localProfile, localProfileValid, search, module, sortKey, sortDescending, selectedFilters, rangePreset, rangeSettings, dateSortKey, isDateSort]);
   const count = Math.max(1, Math.ceil(visible.length / pageSize));
   const current = Math.min(page, count);
   const paginated = visible.slice((current - 1) * pageSize, current * pageSize);
@@ -334,7 +347,7 @@ export function CombinedLedgerPage({ module }: { module: CombinedLedgerModule })
   };
   const detailRows: DesignLedgerDetailRow[] = paginated.map(row => ({
     id: identity(row), title: presentLedgerCell(module, row.data, nativeColumns[1]?.key ?? recordKeys[module]).text, subtitle: `${row.profileName} · ${row.recordId}`,
-    status: presentLedgerCell(module, row.data, "status").text, fields: nativeColumns.filter(column => column.key !== "actions").map(column => ({ key: column.key, label: column.label, value: presentLedgerCell(module, row.data, column.key).text })),
+    status: presentLedgerCell(module, row.data, "status").text, fields: nativeColumns.filter(column => column.key !== "actions").map(column => ({ key: column.key, label: column.label, value: <CombinedLedgerCell catalogue={catalogue} cell={presentLedgerCell(module, row.data, column.key)} column={column.key} module={module} row={row.data} /> })),
     onOpen: () => router.push(rowHref(row)),
   }));
   const setLocalProfile = async (value: string) => {

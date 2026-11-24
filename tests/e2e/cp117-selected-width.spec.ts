@@ -233,7 +233,7 @@ test("selected task context remains clear in Split View and the mobile drawer", 
   }
 });
 
-test("desktop V2 page width halves visible gutters and narrow routes stay contained", async ({ page }, info) => {
+test("desktop Position width and revised ledger gutters stay contained", async ({ page }, info) => {
   await page.setViewportSize({ width: 2000, height: 1000 });
   expect((await page.request.put("/api/fund-manager/preferences/selected-range", { data: {
     selected_range_preset: "All Dates", selected_range_custom_start: null, selected_range_custom_end: null,
@@ -254,16 +254,19 @@ test("desktop V2 page width halves visible gutters and narrow routes stay contai
         right: main.right - rect.right, visibleLeft: rect.left - main.left + parseFloat(style.paddingLeft),
         overflow: Math.max(0, document.documentElement.scrollWidth - innerWidth) };
     });
-    const oldCap = await page.addStyleTag({ content: ".ux-v2-main > .page-shell { max-width: 1500px !important; }" });
+    const oldCap = await page.addStyleTag({ content: `.ux-v2-main > .page-shell { max-width: ${name === "ledger" ? 1640 : 1500}px !important; }` });
     const before = await measure();
     await page.screenshot({ path: info.outputPath(`before-${name}.png`) });
     await oldCap.evaluate(node => node.remove());
     const after = await measure();
     measurements[name] = { before, after };
-    expect(after.actual).toBeGreaterThanOrEqual(1635);
+    if (name === "ledger") {
+      expect(after.actual).toBe(1560);
+      expect(after.left - before.left).toBeGreaterThanOrEqual(39);
+    } else expect(after.actual).toBeGreaterThanOrEqual(1635);
     expect(after.left).toBeGreaterThanOrEqual(24);
     expect(Math.abs(after.left - after.right)).toBeLessThan(1);
-    expect(after.visibleLeft / before.visibleLeft).toBeLessThanOrEqual(0.55);
+    if (name === "position") expect(after.visibleLeft / before.visibleLeft).toBeLessThanOrEqual(0.55);
     expect(after.overflow).toBe(0);
     await page.screenshot({ path: info.outputPath(`after-${name}.png`) });
   }
