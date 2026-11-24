@@ -5339,7 +5339,7 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
     const strategies = dedupeOptions(rows.map((row) => row.match_strategy));
     const layStatuses = dedupeOptions(rows.map((row) => row.lay_status));
     const backBetStatuses = dedupeOptions(
-      rows.map((row) => getSportsbookBackBetStatusBadge(row).label)
+      rows.map((row) => getSportsbookBackBetStatusBadge(row, visualV2).label)
     );
     const statuses = dedupeOptions(rows.map((row) => row.status));
 
@@ -5353,7 +5353,7 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
       backBetStatuses,
       statuses,
     };
-  }, [accountAuthorities, rows]);
+  }, [accountAuthorities, rows, visualV2]);
 
   const sportsbookFilteredReviewRows = useMemo(() => {
     return sortedReviewRows.filter((row) => {
@@ -5380,7 +5380,7 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
       }
       if (
         tableFilters.back_bet_status &&
-        getSportsbookBackBetStatusBadge(row).label !== tableFilters.back_bet_status
+        getSportsbookBackBetStatusBadge(row, visualV2).label !== tableFilters.back_bet_status
       ) {
         return false;
       }
@@ -5404,7 +5404,7 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
 
       return true;
     });
-  }, [feeReviewContext, sortedReviewRows, tableFilters]);
+  }, [feeReviewContext, sortedReviewRows, tableFilters, visualV2]);
 
   const filteredRows = useMemo(() => {
     const tableRows: TrackerRow[] = sportsbookFilteredReviewRows.map((row) => ({
@@ -5418,7 +5418,7 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
       bet_type: row.bet_type,
       match_strategy: row.match_strategy,
       lay_status: row.lay_status,
-      back_bet_status: getSportsbookBackBetStatusBadge(row).label,
+      back_bet_status: getSportsbookBackBetStatusBadge(row, visualV2).label,
       displayed_value: getDisplayedValueForRow(row),
       displayed_value_label: getDisplayedValueLabelForRow(row),
       status: row.status,
@@ -5426,7 +5426,7 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
     }));
 
     return filterTrackerRows(tableRows, sportsbookTableColumns, query);
-  }, [placedRange, query, sportsbookFilteredReviewRows]);
+  }, [placedRange, query, sportsbookFilteredReviewRows, visualV2]);
 
   const quickView = useMemo(() => {
     const rangeRows = initialIssueFilter
@@ -7358,7 +7358,7 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
       }
 
       if (column.key === "back_bet_status" && sourceRow) {
-        const backBetStatus = getSportsbookBackBetStatusBadge(sourceRow);
+        const backBetStatus = getSportsbookBackBetStatusBadge(sourceRow, visualV2);
         const backBetToneClass =
           backBetStatus.tone === "positive"
             ? " table-chip-back-placed"
@@ -8565,7 +8565,7 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
       {workflowVisible && quickCaptureOpen && !cellEditor.active ? <ModalBoundary onDismiss={() => void closeEditor()}><div className="modal-backdrop" onClick={() => void closeEditor()}><section aria-label="Quick Capture Sportsbook offer" aria-modal="true" className={labStyles.entryModal} data-pd-id="sportsbook.quick-capture.dialog" onClick={event => event.stopPropagation()} role="dialog"><div className={labStyles.modalHead}><h2>Quick Capture</h2><button aria-label="Close quick capture" className={labStyles.secondaryButton} onClick={() => void closeEditor()} type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button></div><div className={labStyles.modalBody}><div className={labStyles.entry}><div className={labStyles.entryTop}><div><strong>Sportsbook offer</strong><p>Capture known details, then complete the governed bet workbench.</p></div></div><div className={labStyles.entryFields}><fieldset><legend>Offer</legend><label>Original Offer text<textarea data-pd-id="sportsbook.quick-capture.offer-text" onChange={event => setFormState(current => ({ ...current, offer_text: event.target.value }))} rows={3} value={formState.offer_text}/></label><div className={labStyles.fieldPair}><label>Bookmaker<input data-pd-id="sportsbook.quick-capture.bookmaker" onChange={event => setFormState(current => ({ ...current, bookmaker: event.target.value }))} value={formState.bookmaker}/></label><label>Offer Name<input data-pd-id="sportsbook.quick-capture.offer-name" onChange={event => setFormState(current => ({ ...current, offer_name: event.target.value }))} value={formState.offer_name}/></label><label>Event Name<input data-pd-id="sportsbook.quick-capture.event-name" onChange={event => setFormState(current => ({ ...current, event_name: event.target.value }))} value={formState.event_name}/></label></div></fieldset></div><p className="muted">These details remain an unsaved draft until the full workbench validates and saves a record.</p><div className={labStyles.entryFooter}><button className={labStyles.secondaryButton} onClick={() => void closeEditor()} type="button">Cancel</button><button className={labStyles.primaryButton} onClick={() => { setQuickCaptureOpen(false); requestAnimationFrame(() => revealEditor({ expandLedger: true })); }} type="button">Open full workbench</button></div></div></div></section></div></ModalBoundary> : null}
       {workflowVisible && !quickCaptureOpen && !cellEditor.active ? (
         <SportsbookWorkbenchHost visualV2={visualV2} onDismiss={() => void closeEditor()}>
-          {visualV2 ? <DesignPageHead dataPdId="sportsbook.workbench.page-head"><div><h1>{selectedId ? `Edit Sportsbook Bet · ${selectedId}` : "Add Sportsbook Bet"}</h1><p>Offer first · prepare and confirm external placement later</p></div></DesignPageHead> : null}
+          {visualV2 ? <DesignPageHead dataPdId="sportsbook.workbench.page-head" showTrackedBanner={false}><div><h1>{selectedId ? `Edit Sportsbook Bet · ${selectedId}` : "Add Sportsbook Bet"}</h1><p>Offer first · prepare and confirm external placement later</p></div></DesignPageHead> : null}
           <section
             aria-label={visualV2 ? (selectedId ? "Edit Sportsbook Bet workbench" : "Add Sportsbook Bet workbench") : (selectedId ? "Edit sportsbook row" : "Create sportsbook row")}
             aria-modal={visualV2 ? undefined : "true"}

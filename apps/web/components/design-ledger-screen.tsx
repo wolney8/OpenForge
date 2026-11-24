@@ -58,8 +58,8 @@ export function DesignLedgerPagination({ currentPage, dataPdId, label, onPageCha
   </div>;
 }
 
-export function DesignPageHead({ children, dataPdId, enabled = true }: { children: ReactNode; dataPdId?: string; enabled?: boolean }) {
-  return enabled ? <><div className={styles.pageHead} data-pd-id={dataPdId}>{children}</div><Suspense fallback={null}><TrackedTasksBanner /></Suspense></> : <>{children}</>;
+export function DesignPageHead({ children, dataPdId, enabled = true, showTrackedBanner = true }: { children: ReactNode; dataPdId?: string; enabled?: boolean; showTrackedBanner?: boolean }) {
+  return enabled ? <><div className={styles.pageHead} data-pd-id={dataPdId}>{children}</div>{showTrackedBanner ? <Suspense fallback={null}><TrackedTasksBanner /></Suspense> : null}</> : <>{children}</>;
 }
 
 export const designPageHeadClasses = { actions: styles.headActions };

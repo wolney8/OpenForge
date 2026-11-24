@@ -553,6 +553,13 @@ describe("sportsbook back-bet status badge", () => {
       label: "Back Placed",
       tone: "positive",
     });
+
+    expect(getSportsbookBackBetStatusBadge({ status: "Placed", result: "Pending", back_placement_confirmed: null }, true)).toEqual({
+      label: "Not recorded", tone: "muted",
+    });
+    expect(getSportsbookBackBetStatusBadge({ status: "Placed", result: "Pending", back_placement_confirmed: true }, true)).toEqual({
+      label: "Back Placed", tone: "positive",
+    });
   });
 });
 

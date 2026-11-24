@@ -38,7 +38,7 @@ export function CombinedLedgerCell({ module, column, row, cell, catalogue }: { m
     }
     if (column === "back_bet_status") {
       const status = String(row.status ?? "");
-      const badge = module === "sportsbook-bets" ? getSportsbookBackBetStatusBadge({ status, result: String(row.result ?? "") }) : freeBetBackBetStatus({ status });
+      const badge = module === "sportsbook-bets" ? getSportsbookBackBetStatusBadge({ status, result: String(row.result ?? ""), back_placement_confirmed: row.back_placement_confirmed === true }, true) : freeBetBackBetStatus({ status });
       const tone = badge.tone === "positive" ? "table-chip-back-placed" : badge.tone === "muted" ? "table-chip-muted" : module === "free-bets" ? "table-chip-lay-partial" : "table-chip-warning";
       return <span className={`table-chip ${tone}`}>{badge.label}</span>;
     }

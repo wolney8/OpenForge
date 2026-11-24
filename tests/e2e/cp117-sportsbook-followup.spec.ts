@@ -16,6 +16,67 @@ test.beforeEach(async ({ page }) => {
   expect(selectedRange.ok()).toBeTruthy();
 });
 
+test("Sportsbook Workbench omits every Tracked Tasks banner state and restores the ledger banner", async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.route("**/fund-manager/tasks/annotations", async route => {
+    if (route.request().method() === "GET") await route.fulfill({ status: 503, contentType: "application/json", body: '{"detail":"synthetic read failure"}' });
+    else await route.continue();
+  });
+  await page.goto(owned);
+  await expect(page.locator(".ledger-loading-overlay")).toHaveCount(0, { timeout: 45_000 });
+  await expect(page.getByText("Tracked Tasks could not be loaded.", { exact: false })).toBeVisible();
+  await page.locator('[data-pd-id="sportsbook.toolbar.add-row"]').click();
+  const workbench = page.locator('[data-pd-id="sportsbook.editor.workbench-surface"]');
+  await expect(workbench).toBeVisible();
+  await expect(page.locator('[data-pd-id^="v2.active-task"]')).toHaveCount(0);
+  await expect(page.getByText("Tracked Tasks could not be loaded.", { exact: false })).toHaveCount(0);
+  for (const stage of ["requirements", "matching", "placement", "finish", "offer"]) {
+    await workbench.locator(`[data-pd-id="bet-workbench.stage.${stage}"]`).click();
+    await expect(page.locator('[data-pd-id^="v2.active-task"]')).toHaveCount(0);
+  }
+  await workbench.getByRole("button", { name: "Cancel", exact: true }).click();
+  await expect(workbench).toHaveCount(0);
+  await expect(page.getByText("Tracked Tasks could not be loaded.", { exact: false })).toBeVisible();
+  for (const source of ["task", "report-explorer"]) {
+    await page.goto(`${owned}?record=SB-SEED-001&source=${source}`);
+    await expect(workbench).toBeVisible();
+    await expect(page.locator('[data-pd-id^="v2.active-task"]')).toHaveCount(0);
+    await page.locator('[data-pd-id="ux-v2.breadcrumbs"] a', { hasText: "Sportsbook Bets" }).click();
+    await expect(workbench).toHaveCount(0);
+    await expect(page.getByText("Tracked Tasks could not be loaded.", { exact: false })).toBeVisible();
+  }
+  await page.goto(`/tracker/sportsbook-bets?profile=${profile}`);
+  const combinedRow = page.locator('[data-pd-id="combined.sportsbook-bets.table-scroll"] tbody tr').first();
+  await expect(combinedRow).toBeVisible();
+  await combinedRow.locator("a").first().click();
+  await expect(workbench).toBeVisible();
+  await expect(page.locator('[data-pd-id^="v2.active-task"]')).toHaveCount(0);
+});
+
+test("V2 native and combined Sportsbook rows keep missing Back evidence explicit", async ({ page }) => {
+  const id = `CP117-BACK-UNKNOWN-${Date.now()}`;
+  const eventName = `Synthetic unknown Back ${id}`;
+  const created = await page.request.post(`/api/profiles/${profile}/sportsbook-bets`, { data: {
+    sportsbook_bet_id: id, event_name: eventName, offer_text: "Synthetic evidence review",
+    offer_name: "Synthetic partial example", bookmaker: "Bookmaker A", offer_type: "Bet & Get",
+    bet_type: "Single", fixture_type: "Football", market: "Match Odds", status: "Placed",
+    result: "Pending", back_stake: "10.00", back_odds: "2.10", match_strategy: "Partial Lay",
+    lay_odds_1: "2.20", lay_actual: "8.00", lay_matched_stake_1: "5.00",
+    lay_commission_1: "0.02", requested_lay_stake: "8.00", exchange_name: "Matchbook",
+    date_settled: "2026-11-29T15:00", user_notes: "Synthetic only",
+  } });
+  expect(created.status(), await created.text()).toBe(201);
+  expect((await created.json()).back_placement_confirmed).toBeNull();
+  await page.goto(owned);
+  await expect(page.locator(".ledger-loading-overlay")).toHaveCount(0, { timeout: 45_000 });
+  await page.getByRole("searchbox", { name: "Search sportsbook rows" }).fill(eventName);
+  await expect(page.locator(`td[data-ledger-row="${id}"][data-ledger-column="back_bet_status"]`)).toHaveText("Not recorded");
+  await page.goto(`/tracker/sportsbook-bets?profile=${profile}&q=${encodeURIComponent(eventName)}`);
+  const combinedRow = page.locator('[data-pd-id="combined.sportsbook-bets.table-scroll"] tbody tr', { hasText: eventName });
+  await expect(combinedRow).toBeVisible();
+  await expect(combinedRow).toContainText("Not recorded");
+});
+
 test("Offer Name is beside Bookmaker and Offer Type precedes Bet Type", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto(owned);

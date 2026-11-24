@@ -240,7 +240,8 @@ export function getSportsbookLifecycleBadge(
 }
 
 export function getSportsbookBackBetStatusBadge(
-  row: Pick<RowStateClassifiableSportsbookRow, "status" | "result">
+  row: Pick<RowStateClassifiableSportsbookRow, "status" | "result"> & { back_placement_confirmed?: boolean | null },
+  useRecordedEvidence = false,
 ): SportsbookLifecycleBadge {
   if (row.status === "Prospecting" || row.status === "Not Placed") {
     return {
@@ -248,6 +249,12 @@ export function getSportsbookBackBetStatusBadge(
       tone: "muted",
     };
   }
+
+  // V2 distinguishes the lifecycle status from independently recorded Back evidence.
+  // Existing rows can legitimately have no confirmation after the additive migration.
+  if (useRecordedEvidence) return row.back_placement_confirmed === true
+    ? { label: "Back Placed", tone: "positive" }
+    : { label: "Not recorded", tone: "muted" };
 
   if (row.status === "Settled" || row.result !== "Pending") {
     return {

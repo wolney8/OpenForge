@@ -24,6 +24,12 @@ describe("combined ledger native contracts", () => {
     expect(presentLedgerCell("each-way-extra-places", { profile_id: source.profile_id, extra_place_profit: null, mode: "Extra Place" }, "epProfit")).toMatchObject({ money: null, text: "£ -" });
   });
 
+  it("does not infer Back confirmation from a Placed combined Sportsbook row", () => {
+    const row = { profile_id: "profile-demo-001", status: "Placed", result: "Pending", back_placement_confirmed: null };
+    expect(presentLedgerCell("sportsbook-bets", row, "back_bet_status").text).toBe("Not recorded");
+    expect(presentLedgerCell("sportsbook-bets", { ...row, back_placement_confirmed: true }, "back_bet_status").text).toBe("Back Placed");
+  });
+
   it("allows only bounded same-ledger return paths", () => {
     expect(safeCombinedLedgerReturn("accounts", "/tracker/accounts?profile=profile-demo-001&q=Bookmaker+A&page=2&size=16")).toBe("/tracker/accounts?profile=profile-demo-001&q=Bookmaker+A&page=2&size=16");
     expect(safeCombinedLedgerReturn("sportsbook-bets", "/tracker/sportsbook-bets?f_status=Placed&f_bookmaker=Bookmaker+A")).toBe("/tracker/sportsbook-bets?f_status=Placed&f_bookmaker=Bookmaker+A");

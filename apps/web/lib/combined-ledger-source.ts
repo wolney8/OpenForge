@@ -51,7 +51,7 @@ export function presentLedgerCell(module: CombinedLedgerModule, row: LedgerSourc
       return { text: numeric === null ? "£ -" : formatFinancialValue(numeric), money: numeric, valueLabel: currentFinalValueLabel(source) };
     }
     if (key === "offer_details") return { text: offerDetails({ offer_type: sourceString(row, "offer_type") ?? "", fixture_type: sourceString(row, "fixture_type") ?? "", bet_type: sourceString(row, "bet_type") ?? "", retention_mode: sourceString(row, "retention_mode") ?? "" }, module === "free-bets") };
-    if (key === "back_bet_status") return { text: module === "sportsbook-bets" ? getSportsbookBackBetStatusBadge({ status: text(row, "status"), result: text(row, "result") }).label : freeBetBackBetStatus({ status: text(row, "status") }).label };
+    if (key === "back_bet_status") return { text: module === "sportsbook-bets" ? getSportsbookBackBetStatusBadge({ status: text(row, "status"), result: text(row, "result"), back_placement_confirmed: row.back_placement_confirmed === true }, true).label : freeBetBackBetStatus({ status: text(row, "status") }).label };
     if (key === "date_settled" && module === "sportsbook-bets") return { text: formatSportsbookSettlesDate(sourceString(row, key) ?? "") };
     if (key === "date_settled" || key === "expiry_datetime") return { text: date(row, key) };
   }
