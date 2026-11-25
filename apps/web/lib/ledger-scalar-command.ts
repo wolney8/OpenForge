@@ -8,6 +8,7 @@ import { normalizeAccountAccessChannels } from "@/lib/account-access-channels";
 import { fromDateTimeLocalValue } from "@/lib/date-format";
 import { sportsbookPlanningFieldEditable } from "@/lib/sportsbook-inline-eligibility";
 import { canInlineSportsbookField, prepareSportsbookPlanningCellPayload } from "@/components/sportsbook-workflow-first-shell";
+import { sportsbookRevisionHeader } from "@/lib/sportsbook-record-revision";
 
 type ScalarField = { key: string; label: string; maxLength: number; required?: boolean };
 
@@ -89,7 +90,7 @@ export async function commitOwnedSportsbookPlanning({ profileId, recordId, colum
   if (keys.every(key => String(current[key] ?? "") === String(proposal[key as keyof typeof proposal] ?? ""))) return current;
   if (keys.some(key => String(current[key] ?? "") !== expected[key as keyof typeof expected])) throw new Error("These Sportsbook inputs changed elsewhere. Reload the row and review the current values.");
   const payload = prepareSportsbookPlanningCellPayload(current, column, proposal);
-  const saved = await fetch(endpoint, { method: "PUT", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+  const saved = await fetch(endpoint, { method: "PUT", credentials: "include", headers: { "Content-Type": "application/json", ...sportsbookRevisionHeader(current.updated_at) }, body: JSON.stringify(payload) });
   if (!saved.ok) throw new Error(formatApiErrorBody(await saved.text(), "The Sportsbook inputs were not saved. Your draft is retained."));
   const confirmed = await saved.json() as LedgerSourceRecord;
   if (confirmed.profile_id !== profileId || confirmed.sportsbook_bet_id !== recordId || keys.some(key => String(confirmed[key] ?? "") !== String(proposal[key as keyof typeof proposal] ?? ""))) throw new Error("The save response did not confirm these Sportsbook inputs. Reload before retrying.");
@@ -163,6 +164,7 @@ export async function commitOwnedScalar({ module, profileId, recordId, column, e
   const saved = await fetch(endpoint, {
     method: "PUT", credentials: "include", headers: {
       "Content-Type": "application/json",
+      ...(module === "sportsbook-bets" ? sportsbookRevisionHeader(current.updated_at) : {}),
       ...(module === "cash-adjustments" ? { "Idempotency-Key": operationId ?? crypto.randomUUID() } : {}),
     },
     body: JSON.stringify({ ...current, [column]: preparedValue }),

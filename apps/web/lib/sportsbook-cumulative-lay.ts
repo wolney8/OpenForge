@@ -3,6 +3,7 @@ import { formatApiErrorBody } from "@/lib/api-error";
 import { normalizeMoneyInput } from "@/lib/decimal-input";
 import { getPartialLayExecutionSummary } from "@/lib/sportsbook-table-workflow";
 import type { LedgerSourceRecord } from "@/lib/combined-ledger-source";
+import { sportsbookRevisionHeader } from "@/lib/sportsbook-record-revision";
 
 type Leg = { id: string; exchangeName: string; layOdds: string; matchedStake: string; isFinal: boolean; label?: string };
 export type RoutineLay = { requested: number; matched: number; remaining: number; legs: Leg[]; exchange: string; odds: string };
@@ -50,7 +51,7 @@ export async function commitRoutineCumulativeLay({ profileId, recordId, expected
   let nextNumber = evidence.legs.length + 1;
   while (evidence.legs.some(leg => leg.id === `layleg${nextNumber}`)) nextNumber += 1;
   const nextLeg: Leg = { id: `layleg${nextNumber}`, label: `Lay leg ${nextNumber}`, exchangeName: evidence.exchange, layOdds: evidence.odds, matchedStake: (differencePence / 100).toFixed(2), isFinal: Math.round(Number(target) * 100) === Math.round(evidence.requested * 100) };
-  const response = await fetch(endpoint, { method: "PUT", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...current, lay_matched_stake_1: target, multi_lay_outcomes_json: JSON.stringify([...evidence.legs, nextLeg]) }) });
+  const response = await fetch(endpoint, { method: "PUT", credentials: "include", headers: { "Content-Type": "application/json", ...sportsbookRevisionHeader(current.updated_at) }, body: JSON.stringify({ ...current, lay_matched_stake_1: target, multi_lay_outcomes_json: JSON.stringify([...evidence.legs, nextLeg]) }) });
   if (!response.ok) throw new Error(formatApiErrorBody(await response.text(), "The Lay fill was not saved."));
   const saved = await response.json() as LedgerSourceRecord;
   if (saved.profile_id !== profileId || saved.sportsbook_bet_id !== recordId || normalizeMoneyInput(String(saved.lay_matched_stake_1 ?? "").trim()) !== target) throw new Error("The save response did not confirm the matched Lay amount. Reload before retrying.");

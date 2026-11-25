@@ -18,6 +18,7 @@ import { sportsbookPlanningFieldEditable } from "@/lib/sportsbook-inline-eligibi
 import { commitRoutineCumulativeLay, routineLayEligibility } from "@/lib/sportsbook-cumulative-lay";
 import { DesignCumulativeLayCellFields } from "@/components/design-bet-workbench-presentation";
 import { takeSportsbookLayDraft } from "@/lib/sportsbook-lay-handoff";
+import { sportsbookRevisionHeader } from "@/lib/sportsbook-record-revision";
 
 import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -5971,6 +5972,14 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
       return false;
     }
 
+    const expectedRevision = activeRowId
+      ? rows.find(row => row.sportsbook_bet_id === activeRowId)?.updated_at
+      : null;
+    if (isEditing && !expectedRevision) {
+      setErrorMessage("The Sportsbook record revision is unavailable. Refresh and review this bet before saving; your draft is retained.");
+      return false;
+    }
+
     isPersistingRef.current = true;
     setIsPersisting(true);
 
@@ -5985,6 +5994,7 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
       method,
       headers: {
         "Content-Type": "application/json",
+        ...(isEditing ? sportsbookRevisionHeader(expectedRevision) : {}),
       },
       body: JSON.stringify({
         ...persistableFormState,
@@ -6350,6 +6360,7 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
+          ...sportsbookRevisionHeader(record.updated_at),
         },
         body: JSON.stringify(toInlineUpdatePayload(record, overrides)),
       }

@@ -2,6 +2,14 @@
 
 Complete this for every feature, bug fix, component, fixture-backed UI, route or page change.
 
+## CP-117 cumulative Lay concurrent Save — 2026-11-25 / #118
+
+- [x] Registered PD-FIX-667 and reproduced the same-second £8 winner / stale £6 overwrite before changing the command.
+- [x] Reused the existing Sportsbook PUT, Profile lock, native Save, compact editor and draft/error presentation. No markup, CSS, field, calculation or source-default-OFF behaviour changed.
+- [x] Compared owned, combined, Workbench and legacy Save callers; each in-app existing-record write supplies the last acknowledged row revision. The server compares it inside the write transaction before financial or audit effects.
+- [x] Checked stale-write draft retention, lost-response same-total retry, unchanged financial/audit state on conflict, same-second revision change, ordinary cumulative sequence and disposable Profile-owned permissions.
+- [ ] Owner manual screen-reader and whole-editor Design/Interaction Acceptance remain outstanding; they are not inferred from this Save correction.
+
 ## CP-117 approved partial-fill adoption — 2026-11-23 / #118
 
 - [x] Registered PD-FIX-649 for the approved revised leg-row layout and next-lay guidance; kept the frozen Lab and flag-OFF editor separate.

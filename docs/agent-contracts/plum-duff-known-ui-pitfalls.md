@@ -1,5 +1,9 @@
 # Plum Duff Known UI Pitfalls
 
+## 2026-11-25: A fresh read did not make a financial Save atomic
+
+The cumulative Lay editor read current evidence before PUT, but another writer could save between those requests. Seconds-resolution `updated_at` could not distinguish both writes in the same second. For existing Sportsbook records, send the acknowledged row revision from owned, combined and Workbench saves; compare it under the Profile write lock before plan, financial or audit changes. Use a monotonic microsecond revision for actual changes. A lost response needs a fresh read: if its requested cumulative total is already recorded, return that row without appending a second leg. Keep rejected input visible. Regression: `test_sportsbook_record_revision.py` and `cp117-ledger-cell-continuation.spec.ts`.
+
 ## CP-117 Sportsbook workbench host and short-viewport scroll — 2026-11-16 / #118
 
 Embedding the Lab header and rail inside the old primary modal still presents the old editor. Check the actual V2 mount for one application-level workbench and zero legacy primary dialogs, while testing flag-OFF separately. At actual 200% browser zoom, a fixed `100dvh - 12rem` editor leaves almost no scrollable form area; verify the focused input and footer geometry within the real workbench. An eligible Bookmaker or Settles cell also needs its typed control and acknowledged owning-Profile Save, not merely a capability label. Regression: `cp117-rejected-parity.spec.ts` and `cp139-specialist-workbench.spec.ts`.

@@ -125,6 +125,111 @@ test("eligible persisted partial Lay opens the compact cumulative editor in the 
   expect(final.lay_status).toMatch(/match|laid/i);
 });
 
+test("a stale Lay draft conflicts and a lost Save response recovers without another fill", async ({ page }) => {
+  const id = `PD-FIX-667-${Date.now()}`;
+  const endpoint = (recordId: string) => `/api/profiles/${profile}/sportsbook-bets/${recordId}`;
+  const legs = (amounts: string[]) => JSON.stringify(amounts.map((matchedStake, index) => ({
+    id: `layleg${index + 1}`, label: `Lay leg ${index + 1}`, layOdds: "2.00",
+    exchangeName: "Matchbook", matchedStake, isFinal: index === amounts.length - 1 && amounts.reduce((sum, amount) => sum + Number(amount), 0) === 8,
+  })));
+  const create = async (recordId: string) => {
+    const response = await page.request.post(`/api/profiles/${profile}/sportsbook-bets`, { data: {
+      sportsbook_bet_id: recordId, event_name: "Synthetic partial Lay revision", bookmaker: "Bookmaker A",
+      offer_type: "Bet & Get", status: "Placed", result: "Pending", back_stake: "10.00", back_odds: "2.00",
+      match_strategy: "Standard", lay_odds_1: "2.00", lay_actual: "8.00", lay_matched_stake_1: "5.00",
+      requested_lay_stake: "8.00", exchange_name: "Matchbook", multi_lay_outcomes_json: legs(["5.00"]),
+    } });
+    expect(response.status(), await response.text()).toBe(201);
+  };
+  const read = async (recordId: string) => await (await page.request.get(endpoint(recordId))).json() as Record<string, unknown>;
+  const cell = (recordId: string) => page.locator(`[data-pd-id="sportsbook.table-scroll"] td[data-ledger-row="${recordId}"][data-ledger-column="lay_status"]`);
+  const editor = page.locator('[data-pd-id="ledger.floating-editor"]');
+
+  await create(id);
+  await page.goto(`/profiles/${profile}/tracker/sportsbook-bets?q=${id}`);
+  await cell(id).dblclick();
+  await editor.getByLabel("Matched so far").fill("6.00");
+  const original = await read(id);
+  const winner = await page.request.put(endpoint(id), { headers: { "X-Expected-Record-Revision": String(original.updated_at) }, data: {
+    ...original, lay_matched_stake_1: "8.00", multi_lay_outcomes_json: legs(["5.00", "3.00"]),
+  } });
+  expect(winner.status(), await winner.text()).toBe(200);
+  await editor.getByRole("button", { name: "Confirm" }).click();
+  await expect(editor).toContainText("changed elsewhere");
+  await expect(editor.getByLabel("Matched so far")).toHaveValue("6.00");
+  expect((await read(id)).lay_matched_stake_1).toBe("8.00");
+
+  const retryId = `${id}-retry`;
+  await create(retryId);
+  await page.goto(`/profiles/${profile}/tracker/sportsbook-bets?q=${retryId}`);
+  await cell(retryId).dblclick();
+  await editor.getByLabel("Matched so far").fill("6.00");
+  let intercepted = false;
+  await page.route(`**${endpoint(retryId)}`, async route => {
+    if (!intercepted && route.request().method() === "PUT") {
+      intercepted = true;
+      const acknowledged = await route.fetch();
+      expect(acknowledged.status()).toBe(200);
+      await route.abort("failed");
+    } else await route.continue();
+  });
+  await editor.getByRole("button", { name: "Confirm" }).click();
+  await expect(editor).toContainText(/not saved|retained|fetch/i);
+  await expect(editor.getByLabel("Matched so far")).toHaveValue("6.00");
+  await page.unroute(`**${endpoint(retryId)}`);
+  await editor.getByRole("button", { name: "Confirm" }).click();
+  await expect(editor).toHaveCount(0);
+  const recovered = await read(retryId);
+  expect(recovered.lay_matched_stake_1).toBe("6.00");
+  expect((JSON.parse(String(recovered.multi_lay_outcomes_json)) as unknown[]).length).toBe(2);
+});
+
+test("combined and Workbench Sportsbook saves reject a newer row revision", async ({ page }) => {
+  const id = `PD-FIX-667-W-${Date.now()}`;
+  const endpoint = `/api/profiles/${profile}/sportsbook-bets/${id}`;
+  const created = await page.request.post(`/api/profiles/${profile}/sportsbook-bets`, { data: {
+    sportsbook_bet_id: id, event_name: "Arsenal v Chelsea", offer_name: "Synthetic offer",
+    bookmaker: "Bookmaker A", offer_type: "Bet & Get", bet_type: "Single", fixture_type: "Football",
+    status: "Prospecting", result: "Pending", back_stake: "10.00", back_odds: "2.00",
+    match_strategy: "Standard", lay_odds_1: "2.00",
+  } });
+  expect(created.status(), await created.text()).toBe(201);
+  const read = async () => await (await page.request.get(endpoint)).json() as Record<string, unknown>;
+  const concurrentChange = async (changes: Record<string, unknown>) => {
+    const current = await read();
+    const response = await page.request.put(endpoint, {
+      headers: { "X-Expected-Record-Revision": String(current.updated_at) },
+      data: { ...current, ...changes },
+    });
+    expect(response.status(), await response.text()).toBe(200);
+  };
+
+  await page.goto(`/tracker/sportsbook-bets?q=${id}`);
+  const combined = page.locator(`[data-pd-id="combined.sportsbook-bets.table-scroll"] td[data-ledger-row="${profile}::${id}"][data-ledger-column="offer_details"]`);
+  await combined.dblclick();
+  const cellEditor = page.locator('[data-pd-id="ledger.floating-editor"]');
+  await cellEditor.getByRole("combobox", { name: "Fixture Type" }).selectOption("Tennis");
+  await concurrentChange({ fixture_type: "Horse Racing" });
+  await cellEditor.getByRole("button", { name: "Apply offer details" }).click();
+  await expect(cellEditor).toContainText("changed elsewhere");
+  await expect(cellEditor.getByRole("combobox", { name: "Fixture Type" })).toHaveValue("Tennis");
+  expect((await read()).fixture_type).toBe("Horse Racing");
+
+  await page.goto(`/profiles/${profile}/tracker/sportsbook-bets?record=${id}`);
+  const workbench = page.locator('[data-pd-id="sportsbook.editor.workbench-surface"]');
+  await expect(workbench).toBeVisible();
+  await workbench.locator('[data-pd-id="bet-workbench.stage.offer"]').click();
+  const offerName = workbench.locator('[data-pd-id="sportsbook.editor.offer-name"] input');
+  await offerName.fill("My unsaved offer name");
+  await concurrentChange({ event_name: "Synthetic concurrent Workbench update" });
+  await workbench.getByRole("button", { name: "Save Existing Bet" }).click();
+  await expect(workbench).toContainText("changed elsewhere");
+  await expect(offerName).toHaveValue("My unsaved offer name");
+  const final = await read();
+  expect(final.event_name).toBe("Synthetic concurrent Workbench update");
+  expect(final.offer_name).toBe("Synthetic offer");
+});
+
 test("combined Lay edit keeps the owning Profile and missing evidence has a focused handoff", async ({ page }) => {
   const id = `PD-FIX-664-C-${Date.now()}`;
   const base = { sportsbook_bet_id: id, event_name: "Arsenal v Chelsea", offer_text: "Synthetic partial fill", offer_name: "Fixture review", bookmaker: "Bookmaker A", offer_type: "Bet & Get", bet_type: "Single", fixture_type: "Football", market: "Match Odds", status: "Placed", result: "Pending", back_stake: "10.00", back_odds: "2.00", match_strategy: "Standard", lay_odds_1: "2.00", lay_actual: "8.00", lay_matched_stake_1: "5.00", exchange_name: "Matchbook", multi_lay_outcomes_json: JSON.stringify([{ id: "layleg1", label: "Lay leg 1", layOdds: "2.00", exchangeName: "Matchbook", matchedStake: "5.00", isFinal: false }]) };

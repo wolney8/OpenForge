@@ -5,7 +5,7 @@ from datetime import date, datetime, timezone
 from decimal import Decimal, DecimalException
 from typing import Any, Callable, Literal, cast
 
-from fastapi import APIRouter, HTTPException, Response
+from fastapi import APIRouter, Header, HTTPException, Response
 from pydantic import (
     BaseModel,
     Field,
@@ -1547,7 +1547,8 @@ def create_profile_sportsbook_bet(
 
 @router.put("/{sportsbook_bet_id}", response_model=SportsbookBetResponse)
 def update_profile_sportsbook_bet(
-    profile_id: str, sportsbook_bet_id: str, payload: SportsbookBetPayload
+    profile_id: str, sportsbook_bet_id: str, payload: SportsbookBetPayload,
+    expected_record_revision: str | None = Header(default=None, alias="X-Expected-Record-Revision"),
 ) -> SportsbookBetResponse:
     existing = get_sportsbook_bet(profile_id, sportsbook_bet_id)
     if existing is not None:
@@ -1565,6 +1566,7 @@ def update_profile_sportsbook_bet(
         profile_id,
         sportsbook_bet_id,
         payload.model_dump(exclude_unset=True),
+        expected_record_revision=expected_record_revision,
         prepare_response=lambda row, commissions: prepared.append(
             prepare_write_response(row, commissions)
         ),

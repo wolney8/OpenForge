@@ -8,7 +8,7 @@ import threading
 from contextlib import contextmanager, nullcontext
 from contextvars import ContextVar
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from functools import lru_cache
 from pathlib import Path
@@ -74,6 +74,24 @@ class ProfileDeletionResult:
 
 def utc_now() -> str:
     return datetime.now(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
+
+
+def _sportsbook_revision_clock() -> datetime:
+    return datetime.now(UTC)
+
+
+def _next_sportsbook_record_revision(current: str) -> str:
+    """Monotonic revision in the existing timestamp column, including same-second writes."""
+    candidate = _sportsbook_revision_clock()
+    try:
+        previous = datetime.fromisoformat(current.replace("Z", "+00:00"))
+        if previous.tzinfo is not None and candidate <= previous:
+            candidate = previous + timedelta(microseconds=1)
+    except ValueError:
+        # A legacy malformed timestamp can still be replaced after an exact
+        # transaction-level comparison with the value the editor read.
+        pass
+    return candidate.isoformat(timespec="microseconds").replace("+00:00", "Z")
 
 
 def _history_operation_id(payload: dict[str, Any], *, ledger: str, activity_id: str) -> str:
@@ -4553,6 +4571,7 @@ def update_sportsbook_bet(
     payload: dict[str, Any],
     *, prepare_response: Callable[[SportsbookBetRecord, dict[str, str]], object] | None = None,
     transaction: Any | None = None,
+    expected_record_revision: str | None = None,
 ) -> SportsbookBetRecord | None:
     existing = get_sportsbook_bet(profile_id, sportsbook_bet_id)
     if existing is None:
@@ -4626,7 +4645,6 @@ def update_sportsbook_bet(
         "user_notes": payload["user_notes"],
         "manual_override_value": payload["manual_override_value"],
         "manual_override_reason": payload["manual_override_reason"],
-        "updated_at": utc_now(),
     }
     with (nullcontext(transaction) if transaction is not None else connect()) as connection:
         lock_award_profile(connection, profile_id)
@@ -4634,6 +4652,19 @@ def update_sportsbook_bet(
         if current is None:
             from fastapi import HTTPException
             raise HTTPException(status_code=404, detail="Sportsbook source no longer exists.")
+        if (
+            expected_record_revision is not None
+            and expected_record_revision != current["updated_at"]
+        ):
+            from fastapi import HTTPException
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    "This Sportsbook bet changed elsewhere. Refresh and review "
+                    "the recorded execution before retrying; your draft is retained."
+                ),
+            )
+        updated["updated_at"] = _next_sportsbook_record_revision(str(current["updated_at"]))
         from openforge_api.lay_plan import store_plan
         updated["lay_plan_json"] = store_plan(connection, "sportsbook_bets", profile_id, sportsbook_bet_id, payload.get("lay_plan_json"), updating=True)
         from openforge_api.sportsbook_offer_metadata import advance_metadata_revision

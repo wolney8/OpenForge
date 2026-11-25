@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { apiBaseUrl } from "@/lib/api";
+import { sportsbookRevisionHeader } from "@/lib/sportsbook-record-revision";
 import { getAccountNamesByType, type AccountAuthorityRecord } from "@/lib/account-authorities";
 import { StatusToast } from "@/components/status-toast";
 import { LedgerPagination } from "@/components/ledger-pagination";
@@ -1694,6 +1695,13 @@ export function SportsbookWorkflowShell({ profileId }: { profileId: string }) {
 
     const activeRowId = nextFormState.sportsbook_bet_id ?? selectedId;
     const isEditing = Boolean(activeRowId);
+    const expectedRevision = activeRowId
+      ? rows.find(row => row.sportsbook_bet_id === activeRowId)?.updated_at
+      : null;
+    if (isEditing && !expectedRevision) {
+      setErrorMessage("The Sportsbook record revision is unavailable. Refresh and review this bet before saving; your draft is retained.");
+      return;
+    }
     const url = isEditing
       ? `${apiBaseUrl}/profiles/${profileId}/sportsbook-bets/${activeRowId}`
       : `${apiBaseUrl}/profiles/${profileId}/sportsbook-bets`;
@@ -1703,6 +1711,7 @@ export function SportsbookWorkflowShell({ profileId }: { profileId: string }) {
       method,
       headers: {
         "Content-Type": "application/json",
+        ...(isEditing ? sportsbookRevisionHeader(expectedRevision) : {}),
       },
       body: JSON.stringify({
         ...persistableFormState,
