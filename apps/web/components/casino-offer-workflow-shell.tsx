@@ -42,7 +42,7 @@ import { LedgerViewContext } from "@/components/ledger-view-context";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerQuickActions, type LedgerQuickAction } from "@/components/ledger-quick-actions";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
-import { ledgerCellCapability, ledgerCellReviewReason } from "@/lib/ledger-cell-capabilities";
+import { ledgerCellDecision } from "@/lib/ledger-cell-capabilities";
 import { LedgerFloatingCellEditor, useLedgerCellEditor, type LedgerCellSession } from "@/components/ledger-floating-cell-editor";
 import { designFloatingCellInputClass } from "@/components/design-lab-floating-cell-editor";
 
@@ -3787,7 +3787,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
               totalRows={filteredRows.length}
             />}
             {visualV2 ? <DesignLedgerNarrowToggle expanded={mobileDetail} onToggle={() => setMobileDetail(value => !value)} /> : null}
-            <LedgerTableScroll dataPdId="casino-offers.table-scroll" visualV2={visualV2} narrowDetail={visualV2 && mobileDetail} cellNavigation={{ label: "Casino Offers", onSelect: setSelectedGridRowId, onActivate: (rowId, column, anchor) => { const record = rows.find(row => row.casino_offer_id === rowId); if (column in inlineCellFields && record && canCasinoInlineScalarEdit(record)) { void selectRow(rowId, { cell: { column, anchor } }); return; } return { reason: ledgerCellReviewReason(ledgerCellCapability("casino-offers", column)), onReview: () => void selectRow(rowId) }; } }}>
+            <LedgerTableScroll dataPdId="casino-offers.table-scroll" visualV2={visualV2} narrowDetail={visualV2 && mobileDetail} cellNavigation={{ label: "Casino Offers", onSelect: setSelectedGridRowId, onActivate: (rowId, column, anchor) => { const record = rows.find(row => row.casino_offer_id === rowId); if (column in inlineCellFields && record && canCasinoInlineScalarEdit(record)) { void selectRow(rowId, { cell: { column, anchor } }); return; } return { reason: ledgerCellDecision("casino-offers", column, (record ?? {}) as unknown as Record<string, unknown>, false).reason, onReview: () => void selectRow(rowId) }; } }}>
               <table className="data-table sportsbook-data-table">
                 <colgroup>
                   {tableColumns.map((column) => {

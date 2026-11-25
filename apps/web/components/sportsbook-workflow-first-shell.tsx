@@ -3079,7 +3079,6 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
   } | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedGridRowId, setSelectedGridRowId] = useState<string | null>(null);
-  const [protectedGridCell, setProtectedGridCell] = useState<{ rowId: string; column: string; anchor: HTMLElement } | null>(null);
   const protectedGridReturnFocusRef = useRef<HTMLElement | null>(null);
   const [workflowVisible, setWorkflowVisible] = useState(false);
   const [quickCaptureOpen, setQuickCaptureOpen] = useState(false);
@@ -5513,10 +5512,9 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
       if (selectedGridRowId && !pagedRows.some(row => row.sportsbook_bet_id === selectedGridRowId)) setSelectedGridRowId(null);
-      if (protectedGridCell && !pagedRows.some(row => row.sportsbook_bet_id === protectedGridCell.rowId)) setProtectedGridCell(null);
     });
     return () => cancelAnimationFrame(frame);
-  }, [pagedRows, protectedGridCell, selectedGridRowId]);
+  }, [pagedRows, selectedGridRowId]);
 
   const toggleTableSort = useCallback((key: SportsbookSortKey) => {
     setTableSort((current) => getNextSportsbookTableSort(current, key));
@@ -5690,7 +5688,6 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
     setMatchedLayConfirmationDraft("");
     setCumulativeLayDraft(record.lay_matched_stake_1 || "");
     setSelectedGridRowId(rowId);
-    setProtectedGridCell(null);
     setQuickCaptureOpen(false);
     isCreatingDraftRef.current = false;
     setIsNewCoreIntent(false);
@@ -5749,7 +5746,6 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
     protectedGridReturnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setSelectedId(null);
     setSelectedGridRowId(null);
-    setProtectedGridCell(null);
     selectedIdRef.current = null;
     isCreatingDraftRef.current = true;
     setIsNewCoreIntent(true);
@@ -8101,9 +8097,16 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
               totalRows={filteredRows.length}
             />}
             {visualV2 ? <DesignLedgerNarrowToggle expanded={mobileDetail} onToggle={() => setMobileDetail(value => !value)} /> : null}
-            <LedgerTableScroll dataPdId="sportsbook.table-scroll" visualV2={visualV2} narrowDetail={visualV2 && mobileDetail} cellNavigation={{ label: "Sportsbook", onSelect: visualV2 ? setSelectedGridRowId : undefined, onActivate: (rowId, column, anchor) => {
+            <LedgerTableScroll dataPdId="sportsbook.table-scroll" protectedCellId="sportsbook.protected-cell" visualV2={visualV2} narrowDetail={visualV2 && mobileDetail} cellNavigation={{ label: "Sportsbook", onSelect: visualV2 ? setSelectedGridRowId : undefined, onActivate: (rowId, column, anchor) => {
               const record = rows.find(entry => entry.sportsbook_bet_id === rowId);
-              if (visualV2 && !canInlineSportsbookField(record, column)) { setProtectedGridCell({ rowId, column, anchor }); return; }
+              if (visualV2 && !canInlineSportsbookField(record, column)) return {
+                reason: `${tableColumns.find(entry => entry.key === column)?.label ?? column}: ${ledgerCellDecision("sportsbook-bets", column, (record ?? {}) as unknown as Record<string, unknown>, false).reason}`,
+                onReview: () => { void (async () => {
+                  const target: SportsbookEditorTabId = ["lay_status", "back_bet_status"].includes(column) ? "placement" : ["status", "date_settled"].includes(column) ? "settlement" : ["offer_details", "bookmaker"].includes(column) ? "setup" : "matching";
+                  await selectRow(rowId, { returnFocus: anchor });
+                  activateEditorTab(target);
+                })(); },
+              };
               void selectRow(rowId, { cell: column in inlineCellFields || column === "lay_status" ? { column, anchor } : undefined });
             } }}>
               <table className="data-table sportsbook-data-table">
@@ -8256,7 +8259,6 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
                 </tbody>
               </table>
             </LedgerTableScroll>
-            {visualV2 && protectedGridCell ? <p className="field-hint" data-pd-id="sportsbook.protected-cell" role="status">{tableColumns.find(column => column.key === protectedGridCell.column)?.label ?? protectedGridCell.column}: {ledgerCellDecision("sportsbook-bets", protectedGridCell.column, (rows.find(row => row.sportsbook_bet_id === protectedGridCell.rowId) ?? {}) as unknown as Record<string, unknown>, false).reason} <button className="button-link" onClick={async () => { const target: SportsbookEditorTabId = ["lay_status", "back_bet_status"].includes(protectedGridCell.column) ? "placement" : ["status", "date_settled"].includes(protectedGridCell.column) ? "settlement" : ["offer_details", "bookmaker"].includes(protectedGridCell.column) ? "setup" : "matching"; await selectRow(protectedGridCell.rowId, { returnFocus: protectedGridCell.anchor }); activateEditorTab(target); }} type="button">{["lay_status", "back_bet_status"].includes(protectedGridCell.column) ? "Review in Placement" : ["status", "date_settled"].includes(protectedGridCell.column) ? "Review in Finish" : "Open bet for review"}</button></p> : null}
             {visualV2 ? <DesignLedgerMobileRows dataPdId="sportsbook.labelled-details" expanded={mobileDetail} rows={pagedRows.map(row => {
               const rowId = String(row.sportsbook_bet_id ?? "");
               return { id: rowId, title: String(row.event_name ?? "").trim() || rowId, status: String(row.status ?? ""), subtitle: String(row.offer_name ?? "").trim(), fields: sportsbookTableColumns.filter(column => column.key !== "actions").map(column => ({ key: column.key, label: column.label, value: renderTableCell(row, column) })), onOpen: () => void selectRow(rowId) };
@@ -8636,9 +8638,10 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
         </div>
       ) : null}
 
-      {visualV2 && workflowVisible && cellEditor.session?.column === "lay_status" && selectedRoutineLay ? <LedgerFloatingCellEditor compact commitOnTab={false} dirty={cumulativeLayDraft !== selectedRoutineLay.matched.toFixed(2)} error={errorMessage} label="Matched so far" ledger="Sportsbook" onCancel={() => { cellEditor.close(); setWorkflowVisible(false); setSelectedId(null); setErrorMessage(""); }} onReview={() => { cellEditor.close(); setMatchedLayConfirmationDraft(cumulativeLayDraft); activateEditorTab("placement"); revealEditor(); }} onSave={saveRoutineLayCell} pending={cumulativeLayPending} session={cellEditor.session}><DesignCumulativeLayCellFields matched={selectedRoutineLay.matched} onCancel={() => { cellEditor.close(); setWorkflowVisible(false); setSelectedId(null); setErrorMessage(""); }} onChange={setCumulativeLayDraft} pending={cumulativeLayPending} remaining={selectedRoutineLay.remaining} requested={selectedRoutineLay.requested} value={cumulativeLayDraft} /></LedgerFloatingCellEditor> : null}
+      {visualV2 && workflowVisible && cellEditor.session?.column === "lay_status" && selectedRoutineLay ? <LedgerFloatingCellEditor compact wide commitOnTab={false} dirty={cumulativeLayDraft !== selectedRoutineLay.matched.toFixed(2)} error={errorMessage} label="Matched so far" ledger="Sportsbook" onCancel={() => { cellEditor.close(); setWorkflowVisible(false); setSelectedId(null); setErrorMessage(""); }} onReview={() => { cellEditor.close(); setMatchedLayConfirmationDraft(cumulativeLayDraft); activateEditorTab("placement"); revealEditor(); }} onSave={saveRoutineLayCell} pending={cumulativeLayPending} session={cellEditor.session}><DesignCumulativeLayCellFields matched={selectedRoutineLay.matched} onCancel={() => { cellEditor.close(); setWorkflowVisible(false); setSelectedId(null); setErrorMessage(""); }} onChange={setCumulativeLayDraft} pending={cumulativeLayPending} remaining={selectedRoutineLay.remaining} requested={selectedRoutineLay.requested} value={cumulativeLayDraft} /></LedgerFloatingCellEditor> : null}
       {workflowVisible && cellEditor.session && inlineField ? <LedgerFloatingCellEditor
         compact
+        wide={inlineField.type === "composite"}
         commitOnTab={inlineField.type !== "composite"}
         session={cellEditor.session}
         ledger="Sportsbook"

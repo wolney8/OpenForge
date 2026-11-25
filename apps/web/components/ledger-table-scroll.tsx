@@ -1,14 +1,16 @@
 "use client";
 
-import { type ReactNode, useEffect, useEffectEvent, useId, useRef, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useEffectEvent, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import styles from "@/components/design-lab-connected.module.css";
+import { LedgerCellReviewPopover } from "@/components/ledger-cell-review-popover";
 import { installLedgerGridPan } from "@/lib/ledger-grid-pan";
 
 type LedgerTableScrollProps = {
   children: ReactNode;
   className?: string;
   dataPdId: string;
+  protectedCellId?: string;
   visualV2?: boolean;
   narrowDetail?: boolean;
   mode?: "read-only" | "editable";
@@ -30,6 +32,7 @@ export function LedgerTableScroll({
   children,
   className = "",
   dataPdId,
+  protectedCellId,
   visualV2 = false,
   narrowDetail = false,
   cellNavigation,
@@ -43,11 +46,17 @@ export function LedgerTableScroll({
     right: false,
   });
   const [arrowAnchor, setArrowAnchor] = useState<ArrowAnchor | null>(null);
-  const [review, setReview] = useState<{ reason: string; onReview: () => void } | null>(null);
+  const [review, setReview] = useState<{ reason: string; onReview: () => void; anchor: HTMLElement } | null>(null);
+  const dismissReview = useCallback((restoreFocus: boolean) => {
+    setReview(current => {
+      if (restoreFocus && current?.anchor.isConnected) requestAnimationFrame(() => current.anchor.focus({ preventScroll: true }));
+      return null;
+    });
+  }, []);
   const instructionsId = useId();
   const activateCell = useEffectEvent((cell: HTMLTableCellElement) => {
     const result = cellNavigation?.onActivate(cell.dataset.ledgerRow!, cell.dataset.ledgerColumn!, cell);
-    setReview(result && "reason" in result ? result : null);
+    setReview(result && "reason" in result ? { ...result, anchor: cell } : null);
   });
   const notifySelection = useEffectEvent((cell: HTMLTableCellElement) => {
     cellNavigation?.onSelect?.(cell.dataset.ledgerRow!);
@@ -294,7 +303,7 @@ export function LedgerTableScroll({
   return (
     <div className={`ledger-table-scroll-wrap ${narrowDetail ? styles.tableHiddenForDetail : ""} ${className}`.trim()} ref={wrapperRef}>
       {cellNavigation ? <span className="sr-only" id={instructionsId}>Use arrow keys, Home or End to select a cell. Press Enter or F2, or double-click, to open the existing {cellNavigation.label} editor. Press Control C or Command C to copy selected cell text. Escape clears cell selection.</span> : null}
-      {review ? <div className="field-hint" data-pd-id={`${dataPdId}.protected-cell`} role="status">{review.reason} <button className="button-link" onClick={review.onReview} type="button">Open record for review</button></div> : null}
+      {review ? <LedgerCellReviewPopover anchor={review.anchor} dataPdId={protectedCellId ?? `${dataPdId}.protected-cell`} onDismiss={dismissReview} onReview={review.onReview} reason={review.reason} /> : null}
       <div className={`table-scroll${visualV2 ? ` ${styles.tableScroll}${mode === "read-only" ? ` ${styles.readOnlyTableScroll}` : ""}` : ""}`} data-pd-id={dataPdId} ref={ref}>
         {children}
       </div>

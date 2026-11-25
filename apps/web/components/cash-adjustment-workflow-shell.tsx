@@ -35,7 +35,7 @@ import { DesignLedgerRowActions } from "@/components/design-ledger-row-actions";
 import { LedgerViewContext } from "@/components/ledger-view-context";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
-import { ledgerCellCapability, ledgerCellReviewReason } from "@/lib/ledger-cell-capabilities";
+import { ledgerCellDecision } from "@/lib/ledger-cell-capabilities";
 import { LedgerFloatingCellEditor, useLedgerCellEditor, type LedgerCellSession } from "@/components/ledger-floating-cell-editor";
 import { designFloatingCellInputClass } from "@/components/design-lab-floating-cell-editor";
 
@@ -1870,7 +1870,7 @@ export function CashAdjustmentWorkflowShell({ profileId, initialRecordId, initia
               totalRows={filteredRows.length}
             />}
             {visualV2 ? <DesignLedgerNarrowToggle expanded={mobileDetail} onToggle={() => setMobileDetail(value => !value)} /> : null}
-            <LedgerTableScroll dataPdId="cash-adjustments.table-scroll" visualV2={visualV2} narrowDetail={visualV2 && mobileDetail} cellNavigation={{ label: "Cash Adjustments", onSelect: setSelectedGridRowId, onActivate: (rowId, column, anchor) => { const record = rows.find(row => row.cash_adjustment_id === rowId); const editable = column in inlineCellFields && record && record.calculation_state.toLowerCase() !== "resolved" && !lockedFeeWithdrawalTypes.has(record.adjustment_type); if (editable) { void selectRow(rowId, { cell: { column, anchor } }); return; } return { reason: ledgerCellReviewReason(ledgerCellCapability("cash-adjustments", column)), onReview: () => void selectRow(rowId) }; } }}>
+            <LedgerTableScroll dataPdId="cash-adjustments.table-scroll" visualV2={visualV2} narrowDetail={visualV2 && mobileDetail} cellNavigation={{ label: "Cash Adjustments", onSelect: setSelectedGridRowId, onActivate: (rowId, column, anchor) => { const record = rows.find(row => row.cash_adjustment_id === rowId); const editable = column in inlineCellFields && record && record.calculation_state.toLowerCase() !== "resolved" && !lockedFeeWithdrawalTypes.has(record.adjustment_type); if (editable) { void selectRow(rowId, { cell: { column, anchor } }); return; } return { reason: ledgerCellDecision("cash-adjustments", column, (record ?? {}) as unknown as Record<string, unknown>, false).reason, onReview: () => void selectRow(rowId) }; } }}>
               <table className="data-table sportsbook-data-table">
                 <colgroup>
                   {tableColumns.map((column) => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 
 export type SelectionOption = { id: string; name: string; status?: string };
 export type OptionListMode = "CLOSED" | "SEARCH_RESULTS" | "SHOW_ALL";
@@ -15,6 +15,7 @@ export function optionMatches(value: string, query: string) {
 
 export function SearchableCombobox({
   dataPdId,
+  floatingOptions = false,
   id,
   label,
   mode,
@@ -25,6 +26,7 @@ export function SearchableCombobox({
   values,
 }: {
   dataPdId?: string;
+  floatingOptions?: boolean;
   id: string;
   label: string;
   mode: OptionListMode;
@@ -37,6 +39,8 @@ export function SearchableCombobox({
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fieldRef = useRef<HTMLDivElement>(null);
+  const [optionPosition, setOptionPosition] = useState({ left: 8, top: 8, width: 280 });
   const listId = `${id}-options`;
   const open = mode !== "CLOSED";
   const selected = values.map((value) => options.find((option) => option.id === value) ?? { id: value, name: value });
@@ -45,6 +49,25 @@ export function SearchableCombobox({
     : options;
   const resolvedActiveIndex = Math.min(activeIndex, Math.max(0, available.length - 1));
   const closeList = () => onModeChange("CLOSED");
+  useLayoutEffect(() => {
+    if (!open || !floatingOptions) return;
+    const update = () => {
+      const bounds = fieldRef.current?.getBoundingClientRect();
+      if (!bounds) return;
+      const width = Math.min(320, window.innerWidth - 16);
+      const maximumHeight = Math.min(256, window.innerHeight * .38);
+      const below = bounds.bottom + 4;
+      setOptionPosition({
+        left: Math.max(8, Math.min(bounds.left, window.innerWidth - width - 8)),
+        top: below + maximumHeight < window.innerHeight - 8 ? below : Math.max(8, bounds.top - maximumHeight - 4),
+        width,
+      });
+    };
+    update();
+    window.addEventListener("resize", update);
+    window.addEventListener("scroll", update, true);
+    return () => { window.removeEventListener("resize", update); window.removeEventListener("scroll", update, true); };
+  }, [open, floatingOptions]);
   const select = (option: SelectionOption) => {
     if (!values.includes(option.id)) onChange(multiple ? [...values, option.id] : [option.id]);
     setQuery("");
@@ -56,7 +79,7 @@ export function SearchableCombobox({
     setQuery("");
     closeList();
   };
-  return <div className="pd-combobox-field" data-pd-id={dataPdId}>
+  return <div className="pd-combobox-field" data-pd-id={dataPdId} ref={fieldRef}>
     <span className="pd-combobox-label" id={`${id}-label`}>{label}</span>
     <div className={`pd-combobox-input${open ? " is-open" : ""}`} onClick={() => inputRef.current?.focus()}>
       <div className="pd-combobox-values">
@@ -106,7 +129,7 @@ export function SearchableCombobox({
       {values.length ? <button aria-label={`Clear all ${label.toLocaleLowerCase("en-GB")}`} className="pd-combobox-action" onClick={(event) => { event.stopPropagation(); onChange([]); setQuery(""); closeList(); }} title="Clear all" type="button"><span aria-hidden="true" className="material-symbols-outlined">close</span></button> : null}
       <button aria-label={`${open ? "Close" : "Show all"} ${label.toLocaleLowerCase("en-GB")} options`} className="pd-combobox-action" onClick={(event) => { event.stopPropagation(); setQuery(""); setActiveIndex(0); onModeChange(open ? "CLOSED" : "SHOW_ALL"); inputRef.current?.focus(); }} type="button"><span aria-hidden="true" className="material-symbols-outlined">{open ? "expand_less" : "expand_more"}</span></button>
     </div>
-    {open ? <div aria-label={`${label} options`} aria-multiselectable={multiple || undefined} className="pd-combobox-options" id={listId} role="listbox">
+    {open ? <div aria-label={`${label} options`} aria-multiselectable={multiple || undefined} className={`pd-combobox-options${floatingOptions ? " pd-combobox-options-floating" : ""}`} id={listId} role="listbox" style={floatingOptions ? optionPosition : undefined}>
       {available.length ? available.map((option, index) => {
         const isSelected = values.includes(option.id);
         return <button aria-selected={isSelected} className={`${index === resolvedActiveIndex ? "is-active" : ""}${isSelected ? " is-selected" : ""}`} id={`${listId}-${option.id}`} key={option.id} onClick={() => select(option)} role="option" type="button">

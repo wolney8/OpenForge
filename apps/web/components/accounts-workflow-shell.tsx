@@ -28,7 +28,7 @@ import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerViewContext } from "@/components/ledger-view-context";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
-import { ledgerCellCapability, ledgerCellReviewReason } from "@/lib/ledger-cell-capabilities";
+import { ledgerCellDecision } from "@/lib/ledger-cell-capabilities";
 import { accountAccessChannelOptions } from "@/lib/account-access-channels";
 import { LedgerFloatingCellEditor, useLedgerCellEditor, type LedgerCellSession } from "@/components/ledger-floating-cell-editor";
 import labStyles from "@/components/design-lab-connected.module.css";
@@ -1404,7 +1404,7 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialCreat
               position="top"
               totalRows={filteredRows.length}
             />}
-            <LedgerTableScroll dataPdId="accounts.table-scroll" visualV2={visualV2} narrowDetail={visualV2 && mobileDetail} cellNavigation={{ label: "Accounts", onSelect: setSelectedGridRowId, onActivate: (rowId, column, anchor) => { const record = resolvedRows.find(row => row.account_id === rowId); if (column in inlineCellFields && canEditAccessChannels(record)) { void selectRow(rowId, { column, anchor }); return; } return { reason: ledgerCellReviewReason(ledgerCellCapability("accounts", column)), onReview: () => void selectRow(rowId) }; } }}>
+            <LedgerTableScroll dataPdId="accounts.table-scroll" visualV2={visualV2} narrowDetail={visualV2 && mobileDetail} cellNavigation={{ label: "Accounts", onSelect: setSelectedGridRowId, onActivate: (rowId, column, anchor) => { const record = resolvedRows.find(row => row.account_id === rowId); if (column in inlineCellFields && canEditAccessChannels(record)) { void selectRow(rowId, { column, anchor }); return; } return { reason: ledgerCellDecision("accounts", column, (record ?? {}) as unknown as Record<string, unknown>, false).reason, onReview: () => void selectRow(rowId) }; } }}>
               <table className="data-table accounts-data-table">
                 <colgroup>
                   {visibleTableColumns.map((column) => (
@@ -1655,7 +1655,7 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialCreat
         : null}
 
       {workflowVisible && cellEditor.session && inlineField ? <LedgerFloatingCellEditor compact commitOnTab={false} session={cellEditor.session} ledger="Accounts" label={inlineField.label} dirty={isDirty} pending={isSaving || isArchiving} error={errorMessage || statusMessage} onSave={async () => { const saved = await handleSubmit(); if (saved) cellEditor.close(); return saved; }} onCancel={() => { handleResetForm(); setWorkflowVisible(false); setSelectedId(null); cellEditor.close(); }} onReview={() => { cellEditor.close(); revealEditor(); }}>
-        <SearchableCombobox dataPdId="accounts.cell.access-channels" id="account-cell-access-channels" label="Access channels" mode={accessChannelMode} onChange={(accessChannels) => { setErrorMessage(""); setFormState(current => ({ ...current, access_channels: accessChannels, channel: accessChannels.join(", ") || "Unknown" })); }} onModeChange={setAccessChannelMode} options={accountAccessChannelOptions} values={formState.access_channels} />
+        <SearchableCombobox floatingOptions dataPdId="accounts.cell.access-channels" id="account-cell-access-channels" label="Access channels" mode={accessChannelMode} onChange={(accessChannels) => { setErrorMessage(""); setFormState(current => ({ ...current, access_channels: accessChannels, channel: accessChannels.join(", ") || "Unknown" })); }} onModeChange={setAccessChannelMode} options={accountAccessChannelOptions} values={formState.access_channels} />
         <button className={labStyles.secondaryButton} type="submit">Apply access channels</button>
       </LedgerFloatingCellEditor> : null}
       {workflowVisible && !cellEditor.active && typeof document !== "undefined"

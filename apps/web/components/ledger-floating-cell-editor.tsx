@@ -18,7 +18,7 @@ export function useLedgerCellEditor() {
   };
 }
 
-export function LedgerFloatingCellEditor({ session, ledger, label, dirty, error, pending = false, children, onSave, onCancel, onReview, readOnly = false, onEnableEditing, enableEditingLabel, compact = false, commitOnTab = true, portalTarget }: {
+export function LedgerFloatingCellEditor({ session, ledger, label, dirty, error, pending = false, children, onSave, onCancel, onReview, readOnly = false, onEnableEditing, enableEditingLabel, compact = false, wide = false, commitOnTab = true, portalTarget }: {
   session: LedgerCellSession;
   ledger: string;
   label: string;
@@ -33,6 +33,7 @@ export function LedgerFloatingCellEditor({ session, ledger, label, dirty, error,
   onEnableEditing?: () => void;
   enableEditingLabel?: string;
   compact?: boolean;
+  wide?: boolean;
   commitOnTab?: boolean;
   portalTarget?: HTMLElement;
 }) {
@@ -44,6 +45,11 @@ export function LedgerFloatingCellEditor({ session, ledger, label, dirty, error,
   const errorId = useId();
   const instructionsId = useId();
   const blocked = pending || busy;
+  useLayoutEffect(() => {
+    const cell = session.anchor.closest("td") ?? session.anchor;
+    cell.setAttribute("data-ledger-editing", "true");
+    return () => cell.removeAttribute("data-ledger-editing");
+  }, [session.anchor]);
   const restore = () => requestAnimationFrame(() => { if (session.anchor.isConnected) session.anchor.focus({ preventScroll: true }); });
   const cancel = () => { if (saving.current || pending) return; onCancel(); restore(); };
   const commit = async (reason: "save" | "outside" | "next" | "previous" = "save") => {
@@ -74,7 +80,9 @@ export function LedgerFloatingCellEditor({ session, ledger, label, dirty, error,
     const update = () => {
       const cell = session.anchor.getBoundingClientRect();
       const viewportWidth = Math.min(document.documentElement.clientWidth, document.body.clientWidth);
-      const width = Math.min(viewportWidth - 16, compact ? Math.max(260, Math.min(cell.width, 400)) : Math.max(360, Math.min(cell.width, 520)));
+      // Scalar controls match their selected cell. Coupled fields and cumulative
+      // execution controls keep a bounded card so their labels and actions fit.
+      const width = Math.min(viewportWidth - 16, compact ? wide ? Math.max(260, Math.min(cell.width, 400)) : Math.max(80, Math.min(cell.width, 400)) : Math.max(360, Math.min(cell.width, 520)));
       const height = Math.min(root.current?.offsetHeight ?? 240, window.innerHeight - 16);
       setPosition({ left: Math.max(8, Math.min(cell.left, viewportWidth - width - 8)), top: Math.max(8, Math.min(cell.top, window.innerHeight - height - 8)), width, maxHeight: window.innerHeight - 16 });
     };
@@ -82,7 +90,7 @@ export function LedgerFloatingCellEditor({ session, ledger, label, dirty, error,
     const observer = new ResizeObserver(update); if (root.current) observer.observe(root.current);
     window.addEventListener("resize", update); window.addEventListener("scroll", update, true);
     return () => { observer.disconnect(); window.removeEventListener("resize", update); window.removeEventListener("scroll", update, true); };
-  }, [session.anchor, compact]);
+  }, [session.anchor, compact, wide]);
   useEffect(() => {
     const target = root.current?.querySelector<HTMLElement>('input:not(:disabled),textarea:not(:disabled),select:not(:disabled),button[data-initial-focus]');
     target?.focus(); if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) target.select();

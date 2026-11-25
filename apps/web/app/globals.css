@@ -18658,6 +18658,38 @@ html[data-ux-shell="v2"] td[data-ledger-column]:focus-visible {
   outline-offset: -2px;
 }
 
+/* A blocked edit is temporary cell feedback, separate from persistent row warnings. */
+html[data-ux-shell="v2"] .table-scroll td[data-ledger-review="true"],
+.lab-ledger-amendment td[data-ledger-review="true"] {
+  background: color-mix(in srgb, var(--warning) 15%, var(--surface-strong)) !important;
+  box-shadow: inset 0 0 0 2px var(--warning);
+}
+.ledger-cell-review-popover {
+  position: fixed;
+  z-index: 1002;
+  box-sizing: border-box;
+  display: grid;
+  gap: 6px;
+  max-height: calc(100dvh - 16px);
+  overflow: auto;
+  padding: 10px 12px;
+  border: 1px solid var(--warning);
+  border-radius: var(--shape-medium);
+  background: color-mix(in srgb, var(--warning) 8%, var(--surface-strong));
+  color: var(--text);
+  box-shadow: var(--floating-nav-shadow);
+}
+.ledger-cell-review-popover p { display: flex; align-items: flex-start; gap: 6px; margin: 0; overflow-wrap: anywhere; font-size: .875rem; line-height: 1.35; }
+.ledger-cell-review-popover p .material-symbols-outlined { flex: none; color: var(--warning); font-size: 18px; }
+.ledger-cell-review-popover .button-link { justify-self: start; min-height: 40px; padding: 5px 7px; }
+.ledger-cell-review-popover .button-link:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+/* The portal editor visually replaces the selected cell without changing its width. */
+html[data-ux-shell="v2"] .table-scroll td[data-ledger-editing="true"] > *,
+.lab-ledger-amendment td[data-ledger-editing="true"] > * { visibility: hidden; }
+.pd-combobox-options-floating { position: fixed; z-index: 1003; box-sizing: border-box; max-width: calc(100dvw - 16px); overflow-wrap: anywhere; }
+.pd-combobox-options-floating strong { white-space: normal; }
+.ledger-floating-compact:has(.pd-combobox-options-floating) { overflow: visible; }
+
 /* The approved floating cell surface hosts native ledger fields and async Save. */
 .ledger-floating-cell-editor.content-subpanel { display: flex; flex-direction: column; overflow: hidden; padding: 1rem; }
 .ledger-floating-cell-editor form { display: flex; flex-direction: column; gap: .75rem; min-width: 0; min-height: 0; }

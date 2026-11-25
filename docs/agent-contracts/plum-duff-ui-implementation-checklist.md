@@ -2,6 +2,14 @@
 
 Complete this for every feature, bug fix, component, fixture-backed UI, route or page change.
 
+## CP-117 shared ledger cell feedback — 2026-11-25 / #118
+
+- [x] Registered PD-FIX-669/670; reproduced the below-grid protected notice and 260px selector against a 150px combined cell before editing.
+- [x] Reused the shared grid, existing Profile-owned review commands, approved warning tokens and Lab floating-cell presentation. The separate operations preview gained synthetic blocked and selector states; the frozen Lab was not edited.
+- [x] Kept blocked feedback temporary and distinct from persistent row warnings; kept compact scalar/list controls within the cell, wider coupled Offer and cumulative controls, and the options list within the viewport.
+- [x] Final-source browser regression: all six owned and combined blocked-edit paths; 2048px dark, 1440px light and 390px dark Lab/PD captures; mobile option wrapping and touch selection; six-ledger V2 13/13, typed editing 9/9, flag-OFF 9/9, web units 760/760, typecheck/build and changed-source lint (0 errors, 10 existing warnings).
+- Delivery receipt records the pushed and locally served revision after the controlled web update. Owner whole-editor acceptance and the separate warning/lifecycle proposal remain outstanding.
+
 ## CP-117 operations warning preview spacing — 2026-11-25 / #118
 
 - [x] Registered PD-FIX-668 and reproduced the 12px warning-row gap before editing.

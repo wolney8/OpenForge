@@ -55,7 +55,7 @@ import { DesignLedgerRowActions } from "@/components/design-ledger-row-actions";
 import { LedgerViewContext } from "@/components/ledger-view-context";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
-import { ledgerCellCapability, ledgerCellReviewReason } from "@/lib/ledger-cell-capabilities";
+import { ledgerCellDecision } from "@/lib/ledger-cell-capabilities";
 import { LedgerFloatingCellEditor, useLedgerCellEditor, type LedgerCellSession } from "@/components/ledger-floating-cell-editor";
 import { designFloatingCellInputClass } from "@/components/design-lab-floating-cell-editor";
 
@@ -3533,7 +3533,7 @@ export function FreeBetWorkflowShell({
               totalRows={filteredRows.length}
             />}
             {visualV2 ? <DesignLedgerNarrowToggle expanded={mobileDetail} onToggle={() => setMobileDetail(value => !value)} /> : null}
-            <LedgerTableScroll dataPdId="free-bets.table-scroll" visualV2={visualV2} narrowDetail={visualV2 && mobileDetail} cellNavigation={{ label: "Free Bets", onSelect: setSelectedGridRowId, onActivate: (rowId, column, anchor) => { const record = rows.find(row => row.free_bet_id === rowId); const scalar = column in inlineCellFields && record && ["Prospecting", "Available", "Not Yet Awarded"].includes(record.status) && record.result === "Pending" && ["offer_type", "event_name", "bookmaker"].every(key => String(record[key as keyof typeof record] ?? "").trim()) && Object.keys(getFreeBetInputErrors(record)).length === 0; if (scalar) { void selectRow(rowId, { cell: { column, anchor } }); return; } return { reason: ledgerCellReviewReason(ledgerCellCapability("free-bets", column)), onReview: () => void selectRow(rowId) }; } }}>
+            <LedgerTableScroll dataPdId="free-bets.table-scroll" visualV2={visualV2} narrowDetail={visualV2 && mobileDetail} cellNavigation={{ label: "Free Bets", onSelect: setSelectedGridRowId, onActivate: (rowId, column, anchor) => { const record = rows.find(row => row.free_bet_id === rowId); const scalar = column in inlineCellFields && record && ["Prospecting", "Available", "Not Yet Awarded"].includes(record.status) && record.result === "Pending" && ["offer_type", "event_name", "bookmaker"].every(key => String(record[key as keyof typeof record] ?? "").trim()) && Object.keys(getFreeBetInputErrors(record)).length === 0; if (scalar) { void selectRow(rowId, { cell: { column, anchor } }); return; } return { reason: ledgerCellDecision("free-bets", column, (record ?? {}) as unknown as Record<string, unknown>, false).reason, onReview: () => void selectRow(rowId) }; } }}>
               <table className="data-table sportsbook-data-table">
                 <colgroup>
                   {tableColumns.map((column) => {
