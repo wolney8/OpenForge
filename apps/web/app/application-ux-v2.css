@@ -2,7 +2,7 @@
    legacy routes and the OFF rollback never acquire these overrides. Existing
    financial, provider and back/lay semantic tokens retain their authorities. */
 html[data-ux-shell="v2"] {
-  --ux-v2-page-max-width: 1640px;
+  --ux-v2-page-gutter: clamp(16px, 1.2vw, 24px);
   --bg: #f8f9fa;
   --bg-elevated: #fff;
   --bg-muted: #f0f2f4;
@@ -72,14 +72,17 @@ html[data-ux-shell="v2"] .ux-v2-sidebar .ux-v2-nav-link.is-active { border-radiu
    belongs to the OFF shell, not the shared V2 header. */
 .ux-v2-top-bar .app-navigation-drawer-trigger,
 .ux-v2-top-bar .global-search-compact-trigger { border-color: transparent; background: transparent; box-shadow: none; }
-.ux-v2-main > .page-shell { width: 100%; max-width: var(--ux-v2-page-max-width); }
-/* Ledger pages use a balanced outer frame; the accepted workbench width stays separate. */
-.ux-v2-main > .page-shell:is(.ledger-v2-page, :has(.ledger-v2-page)) {
+.ux-v2-main > .page-shell {
+  width: 100%;
   max-width: none;
-  padding-inline: clamp(16px, 1.2vw, 24px);
+  padding: var(--ux-v2-page-gutter);
 }
-/* The approved Lab editor uses its 1500px page container, independent of the ledger browsing frame. */
-.ux-v2-main > .page-shell:has(.sportsbook-v2-workbench) { max-width: 1500px; }
+/* The Sportsbook form retains its deliberate Lab content width inside the
+   common full-width page frame; its breadcrumb and heading use the shared gutter. */
+.ux-v2-main .sportsbook-v2-workbench { max-width: 1500px; margin-inline: auto; }
+/* The resize hit target stays inside its own sticky header. The legacy
+   negative offset placed it under the next header, so pointer drag missed. */
+.ux-v2-main .table-column-resize-handle { right: 0; }
 /* The active V2 and the separate operations amendment use flat, bordered
    surfaces. Focus/selection and warning outlines remain owned by their cells. */
 html[data-ux-shell="v2"] :is(button, [role="button"], a.button-link, a[class*="Button"], [role="menu"], [role="listbox"], [role="dialog"], .ledger-cell-review-popover, [data-pd-id="ledger.floating-editor"], .pd-combobox-options, .pd-combobox-options-floating, [class*="searchResults"], [class*="headerOverlay"], [class*="headerMenu"]),
@@ -106,13 +109,7 @@ html[data-ux-shell="v2"] :is(button, [role="button"], a.button-link, a[class*="B
   filter: none !important;
   text-shadow: none !important;
 }
-@media (max-width: 430px) {
-  .ux-v2-main > .page-shell:has(.sportsbook-v2-workbench) { padding-inline: 14px; }
-}
-.ux-v2-main > .ux-v2-crumb-row { box-sizing: border-box; width: 100%; max-width: none; min-height: 50px; margin: 0 0 0; padding: 7px clamp(16px,2.5vw,32px); }
-@media (max-width: 430px) {
-  .ux-v2-main > .ux-v2-crumb-row { padding-inline: 12px; }
-}
+.ux-v2-main > .ux-v2-crumb-row { box-sizing: border-box; width: 100%; max-width: none; min-height: 50px; margin: 0; padding: 7px var(--ux-v2-page-gutter); }
 .ux-v2-main :is(.hero-panel, .content-panel, .route-card) {
   border-radius: var(--shape-large);
   backdrop-filter: none;

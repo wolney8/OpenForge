@@ -1,5 +1,7 @@
 # Plum Duff Next Issue Tracking Register
 
+Current #118 presentation checkpoint (2026-11-25): `PD-FIX-675–677` in the [UI change register](../agent-contracts/plum-duff-ui-change-register.md#cp-117-shared-ledger-cell-interactions--2026-11-25--118) record the shared authenticated V2 width, cell-relative ordinary/Runner-Race editors and four-row Operations warning amendment. Synthetic geometry, grouped Save/reopen, motion and focus checks pass. The warning interaction remains a separate Lab proposal; Back/Status lifecycle actions and whole-editor Design Acceptance still require owner decisions. Profile onboarding/authentication retain their intentional standalone layouts.
+
 ## Current CP-117 table and workbench interaction contract — 2026-11-12
 
 `PD-PR-117A-97–103` in the [current UI change register](../agent-contracts/plum-duff-ui-change-register.md#cp-117-owner-table-and-workbench-interaction-correction--2026-11-12--118) retain the owner's opportunity controls and capture, read-only and editable table navigation, typed cell authority, deliberate single workbench, lifecycle entry and anchored row-menu requests under open [#118](https://github.com/wolney8/OpenForge/issues/118). Normal opportunity Track All remains separately gated by the exact API activation request in the existing annotation contract. Protected financial fields keep their governed workflows; their handoff is not counted as compact inline editing. Owner Design Acceptance remains open.

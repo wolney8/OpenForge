@@ -83,8 +83,9 @@ for (const module of ["sportsbook-bets", "accounts"] as const) {
     await expect(editor).toBeVisible();
     await page.keyboard.press("Escape");
     await expect(editor).toHaveCount(0);
-    if (module === "accounts") await expect(reviewAction).toBeFocused();
-    else await expect(cell).toBeFocused();
+    // The temporary review popover closes before opening the governed editor;
+    // its button no longer exists on return. Focus belongs to the source cell.
+    await expect(cell).toBeFocused();
     const restored = await cell.boundingBox();
     expect(Math.abs(bounds!.height - restored!.height)).toBeLessThanOrEqual(1);
     await cell.dblclick();
@@ -93,8 +94,7 @@ for (const module of ["sportsbook-bets", "accounts"] as const) {
     await expect(editor).toBeVisible();
     await page.keyboard.press("Escape");
     await expect(editor).toHaveCount(0);
-    if (module === "accounts") await expect(reviewAction).toBeFocused();
-    else await expect(cell).toBeFocused();
+    await expect(cell).toBeFocused();
     await cell.focus();
     await page.keyboard.press("Home");
     await expect(viewport.locator('tbody td[data-ledger-column][tabindex="0"]')).toBeFocused();

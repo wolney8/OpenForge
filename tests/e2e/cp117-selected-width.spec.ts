@@ -55,10 +55,10 @@ for (const theme of ["light", "dark"] as const) {
       const row = document.querySelector<HTMLElement>('[data-pd-id^="tasks.v2.row."][aria-expanded="true"]')!;
       const inspector = document.querySelector<HTMLElement>('[data-pd-id="tasks.v2.inspector"]')!;
       const arrow = row.lastElementChild as HTMLElement;
-      return { rowShadow: getComputedStyle(row).boxShadow, inspectorBorder: getComputedStyle(inspector).borderLeftWidth,
+      return { rowAccent: getComputedStyle(row).borderLeftWidth, inspectorBorder: getComputedStyle(inspector).borderLeftWidth,
         arrowColor: getComputedStyle(arrow).color, background: getComputedStyle(row).backgroundColor };
     });
-    expect(selected.rowShadow).toMatch(/3px 0px 0px 0px inset/);
+    expect(selected.rowAccent).toBe("3px");
     expect(selected.inspectorBorder).toBe("3px");
     expect(selected.arrowColor).not.toBe("rgb(160, 165, 175)");
     expect(selected.background).not.toBe("rgba(0, 0, 0, 0)");
@@ -100,7 +100,7 @@ test("Lab pressed selection and real expanded selection use the same shared row 
   const row = page.locator('[data-pd-id^="lab.task."]').first();
   await row.click();
   await expect(row).toHaveAttribute("aria-pressed", "true");
-  expect(await row.evaluate(node => getComputedStyle(node).boxShadow)).toMatch(/3px 0px 0px 0px inset/);
+  expect(await row.evaluate(node => getComputedStyle(node).borderLeftWidth)).toBe("3px");
   await expect(page.locator('[data-pd-id="lab.today.detail"]')).toBeVisible();
   await page.getByRole("button", { name: "Board", exact: true }).click();
   const boardRow = page.locator('[data-pd-id^="lab.task."]').first();
@@ -172,7 +172,7 @@ test("tracked Today rows reuse selection without changing tracking membership", 
   const colors = await selectedBackgroundMatchesToken(row);
   expect(colors.actual).toBe(colors.expected);
   await expect(page.locator('[data-pd-id="tasks.v2.inspector"]')).toBeVisible();
-  expect(await row.evaluate(node => getComputedStyle(node).boxShadow)).toMatch(/3px 0px 0px 0px inset/);
+  expect(await row.evaluate(node => getComputedStyle(node).borderLeftWidth)).toBe("3px");
   await page.getByRole("button", { name: "Close Task Details" }).click();
   await expect(row).toHaveAttribute("aria-expanded", "false");
   await page.locator(`[data-pd-id="${identity?.replace("tasks.v2.row.", "tasks.v2.track.")}"]`).click();
@@ -233,7 +233,7 @@ test("selected task context remains clear in Split View and the mobile drawer", 
   }
 });
 
-test("desktop Position width and revised ledger gutters stay contained", async ({ page }, info) => {
+test("shared V2 page frame aligns Position and ledger content without outer width caps", async ({ page }, info) => {
   await page.setViewportSize({ width: 2000, height: 1000 });
   expect((await page.request.put("/api/fund-manager/preferences/selected-range", { data: {
     selected_range_preset: "All Dates", selected_range_custom_start: null, selected_range_custom_end: null,
@@ -245,30 +245,25 @@ test("desktop Position width and revised ledger gutters stay contained", async (
     await expect(shell).toBeVisible();
     if (name === "position") await expect(page.locator('[data-pd-id="position.metrics"]')).not.toContainText(/Loading|Updating/, { timeout: 45_000 });
     else await expect(page.locator('[data-pd-id="combined.sportsbook-bets.table-scroll"] tbody tr').first()).toBeVisible({ timeout: 45_000 });
-    await expect(page.getByText("Loading tracked tasks…")).toHaveCount(0, { timeout: 45_000 });
-    const measure = () => shell.evaluate(node => {
+    const after = await shell.evaluate(node => {
       const main = document.querySelector<HTMLElement>(".ux-v2-main")!.getBoundingClientRect();
       const rect = node.getBoundingClientRect();
       const style = getComputedStyle(node);
+      const crumb = document.querySelector<HTMLElement>(".ux-v2-crumb-row");
       return { available: main.width, actual: rect.width, left: rect.left - main.left,
-        right: main.right - rect.right, visibleLeft: rect.left - main.left + parseFloat(style.paddingLeft),
+        right: main.right - rect.right, gutterLeft: parseFloat(style.paddingLeft), gutterRight: parseFloat(style.paddingRight),
+        contentLeft: rect.left + parseFloat(style.paddingLeft), crumbLeft: crumb ? crumb.getBoundingClientRect().left + parseFloat(getComputedStyle(crumb).paddingLeft) : null,
         overflow: Math.max(0, document.documentElement.scrollWidth - innerWidth) };
     });
-    const oldCap = await page.addStyleTag({ content: `.ux-v2-main > .page-shell { max-width: ${name === "ledger" ? 1640 : 1500}px !important; }` });
-    const before = await measure();
-    await page.screenshot({ path: info.outputPath(`before-${name}.png`) });
-    await oldCap.evaluate(node => node.remove());
-    const after = await measure();
-    measurements[name] = { before, after };
-    if (name === "ledger") {
-      expect(after.actual).toBe(1560);
-      expect(after.left - before.left).toBeGreaterThanOrEqual(39);
-    } else expect(after.actual).toBeGreaterThanOrEqual(1635);
-    expect(after.left).toBeGreaterThanOrEqual(24);
-    expect(Math.abs(after.left - after.right)).toBeLessThan(1);
-    if (name === "position") expect(after.visibleLeft / before.visibleLeft).toBeLessThanOrEqual(0.55);
+    measurements[name] = after;
+    expect(Math.abs(after.available - after.actual)).toBeLessThan(1);
+    expect(Math.abs(after.left)).toBeLessThan(1);
+    expect(Math.abs(after.right)).toBeLessThan(1);
+    expect(after.gutterLeft).toBeGreaterThanOrEqual(16);
+    expect(Math.abs(after.gutterLeft - after.gutterRight)).toBeLessThan(1);
+    if (after.crumbLeft !== null) expect(Math.abs(after.crumbLeft - after.contentLeft)).toBeLessThan(1);
     expect(after.overflow).toBe(0);
-    await page.screenshot({ path: info.outputPath(`after-${name}.png`) });
+    await page.screenshot({ path: info.outputPath(`shared-frame-${name}.png`) });
   }
   await writeFile(info.outputPath("desktop-gutters.json"), JSON.stringify(measurements, null, 2));
   for (const width of [1600, 1280, 900, 390]) {

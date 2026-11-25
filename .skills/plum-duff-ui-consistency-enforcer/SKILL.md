@@ -64,6 +64,7 @@ use the canonical primitive and computed styling.
 
 - Use existing Plum Duff components, classes, tokens and Material Symbols before adding local CSS.
 - For connected Lab adoption, compare the entire real route against the equivalent Lab route, including sidebar/header/breadcrumb/page head/primary content order at desktop, side-by-side and mobile widths. An imported child component or matching token is insufficient when legacy wrappers still determine the overall geometry. Assert selector placement, no pre-KPI control or warning panel, and no page overflow; verify flag-OFF shell separately.
+- For a V2 page-width change, measure the authenticated main width, page-shell width, both outer gutters, breadcrumb/content alignment and document overflow across representative page families and all owned/combined ledgers. Keep a deliberate form-content cap inside the shared page frame. For compact ledger editors, compare editor width with the actual selected cell after column resize; the editor must not change table geometry. Keep partial-lay sizing separately scoped.
 - Chart pointer inspection and keyboard inspection must select the same readable date/value and
   records. Verify intermediate points and drilldown use the headline's governed financial scope;
   a matching final total alone cannot validate the chart. Reuse existing detail/FinancialValue UI.

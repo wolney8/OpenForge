@@ -81,9 +81,9 @@ export function LedgerFloatingCellEditor({ session, ledger, label, dirty, error,
     const update = () => {
       const cell = session.anchor.getBoundingClientRect();
       const viewportWidth = Math.min(document.documentElement.clientWidth, document.body.clientWidth);
-      // Scalar controls match their selected cell. Coupled fields and cumulative
-      // execution controls keep a bounded card so their labels and actions fit.
-      const width = Math.min(viewportWidth - 16, compact ? cellBound ? Math.max(1, cell.width) : wide ? Math.max(260, Math.min(cell.width, 400)) : Math.max(80, Math.min(cell.width, 400)) : Math.max(360, Math.min(cell.width, 520)));
+      // Ordinary and grouped inputs follow the actual resized cell, including
+      // widths above 400px. The cumulative partial-lay card is separately wide.
+      const width = Math.min(viewportWidth - 16, compact ? wide && !cellBound ? Math.max(260, Math.min(cell.width, 400)) : Math.max(1, cell.width) : Math.max(360, Math.min(cell.width, 520)));
       const height = Math.min(root.current?.offsetHeight ?? 240, window.innerHeight - 16);
       setPosition({ left: Math.max(8, Math.min(cell.left, viewportWidth - width - 8)), top: Math.max(8, Math.min(cell.top, window.innerHeight - height - 8)), width, maxHeight: window.innerHeight - 16 });
     };

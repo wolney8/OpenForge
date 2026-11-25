@@ -307,7 +307,14 @@ for (const mode of ["light", "dark"] as const) {
     await expect(page.locator('[data-pd-id^="tasks.v2.row."]').first()).toBeVisible();
     const realHead = await page.locator('[data-pd-id="tasks.page-header"]').boundingBox();
     expect(labHead && realHead).toBeTruthy();
-    expect(Math.abs(realHead!.x - labHead!.x)).toBeLessThanOrEqual(4);
+    // The owner-approved full-width V2 frame changes the absolute x position
+    // relative to the frozen Lab. The real heading must align with its shared
+    // breadcrumb/content gutter; retain the Lab vertical composition check.
+    const frame = await page.locator(".ux-v2-main > .page-shell").evaluate(node => {
+      const rect = node.getBoundingClientRect();
+      return rect.left + parseFloat(getComputedStyle(node).paddingLeft);
+    });
+    expect(Math.abs(realHead!.x - frame)).toBeLessThanOrEqual(1);
     expect(Math.abs(realHead!.y - labHead!.y)).toBeLessThanOrEqual(12);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
     await page.screenshot({ path: info.outputPath(`v2-today-900-${mode}.png`), fullPage: true });

@@ -484,6 +484,7 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialCreat
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedGridRowId, setSelectedGridRowId] = useState<string | null>(null);
   const [workflowVisible, setWorkflowVisible] = useState(false);
+  const editorReturnFocusRef = useRef<HTMLElement | null>(null);
   const cellEditor = useLedgerCellEditor();
   const inlineField = cellEditor.session ? inlineCellFields[cellEditor.session.column as keyof typeof inlineCellFields] : undefined;
   const [formState, setFormState] = useState<AccountFormState>(createBlankForm);
@@ -943,7 +944,7 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialCreat
     return () => cancelAnimationFrame(frame);
   }, [pagedRows, selectedGridRowId]);
 
-  async function selectRow(rowId: string, cell?: LedgerCellSession) {
+  async function selectRow(rowId: string, cell?: LedgerCellSession, returnFocus?: HTMLElement) {
     if (rowId !== selectedId && isDirty && !(await confirmDiscardChanges())) {
       return;
     }
@@ -951,6 +952,7 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialCreat
     if (!record) {
       return;
     }
+    editorReturnFocusRef.current = returnFocus ?? cell?.anchor ?? null;
     if (cell) cellEditor.start(cell.column, cell.anchor); else cellEditor.close();
     setSelectedId(rowId);
     isCreatingDraftRef.current = false;
@@ -1404,7 +1406,7 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialCreat
               position="top"
               totalRows={filteredRows.length}
             />}
-            <LedgerTableScroll dataPdId="accounts.table-scroll" visualV2={visualV2} narrowDetail={visualV2 && mobileDetail} cellNavigation={{ label: "Accounts", onSelect: setSelectedGridRowId, onActivate: (rowId, column, anchor) => { const record = resolvedRows.find(row => row.account_id === rowId); if (column in inlineCellFields && canEditAccessChannels(record)) { void selectRow(rowId, { column, anchor }); return; } return { reason: ledgerCellDecision("accounts", column, (record ?? {}) as unknown as Record<string, unknown>, false).reason, onReview: () => void selectRow(rowId) }; } }}>
+            <LedgerTableScroll dataPdId="accounts.table-scroll" visualV2={visualV2} narrowDetail={visualV2 && mobileDetail} cellNavigation={{ label: "Accounts", onSelect: setSelectedGridRowId, onActivate: (rowId, column, anchor) => { const record = resolvedRows.find(row => row.account_id === rowId); if (column in inlineCellFields && canEditAccessChannels(record)) { void selectRow(rowId, { column, anchor }); return; } return { reason: ledgerCellDecision("accounts", column, (record ?? {}) as unknown as Record<string, unknown>, false).reason, onReview: () => void selectRow(rowId, undefined, anchor) }; } }}>
               <table className="data-table accounts-data-table">
                 <colgroup>
                   {visibleTableColumns.map((column) => (
@@ -1660,7 +1662,7 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialCreat
       </LedgerFloatingCellEditor> : null}
       {workflowVisible && !cellEditor.active && typeof document !== "undefined"
         ? createPortal(
-            <ModalBoundary onDismiss={() => void closeEditor()}>
+            <ModalBoundary onDismiss={() => void closeEditor()} returnFocusRef={editorReturnFocusRef}>
             <div className="modal-backdrop" onMouseDown={(event) => {
               if (event.target === event.currentTarget) void closeEditor();
             }}>
