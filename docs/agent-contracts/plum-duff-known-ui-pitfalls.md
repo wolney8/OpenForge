@@ -1692,7 +1692,7 @@ The Lab grid and a real ledger share a table surface, but the real ledger has ma
 
 ## CP-117 ledger cell feedback must stay at the attempted cell
 
-A review-only double-click formerly left a plain notice below the whole grid, while a compact list editor could be wider than its selected cell. Use the shared anchored review popover and temporary amber cell treatment in owned and combined grids. Keep the reason, review handoff, Escape/outside focus, horizontal-scroll position and persistent row warnings separate. Scalar/list editors match the cell width; only coupled fields use the bounded wider card. A floating option list may extend to the viewport but must not widen the table or trigger an outside-click Save. `cp117-ledger-cell-feedback.spec.ts` compares the Lab amendment and actual real-page portal in both themes and at mobile width.
+A review-only double-click formerly left a plain notice below the whole grid, while compact list and grouped Offer details editors could be wider than their selected cells. Use the shared anchored review popover and temporary amber cell treatment in owned and combined grids. Keep the reason, review handoff, Escape/outside focus, horizontal-scroll position and persistent row warnings separate. Scalar/list and grouped Offer details editors match the cell width; the cumulative partial-lay control keeps its separate bounded width. An opened option list may extend to the viewport but must not widen the table or trigger an outside-click Save. `cp117-ledger-cell-feedback.spec.ts` and `cp117-offer-cell-sizing.spec.ts` compare the Lab amendment and actual real-page portal in both themes and at mobile width.
 
 ## CP-117 Sportsbook whole-workbench parity requires an ancestor and content comparison
 

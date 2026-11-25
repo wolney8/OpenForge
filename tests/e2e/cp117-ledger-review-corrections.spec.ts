@@ -201,9 +201,10 @@ test("eligible Prospecting Offer details and Strategy use native dropdowns and p
   await expect(cell("offer_details")).toBeVisible();
   await cell("offer_details").dblclick();
   const editor = page.locator('[data-pd-id="ledger.floating-editor"]');
-  await expect(editor.getByRole("combobox", { name: "Offer Type" })).toHaveValue("Bet & Get");
-  await expect(editor.getByRole("combobox", { name: "Bet Type" })).toHaveValue("Single");
-  await editor.getByRole("combobox", { name: "Fixture Type" }).selectOption("Tennis");
+  await expect(editor.getByRole("combobox", { name: /Offer Type/ })).toContainText("Bet & Get");
+  await expect(editor.getByRole("combobox", { name: /Bet Type/ })).toContainText("Single");
+  await editor.getByRole("combobox", { name: /Fixture Type/ }).click();
+  await page.getByRole("listbox", { name: "Fixture Type options" }).getByRole("option", { name: "Tennis" }).click();
   await editor.getByRole("button", { name: "Apply offer details" }).click();
   await expect(editor).toHaveCount(0);
   await cell("match_strategy").dblclick();
@@ -218,7 +219,7 @@ test("eligible Prospecting Offer details and Strategy use native dropdowns and p
   expect(saved.match_strategy).toBe("Underlay");
   for (const key of ["status", "result", "back_stake", "back_odds", "lay_odds_1", "back_placement_confirmed", "requested_lay_stake", "lay_matched_stake_1"]) expect(saved[key]).toEqual(initial[key]);
   await cell("offer_details").dblclick();
-  await expect(editor.getByRole("combobox", { name: "Fixture Type" })).toHaveValue("Tennis");
+  await expect(editor.getByRole("combobox", { name: /Fixture Type/ })).toContainText("Tennis");
   await page.keyboard.press("Escape");
   await cell("match_strategy").dblclick();
   await page.locator('[data-pd-id="sportsbook.cell-editor.match_strategy"]').selectOption("No Lay");
@@ -297,7 +298,7 @@ for (const [width, theme] of [[2048, "dark"], [1440, "light"], [390, "dark"]] as
     expect(geometry.toolbarInset).toBeGreaterThanOrEqual(width <= 700 ? 14 : 20);
     expect(geometry.toolbarInset).toBeLessThanOrEqual(width <= 700 ? 18 : 24);
     expect(geometry.overflow).toBeLessThanOrEqual(1);
-    if (width === 2048) { expect(geometry.shellWidth).toBe(1560); expect(geometry.left).toBeGreaterThan(80); }
+    if (width === 2048) { expect(geometry.shellWidth).toBe(1749); expect(geometry.left).toBe(0); expect(geometry.right).toBe(0); }
     const action = scroll.locator('tbody tr:first-child td:last-child');
     await expect(action).toHaveCSS("position", "static");
     if (width > 900) await page.setViewportSize({ width: 900, height: 1000 });

@@ -8,7 +8,7 @@ type Option<T extends string> = { value: T; label: string };
 
 /** Approved Lab single select shared with real-data adapters. */
 export function DesignLabSelect<T extends string>({
-  dataPdId, label, onChange, options, value, compact = false, disabled = false,
+  dataPdId, label, onChange, options, value, compact = false, disabled = false, cellSized = false, initialFocus = false,
 }: {
   dataPdId: string;
   label: string;
@@ -17,6 +17,8 @@ export function DesignLabSelect<T extends string>({
   value: T;
   compact?: boolean;
   disabled?: boolean;
+  cellSized?: boolean;
+  initialFocus?: boolean;
 }) {
   const id = useId().replaceAll(":", "");
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -83,7 +85,7 @@ export function DesignLabSelect<T extends string>({
     onChange(option.value);
   };
 
-  return <div className={`${styles.labSelect} ${compact ? styles.labSelectCompact : ""}`}>
+  return <div className={`${styles.labSelect} ${compact ? styles.labSelectCompact : ""} ${cellSized ? styles.labSelectCell : ""}`}>
     {!compact ? <span className={styles.labSelectLabel} id={`${id}-label`}>{label}</span> : null}
     <button
       aria-activedescendant={open ? `${id}-option-${active}` : undefined}
@@ -93,6 +95,7 @@ export function DesignLabSelect<T extends string>({
       aria-label={compact ? `${label}: ${options[selectedIndex]?.label ?? ""}` : undefined}
       aria-labelledby={compact ? undefined : `${id}-label ${id}-selected`}
       className={styles.labSelectTrigger}
+      data-initial-focus={initialFocus ? "true" : undefined}
       data-pd-id={dataPdId}
       disabled={disabled}
       onClick={() => { position(); setActive(selectedIndex); setOpen((current) => !current); }}
@@ -110,7 +113,7 @@ export function DesignLabSelect<T extends string>({
       role="combobox"
       type="button"
     ><span id={`${id}-selected`}>{options[selectedIndex]?.label}</span><span aria-hidden="true" className="material-symbols-outlined">expand_more</span></button>
-    {open && !disabled && portalHost ? createPortal(<div className={styles.labSelectPanel} data-pd-overlay-child id={`${id}-options`} ref={panelRef} role="listbox" aria-label={`${label} options`} style={placement}>
+    {open && !disabled && portalHost ? createPortal(<div className={`${styles.labSelectPanel} ${cellSized ? styles.labSelectCellPanel : ""}`} data-pd-overlay-child id={`${id}-options`} ref={panelRef} role="listbox" aria-label={`${label} options`} style={placement}>
       {options.map((option, index) => <div aria-selected={index === selectedIndex} className={`${styles.labSelectOption} ${index === active ? styles.labSelectOptionActive : ""}`} id={`${id}-option-${index}`} key={option.value} onClick={() => choose(index)} role="option" tabIndex={-1}>
         <span>{option.label}</span>{index === selectedIndex ? <span aria-hidden="true" className="material-symbols-outlined">check</span> : null}
       </div>)}

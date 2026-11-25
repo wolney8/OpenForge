@@ -63,13 +63,16 @@ test("combined Sportsbook Offer details and Strategy use the native compact edit
   const cell = (column: string) => page.locator(`[data-pd-id="combined.sportsbook-bets.table-scroll"] td[data-ledger-row="${profile}::${id}"][data-ledger-column="${column}"]`);
   await cell("offer_details").dblclick();
   const editor = page.locator('[data-pd-id="ledger.floating-editor"]');
-  await expect(editor.getByRole("combobox", { name: "Offer Type" })).toHaveValue("Bet & Get");
-  await editor.getByRole("combobox", { name: "Offer Type" }).selectOption("");
+  await expect(editor.getByRole("combobox", { name: /Offer Type/ })).toContainText("Bet & Get");
+  await editor.getByRole("combobox", { name: /Offer Type/ }).click();
+  await page.getByRole("listbox", { name: "Offer Type options" }).getByRole("option", { name: "Select offer type" }).click();
   await editor.getByRole("button", { name: "Apply offer details" }).click();
   await expect(editor).toContainText("Choose an available Offer Type");
-  await expect(editor.getByRole("combobox", { name: "Offer Type" })).toHaveValue("");
-  await editor.getByRole("combobox", { name: "Offer Type" }).selectOption("Bet & Get");
-  await editor.getByRole("combobox", { name: "Fixture Type" }).selectOption("Tennis");
+  await expect(editor.getByRole("combobox", { name: /Offer Type/ })).toContainText("Select offer type");
+  await editor.getByRole("combobox", { name: /Offer Type/ }).click();
+  await page.getByRole("listbox", { name: "Offer Type options" }).getByRole("option", { name: "Bet & Get" }).click();
+  await editor.getByRole("combobox", { name: /Fixture Type/ }).click();
+  await page.getByRole("listbox", { name: "Fixture Type options" }).getByRole("option", { name: "Tennis" }).click();
   await editor.getByRole("button", { name: "Apply offer details" }).click();
   await expect(editor).toHaveCount(0);
   await cell("match_strategy").dblclick();
@@ -208,11 +211,12 @@ test("combined and Workbench Sportsbook saves reject a newer row revision", asyn
   const combined = page.locator(`[data-pd-id="combined.sportsbook-bets.table-scroll"] td[data-ledger-row="${profile}::${id}"][data-ledger-column="offer_details"]`);
   await combined.dblclick();
   const cellEditor = page.locator('[data-pd-id="ledger.floating-editor"]');
-  await cellEditor.getByRole("combobox", { name: "Fixture Type" }).selectOption("Tennis");
+  await cellEditor.getByRole("combobox", { name: /Fixture Type/ }).click();
+  await page.getByRole("listbox", { name: "Fixture Type options" }).getByRole("option", { name: "Tennis" }).click();
   await concurrentChange({ fixture_type: "Horse Racing" });
   await cellEditor.getByRole("button", { name: "Apply offer details" }).click();
   await expect(cellEditor).toContainText("changed elsewhere");
-  await expect(cellEditor.getByRole("combobox", { name: "Fixture Type" })).toHaveValue("Tennis");
+  await expect(cellEditor.getByRole("combobox", { name: /Fixture Type/ })).toContainText("Tennis");
   expect((await read()).fixture_type).toBe("Horse Racing");
 
   await page.goto(`/profiles/${profile}/tracker/sportsbook-bets?record=${id}`);

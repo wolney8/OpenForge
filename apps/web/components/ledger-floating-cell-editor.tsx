@@ -18,7 +18,7 @@ export function useLedgerCellEditor() {
   };
 }
 
-export function LedgerFloatingCellEditor({ session, ledger, label, dirty, error, pending = false, children, onSave, onCancel, onReview, readOnly = false, onEnableEditing, enableEditingLabel, compact = false, wide = false, commitOnTab = true, portalTarget }: {
+export function LedgerFloatingCellEditor({ session, ledger, label, dirty, error, pending = false, children, onSave, onCancel, onReview, readOnly = false, onEnableEditing, enableEditingLabel, compact = false, wide = false, cellBound = false, commitOnTab = true, portalTarget }: {
   session: LedgerCellSession;
   ledger: string;
   label: string;
@@ -34,6 +34,7 @@ export function LedgerFloatingCellEditor({ session, ledger, label, dirty, error,
   enableEditingLabel?: string;
   compact?: boolean;
   wide?: boolean;
+  cellBound?: boolean;
   commitOnTab?: boolean;
   portalTarget?: HTMLElement;
 }) {
@@ -82,7 +83,7 @@ export function LedgerFloatingCellEditor({ session, ledger, label, dirty, error,
       const viewportWidth = Math.min(document.documentElement.clientWidth, document.body.clientWidth);
       // Scalar controls match their selected cell. Coupled fields and cumulative
       // execution controls keep a bounded card so their labels and actions fit.
-      const width = Math.min(viewportWidth - 16, compact ? wide ? Math.max(260, Math.min(cell.width, 400)) : Math.max(80, Math.min(cell.width, 400)) : Math.max(360, Math.min(cell.width, 520)));
+      const width = Math.min(viewportWidth - 16, compact ? cellBound ? Math.max(1, cell.width) : wide ? Math.max(260, Math.min(cell.width, 400)) : Math.max(80, Math.min(cell.width, 400)) : Math.max(360, Math.min(cell.width, 520)));
       const height = Math.min(root.current?.offsetHeight ?? 240, window.innerHeight - 16);
       setPosition({ left: Math.max(8, Math.min(cell.left, viewportWidth - width - 8)), top: Math.max(8, Math.min(cell.top, window.innerHeight - height - 8)), width, maxHeight: window.innerHeight - 16 });
     };
@@ -90,7 +91,7 @@ export function LedgerFloatingCellEditor({ session, ledger, label, dirty, error,
     const observer = new ResizeObserver(update); if (root.current) observer.observe(root.current);
     window.addEventListener("resize", update); window.addEventListener("scroll", update, true);
     return () => { observer.disconnect(); window.removeEventListener("resize", update); window.removeEventListener("scroll", update, true); };
-  }, [session.anchor, compact, wide]);
+  }, [session.anchor, compact, wide, cellBound]);
   useEffect(() => {
     const target = root.current?.querySelector<HTMLElement>('input:not(:disabled),textarea:not(:disabled),select:not(:disabled),button[data-initial-focus]');
     target?.focus(); if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) target.select();
@@ -99,6 +100,7 @@ export function LedgerFloatingCellEditor({ session, ledger, label, dirty, error,
     let suppress = false;
     const outside = (event: PointerEvent) => {
       if (!(event.target instanceof Node) || root.current?.contains(event.target) || session.anchor.contains(event.target) || document.querySelector("dialog[open]")) return;
+      if (event.target instanceof Element && event.target.closest("[data-pd-overlay-child]")) return;
       // Scope changes have their own Save/Discard/Cancel guard. Do not turn a
       // Profile-selector click into an implicit field Save before it can run.
       if (event.target instanceof Element && event.target.closest('[data-pd-id="ux-v2.profile-scope"],[role="listbox"][aria-label="Profile options"]')) return;

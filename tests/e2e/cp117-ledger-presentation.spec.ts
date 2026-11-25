@@ -83,6 +83,14 @@ test("ledger frame uses balanced small gutters and flat review popouts", async (
 });
 
 test("the separate operations preview and grouped Offer editor keep flat, contained controls", async ({ page }) => {
+  const id = `PD-FIX-670-PRESENTATION-${Date.now()}`;
+  const created = await page.request.post(`/api/profiles/${profile}/sportsbook-bets`, { data: {
+    sportsbook_bet_id: id, event_name: "Synthetic Offer display", offer_text: "Grouped editor display",
+    offer_name: "Fixture review", bookmaker: "Bookmaker A", offer_type: "Bet & Get", bet_type: "Single",
+    fixture_type: "Football", market: "Match Odds", status: "Prospecting", result: "Pending",
+    back_stake: "10.00", back_odds: "2.00", match_strategy: "Standard", lay_odds_1: "2.00",
+  } });
+  expect(created.status(), await created.text()).toBe(201);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/design-lab/sportsbook-proposals?amendment=operations");
   const cell = page.getByRole("button", { name: "Review protected bookmaker cell" });
@@ -90,21 +98,21 @@ test("the separate operations preview and grouped Offer editor keep flat, contai
   const preview = page.locator('[data-pd-id="lab.proposal.protected-cell"]');
   await expect(preview).toBeVisible();
   expect(await preview.evaluate(element => getComputedStyle(element).boxShadow)).toBe("none");
-  await page.goto("/tracker/sportsbook-bets?q=CP117-CELL-001");
+  await page.goto(`/tracker/sportsbook-bets?q=${id}`);
   await expect(page.locator(".ledger-loading-overlay")).toHaveCount(0, { timeout: 45_000 });
   await page.locator('[data-pd-id="combined.sportsbook-bets.table-scroll"] td[data-ledger-column="offer_details"][data-ledger-row]').first().dblclick();
   const editor = page.locator('[data-pd-id="ledger.floating-editor"]');
-  await expect(editor.getByLabel("Offer Type")).toBeVisible();
-  await expect(editor.getByLabel("Bet Type")).toBeVisible();
-  await expect(editor.getByLabel("Fixture Type")).toBeVisible();
+  await expect(editor.getByRole("combobox", { name: /Offer Type/ })).toBeVisible();
+  await expect(editor.getByRole("combobox", { name: /Bet Type/ })).toBeVisible();
+  await expect(editor.getByRole("combobox", { name: /Fixture Type/ })).toBeVisible();
   await expect(editor.getByRole("button", { name: "Apply offer details" })).toBeVisible();
   const box = await editor.boundingBox();
   expect(box).not.toBeNull();
   expect(box!.x).toBeGreaterThanOrEqual(0);
   expect(box!.x + box!.width).toBeLessThanOrEqual(390);
   expect(await editor.evaluate(element => getComputedStyle(element).boxShadow)).toBe("none");
-  await editor.getByLabel("Offer Type").press("Escape");
-  await page.goto(`/profiles/${profile}/tracker/sportsbook-bets?q=CP117-CELL-001`);
+  await editor.getByRole("combobox", { name: /Offer Type/ }).press("Escape");
+  await page.goto(`/profiles/${profile}/tracker/sportsbook-bets?q=${id}`);
   await expect(page.locator(".ledger-loading-overlay")).toHaveCount(0, { timeout: 45_000 });
   await page.locator('[data-pd-id="sportsbook.table-scroll"] td[data-ledger-column="offer_details"][data-ledger-row]').first().dblclick();
   const ownedEditor = page.locator('[data-pd-id="ledger.floating-editor"]');
