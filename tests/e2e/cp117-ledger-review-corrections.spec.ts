@@ -18,6 +18,56 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
+test("operations warning details keep three compact actionable rows at desktop and mobile", async ({ page }) => {
+  for (const [width, height, theme] of [[1440, 900, "dark"], [1440, 900, "light"], [390, 844, "dark"], [390, 844, "light"]] as const) {
+    await page.setViewportSize({ width, height });
+    await page.addInitScript(value => localStorage.setItem("openforge-theme", value), theme);
+    await page.goto("/design-lab/sportsbook-proposals?amendment=operations");
+    await expect.poll(() => page.evaluate(() => document.documentElement.dataset.theme)).toBe(theme);
+    const warningButton = page.getByRole("button", { name: "Show 3 recorded warnings" });
+    await warningButton.click();
+    const panel = page.locator('[data-pd-id="lab.proposal.warnings"]');
+    const rows = panel.locator("li");
+    await expect(rows).toHaveCount(3);
+    for (const label of ["Update matched amount", "Review Back confirmation", "Review settlement"]) {
+      await expect(panel.getByRole("button", { name: label })).toBeVisible();
+    }
+    const measurements = await panel.evaluate(element => {
+      const heading = element.querySelector("h3")!;
+      const list = element.querySelector("ul")!;
+      const rows = [...list.querySelectorAll("li")];
+      const boxes = rows.map(row => row.getBoundingClientRect());
+      return {
+        listGap: Number.parseFloat(getComputedStyle(list).rowGap),
+        headingGap: list.getBoundingClientRect().top - heading.getBoundingClientRect().bottom,
+        rowGaps: boxes.slice(1).map((box, index) => box.top - boxes[index].bottom),
+        rowHeights: boxes.map(box => box.height),
+        actionHeights: rows.map(row => row.querySelector("button")!.getBoundingClientRect().height),
+        pageOverflow: document.documentElement.scrollWidth - innerWidth,
+      };
+    });
+    expect(measurements.listGap).toBeGreaterThanOrEqual(4);
+    expect(measurements.listGap).toBeLessThanOrEqual(6);
+    expect(measurements.headingGap).toBeLessThanOrEqual(8);
+    expect(measurements.rowGaps.every(gap => gap >= 4 && gap <= 6)).toBe(true);
+    expect(measurements.pageOverflow).toBeLessThanOrEqual(1);
+    if (width > 700) {
+      expect(measurements.rowHeights.every(rowHeight => rowHeight <= 34)).toBe(true);
+      expect(measurements.actionHeights.every(actionHeight => actionHeight <= 30)).toBe(true);
+    } else {
+      expect(measurements.actionHeights.every(actionHeight => actionHeight >= 40)).toBe(true);
+    }
+    const firstAction = panel.getByRole("button", { name: "Update matched amount" });
+    await firstAction.focus();
+    await expect(firstAction).toBeFocused();
+    await firstAction.press("Tab");
+    await expect(panel.getByRole("button", { name: "Review Back confirmation" })).toBeFocused();
+    await panel.scrollIntoViewIfNeeded();
+    await mkdir(evidence, { recursive: true });
+    await page.screenshot({ path: join(evidence, `warning-details-${width}-${theme}.png`) });
+  }
+});
+
 test("proposal exposes all warnings and cumulative partial-lay actions without changing a record", async ({ page }) => {
   await page.goto("/design-lab/sportsbook-proposals?amendment=operations");
   const ledger = page.locator('[data-pd-id="lab.proposal.ledger"]');

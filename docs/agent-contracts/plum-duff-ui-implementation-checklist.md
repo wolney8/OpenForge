@@ -2,6 +2,14 @@
 
 Complete this for every feature, bug fix, component, fixture-backed UI, route or page change.
 
+## CP-117 operations warning preview spacing — 2026-11-25 / #118
+
+- [x] Registered PD-FIX-668 and reproduced the 12px warning-row gap before editing.
+- [x] Reused the Lab warning panel and link action; scoped the 5px list gap, inline action size and mobile touch treatment to the proposal warning list. Existing Back/Status panels and financial commands are unchanged.
+- [x] Inspected desktop and mobile screenshots in light and dark. Checked heading/list geometry, one-line desktop rows, natural mobile wrapping, keyboard focus, all three corrective actions and no page overflow.
+- [x] Focused browser checks 2/2, typecheck, disposable build and changed-source lint passed. Private captures remain uncommitted.
+- [ ] Owner approval of the warning/lifecycle proposal and broader Design/Interaction Acceptance remain outstanding.
+
 ## CP-117 cumulative Lay concurrent Save — 2026-11-25 / #118
 
 - [x] Registered PD-FIX-667 and reproduced the same-second £8 winner / stale £6 overwrite before changing the command.
