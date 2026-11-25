@@ -15,7 +15,10 @@ html[data-ux-shell="v2"] {
   --muted: #56616c;
   --outline: rgba(24, 30, 36, .13);
   --outline-strong: rgba(24, 30, 36, .23);
-  --shadow: 0 4px 16px rgba(24, 30, 36, .06);
+  --shadow: none;
+  --shadow-soft: none;
+  --shadow-medium: none;
+  --floating-nav-shadow: none;
   --hero-glow: none;
 }
 html[data-ux-shell="v2"][data-theme="dark"] {
@@ -31,7 +34,21 @@ html[data-ux-shell="v2"][data-theme="dark"] {
   --muted: #a0a5af;
   --outline: rgba(244, 246, 248, .11);
   --outline-strong: rgba(244, 246, 248, .2);
-  --shadow: 0 4px 16px rgba(0, 0, 0, .12);
+  --shadow: none;
+}
+.lab-operations-preview {
+  --shadow: none;
+  --shadow-soft: none;
+  --shadow-medium: none;
+  --floating-nav-shadow: none;
+}
+.lab-operations-preview [data-pd-id="lab.proposal.main"] {
+  max-width: none;
+  padding-inline: clamp(16px, 1.2vw, 24px);
+}
+.lab-operations-preview [data-pd-id="lab.proposal.workbench"] {
+  max-width: 1500px;
+  margin-inline: auto;
 }
 html[data-ux-shell="v2"], html[data-ux-shell="v2"] body { background: var(--bg); }
 .ledger-compact-date { position: relative; display: inline-block; max-width: 100%; white-space: nowrap; font-variant-numeric: tabular-nums; cursor: help; }
@@ -57,9 +74,38 @@ html[data-ux-shell="v2"] .ux-v2-sidebar .ux-v2-nav-link.is-active { border-radiu
 .ux-v2-top-bar .global-search-compact-trigger { border-color: transparent; background: transparent; box-shadow: none; }
 .ux-v2-main > .page-shell { width: 100%; max-width: var(--ux-v2-page-max-width); }
 /* Ledger pages use a balanced outer frame; the accepted workbench width stays separate. */
-.ux-v2-main > .page-shell:is(.ledger-v2-page, :has(.ledger-v2-page)) { max-width: 1560px; }
+.ux-v2-main > .page-shell:is(.ledger-v2-page, :has(.ledger-v2-page)) {
+  max-width: none;
+  padding-inline: clamp(16px, 1.2vw, 24px);
+}
 /* The approved Lab editor uses its 1500px page container, independent of the ledger browsing frame. */
 .ux-v2-main > .page-shell:has(.sportsbook-v2-workbench) { max-width: 1500px; }
+/* The active V2 and the separate operations amendment use flat, bordered
+   surfaces. Focus/selection and warning outlines remain owned by their cells. */
+html[data-ux-shell="v2"] :is(button, [role="button"], a.button-link, a[class*="Button"], [role="menu"], [role="listbox"], [role="dialog"], .ledger-cell-review-popover, [data-pd-id="ledger.floating-editor"], .pd-combobox-options, .pd-combobox-options-floating, [class*="searchResults"], [class*="headerOverlay"], [class*="headerMenu"]),
+.lab-operations-preview :is(button, [role="button"], a.button-link, a[class*="Button"], [role="menu"], [role="listbox"], [role="dialog"], .ledger-cell-review-popover, [data-pd-id="ledger.floating-editor"], .pd-combobox-options, .pd-combobox-options-floating, [class*="searchResults"], [class*="headerOverlay"], [class*="headerMenu"]) {
+  box-shadow: none !important;
+  text-shadow: none !important;
+  filter: none !important;
+}
+html[data-ux-shell="v2"] :is(button, [role="button"], a.button-link, a[class*="Button"], [role="menu"], [role="listbox"], [role="dialog"], .ledger-cell-review-popover, [data-pd-id="ledger.floating-editor"])::before,
+html[data-ux-shell="v2"] :is(button, [role="button"], a.button-link, a[class*="Button"], [role="menu"], [role="listbox"], [role="dialog"], .ledger-cell-review-popover, [data-pd-id="ledger.floating-editor"])::after,
+.lab-operations-preview :is(button, [role="button"], a.button-link, a[class*="Button"], [role="menu"], [role="listbox"], [role="dialog"], .ledger-cell-review-popover, [data-pd-id="ledger.floating-editor"])::before,
+.lab-operations-preview :is(button, [role="button"], a.button-link, a[class*="Button"], [role="menu"], [role="listbox"], [role="dialog"], .ledger-cell-review-popover, [data-pd-id="ledger.floating-editor"])::after {
+  box-shadow: none !important;
+  text-shadow: none !important;
+  filter: none !important;
+}
+html[data-ux-shell="v2"] :is(button, [role="button"], a.button-link, a[class*="Button"]):focus-visible,
+.lab-operations-preview :is(button, [role="button"], a.button-link, a[class*="Button"]):focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+html[data-ux-shell="v2"] :is(button, [role="button"], a.button-link, a[class*="Button"]) :is(svg, .material-symbols-outlined),
+.lab-operations-preview :is(button, [role="button"], a.button-link, a[class*="Button"]) :is(svg, .material-symbols-outlined) {
+  filter: none !important;
+  text-shadow: none !important;
+}
 @media (max-width: 430px) {
   .ux-v2-main > .page-shell:has(.sportsbook-v2-workbench) { padding-inline: 14px; }
 }

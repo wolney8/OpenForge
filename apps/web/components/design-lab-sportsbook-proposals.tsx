@@ -195,7 +195,7 @@ export function DesignLabSportsbookProposals({ initialAmendment, initialPartialL
   const visibleScenarios = outcomeState === "exceptional" ? scenarios.slice(0, 2) : scenarios;
   const detailedScenarios = outcomeState === "exceptional" ? scenarios.slice(2) : [];
 
-  return <div className={lab.lab} data-pd-id="lab.sportsbook-proposals.root" ref={setPortalTarget}>
+  return <div className={`${lab.lab} ${amendment === "operations" ? "lab-operations-preview" : ""}`} data-pd-id="lab.sportsbook-proposals.root" ref={setPortalTarget}>
     <a className={lab.skip} href="#lab-main">Skip to proposal</a>
     <div className={`${lab.frame} ${collapsed ? lab.collapsed : ""}`}>
       {mobileNav ? <button aria-label="Dismiss navigation" className={lab.navScrim} onClick={() => setMobileNav(false)} tabIndex={-1} type="button" /> : null}

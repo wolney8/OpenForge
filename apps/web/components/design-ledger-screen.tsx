@@ -4,7 +4,7 @@ import Link from "next/link";
 import styles from "@/components/design-lab-connected.module.css";
 import { DesignLabSelect } from "@/components/design-lab-select";
 import { ledgerPageSizeOptions } from "@/components/ledger-pagination";
-import { TrackedTasksBanner } from "@/components/tracked-tasks-banner";
+import { TrackedTasksBannerSlot } from "@/components/tracked-tasks-banner-slot";
 
 /** The approved Lab ledger's complete heading, controls and content surface. */
 export function DesignLedgerScreen({ actions, children, dataPdId, description, enabled = true, title }: {
@@ -59,7 +59,7 @@ export function DesignLedgerPagination({ currentPage, dataPdId, label, onPageCha
 }
 
 export function DesignPageHead({ children, dataPdId, enabled = true, showTrackedBanner = true }: { children: ReactNode; dataPdId?: string; enabled?: boolean; showTrackedBanner?: boolean }) {
-  return enabled ? <><div className={styles.pageHead} data-pd-id={dataPdId}>{children}</div>{showTrackedBanner ? <Suspense fallback={null}><TrackedTasksBanner /></Suspense> : null}</> : <>{children}</>;
+  return enabled ? <><div className={styles.pageHead} data-pd-id={dataPdId}>{children}</div>{showTrackedBanner ? <Suspense fallback={null}><TrackedTasksBannerSlot /></Suspense> : null}</> : <>{children}</>;
 }
 
 export const designPageHeadClasses = { actions: styles.headActions };

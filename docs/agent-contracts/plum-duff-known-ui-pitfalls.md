@@ -1700,3 +1700,8 @@ A shared `entry` class did not prevent a native 1180px cap, different root token
 ## Shared Lab controls outside the Lab root — 2026-11-21
 
 Reusing a Lab CSS module class in PD does not carry rules scoped to the `.lab` ancestor. In the Sportsbook Placement disclosure, disabled confirmation buttons looked enabled in PD because the approved preview used `.lab button:disabled`. Keep shared disabled treatment on the exported button classes and compare computed opacity and accessible disabled state in the real workbench and amendment preview. Regression: `cp117-sportsbook-proposals.spec.ts` at 2048px dark, 1440px light and 390px dark.
+## CP-117 ledger frame and task banner eligibility — 2026-11-25 / #118
+
+A shared page head can mount `TrackedTasksBanner` before the banner decides to return `null`; its effects still fetch annotations and can show a loading gap on excluded ledger routes. Decide route eligibility before mounting the client banner, including direct workbench and Lab routes. A ledger-specific max width can also compound the page shell's horizontal padding and leave large desktop gutters. Measure the card edges relative to the main area with both sidebar states; leave the workbench width rule separate. `cp117-ledger-presentation.spec.ts` covers the twelve ledger routes, delayed reads and frame geometry.
+
+Shared Lab CSS modules contain hard-coded menu/editor shadows, and portalled option lists inherit root tokens rather than a Lab ancestor. Check actual normal, hover, pressed and pseudo computed styles in the portal mount; keep focus, selected and warning outlines independent. The operations amendment may use a scoped flat variant without changing the frozen Lab reference.
