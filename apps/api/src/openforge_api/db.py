@@ -4652,9 +4652,18 @@ def update_sportsbook_bet(
         if current is None:
             from fastapi import HTTPException
             raise HTTPException(status_code=404, detail="Sportsbook source no longer exists.")
-        if expected_record_revision is not None and expected_record_revision != current["updated_at"]:
+        if (
+            expected_record_revision is not None
+            and expected_record_revision != current["updated_at"]
+        ):
             from fastapi import HTTPException
-            raise HTTPException(status_code=409, detail="This Sportsbook bet changed elsewhere. Refresh and review the recorded execution before retrying; your draft is retained.")
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    "This Sportsbook bet changed elsewhere. Refresh and review "
+                    "the recorded execution before retrying; your draft is retained."
+                ),
+            )
         updated["updated_at"] = _next_sportsbook_record_revision(str(current["updated_at"]))
         from openforge_api.lay_plan import store_plan
         updated["lay_plan_json"] = store_plan(connection, "sportsbook_bets", profile_id, sportsbook_bet_id, payload.get("lay_plan_json"), updating=True)
