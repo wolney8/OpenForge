@@ -105,6 +105,84 @@ test("warning panel uses reduced motion and remains contained at mobile width", 
   await expect(page.getByRole("button", { name: /Show 2 recorded warnings/ })).toHaveAttribute("aria-expanded", "false");
 });
 
+test("corrective review targets secondary, primary, then secondary identities without sharing drafts", async ({ page }) => {
+  await page.goto(preview);
+  const first = page.locator('[data-pd-id="lab.proposal.row.DEMO-001"]');
+  const second = page.locator('[data-pd-id="lab.proposal.row.DEMO-002"]');
+  const workbench = page.locator('[data-pd-id="lab.proposal.workbench"]');
+
+  await second.getByRole("button", { name: /Show 1 recorded warnings/ }).click();
+  await page.locator('[data-pd-id="lab.proposal.warnings.DEMO-002"]').getByRole("button", { name: "Review Back confirmation" }).click();
+  await expect(page.getByRole("heading", { name: "Edit Sportsbook Bet · DEMO-002" })).toBeVisible();
+  await expect(workbench).toContainText("Ipswich Town v Norwich City · Profile B");
+  await expect(page.locator('[data-operation-focus="back"]')).toBeFocused();
+  await page.locator('[data-operation-focus="back"]').fill("12.34");
+  await page.getByRole("button", { name: "Return to ledger" }).click();
+  await expect(second.getByRole("button", { name: /Show 1 recorded warnings/ })).toBeFocused();
+  await expect(second.getByRole("button", { name: /Show 1 recorded warnings/ })).toHaveAttribute("aria-expanded", "true");
+
+  await first.getByRole("button", { name: /Show 3 recorded warnings/ }).click();
+  await page.locator('[data-pd-id="lab.proposal.warnings"]').getByRole("button", { name: "Review Back confirmation" }).click();
+  await expect(page.getByRole("heading", { name: "Edit Sportsbook Bet · DEMO-001" })).toBeVisible();
+  await expect(workbench).toContainText("Arsenal v Chelsea · Profile A");
+  await expect(page.locator('[data-operation-focus="back"]')).toBeFocused();
+  await expect(page.locator('[data-operation-focus="back"]')).toHaveValue("10.00");
+  await page.getByRole("button", { name: "Return to ledger" }).click();
+  await expect(first.getByRole("button", { name: /Show 3 recorded warnings/ })).toBeFocused();
+  await expect(first.getByRole("button", { name: /Show 3 recorded warnings/ })).toHaveAttribute("aria-expanded", "true");
+
+  await second.getByRole("button", { name: /Show 1 recorded warnings/ }).click();
+  await page.locator('[data-pd-id="lab.proposal.warnings.DEMO-002"]').getByRole("button", { name: "Review Back confirmation" }).click();
+  await expect(page.getByRole("heading", { name: "Edit Sportsbook Bet · DEMO-002" })).toBeVisible();
+  await expect(workbench).toContainText("Ipswich Town v Norwich City · Profile B");
+  await expect(page.locator('[data-operation-focus="back"]')).toBeFocused();
+  await expect(page.locator('[data-operation-focus="back"]')).toHaveValue("12.34");
+  await page.getByRole("button", { name: "Return to ledger" }).click();
+
+  await first.getByRole("button", { name: "Review protected bookmaker cell" }).dblclick();
+  await page.locator('[data-pd-id="lab.proposal.protected-cell"]').getByRole("button", { name: "Open record for review" }).click();
+  await expect(page.getByRole("heading", { name: "Edit Sportsbook Bet · DEMO-001" })).toBeVisible();
+  await expect(workbench).toContainText("Arsenal v Chelsea · Profile A");
+  await expect(page.locator('[data-operation-focus="back"]')).toBeFocused();
+  await page.getByRole("button", { name: "Return to ledger" }).click();
+
+  await page.locator('[data-pd-id="lab.proposal.profile"]').click();
+  await page.getByRole("option", { name: "Profile A" }).click();
+  await page.getByRole("button", { name: "Open Bet Workbench" }).click();
+  await expect(page.getByRole("heading", { name: "Edit Sportsbook Bet · DEMO-001" })).toBeVisible();
+  await expect(workbench).toContainText("Arsenal v Chelsea · Profile A");
+  await page.getByRole("button", { name: "Return to ledger" }).click();
+  await page.locator('[data-pd-id="lab.proposal.profile"]').click();
+  await page.getByRole("option", { name: "Profile B" }).click();
+  await page.getByRole("button", { name: "Open Bet Workbench" }).click();
+  await expect(page.getByRole("heading", { name: "Edit Sportsbook Bet · DEMO-002" })).toBeVisible();
+  await expect(workbench).toContainText("Ipswich Town v Norwich City · Profile B");
+});
+
+test("recorded-date sorting follows committed displayed dates and ignores unapplied drafts", async ({ page }) => {
+  await page.goto(preview);
+  await page.getByRole("combobox", { name: "Rows per page" }).selectOption("2");
+  const rows = page.locator('[data-pd-id^="lab.proposal.row."]');
+  await expect(rows.first()).toHaveAttribute("data-pd-id", "lab.proposal.row.DEMO-001");
+  const first = page.locator('[data-pd-id="lab.proposal.row.DEMO-001"]');
+  await first.getByRole("button", { name: "Edit Settles date and time" }).click();
+  await first.getByRole("textbox", { name: "Settles date and time" }).fill("2026-12-31T18:54");
+  await expect(rows.first()).toHaveAttribute("data-pd-id", "lab.proposal.row.DEMO-001");
+  await first.getByRole("button", { name: "Apply date" }).click();
+  await expect(rows.first()).toHaveAttribute("data-pd-id", "lab.proposal.row.DEMO-002");
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await expect(rows.last()).toHaveAttribute("data-pd-id", "lab.proposal.row.DEMO-001");
+  await expect(first).toContainText("31st Dec");
+
+  await first.getByRole("button", { name: "Edit Settles date and time" }).click();
+  await first.getByRole("textbox", { name: "Settles date and time" }).fill("2026-11-01T18:54");
+  await expect(rows.last()).toHaveAttribute("data-pd-id", "lab.proposal.row.DEMO-001");
+  await first.getByRole("button", { name: "Apply date" }).click();
+  await page.getByRole("button", { name: "Previous", exact: true }).click();
+  await expect(rows.first()).toHaveAttribute("data-pd-id", "lab.proposal.row.DEMO-001");
+  await expect(first).toContainText("1st Nov");
+});
+
 test("Extra Place Runner/Race uses one cell-width editor in owned and combined scope", async ({ page }) => {
   test.setTimeout(150_000);
   expect((await page.request.put("/api/fund-manager/preferences/selected-range", { data: { selected_range_preset: "All Dates", selected_range_custom_start: null, selected_range_custom_end: null } })).status()).toBe(200);
