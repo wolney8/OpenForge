@@ -30,6 +30,7 @@
 .warningTrigger .material-symbols-outlined{font-size:18px}
 .warningPanel{display:grid;gap:10px;margin:12px 0;padding:14px;border:1px solid var(--outline-strong);border-radius:10px;background:var(--surface-container)}
 .warningPanel h3,.warningPanel p{margin:0}.warningPanel ul{display:grid;gap:12px;margin:0;padding-left:20px}.warningPanel li{line-height:1.45}.warningPanel label{display:grid;gap:6px;font-weight:700}.warningPanel input{width:min(220px,100%);min-height:44px;padding:8px 10px;border:1px solid var(--outline-strong);border-radius:9px;background:var(--surface-strong);color:var(--text);font:inherit}
+.operationFieldWarning{display:flex;align-items:flex-start;gap:8px;margin:0 0 10px;padding:9px 11px;border-color:var(--warning);font-size:.875rem;line-height:1.4}.operationFieldWarning :global(.material-symbols-outlined){flex:none;font-size:20px;color:var(--warning)}
 .warningDetailsPanel{gap:5px;padding:10px 12px}
 .warningDetailsPanel .warningList{gap:5px;padding-left:18px}
 .warningDetailsPanel .warningList li{margin:0;line-height:1.35}

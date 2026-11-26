@@ -107,7 +107,7 @@ export function DesignBetWorkbenchRecordedLegs({ children, hasLegs, matchedTotal
     {!hasLegs ? <p>{emptyMessage}</p> : null}
     {children}
     {hasLegs ? <p>Matched so far · {formatFinancialValue(matchedTotal)}</p> : null}
-    <p className={styles.placementRemaining} data-pd-id="sportsbook.workbench.remaining-request">{target === null || remaining === null ? "Request Not recorded" : remaining < 0 ? `${compactStake(Math.abs(remaining))} above the ${compactStake(target)} request` : `${compactStake(remaining)} remaining of the ${compactStake(target)} request`}</p>
+    <p className={styles.placementRemaining} data-pd-id="sportsbook.workbench.remaining-request">{target === null || remaining === null ? "Requested Lay Stake not recorded" : remaining < 0 ? `${compactStake(Math.abs(remaining))} above the ${compactStake(target)} request` : `${compactStake(remaining)} remaining of the ${compactStake(target)} request`}</p>
     <div className={styles.placementNextGuidance} data-pd-id="sportsbook.workbench.next-lay-guidance">
       <span>Recommended Next Lay Stake · plan</span>
       {recommendedNext !== null ? <button aria-label="Copy Recommended Next Lay Stake" className={styles.secondaryButton} disabled={recommendedNext <= 0 || !onCopyRecommended} onClick={onCopyRecommended} type="button">{formatFinancialValue(recommendedNext)}</button> : <strong>Not recorded</strong>}

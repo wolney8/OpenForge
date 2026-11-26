@@ -632,7 +632,7 @@ test("historical Placed record keeps unrecorded Back and request evidence distin
   await expect(placement.getByLabel("Actual matched lay stake")).toHaveValue("9.54");
   const missingRequest = placement.locator('[data-pd-id="sportsbook.workbench.partial-fill"]');
   await missingRequest.locator("summary").click();
-  await expect(missingRequest.locator('[data-pd-id="sportsbook.workbench.remaining-request"]')).toHaveText("Request Not recorded");
+  await expect(missingRequest.locator('[data-pd-id="sportsbook.workbench.remaining-request"]')).toHaveText("Requested Lay Stake not recorded");
   await expect(missingRequest.locator('[data-pd-id="sportsbook.workbench.next-lay-guidance"]')).not.toContainText("Remaining lay exposure is still open.");
   await workbench.locator('[data-pd-id="bet-workbench.stage.finish"]').click();
   const linked = workbench.locator('[data-pd-id="sportsbook.workbench.linked-free-bets"]');

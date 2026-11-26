@@ -47,7 +47,7 @@ export async function commitRoutineCumulativeLay({ profileId, recordId, expected
   const differencePence = Math.round(Number(target) * 100) - Math.round(evidence.matched * 100);
   if (differencePence < 0) throw new Error("A downward matched amount is a correction. Review the existing fills in Placement.");
   if (differencePence === 0) return current;
-  if (Math.round(Number(target) * 100) > Math.round(evidence.requested * 100)) throw new Error("Matched so far cannot exceed the recorded Lay request. Review the request in Placement.");
+  if (Math.round(Number(target) * 100) > Math.round(evidence.requested * 100)) throw new Error("Matched so far cannot exceed the recorded Requested Lay Stake. Review Requested Lay Stake in Placement.");
   let nextNumber = evidence.legs.length + 1;
   while (evidence.legs.some(leg => leg.id === `layleg${nextNumber}`)) nextNumber += 1;
   const nextLeg: Leg = { id: `layleg${nextNumber}`, label: `Lay leg ${nextNumber}`, exchangeName: evidence.exchange, layOdds: evidence.odds, matchedStake: (differencePence / 100).toFixed(2), isFinal: Math.round(Number(target) * 100) === Math.round(evidence.requested * 100) };

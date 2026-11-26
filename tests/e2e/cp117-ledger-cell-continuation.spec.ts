@@ -106,7 +106,7 @@ test("eligible persisted partial Lay opens the compact cumulative editor in the 
   await expect(editor).toContainText(/Remaining£\s*3\.00/);
   await editor.getByLabel("Matched so far").fill("9.00");
   await editor.getByRole("button", { name: "Confirm" }).click();
-  await expect(editor).toContainText("cannot exceed the recorded Lay request");
+  await expect(editor).toContainText("cannot exceed the recorded Requested Lay Stake");
   await expect(editor.getByLabel("Matched so far")).toHaveValue("9.00");
   const read = async () => await (await page.request.get(`/api/profiles/${profile}/sportsbook-bets/${id}`)).json() as Record<string, unknown>;
   for (const [next, expectedLegs] of [["5.10", 2], ["6.00", 3], ["6.00", 3], ["8.00", 4]] as const) {

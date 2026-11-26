@@ -10,13 +10,139 @@ test.beforeEach(async ({ page }) => {
   await page.goto(authURL);
 });
 
+test("Operations warning navigation replaces the ledger and uses approved terms", async ({ page }) => {
+  await page.goto(preview);
+  const row = page.locator('[data-pd-id="lab.proposal.row.DEMO-003"]');
+  await row.getByRole("button", { name: /Show 2 recorded warnings/ }).click();
+  const warnings = page.locator('[data-pd-id="lab.proposal.warnings.DEMO-003"]');
+  await expect(warnings).toContainText("Requested Lay Stake · Not recorded");
+  await warnings.getByRole("button", { name: "Review Requested Lay Stake" }).click();
+  await expect(page.locator('[data-pd-id="lab.proposal.ledger"]')).toHaveCount(0);
+  await expect(page.locator('[data-pd-id="lab.proposal.workbench"]')).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Edit Sportsbook Bet · DEMO-003" })).toBeVisible();
+  await expect(page.locator('[data-operation-focus="request"]')).toBeFocused();
+  await expect(page.getByRole("button", { name: "Return to ledger" })).toHaveCount(0);
+  await page.getByRole("navigation", { name: "Breadcrumb" }).getByRole("button", { name: "Sportsbook Bets" }).click();
+  await expect(row).toBeVisible();
+  await expect(row.getByRole("button", { name: /Show 2 recorded warnings/ })).toHaveAttribute("aria-expanded", "true");
+  await page.locator('[data-pd-id="lab.proposal.row.DEMO-002"]').getByRole("button", { name: /Show 1 recorded warning/ }).click();
+  await expect(page.locator('[data-pd-id="lab.proposal.warnings.DEMO-002"]')).toContainText("1 item needs review");
+});
+
+test("Operations Workbench guards unsaved drafts and refreshes committed warning evidence", async ({ page }) => {
+  await page.goto(preview);
+  const row = page.locator('[data-pd-id="lab.proposal.row.DEMO-003"]');
+  await row.getByRole("button", { name: /Show 2 recorded warnings/ }).click();
+  await page.locator('[data-pd-id="lab.proposal.warnings.DEMO-003"]').getByRole("button", { name: "Review Requested Lay Stake" }).click();
+  await page.locator('[data-operation-focus="request"]').fill("7.00");
+  await page.getByRole("button", { name: "Cancel", exact: true }).click();
+  const guard = page.getByRole("dialog", { name: "You have unsaved Sportsbook changes." });
+  await expect(guard).toBeVisible();
+  await guard.getByRole("button", { name: "Keep editing" }).click();
+  await expect(page.locator('[data-operation-focus="request"]')).toHaveValue("7.00");
+  await page.getByRole("button", { name: "Cancel", exact: true }).click();
+  await guard.getByRole("button", { name: "Discard changes" }).click();
+  await expect(row).toBeVisible();
+  await expect(row.getByRole("button", { name: /Show 2 recorded warnings/ })).toHaveAttribute("aria-expanded", "true");
+  await page.locator('[data-pd-id="lab.proposal.warnings.DEMO-003"]').getByRole("button", { name: "Review Requested Lay Stake" }).click();
+  await expect(page.locator('[data-operation-focus="request"]')).toHaveValue("");
+  await page.locator('[data-operation-focus="request"]').fill("8.00");
+  await page.getByRole("button", { name: "Save Existing Bet" }).click();
+  await page.getByRole("button", { name: "Cancel", exact: true }).click();
+  await expect(row.getByRole("button", { name: /Show 1 recorded warning/ })).toBeVisible();
+  await expect(page.locator('[data-pd-id="lab.proposal.warnings.DEMO-003"]')).not.toContainText("Requested Lay Stake · Not recorded");
+});
+
+test("Operations Workbench Save and close restores the originating page and table scroll", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(preview);
+  await page.getByRole("combobox", { name: "Rows per page" }).selectOption("2");
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+  const row = page.locator('[data-pd-id="lab.proposal.row.DEMO-003"]');
+  await expect(row).toBeVisible();
+  const table = page.locator('[data-pd-id="lab.proposal.table-scroll"]');
+  await table.evaluate(element => { element.scrollLeft = 120; });
+  await row.getByRole("button", { name: /Show 2 recorded warnings/ }).click();
+  const before = await table.evaluate(element => element.scrollLeft);
+  expect(before).toBeGreaterThan(0);
+  await page.locator('[data-pd-id="lab.proposal.warnings.DEMO-003"]').getByRole("button", { name: "Review Requested Lay Stake" }).click();
+  await page.locator('[data-operation-focus="request"]').fill("8.00");
+  await page.getByRole("navigation", { name: "Breadcrumb" }).getByRole("button", { name: "Sportsbook Bets" }).click();
+  const guard = page.getByRole("dialog", { name: "You have unsaved Sportsbook changes." });
+  await guard.getByRole("button", { name: "Save and close" }).click();
+  await expect(page.locator('[data-pd-id="lab.proposal.ledger"]')).toBeVisible();
+  await expect(page.locator('[data-pd-id="lab.proposal.workbench"]')).toHaveCount(0);
+  await expect(row.getByRole("button", { name: /Show 1 recorded warning/ })).toHaveAttribute("aria-expanded", "true");
+  await expect(page.locator('[data-pd-id="lab.proposal.warnings.DEMO-003"]')).toContainText("1 item needs review");
+  await expect.poll(async () => table.evaluate(element => element.scrollLeft)).toBe(before);
+  await expect(page.getByText(/Page 2 of 2/)).toBeVisible();
+  await expect(row.getByRole("button", { name: /Show 1 recorded warning/ })).toBeFocused();
+});
+
+for (const [width, height, theme] of [[2048, 1152, "dark"], [1440, 900, "light"], [390, 844, "dark"]] as const) {
+  test(`Operations Workbench replaces the ledger through five stages at ${width}px ${theme}`, async ({ page }, info) => {
+    await page.setViewportSize({ width, height });
+    await page.emulateMedia({ colorScheme: theme });
+    await page.addInitScript(selectedTheme => localStorage.setItem("openforge-theme", selectedTheme), theme);
+    await page.goto(preview);
+    await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
+    await page.getByRole("textbox", { name: "Search proposal rows" }).fill("Brighton");
+    await page.getByRole("combobox", { name: "Sort proposal rows" }).selectOption("event");
+    const row = page.locator('[data-pd-id="lab.proposal.row.DEMO-003"]');
+    await row.getByRole("button", { name: /Show 2 recorded warnings/ }).click();
+    await page.locator('[data-pd-id="lab.proposal.warnings.DEMO-003"]').getByRole("button", { name: "Review Requested Lay Stake" }).click();
+    await expect(page.locator('[data-pd-id="lab.proposal.ledger"]')).toHaveCount(0);
+    await expect(page.locator('[data-pd-id="lab.proposal.header"]')).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Edit Sportsbook Bet · DEMO-003" })).toBeVisible();
+    await expect(page.locator('[data-pd-id="lab.proposal.field-warning"]')).toContainText("Requested Lay Stake");
+    await expect(page.locator('[data-operation-focus="request"]')).toBeFocused();
+    const stages = page.getByRole("navigation", { name: "Bet workbench sections" });
+    for (const label of ["Offer", "Requirements", "Matching", "Placement", "Finish / Review"]) await expect(stages.getByRole("button", { name: label })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Outcome Comparison" })).toBeVisible();
+    await expect(page.locator('[data-pd-id="lab.proposal.footer"]')).toContainText("Save Existing Bet");
+    await page.screenshot({ path: info.outputPath(`operations-workbench-${width}-${theme}.png`), fullPage: true });
+    for (const [label, legend] of [["Offer", "Offer"], ["Requirements", "Requirements"], ["Matching", "Matching"], ["Finish / Review", "Finish / Review"]] as const) {
+      await stages.getByRole("button", { name: label }).click();
+      await expect(page.locator('[data-pd-id="lab.proposal.operations"]')).toContainText(legend);
+      await expect(page.locator('[data-pd-id="lab.proposal.ledger"]')).toHaveCount(0);
+    }
+    await page.getByRole("navigation", { name: "Breadcrumb" }).getByRole("button", { name: "Sportsbook Bets" }).click();
+    await expect(row).toBeVisible();
+    await expect(page.getByRole("textbox", { name: "Search proposal rows" })).toHaveValue("Brighton");
+    await expect(page.getByRole("combobox", { name: "Sort proposal rows" })).toHaveValue("event");
+    await expect(row.getByRole("button", { name: /Show 2 recorded warnings/ })).toHaveAttribute("aria-expanded", "true");
+    expect(await page.evaluate(() => Math.max(0, document.documentElement.scrollWidth - innerWidth))).toBe(0);
+  });
+}
+
+test("each warning targets its owning record, stage and corrective field", async ({ page }) => {
+  for (const [record, count, action, stage, focus] of [
+    ["DEMO-001", 3, "Review Back confirmation", "Placement", "back"],
+    ["DEMO-001", 3, "Review settlement", "Finish / Review", "status"],
+    ["DEMO-001", 3, "Update matched amount", "Placement", "match"],
+    ["DEMO-003", 2, "Review Requested Lay Stake", "Placement", "request"],
+    ["DEMO-003", 2, "Review settlement", "Finish / Review", "status"],
+    ["DEMO-002", 1, "Review Back confirmation", "Placement", "back"],
+  ] as const) {
+    await page.goto(preview);
+    await page.locator(`[data-pd-id="lab.proposal.row.${record}"]`).getByRole("button", { name: new RegExp(`Show ${count} recorded warning`) }).click();
+    const warnings = page.locator(record === "DEMO-001" ? '[data-pd-id="lab.proposal.warnings"]' : `[data-pd-id="lab.proposal.warnings.${record}"]`);
+    await warnings.getByRole("button", { name: action }).click();
+    await expect(page.getByRole("heading", { name: `Edit Sportsbook Bet · ${record}` })).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "Bet workbench sections" }).getByRole("button", { name: stage })).toHaveAttribute("aria-current", "step");
+    await expect(page.locator(`[data-operation-focus="${focus}"]`)).toBeFocused();
+    await expect(page.locator('[data-pd-id="lab.proposal.field-warning"]')).toBeVisible();
+    await expect(page.locator('[data-pd-id="lab.proposal.ledger"]')).toHaveCount(0);
+  }
+});
+
 test("four preview rows switch one animated warning panel and preserve identity and draft", async ({ page }, info) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto(preview);
   const rows = page.locator('[data-pd-id^="lab.proposal.row."]');
   await expect(rows).toHaveCount(4);
   await expect(rows.nth(0).getByRole("button", { name: /Show 3 recorded warnings/ })).toBeVisible();
-  await expect(rows.nth(1).getByRole("button", { name: /Show 1 recorded warnings/ })).toBeVisible();
+  await expect(rows.nth(1).getByRole("button", { name: /Show 1 recorded warning/ })).toBeVisible();
   await expect(rows.nth(2).getByRole("button", { name: /Show 2 recorded warnings/ })).toBeVisible();
   await expect(rows.nth(3).locator("[aria-controls^='lab-proposal-warning']")).toHaveCount(0);
   const details = page.locator('[class*="warningDetailRow"]');
@@ -29,7 +155,7 @@ test("four preview rows switch one animated warning panel and preserve identity 
   await page.waitForTimeout(220);
   const firstHeight = await details.first().evaluate(node => node.getBoundingClientRect().height);
   expect(firstHeight).toBeGreaterThan(130);
-  await rows.nth(1).getByRole("button", { name: /Show 1 recorded warnings/ }).click();
+  await rows.nth(1).getByRole("button", { name: /Show 1 recorded warning/ }).click();
   await rows.nth(0).getByRole("button", { name: /Show 3 recorded warnings/ }).click();
   await page.waitForTimeout(260);
   const switchedHeights = await details.evaluateAll(nodes => nodes.map(node => node.getBoundingClientRect().height));
@@ -38,7 +164,7 @@ test("four preview rows switch one animated warning panel and preserve identity 
   expect(switchedHeights[2]).toBeLessThan(1);
   await expect(page.locator('[data-pd-id="lab.proposal.warnings"]')).toContainText("Arsenal v Chelsea · Profile A");
   await page.screenshot({ path: info.outputPath("three-warnings-open.png"), fullPage: true });
-  await rows.nth(1).getByRole("button", { name: /Show 1 recorded warnings/ }).click();
+  await rows.nth(1).getByRole("button", { name: /Show 1 recorded warning/ }).click();
   await page.waitForTimeout(260);
   const heights = await details.evaluateAll(nodes => nodes.map(node => node.getBoundingClientRect().height));
   expect(heights[0]).toBeLessThan(1);
@@ -50,11 +176,12 @@ test("four preview rows switch one animated warning panel and preserve identity 
   await expect(page.locator('[data-pd-id="lab.proposal.workbench"]')).toContainText("Ipswich Town v Norwich City · Profile B");
   await expect(page.locator('[data-operation-focus="back"]')).toBeFocused();
   await page.locator('[data-operation-focus="back"]').fill("12.00");
-  await page.getByRole("button", { name: "Return to ledger" }).click();
-  await expect(rows.nth(1).getByRole("button", { name: /Show 1 recorded warnings/ })).toBeFocused();
+  await page.getByRole("button", { name: "Save Existing Bet" }).click();
+  await page.getByRole("button", { name: "Cancel", exact: true }).click();
+  await expect(rows.nth(1).getByRole("button", { name: /Show 1 recorded warning/ })).toBeFocused();
   await page.locator('[data-pd-id="lab.proposal.warnings.DEMO-002"]').getByRole("button", { name: "Review Back confirmation" }).click();
   await expect(page.locator('[data-operation-focus="back"]')).toHaveValue("12.00");
-  await page.getByRole("button", { name: "Return to ledger" }).click();
+  await page.getByRole("button", { name: "Cancel", exact: true }).click();
   const date = rows.nth(1).getByRole("button", { name: /Edit Settles date and time/ });
   await date.click();
   const input = rows.nth(1).getByRole("textbox", { name: /Settles date and time/ });
@@ -111,15 +238,16 @@ test("corrective review targets secondary, primary, then secondary identities wi
   const second = page.locator('[data-pd-id="lab.proposal.row.DEMO-002"]');
   const workbench = page.locator('[data-pd-id="lab.proposal.workbench"]');
 
-  await second.getByRole("button", { name: /Show 1 recorded warnings/ }).click();
+  await second.getByRole("button", { name: /Show 1 recorded warning/ }).click();
   await page.locator('[data-pd-id="lab.proposal.warnings.DEMO-002"]').getByRole("button", { name: "Review Back confirmation" }).click();
   await expect(page.getByRole("heading", { name: "Edit Sportsbook Bet · DEMO-002" })).toBeVisible();
   await expect(workbench).toContainText("Ipswich Town v Norwich City · Profile B");
   await expect(page.locator('[data-operation-focus="back"]')).toBeFocused();
   await page.locator('[data-operation-focus="back"]').fill("12.34");
-  await page.getByRole("button", { name: "Return to ledger" }).click();
-  await expect(second.getByRole("button", { name: /Show 1 recorded warnings/ })).toBeFocused();
-  await expect(second.getByRole("button", { name: /Show 1 recorded warnings/ })).toHaveAttribute("aria-expanded", "true");
+  await page.getByRole("button", { name: "Save Existing Bet" }).click();
+  await page.getByRole("button", { name: "Cancel", exact: true }).click();
+  await expect(second.getByRole("button", { name: /Show 1 recorded warning/ })).toBeFocused();
+  await expect(second.getByRole("button", { name: /Show 1 recorded warning/ })).toHaveAttribute("aria-expanded", "true");
 
   await first.getByRole("button", { name: /Show 3 recorded warnings/ }).click();
   await page.locator('[data-pd-id="lab.proposal.warnings"]').getByRole("button", { name: "Review Back confirmation" }).click();
@@ -127,31 +255,31 @@ test("corrective review targets secondary, primary, then secondary identities wi
   await expect(workbench).toContainText("Arsenal v Chelsea · Profile A");
   await expect(page.locator('[data-operation-focus="back"]')).toBeFocused();
   await expect(page.locator('[data-operation-focus="back"]')).toHaveValue("10.00");
-  await page.getByRole("button", { name: "Return to ledger" }).click();
+  await page.getByRole("button", { name: "Cancel", exact: true }).click();
   await expect(first.getByRole("button", { name: /Show 3 recorded warnings/ })).toBeFocused();
   await expect(first.getByRole("button", { name: /Show 3 recorded warnings/ })).toHaveAttribute("aria-expanded", "true");
 
-  await second.getByRole("button", { name: /Show 1 recorded warnings/ }).click();
+  await second.getByRole("button", { name: /Show 1 recorded warning/ }).click();
   await page.locator('[data-pd-id="lab.proposal.warnings.DEMO-002"]').getByRole("button", { name: "Review Back confirmation" }).click();
   await expect(page.getByRole("heading", { name: "Edit Sportsbook Bet · DEMO-002" })).toBeVisible();
   await expect(workbench).toContainText("Ipswich Town v Norwich City · Profile B");
   await expect(page.locator('[data-operation-focus="back"]')).toBeFocused();
   await expect(page.locator('[data-operation-focus="back"]')).toHaveValue("12.34");
-  await page.getByRole("button", { name: "Return to ledger" }).click();
+  await page.getByRole("button", { name: "Cancel", exact: true }).click();
 
   await first.getByRole("button", { name: "Review protected bookmaker cell" }).dblclick();
   await page.locator('[data-pd-id="lab.proposal.protected-cell"]').getByRole("button", { name: "Open record for review" }).click();
   await expect(page.getByRole("heading", { name: "Edit Sportsbook Bet · DEMO-001" })).toBeVisible();
   await expect(workbench).toContainText("Arsenal v Chelsea · Profile A");
   await expect(page.locator('[data-operation-focus="back"]')).toBeFocused();
-  await page.getByRole("button", { name: "Return to ledger" }).click();
+  await page.getByRole("button", { name: "Cancel", exact: true }).click();
 
   await page.locator('[data-pd-id="lab.proposal.profile"]').click();
   await page.getByRole("option", { name: "Profile A" }).click();
   await page.getByRole("button", { name: "Open Bet Workbench" }).click();
   await expect(page.getByRole("heading", { name: "Edit Sportsbook Bet · DEMO-001" })).toBeVisible();
   await expect(workbench).toContainText("Arsenal v Chelsea · Profile A");
-  await page.getByRole("button", { name: "Return to ledger" }).click();
+  await page.getByRole("button", { name: "Cancel", exact: true }).click();
   await page.locator('[data-pd-id="lab.proposal.profile"]').click();
   await page.getByRole("option", { name: "Profile B" }).click();
   await page.getByRole("button", { name: "Open Bet Workbench" }).click();
