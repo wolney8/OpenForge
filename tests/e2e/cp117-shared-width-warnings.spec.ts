@@ -15,8 +15,8 @@ test("Operations warning navigation replaces the ledger and uses approved terms"
   const row = page.locator('[data-pd-id="lab.proposal.row.DEMO-003"]');
   await row.getByRole("button", { name: /Show 2 recorded warnings/ }).click();
   const warnings = page.locator('[data-pd-id="lab.proposal.warnings.DEMO-003"]');
-  await expect(warnings).toContainText("Requested Lay Stake · Not recorded");
-  await warnings.getByRole("button", { name: "Review Requested Lay Stake" }).click();
+  await expect(warnings).toContainText("Lay Stake · Not recorded");
+  await warnings.getByRole("button", { name: "Review Lay Stake" }).click();
   await expect(page.locator('[data-pd-id="lab.proposal.ledger"]')).toHaveCount(0);
   await expect(page.locator('[data-pd-id="lab.proposal.workbench"]')).toBeVisible();
   await expect(page.getByRole("heading", { name: "Edit Sportsbook Bet · DEMO-003" })).toBeVisible();
@@ -33,7 +33,7 @@ test("Operations Workbench guards unsaved drafts and refreshes committed warning
   await page.goto(preview);
   const row = page.locator('[data-pd-id="lab.proposal.row.DEMO-003"]');
   await row.getByRole("button", { name: /Show 2 recorded warnings/ }).click();
-  await page.locator('[data-pd-id="lab.proposal.warnings.DEMO-003"]').getByRole("button", { name: "Review Requested Lay Stake" }).click();
+  await page.locator('[data-pd-id="lab.proposal.warnings.DEMO-003"]').getByRole("button", { name: "Review Lay Stake" }).click();
   await page.locator('[data-operation-focus="request"]').fill("7.00");
   await page.getByRole("button", { name: "Cancel", exact: true }).click();
   const guard = page.getByRole("dialog", { name: "You have unsaved Sportsbook changes." });
@@ -44,13 +44,13 @@ test("Operations Workbench guards unsaved drafts and refreshes committed warning
   await guard.getByRole("button", { name: "Discard changes" }).click();
   await expect(row).toBeVisible();
   await expect(row.getByRole("button", { name: /Show 2 recorded warnings/ })).toHaveAttribute("aria-expanded", "true");
-  await page.locator('[data-pd-id="lab.proposal.warnings.DEMO-003"]').getByRole("button", { name: "Review Requested Lay Stake" }).click();
+  await page.locator('[data-pd-id="lab.proposal.warnings.DEMO-003"]').getByRole("button", { name: "Review Lay Stake" }).click();
   await expect(page.locator('[data-operation-focus="request"]')).toHaveValue("");
   await page.locator('[data-operation-focus="request"]').fill("8.00");
   await page.getByRole("button", { name: "Save Existing Bet" }).click();
   await page.getByRole("button", { name: "Cancel", exact: true }).click();
   await expect(row.getByRole("button", { name: /Show 1 recorded warning/ })).toBeVisible();
-  await expect(page.locator('[data-pd-id="lab.proposal.warnings.DEMO-003"]')).not.toContainText("Requested Lay Stake · Not recorded");
+  await expect(page.locator('[data-pd-id="lab.proposal.warnings.DEMO-003"]')).not.toContainText("Lay Stake · Not recorded");
 });
 
 test("Operations Workbench Save and close restores the originating page and table scroll", async ({ page }) => {
@@ -65,7 +65,7 @@ test("Operations Workbench Save and close restores the originating page and tabl
   await row.getByRole("button", { name: /Show 2 recorded warnings/ }).click();
   const before = await table.evaluate(element => element.scrollLeft);
   expect(before).toBeGreaterThan(0);
-  await page.locator('[data-pd-id="lab.proposal.warnings.DEMO-003"]').getByRole("button", { name: "Review Requested Lay Stake" }).click();
+  await page.locator('[data-pd-id="lab.proposal.warnings.DEMO-003"]').getByRole("button", { name: "Review Lay Stake" }).click();
   await page.locator('[data-operation-focus="request"]').fill("8.00");
   await page.getByRole("navigation", { name: "Breadcrumb" }).getByRole("button", { name: "Sportsbook Bets" }).click();
   const guard = page.getByRole("dialog", { name: "You have unsaved Sportsbook changes." });
@@ -90,11 +90,11 @@ for (const [width, height, theme] of [[2048, 1152, "dark"], [1440, 900, "light"]
     await page.getByRole("combobox", { name: "Sort proposal rows" }).selectOption("event");
     const row = page.locator('[data-pd-id="lab.proposal.row.DEMO-003"]');
     await row.getByRole("button", { name: /Show 2 recorded warnings/ }).click();
-    await page.locator('[data-pd-id="lab.proposal.warnings.DEMO-003"]').getByRole("button", { name: "Review Requested Lay Stake" }).click();
+    await page.locator('[data-pd-id="lab.proposal.warnings.DEMO-003"]').getByRole("button", { name: "Review Lay Stake" }).click();
     await expect(page.locator('[data-pd-id="lab.proposal.ledger"]')).toHaveCount(0);
     await expect(page.locator('[data-pd-id="lab.proposal.header"]')).toBeVisible();
     await expect(page.getByRole("heading", { name: "Edit Sportsbook Bet · DEMO-003" })).toBeVisible();
-    await expect(page.locator('[data-pd-id="lab.proposal.field-warning"]')).toContainText("Requested Lay Stake");
+    await expect(page.locator('[data-pd-id="lab.proposal.field-warning"]')).toContainText("Lay Stake");
     await expect(page.locator('[data-operation-focus="request"]')).toBeFocused();
     const stages = page.getByRole("navigation", { name: "Bet workbench sections" });
     for (const label of ["Offer", "Requirements", "Matching", "Placement", "Finish / Review"]) await expect(stages.getByRole("button", { name: label })).toBeVisible();
@@ -120,7 +120,7 @@ test("each warning targets its owning record, stage and corrective field", async
     ["DEMO-001", 3, "Review Back confirmation", "Placement", "back"],
     ["DEMO-001", 3, "Review settlement", "Finish / Review", "status"],
     ["DEMO-001", 3, "Update matched amount", "Placement", "match"],
-    ["DEMO-003", 2, "Review Requested Lay Stake", "Placement", "request"],
+    ["DEMO-003", 2, "Review Lay Stake", "Placement", "request"],
     ["DEMO-003", 2, "Review settlement", "Finish / Review", "status"],
     ["DEMO-002", 1, "Review Back confirmation", "Placement", "back"],
   ] as const) {

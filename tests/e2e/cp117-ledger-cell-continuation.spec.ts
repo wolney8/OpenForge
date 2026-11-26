@@ -106,7 +106,7 @@ test("eligible persisted partial Lay opens the compact cumulative editor in the 
   await expect(editor).toContainText(/Remaining£\s*3\.00/);
   await editor.getByLabel("Matched so far").fill("9.00");
   await editor.getByRole("button", { name: "Confirm" }).click();
-  await expect(editor).toContainText("cannot exceed the recorded Requested Lay Stake");
+  await expect(editor).toContainText("cannot exceed the recorded Lay Stake");
   await expect(editor.getByLabel("Matched so far")).toHaveValue("9.00");
   const read = async () => await (await page.request.get(`/api/profiles/${profile}/sportsbook-bets/${id}`)).json() as Record<string, unknown>;
   for (const [next, expectedLegs] of [["5.10", 2], ["6.00", 3], ["6.00", 3], ["8.00", 4]] as const) {
@@ -261,7 +261,7 @@ test("combined Lay edit keeps the owning Profile and missing evidence has a focu
   const missingCell = page.locator(`[data-pd-id="combined.sportsbook-bets.table-scroll"] td[data-ledger-row="${profile}::${missingId}"][data-ledger-column="lay_status"]`);
   await missingCell.dblclick();
   await expect(editor).toHaveCount(0);
-  await expect(page.locator('[data-pd-id="combined.sportsbook-bets.protected-cell"]')).toContainText("Requested Lay Stake is not recorded");
+  await expect(page.locator('[data-pd-id="combined.sportsbook-bets.protected-cell"]')).toContainText("Lay Stake is not recorded");
   await page.locator('[data-pd-id="combined.sportsbook-bets.protected-cell"]').getByRole("button", { name: "Open record for review" }).click();
   await expect(page).toHaveURL(new RegExp(`/profiles/${profile}/tracker/sportsbook-bets`));
   await expect(page.locator('[data-pd-id="sportsbook.editor.workbench-surface"]')).toBeVisible();

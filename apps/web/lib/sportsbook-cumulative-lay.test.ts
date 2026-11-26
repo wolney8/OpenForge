@@ -12,7 +12,7 @@ describe("routine partial Lay evidence gate", () => {
     expect(routineLayEligibility(row).value).toMatchObject({ requested: 8, matched: 5, remaining: 3 });
   });
   it("routes missing, mismatched and protected evidence to governed review", () => {
-    expect(routineLayEligibility({ ...row, requested_lay_stake: null }).reason).toMatch(/Requested Lay Stake is not recorded/);
+    expect(routineLayEligibility({ ...row, requested_lay_stake: null }).reason).toMatch(/Lay Stake is not recorded/);
     expect(routineLayEligibility({ ...row, multi_lay_outcomes_json: "[]" }).reason).toMatch(/leg details are missing/);
     expect(routineLayEligibility({ ...row, lay_matched_stake_1: "4.00" }).reason).toMatch(/total and Lay legs differ/);
     expect(routineLayEligibility({ ...row, multi_lay_outcomes_json: JSON.stringify([{ id: "layleg1", exchangeName: "Exchange A", layOdds: "2.00", matchedStake: "5.00" }]) }).reason).toMatch(/differing exchange/);

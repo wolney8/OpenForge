@@ -125,7 +125,7 @@ export function evaluateLabFieldEdit(command: LabFieldEditCommand): LabEditResul
     }
     if (change.field === "matched_lay_stake") {
       const requested = command.changes.find(item => item.field === "requested_lay_stake")?.value ?? originals.requested_lay_stake;
-      if (change.value && (!requested || Number(change.value) > Number(requested))) return { outcome: "VALIDATION_FAILED", message: "Matched Lay Stake cannot exceed requested Lay Stake." };
+      if (change.value && (!requested || Number(change.value) > Number(requested))) return { outcome: "VALIDATION_FAILED", message: "Matched Lay Stake cannot exceed the recorded Lay Stake." };
     }
     const offerType = command.changes.find(item=>item.field==="offer_type")?.value ?? originals.offer_type;
     const eligibleForField = change.field === "bookmaker" || change.field === "exchange" || change.field === "linked_account" ? command.eligibleAccountsByField?.[change.field] ?? command.eligibleAccounts : command.eligibleAccounts;

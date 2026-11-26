@@ -6757,8 +6757,8 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
       setFormState(current => ({...current, match_strategy: mode}));
       const copied = await copyToClipboard(nextSuggestedLay);
       setCalculatorCopyFeedback(copied
-        ? `${mode} planned lay copied. Record a requested stake and confirm the exact external match separately.`
-        : `${mode} planned lay shown. Record a requested stake and confirm the exact external match separately.`);
+        ? `${mode} planned lay copied. Record Lay Stake and confirm the exact external match separately.`
+        : `${mode} planned lay shown. Record Lay Stake and confirm the exact external match separately.`);
       return copied;
     }
 
@@ -9391,12 +9391,12 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
                   }
                 />
               ) : null}
-              {visualV2 && !usesCorePlannerInMatching && !usesRecordedPartialMatchingSummary ? <dl className={labStyles.detailGrid} data-pd-id="sportsbook.workbench.matching-overview"><div><dt>Exchange</dt><dd>{formState.exchange_name || "Not recorded"}</dd></div><div><dt>Strategy</dt><dd>{formState.match_strategy || "Not recorded"}</dd></div><div><dt>Requested Lay Stake</dt><dd>{formState.requested_lay_stake ? formatPreviewFinancialValue(formState.requested_lay_stake) : "Not recorded"}</dd></div>{activeLayPlan?.reviewed_planned_lay_stake ? <div><dt>Recommended Lay Stake · plan</dt><dd>{formatPreviewFinancialValue(activeLayPlan.reviewed_planned_lay_stake)}</dd></div> : null}</dl> : null}
+              {visualV2 && !usesCorePlannerInMatching && !usesRecordedPartialMatchingSummary ? <dl className={labStyles.detailGrid} data-pd-id="sportsbook.workbench.matching-overview"><div><dt>Exchange</dt><dd>{formState.exchange_name || "Not recorded"}</dd></div><div><dt>Strategy</dt><dd>{formState.match_strategy || "Not recorded"}</dd></div><div><dt>Lay Stake</dt><dd>{formState.requested_lay_stake ? formatPreviewFinancialValue(formState.requested_lay_stake) : "Not recorded"}</dd></div>{activeLayPlan?.reviewed_planned_lay_stake ? <div><dt>Recommended Lay Stake · plan</dt><dd>{formatPreviewFinancialValue(activeLayPlan.reviewed_planned_lay_stake)}</dd></div> : null}</dl> : null}
               <fieldset
                 className="section-fieldset stack"
                 disabled={!calculatorUnlocked || isSettledReadOnly}
               >
-                {visualV2 && !usesCorePlannerInMatching && !usesRecordedPartialMatchingSummary && !isNoLayStrategy ? <label className="field-control"><span>Requested Lay Stake</span><input aria-label="Requested Lay Stake" inputMode="decimal" onChange={event => setFormState(current => ({...current, requested_lay_stake: event.target.value || null}))} placeholder="Not recorded" value={formState.requested_lay_stake ?? ""} />{activeLayPlan?.reviewed_planned_lay_stake ? <small>Recommended Lay Stake · plan: {formatPreviewFinancialValue(activeLayPlan.reviewed_planned_lay_stake)}</small> : null}</label> : null}
+                {visualV2 && !usesCorePlannerInMatching && !usesRecordedPartialMatchingSummary && !isNoLayStrategy ? <label className="field-control"><span>Lay Stake</span><input aria-label="Lay Stake" inputMode="decimal" onChange={event => setFormState(current => ({...current, requested_lay_stake: event.target.value || null}))} placeholder="Not recorded" value={formState.requested_lay_stake ?? ""} />{activeLayPlan?.reviewed_planned_lay_stake ? <small>Recommended Lay Stake · plan: {formatPreviewFinancialValue(activeLayPlan.reviewed_planned_lay_stake)}</small> : null}</label> : null}
                 {!isNoLayStrategy &&
                 !["Profit Boost", "Bonus Lock-In", "Cashback", "2UP", "Early Payout"].includes(formState.offer_type) && !usesRecordedPartialMatchingSummary ? (
                   <label className="field-control ledger-calculator-mode-field">
@@ -9501,7 +9501,7 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
                     <label className="field-control"><span>Commission</span><input readOnly value={formState.lay_commission_1 ? String(Number(formState.lay_commission_1) * 100) : ""} placeholder="Not recorded" /></label>
                     <label className="field-control"><span>Exchange</span><input readOnly value={formState.exchange_name || ""} placeholder="Not recorded" /></label>
                     <label className="field-control"><span>Strategy</span><input readOnly value={formState.match_strategy || ""} placeholder="Not recorded" /></label>
-                    <label className="field-control"><span>Requested Lay Stake</span><input aria-label="Requested Lay Stake" inputMode="decimal" onChange={event => setFormState(current => ({ ...current, requested_lay_stake: event.target.value || null }))} placeholder="Not recorded" value={formState.requested_lay_stake ?? ""} />{activeLayPlan?.reviewed_planned_lay_stake ? <span className="field-hint">Recommended Lay Stake · plan: {formatPreviewFinancialValue(activeLayPlan.reviewed_planned_lay_stake)}</span> : null}</label>
+                    <label className="field-control"><span>Lay Stake</span><input aria-label="Lay Stake" inputMode="decimal" onChange={event => setFormState(current => ({ ...current, requested_lay_stake: event.target.value || null }))} placeholder="Not recorded" value={formState.requested_lay_stake ?? ""} />{activeLayPlan?.reviewed_planned_lay_stake ? <span className="field-hint">Recommended Lay Stake · plan: {formatPreviewFinancialValue(activeLayPlan.reviewed_planned_lay_stake)}</span> : null}</label>
                   </div> : null}
                   <SportsbookAdvancedCalculatorOptions visualV2={usesRecordedPartialMatchingSummary}>
                   {usesRecordedPartialMatchingSummary ? <div className="stack stack-tight"><label className="field-control"><span>Hedge calculator</span><select aria-label="Sportsbook hedge calculator" disabled={Boolean(multiLayPrimaryPlacement.execution)} onChange={event => applyLayWorkflowMode(event.target.value === "multi-lay" ? "Multilay" : "Standard")} value={usesMultiLayStrategy ? "multi-lay" : "single-lay"}><option value="single-lay">Single lay</option><option value="multi-lay">Multi-Lay</option></select></label>{showMatchRatingPill ? <span className={`table-chip calculator-match-rating-pill calculator-match-rating-pill-${activeMatchRatingTone}`} aria-label={`Match rating ${activeMatchRatingDisplay} percent. ${activeMatchRatingInterpretation}.`}>Match Rating {activeMatchRatingDisplay}% · {activeMatchRatingInterpretation}</span> : null}</div> : null}
@@ -10857,7 +10857,7 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
                 {visualV2 ? <DesignBetWorkbenchPlacementDetails
                   fields={<div className={labStyles.fieldPair}>
                     <label className="field-control"><span>Recommended Lay Stake · plan</span><input readOnly value={activeLayPlan?.reviewed_planned_lay_stake ?? (formState.match_strategy === "Standard" ? selectedSportsbookRow?.reference_lay_stake_standard : null) ?? ""} placeholder="Not recorded" />{!activeLayPlan?.reviewed_planned_lay_stake ? <small>Calculator reference, not external placement evidence.</small> : null}</label>
-                    <label className="field-control"><span>Requested Lay Stake</span><input readOnly value={formState.requested_lay_stake ?? ""} placeholder="Not recorded" /></label>
+                    <label className="field-control"><span>Lay Stake</span><input readOnly value={formState.requested_lay_stake ?? ""} placeholder="Not recorded" /></label>
                     <label className="field-control"><span>Matched so far</span><input readOnly value={partialLayLegs.length ? formState.lay_matched_stake_1 : ""} placeholder="Not recorded" /></label>
                     <label className="field-control"><span>Actual lay amount</span><input aria-label="Actual lay amount" aria-invalid={Boolean(financialInputErrors.lay_actual)} disabled={isSettledReadOnly} inputMode="decimal" onChange={event => updateDecimalFormField("lay_actual", event.target.value)} placeholder="Not recorded" value={formState.lay_actual} />{financialInputError("lay_actual")}</label>
                   </div>}

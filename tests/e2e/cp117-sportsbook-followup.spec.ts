@@ -570,7 +570,7 @@ test("approved Placement separates confirmations from Matching and a new bet has
   const matching = workbench.locator('[data-pd-id="ledger-editor.panel.matching"]');
   const everyday = matching.locator('[data-pd-id="sportsbook.matching.core-planner.paired-segments"]');
   await expect(everyday).toBeVisible();
-  for (const label of ["Back stake", "Back odds", "Lay odds", "Commission", "Exchange", "Strategy", "Requested Lay Stake"]) {
+  for (const label of ["Back stake", "Back odds", "Lay odds", "Commission", "Exchange", "Strategy", "Lay Stake"]) {
     await expect(everyday.getByText(label, { exact: true })).toBeVisible();
   }
   const advanced = matching.getByText("Advanced calculator options", { exact: true });
@@ -624,7 +624,7 @@ test("historical Placed record keeps unrecorded Back and request evidence distin
   const workbench = page.locator('[data-pd-id="sportsbook.editor.workbench-surface"]');
   await workbench.locator('[data-pd-id="bet-workbench.stage.matching"]').click();
   const matching = workbench.locator('[data-pd-id="ledger-editor.panel.matching"]');
-  await expect(matching.locator('[data-pd-id="sportsbook.workbench.matching-overview"]')).toContainText("Requested Lay StakeNot recorded");
+  await expect(matching.locator('[data-pd-id="sportsbook.workbench.matching-overview"]')).toContainText("Lay StakeNot recorded");
   await workbench.locator('[data-pd-id="bet-workbench.stage.placement"]').click();
   const placement = workbench.locator('[data-pd-id="ledger-editor.panel.placement"]');
   await expect(placement.getByLabel("Actual back stake")).toHaveValue("");
@@ -632,7 +632,7 @@ test("historical Placed record keeps unrecorded Back and request evidence distin
   await expect(placement.getByLabel("Actual matched lay stake")).toHaveValue("9.54");
   const missingRequest = placement.locator('[data-pd-id="sportsbook.workbench.partial-fill"]');
   await missingRequest.locator("summary").click();
-  await expect(missingRequest.locator('[data-pd-id="sportsbook.workbench.remaining-request"]')).toHaveText("Requested Lay Stake not recorded");
+  await expect(missingRequest.locator('[data-pd-id="sportsbook.workbench.remaining-request"]')).toHaveText("Lay Stake not recorded");
   await expect(missingRequest.locator('[data-pd-id="sportsbook.workbench.next-lay-guidance"]')).not.toContainText("Remaining lay exposure is still open.");
   await workbench.locator('[data-pd-id="bet-workbench.stage.finish"]').click();
   const linked = workbench.locator('[data-pd-id="sportsbook.workbench.linked-free-bets"]');
@@ -789,10 +789,10 @@ for (const width of [2048, 390] as const) {
     await everyday.getByLabel("Lay odds").fill("2.00");
     await everyday.getByLabel("Planning exchange commission (%)").fill("0");
     await expect(panel.locator('[data-pd-id="sportsbook.matching.core-planner"]')).toHaveAttribute("data-plan-reviewed", "true", { timeout: 20_000 });
-    await everyday.getByLabel("Requested Lay Stake").fill("8.00");
+    await everyday.getByLabel("Lay Stake", { exact: true }).fill("8.00");
     await expect(everyday.locator(".field-hint", { hasText: "Recommended Lay Stake · plan" })).toContainText("10.00");
     const positions = await everyday.evaluate(node => {
-      const names = ["Back stake", "Back odds", "Lay odds", "Commission", "Exchange", "Strategy", "Requested Lay Stake"];
+      const names = ["Back stake", "Back odds", "Lay odds", "Commission", "Exchange", "Strategy", "Lay Stake"];
       const labels = [...node.querySelectorAll("label")];
       return names.map(name => {
         const label = labels.find(item => item.querySelector(":scope > span")?.textContent?.trim() === name);
@@ -862,11 +862,11 @@ for (const width of [2048, 390] as const) {
       }
       if (stage === "matching") {
         const recordedMatching = workbench.locator('[data-pd-id="sportsbook.workbench.recorded-matching-fields"]');
-        await expect(recordedMatching.getByLabel("Requested Lay Stake", { exact: true })).toHaveCount(1);
+        await expect(recordedMatching.getByLabel("Lay Stake", { exact: true })).toHaveCount(1);
         const matchingOrder = await recordedMatching.locator('label').evaluateAll(labels => labels.map(label =>
           (label.querySelector(':scope > span')?.textContent ?? '').trim()));
-        expect(matchingOrder).toEqual(["Back stake", "Back odds", "Lay odds", "Commission", "Exchange", "Strategy", "Requested Lay Stake"]);
-        await expect(recordedMatching.getByLabel("Requested Lay Stake", { exact: true })).toHaveAttribute("placeholder", "Not recorded");
+        expect(matchingOrder).toEqual(["Back stake", "Back odds", "Lay odds", "Commission", "Exchange", "Strategy", "Lay Stake"]);
+        await expect(recordedMatching.getByLabel("Lay Stake", { exact: true })).toHaveAttribute("placeholder", "Not recorded");
         const advanced = workbench.locator('[data-pd-id="sportsbook.workbench.advanced-calculator"]');
         await expect(advanced).toBeVisible();
         await expect(advanced).not.toHaveAttribute("open", "");
@@ -940,7 +940,7 @@ test(`${order} confirms independent £10 plan, £8 request and £5 partial Lay a
   await page.goto(route);
   let workbench = page.locator('[data-pd-id="sportsbook.editor.workbench-surface"]');
   await workbench.locator('[data-pd-id="bet-workbench.stage.matching"]').click();
-  await workbench.locator('[data-pd-id="ledger-editor.panel.matching"]').getByLabel("Requested Lay Stake").fill("8.00");
+  await workbench.locator('[data-pd-id="ledger-editor.panel.matching"]').getByLabel("Lay Stake", { exact: true }).fill("8.00");
   await workbench.locator('[data-pd-id="bet-workbench.stage.placement"]').click();
   let placement = workbench.locator('[data-pd-id="ledger-editor.panel.placement"]');
   await expect(placement.getByLabel("Lay placement")).toHaveValue("Not recorded");
@@ -989,7 +989,7 @@ test(`${order} confirms independent £10 plan, £8 request and £5 partial Lay a
   await detail.locator("summary").click();
   await expect(detail.locator('[data-pd-id="sportsbook.workbench.placement-secondary-card"]')).toBeVisible();
   await expect(detail.getByLabel("Recommended Lay Stake · plan")).toHaveValue("10.00");
-  await expect(detail.getByLabel("Requested Lay Stake")).toHaveValue("8.00");
+  await expect(detail.getByLabel("Lay Stake", { exact: true })).toHaveValue("8.00");
   await expect(detail.getByLabel("Matched so far")).toHaveValue("5.00");
   await expect(detail.locator('[data-pd-leg-row="true"]')).toHaveCount(1);
   await expect(detail.locator('[data-pd-id="sportsbook.workbench.remaining-request"]')).toHaveText("£3 remaining of the £8 request");
@@ -1048,7 +1048,7 @@ test(`${order} confirms independent £10 plan, £8 request and £5 partial Lay a
   await expect(reopenedDetail.locator('[data-pd-leg-row="true"]')).toHaveCount(3);
   await expect(reopenedDetail.locator('[data-pd-id="sportsbook.workbench.remaining-request"]')).toHaveText("£0 remaining of the £8 request");
   await expect(reopenedDetail.getByLabel("Recommended Lay Stake · plan")).toHaveValue("10.00");
-  await expect(reopenedDetail.getByLabel("Requested Lay Stake")).toHaveValue("8.00");
+  await expect(reopenedDetail.getByLabel("Lay Stake", { exact: true })).toHaveValue("8.00");
   await expect(reopenedDetail.getByLabel("Matched so far")).toHaveValue("8.00");
   const finalRow = await (await page.request.get(`/api/profiles/${profile}/sportsbook-bets/${id}`)).json() as Record<string, unknown>;
   const finalLegs = JSON.parse(String(finalRow.multi_lay_outcomes_json)) as Array<{ id: string; matchedStake: string }>;
@@ -1082,7 +1082,7 @@ test("settled placement evidence corrects request and Back separately with reaso
   await page.goto(route);
   await actions.getByRole("button", { name: "Review Correction" }).click();
   await workbench.locator('[data-pd-id="bet-workbench.stage.matching"]').click();
-  await workbench.locator('[data-pd-id="ledger-editor.panel.matching"]').getByLabel("Requested Lay Stake", { exact: true }).fill("7.00");
+  await workbench.locator('[data-pd-id="ledger-editor.panel.matching"]').getByLabel("Lay Stake", { exact: true }).fill("7.00");
   await expect(actions.getByRole("button", { name: "Save Audited Correction" })).toBeDisabled();
   await workbench.locator('[data-pd-id="bet-workbench.stage.finish"]').click();
   await workbench.getByLabel("Correction reason").fill("Synthetic exchange request receipt corrected to seven pounds");
@@ -1094,7 +1094,7 @@ test("settled placement evidence corrects request and Back separately with reaso
   workbench = page.locator('[data-pd-id="sportsbook.editor.workbench-surface"]');
   await expect(workbench.locator('[data-pd-id="bet-workbench.stage.matching"]')).toBeVisible();
   await workbench.locator('[data-pd-id="bet-workbench.stage.matching"]').click();
-  await expect(workbench.locator('[data-pd-id="ledger-editor.panel.matching"]').getByLabel("Requested Lay Stake", { exact: true })).toHaveValue("7.00");
+  await expect(workbench.locator('[data-pd-id="ledger-editor.panel.matching"]').getByLabel("Lay Stake", { exact: true })).toHaveValue("7.00");
   await actions.getByRole("button", { name: "Review Correction" }).click();
   await workbench.locator('[data-pd-id="bet-workbench.stage.placement"]').click();
   const placement = workbench.locator('[data-pd-id="ledger-editor.panel.placement"]');

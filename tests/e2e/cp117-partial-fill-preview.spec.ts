@@ -179,7 +179,7 @@ test("recorded request drives three fills and independent reversals", async ({ p
   await page.getByRole("button", { name: "Matching", exact: true }).first().click();
   await page.getByRole("button", { name: "Show Not recorded example" }).click();
   await page.getByRole("button", { name: "Placement", exact: true }).first().click();
-  await expect(page.getByLabel("Requested Lay Stake")).toHaveValue("");
-  await expect(page.locator('[data-pd-id="sportsbook.workbench.recorded-legs"]')).toContainText("Requested Lay Stake not recorded");
+  await expect(page.getByLabel("Lay Stake", { exact: true })).toHaveValue("");
+  await expect(page.locator('[data-pd-id="sportsbook.workbench.recorded-legs"]')).toContainText("Lay Stake not recorded");
   await expect(page.getByText("Back: Confirmed · Lay: Partially matched")).toBeVisible();
 });

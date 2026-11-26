@@ -339,7 +339,7 @@ test("placed and settled Sportsbook cells explain their protected boundary befor
   }
   await page.locator('td[data-ledger-row="PROTECTED-PLACED"][data-ledger-column="lay_status"]').dblclick();
   const notice = page.locator('[data-pd-id="sportsbook.protected-cell"]');
-  await expect(notice).toContainText("Requested Lay Stake is not recorded");
+  await expect(notice).toContainText("Lay Stake is not recorded");
   await notice.getByRole("button", { name: "Review in Placement" }).click();
   await expect(page.locator('[data-pd-id="bet-workbench.stage.placement"]')).toHaveAttribute("aria-current", "step");
 });

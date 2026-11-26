@@ -234,9 +234,9 @@ test("each amendment opens directly and its proposal states respond without writ
   await page.getByRole("link", { name: /Matching and Placement/ }).click();
   await expect(page.getByLabel("Exchange")).toBeVisible();
   await expect(page.getByLabel("Strategy")).toBeVisible();
-  await expect(page.getByLabel("Requested Lay Stake")).toHaveValue("8.00");
+  await expect(page.getByLabel("Lay Stake", { exact: true })).toHaveValue("8.00");
   await page.getByRole("button", { name: "Show Not recorded example" }).click();
-  await expect(page.getByLabel("Requested Lay Stake")).toHaveValue("");
+  await expect(page.getByLabel("Lay Stake", { exact: true })).toHaveValue("");
   await capture(page, `matching-not-recorded`);
   await page.getByRole("button", { name: "Show recorded example" }).click();
   await capture(page, `matching-collapsed`);

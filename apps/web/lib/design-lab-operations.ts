@@ -178,7 +178,7 @@ export function buildLabTodayTasks(records: LabRecord[], accounts: LabAccount[],
       tasks.push({ id: `task:${record.id}`, group: "Needs Action", authority: "Confirmed task",
         title: partial ? "Review Partial Lay" : overdue ? "Review Overdue Unsettled Bet" : "Review Placed Bet for Settlement",
         profileId: record.profileId, provider: record.cells[1], due: record.dueDate, dateKind: "Event Date", requiresImmediateReview: partial,
-        sourceId: record.id, detail: partial ? "Matched stake differs from requested stake; exposure remains unresolved." : overdue ? "Recorded event date has passed; result remains open." : "Placed source record remains open.", action: "Open Bet" });
+        sourceId: record.id, detail: partial ? "Matched Lay Stake differs from recorded Lay Stake; exposure remains unresolved." : overdue ? "Recorded event date has passed; result remains open." : "Placed source record remains open.", action: "Open Bet" });
     }
     if (record.section === "freeBets" && record.status === "Available" && record.expiresAt) {
       const days = (Date.parse(`${record.expiresAt}T00:00:00Z`) - Date.parse(`${labClock}T00:00:00Z`)) / 86400000;

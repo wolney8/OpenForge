@@ -93,7 +93,7 @@ test("proposal exposes all warnings and cumulative partial-lay actions without c
   const proposal = page.locator('[data-pd-id="lab.proposal.operations"]');
   await expect(proposal).toBeVisible();
   await expect(proposal.getByLabel("Actual Back stake")).toBeFocused();
-  await proposal.getByLabel("Requested Lay Stake").fill("8.00");
+  await proposal.getByLabel("Lay Stake", { exact: true }).fill("8.00");
   await proposal.getByRole("button", { name: "Return to ledger" }).click();
   await expect(proposal).toHaveCount(0);
   await warnings.getByRole("button", { name: "Review settlement" }).click();
@@ -108,7 +108,7 @@ test("proposal exposes all warnings and cumulative partial-lay actions without c
   const quick = page.locator('[data-pd-id="lab.proposal.quick-action"]');
   await expect(quick).toBeVisible();
   await expect(quick.getByLabel("Matched so far")).toBeFocused();
-  await expect(proposal.getByLabel("Requested Lay Stake")).toHaveValue("8.00");
+  await expect(proposal.getByLabel("Lay Stake", { exact: true })).toHaveValue("8.00");
   const details = proposal.locator('[data-pd-id="sportsbook.workbench.partial-fill"]');
   await expect(details).not.toHaveAttribute("open", "");
   await details.locator("summary").click();

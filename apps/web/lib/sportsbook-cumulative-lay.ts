@@ -14,7 +14,7 @@ export function routineLayEligibility(record: Record<string, unknown>): { value:
   if (record.status !== "Placed" || record.result !== "Pending") return review("This record requires its protected Placement or correction workflow.");
   if (/^Multilay/.test(String(record.match_strategy ?? "")) || record.match_strategy === "No Lay") return review("Multi-Lay and No Lay use their own Placement review.");
   const request = normalizeMoneyInput(String(record.requested_lay_stake ?? "").trim());
-  if (!request || Number(request) <= 0) return review("Requested Lay Stake is not recorded. Record the request in Placement before updating matched fills.");
+  if (!request || Number(request) <= 0) return review("Lay Stake is not recorded. Record the request in Placement before updating matched fills.");
   const exchange = String(record.exchange_name ?? "").trim();
   const odds = String(record.lay_odds_1 ?? "").trim();
   if (!exchange || !odds || !Number.isFinite(Number(odds)) || Number(odds) <= 1) return review("Exchange or accepted Lay odds are missing. Review the actual execution in Placement.");
@@ -26,7 +26,7 @@ export function routineLayEligibility(record: Record<string, unknown>): { value:
   const summary = getPartialLayExecutionSummary({ explicitTargetLayStake: request, suggestedTargetLayStake: "", legs });
   const savedMatched = normalizeMoneyInput(String(record.lay_matched_stake_1 ?? "").trim());
   if (!savedMatched || Math.round(Number(savedMatched) * 100) !== Math.round(summary.matchedTotal * 100)) return review("Recorded matched total and Lay legs differ. Reconcile them in Placement.");
-  if (summary.exceededTarget || summary.hasReachedTarget || summary.remainingToMatch === null) return review("The requested Lay stake is already matched or needs correction review.");
+  if (summary.exceededTarget || summary.hasReachedTarget || summary.remainingToMatch === null) return review("The recorded Lay Stake is already matched or needs correction review.");
   return { value: { requested: Number(request), matched: summary.matchedTotal, remaining: summary.remainingToMatch, legs, exchange, odds }, reason: "" };
 }
 
@@ -47,7 +47,7 @@ export async function commitRoutineCumulativeLay({ profileId, recordId, expected
   const differencePence = Math.round(Number(target) * 100) - Math.round(evidence.matched * 100);
   if (differencePence < 0) throw new Error("A downward matched amount is a correction. Review the existing fills in Placement.");
   if (differencePence === 0) return current;
-  if (Math.round(Number(target) * 100) > Math.round(evidence.requested * 100)) throw new Error("Matched so far cannot exceed the recorded Requested Lay Stake. Review Requested Lay Stake in Placement.");
+  if (Math.round(Number(target) * 100) > Math.round(evidence.requested * 100)) throw new Error("Matched so far cannot exceed the recorded Lay Stake. Review Lay Stake in Placement.");
   let nextNumber = evidence.legs.length + 1;
   while (evidence.legs.some(leg => leg.id === `layleg${nextNumber}`)) nextNumber += 1;
   const nextLeg: Leg = { id: `layleg${nextNumber}`, label: `Lay leg ${nextNumber}`, exchangeName: evidence.exchange, layOdds: evidence.odds, matchedStake: (differencePence / 100).toFixed(2), isFinal: Math.round(Number(target) * 100) === Math.round(evidence.requested * 100) };
