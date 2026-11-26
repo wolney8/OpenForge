@@ -2,7 +2,7 @@
 
 import { ModalBoundary } from "@/components/modal-boundary";
 
-import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState, useTransition } from "react";
+import { Fragment, useCallback, useEffect, useEffectEvent, useMemo, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { apiBaseUrl } from "@/lib/api";
 import { ledgerColumnContracts, ledgerColumnWidths } from "@/lib/ledger-column-contracts";
@@ -28,6 +28,8 @@ import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerViewContext } from "@/components/ledger-view-context";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
+import { LedgerWarningContextNotice, LedgerWarningDetailsRow, LedgerWarningTrigger, useLedgerWarningExpansion } from "@/components/ledger-row-warnings";
+import { focusLedgerWarningField, ledgerWarningPresentation, ledgerWarningTarget, type LedgerWarningTarget } from "@/lib/ledger-warning-target";
 import { ledgerCellDecision } from "@/lib/ledger-cell-capabilities";
 import { accountAccessChannelOptions } from "@/lib/account-access-channels";
 import { LedgerFloatingCellEditor, useLedgerCellEditor, type LedgerCellSession } from "@/components/ledger-floating-cell-editor";
@@ -466,7 +468,7 @@ function sortAccountRows(rows: TrackerRow[], sort: AccountSort | null) {
   });
 }
 
-export function AccountsWorkflowShell({ profileId, initialRecordId, initialCreate = false, initialIssueFilter, visualV2 = false }: { profileId: string; initialRecordId?: string; initialCreate?: boolean; initialIssueFilter?: string; visualV2?: boolean }) {
+export function AccountsWorkflowShell({ profileId, profileName, initialRecordId, initialWarning, initialCreate = false, initialIssueFilter, visualV2 = false }: { profileId: string; profileName?: string; initialRecordId?: string; initialWarning?: string; initialCreate?: boolean; initialIssueFilter?: string; visualV2?: boolean }) {
   const initialRecordOpenedRef = useRef("");
   const [rows, setRows] = useState<AccountRecord[]>([]);
   const [bookmakerCatalogue, setBookmakerCatalogue] = useState<BookmakerCatalogueRecord[]>([]);
@@ -483,6 +485,7 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialCreat
   });
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedGridRowId, setSelectedGridRowId] = useState<string | null>(null);
+  const [warningContext, setWarningContext] = useState<LedgerWarningTarget | null>(initialWarning ? ledgerWarningTarget("accounts", initialWarning) : null);
   const [workflowVisible, setWorkflowVisible] = useState(false);
   const editorReturnFocusRef = useRef<HTMLElement | null>(null);
   const cellEditor = useLedgerCellEditor();
@@ -937,6 +940,7 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialCreat
     () => paginateTrackerRows(filteredRows, effectivePage, pageSize),
     [effectivePage, filteredRows, pageSize]
   );
+  const warningRows = useLedgerWarningExpansion(pagedRows.map(row => String(row.account_id)));
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
       if (selectedGridRowId && !pagedRows.some(row => row.account_id === selectedGridRowId)) setSelectedGridRowId(null);
@@ -944,7 +948,7 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialCreat
     return () => cancelAnimationFrame(frame);
   }, [pagedRows, selectedGridRowId]);
 
-  async function selectRow(rowId: string, cell?: LedgerCellSession, returnFocus?: HTMLElement) {
+  async function selectRow(rowId: string, cell?: LedgerCellSession, returnFocus?: HTMLElement, warningLabel?: string) {
     if (rowId !== selectedId && isDirty && !(await confirmDiscardChanges())) {
       return;
     }
@@ -952,6 +956,8 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialCreat
     if (!record) {
       return;
     }
+    const activeWarning = warningLabel ?? (initialRecordId === rowId ? initialWarning : undefined);
+    setWarningContext(activeWarning ? ledgerWarningTarget("accounts", activeWarning) : null);
     editorReturnFocusRef.current = returnFocus ?? cell?.anchor ?? null;
     if (cell) cellEditor.start(cell.column, cell.anchor); else cellEditor.close();
     setSelectedId(rowId);
@@ -1004,6 +1010,9 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialCreat
     const frame = requestAnimationFrame(() => document.getElementById("account-current-balance")?.focus());
     return () => cancelAnimationFrame(frame);
   }, [initialIssueFilter, initialRecordId, workflowVisible]);
+  useEffect(() => {
+    if (workflowVisible && selectedId && warningContext) focusLedgerWarningField(warningContext.field);
+  }, [workflowVisible, selectedId, warningContext]);
   useEffect(() => {
     if (isInitialLoading || (initialIssueFilter !== "needs-attention" && initialIssueFilter !== "all-issues")) return;
     const frame = requestAnimationFrame(() => {
@@ -1459,7 +1468,10 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialCreat
                         catalogueId: accountRecord?.catalogue_id,
                         accountName: String(row.account ?? ""),
                       });
+                      const warningReasons = accountRecord ? accountAttentionReasons(accountRecord) : null;
+                      const warningSlot = visibleTableColumns.some(column => column.key === "last_balance_update") ? "last_balance_update" : "account";
                       return (
+                        <Fragment key={rowId}>
                         <FinancialValueReplayRow
                           className={selectedId === rowId || selectedGridRowId === rowId ? "is-selected-row" : undefined}
                           key={rowId}
@@ -1475,7 +1487,7 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialCreat
                               key={column.key}
                               onClick={column.key === "actions" ? event => event.stopPropagation() : undefined}
                             >
-                              {column.key === "account" ? (
+                              {visualV2 && column.key === warningSlot ? <div className="ledger-warning-date">{column.key === "last_balance_update" ? <LedgerCompactDate value={accountRecord?.last_balance_update} fallback="Not confirmed" /> : <AccountProviderIdentity fallbackName={String(row.account ?? "")} provider={provider} />}{warningReasons === null ? <span aria-label="Warning classification unavailable" className="ledger-warning-unavailable">?</span> : <LedgerWarningTrigger identity={`${profileId}:${rowId}`} count={warningReasons.length} open={warningRows.expandedId === rowId} record={String(row.account || rowId)} profile={profileName ?? profileId} onToggle={() => warningRows.toggle(rowId)} triggerRef={warningRows.triggerRef(rowId)} />}</div> : column.key === "account" ? (
                                 <span className="table-cell-stack accounts-provider-cell"><AccountProviderIdentity fallbackName={String(row.account ?? "")} provider={provider} /></span>
                               ) : column.key === "account_id" ? (
                                 <span className="accounts-id-value" title={rowId}>{rowId}</span>
@@ -1513,6 +1525,8 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialCreat
                             </td>
                           ))}
                         </FinancialValueReplayRow>
+                        {visualV2 ? <LedgerWarningDetailsRow identity={`${profileId}:${rowId}`} colSpan={visibleTableColumns.length} open={warningRows.expandedId === rowId} record={String(row.account || rowId)} profile={profileName ?? profileId} warnings={(warningReasons ?? []).map(label => ledgerWarningPresentation("accounts", label))} onClose={() => warningRows.close(rowId)} onReview={warning => void selectRow(rowId, undefined, document.activeElement instanceof HTMLElement ? document.activeElement : undefined, warning.label)} /> : null}
+                        </Fragment>
                       );
                     })
                   )}
@@ -1691,6 +1705,7 @@ export function AccountsWorkflowShell({ profileId, initialRecordId, initialCreat
               <><AccountFinancialSummary account={selectedRow} /><AccountReviewButton profileId={profileId} accounts={[selectedRow]} accountId={selectedRow.account_id} accountName={selectedRow.account} /></>
             ) : null}
             <form className="form-grid" id="profile-account-editor-form" onSubmit={(event) => void handleSubmit(event)}>
+          {visualV2 && warningContext && selectedId ? <LedgerWarningContextNotice field={warningContext.field} label={warningContext.label} /> : null}
           <span aria-hidden="true" className="account-editor-section-anchor" id="account-overview" />
           <label className="field-control">
             <span>Account</span>

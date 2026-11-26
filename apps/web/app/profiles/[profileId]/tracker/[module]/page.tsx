@@ -46,6 +46,7 @@ export default async function TrackerModulePage({
   const requestedView = typeof query.view === "string" ? query.view : undefined;
   const requestedSearch = typeof query.search === "string" ? query.search : undefined;
   const requestedRecord = typeof query.record === "string" ? query.record : undefined;
+  const requestedWarning = typeof query.reviewWarning === "string" ? query.reviewWarning : undefined;
   const requestedCreate = query.create === "1";
   const requestedQuickCapture = query.entry === "quick";
   const requestedReturn = typeof query.returnTo === "string" ? query.returnTo : undefined;
@@ -128,17 +129,17 @@ export default async function TrackerModulePage({
         </section>
       ) : null}
       {module === "accounts" ? (
-        <AccountsWorkflowShell profileId={profile.profileId} initialRecordId={requestedRecord} initialCreate={requestedCreate && Boolean(returnToCombined)} initialIssueFilter={requestedIssue} visualV2={visualV2} />
+        <AccountsWorkflowShell profileId={profile.profileId} profileName={profile.displayName} initialRecordId={requestedRecord} initialWarning={requestedWarning} initialCreate={requestedCreate && Boolean(returnToCombined)} initialIssueFilter={requestedIssue} visualV2={visualV2} />
       ) : module === "sportsbook-bets" ? (
-        <SportsbookWorkflowShell feeReviewContext={feeReviewContext} initialIssueFilter={requestedIssue} initialQuery={requestedSearch} initialRecordId={requestedRecord} initialCreate={requestedCreate && Boolean(returnToCombined)} initialCreateMode={requestedQuickCapture ? "quick" : "full"} key={`sportsbook:${requestedRecord ?? requestedIssue ?? (requestedRecords.join(",") || "default")}`} profileId={profile.profileId} profileName={profile.displayName} visualV2={visualV2} />
+        <SportsbookWorkflowShell feeReviewContext={feeReviewContext} initialIssueFilter={requestedIssue} initialQuery={requestedSearch} initialRecordId={requestedRecord} initialWarning={requestedWarning} initialCreate={requestedCreate && Boolean(returnToCombined)} initialCreateMode={requestedQuickCapture ? "quick" : "full"} key={`sportsbook:${requestedRecord ?? requestedIssue ?? (requestedRecords.join(",") || "default")}`} profileId={profile.profileId} profileName={profile.displayName} visualV2={visualV2} />
       ) : module === "free-bets" ? (
-        <FreeBetWorkflowShell feeReviewContext={feeReviewContext} initialIssueFilter={requestedIssue} initialQuery={requestedSearch} initialRecordId={requestedRecord} initialCreate={requestedCreate && Boolean(returnToCombined)} initialTableMode={requestedView} key={`free-bets:${requestedRecord ?? requestedIssue ?? (requestedRecords.join(",") || requestedView || "default")}`} profileId={profile.profileId} visualV2={visualV2} />
+        <FreeBetWorkflowShell feeReviewContext={feeReviewContext} initialIssueFilter={requestedIssue} initialQuery={requestedSearch} initialRecordId={requestedRecord} initialWarning={requestedWarning} initialCreate={requestedCreate && Boolean(returnToCombined)} initialTableMode={requestedView} key={`free-bets:${requestedRecord ?? requestedIssue ?? (requestedRecords.join(",") || requestedView || "default")}`} profileId={profile.profileId} profileName={profile.displayName} visualV2={visualV2} />
       ) : module === "casino-offers" ? (
-        <CasinoOfferWorkflowShell feeReviewContext={feeReviewContext} initialIssueFilter={requestedIssue} initialQuery={requestedSearch} initialRecordId={requestedRecord} initialCreate={requestedCreate && Boolean(returnToCombined)} key={`casino:${requestedRecord ?? requestedIssue ?? (requestedRecords.join(",") || "default")}`} profileId={profile.profileId} visualV2={visualV2} />
+        <CasinoOfferWorkflowShell feeReviewContext={feeReviewContext} initialIssueFilter={requestedIssue} initialQuery={requestedSearch} initialRecordId={requestedRecord} initialWarning={requestedWarning} initialCreate={requestedCreate && Boolean(returnToCombined)} key={`casino:${requestedRecord ?? requestedIssue ?? (requestedRecords.join(",") || "default")}`} profileId={profile.profileId} profileName={profile.displayName} visualV2={visualV2} />
       ) : module === "each-way-extra-places" ? (
-        <EachWayExtraPlaceWorkflowShell initialIssueFilter={requestedIssue} initialRecordId={requestedRecord} initialCreate={requestedCreate && Boolean(returnToCombined)} key={`extra-place:${requestedRecord ?? requestedIssue ?? "default"}`} profileId={profile.profileId} visualV2={visualV2} />
+        <EachWayExtraPlaceWorkflowShell initialIssueFilter={requestedIssue} initialRecordId={requestedRecord} initialWarning={requestedWarning} initialCreate={requestedCreate && Boolean(returnToCombined)} key={`extra-place:${requestedRecord ?? requestedIssue ?? "default"}`} profileId={profile.profileId} profileName={profile.displayName} visualV2={visualV2} />
       ) : module === "cash-adjustments" ? (
-        <CashAdjustmentWorkflowShell initialRecordId={requestedRecord} initialCreate={requestedCreate && Boolean(returnToCombined)} key={`cash:${requestedRecord ?? "default"}`} profileId={profile.profileId} visualV2={visualV2} />
+        <CashAdjustmentWorkflowShell initialRecordId={requestedRecord} initialWarning={requestedWarning} initialCreate={requestedCreate && Boolean(returnToCombined)} key={`cash:${requestedRecord ?? "default"}`} profileId={profile.profileId} profileName={profile.displayName} visualV2={visualV2} />
       ) : module === "profit-tracker" ? (
         <TrackerSummaryShell profileId={profile.profileId} variant="profit-tracker" visualV2={visualV2} />
       ) : module === "reports" ? (

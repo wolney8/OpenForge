@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { DesignLabSelect } from "@/components/design-lab-select";
 import { DesignOfferDetailsCellFields } from "@/components/design-offer-details-cell-fields";
 import { DesignRunnerRaceCellFields } from "@/components/design-runner-race-cell-fields";
@@ -10,6 +10,8 @@ import { DesignLedgerSearch } from "@/components/design-ledger-search";
 import { DesignLedgerMobileRows, DesignLedgerNarrowToggle, DesignLedgerScreen, DesignLedgerToolbar, DesignLedgerToolbarAction, DesignLedgerPrimaryAction, DesignLedgerPagination, DesignLedgerRowAction, DesignPageHead, designLedgerClasses, designPageHeadClasses, type DesignLedgerDetailRow } from "@/components/design-ledger-screen";
 import { CombinedLedgerCell } from "@/components/combined-ledger-cell";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
+import { LedgerWarningDetailsRow, LedgerWarningTrigger } from "@/components/ledger-row-warnings";
+import { ledgerWarningPresentation } from "@/lib/ledger-warning-target";
 import { LedgerFloatingCellEditor, useLedgerCellEditor } from "@/components/ledger-floating-cell-editor";
 import { SearchableCombobox, type OptionListMode } from "@/components/selection-controls";
 import { designFloatingCellInputClass } from "@/components/design-lab-floating-cell-editor";
@@ -109,6 +111,9 @@ export function CombinedLedgerPage({ module }: { module: CombinedLedgerModule })
   const [cellError, setCellError] = useState("");
   const [cellPending, setCellPending] = useState(false);
   const [selectedRowIdentity, setSelectedRowIdentity] = useState<string | null>(null);
+  const [expandedWarningIdentity, setExpandedWarningIdentity] = useState<string | null>(searchParams.get("warning"));
+  const warningTriggerRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const returnScrollRestored = useRef(false);
   const cellSaving = useRef(false);
   const cellActivationRequest = useRef(0);
   const cashScalarOperation = useRef<{ row: string; column: string; value: string; key: string } | null>(null);
@@ -282,9 +287,10 @@ export function CombinedLedgerPage({ module }: { module: CombinedLedgerModule })
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
       if (selectedRowIdentity && !paginated.some(row => identity(row) === selectedRowIdentity)) setSelectedRowIdentity(null);
+      if (!loading && expandedWarningIdentity && !paginated.some(row => identity(row) === expandedWarningIdentity)) setExpandedWarningIdentity(null);
     });
     return () => cancelAnimationFrame(frame);
-  }, [paginated, selectedRowIdentity]);
+  }, [paginated, selectedRowIdentity, expandedWarningIdentity, loading]);
   const returnQuery = new URLSearchParams();
   if (localProfile !== "all") returnQuery.set("profile", localProfile);
   if (search) returnQuery.set("q", search);
@@ -294,7 +300,28 @@ export function CombinedLedgerPage({ module }: { module: CombinedLedgerModule })
   if (pageSize !== 8) returnQuery.set("size", String(pageSize));
   for (const filter of combinedLedgerFilters[module]) if (selectedFilters[filter.key]) returnQuery.set(`f_${filter.key}`, selectedFilters[filter.key]);
   const returnPath = `/tracker/${module}${returnQuery.size ? `?${returnQuery.toString()}` : ""}`;
-  const rowHref = (row: OwnedRecord) => `/profiles/${encodeURIComponent(row.profileId)}/tracker/${module}?record=${encodeURIComponent(row.recordId)}&returnTo=${encodeURIComponent(returnPath)}`;
+  const rowHref = (row: OwnedRecord, warning?: string) => {
+    const returnWithWarning = new URLSearchParams(returnQuery);
+    if (warning) {
+      returnWithWarning.set("warning", identity(row));
+      returnWithWarning.set("sy", String(Math.round(window.scrollY)));
+      const scroll = document.querySelector<HTMLElement>(`[data-pd-id="combined.${module}.table-scroll"]`);
+      if (scroll) returnWithWarning.set("sx", String(Math.round(scroll.scrollLeft)));
+    }
+    const destination = warning ? `/tracker/${module}?${returnWithWarning.toString()}` : returnPath;
+    return `/profiles/${encodeURIComponent(row.profileId)}/tracker/${module}?record=${encodeURIComponent(row.recordId)}&returnTo=${encodeURIComponent(destination)}${warning ? `&reviewWarning=${encodeURIComponent(warning)}` : ""}`;
+  };
+  useEffect(() => {
+    if (loading || returnScrollRestored.current || !searchParams.get("warning")) return;
+    returnScrollRestored.current = true;
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      const scroll = document.querySelector<HTMLElement>(`[data-pd-id="combined.${module}.table-scroll"]`);
+      if (scroll) scroll.scrollLeft = Number(searchParams.get("sx") || 0);
+      window.scrollTo({ top: Number(searchParams.get("sy") || 0), behavior: "instant" });
+      const returnedTrigger = warningTriggerRefs.current[searchParams.get("warning") || ""];
+      (returnedTrigger ?? document.querySelector<HTMLElement>(`[data-pd-id="combined.${module}.warning-return-missing"]`))?.focus({ preventScroll: true });
+    }));
+  }, [loading, module, searchParams]);
   const blockedCellReview = (row: OwnedRecord, column: string) => {
     const capability = ledgerCellCapability(module, column);
     const field = ownedScalarField(module, column, row.data);
@@ -445,9 +472,10 @@ export function CombinedLedgerPage({ module }: { module: CombinedLedgerModule })
         <DesignLedgerNarrowToggle expanded={mobileDetail} onToggle={() => setMobileDetail(value => !value)} />
         <DesignLedgerMobileRows dataPdId={`combined.${module}.details`} expanded={mobileDetail} rows={detailRows} />
         <DesignLedgerPagination currentPage={current} dataPdId={`combined.${module}.pagination.top`} label={`${label} combined`} onPageChange={setPage} onPageSizeChange={size => { setPageSize(size); setPage(1); }} pageCount={count} pageSize={pageSize} totalRows={visible.length} />
+        {!loading && searchParams.get("warning") && !paginated.some(row => identity(row) === searchParams.get("warning")) ? <p data-pd-id={`combined.${module}.warning-return-missing`} role="status" tabIndex={-1}>The reviewed record no longer appears on this page with the current filters. Your ledger scope and filters are preserved.</p> : null}
         <LedgerTableScroll cellNavigation={{ label, onSelect: setSelectedRowIdentity, onActivate: (rowId, column, anchor) => { const row = paginated.find(item => identity(item) === rowId); if (!row) return; const blocked = blockedCellReview(row, column); if (blocked) return blocked; void activateCell(row, column, anchor); } }} dataPdId={`combined.${module}.table-scroll`} protectedCellId={`combined.${module}.protected-cell`} narrowDetail={mobileDetail} visualV2>
           <table className={`data-table ${module === "accounts" ? "accounts-data-table" : module === "each-way-extra-places" ? "extra-place-data-table" : "sportsbook-data-table"}`}><colgroup><col style={{ width: "160px" }} />{tableColumns.map(column => <col key={column.key} style={{ width: `${column.key === "actions" ? ledgerV2ActionColumnWidth : ledgerColumnWidths[module][column.key]}px` }} />)}</colgroup><thead><tr><th aria-sort={sortKey === "profile_name" ? sortDescending ? "descending" : "ascending" : "none"} scope="col"><div className="table-header-cell"><button className={`table-sort-button${sortKey === "profile_name" ? " is-active" : ""}`} onClick={() => toggleSort("profile_name")} type="button"><span>Profile</span><span aria-hidden="true">{sortKey === "profile_name" ? sortDescending ? "▼" : "▲" : "↕"}</span></button></div></th>{tableColumns.map(column => { const sortable = ledgerSortableColumns[module].has(column.key); const active = sortKey === column.key; return <th aria-sort={sortable ? active ? sortDescending ? "descending" : "ascending" : "none" : undefined} className={column.align === "end" ? "align-end" : undefined} key={column.key} scope="col"><div className="table-header-cell">{sortable ? <button className={`table-sort-button${active ? " is-active" : ""}`} onClick={() => toggleSort(column.key)} type="button"><span>{column.label}</span><span aria-hidden="true">{active ? sortDescending ? "▼" : "▲" : "↕"}</span></button> : <span className="table-header-label">{column.label}</span>}</div></th>; })}</tr></thead><tbody>
-            {paginated.map(row => { const issueTone = combinedIssueTone(module, row.data); const issueLabels = issueTone ? combinedIssueLabels(module, row.data) : null; return <tr className={[identity(row) === selectedRowIdentity ? "is-selected-row" : "", issueTone === "danger" ? designLedgerClasses.urgentRow : issueTone === "warning" ? designLedgerClasses.warningRow : ""].filter(Boolean).join(" ") || undefined} key={identity(row)}><td data-ledger-column="profile_name" data-ledger-row={identity(row)}>{row.profileName}{issueTone === "danger" && issueLabels?.length ? <small className={designLedgerClasses.urgencyCue}>{issueLabels[0]}</small> : null}</td>{tableColumns.map(column => { const cell = presentLedgerCell(module, row.data, column.key); return <td data-ledger-column={column.key} data-ledger-row={identity(row)} key={column.key} style={{ textAlign: column.align === "end" ? "right" : undefined }}>{column.key === "actions" ? <div className="table-action-row"><DesignLedgerRowAction href={rowHref(row)} label={`Open ${row.recordId} in ${row.profileName}`} /></div> : <CombinedLedgerCell catalogue={catalogue} cell={cell} column={column.key} module={module} row={row.data} />}</td>; })}</tr>; })}
+            {paginated.map(row => { const issueTone = combinedIssueTone(module, row.data); const issueLabels = combinedIssueLabels(module, row.data); const rowKey = identity(row); const recordLabel = String(row.data.event_name ?? row.data.offer_name ?? row.data.runner ?? row.data.account ?? row.data.description ?? row.recordId); const dateColumn = module === "accounts" ? "last_balance_update" : module === "sportsbook-bets" || module === "free-bets" ? "date_settled" : module === "casino-offers" ? "date_settling" : module === "each-way-extra-places" ? "date" : "adjustment_date"; return <Fragment key={rowKey}><tr className={[rowKey === selectedRowIdentity ? "is-selected-row" : "", issueTone === "danger" ? designLedgerClasses.urgentRow : issueTone === "warning" ? designLedgerClasses.warningRow : ""].filter(Boolean).join(" ") || undefined}><td data-ledger-column="profile_name" data-ledger-row={rowKey}>{row.profileName}{issueTone === "danger" && issueLabels?.length ? <small className={designLedgerClasses.urgencyCue}>{issueLabels[0]}</small> : null}</td>{tableColumns.map(column => { const cell = presentLedgerCell(module, row.data, column.key); return <td data-ledger-column={column.key} data-ledger-row={rowKey} key={column.key} style={{ textAlign: column.align === "end" ? "right" : undefined }}>{column.key === "actions" ? <div className="table-action-row"><DesignLedgerRowAction href={rowHref(row)} label={`Open ${row.recordId} in ${row.profileName}`} /></div> : <div className={column.key === dateColumn ? "ledger-warning-date" : undefined}><CombinedLedgerCell catalogue={catalogue} cell={cell} column={column.key} module={module} row={row.data} />{column.key === dateColumn ? issueLabels === null ? <span aria-label="Warning classification unavailable" className="ledger-warning-unavailable">?</span> : <LedgerWarningTrigger identity={rowKey} count={issueLabels.length} open={expandedWarningIdentity === rowKey} record={recordLabel} profile={row.profileName} onToggle={() => setExpandedWarningIdentity(current => current === rowKey ? null : rowKey)} triggerRef={node => { warningTriggerRefs.current[rowKey] = node; }} /> : null}</div>}</td>; })}</tr><LedgerWarningDetailsRow identity={rowKey} colSpan={tableColumns.length + 1} open={expandedWarningIdentity === rowKey} record={recordLabel} profile={row.profileName} warnings={(issueLabels ?? []).map(label => ledgerWarningPresentation(module, label))} onClose={() => { setExpandedWarningIdentity(null); requestAnimationFrame(() => warningTriggerRefs.current[rowKey]?.focus({ preventScroll: true })); }} onReview={warning => void (async () => { if (!(await confirmDiscardCell())) return; router.push(rowHref(row, warning.label)); })()} /></Fragment>; })}
           </tbody></table>
         </LedgerTableScroll>
         <DesignLedgerPagination currentPage={current} dataPdId={`combined.${module}.pagination.bottom`} label={`${label} combined`} onPageChange={setPage} onPageSizeChange={size => { setPageSize(size); setPage(1); }} pageCount={count} pageSize={pageSize} totalRows={visible.length} />

@@ -1,6 +1,6 @@
 "use client";
 
-import { type RefObject, useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
+import { Fragment, type RefObject, useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { FinancialValue, FinancialValueReplayGroup } from "@/components/financial-value";
 import { FinancialReadValue, type FinancialReadState } from "@/components/financial-read-value";
@@ -31,10 +31,12 @@ import { DesignLedgerRowActions } from "@/components/design-ledger-row-actions";
 import { LedgerViewContext } from "@/components/ledger-view-context";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
+import { LedgerWarningContextNotice, LedgerWarningDetailsRow, LedgerWarningTrigger, useLedgerWarningExpansion } from "@/components/ledger-row-warnings";
+import { focusLedgerWarningField, ledgerWarningPresentation, ledgerWarningTarget, type LedgerWarningTarget } from "@/lib/ledger-warning-target";
 import { ledgerCellDecision } from "@/lib/ledger-cell-capabilities";
 import { extraPlaceWorkbenchEntry } from "@/lib/ledger-workbench-entry";
 import { formatApiErrorBody } from "@/lib/api-error";
-import { extraPlaceHasIssue } from "@/lib/ledger-operational-issues";
+import { extraPlaceHasIssue, extraPlaceIssueReasons } from "@/lib/ledger-operational-issues";
 import { LedgerFloatingCellEditor, useLedgerCellEditor, type LedgerCellSession } from "@/components/ledger-floating-cell-editor";
 import { DesignRunnerRaceCellFields } from "@/components/design-runner-race-cell-fields";
 import { designFloatingCellInputClass } from "@/components/design-lab-floating-cell-editor";
@@ -279,30 +281,11 @@ function decimalDisplay(value: string | null | undefined) {
   const number = asNumber(value);
   return number === null ? "-" : number.toFixed(2);
 }
-function getRowIssues(row: Row) {
-  if (row.calculation_provenance === "imported_historical") {
-    return row.imported_historical_pnl?.trim()
-      ? []
-      : ["Historical P&L needed"];
-  }
-  const labels: Array<[keyof Row, string]> = [
-    ["runner", "Runner"],
-    ["race", "Race"],
-    ["placed_at", "Date / time"],
-    ["bookmaker", "Bookmaker"],
-    ["each_way_stake", "E/W stake"],
-    ["back_odds", "Back odds"],
-    ["win_exchange", "Win exchange"],
-    ["win_lay_odds", "Win lay odds"],
-    ["place_exchange", "Place exchange"],
-    ["place_lay_odds", "Place lay odds"],
-  ];
-  const missing = labels
-    .filter(([key]) => !row[key]?.trim())
-    .map(([, label]) => `${label} needed`);
-  if (row.status === "Settled" && row.result === "Pending") missing.push("Outcome needed");
-  if (row.status === "Prospecting") missing.push("Placement not confirmed");
-  return Array.from(new Set(missing));
+function getRowIssues(row: Row) { return extraPlaceIssueReasons(row); }
+function displayedExtraPlaceIssues(row: Row, now: number) {
+  const issues = getRowIssues(row);
+  const ready = getExtraPlaceRaceReadyState({ now, placedAt: row.placed_at, status: row.status });
+  return ready?.tone === "due" ? ["Result Needed", ...issues] : issues;
 }
 function isBlank(value: string) {
   return !value.trim();
@@ -326,14 +309,18 @@ function isDateWithinRange(
 
 export function EachWayExtraPlaceWorkflowShell({
   profileId,
+  profileName,
   initialIssueFilter,
   initialRecordId,
+  initialWarning,
   initialCreate = false,
   visualV2 = false,
 }: {
   profileId: string;
+  profileName?: string;
   initialIssueFilter?: string;
   initialRecordId?: string;
+  initialWarning?: string;
   initialCreate?: boolean;
   visualV2?: boolean;
 }) {
@@ -349,6 +336,7 @@ export function EachWayExtraPlaceWorkflowShell({
   const [open, setOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedGridRowId, setSelectedGridRowId] = useState<string | null>(null);
+  const [warningContext, setWarningContext] = useState<LedgerWarningTarget | null>(initialWarning ? ledgerWarningTarget("each-way-extra-places", initialWarning) : null);
   const [step, setStep] = useState<StepId>("calculate");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -650,7 +638,9 @@ export function EachWayExtraPlaceWorkflowShell({
     initialCreateOpened.current = true;
     openInitialCreate();
   }, [initialCreate, rowsRead]);
-  const openRow = (row: Row, cell?: LedgerCellSession) => {
+  const openRow = (row: Row, cell?: LedgerCellSession, warningLabel?: string) => {
+    const activeWarning = warningLabel ?? (initialRecordId === row.each_way_extra_place_id ? initialWarning : undefined);
+    setWarningContext(activeWarning ? ledgerWarningTarget("each-way-extra-places", activeWarning) : null);
     const next = newForm();
     (Object.keys(next) as Array<keyof Form>).forEach((key) => {
       const saved = String(row[key] ?? next[key]);
@@ -664,15 +654,22 @@ export function EachWayExtraPlaceWorkflowShell({
     });
     resetEditor(next, row, cell);
   };
+  const openWarning = (row: Row, label: string) => {
+    const target = ledgerWarningTarget("each-way-extra-places", label);
+    setWarningContext(target);
+    openRow(row, undefined, label);
+    setStep(target.stage as StepId);
+    focusLedgerWarningField(target.field);
+  };
   const openInitialRow = useEffectEvent((row: Row) => openRow(row));
   const initialRowOpened = useRef(false);
   useEffect(() => {
     if (!initialRecordId || initialRowOpened.current || rowsRead?.state !== "ready") return;
     const row = rows.find(item => item.each_way_extra_place_id === initialRecordId);
     if (!row) return;
-    const timer = window.setTimeout(() => { initialRowOpened.current = true; openInitialRow(row); }, 0);
+    const timer = window.setTimeout(() => { initialRowOpened.current = true; openInitialRow(row); if (initialWarning) { const target = ledgerWarningTarget("each-way-extra-places", initialWarning); setStep(target.stage as StepId); focusLedgerWarningField(target.field); } }, 0);
     return () => window.clearTimeout(timer);
-  }, [initialRecordId, rows, rowsRead]);
+  }, [initialRecordId, initialWarning, rows, rowsRead]);
   const close = async () => {
     if (saving || (isDirty && !(await confirmDiscardChanges()))) return;
     setOpen(false);
@@ -1249,12 +1246,14 @@ export function EachWayExtraPlaceWorkflowShell({
       />}
       {visualV2 ? <DesignLedgerNarrowToggle expanded={mobileDetail} onToggle={() => setMobileDetail(value => !value)} /> : null}
       <ExtraPlaceTable
+        profileName={profileName ?? profileId}
         bookmakerCatalogue={bookmakerCatalogue}
         outOfRangeIssueIds={new Set(
           outOfRangeIssueRows.map((row) => row.each_way_extra_place_id),
         )}
         onDelete={requestDelete}
         onEdit={openRow}
+        onWarning={openWarning}
         onSelect={setSelectedGridRowId}
         onResult={(row, result) => void saveResult(row, result)}
         providerIdsByName={providerIdsByName}
@@ -1381,6 +1380,7 @@ export function EachWayExtraPlaceWorkflowShell({
                   />
                 </div>
                 <div className="workflow-editor-body">
+                  {visualV2 && warningContext && selectedId ? <LedgerWarningContextNotice field={warningContext.field} label={warningContext.label} /> : null}
                   {isGuidedAccessEnabled(guidedAccessMode) &&
                   !guideDismissed &&
                   needed ? (
@@ -1829,6 +1829,7 @@ function ExtraPlaceFilterDialog({
   );
 }
 function ExtraPlaceTable({
+  profileName,
   bookmakerCatalogue,
   currentTime,
   outOfRangeIssueIds,
@@ -1839,10 +1840,12 @@ function ExtraPlaceTable({
   narrowDetail,
   onDelete,
   onEdit,
+  onWarning,
   onSelect,
   onResult,
   selectedRowId,
 }: {
+  profileName: string;
   bookmakerCatalogue: MasterAccountCatalogueRecord[];
   currentTime: number;
   outOfRangeIssueIds: Set<string>;
@@ -1853,6 +1856,7 @@ function ExtraPlaceTable({
   narrowDetail: boolean;
   onDelete: (row: Row) => void;
   onEdit: (row: Row, cell?: LedgerCellSession) => void;
+  onWarning: (row: Row, label: string) => void;
   onSelect: (rowId: string) => void;
   onResult: (row: Row, result: string) => void;
   selectedRowId: string | null;
@@ -1863,6 +1867,7 @@ function ExtraPlaceTable({
     "placeLiability", "rating", "impliedOdds", "qualLoss", "epProfit", "status", "actions",
   ] as const;
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>(ledgerColumnWidths["each-way-extra-places"]);
+  const warningRows = useLedgerWarningExpansion(rows.map(row => row.each_way_extra_place_id));
   const visible = (key: (typeof columns)[number]) =>
     !["backOdds", "terms", "placeOdds", "winLayOdds", "winLayStake", "winLiability", "placeLayOdds", "placeLayStake", "placeLiability", "rating", "impliedOdds"].includes(key) ||
     visibleColumns[
@@ -1937,11 +1942,15 @@ function ExtraPlaceTable({
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => (
+          {rows.map((row) => <Fragment key={row.each_way_extra_place_id}>
             <LedgerRow
+              profileName={profileName}
               bookmakerCatalogue={bookmakerCatalogue}
               currentTime={currentTime}
-              key={row.each_way_extra_place_id}
+              warningCount={displayedExtraPlaceIssues(row, currentTime).length}
+              warningOpen={warningRows.expandedId === row.each_way_extra_place_id}
+              onToggleWarnings={() => warningRows.toggle(row.each_way_extra_place_id)}
+              warningTriggerRef={warningRows.triggerRef(row.each_way_extra_place_id)}
               onDelete={() => onDelete(row)}
               onEdit={() => onEdit(row)}
               onResult={(result) => onResult(row, result)}
@@ -1954,7 +1963,8 @@ function ExtraPlaceTable({
               visualV2={visualV2}
               visibleColumns={visibleColumns}
             />
-          ))}
+            {visualV2 ? <LedgerWarningDetailsRow identity={row.each_way_extra_place_id} colSpan={activeColumns.length} open={warningRows.expandedId === row.each_way_extra_place_id} record={row.runner || row.race || row.each_way_extra_place_id} profile={profileName} warnings={displayedExtraPlaceIssues(row, currentTime).map(label => ledgerWarningPresentation("each-way-extra-places", label))} onClose={() => warningRows.close(row.each_way_extra_place_id)} onReview={warning => onWarning(row, warning.label)} /> : null}
+          </Fragment>)}
           {rows.length === 0 ? (
             <tr>
               <td colSpan={activeColumns.length}>
@@ -1971,6 +1981,7 @@ function ResizableHeader({ className = "", label, onResize }: { className?: stri
   return <th className={className} scope="col"><div className="table-header-cell"><span className="table-header-label">{label}</span><span aria-hidden="true" className="table-column-resize-handle" onMouseDown={onResize} /></div></th>;
 }
 function LedgerRow({
+  profileName,
   bookmakerCatalogue,
   currentTime,
   outsideTrackerRange,
@@ -1982,7 +1993,12 @@ function LedgerRow({
   onDelete,
   onEdit,
   onResult,
+  warningCount,
+  warningOpen,
+  onToggleWarnings,
+  warningTriggerRef,
 }: {
+  profileName: string;
   bookmakerCatalogue: MasterAccountCatalogueRecord[];
   currentTime: number;
   outsideTrackerRange: boolean;
@@ -1994,6 +2010,10 @@ function LedgerRow({
   onDelete: () => void;
   onEdit: () => void;
   onResult: (result: string) => void;
+  warningCount: number;
+  warningOpen: boolean;
+  onToggleWarnings: () => void;
+  warningTriggerRef: (node: HTMLButtonElement | null) => void;
 }) {
   const rowIssues = getRowIssues(row);
   const issueCount = rowIssues.length;
@@ -2009,7 +2029,7 @@ function LedgerRow({
     status: row.status,
   });
   // Result due is an operational cue, not an additional data-completeness issue.
-  const displayIssues = raceReady?.tone === "due" ? ["Result Needed", ...rowIssues] : rowIssues;
+  const displayIssues = displayedExtraPlaceIssues(row, currentTime);
   const visibleIssues = displayIssues.slice(0, 4);
   const cell = (column: string) => ({ "data-ledger-row": row.each_way_extra_place_id, "data-ledger-column": column, "data-pd-id": `extra-place.cell.${row.each_way_extra_place_id}.${column}` });
   return (
@@ -2026,7 +2046,7 @@ function LedgerRow({
       tabIndex={0}
     >
       <td {...cell("date")}>
-        {row.calculation_state === "historical_imported" ? <div className="row-issue-overlay"><span className="table-chip table-chip-warning">Historical / Manual</span></div> : displayIssues.length > 0 ? (
+        {!visualV2 && (row.calculation_state === "historical_imported" ? <div className="row-issue-overlay"><span className="table-chip table-chip-warning">Historical / Manual</span></div> : displayIssues.length > 0 ? (
           <div aria-label={`Issues for ${row.runner || "Extra Place row"}`} className="row-issue-overlay">
             {visibleIssues.map((label) => (
               <span
@@ -2042,8 +2062,8 @@ function LedgerRow({
               </span>
             ) : null}
           </div>
-        ) : null}
-        {visualV2 ? <LedgerCompactDate value={row.placed_at} fallback="Not recorded" /> : formatLedgerDateTime(row.placed_at)}
+        ) : null)}
+        {visualV2 ? <div className="ledger-warning-date"><LedgerCompactDate value={row.placed_at} fallback="Not recorded" /><LedgerWarningTrigger identity={row.each_way_extra_place_id} count={warningCount} open={warningOpen} record={row.runner || row.race || row.each_way_extra_place_id} profile={profileName} onToggle={onToggleWarnings} triggerRef={warningTriggerRef} /></div> : formatLedgerDateTime(row.placed_at)}
       </td>
       <td {...cell("runner")}>
         <strong>{row.runner || "Runner needed"}</strong>

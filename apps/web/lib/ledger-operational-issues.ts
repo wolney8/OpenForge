@@ -67,3 +67,19 @@ export function hasRequiredExtraPlaceRowGap(row: ExtraPlaceIssueSource): boolean
 export function extraPlaceHasIssue(row: ExtraPlaceIssueSource): boolean {
   return row.calculation_state !== "resolved" || row.status === "Prospecting" || hasRequiredExtraPlaceRowGap(row) || (row.status === "Settled" && row.result === "Pending");
 }
+
+/** The native Extra Place missing-field predicates, exposed as individual read-only reasons. */
+export function extraPlaceIssueReasons(row: ExtraPlaceIssueSource): string[] {
+  if (row.calculation_provenance === "imported_historical") return row.imported_historical_pnl?.trim() ? [] : ["Historical P&L needed"];
+  const required: Array<[string, string]> = [
+    ["runner", "Runner"], ["race", "Race"], ["placed_at", "Date / time"],
+    ["bookmaker", "Bookmaker"], ["each_way_stake", "E/W stake"], ["back_odds", "Back odds"],
+    ["win_exchange", "Win exchange"], ["win_lay_odds", "Win lay odds"],
+    ["place_exchange", "Place exchange"], ["place_lay_odds", "Place lay odds"],
+  ];
+  const reasons = required.filter(([field]) => !row[field]?.trim()).map(([, label]) => `${label} needed`);
+  if (row.status === "Settled" && row.result === "Pending") reasons.push("Outcome needed");
+  if (row.status === "Prospecting") reasons.push("Placement not confirmed");
+  if (!reasons.length && row.calculation_state !== "resolved") reasons.push("Calculation review needed");
+  return [...new Set(reasons)];
+}

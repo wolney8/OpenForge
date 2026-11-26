@@ -2,8 +2,18 @@ import { describe, expect, it } from "vitest";
 import { presentLedgerCell } from "./combined-ledger-source";
 import { ledgerColumnContracts, ledgerHideableColumns } from "./ledger-column-contracts";
 import { safeCombinedLedgerReturn } from "./profile-scope";
+import { ledgerWarningTarget } from "./ledger-warning-target";
 
 describe("combined ledger native contracts", () => {
+  it("routes source warnings to their owning native stage and recorded field", () => {
+    expect(ledgerWarningTarget("accounts", "Current Balance needs review")).toMatchObject({ stage: "balance", field: "Current balance" });
+    expect(ledgerWarningTarget("sportsbook-bets", "Back Unplaced")).toMatchObject({ stage: "placement", field: "Back placement" });
+    expect(ledgerWarningTarget("free-bets", "No Expiry")).toMatchObject({ stage: "setup", field: "Expiry" });
+    expect(ledgerWarningTarget("casino-offers", "Outcome Needed")).toMatchObject({ stage: "settlement", field: "Result" });
+    expect(ledgerWarningTarget("each-way-extra-places", "Historical P&L needed")).toMatchObject({ stage: "settlement", field: "Imported realised P&L" });
+    expect(ledgerWarningTarget("cash-adjustments", "No Scope")).toMatchObject({ stage: "scope", field: "Affects investment" });
+    expect(ledgerWarningTarget("cash-adjustments", "No Account")).toMatchObject({ stage: "scope", field: "Linked account" });
+  });
   it("keeps every Profile-owned column and locks financial/action anchors", () => {
     for (const [module, columns] of Object.entries(ledgerColumnContracts)) {
       expect(columns.at(-1)?.key, module).toBe("actions");
@@ -33,6 +43,8 @@ describe("combined ledger native contracts", () => {
   it("allows only bounded same-ledger return paths", () => {
     expect(safeCombinedLedgerReturn("accounts", "/tracker/accounts?profile=profile-demo-001&q=Bookmaker+A&page=2&size=16")).toBe("/tracker/accounts?profile=profile-demo-001&q=Bookmaker+A&page=2&size=16");
     expect(safeCombinedLedgerReturn("sportsbook-bets", "/tracker/sportsbook-bets?f_status=Placed&f_bookmaker=Bookmaker+A")).toBe("/tracker/sportsbook-bets?f_status=Placed&f_bookmaker=Bookmaker+A");
+    expect(safeCombinedLedgerReturn("sportsbook-bets", "/tracker/sportsbook-bets?warning=profile-demo-001%3A%3ASB-001&sy=480&sx=120")).toBe("/tracker/sportsbook-bets?warning=profile-demo-001%3A%3ASB-001&sy=480&sx=120");
+    expect(safeCombinedLedgerReturn("sportsbook-bets", "/tracker/sportsbook-bets?warning=%2Fadmin&sy=-1")).toBeUndefined();
     expect(safeCombinedLedgerReturn("accounts", "/tracker/accounts?f_bookmaker=Bookmaker+A")).toBeUndefined();
     expect(safeCombinedLedgerReturn("accounts", "//evil.invalid/tracker/accounts")).toBeUndefined();
     expect(safeCombinedLedgerReturn("accounts", "/tracker/accounts?returnTo=%2Fadmin")).toBeUndefined();

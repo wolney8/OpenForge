@@ -21,7 +21,7 @@ import { DesignOfferDetailsCellFields } from "@/components/design-offer-details-
 import { takeSportsbookLayDraft } from "@/lib/sportsbook-lay-handoff";
 import { sportsbookRevisionHeader } from "@/lib/sportsbook-record-revision";
 
-import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { MouseEvent as ReactMouseEvent, ReactNode, SetStateAction } from "react";
 import { apiBaseUrl } from "@/lib/api";
@@ -85,6 +85,8 @@ import { DesignLabSelect } from "@/components/design-lab-select";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerViewContext } from "@/components/ledger-view-context";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
+import { LedgerWarningContextNotice, LedgerWarningDetailsRow, LedgerWarningTrigger, useLedgerWarningExpansion } from "@/components/ledger-row-warnings";
+import { focusLedgerWarningField, ledgerWarningPresentation, ledgerWarningTarget, type LedgerWarningTarget } from "@/lib/ledger-warning-target";
 import { LedgerFloatingCellEditor, useLedgerCellEditor, type LedgerCellSession } from "@/components/ledger-floating-cell-editor";
 import { designFloatingCellInputClass } from "@/components/design-lab-floating-cell-editor";
 import labStyles from "@/components/design-lab-connected.module.css";
@@ -3053,7 +3055,7 @@ function makeOfferGroupId(): string {
   return `OFG-${new Date().toISOString().slice(0, 10).replaceAll("-", "")}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
 }
 
-export function SportsbookWorkflowShell({ profileId, profileName, initialQuery = "", initialIssueFilter, initialRecordId, initialCreate = false, initialCreateMode = "full", feeReviewContext, visualV2 = false }: { profileId: string; profileName?: string; initialQuery?: string; initialIssueFilter?: string; initialRecordId?: string; initialCreate?: boolean; initialCreateMode?: "quick" | "full"; feeReviewContext?: FeeReviewResolutionContext; visualV2?: boolean }) {
+export function SportsbookWorkflowShell({ profileId, profileName, initialQuery = "", initialIssueFilter, initialRecordId, initialWarning, initialCreate = false, initialCreateMode = "full", feeReviewContext, visualV2 = false }: { profileId: string; profileName?: string; initialQuery?: string; initialIssueFilter?: string; initialRecordId?: string; initialWarning?: string; initialCreate?: boolean; initialCreateMode?: "quick" | "full"; feeReviewContext?: FeeReviewResolutionContext; visualV2?: boolean }) {
   const { catalogue: bookmakerCatalogue, providerIdsByName } =
     useBookmakerCatalogue(profileId);
   const [guidedAccessMode] = useProfileGuidedAccessMode(profileId);
@@ -3080,6 +3082,7 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
   } | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedGridRowId, setSelectedGridRowId] = useState<string | null>(null);
+  const [warningContext, setWarningContext] = useState<LedgerWarningTarget | null>(initialWarning ? ledgerWarningTarget("sportsbook-bets", initialWarning) : null);
   const protectedGridReturnFocusRef = useRef<HTMLElement | null>(null);
   const [workflowVisible, setWorkflowVisible] = useState(false);
   const [quickCaptureOpen, setQuickCaptureOpen] = useState(false);
@@ -3097,6 +3100,9 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
     `openforge-ledger-collapsed:${profileId}:sportsbook-bets`,
     false
   );
+  useEffect(() => {
+    if (visualV2 && !initialRecordId && !initialCreate && !workflowVisible && tableCollapsed) setTableCollapsed(false);
+  }, [visualV2, initialRecordId, initialCreate, workflowVisible, tableCollapsed, setTableCollapsed]);
   const [showBetSetupValidation, setShowBetSetupValidation] = useState(false);
   const [additionalOfferDetailsOpen, setAdditionalOfferDetailsOpen] = useState(false);
   const [offerValidationFocusNonce, setOfferValidationFocusNonce] = useState(0);
@@ -4286,6 +4292,15 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
     !usesCorePlannerInMatching && !usesV2MultiLayPlanning &&
     formState.status === "Placed" && formState.match_strategy === "Partial Lay";
   const navigableEditorTabs = editorTabs.filter((tab) => tab.status !== "locked");
+  const warningStageAvailable = Boolean(warningContext && navigableEditorTabs.some(tab => tab.id === warningContext.stage));
+  useEffect(() => {
+    if (!workflowVisible || !selectedId || !warningContext) return;
+    if (warningStageAvailable && activeEditorTabId !== warningContext.stage) {
+      const frame = requestAnimationFrame(() => setActiveEditorTabId(warningContext.stage as SportsbookEditorTabId));
+      return () => cancelAnimationFrame(frame);
+    }
+    focusLedgerWarningField(warningContext.field);
+  }, [workflowVisible, selectedId, warningContext, warningStageAvailable, activeEditorTabId]);
   const activeEditorTabIndex = Math.max(
     0,
     navigableEditorTabs.findIndex((tab) => tab.id === safeActiveEditorTabId)
@@ -5509,6 +5524,7 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
     () => paginateTrackerRows(filteredRows, effectivePage, pageSize),
     [effectivePage, filteredRows, pageSize]
   );
+  const warningRows = useLedgerWarningExpansion(pagedRows.map(row => row.sportsbook_bet_id));
   const selectedGridRow = pagedRows.find(row => row.sportsbook_bet_id === selectedGridRowId);
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
@@ -5674,7 +5690,7 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
     [tableColumns]
   );
 
-  async function selectRow(rowId: string, options?: { collapseTable?: boolean; cell?: LedgerCellSession; returnFocus?: HTMLElement }) {
+  async function selectRow(rowId: string, options?: { collapseTable?: boolean; cell?: LedgerCellSession; returnFocus?: HTMLElement; warning?: string }) {
     if (workflowVisible && rowId !== selectedId && isDirty && !(await confirmDiscardChanges())) {
       return;
     }
@@ -5719,6 +5735,7 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
     setShowBetSetupValidation(false);
     setAdditionalOfferDetailsOpen(false);
     setActiveEditorTabId(sportsbookWorkbenchEntry({ status: record.status, layStatus: record.lay_status, matchStrategy: nextFormState.match_strategy, setupComplete: getBetSetupComplete(nextFormState) }));
+    setWarningContext(options?.warning ? ledgerWarningTarget("sportsbook-bets", options.warning) : null);
     setRequirementsVisible(false);
     setPlacementVisualOnly(false);
     setGuidedEntryDismissed(false);
@@ -8212,6 +8229,7 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
                         ? sortIssueBadgesByPriority(getSportsbookIssueBadges(sourceRow))
                         : [];
                       return (
+                        <Fragment key={`${rowId}-${index}`}>
                         <FinancialValueReplayRow
                           className={[isSelected ? "is-selected-row" : "", rowStateClassName]
                             .filter(Boolean)
@@ -8234,7 +8252,7 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
                               }
                               key={column.key}
                             >
-                              {column.key === "date_settled" && rowIssueBadges.length > 0 ? (
+                              {!visualV2 && column.key === "date_settled" && rowIssueBadges.length > 0 ? (
                                 <div className="row-issue-overlay" aria-hidden="true">
                                   {rowIssueBadges.map((badge) => (
                                     <span
@@ -8250,10 +8268,12 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
                                   ))}
                                 </div>
                               ) : null}
-                              {renderTableCell(row, column)}
+                              {visualV2 && column.key === "date_settled" ? <div className="ledger-warning-date">{renderTableCell(row, column)}{!sourceRow ? <span aria-label="Warning classification unavailable" className="ledger-warning-unavailable">?</span> : <LedgerWarningTrigger identity={`${profileId}:${rowId}`} count={rowIssueBadges.length} open={warningRows.expandedId === rowId} record={String(row.event_name || rowId)} profile={profileName ?? profileId} onToggle={() => warningRows.toggle(rowId)} triggerRef={warningRows.triggerRef(rowId)} />}</div> : renderTableCell(row, column)}
                             </td>
                           ))}
                         </FinancialValueReplayRow>
+                        {visualV2 ? <LedgerWarningDetailsRow identity={`${profileId}:${rowId}`} colSpan={tableColumns.length} open={warningRows.expandedId === rowId} record={String(row.event_name || rowId)} profile={profileName ?? profileId} warnings={rowIssueBadges.map(badge => ({ ...badge, ...ledgerWarningPresentation("sportsbook-bets", badge.label) }))} onClose={() => warningRows.close(rowId)} onReview={warning => void selectRow(rowId, { collapseTable: true, warning: warning.label, returnFocus: document.activeElement instanceof HTMLElement ? document.activeElement : undefined })} /> : null}
+                        </Fragment>
                       );
                     })
                   )}
@@ -8808,6 +8828,7 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
           {!visualV2 ? guidedEntryPanel : null}
           <DesignBetWorkbenchGrid dataPdId="sportsbook.editor.workbench" enabled={visualV2}>
           <form className={visualV2 ? `form-grid ${labStyles.entryFields}` : "form-grid"} data-pd-bet-workbench-fields={visualV2 || undefined} id="sportsbook-workbench-form" onSubmit={(event) => void handleSubmit(event)}>
+            {visualV2 && warningContext && selectedId ? <LedgerWarningContextNotice field={warningContext.field} label={warningContext.label} /> : null}
             {/* The Lab entry presents the active field card directly; guidance remains in native validation. */}
             {visualV2 && requirementsVisible ? <fieldset className={labStyles.requirementsCard} data-pd-id="sportsbook.workbench.requirements"><legend>Recorded requirements</legend><p>Review recorded offer conditions and source readiness. Missing evidence remains Unknown; this stage does not confirm external activity.</p><dl><div><dt>Offer setup</dt><dd>{betSetupComplete ? "Recorded" : `${missingBetSetupFields.length} required setup fields need review`}</dd></div><div><dt>Qualifying source</dt><dd>{formState.bet_role !== "Standalone" ? formState.offer_group_id ? "Recorded" : "Unknown" : "Not required"}</dd></div><div><dt>Reward conditions</dt><dd>{formState.promotion_json ? "Recorded" : "Unknown"}</dd></div><div><dt>External Back placement</dt><dd>{backPlacementConfirmed ? "Recorded" : "Unknown"}</dd></div><div><dt>External Lay placement</dt><dd>{formState.match_strategy === "No Lay" ? "Not required" : layPartiallyConfirmed ? "Partially matched" : layFullyConfirmed ? "Recorded" : "Unknown"}</dd></div></dl><button className={labStyles.secondaryButton} onClick={() => activateEditorTab("setup")} type="button">Review Offer fields</button></fieldset> : null}
             {visualV2 && !showsPlacementSection ? <LedgerEditorTabPanel activeTabId={displayEditorTabId} tabId="placement"><div data-pd-id="sportsbook.workbench.placement"><EditorSection visualV2 labFieldset collapsible={false} title="Placement" headerAside={renderEditorSectionAside()}><p>Record actual external placement separately from the Matching plan. An event date is not a settlement deadline.</p><fieldset className="section-fieldset" disabled={isSettledReadOnly}><div ref={setPlacementPortalTarget} />{usesCorePlannerInMatching ? <><div className={labStyles.fieldPair}><label className="field-control"><span>Back placement</span><input readOnly value={backPlacementConfirmed ? "Confirmed externally" : "Not recorded"} /></label><label className="field-control"><span>Lay placement</span><input readOnly value={layPlacementConfirmed ? "Recorded" : "Not recorded"} /></label><label className="field-control"><span>Actual back stake</span><input readOnly value={recordedBackStake} placeholder="Not recorded" /></label><label className="field-control"><span>Actual matched lay stake</span><input readOnly value={recordedLayStake} placeholder="Not recorded" /></label></div><button className={labStyles.secondaryButton} disabled={!backPlacementReady || backPlacementConfirmed} onClick={() => applyPlacementAction("back-placed")} type="button">Confirm external Back</button><p>Back: {backPlacementConfirmed ? "Confirmed" : "Not recorded"} · Lay: {layPlacementConfirmed ? "Confirmed" : "Not recorded"}</p></> : null}{!usesCorePlannerInMatching ? <><div className={labStyles.fieldPair}>

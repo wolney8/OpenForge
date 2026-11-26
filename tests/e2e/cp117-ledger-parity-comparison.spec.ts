@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type APIResponse } from "@playwright/test";
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -32,7 +32,14 @@ test.beforeEach(async ({ page }) => {
   } })).status()).toBe(200);
   await page.route(/\/profiles\/profile-demo-001\/tracker-settings$/, async route => {
     for (let attempt = 0; attempt < 3; attempt += 1) {
-      const response = await route.fetch();
+      let response: APIResponse;
+      try {
+        response = await route.fetch();
+      } catch (error) {
+        if (attempt === 2) throw error;
+        await new Promise(resolve => setTimeout(resolve, 250));
+        continue;
+      }
       if (response.ok()) {
         await route.fulfill({ response, json: { ...await response.json(), active_date_preset: "All Dates" } });
         return;

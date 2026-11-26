@@ -137,6 +137,9 @@ html[data-ux-shell="v2"] :is(button, [role="button"], a.button-link, a[class*="B
   scroll-behavior: auto;
   overscroll-behavior-x: contain;
 }
+.ux-v2-main .ledger-table-scroll-wrap > .table-scroll[data-pd-id$=".table-scroll"] {
+  container-type: inline-size;
+}
 .ux-v2-main .ledger-table-scroll-wrap > .table-scroll:focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: 2px;
@@ -430,3 +433,5 @@ html[data-ux-shell="v2"] .guided-entry-banner::after { display: none; }
   .ux-v2-main .profile-directory > .stat-strip > .stat-card { border-left: 0 !important; }
   .ux-v2-main .profile-directory > .stat-strip > .stat-card + .stat-card { border-top: 1px solid var(--outline); }
 }
+.ledger-warning-date{display:flex;align-items:center;justify-content:center;gap:6px;min-width:0}
+.ledger-warning-unavailable{display:inline-flex;align-items:center;justify-content:center;min-width:28px;min-height:28px;border:1px solid var(--outline-strong);border-radius:7px;color:var(--muted);font-weight:700}

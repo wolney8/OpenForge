@@ -1,0 +1,20 @@
+.trigger{display:inline-flex;align-items:center;justify-content:center;gap:3px;min-width:36px;min-height:36px;padding:4px 7px;border:1px solid var(--outline-strong);border-radius:8px;background:var(--bg-muted);color:var(--warning);font:inherit;font-weight:800;vertical-align:middle}
+.trigger :global(.material-symbols-outlined){font-size:18px}
+.trigger:focus-visible,.action:focus-visible,.close:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.detailRow{border:0}
+.detailRow>td{padding:0!important;border:0!important;background:var(--surface-strong)!important}
+.motion{display:grid;grid-template-rows:0fr;opacity:0;transition:grid-template-rows .22s ease,opacity .18s ease;pointer-events:none}
+.motion[data-open="true"]{grid-template-rows:1fr;opacity:1;pointer-events:auto}
+.clip{position:sticky;left:0;box-sizing:border-box;width:100cqi;max-width:100%;min-height:0;overflow:hidden}
+.panel{display:grid;gap:5px;margin:0;padding:10px 12px;border:1px solid var(--outline-strong);border-radius:0;background:var(--surface-container);color:var(--text)}
+.heading{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.heading h3{flex:1 1 180px;min-width:0;margin:0;font-size:1rem;overflow-wrap:anywhere}
+.list{display:grid;gap:5px;margin:0;padding-left:18px}
+.list li{margin:0;line-height:1.35}
+.action,.close{display:inline-flex;align-items:center;min-height:28px;margin:0 0 0 3px;padding:1px 4px;border:1px solid transparent;border-radius:4px;background:transparent;color:var(--primary-strong);font:inherit;line-height:1.25;text-align:left;white-space:normal;cursor:pointer}
+.close{flex:none}
+.action:hover,.close:hover{border-color:var(--outline);background:var(--bg-muted)}
+@media(max-width:700px){.action,.close{min-height:40px;margin-left:0;padding:4px 6px}}
+@media(prefers-reduced-motion:reduce){.motion{transition:none}}
+.context{display:flex;align-items:flex-start;gap:8px;margin:0 0 10px;padding:9px 11px;border:1px solid var(--warning);border-radius:8px;background:color-mix(in srgb,var(--warning) 8%,var(--surface-container));color:var(--text);font-size:.875rem;line-height:1.4}
+.context :global(.material-symbols-outlined){flex:none;font-size:20px;color:var(--warning)}

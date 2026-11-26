@@ -5,7 +5,7 @@ import { ledgerDateSortValue } from "@/lib/ledger-compact-date";
 import { ModalBoundary } from "@/components/modal-boundary";
 
 import type { MouseEvent as ReactMouseEvent, ReactNode } from "react";
-import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState, useTransition } from "react";
+import { Fragment, useCallback, useEffect, useEffectEvent, useMemo, useRef, useState, useTransition } from "react";
 import { apiBaseUrl } from "@/lib/api";
 import { ledgerColumnContracts, ledgerColumnWidths } from "@/lib/ledger-column-contracts";
 import { casinoValueLabel, displayedCasinoValue } from "@/lib/ledger-row-presentation";
@@ -42,6 +42,8 @@ import { LedgerViewContext } from "@/components/ledger-view-context";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerQuickActions, type LedgerQuickAction } from "@/components/ledger-quick-actions";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
+import { LedgerWarningContextNotice, LedgerWarningDetailsRow, LedgerWarningTrigger, useLedgerWarningExpansion } from "@/components/ledger-row-warnings";
+import { focusLedgerWarningField, ledgerWarningPresentation, ledgerWarningTarget, type LedgerWarningTarget } from "@/lib/ledger-warning-target";
 import { ledgerCellDecision } from "@/lib/ledger-cell-capabilities";
 import { LedgerFloatingCellEditor, useLedgerCellEditor, type LedgerCellSession } from "@/components/ledger-floating-cell-editor";
 import { designFloatingCellInputClass } from "@/components/design-lab-floating-cell-editor";
@@ -1747,7 +1749,7 @@ export function canCasinoInlineScalarEdit(record: CasinoOfferRecord): boolean {
     .every((key) => prepared[key] === draft[key]);
 }
 
-export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initialIssueFilter, initialRecordId, initialCreate = false, feeReviewContext, visualV2 = false }: { profileId: string; initialQuery?: string; initialIssueFilter?: string; initialRecordId?: string; initialCreate?: boolean; feeReviewContext?: FeeReviewResolutionContext; visualV2?: boolean }) {
+export function CasinoOfferWorkflowShell({ profileId, profileName, initialQuery = "", initialIssueFilter, initialRecordId, initialWarning, initialCreate = false, feeReviewContext, visualV2 = false }: { profileId: string; profileName?: string; initialQuery?: string; initialIssueFilter?: string; initialRecordId?: string; initialWarning?: string; initialCreate?: boolean; feeReviewContext?: FeeReviewResolutionContext; visualV2?: boolean }) {
   const { catalogue: bookmakerCatalogue, providerIdsByName } =
     useBookmakerCatalogue(profileId);
   const [guidedAccessMode] = useProfileGuidedAccessMode(profileId);
@@ -1764,6 +1766,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
   const [isTrackerRangeSaving, setIsTrackerRangeSaving] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedGridRowId, setSelectedGridRowId] = useState<string | null>(null);
+  const [warningContext, setWarningContext] = useState<LedgerWarningTarget | null>(initialWarning ? ledgerWarningTarget("casino-offers", initialWarning) : null);
   const [workflowVisible, setWorkflowVisible] = useState(false);
   const cellEditor = useLedgerCellEditor();
   const inlineField = cellEditor.session ? inlineCellFields[cellEditor.session.column as keyof typeof inlineCellFields] : undefined;
@@ -1774,6 +1777,9 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
     `openforge-ledger-collapsed:${profileId}:casino-offers`,
     false
   );
+  useEffect(() => {
+    if (visualV2 && !initialRecordId && !initialCreate && !workflowVisible && tableCollapsed) setTableCollapsed(false);
+  }, [visualV2, initialRecordId, initialCreate, workflowVisible, tableCollapsed, setTableCollapsed]);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [filterDialogView, setFilterDialogView] = useState<"filters" | "columns">("filters");
   const [visibleColumnKeys, setVisibleColumnKeys] = useState<Set<CasinoColumnKey>>(
@@ -2229,6 +2235,15 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
         | CasinoEditorTabId
         | undefined) ?? "setup";
   const navigableCasinoEditorTabs = casinoEditorTabs.filter((tab) => tab.status !== "locked");
+  const warningStageAvailable = Boolean(warningContext && navigableCasinoEditorTabs.some(tab => tab.id === warningContext.stage));
+  useEffect(() => {
+    if (!workflowVisible || !selectedId || !warningContext) return;
+    if (warningStageAvailable && activeEditorTabId !== warningContext.stage) {
+      const frame = requestAnimationFrame(() => setActiveEditorTabId(warningContext.stage as CasinoEditorTabId));
+      return () => cancelAnimationFrame(frame);
+    }
+    focusLedgerWarningField(warningContext.field);
+  }, [workflowVisible, selectedId, warningContext, warningStageAvailable, activeEditorTabId]);
   const activeCasinoEditorTabIndex = Math.max(
     0,
     navigableCasinoEditorTabs.findIndex((tab) => tab.id === safeActiveEditorTabId)
@@ -3098,6 +3113,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
     () => paginateTrackerRows(filteredRows, effectivePage, pageSize),
     [effectivePage, filteredRows, pageSize]
   );
+  const warningRows = useLedgerWarningExpansion(pagedRows.map(row => row.casino_offer_id));
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
       if (selectedGridRowId && !pagedRows.some(row => row.casino_offer_id === selectedGridRowId)) setSelectedGridRowId(null);
@@ -3127,7 +3143,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
     [editorHeaderFullTitle]
   );
 
-  async function selectRow(rowId: string, options?: { collapseTable?: boolean; cell?: LedgerCellSession }) {
+  async function selectRow(rowId: string, options?: { collapseTable?: boolean; cell?: LedgerCellSession; warning?: string }) {
     if (rowId !== selectedId && isDirty && !(await confirmDiscardChanges())) {
       return;
     }
@@ -3137,6 +3153,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
     }
     // A descriptive edit must not silently normalize legacy financial/date fields.
     // Compare the native Save preparation with the native draft; otherwise hand off.
+    setWarningContext(options?.warning ? ledgerWarningTarget("casino-offers", options.warning) : null);
     if (options?.cell && canCasinoInlineScalarEdit(record)) cellEditor.start(options.cell.column, options.cell.anchor);
     else cellEditor.close();
     setSelectedId(rowId);
@@ -3144,7 +3161,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
     isCreatingDraftRef.current = false;
     setWorkflowVisible(true);
     const nextFormState = recordToForm(record);
-    setActiveEditorTabId(casinoWorkbenchEntry({ status: record.status, result: record.result, setupComplete: getMissingRequiredFields(nextFormState).length === 0, hasCampaign: casinoOfferTypeUsesTab(nextFormState.offer_type, "campaign"), campaignComplete: isCasinoRequiredTabComplete(nextFormState, "campaign"), hasReward: casinoOfferTypeUsesTab(nextFormState.offer_type, "reward"), rewardComplete: isCasinoRequiredTabComplete(nextFormState, "reward") }));
+    setActiveEditorTabId(options?.warning ? ledgerWarningTarget("casino-offers", options.warning).stage as CasinoEditorTabId : casinoWorkbenchEntry({ status: record.status, result: record.result, setupComplete: getMissingRequiredFields(nextFormState).length === 0, hasCampaign: casinoOfferTypeUsesTab(nextFormState.offer_type, "campaign"), campaignComplete: isCasinoRequiredTabComplete(nextFormState, "campaign"), hasReward: casinoOfferTypeUsesTab(nextFormState.offer_type, "reward"), rewardComplete: isCasinoRequiredTabComplete(nextFormState, "reward") }));
     setFormState(nextFormState);
     setPristineFormState(nextFormState);
     setErrorMessage("");
@@ -3881,6 +3898,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
                         ? sortIssueBadgesByPriority(getCasinoOperationalIssueBadges(sourceRow))
                         : [];
                       return (
+                        <Fragment key={`${rowId}-${index}`}>
                         <FinancialValueReplayRow
                           className={[
                             selectedId === rowId || selectedGridRowId === rowId ? "is-selected-row" : "",
@@ -3898,7 +3916,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
                         >
                           {tableColumns.map((column) => (
                             <td className="align-center" key={column.key} data-ledger-row={column.key !== "actions" ? rowId : undefined} data-ledger-column={column.key !== "actions" ? column.key : undefined} data-pd-id={column.key !== "actions" ? `casino-offers.cell.${rowId}.${column.key}` : undefined}>
-                              {column.key === "date_settling" && rowIssueBadges.length > 0 ? (
+                              {!visualV2 && column.key === "date_settling" && rowIssueBadges.length > 0 ? (
                                 <div className="row-issue-overlay" aria-hidden="true">
                                   {rowIssueBadges.map((badge) => (
                                     <span
@@ -3914,10 +3932,12 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
                                   ))}
                                 </div>
                               ) : null}
-                              {renderTableCell(row, column)}
+                              {visualV2 && column.key === "date_settling" ? <div className="ledger-warning-date">{renderTableCell(row, column)}{!sourceRow ? <span aria-label="Warning classification unavailable" className="ledger-warning-unavailable">?</span> : <LedgerWarningTrigger identity={`${profileId}:${rowId}`} count={rowIssueBadges.length} open={warningRows.expandedId === rowId} record={String(row.offer_name || rowId)} profile={profileName ?? profileId} onToggle={() => warningRows.toggle(rowId)} triggerRef={warningRows.triggerRef(rowId)} />}</div> : renderTableCell(row, column)}
                             </td>
                           ))}
                         </FinancialValueReplayRow>
+                        {visualV2 ? <LedgerWarningDetailsRow identity={`${profileId}:${rowId}`} colSpan={tableColumns.length} open={warningRows.expandedId === rowId} record={String(row.offer_name || rowId)} profile={profileName ?? profileId} warnings={rowIssueBadges.map(badge => ({ ...badge, ...ledgerWarningPresentation("casino-offers", badge.label) }))} onClose={() => warningRows.close(rowId)} onReview={warning => void selectRow(rowId, { collapseTable: true, warning: warning.label })} /> : null}
+                        </Fragment>
                       );
                     })
                   )}
@@ -4420,6 +4440,7 @@ export function CasinoOfferWorkflowShell({ profileId, initialQuery = "", initial
         ) : null}
         <DesignFinancialWorkbenchColumns dataPdId="casino-offers.editor.workbench" enabled={visualV2}>
         <form className="form-grid" onSubmit={(event) => void handleSubmit(event)}>
+            {visualV2 && warningContext && selectedId ? <LedgerWarningContextNotice field={warningContext.field} label={warningContext.label} /> : null}
           <LedgerEditorTabPanel activeTabId={safeActiveEditorTabId} tabId="setup">
           <EditorSection visualV2={visualV2}
             collapsible={false}

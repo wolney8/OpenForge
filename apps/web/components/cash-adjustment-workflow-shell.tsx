@@ -3,7 +3,7 @@ import { LedgerCompactDate } from "@/components/ledger-compact-date";
 import { ledgerDateSortValue } from "@/lib/ledger-compact-date";
 
 import type { MouseEvent as ReactMouseEvent } from "react";
-import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState, useTransition } from "react";
+import { Fragment, useCallback, useEffect, useEffectEvent, useMemo, useRef, useState, useTransition } from "react";
 import { apiBaseUrl } from "@/lib/api";
 import { ledgerColumnContracts, ledgerColumnWidths } from "@/lib/ledger-column-contracts";
 import { formatUkLedgerDateTime } from "@/lib/ledger-row-presentation";
@@ -35,6 +35,8 @@ import { DesignLedgerRowActions } from "@/components/design-ledger-row-actions";
 import { LedgerViewContext } from "@/components/ledger-view-context";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
+import { LedgerWarningContextNotice, LedgerWarningDetailsRow, LedgerWarningTrigger, useLedgerWarningExpansion } from "@/components/ledger-row-warnings";
+import { focusLedgerWarningField, ledgerWarningPresentation, ledgerWarningTarget, type LedgerWarningTarget } from "@/lib/ledger-warning-target";
 import { ledgerCellDecision } from "@/lib/ledger-cell-capabilities";
 import { LedgerFloatingCellEditor, useLedgerCellEditor, type LedgerCellSession } from "@/components/ledger-floating-cell-editor";
 import { designFloatingCellInputClass } from "@/components/design-lab-floating-cell-editor";
@@ -546,7 +548,7 @@ function sortCashAdjustmentsByDate(rows: CashAdjustmentRecord[]): CashAdjustment
   });
 }
 
-export function CashAdjustmentWorkflowShell({ profileId, initialRecordId, initialCreate = false, visualV2 = false }: { profileId: string; initialRecordId?: string; initialCreate?: boolean; visualV2?: boolean }) {
+export function CashAdjustmentWorkflowShell({ profileId, profileName, initialRecordId, initialWarning, initialCreate = false, visualV2 = false }: { profileId: string; profileName?: string; initialRecordId?: string; initialWarning?: string; initialCreate?: boolean; visualV2?: boolean }) {
   const [guidedAccessMode] = useProfileGuidedAccessMode(profileId);
   const guidedAccessEnabled = isGuidedAccessEnabled(guidedAccessMode);
   const [rows, setRows] = useState<CashAdjustmentRecord[]>([]);
@@ -560,6 +562,7 @@ export function CashAdjustmentWorkflowShell({ profileId, initialRecordId, initia
   const [isTrackerRangeSaving, setIsTrackerRangeSaving] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedGridRowId, setSelectedGridRowId] = useState<string | null>(null);
+  const [warningContext, setWarningContext] = useState<LedgerWarningTarget | null>(initialWarning ? ledgerWarningTarget("cash-adjustments", initialWarning) : null);
   const [workflowVisible, setWorkflowVisible] = useState(false);
   const cellEditor = useLedgerCellEditor();
   const inlineField = cellEditor.session ? inlineCellFields[cellEditor.session.column as keyof typeof inlineCellFields] : undefined;
@@ -567,6 +570,9 @@ export function CashAdjustmentWorkflowShell({ profileId, initialRecordId, initia
     `openforge-ledger-collapsed:${profileId}:cash-adjustments`,
     false
   );
+  useEffect(() => {
+    if (visualV2 && !initialRecordId && !initialCreate && !workflowVisible && tableCollapsed) setTableCollapsed(false);
+  }, [visualV2, initialRecordId, initialCreate, workflowVisible, tableCollapsed, setTableCollapsed]);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [filterDialogView, setFilterDialogView] = useState<"filters" | "columns">("filters");
   const [visibleColumnKeys, setVisibleColumnKeys] = useState<Set<CashAdjustmentColumnKey>>(
@@ -1064,6 +1070,7 @@ export function CashAdjustmentWorkflowShell({ profileId, initialRecordId, initia
     () => paginateTrackerRows(filteredRows, effectivePage, pageSize),
     [effectivePage, filteredRows, pageSize]
   );
+  const warningRows = useLedgerWarningExpansion(pagedRows.map(row => row.cash_adjustment_id));
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
       if (selectedGridRowId && !pagedRows.some(row => row.cash_adjustment_id === selectedGridRowId)) setSelectedGridRowId(null);
@@ -1159,6 +1166,22 @@ export function CashAdjustmentWorkflowShell({ profileId, initialRecordId, initia
     () => cashAdjustmentEditorTabs.filter((tab) => tab.status !== "locked"),
     [cashAdjustmentEditorTabs]
   );
+  const warningStageAvailable = Boolean(warningContext && navigableCashAdjustmentTabs.some(tab => tab.id === warningContext.stage));
+  useEffect(() => {
+    if (!workflowVisible || !selectedId || !warningContext) return;
+    if (warningStageAvailable && activeEditorTabId !== warningContext.stage) {
+      const frame = requestAnimationFrame(() => setActiveEditorTabId(warningContext.stage as CashAdjustmentEditorTabId));
+      return () => cancelAnimationFrame(frame);
+    }
+    focusLedgerWarningField(warningContext.field);
+  }, [workflowVisible, selectedId, warningContext, warningStageAvailable, activeEditorTabId, isResolvedReadOnly]);
+  useEffect(() => {
+    if (!workflowVisible || !selectedId || !warningContext || !isResolvedReadOnly || activeEditorTabId !== warningContext.stage) return;
+    const timer = window.setTimeout(() => {
+      document.querySelector<HTMLElement>('[data-pd-id="cash-adjustments.editor.dialog"] button[aria-label="Edit cash-adjustment row"]')?.focus({ preventScroll: true });
+    }, 350);
+    return () => window.clearTimeout(timer);
+  }, [workflowVisible, selectedId, warningContext, isResolvedReadOnly, activeEditorTabId]);
   const currentCashAdjustmentTabIndex = Math.max(
     0,
     navigableCashAdjustmentTabs.findIndex((tab) => tab.id === safeActiveEditorTabId)
@@ -1394,7 +1417,7 @@ export function CashAdjustmentWorkflowShell({ profileId, initialRecordId, initia
   const quickViewRangeContext = formatResolvedDateRange(resolvedDateRange);
   const quickViewRangeDetail = formatResolvedDateRangeContext(resolvedDateRange);
 
-  async function selectRow(rowId: string, options?: { collapseTable?: boolean; cell?: LedgerCellSession }) {
+  async function selectRow(rowId: string, options?: { collapseTable?: boolean; cell?: LedgerCellSession; warning?: string }) {
     if (rowId !== selectedId && isDirty && !(await confirmDiscardChanges())) {
       return;
     }
@@ -1408,6 +1431,7 @@ export function CashAdjustmentWorkflowShell({ profileId, initialRecordId, initia
       );
       return;
     }
+    setWarningContext(options?.warning ? ledgerWarningTarget("cash-adjustments", options.warning) : null);
     if (options?.cell) cellEditor.start(options?.cell.column, options?.cell.anchor); else cellEditor.close();
     setSelectedId(rowId);
     selectedIdRef.current = rowId;
@@ -1421,7 +1445,7 @@ export function CashAdjustmentWorkflowShell({ profileId, initialRecordId, initia
     setShowAdjustmentValidation(false);
     setGuidedEntryDismissed(false);
     setResolvedEditEnabled(false);
-    setActiveEditorTabId("details");
+    setActiveEditorTabId(options?.warning ? ledgerWarningTarget("cash-adjustments", options.warning).stage as CashAdjustmentEditorTabId : "details");
     setTableCollapsed(Boolean(options?.collapseTable));
     revealEditor({ expandLedger: !options?.collapseTable });
     setStatusMessage("");
@@ -1963,6 +1987,7 @@ export function CashAdjustmentWorkflowShell({ profileId, initialRecordId, initia
                         ? sortIssueBadgesByPriority(getCashAdjustmentIssueBadges(sourceRow))
                         : [];
                       return (
+                        <Fragment key={`${rowId}-${index}`}>
                         <FinancialValueReplayRow
                           className={[
                             selectedId === rowId || selectedGridRowId === rowId ? "is-selected-row" : "",
@@ -1976,7 +2001,7 @@ export function CashAdjustmentWorkflowShell({ profileId, initialRecordId, initia
                         >
                           {tableColumns.map((column) => (
                             <td className="align-center" key={column.key} data-ledger-row={column.key !== "actions" ? rowId : undefined} data-ledger-column={column.key !== "actions" ? column.key : undefined} data-pd-id={column.key !== "actions" ? `cash-adjustments.cell.${rowId}.${column.key}` : undefined}>
-                              {column.key === "adjustment_date" && rowIssueBadges.length > 0 ? (
+                              {!visualV2 && column.key === "adjustment_date" && rowIssueBadges.length > 0 ? (
                                 <div className="row-issue-overlay" aria-hidden="true">
                                   {rowIssueBadges.map((badge) => (
                                     <span className="table-chip table-chip-lay-partial" key={badge.label}>
@@ -1985,10 +2010,12 @@ export function CashAdjustmentWorkflowShell({ profileId, initialRecordId, initia
                                   ))}
                                 </div>
                               ) : null}
-                              {renderTableCell(row, column)}
+                              {visualV2 && column.key === "adjustment_date" ? <div className="ledger-warning-date">{renderTableCell(row, column)}{!sourceRow ? <span aria-label="Warning classification unavailable" className="ledger-warning-unavailable">?</span> : <LedgerWarningTrigger identity={`${profileId}:${rowId}`} count={rowIssueBadges.length} open={warningRows.expandedId === rowId} record={String(row.description || rowId)} profile={profileName ?? profileId} onToggle={() => warningRows.toggle(rowId)} triggerRef={warningRows.triggerRef(rowId)} />}</div> : renderTableCell(row, column)}
                             </td>
                           ))}
                         </FinancialValueReplayRow>
+                        {visualV2 ? <LedgerWarningDetailsRow identity={`${profileId}:${rowId}`} colSpan={tableColumns.length} open={warningRows.expandedId === rowId} record={String(row.description || rowId)} profile={profileName ?? profileId} warnings={rowIssueBadges.map(badge => ({ ...badge, ...ledgerWarningPresentation("cash-adjustments", badge.label) }))} onClose={() => warningRows.close(rowId)} onReview={warning => void selectRow(rowId, { collapseTable: true, warning: warning.label })} /> : null}
+                        </Fragment>
                       );
                     })
                   )}
@@ -2366,6 +2393,7 @@ export function CashAdjustmentWorkflowShell({ profileId, initialRecordId, initia
               </p>
             ) : null}
             <form className="form-grid" onSubmit={(event) => void handleSubmit(event)}>
+            {visualV2 && warningContext && selectedId ? <LedgerWarningContextNotice field={warningContext.field} label={warningContext.label} instruction={isResolvedReadOnly ? "Choose Edit to change this resolved adjustment." : undefined} /> : null}
           <LedgerEditorTabPanel activeTabId={safeActiveEditorTabId} tabId="details">
           <EditorSection
             invalid={

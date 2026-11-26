@@ -141,11 +141,13 @@ export function LedgerTableScroll({
           const row = cell.parentElement;
           const rowCells = row ? [...row.querySelectorAll<HTMLTableCellElement>("td[data-ledger-column]")] : [];
           const index = rowCells.indexOf(cell);
+          let adjacent = event.key === "ArrowUp" ? row?.previousElementSibling : row?.nextElementSibling;
+          while (adjacent?.hasAttribute("data-ledger-warning-detail")) adjacent = event.key === "ArrowUp" ? adjacent.previousElementSibling : adjacent.nextElementSibling;
           const target = event.key === "Home" ? rowCells[0]
             : event.key === "End" ? rowCells.at(-1)
             : event.key === "ArrowLeft" ? rowCells[index - 1]
             : event.key === "ArrowRight" ? rowCells[index + 1]
-            : [...(event.key === "ArrowUp" ? row?.previousElementSibling : row?.nextElementSibling)?.querySelectorAll<HTMLTableCellElement>("td[data-ledger-column]") ?? []].find(item => item.dataset.ledgerColumn === cell.dataset.ledgerColumn);
+            : [...adjacent?.querySelectorAll<HTMLTableCellElement>("td[data-ledger-column]") ?? []].find(item => item.dataset.ledgerColumn === cell.dataset.ledgerColumn);
           if (target) {
             selectCell(target);
             target.scrollIntoView({ block: "nearest", inline: "nearest" });

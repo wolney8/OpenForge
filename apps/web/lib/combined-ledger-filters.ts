@@ -3,7 +3,7 @@ import type { LedgerSourceRecord } from "@/lib/combined-ledger-source";
 import { presentLedgerCell } from "@/lib/combined-ledger-source";
 import { getSportsbookIssueBadges } from "@/lib/sportsbook-table-workflow";
 import { getCasinoOperationalIssueBadges } from "@/lib/operational-actions";
-import { accountAttentionReasons, extraPlaceHasIssue, getCashAdjustmentIssueBadges, getFreeBetIssueBadges } from "@/lib/ledger-operational-issues";
+import { accountAttentionReasons, extraPlaceIssueReasons, getCashAdjustmentIssueBadges, getFreeBetIssueBadges } from "@/lib/ledger-operational-issues";
 
 export type CombinedLedgerFilter = { key: string; label: string };
 
@@ -70,8 +70,8 @@ export function combinedIssueLabels(module: CombinedLedgerModule, row: LedgerSou
     if (!hasStringFields(row, ["linked_account"]) || typeof row.affects_investment !== "boolean" || typeof row.affects_cash_snapshot !== "boolean") return null;
     return getCashAdjustmentIssueBadges(row as unknown as Parameters<typeof getCashAdjustmentIssueBadges>[0]).map(issue => issue.label);
   }
-  if (!hasStringFields(row, ["calculation_state", "status", "result", "calculation_provenance"])) return null;
-  return extraPlaceHasIssue(row as unknown as Parameters<typeof extraPlaceHasIssue>[0]) ? ["All issues"] : [];
+  if (!hasStringFields(row, ["calculation_state", "status", "result", "calculation_provenance", "runner", "race", "placed_at", "bookmaker", "each_way_stake", "back_odds", "win_exchange", "win_lay_odds", "place_exchange", "place_lay_odds"])) return null;
+  return extraPlaceIssueReasons(row as unknown as Parameters<typeof extraPlaceIssueReasons>[0]);
 }
 
 /** Reuse the native Sportsbook source review severity; never infer it from row text. */

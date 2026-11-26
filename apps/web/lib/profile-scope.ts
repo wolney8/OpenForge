@@ -36,7 +36,7 @@ export function safeCombinedLedgerReturn(module: CombinedLedgerModule, requested
   if (requested === path) return path;
   if (!requested.startsWith(`${path}?`)) return undefined;
   const query = new URLSearchParams(requested.slice(path.length + 1));
-  const allowed = new Set(["profile", "q", "sort", "desc", "page", "size", ...combinedLedgerFilters[module].map(filter => `f_${filter.key}`)]);
+  const allowed = new Set(["profile", "q", "sort", "desc", "page", "size", "warning", "sy", "sx", ...combinedLedgerFilters[module].map(filter => `f_${filter.key}`)]);
   if ([...query.keys()].some(key => !allowed.has(key) || query.getAll(key).length !== 1 || (query.get(key)?.length ?? 0) > 200)) return undefined;
   const profile = query.get("profile");
   if (profile && !/^[A-Za-z0-9_-]{1,120}$/.test(profile)) return undefined;
@@ -44,5 +44,7 @@ export function safeCombinedLedgerReturn(module: CombinedLedgerModule, requested
   if (sort && !/^[A-Za-z][A-Za-z0-9_]{0,50}$/.test(sort)) return undefined;
   if (query.has("desc") && query.get("desc") !== "1") return undefined;
   for (const key of ["page", "size"]) if (query.has(key) && !/^[0-9]{1,4}$/.test(query.get(key) ?? "")) return undefined;
+  if (query.has("warning") && !/^[A-Za-z0-9_%.-]{1,120}::[A-Za-z0-9_%.-]{1,120}$/.test(query.get("warning") ?? "")) return undefined;
+  for (const key of ["sy", "sx"]) if (query.has(key) && !/^[0-9]{1,7}$/.test(query.get(key) ?? "")) return undefined;
   return `${path}?${query.toString()}`;
 }
