@@ -104,17 +104,62 @@ for (const fixture of [
     const latest = (await read.json()).entries[0];
     expect(latest.observed_at).toBe(fixture.exact);
     expect(latest.effective_from).toBe(fixture.exact);
-    const correctionRow = history.locator('[data-pd-id="accounts.capability.timeline"] li').first();
-    await correctionRow.getByRole("button", { name: "Correct this observation" }).click();
-    await form.getByLabel("Observed date and time").fill(fixture.local.replace("19:30", "20:30"));
-    await form.getByLabel("Reason for correction").fill("Synthetic time correction");
-    await form.getByRole("button", { name: "Record review" }).click();
-    await expect(history.getByRole("status")).toHaveText("Observation saved.");
-    const changed = (await (await page.request.get(endpoint)).json()).entries[0];
-    expect(changed.observed_at).toBe(fixture.name === "BST" ? "2026-07-20T19:30:42.123Z" : "2026-11-20T20:30:42.123Z");
-    expect(changed.effective_from).toBe(fixture.exact);
+    const day = fixture.name === "BST" ? "2026-07-20" : "2026-11-20";
+    const utcHour = fixture.name === "BST" ? "19" : "20";
+    for (const [local, expected] of [
+      [`${day}T20:31`, `${day}T${utcHour}:31:00.000Z`],
+      [`${day}T20:32:42.1`, `${day}T${utcHour}:32:42.100Z`],
+      [`${day}T20:33:42.12`, `${day}T${utcHour}:33:42.120Z`],
+      [`${day}T20:34:42.123`, `${day}T${utcHour}:34:42.123Z`],
+    ]) {
+      const correctionRow = history.locator('[data-pd-id="accounts.capability.timeline"] li').first();
+      await correctionRow.getByRole("button", { name: "Correct this observation" }).click();
+      await form.getByLabel("Observed date and time").fill(local);
+      await form.getByLabel("Reason for correction").fill("Synthetic time correction");
+      await form.getByRole("button", { name: "Record review" }).click();
+      await expect(history.getByRole("status")).toHaveText("Observation saved.");
+      const changed = (await (await page.request.get(endpoint)).json()).entries[0];
+      expect(changed.observed_at).toBe(expected);
+      expect(changed.effective_from).toBe(fixture.exact);
+    }
+    if (fixture.name === "BST") {
+      const before = (await (await page.request.get(endpoint)).json()).summary.revision;
+      await history.locator('[data-pd-id="accounts.capability.timeline"] li').first().getByRole("button", { name: "Correct this observation" }).click();
+      await form.getByLabel("Observed date and time").fill("2026-03-29T01:30");
+      await form.getByLabel("Reason for correction").fill("Synthetic nonexistent time check");
+      await form.getByRole("button", { name: "Record review" }).click();
+      await expect(history.getByRole("alert")).toContainText("does not exist in Europe/London");
+      await expect(form.getByLabel("Observed date and time")).toHaveValue("2026-03-29T01:30");
+      expect((await (await page.request.get(endpoint)).json()).summary.revision).toBe(before);
+    }
   });
 }
+
+test("Account timeline distinguishes unavailable commission from recorded zero", async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem("pd-required-storage-notice", "acknowledged"));
+  await page.goto(authURL);
+  await page.route("**/capability-history", async route => {
+    if (route.request().method() !== "GET") return route.continue();
+    const response = await route.fetch();
+    const body = await response.json();
+    body.account_audit = [null, "", "   ", "0", "0.025"].map((rate, index) => ({
+      audit_id: `SYNTHETIC-COMMISSION-${index}`,
+      action: "updated",
+      changed_at: `2026-11-${String(index + 10).padStart(2, "0")}T12:00:00Z`,
+      payload_json: JSON.stringify({ commission_rate: rate }),
+    }));
+    await route.fulfill({ response, json: body });
+  });
+  await page.goto(route);
+  await page.getByRole("button", { name: /Edit Bookmaker A/ }).first().click();
+  const history = page.getByRole("dialog", { name: "Edit account" }).locator('[data-pd-id="accounts.capability.history"]');
+  await history.locator("summary").click();
+  const auditRows = history.locator('[data-pd-id="accounts.capability.timeline"] li:has(time)');
+  await expect(auditRows).toHaveCount(5);
+  for (const index of [0, 1, 2]) await expect(auditRows.nth(index)).toContainText("Base commission recorded as unavailable.");
+  await expect(auditRows.nth(3)).toContainText("Base commission set to 0.00%.");
+  await expect(auditRows.nth(4)).toContainText("Base commission set to 2.50%.");
+});
 
 test("isolated Account capability failed write retains the draft for retry", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });

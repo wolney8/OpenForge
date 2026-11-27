@@ -49,6 +49,7 @@ import {
 } from "@/lib/ledger-ui";
 import type { TableColumn } from "@/lib/tracker-modules";
 import { formatDisplayDate } from "@/lib/tracker-summary";
+import { accountAuditSummary } from "@/lib/account-audit-summary";
 import { LedgerCompactDate } from "@/components/ledger-compact-date";
 import { filterTrackerRows, getTrackerPageCount, paginateTrackerRows } from "@/lib/tracker-table";
 import type { TrackerRow } from "@/lib/tracker-types";
@@ -184,18 +185,6 @@ function createBlankSignupOfferDraft(): SignupOfferDraft {
     notes: "",
     active: true,
   };
-}
-
-function accountAuditSummary(entry: AccountAuditRecord) {
-  if (Object.prototype.hasOwnProperty.call(entry.payload, "commission_rate")) {
-    const raw = String(entry.payload.commission_rate ?? "").trim();
-    if (!raw) return "Base commission recorded as unavailable.";
-    const value = Number(raw);
-    if (Number.isFinite(value)) return `Base commission set to ${(value * 100).toFixed(2)}%.`;
-  }
-  if (entry.action === "created" || entry.action === "onboarded") return "Account added to this Profile.";
-  if (entry.action === "seeded") return "Synthetic Account fixture created.";
-  return "Account details updated.";
 }
 
 function AccountHistory({ accountId, profileId }: { accountId: string; profileId: string }) {

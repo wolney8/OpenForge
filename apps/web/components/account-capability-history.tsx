@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { apiBaseUrl } from "@/lib/api";
 import { formatDisplayDate } from "@/lib/tracker-summary";
+import { accountAuditSummary } from "@/lib/account-audit-summary";
 import { LedgerLoadingIndicator } from "@/components/ledger-loading-indicator";
 
 type Entry = {
@@ -33,9 +34,17 @@ function londonInput(value: string): string {
   return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}:${parts.second}${fraction}`;
 }
 function londonInstant(value: string): string {
-  const normalized = value.length === 16 ? `${value}:00` : value;
+  const normalize = (input: string) => {
+    const parts = /^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,3}))?)?$/.exec(input);
+    if (!parts) throw new Error("Choose a valid local date and time.");
+    return `${parts[1]}T${parts[2]}:${parts[3]}:${parts[4] ?? "00"}.${(parts[5] ?? "").padEnd(3, "0")}`;
+  };
+  const normalized = normalize(value);
   const utc = Date.parse(`${normalized}Z`);
-  const candidates = [utc, utc - 60 * 60 * 1000].filter(stamp => londonInput(new Date(stamp).toISOString()) === normalized);
+  if (!Number.isFinite(utc)) throw new Error("Choose a valid local date and time.");
+  const candidates = [utc, utc - 60 * 60 * 1000].filter(
+    stamp => normalize(londonInput(new Date(stamp).toISOString())) === normalized,
+  );
   if (!candidates.length) throw new Error("This local time does not exist in Europe/London. Choose another time.");
   return new Date(candidates[0]).toISOString();
 }
@@ -57,18 +66,6 @@ function evidenceMeaning(entry: Entry, entries: Entry[]): string {
   if (original.entry_kind === "review_no_test") return "Review outcome: No opportunity to test. Access was not verified.";
   if (original.entry_kind === "review_no_change") return "Review outcome: No change. Access was not verified by this review.";
   return `Observed state: ${entry.state} · ${entry.interpretation} · ${entry.confidence}`;
-}
-function accountAuditSummary(action: string, payloadJson: string): string {
-  let payload: Record<string, unknown> = {};
-  try { payload = JSON.parse(payloadJson || "{}"); } catch { /* Existing audit remains readable. */ }
-  if (Object.prototype.hasOwnProperty.call(payload, "commission_rate")) {
-    const value = Number(payload.commission_rate);
-    if (Number.isFinite(value)) return `Base commission set to ${(value * 100).toFixed(2)}%.`;
-    return "Base commission recorded as unavailable.";
-  }
-  if (action === "created" || action === "onboarded") return "Account added to this Profile.";
-  if (action === "seeded") return "Synthetic Account fixture created.";
-  return "Account details updated.";
 }
 type Draft = {
   capability: string; scope_kind: "general" | "offer"; scope_ref: string;
@@ -231,7 +228,7 @@ export function AccountCapabilityHistory({ accountId, profileId }: { accountId: 
               <div className="workflow-editor-footer-primary"><button className="review-chip" onClick={() => correct(entry, "correction")} type="button">Correct this observation</button><button className="review-chip" onClick={() => correct(entry, "retraction")} type="button">Retract</button></div>
             </li>;
           })}
-          {history.account_audit.map(entry => <li className="financial-history-event" key={entry.audit_id}><div className="financial-history-event-heading"><strong>{entry.action === "updated" ? "Updated" : entry.action}</strong><time dateTime={entry.changed_at}>{formatDisplayDate(entry.changed_at)}</time></div><p>{accountAuditSummary(entry.action, entry.payload_json)}</p></li>)}
+          {history.account_audit.map(entry => <li className="financial-history-event" key={entry.audit_id}><div className="financial-history-event-heading"><strong>{entry.action === "updated" ? "Updated" : entry.action}</strong><time dateTime={entry.changed_at}>{formatDisplayDate(entry.changed_at)}</time></div><p>{accountAuditSummary(entry)}</p></li>)}
         </ol>
       </section>
     </div> : null}
