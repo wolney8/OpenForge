@@ -22,6 +22,7 @@ type RestoreRun = {
   source_byte_checksum: string;
   source_logical_checksum: string;
   format_version: string;
+  missing_history_limitation: string | null;
   restore_contract_version: string;
   source_profile_display_name: string;
   target_profile_id: string;
@@ -183,7 +184,7 @@ export function PortableProfileRestore() {
                 onChange={(event) => setFile(event.target.files?.[0] ?? null)}
                 type="file"
               />
-              <small id="portable-restore-file-help">profile-portable-export-v1 XLSX only</small>
+              <small id="portable-restore-file-help">Profile portable export v1 or v2 XLSX</small>
             </label>
             <label className="field-control">
               <span>New Profile name (optional)</span>
@@ -241,6 +242,7 @@ export function PortableProfileRestore() {
             </span>
             <span className="spreadsheet-row-id">File SHA-256: {run.source_byte_checksum}</span>
           </div>
+          {run.missing_history_limitation ? <p className="field-hint" role="note">{run.missing_history_limitation}</p> : null}
 
           {run.status === "REVIEW_REQUIRED" ? (
             <section className="stack" aria-labelledby="portable-restore-review-title">

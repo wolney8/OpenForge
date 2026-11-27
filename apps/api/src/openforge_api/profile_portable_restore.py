@@ -31,6 +31,7 @@ from openforge_api.financial_history import mutation_hash
 from openforge_api.free_bets import FreeBetPayload
 from openforge_api.profile_portable_export import (
     EXPORT_FORMAT_VERSION,
+    LEGACY_EXPORT_FORMAT_VERSION,
     NULL_FIELDS_COLUMN,
     PORTABLE_PAYLOAD_SPECS,
     PortableExportError,
@@ -128,6 +129,8 @@ REFERENCE_COLUMNS: dict[str, tuple[str, ...]] = {
 PRIMARY_IDENTITIES: dict[str, tuple[str, str]] = {
     "Profile": ("profile_id", "profile"),
     "Accounts": ("account_id", "account"),
+    "Account Audit": ("audit_id", "account_audit"),
+    "Capability History": ("observation_id", "capability_observation"),
     "Balance Snapshots": ("balance_snapshot_id", "balance_snapshot"),
     "Sportsbook": ("sportsbook_bet_id", "sportsbook_bet"),
     "Free Bets": ("free_bet_id", "free_bet"),
@@ -146,6 +149,9 @@ PRIMARY_IDENTITIES: dict[str, tuple[str, str]] = {
 
 FOREIGN_ID_FIELDS: dict[tuple[str, str], str] = {
     ("Balance Snapshots", "account_id"): "account",
+    ("Account Audit", "account_id"): "account",
+    ("Capability History", "account_id"): "account",
+    ("Capability History", "correction_of"): "capability_observation",
     ("Free Bets", "origin_qual_bet_native_id"): "sportsbook_bet",
     ("Fee Revisions", "fee_period_id"): "fee_period",
     ("Fee Corrections", "source_fee_period_id"): "fee_period",
@@ -200,6 +206,8 @@ FINANCIAL_SHEETS = {
 
 INTEGER_FIELDS = {
     ("Tracker Settings", "range_back_days"),
+    ("Capability History", "schema_version"),
+    ("Capability History", "revision"),
     ("Tracker Settings", "range_forward_days"),
     ("Tracker Settings", "mug_bet_frequency_days"),
     ("Tracker Settings", "free_bet_expiry_alert_window_days"),
@@ -375,10 +383,20 @@ def _restore_row(spec: SheetSpec, source: Mapping[str, str]) -> dict[str, Any]:
 
 def parse_profile_portable_export(content: bytes) -> ParsedPortableBackup:
     sheets = _xlsx_sheets(content)
+    manifest_rows = _tabular_rows(sheets, "Manifest", ("field", "value", NULL_FIELDS_COLUMN))
+    manifest_map = {row["field"]: row["value"] for row in manifest_rows}
+    version = manifest_map.get("export_format_version")
+    if version not in {EXPORT_FORMAT_VERSION, LEGACY_EXPORT_FORMAT_VERSION}:
+        raise PortableRestoreError("Unsupported portable export format version")
+    active_specs = tuple(
+        spec for spec in PORTABLE_PAYLOAD_SPECS
+        if version != LEGACY_EXPORT_FORMAT_VERSION
+        or spec.name not in {"Account Audit", "Capability History"}
+    )
     expected_sheet_names = {
         "Manifest",
         "Sheet Manifest",
-        *(spec.name for spec in PORTABLE_PAYLOAD_SPECS),
+        *(spec.name for spec in active_specs),
     }
     if set(sheets) != expected_sheet_names:
         missing = sorted(expected_sheet_names - set(sheets))
@@ -388,12 +406,8 @@ def parse_profile_portable_export(content: bytes) -> ParsedPortableBackup:
             + (f"; missing: {', '.join(missing)}" if missing else "")
             + (f"; unexpected: {', '.join(extra)}" if extra else "")
         )
-    manifest_rows = _tabular_rows(sheets, "Manifest", ("field", "value", NULL_FIELDS_COLUMN))
-    manifest_map = {row["field"]: row["value"] for row in manifest_rows}
     if len(manifest_map) != len(manifest_rows):
         raise PortableRestoreError("Manifest contains duplicate fields")
-    if manifest_map.get("export_format_version") != EXPORT_FORMAT_VERSION:
-        raise PortableRestoreError("Unsupported portable export format version")
     manifest_checksum = manifest_map.get("manifest_logical_checksum", "")
     manifest_core = [row for row in manifest_rows if row["field"] != "manifest_logical_checksum"]
     if (
@@ -417,12 +431,12 @@ def parse_profile_portable_export(content: bytes) -> ParsedPortableBackup:
         raise PortableRestoreError("Sheet Manifest checksum validation failed")
     by_name = {row["sheet_name"]: row for row in sheet_manifest}
     if len(by_name) != len(sheet_manifest) or set(by_name) != {
-        spec.name for spec in PORTABLE_PAYLOAD_SPECS
+        spec.name for spec in active_specs
     }:
         raise PortableRestoreError("Sheet Manifest payload list is invalid")
 
     parsed: dict[str, tuple[dict[str, Any], ...]] = {}
-    for spec in PORTABLE_PAYLOAD_SPECS:
+    for spec in active_specs:
         columns = _expected_columns(spec)
         # Older backups predate additive, nullable planning/source metadata. Validate
         # their original headers/checksums before representing absent fields as null.
@@ -447,6 +461,8 @@ def parse_profile_portable_export(content: bytes) -> ParsedPortableBackup:
         if _logical_checksum(spec.name, columns, rows) != declared["logical_checksum"]:
             raise PortableRestoreError(f"{spec.name} checksum validation failed")
         parsed[spec.name] = tuple(_restore_row(spec, row) for row in rows)
+    for name in ("Account Audit", "Capability History"):
+        parsed.setdefault(name, ())
 
     aggregate_payload = [
         {
@@ -460,7 +476,7 @@ def parse_profile_portable_export(content: bytes) -> ParsedPortableBackup:
     aggregate_checksum = _sha256(_canonical_json(aggregate_payload))
     if aggregate_checksum != manifest_map.get("aggregate_logical_checksum"):
         raise PortableRestoreError("Aggregate logical checksum validation failed")
-    if manifest_map.get("payload_sheet_count") != str(len(PORTABLE_PAYLOAD_SPECS)):
+    if manifest_map.get("payload_sheet_count") != str(len(active_specs)):
         raise PortableRestoreError("Manifest payload sheet count is invalid")
     profile_rows = parsed["Profile"]
     if len(profile_rows) != 1:
@@ -653,6 +669,25 @@ def _has_reviewed_terminal_value(
 
 
 def _validate_domain_rows(parsed: ParsedPortableBackup) -> None:
+    capabilities = {
+        str(row["observation_id"]): row
+        for row in parsed.sheets["Capability History"]
+    }
+    account_ids = {str(row["account_id"]) for row in parsed.sheets["Accounts"]}
+    for row in parsed.sheets["Capability History"]:
+        if str(row["account_id"]) not in account_ids:
+            raise PortableRestoreError("Capability history Account identity is missing")
+        parent_id = str(row.get("correction_of") or "")
+        if parent_id:
+            parent = capabilities.get(parent_id)
+            if parent is None or any(
+                row[field] != parent[field]
+                for field in ("account_id", "capability", "scope_kind", "scope_ref")
+            ):
+                raise PortableRestoreError("Capability correction link has a different Account or scope")
+    for row in parsed.sheets["Account Audit"]:
+        if str(row["account_id"]) not in account_ids:
+            raise PortableRestoreError("Account audit identity is missing")
     for row in parsed.sheets["Accounts"]:
         restrictions_value = row.get("restrictions_json") or "[]"
         restrictions = json.loads(str(restrictions_value))
@@ -770,6 +805,12 @@ def _run_response(connection: Any, restore_run_id: str, owner_email: str) -> dic
         "source_byte_checksum": str(run["source_byte_checksum"]),
         "source_logical_checksum": str(run["source_logical_checksum"]),
         "format_version": str(run["format_version"]),
+        "missing_history_limitation": (
+            "This older backup has no Account audit or capability observation history; "
+            "absence is not evidence that no restrictions existed."
+            if str(run["format_version"]) == LEGACY_EXPORT_FORMAT_VERSION
+            else None
+        ),
         "restore_contract_version": RESTORE_CONTRACT_VERSION,
         "source_profile_id": str(run["source_profile_id"]),
         "source_profile_display_name": str(run["source_profile_display_name"]),
@@ -844,7 +885,7 @@ def analyse_portable_restore(
                 payload.source_filename,
                 parsed.source_byte_checksum,
                 parsed.source_logical_checksum,
-                EXPORT_FORMAT_VERSION,
+                str(parsed.manifest["export_format_version"]),
                 str(profile["profile_id"]),
                 str(profile["display_name"]),
                 target_display_name,
@@ -957,6 +998,8 @@ def _new_runtime_id(domain: str) -> str:
     prefix = {
         "profile": "profile",
         "account": "AC",
+        "account_audit": "account-audit",
+        "capability_observation": "capability-observation",
         "balance_snapshot": "balance-snapshot",
         "sportsbook_bet": "sportsbook",
         "free_bet": "free-bet",
@@ -1039,6 +1082,26 @@ def _resolved_rows(
                 if sheet_name != spec.name or not row.get(field):
                     continue
                 row[field] = identity_maps.get(domain, {}).get(str(row[field]), row[field])
+            if spec.name == "Account Audit" and row.get("payload_json"):
+                def remap_audit_identity(value: Any) -> Any:
+                    if isinstance(value, list):
+                        return [remap_audit_identity(item) for item in value]
+                    if isinstance(value, dict):
+                        return {
+                            key: (
+                                target_profile_id
+                                if key == "profile_id" and item == source_profile_id
+                                else identity_maps.get("account", {}).get(str(item), item)
+                                if key == "account_id"
+                                else remap_audit_identity(item)
+                            )
+                            for key, item in value.items()
+                        }
+                    return value
+
+                row["payload_json"] = _canonical_json(
+                    remap_audit_identity(json.loads(str(row["payload_json"])))
+                )
             if spec.name == "Sportsbook" and row.get("multi_lay_outcomes_json"):
                 from openforge_api.multi_lay_actual import remap_account
                 row["multi_lay_outcomes_json"] = remap_account(str(row["multi_lay_outcomes_json"]), identity_maps.get("account", {}))

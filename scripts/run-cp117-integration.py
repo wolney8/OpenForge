@@ -88,6 +88,7 @@ def fixture_environment(
             "OPENFORGE_TASK_ANNOTATIONS_REVIEW_ISOLATED_ENABLED": "true",
             "NEXT_PUBLIC_OPENFORGE_OPPORTUNITY_TASK_ANNOTATIONS_ENABLED": "true",
             "NEXT_PUBLIC_OPENFORGE_OPPORTUNITY_PERSONAL_REVIEW_ENABLED": "true",
+            "NEXT_PUBLIC_OPENFORGE_ACCOUNT_CAPABILITY_HISTORY_ENABLED": "true",
             "UVICORN_ACCESS_LOG": "false",
             "NEXT_TELEMETRY_DISABLED": "1",
             "PYTHONDONTWRITEBYTECODE": "1",
@@ -427,6 +428,13 @@ def main() -> int:
                 if key.startswith("OPENFORGE_"):
                     stream.write(key + "=" + json.dumps(value) + "\n")
         token = seed_and_issue_session(env)
+        # This additive schema is installed only in the disposable candidate.
+        # Ordinary API startup and normal-owner storage remain untouched.
+        from openforge_api.account_capability_migration import apply_to_connection
+        from openforge_api.db import connect
+
+        with connect() as candidate_connection:
+            apply_to_connection(candidate_connection)
 
         class Bootstrap(BaseHTTPRequestHandler):
             def log_message(self, *_: object) -> None:

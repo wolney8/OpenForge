@@ -60,7 +60,7 @@ export function PortableProfileExport({ profileId }: { profileId: string }) {
       setResult({
         filename,
         formatVersion:
-          response.headers.get("X-Export-Format-Version") ?? "profile-portable-export-v1",
+          response.headers.get("X-Export-Format-Version") ?? "Unavailable",
         logicalChecksum: response.headers.get("X-Export-Logical-Checksum") ?? "Unavailable",
         byteChecksum: response.headers.get("X-Export-Byte-Checksum") ?? "Unavailable",
         sheetCount: response.headers.get("X-Export-Sheet-Count") ?? "Unavailable",

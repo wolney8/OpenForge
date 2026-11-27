@@ -7,6 +7,7 @@ import { createPortal } from "react-dom";
 import { apiBaseUrl } from "@/lib/api";
 import { ledgerColumnContracts, ledgerColumnWidths } from "@/lib/ledger-column-contracts";
 import { AccountFinancialSummary, AccountReviewButton } from "@/components/account-review-panel";
+import { AccountCapabilityHistory } from "@/components/account-capability-history";
 import { AccountProviderIdentity } from "@/components/account-provider-identity";
 import { designManagementClasses } from "@/components/design-management-presentation";
 import { ProfileOpportunityQueue } from "@/components/profile-opportunity-queue";
@@ -2010,7 +2011,9 @@ export function AccountsWorkflowShell({ profileId, profileName, initialRecordId,
             <input aria-readonly="true" readOnly value={selectedProvider?.platform || formState.platform || "Inherited from account catalogue"} />
           </label>
           <section className="field-span-2 stack-tight account-editor-section" id="account-history-notes" aria-label="History and notes">
-            {selectedId ? <AccountHistory accountId={selectedId} profileId={profileId} /> : null}
+            {selectedId ? process.env.NEXT_PUBLIC_OPENFORGE_ACCOUNT_CAPABILITY_HISTORY_ENABLED === "true"
+              ? <AccountCapabilityHistory accountId={selectedId} key={selectedId} profileId={profileId} />
+              : <AccountHistory accountId={selectedId} profileId={profileId} /> : null}
             <label className="field-control">
               <span>Notes</span>
               <textarea
