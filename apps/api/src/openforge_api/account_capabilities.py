@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from typing import Any, Literal
 from uuid import UUID
 from zoneinfo import ZoneInfo
@@ -113,15 +113,49 @@ def _rows(connection: Any, profile_id: str, account_id: str) -> list[dict[str, A
 
 
 def _summary(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    by_id = {row["observation_id"]: row for row in rows}
+    superseded = {row["correction_of"] for row in rows if row["correction_of"]}
+
+    def underlying_kind(row: dict[str, Any]) -> str:
+        seen: set[str] = set()
+        while row["entry_kind"] == "correction" and row["correction_of"]:
+            target = row["correction_of"]
+            if target in seen or target not in by_id:
+                return "unknown"
+            seen.add(target)
+            row = by_id[target]
+        return str(row["entry_kind"])
+
+    def applicable(row: dict[str, Any]) -> tuple[datetime, datetime] | None:
+        # Exact values are instants. A day is a London calendar window, not
+        # midnight evidence; an exact observation within it may still conflict.
+        for value, precision in (
+            (row["effective_from"], row["effective_precision"]),
+            (row["observed_at"], row["observed_precision"]),
+        ):
+            if value and precision == "exact":
+                instant = datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(UTC)
+                return instant, instant + timedelta(microseconds=1)
+            if value and precision == "day":
+                day = date.fromisoformat(value)
+                london = ZoneInfo("Europe/London")
+                return (
+                    datetime.combine(day, datetime.min.time(), london).astimezone(UTC),
+                    datetime.combine(
+                        day + timedelta(days=1), datetime.min.time(), london
+                    ).astimezone(UTC),
+                )
+        return None
+
     active = [
         row
         for row in rows
-        if row["observation_id"] not in {r["correction_of"] for r in rows if r["correction_of"]}
+        if row["observation_id"] not in superseded
         and row["entry_kind"] != "retraction"
     ]
     groups: dict[str, list[dict[str, Any]]] = {}
     for row in active:
-        if row["entry_kind"] in {"review_no_change", "review_no_test"}:
+        if underlying_kind(row) != "observation":
             continue
         key = f"{row['capability']}|{row['scope_kind']}|{row['scope_ref']}"
         groups.setdefault(key, []).append(row)
@@ -129,21 +163,20 @@ def _summary(rows: list[dict[str, Any]]) -> dict[str, Any]:
     for key, entries in sorted(groups.items()):
         # Known effective dates take precedence over recorded/observed dates.
         # Unknown and approximate dates cannot displace later applicable evidence.
-        def applicable(row: dict[str, Any]) -> str | None:
-            if row["effective_from"] and row["effective_precision"] in {"exact", "day"}:
-                return str(row["effective_from"])
-            if row["observed_at"] and row["observed_precision"] in {"exact", "day"}:
-                return str(row["observed_at"])
-            return None
-
-        dated = [r for r in entries if applicable(r)]
+        dated = [(r, applicable(r)) for r in entries]
+        dated = [(r, window) for r, window in dated if window is not None]
         latest = (
-            max(dated, key=lambda r: (applicable(r), r["revision"]))
+            max(dated, key=lambda pair: (pair[1][0], pair[0]["revision"]))[0]
             if dated
             else max(entries, key=lambda r: r["revision"])
         )
+        latest_window = applicable(latest)
         conflict = latest["interpretation"] == "conflicting" or any(
-            r["observed_at"] == latest["observed_at"] and r["state"] != latest["state"]
+            (window := applicable(r)) is not None
+            and latest_window is not None
+            and window[0] < latest_window[1]
+            and latest_window[0] < window[1]
+            and r["state"] != latest["state"]
             for r in entries
             if r["observation_id"] != latest["observation_id"]
         )
@@ -167,19 +200,22 @@ def _summary(rows: list[dict[str, Any]]) -> dict[str, Any]:
             }
         )
     review = next(
-        (r for r in rows if r["entry_kind"] in {"review_no_change", "review_no_test"}), None
+        (r for r in active if underlying_kind(r) in {"review_no_change", "review_no_test"}),
+        None,
     )
     verified = next(
         (
             r
             for r in active
-            if r["entry_kind"] in {"observation", "correction"}
+            if underlying_kind(r) == "observation"
             and r["interpretation"] == "confirmed"
             and r["confidence"] == "verified"
         ),
         None,
     )
     next_review = None
+    # Scheduling is an independent manual action. Withdrawing evidence does not
+    # cancel a previously chosen date; only a later explicit set/clear does.
     for row in rows:
         if row["next_review_action"] != "keep":
             next_review = row["next_review_on"] if row["next_review_action"] == "set" else None

@@ -2,6 +2,14 @@
 
 Complete this for every feature, bug fix, component, fixture-backed UI, route or page change.
 
+## PD-FIX-680 Account capability evidence repair — 2026-11-27 / #70 and #82
+
+- [x] Reproduced correction/retraction meaning and offset chronology failures in isolated API tests; reproduced the missing citation link in the original Account panel's authenticated browser mount.
+- [x] Reused the existing Account history summary, date formatter, field controls, timeline card and focus semantics. Summary citations now focus exact evidence rows; corrections and retractions link their predecessors, and Account audit explanations remain readable.
+- [x] Preserved untouched exact BST/GMT timestamps including fractional precision, validated edited London-local time, and retained failed drafts and retry.
+- [x] Verified synthetic Account UI entry, correction, summary, export/restore and mobile failed-save journeys (5/5), flag-OFF (9/9), web units (762/762), final build/typecheck and changed-source lint. No new CSS or layout primitive was introduced; the existing Account modal and narrow-layout containment checks remain in force.
+- [ ] Normal-owner activation and owner live persistence remain held; manual spoken screen-reader verification remains unperformed.
+
 ## CP-117 shared ledger cell feedback — 2026-11-25 / #118
 
 - [x] Registered PD-FIX-669/670; reproduced the below-grid protected notice and 260px selector against a 150px combined cell before editing.

@@ -28,6 +28,10 @@ test("isolated Account capability entry, correction, summary and reload", async 
   await form.getByRole("button", { name: "Record review" }).click();
   await expect(history.getByRole("status")).toHaveText("Observation saved.");
   await expect(history.locator('[data-pd-id="accounts.capability.summary"]')).toContainText("HeavilyRestricted");
+  const citation = history.locator('[data-pd-id="accounts.capability.summary"]').getByRole("link", { name: /GeneralSportsbookPromotions.*Observation/ });
+  await citation.click();
+  const cited = history.locator('[data-pd-id="accounts.capability.timeline"] li:focus');
+  await expect(cited).toContainText("Synthetic Account access review");
   await editor.getByRole("button", { name: "Close account editor" }).click();
   await page.reload();
   await page.getByRole("button", { name: /Edit Bookmaker A/ }).first().click();
@@ -44,6 +48,73 @@ test("isolated Account capability entry, correction, summary and reload", async 
   await expect(loaded.locator('[data-pd-id="accounts.capability.summary"]')).toContainText("WorkingWithLimits");
   await expect(loaded).toContainText("Synthetic original assessment was too broad");
 });
+
+for (const fixture of [
+  { name: "BST", exact: "2026-07-20T19:30:42.123456+01:00", local: "2026-07-20T19:30:42.123" },
+  { name: "GMT", exact: "2026-11-20T19:30:42.123456+00:00", local: "2026-11-20T19:30:42.123" },
+]) {
+  test(`note-only correction preserves exact ${fixture.name} timestamp and citation`, async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem("pd-required-storage-notice", "acknowledged"));
+    await page.goto(authURL);
+    const suffix = `${fixture.name}-${Date.now().toString(36).toUpperCase()}`;
+    const created = await page.request.post("/api/profiles/onboarding", { data: {
+      profile_relationship: "Managed subscriber", display_name: "Synthetic exact-time review",
+      profile_code: `TIME-${suffix}`, setup_path: "import", tracking_start_date: "2026-09-01",
+      management_fee_percent: "0.00", investment_fee_percent: "0.00",
+      enabled_modules: ["sportsbook-bets", "free-bets", "cash-adjustments"],
+      accounts: [], quick_actions: [],
+    } });
+    expect(created.status(), await created.text()).toBe(201);
+    const profileId = (await created.json()).profile.profile_id as string;
+    const account = await page.request.post(`/api/profiles/${profileId}/accounts`, { data: {
+      account: "Bookmaker A", type: "Bookie", status: "Active", lifecycle_status: "Active",
+      current_balance: "", channel: "Online", restrictions: [],
+    } });
+    expect(account.status(), await account.text()).toBe(201);
+    const accountId = (await account.json()).account_id as string;
+    const endpoint = `/api/profiles/${profileId}/accounts/${accountId}/capability-history`;
+    const initial = await page.request.post(endpoint, { data: {
+      operation_id: crypto.randomUUID(), expected_revision: 0,
+      capability: "LoginAccess", scope_kind: "general", entry_kind: "observation",
+      state: "Working", interpretation: "confirmed", confidence: "verified",
+      evidence_type: "ManualReview", evidence_note: "Synthetic exact timestamp",
+      observed_at: fixture.exact, observed_precision: "exact",
+      effective_from: fixture.exact, effective_precision: "exact",
+    } });
+    expect(initial.status(), await initial.text()).toBe(201);
+    await page.goto(`/profiles/${profileId}/tracker/accounts`);
+    await page.getByRole("button", { name: /^(Edit|Review attention for) Bookmaker A$/ }).click();
+    const history = page.getByRole("dialog", { name: "Edit account" }).locator('[data-pd-id="accounts.capability.history"]');
+    await history.locator("summary").click();
+    await expect(history.locator('[data-pd-id="accounts.capability.timeline"]')).toContainText("Account added to this Profile.");
+    await expect(history.locator('[data-pd-id="accounts.capability.timeline"] time').last()).not.toContainText(/T\d{2}:/);
+    await history.locator('[data-pd-id="accounts.capability.summary"]').getByRole("link", { name: /LoginAccess.*Observation/ }).click();
+    const evidence = history.locator('[data-pd-id="accounts.capability.timeline"] li:focus');
+    await expect(evidence).toContainText("Synthetic exact timestamp");
+    await evidence.getByRole("button", { name: "Correct this observation" }).click();
+    const form = history.locator('[data-pd-id="accounts.capability.form"]');
+    await expect(form.getByLabel("Observed date and time")).toHaveValue(fixture.local);
+    await expect(form.getByLabel("Effective date and time")).toHaveValue(fixture.local);
+    await form.getByLabel("Evidence and context").fill("Clarified note only");
+    await form.getByLabel("Reason for correction").fill("Synthetic note clarification");
+    await form.getByRole("button", { name: "Record review" }).click();
+    await expect(history.getByRole("status")).toHaveText("Observation saved.");
+    const read = await page.request.get(endpoint);
+    expect(read.status()).toBe(200);
+    const latest = (await read.json()).entries[0];
+    expect(latest.observed_at).toBe(fixture.exact);
+    expect(latest.effective_from).toBe(fixture.exact);
+    const correctionRow = history.locator('[data-pd-id="accounts.capability.timeline"] li').first();
+    await correctionRow.getByRole("button", { name: "Correct this observation" }).click();
+    await form.getByLabel("Observed date and time").fill(fixture.local.replace("19:30", "20:30"));
+    await form.getByLabel("Reason for correction").fill("Synthetic time correction");
+    await form.getByRole("button", { name: "Record review" }).click();
+    await expect(history.getByRole("status")).toHaveText("Observation saved.");
+    const changed = (await (await page.request.get(endpoint)).json()).entries[0];
+    expect(changed.observed_at).toBe(fixture.name === "BST" ? "2026-07-20T19:30:42.123Z" : "2026-11-20T20:30:42.123Z");
+    expect(changed.effective_from).toBe(fixture.exact);
+  });
+}
 
 test("isolated Account capability failed write retains the draft for retry", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });

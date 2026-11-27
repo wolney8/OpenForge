@@ -1,5 +1,9 @@
 # Plum Duff Known UI Pitfalls
 
+## 2026-11-27: Exact evidence time was altered by note-only correction
+
+An Account capability correction prefilled `datetime-local` by slicing the stored ISO string, losing its offset, seconds and fractional precision. Saving then interpreted the sliced value in the browser's timezone. Display exact evidence in Europe/London, retain the original raw value until the user changes that field, and convert an edited local value explicitly. Summary evidence IDs need readable links that focus the exact timeline entry; replacing AccountHistory must retain its audit explanation and date presentation. Regression: `cp117-account-capability.spec.ts` BST/GMT, citation and Account audit cases.
+
 ## 2026-11-25: A fresh read did not make a financial Save atomic
 
 The cumulative Lay editor read current evidence before PUT, but another writer could save between those requests. Seconds-resolution `updated_at` could not distinguish both writes in the same second. For existing Sportsbook records, send the acknowledged row revision from owned, combined and Workbench saves; compare it under the Profile write lock before plan, financial or audit changes. Use a monotonic microsecond revision for actual changes. A lost response needs a fresh read: if its requested cumulative total is already recorded, return that row without appending a second leg. Keep rejected input visible. Regression: `test_sportsbook_record_revision.py` and `cp117-ledger-cell-continuation.spec.ts`.
