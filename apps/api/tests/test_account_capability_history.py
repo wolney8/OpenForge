@@ -141,6 +141,12 @@ def test_capability_history_is_append_only_idempotent_and_profile_scoped(tmp_pat
     assert summary["last_reviewed_at"] and summary["next_review_on"] == "2026-12-15"
     assert summary["review_status"] == "Scheduled"
     assert summary["last_verified_at"]
+    archived = client.delete(f"/profiles/{first_profile}/accounts/{account_id}")
+    assert archived.status_code == 200, archived.text
+    history_after_archive = client.get(url)
+    assert history_after_archive.status_code == 200
+    assert history_after_archive.json()["summary"]["revision"] == 4
+    assert client.post(url, json=_entry(4)).status_code == 409
 
 
 def test_portable_capability_history_preserves_links(tmp_path):
