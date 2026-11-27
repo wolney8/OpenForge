@@ -6,6 +6,37 @@ import { focusLedgerWarningField } from "@/lib/ledger-warning-target";
 
 export type LedgerRowWarning = { label: string; message?: string; actionLabel?: string; tone?: "info" | "orange" | "warning" | "danger"; field?: string };
 
+/** DOM elements from a warning row are destroyed while its owned editor replaces the ledger. */
+export function useLedgerWarningReturnFocus({ gridId, profileId, ready }: { gridId: string; profileId: string; ready: boolean }) {
+  const pending = useRef<{ recordId: string; warning: string; pageX: number; pageY: number; tableX: number; tableY: number } | null>(null);
+  const capture = (recordId: string, warning: string) => {
+    const grid = document.querySelector<HTMLElement>(`[data-pd-id="${gridId}"]`);
+    pending.current = { recordId, warning, pageX: window.scrollX, pageY: window.scrollY,
+      tableX: grid?.scrollLeft ?? 0, tableY: grid?.scrollTop ?? 0 };
+  };
+  useEffect(() => {
+    if (!ready || !pending.current) return;
+    const frame = requestAnimationFrame(() => {
+      const saved = pending.current;
+      if (!saved) return;
+      pending.current = null;
+      const grid = document.querySelector<HTMLElement>(`[data-pd-id="${gridId}"]`);
+      if (!grid) return;
+      grid.scrollLeft = saved.tableX;
+      grid.scrollTop = saved.tableY;
+      window.scrollTo({ left: saved.pageX, top: saved.pageY, behavior: "instant" });
+      const controlId = `ledger-warnings-${encodeURIComponent(`${profileId}:${saved.recordId}`)}`;
+      const trigger = [...grid.querySelectorAll<HTMLButtonElement>('button[aria-controls^="ledger-warnings-"]')]
+        .find(button => button.getAttribute("aria-controls") === controlId);
+      // A successful correction can move the row out of the active filter/page.
+      // In that case, focus the ledger's first available control rather than a stale node.
+      (trigger ?? document.querySelector<HTMLElement>('[data-pd-id$=".toolbar.search"]'))?.focus({ preventScroll: true });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [ready, gridId, profileId]);
+  return { capture };
+}
+
 export function useLedgerWarningExpansion(visibleRecordIds: string[]) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const triggers = useRef<Record<string, HTMLButtonElement | null>>({});
@@ -57,12 +88,15 @@ export function LedgerWarningDetailsRow({ colSpan, open, identity, record, profi
 }
 
 export function LedgerWarningContextNotice({ label, field, instruction }: { label: string; field: string; instruction?: string }) {
+  const contextRef = useRef<HTMLParagraphElement>(null);
   useEffect(() => {
-    // ModalBoundary performs its initial focus pass after child mount.
-    const timer = window.setTimeout(() => focusLedgerWarningField(field), 250);
+    // The entry owns this timer. Closing it or opening another record cancels stale focus.
+    const timer = window.setTimeout(() => {
+      if (contextRef.current) focusLedgerWarningField(field, contextRef.current);
+    }, 250);
     return () => window.clearTimeout(timer);
   }, [field]);
-  return <p className={styles.context} data-ledger-warning-context role="status" tabIndex={-1}><span aria-hidden="true" className="material-symbols-outlined">warning</span>
+  return <p className={styles.context} data-ledger-warning-context ref={contextRef} role="status" tabIndex={-1}><span aria-hidden="true" className="material-symbols-outlined">warning</span>
     <span><strong>{label}</strong> · {instruction ?? `Review ${field} using this record’s existing controls.`} Saving remains subject to its normal validation and permissions.</span>
   </p>;
 }

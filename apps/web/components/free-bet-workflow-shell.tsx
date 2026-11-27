@@ -55,8 +55,8 @@ import { DesignLedgerRowActions } from "@/components/design-ledger-row-actions";
 import { LedgerViewContext } from "@/components/ledger-view-context";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
-import { LedgerWarningContextNotice, LedgerWarningDetailsRow, LedgerWarningTrigger, useLedgerWarningExpansion } from "@/components/ledger-row-warnings";
-import { focusLedgerWarningField, ledgerWarningPresentation, ledgerWarningTarget, type LedgerWarningTarget } from "@/lib/ledger-warning-target";
+import { LedgerWarningContextNotice, LedgerWarningDetailsRow, LedgerWarningTrigger, useLedgerWarningExpansion, useLedgerWarningReturnFocus } from "@/components/ledger-row-warnings";
+import { ledgerWarningPresentation, ledgerWarningTarget, type LedgerWarningTarget } from "@/lib/ledger-warning-target";
 import { ledgerCellDecision } from "@/lib/ledger-cell-capabilities";
 import { LedgerFloatingCellEditor, useLedgerCellEditor, type LedgerCellSession } from "@/components/ledger-floating-cell-editor";
 import { designFloatingCellInputClass } from "@/components/design-lab-floating-cell-editor";
@@ -1830,14 +1830,16 @@ export function FreeBetWorkflowShell({
         | undefined) ?? "setup";
   const navigableFreeBetEditorTabs = freeBetEditorTabs.filter((tab) => tab.status !== "locked");
   const warningStageAvailable = Boolean(warningContext && navigableFreeBetEditorTabs.some(tab => tab.id === warningContext.stage));
+  const consumedWarningEntryRef = useRef<{ recordId: string; context: LedgerWarningTarget } | null>(null);
   useEffect(() => {
     if (!workflowVisible || !selectedId || !warningContext) return;
-    if (warningStageAvailable && activeEditorTabId !== warningContext.stage) {
-      const frame = requestAnimationFrame(() => setActiveEditorTabId(warningContext.stage as FreeBetEditorTabId));
-      return () => cancelAnimationFrame(frame);
-    }
-    focusLedgerWarningField(warningContext.field);
-  }, [workflowVisible, selectedId, warningContext, warningStageAvailable, activeEditorTabId]);
+    const consumed = consumedWarningEntryRef.current;
+    if (consumed?.recordId === selectedId && consumed.context === warningContext) return;
+    consumedWarningEntryRef.current = { recordId: selectedId, context: warningContext };
+    if (!warningStageAvailable) return;
+    const frame = requestAnimationFrame(() => setActiveEditorTabId(warningContext.stage as FreeBetEditorTabId));
+    return () => cancelAnimationFrame(frame);
+  }, [workflowVisible, selectedId, warningContext, warningStageAvailable]);
   const activeFreeBetEditorTabIndex = Math.max(
     0,
     navigableFreeBetEditorTabs.findIndex((tab) => tab.id === safeActiveEditorTabId)
@@ -2653,6 +2655,7 @@ export function FreeBetWorkflowShell({
     [effectivePage, filteredRows, pageSize]
   );
   const warningRows = useLedgerWarningExpansion(pagedRows.map(row => row.free_bet_id));
+  const warningReturn = useLedgerWarningReturnFocus({ gridId: "free-bets.table-scroll", profileId, ready: visualV2 && !workflowVisible && !tableCollapsed });
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
       if (selectedGridRowId && !pagedRows.some(row => row.free_bet_id === selectedGridRowId)) setSelectedGridRowId(null);
@@ -3692,7 +3695,7 @@ export function FreeBetWorkflowShell({
                             </td>
                           ))}
                         </FinancialValueReplayRow>
-                        {visualV2 ? <LedgerWarningDetailsRow identity={`${profileId}:${rowId}`} colSpan={tableColumns.length} open={warningRows.expandedId === rowId} record={String(row.offer_name || rowId)} profile={profileName ?? profileId} warnings={rowIssueBadges.map(badge => ({ ...badge, ...ledgerWarningPresentation("free-bets", badge.label) }))} onClose={() => warningRows.close(rowId)} onReview={warning => void selectRow(rowId, { collapseTable: true, warning: warning.label })} /> : null}
+                        {visualV2 ? <LedgerWarningDetailsRow identity={`${profileId}:${rowId}`} colSpan={tableColumns.length} open={warningRows.expandedId === rowId} record={String(row.offer_name || rowId)} profile={profileName ?? profileId} warnings={rowIssueBadges.map(badge => ({ ...badge, ...ledgerWarningPresentation("free-bets", badge.label) }))} onClose={() => warningRows.close(rowId)} onReview={warning => { warningReturn.capture(rowId, warning.label); void selectRow(rowId, { collapseTable: true, warning: warning.label }); }} /> : null}
                         </Fragment>
                       );
                     })
@@ -4239,7 +4242,7 @@ export function FreeBetWorkflowShell({
         ) : null}
         <DesignFinancialWorkbenchColumns dataPdId="free-bets.editor.workbench" enabled={visualV2}>
         <form className="form-grid" onSubmit={(event) => void handleSubmit(event)}>
-            {visualV2 && warningContext && selectedId ? <LedgerWarningContextNotice field={warningContext.field} label={warningContext.label} /> : null}
+            {visualV2 && warningContext && selectedId ? <LedgerWarningContextNotice key={`${profileId}:${selectedId}:${warningContext.label}`} field={warningContext.field} instruction={warningContext.instruction} label={warningContext.label} /> : null}
           <LedgerEditorTabPanel activeTabId={safeActiveEditorTabId} tabId="setup">
           <EditorSection visualV2={visualV2}
             collapsible={false}

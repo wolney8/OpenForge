@@ -1,4 +1,5 @@
 import { accountMoneyError } from "@/lib/account-money";
+import { getExtraPlaceRaceReadyState } from "@/lib/extra-place-race-ready";
 
 export type AccountAttentionSource = {
   counts_in_cash_total: boolean; current_balance: string; pending_withdrawal_amount: string;
@@ -82,4 +83,11 @@ export function extraPlaceIssueReasons(row: ExtraPlaceIssueSource): string[] {
   if (row.status === "Prospecting") reasons.push("Placement not confirmed");
   if (!reasons.length && row.calculation_state !== "resolved") reasons.push("Calculation review needed");
   return [...new Set(reasons)];
+}
+
+/** Shared owned/combined presentation of the existing race-ready review point. */
+export function displayedExtraPlaceIssueReasons(row: ExtraPlaceIssueSource, now: number): string[] {
+  const issues = extraPlaceIssueReasons(row);
+  const ready = getExtraPlaceRaceReadyState({ now, placedAt: row.placed_at, status: row.status });
+  return ready?.tone === "due" ? ["Result Needed", ...issues] : issues;
 }

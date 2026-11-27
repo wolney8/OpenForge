@@ -90,12 +90,123 @@ test("filtered return explains when the corrected row has left the visible resul
   await expect(notice).toBeFocused();
 });
 
+test("owned Sportsbook warning navigation is consumed once and returns to its trigger", async ({ page }) => {
+  await page.setViewportSize({ width: 900, height: 560 });
+  await page.goto("/profiles/profile-demo-001/tracker/sportsbook-bets");
+  const grid = page.locator('[data-pd-id="sportsbook.table-scroll"]');
+  await expect(grid).toBeVisible({ timeout: 45_000 });
+  const trigger = grid.locator('button[aria-controls^="ledger-warnings-"]').first();
+  await trigger.click();
+  const detail = grid.locator('[data-ledger-warning-detail][aria-hidden="false"]');
+  await detail.getByRole("button", { name: /^Review / }).first().scrollIntoViewIfNeeded();
+  await grid.evaluate(element => { element.scrollLeft = 120; });
+  await page.evaluate(() => {
+    const action = document.querySelector<HTMLElement>('[data-ledger-warning-detail][aria-hidden="false"] button[class*="action"]');
+    action?.addEventListener("click", () => sessionStorage.setItem("warning-return-scroll", JSON.stringify({
+      pageY: window.scrollY, tableX: document.querySelector<HTMLElement>('[data-pd-id="sportsbook.table-scroll"]')?.scrollLeft ?? 0,
+    })), { once: true });
+  });
+  await detail.getByRole("button", { name: /^Review / }).first().click();
+  const beforeScroll = await page.evaluate(() => JSON.parse(sessionStorage.getItem("warning-return-scroll") ?? "null") as { pageY: number; tableX: number } | null);
+  expect(beforeScroll?.pageY).toBeGreaterThan(0);
+  expect(beforeScroll?.tableX).toBeGreaterThan(0);
+  await expect(page.locator('[data-ledger-warning-context]')).toBeVisible();
+  const offer = page.locator('[data-pd-id="bet-workbench.stage.offer"]');
+  await offer.click();
+  await expect(offer).toHaveAttribute("aria-current", "step");
+  await page.waitForTimeout(500);
+  await expect(offer).toHaveAttribute("aria-current", "step");
+  const offerName = page.getByLabel("Offer Name", { exact: true }).first();
+  await expect(offerName).toBeEnabled();
+  const draft = `${await offerName.inputValue()} draft review`;
+  await offerName.fill(draft);
+  const returnLink = page.getByRole("navigation", { name: "Breadcrumb" }).getByRole("link", { name: "Sportsbook Bets" });
+  await returnLink.click();
+  const guard = page.getByRole("dialog", { name: /unsaved/i });
+  await expect(guard).toBeVisible();
+  await guard.getByRole("button", { name: "Keep editing", exact: true }).click();
+  await expect(offerName).toHaveValue(draft);
+  await returnLink.click();
+  await guard.getByRole("button", { name: "Discard changes" }).click();
+  await expect(grid).toBeVisible();
+  await expect(grid.locator('[data-ledger-warning-detail][aria-hidden="false"]')).toBeVisible();
+  await expect(grid.locator('button[aria-controls^="ledger-warnings-"]').first()).toBeFocused();
+  const afterScroll = await grid.evaluate(element => ({ pageY: window.scrollY, tableX: element.scrollLeft }));
+  expect(afterScroll.pageY).toBeCloseTo(beforeScroll!.pageY, -1);
+  expect(afterScroll.tableX).toBeCloseTo(beforeScroll!.tableX, 0);
+});
+
+test("Free Bet and Casino warnings do not lock normal stage navigation", async ({ page }) => {
+  for (const module of ["free-bets", "casino-offers"] as const) {
+    await page.goto(`/profiles/profile-demo-001/tracker/${module}`);
+    const grid = page.locator(`[data-pd-id="${ownedId[module]}.table-scroll"]`);
+    await expect(grid).toBeVisible({ timeout: 45_000 });
+    await grid.locator('button[aria-controls^="ledger-warnings-"]').first().click();
+    await grid.locator('[data-ledger-warning-detail][aria-hidden="false"]').getByRole("button", { name: /^Review / }).first().click();
+    await expect(page.locator('[data-ledger-warning-context]')).toBeVisible();
+    const nextStage = page.locator('[data-pd-id="ledger-editor.tabs"] [role="tab"][aria-disabled="false"][aria-selected="false"]').first();
+    await expect(nextStage).toBeVisible();
+    const nextStageId = await nextStage.getAttribute("data-pd-id");
+    const selectedStage = page.locator(`[data-pd-id="${nextStageId}"]`);
+    await nextStage.click();
+    await expect(selectedStage).toHaveAttribute("aria-selected", "true");
+    await page.waitForTimeout(500);
+    await expect(selectedStage).toHaveAttribute("aria-selected", "true");
+    await page.keyboard.press("Escape");
+    await expect(grid).toBeVisible();
+    await expect(grid.locator('button[aria-controls^="ledger-warnings-"]').first()).toBeFocused();
+  }
+});
+
 test("V2 ledgers discard a stale collapsed-editor state on fresh route entry", async ({ page }) => {
   for (const module of ["sportsbook-bets", "free-bets", "casino-offers", "cash-adjustments"] as const) {
     await page.evaluate((key) => localStorage.setItem(key, "true"), `openforge-ledger-collapsed:profile-demo-001:${module}`);
     await page.goto(`/profiles/profile-demo-001/tracker/${module}`);
     await expect(page.locator(`[data-pd-id="${ownedId[module]}.table-scroll"]`)).toBeVisible({ timeout: 45_000 });
     expect(await page.evaluate((key) => localStorage.getItem(key), `openforge-ledger-collapsed:profile-demo-001:${module}`)).toBe("false");
+  }
+});
+
+test("Account lifecycle and restrictions warnings focus their actual native controls", async ({ page }) => {
+  const stamp = Date.now();
+  const created = await page.request.post("/api/profiles/onboarding", { data: {
+    accounts: [], display_name: `Synthetic Account Targets ${stamp}`, profile_code: `AT-${stamp}`,
+    profile_relationship: "Personal", management_fee_percent: "0", investment_fee_percent: "0",
+    enabled_modules: ["sportsbook-bets", "free-bets", "cash-adjustments"], quick_actions: [], setup_path: "import", tracking_start_date: "2026-09-01",
+  } });
+  expect(created.status(), await created.text()).toBe(201);
+  const profileId = (await created.json()).profile.profile_id as string;
+  const account = await page.request.post(`/api/profiles/${profileId}/accounts`, { data: {
+    account: "Bookmaker A", type: "Bookie", status: "Not Signed Up", lifecycle_status: "Not Signed Up",
+    channel: "Online", stake_access: "Normal", promo_access: "Full", restrictions: ["Bonus Restricted"],
+    current_balance: "0.00", pending_withdrawal_amount: "0.00",
+  } });
+  expect(account.status(), await account.text()).toBe(201);
+  await page.goto(`/profiles/${profileId}/tracker/accounts`);
+  const grid = page.locator('[data-pd-id="accounts.table-scroll"]');
+  await expect(grid).toBeVisible({ timeout: 45_000 });
+  const trigger = grid.locator('button[aria-controls^="ledger-warnings-"]').first();
+  await trigger.click();
+  const details = grid.locator('[data-ledger-warning-detail][aria-hidden="false"]');
+  await expect(details).toContainText("Not signed up");
+  await expect(details).toContainText("Account restrictions recorded");
+  await details.getByRole("button", { name: "Review Signup / lifecycle" }).click();
+  await expect(page.getByLabel("Signup / lifecycle")).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(grid).toBeVisible();
+  await details.getByRole("button", { name: "Review Account restrictions" }).click();
+  await expect(page.getByRole("group", { name: "Account restrictions" }).getByRole("button", { name: "Bonus Restricted" })).toBeFocused();
+});
+
+test("Free Bet expiry and settle-date corrective deep links focus Settlement inputs", async ({ page }) => {
+  const rows = await (await page.request.get("/api/profiles/profile-demo-001/free-bets")).json() as Array<{ free_bet_id: string; status: string }>;
+  const editable = rows.find(row => row.status === "Prospecting");
+  expect(editable).toBeTruthy();
+  for (const [warning, field] of [["No Expiry", "Expiry"], ["No Settle Date", "Settles"]] as const) {
+    await page.goto(`/profiles/profile-demo-001/tracker/free-bets?record=${encodeURIComponent(editable!.free_bet_id)}&reviewWarning=${encodeURIComponent(warning)}`);
+    await expect(page.locator('[data-ledger-warning-context]')).toContainText(warning, { timeout: 45_000 });
+    await expect(page.locator('[data-pd-id="ledger-editor.tab.settlement"]')).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByLabel(field, { exact: true })).toBeFocused();
   }
 });
 
@@ -197,6 +308,18 @@ test("persisted Account, Cash and Extra Place warnings retain exact Profile and 
         await edit.click();
       }
       await expect(linked).toBeFocused();
+      const nextStage = page.locator('[data-pd-id="ledger-editor.tabs"] [role="tab"][aria-disabled="false"][aria-selected="false"]').first();
+      const nextStageId = await nextStage.getAttribute("data-pd-id");
+      const selectedStage = page.locator(`[data-pd-id="${nextStageId}"]`);
+      await nextStage.click();
+      await expect(selectedStage).toHaveAttribute("aria-selected", "true");
+      await page.waitForTimeout(500);
+      await expect(selectedStage).toHaveAttribute("aria-selected", "true");
+      if (scope === "owned") {
+        await page.keyboard.press("Escape");
+        await expect(grid).toBeVisible();
+        await expect(trigger).toBeFocused();
+      }
     }
     if (module === "each-way-extra-places") await expect(page.getByLabel("Imported realised P&L")).toBeFocused();
   }

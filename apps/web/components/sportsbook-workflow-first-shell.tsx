@@ -85,8 +85,8 @@ import { DesignLabSelect } from "@/components/design-lab-select";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerViewContext } from "@/components/ledger-view-context";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
-import { LedgerWarningContextNotice, LedgerWarningDetailsRow, LedgerWarningTrigger, useLedgerWarningExpansion } from "@/components/ledger-row-warnings";
-import { focusLedgerWarningField, ledgerWarningPresentation, ledgerWarningTarget, type LedgerWarningTarget } from "@/lib/ledger-warning-target";
+import { LedgerWarningContextNotice, LedgerWarningDetailsRow, LedgerWarningTrigger, useLedgerWarningExpansion, useLedgerWarningReturnFocus } from "@/components/ledger-row-warnings";
+import { ledgerWarningPresentation, ledgerWarningTarget, type LedgerWarningTarget } from "@/lib/ledger-warning-target";
 import { LedgerFloatingCellEditor, useLedgerCellEditor, type LedgerCellSession } from "@/components/ledger-floating-cell-editor";
 import { designFloatingCellInputClass } from "@/components/design-lab-floating-cell-editor";
 import labStyles from "@/components/design-lab-connected.module.css";
@@ -4293,14 +4293,16 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
     formState.status === "Placed" && formState.match_strategy === "Partial Lay";
   const navigableEditorTabs = editorTabs.filter((tab) => tab.status !== "locked");
   const warningStageAvailable = Boolean(warningContext && navigableEditorTabs.some(tab => tab.id === warningContext.stage));
+  const consumedWarningEntryRef = useRef<{ recordId: string; context: LedgerWarningTarget } | null>(null);
   useEffect(() => {
     if (!workflowVisible || !selectedId || !warningContext) return;
-    if (warningStageAvailable && activeEditorTabId !== warningContext.stage) {
-      const frame = requestAnimationFrame(() => setActiveEditorTabId(warningContext.stage as SportsbookEditorTabId));
-      return () => cancelAnimationFrame(frame);
-    }
-    focusLedgerWarningField(warningContext.field);
-  }, [workflowVisible, selectedId, warningContext, warningStageAvailable, activeEditorTabId]);
+    const consumed = consumedWarningEntryRef.current;
+    if (consumed?.recordId === selectedId && consumed.context === warningContext) return;
+    consumedWarningEntryRef.current = { recordId: selectedId, context: warningContext };
+    if (!warningStageAvailable) return;
+    const frame = requestAnimationFrame(() => setActiveEditorTabId(warningContext.stage as SportsbookEditorTabId));
+    return () => cancelAnimationFrame(frame);
+  }, [workflowVisible, selectedId, warningContext, warningStageAvailable]);
   const activeEditorTabIndex = Math.max(
     0,
     navigableEditorTabs.findIndex((tab) => tab.id === safeActiveEditorTabId)
@@ -5525,6 +5527,7 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
     [effectivePage, filteredRows, pageSize]
   );
   const warningRows = useLedgerWarningExpansion(pagedRows.map(row => row.sportsbook_bet_id));
+  const warningReturn = useLedgerWarningReturnFocus({ gridId: "sportsbook.table-scroll", profileId, ready: visualV2 && !workflowVisible && !tableCollapsed });
   const selectedGridRow = pagedRows.find(row => row.sportsbook_bet_id === selectedGridRowId);
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
@@ -5698,7 +5701,7 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
     if (!record) {
       return;
     }
-    protectedGridReturnFocusRef.current = options?.returnFocus ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
+    protectedGridReturnFocusRef.current = options?.warning ? null : options?.returnFocus ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
     resetPayoutOddsHelper();
     if (options?.cell && !["Settled", "Void", "Cancelled", "Free Bet Awarded"].includes(record.status)) cellEditor.start(options.cell.column, options.cell.anchor); else cellEditor.close();
     setSelectedId(rowId);
@@ -8272,7 +8275,7 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
                             </td>
                           ))}
                         </FinancialValueReplayRow>
-                        {visualV2 ? <LedgerWarningDetailsRow identity={`${profileId}:${rowId}`} colSpan={tableColumns.length} open={warningRows.expandedId === rowId} record={String(row.event_name || rowId)} profile={profileName ?? profileId} warnings={rowIssueBadges.map(badge => ({ ...badge, ...ledgerWarningPresentation("sportsbook-bets", badge.label) }))} onClose={() => warningRows.close(rowId)} onReview={warning => void selectRow(rowId, { collapseTable: true, warning: warning.label, returnFocus: document.activeElement instanceof HTMLElement ? document.activeElement : undefined })} /> : null}
+                        {visualV2 ? <LedgerWarningDetailsRow identity={`${profileId}:${rowId}`} colSpan={tableColumns.length} open={warningRows.expandedId === rowId} record={String(row.event_name || rowId)} profile={profileName ?? profileId} warnings={rowIssueBadges.map(badge => ({ ...badge, ...ledgerWarningPresentation("sportsbook-bets", badge.label) }))} onClose={() => warningRows.close(rowId)} onReview={warning => { warningReturn.capture(rowId, warning.label); void selectRow(rowId, { collapseTable: true, warning: warning.label }); }} /> : null}
                         </Fragment>
                       );
                     })
@@ -8828,7 +8831,7 @@ export function SportsbookWorkflowShell({ profileId, profileName, initialQuery =
           {!visualV2 ? guidedEntryPanel : null}
           <DesignBetWorkbenchGrid dataPdId="sportsbook.editor.workbench" enabled={visualV2}>
           <form className={visualV2 ? `form-grid ${labStyles.entryFields}` : "form-grid"} data-pd-bet-workbench-fields={visualV2 || undefined} id="sportsbook-workbench-form" onSubmit={(event) => void handleSubmit(event)}>
-            {visualV2 && warningContext && selectedId ? <LedgerWarningContextNotice field={warningContext.field} label={warningContext.label} /> : null}
+            {visualV2 && warningContext && selectedId ? <LedgerWarningContextNotice key={`${profileId}:${selectedId}:${warningContext.label}`} field={warningContext.field} instruction={warningContext.instruction} label={warningContext.label} /> : null}
             {/* The Lab entry presents the active field card directly; guidance remains in native validation. */}
             {visualV2 && requirementsVisible ? <fieldset className={labStyles.requirementsCard} data-pd-id="sportsbook.workbench.requirements"><legend>Recorded requirements</legend><p>Review recorded offer conditions and source readiness. Missing evidence remains Unknown; this stage does not confirm external activity.</p><dl><div><dt>Offer setup</dt><dd>{betSetupComplete ? "Recorded" : `${missingBetSetupFields.length} required setup fields need review`}</dd></div><div><dt>Qualifying source</dt><dd>{formState.bet_role !== "Standalone" ? formState.offer_group_id ? "Recorded" : "Unknown" : "Not required"}</dd></div><div><dt>Reward conditions</dt><dd>{formState.promotion_json ? "Recorded" : "Unknown"}</dd></div><div><dt>External Back placement</dt><dd>{backPlacementConfirmed ? "Recorded" : "Unknown"}</dd></div><div><dt>External Lay placement</dt><dd>{formState.match_strategy === "No Lay" ? "Not required" : layPartiallyConfirmed ? "Partially matched" : layFullyConfirmed ? "Recorded" : "Unknown"}</dd></div></dl><button className={labStyles.secondaryButton} onClick={() => activateEditorTab("setup")} type="button">Review Offer fields</button></fieldset> : null}
             {visualV2 && !showsPlacementSection ? <LedgerEditorTabPanel activeTabId={displayEditorTabId} tabId="placement"><div data-pd-id="sportsbook.workbench.placement"><EditorSection visualV2 labFieldset collapsible={false} title="Placement" headerAside={renderEditorSectionAside()}><p>Record actual external placement separately from the Matching plan. An event date is not a settlement deadline.</p><fieldset className="section-fieldset" disabled={isSettledReadOnly}><div ref={setPlacementPortalTarget} />{usesCorePlannerInMatching ? <><div className={labStyles.fieldPair}><label className="field-control"><span>Back placement</span><input readOnly value={backPlacementConfirmed ? "Confirmed externally" : "Not recorded"} /></label><label className="field-control"><span>Lay placement</span><input readOnly value={layPlacementConfirmed ? "Recorded" : "Not recorded"} /></label><label className="field-control"><span>Actual back stake</span><input readOnly value={recordedBackStake} placeholder="Not recorded" /></label><label className="field-control"><span>Actual matched lay stake</span><input readOnly value={recordedLayStake} placeholder="Not recorded" /></label></div><button className={labStyles.secondaryButton} disabled={!backPlacementReady || backPlacementConfirmed} onClick={() => applyPlacementAction("back-placed")} type="button">Confirm external Back</button><p>Back: {backPlacementConfirmed ? "Confirmed" : "Not recorded"} · Lay: {layPlacementConfirmed ? "Confirmed" : "Not recorded"}</p></> : null}{!usesCorePlannerInMatching ? <><div className={labStyles.fieldPair}>

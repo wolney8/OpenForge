@@ -35,7 +35,7 @@ import { DesignLedgerRowActions } from "@/components/design-ledger-row-actions";
 import { LedgerViewContext } from "@/components/ledger-view-context";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
-import { LedgerWarningContextNotice, LedgerWarningDetailsRow, LedgerWarningTrigger, useLedgerWarningExpansion } from "@/components/ledger-row-warnings";
+import { LedgerWarningContextNotice, LedgerWarningDetailsRow, LedgerWarningTrigger, useLedgerWarningExpansion, useLedgerWarningReturnFocus } from "@/components/ledger-row-warnings";
 import { focusLedgerWarningField, ledgerWarningPresentation, ledgerWarningTarget, type LedgerWarningTarget } from "@/lib/ledger-warning-target";
 import { ledgerCellDecision } from "@/lib/ledger-cell-capabilities";
 import { LedgerFloatingCellEditor, useLedgerCellEditor, type LedgerCellSession } from "@/components/ledger-floating-cell-editor";
@@ -1071,6 +1071,7 @@ export function CashAdjustmentWorkflowShell({ profileId, profileName, initialRec
     [effectivePage, filteredRows, pageSize]
   );
   const warningRows = useLedgerWarningExpansion(pagedRows.map(row => row.cash_adjustment_id));
+  const warningReturn = useLedgerWarningReturnFocus({ gridId: "cash-adjustments.table-scroll", profileId, ready: visualV2 && !workflowVisible && !tableCollapsed });
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
       if (selectedGridRowId && !pagedRows.some(row => row.cash_adjustment_id === selectedGridRowId)) setSelectedGridRowId(null);
@@ -1167,21 +1168,36 @@ export function CashAdjustmentWorkflowShell({ profileId, profileName, initialRec
     [cashAdjustmentEditorTabs]
   );
   const warningStageAvailable = Boolean(warningContext && navigableCashAdjustmentTabs.some(tab => tab.id === warningContext.stage));
+  const consumedWarningEntryRef = useRef<{ recordId: string; context: LedgerWarningTarget } | null>(null);
   useEffect(() => {
     if (!workflowVisible || !selectedId || !warningContext) return;
-    if (warningStageAvailable && activeEditorTabId !== warningContext.stage) {
-      const frame = requestAnimationFrame(() => setActiveEditorTabId(warningContext.stage as CashAdjustmentEditorTabId));
-      return () => cancelAnimationFrame(frame);
-    }
-    focusLedgerWarningField(warningContext.field);
-  }, [workflowVisible, selectedId, warningContext, warningStageAvailable, activeEditorTabId, isResolvedReadOnly]);
+    const consumed = consumedWarningEntryRef.current;
+    if (consumed?.recordId === selectedId && consumed.context === warningContext) return;
+    consumedWarningEntryRef.current = { recordId: selectedId, context: warningContext };
+    if (!warningStageAvailable) return;
+    const frame = requestAnimationFrame(() => setActiveEditorTabId(warningContext.stage as CashAdjustmentEditorTabId));
+    return () => cancelAnimationFrame(frame);
+  }, [workflowVisible, selectedId, warningContext, warningStageAvailable]);
+  const focusedResolvedWarningRef = useRef<{ recordId: string; context: LedgerWarningTarget } | null>(null);
   useEffect(() => {
-    if (!workflowVisible || !selectedId || !warningContext || !isResolvedReadOnly || activeEditorTabId !== warningContext.stage) return;
+    if (!workflowVisible || !selectedId || !warningContext || !isResolvedReadOnly) return;
+    const focused = focusedResolvedWarningRef.current;
+    if (focused?.recordId === selectedId && focused.context === warningContext) return;
+    focusedResolvedWarningRef.current = { recordId: selectedId, context: warningContext };
     const timer = window.setTimeout(() => {
       document.querySelector<HTMLElement>('[data-pd-id="cash-adjustments.editor.dialog"] button[aria-label="Edit cash-adjustment row"]')?.focus({ preventScroll: true });
-    }, 350);
+    }, 400);
     return () => window.clearTimeout(timer);
-  }, [workflowVisible, selectedId, warningContext, isResolvedReadOnly, activeEditorTabId]);
+  }, [workflowVisible, selectedId, warningContext, isResolvedReadOnly]);
+  useEffect(() => {
+    if (!workflowVisible || !selectedId || !warningContext || !resolvedEditEnabled) return;
+    const timer = window.setTimeout(() => {
+      if (selectedIdRef.current !== selectedId) return;
+      const context = document.querySelector<HTMLElement>('[data-pd-id="cash-adjustments.editor.dialog"] [data-ledger-warning-context]');
+      if (context) focusLedgerWarningField(warningContext.field, context);
+    }, 80);
+    return () => window.clearTimeout(timer);
+  }, [workflowVisible, selectedId, warningContext, resolvedEditEnabled]);
   const currentCashAdjustmentTabIndex = Math.max(
     0,
     navigableCashAdjustmentTabs.findIndex((tab) => tab.id === safeActiveEditorTabId)
@@ -2014,7 +2030,7 @@ export function CashAdjustmentWorkflowShell({ profileId, profileName, initialRec
                             </td>
                           ))}
                         </FinancialValueReplayRow>
-                        {visualV2 ? <LedgerWarningDetailsRow identity={`${profileId}:${rowId}`} colSpan={tableColumns.length} open={warningRows.expandedId === rowId} record={String(row.description || rowId)} profile={profileName ?? profileId} warnings={rowIssueBadges.map(badge => ({ ...badge, ...ledgerWarningPresentation("cash-adjustments", badge.label) }))} onClose={() => warningRows.close(rowId)} onReview={warning => void selectRow(rowId, { collapseTable: true, warning: warning.label })} /> : null}
+                        {visualV2 ? <LedgerWarningDetailsRow identity={`${profileId}:${rowId}`} colSpan={tableColumns.length} open={warningRows.expandedId === rowId} record={String(row.description || rowId)} profile={profileName ?? profileId} warnings={rowIssueBadges.map(badge => ({ ...badge, ...ledgerWarningPresentation("cash-adjustments", badge.label) }))} onClose={() => warningRows.close(rowId)} onReview={warning => { warningReturn.capture(rowId, warning.label); void selectRow(rowId, { collapseTable: true, warning: warning.label }); }} /> : null}
                         </Fragment>
                       );
                     })
@@ -2393,7 +2409,7 @@ export function CashAdjustmentWorkflowShell({ profileId, profileName, initialRec
               </p>
             ) : null}
             <form className="form-grid" onSubmit={(event) => void handleSubmit(event)}>
-            {visualV2 && warningContext && selectedId ? <LedgerWarningContextNotice field={warningContext.field} label={warningContext.label} instruction={isResolvedReadOnly ? "Choose Edit to change this resolved adjustment." : undefined} /> : null}
+            {visualV2 && warningContext && selectedId ? <LedgerWarningContextNotice key={`${profileId}:${selectedId}:${warningContext.label}`} field={warningContext.field} label={warningContext.label} instruction={isResolvedReadOnly ? "Choose Edit to change this resolved adjustment." : undefined} /> : null}
           <LedgerEditorTabPanel activeTabId={safeActiveEditorTabId} tabId="details">
           <EditorSection
             invalid={

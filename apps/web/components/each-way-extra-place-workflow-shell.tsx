@@ -32,11 +32,11 @@ import { LedgerViewContext } from "@/components/ledger-view-context";
 import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
 import { LedgerWarningContextNotice, LedgerWarningDetailsRow, LedgerWarningTrigger, useLedgerWarningExpansion } from "@/components/ledger-row-warnings";
-import { focusLedgerWarningField, ledgerWarningPresentation, ledgerWarningTarget, type LedgerWarningTarget } from "@/lib/ledger-warning-target";
+import { ledgerWarningPresentation, ledgerWarningTarget, type LedgerWarningTarget } from "@/lib/ledger-warning-target";
 import { ledgerCellDecision } from "@/lib/ledger-cell-capabilities";
 import { extraPlaceWorkbenchEntry } from "@/lib/ledger-workbench-entry";
 import { formatApiErrorBody } from "@/lib/api-error";
-import { extraPlaceHasIssue, extraPlaceIssueReasons } from "@/lib/ledger-operational-issues";
+import { displayedExtraPlaceIssueReasons, extraPlaceHasIssue, extraPlaceIssueReasons } from "@/lib/ledger-operational-issues";
 import { LedgerFloatingCellEditor, useLedgerCellEditor, type LedgerCellSession } from "@/components/ledger-floating-cell-editor";
 import { DesignRunnerRaceCellFields } from "@/components/design-runner-race-cell-fields";
 import { designFloatingCellInputClass } from "@/components/design-lab-floating-cell-editor";
@@ -283,9 +283,7 @@ function decimalDisplay(value: string | null | undefined) {
 }
 function getRowIssues(row: Row) { return extraPlaceIssueReasons(row); }
 function displayedExtraPlaceIssues(row: Row, now: number) {
-  const issues = getRowIssues(row);
-  const ready = getExtraPlaceRaceReadyState({ now, placedAt: row.placed_at, status: row.status });
-  return ready?.tone === "due" ? ["Result Needed", ...issues] : issues;
+  return displayedExtraPlaceIssueReasons(row, now);
 }
 function isBlank(value: string) {
   return !value.trim();
@@ -659,7 +657,6 @@ export function EachWayExtraPlaceWorkflowShell({
     setWarningContext(target);
     openRow(row, undefined, label);
     setStep(target.stage as StepId);
-    focusLedgerWarningField(target.field);
   };
   const openInitialRow = useEffectEvent((row: Row) => openRow(row));
   const initialRowOpened = useRef(false);
@@ -667,7 +664,7 @@ export function EachWayExtraPlaceWorkflowShell({
     if (!initialRecordId || initialRowOpened.current || rowsRead?.state !== "ready") return;
     const row = rows.find(item => item.each_way_extra_place_id === initialRecordId);
     if (!row) return;
-    const timer = window.setTimeout(() => { initialRowOpened.current = true; openInitialRow(row); if (initialWarning) { const target = ledgerWarningTarget("each-way-extra-places", initialWarning); setStep(target.stage as StepId); focusLedgerWarningField(target.field); } }, 0);
+    const timer = window.setTimeout(() => { initialRowOpened.current = true; openInitialRow(row); if (initialWarning) { const target = ledgerWarningTarget("each-way-extra-places", initialWarning); setStep(target.stage as StepId); } }, 0);
     return () => window.clearTimeout(timer);
   }, [initialRecordId, initialWarning, rows, rowsRead]);
   const close = async () => {
@@ -1380,7 +1377,7 @@ export function EachWayExtraPlaceWorkflowShell({
                   />
                 </div>
                 <div className="workflow-editor-body">
-                  {visualV2 && warningContext && selectedId ? <LedgerWarningContextNotice field={warningContext.field} label={warningContext.label} /> : null}
+                  {visualV2 && warningContext && selectedId ? <LedgerWarningContextNotice key={`${profileId}:${selectedId}:${warningContext.label}`} field={warningContext.field} instruction={warningContext.instruction} label={warningContext.label} /> : null}
                   {isGuidedAccessEnabled(guidedAccessMode) &&
                   !guideDismissed &&
                   needed ? (

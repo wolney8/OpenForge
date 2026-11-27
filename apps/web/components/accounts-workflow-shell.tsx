@@ -29,7 +29,7 @@ import { LedgerPagination } from "@/components/ledger-pagination";
 import { LedgerViewContext } from "@/components/ledger-view-context";
 import { LedgerTableScroll } from "@/components/ledger-table-scroll";
 import { LedgerWarningContextNotice, LedgerWarningDetailsRow, LedgerWarningTrigger, useLedgerWarningExpansion } from "@/components/ledger-row-warnings";
-import { focusLedgerWarningField, ledgerWarningPresentation, ledgerWarningTarget, type LedgerWarningTarget } from "@/lib/ledger-warning-target";
+import { ledgerWarningPresentation, ledgerWarningTarget, type LedgerWarningTarget } from "@/lib/ledger-warning-target";
 import { ledgerCellDecision } from "@/lib/ledger-cell-capabilities";
 import { accountAccessChannelOptions } from "@/lib/account-access-channels";
 import { LedgerFloatingCellEditor, useLedgerCellEditor, type LedgerCellSession } from "@/components/ledger-floating-cell-editor";
@@ -1011,9 +1011,6 @@ export function AccountsWorkflowShell({ profileId, profileName, initialRecordId,
     return () => cancelAnimationFrame(frame);
   }, [initialIssueFilter, initialRecordId, workflowVisible]);
   useEffect(() => {
-    if (workflowVisible && selectedId && warningContext) focusLedgerWarningField(warningContext.field);
-  }, [workflowVisible, selectedId, warningContext]);
-  useEffect(() => {
     if (isInitialLoading || (initialIssueFilter !== "needs-attention" && initialIssueFilter !== "all-issues")) return;
     const frame = requestAnimationFrame(() => {
       resultsRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
@@ -1705,7 +1702,7 @@ export function AccountsWorkflowShell({ profileId, profileName, initialRecordId,
               <><AccountFinancialSummary account={selectedRow} /><AccountReviewButton profileId={profileId} accounts={[selectedRow]} accountId={selectedRow.account_id} accountName={selectedRow.account} /></>
             ) : null}
             <form className="form-grid" id="profile-account-editor-form" onSubmit={(event) => void handleSubmit(event)}>
-          {visualV2 && warningContext && selectedId ? <LedgerWarningContextNotice field={warningContext.field} label={warningContext.label} /> : null}
+          {visualV2 && warningContext && selectedId ? <LedgerWarningContextNotice key={`${profileId}:${selectedId}:${warningContext.label}`} field={warningContext.field} instruction={warningContext.instruction} label={warningContext.label} /> : null}
           <span aria-hidden="true" className="account-editor-section-anchor" id="account-overview" />
           <label className="field-control">
             <span>Account</span>
