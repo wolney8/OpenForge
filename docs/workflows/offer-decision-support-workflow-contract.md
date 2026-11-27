@@ -59,3 +59,14 @@ Record target version, reporting basis, scenario values, risk limits, account el
 
 Present recommendation, reasons, possible upside, conservative downside and blocked assumptions together. Avoid celebratory or urgency-inducing gambling language.
 
+## 2026-11-27 manual routine and offer review clarification (#68/#72)
+
+This is a **planned workflow extension**, not an implemented offer catalogue, scheduler or financial command. It retains the original advisory decision rules above. Current manual Combo templates, signup definitions, Profile-owned opportunities and native Prospecting entry are useful foundations, not proof that a recurring offer is current.
+
+- A reviewed manual routine/offer definition needs stable identity and version, provider, offer family, applicable Profile/capability evidence, source and last checked time, next verification, confidence, valid-from/until/expiry window, timezone and daily/weekly/monthly/yearly/seasonal/one-off/event-linked cadence. Terms or availability changes create a reviewable version; pause/archive does not erase prior occurrences or Account observations. A returning one-off promotion is distinct from a normal repeated routine.
+- An occurrence review may record `available`, `unavailable_for_occurrence`, `no_opportunity_to_test`, `changed_terms` or `stale_evidence`. These are occurrence-scoped findings, not universal provider facts. Unknown availability remains unknown. A known event or catalogue pattern suggests checking a source; it does not prove live availability or Profile eligibility.
+- A reviewer may explicitly create a reminder, eligible Prospecting draft or Common Bet Combo draft through the existing native workflow. Actual calculations, placement and settlement remain in the owning ledger. One accepted offer cannot globally restore promo access. Updating Account capability evidence requires an explicit Account review action under #70/#82, with source linkage and audit.
+- Complete, Skip, Snooze and No/Low Value feedback belongs to the specific task occurrence unless the user explicitly changes the routine definition. Preserve the source and prior occurrence after any action. Full source-ingestion automation remains outside this contract.
+
+The recurrence identity/window rules live in the [recurring activity workflow](fund-manager-recurring-activity-workflow-contract.md), and named-event provenance in the [event context contract](../contracts/event-context-contract.md). Storage, schedule generation, external-source freshness and any eligibility/ranking threshold remain **to decide before implementation**. Synthetic review-to-action cases are in the [cross-stage fixture spec](../fixture-specs/account-routine-event-advisory-fixture-spec.md).
+

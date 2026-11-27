@@ -28,3 +28,4 @@ Define deterministic synthetic fixtures for evidence-backed profile account heal
 - Fixtures must use synthetic bookmaker names and profile ids.
 - Evidence text must be safe and must not include real account screenshots, login data or personal details.
 - Money values are capability evidence, not P&L.
+- The 2026-11-27 restoration, one-off exception, contextual stake, no-test recheck and Profile-isolation additions are planned as `ARE-001`–`ARE-008` in [the cross-stage fixture plan](account-routine-event-advisory-fixture-spec.md). Existing `AHI-001`–`AHI-008` remain unchanged. No new fixture execution or capability implementation is claimed.
