@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from openforge_api.account_capabilities import router as account_capabilities_router
 from openforge_api.account_catalogue_source import router as account_catalogue_source_router
 from openforge_api.account_observations import router as account_observations_router
 from openforge_api.accounts import router as accounts_router
@@ -81,6 +82,7 @@ app.include_router(global_search_router)
 app.include_router(account_catalogue_source_router)
 app.include_router(accounts_router)
 app.include_router(account_observations_router)
+app.include_router(account_capabilities_router)
 app.include_router(activity_history_router)
 app.include_router(balance_snapshots_router)
 app.include_router(backups_router)

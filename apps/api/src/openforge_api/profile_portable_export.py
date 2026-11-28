@@ -21,7 +21,8 @@ from openforge_api.auth import require_request_session
 from openforge_api.config import settings
 from openforge_api.db import connect_read_only, postgres_runtime_enabled
 
-EXPORT_FORMAT_VERSION = "profile-portable-export-v1"
+EXPORT_FORMAT_VERSION = "profile-portable-export-v2"
+LEGACY_EXPORT_FORMAT_VERSION = "profile-portable-export-v1"
 XLSX_MEDIA_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 NULL_FIELDS_COLUMN = "null_fields_json"
 
@@ -187,6 +188,28 @@ SHEET_SPECS = (
         ("balance_snapshot_id",),
         decimal_fields=frozenset({"balance_amount"}),
         timestamp_fields=COMMON_TIMESTAMPS | frozenset({"snapshot_at"}),
+    ),
+    SheetSpec(
+        "Account Audit",
+        "account_audit",
+        _fields("audit_id account_id profile_id action changed_at payload_json"),
+        ("changed_at", "audit_id"),
+        json_fields=frozenset({"payload_json"}),
+        timestamp_fields=frozenset({"changed_at"}),
+        authority_role="account_audit_evidence",
+    ),
+    SheetSpec(
+        "Capability History",
+        "account_capability_observations",
+        _fields(
+            "observation_id profile_id account_id capability scope_kind scope_ref entry_kind "
+            "state interpretation confidence evidence_type evidence_note source_ref observed_at "
+            "observed_precision effective_from effective_precision next_review_action next_review_on "
+            "correction_of correction_reason schema_version operation_id payload_hash revision actor recorded_at"
+        ),
+        ("revision", "observation_id"),
+        timestamp_fields=frozenset({"recorded_at", "observed_at", "effective_from"}),
+        authority_role="account_capability_evidence",
     ),
     SheetSpec(
         "Sportsbook",
@@ -632,6 +655,13 @@ def _reference_fingerprint(payload: Mapping[str, Any]) -> str:
 
 
 def _select_rows(connection: Any, spec: SheetSpec, profile_id: str) -> list[dict[str, Any]]:
+    if spec.name == "Capability History" and not postgres_runtime_enabled():
+        # Explicit migration is pending in normal storage. A pre-activation
+        # export can still represent the truthful absence of capability history.
+        if not connection.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='account_capability_observations'"
+        ).fetchone():
+            return []
     columns = ", ".join(spec.columns)
     order_by = ", ".join(spec.order_by)
     rows = connection.execute(
